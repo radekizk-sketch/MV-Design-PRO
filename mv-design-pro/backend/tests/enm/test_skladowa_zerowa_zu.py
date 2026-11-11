@@ -75,18 +75,20 @@ from enm.store import reset_enm_store, set_enm
 from enm.topology import derive
 from enm.uziemienie_sekcji import uziemienie_sieci
 from enm.validator import ENMValidator
+from network_model.catalog.mv_transformer_catalog import TRANSFORMATORY_UZIEMIAJACE_ZNYN11
 from network_model.catalog.mv_zespol_uziemiajacy_catalog import (
-    get_all_earthing_transformer_records,
     get_all_neutral_earthing_resistor_records,
 )
 from network_model.core.uziemienie import TYP_PUNKTU_NEUTRALNEGO_WARIANTU
 from solver_input.v126_contracts import uziemienie_sn_v126
 
+from tests.utils.zespol_uziemiajacy import zespoly_migawki
+
 UN_KV = 15.0
 C_MAX = 1.1
 U_F_V = UN_KV * 1e3 / math.sqrt(3.0)
 
-TU = "TU_ZNYN11_15KV_PW160"
+TU = "tu-sn-nn-15-04-100kva-znyn11"
 DLAWIK = "DL_40_400A_15KV_CIAGLY"
 REZYSTOR = "REZ_200A_15KV"
 I_NASTAWY_A = 100.0
@@ -98,7 +100,7 @@ def _params(rekordy: list[dict], ref: str) -> dict[str, Any]:
     return next(r for r in rekordy if r["id"] == ref)["params"]
 
 
-_TU = _params(get_all_earthing_transformer_records(), TU)
+_TU = _params(TRANSFORMATORY_UZIEMIAJACE_ZNYN11, TU)
 _REZ = _params(get_all_neutral_earthing_resistor_records(), REZYSTOR)
 Z0_TU = complex(_TU["r0_ohm"], _TU["x0_ohm"])
 R_N = float(_REZ["r_ohm"])
@@ -135,7 +137,7 @@ PRZYCZYNA_WARIANTU: dict[str, str] = {
 
 
 def _zespol(wariant: str, sekcja: int) -> dict[str, Any] | None:
-    """Ładunek zespołu uziemiającego sekcji (``add_grid_source_sn.zespoly_uziemiajace``)."""
+    """Ładunek zespołu uziemiającego sekcji (``add_grid_source_sn.zespoly_sekcji``)."""
     dlawik = {"catalog_ref": DLAWIK, "i_nastawy_a": I_NASTAWY_A}
     if wariant in ("izolowany", "uzwojenie_tr"):
         return None
@@ -178,7 +180,7 @@ def _gpz(sekcje: int, zespoly: list[dict[str, Any]]) -> dict[str, Any]:
             },
             "transformer_count": sekcje,
             "transformer_catalog_ref": TRAFO_WN_SN,
-            "zespoly_uziemiajace": zespoly,
+            "zespoly_sekcji": zespoly,
         },
     )
     assert not wynik.get("error"), wynik.get("error")
@@ -238,16 +240,12 @@ def _szyny(migawka: dict[str, Any]) -> list[str]:
 def _lacznik_zu(migawka: dict[str, Any], sekcja: int) -> str:
     """Wyłącznik pola ZU pierwszego zespołu sekcji ``sekcja`` (tor pola: szyna → zacisk)."""
     szyna = _szyny(migawka)[sekcja - 1]
-    zespoly = sorted(
-        (z for z in migawka["zespoly_uziemiajace"]),
-        key=lambda z: z["ref_id"],
-    )
-    for zespol in zespoly:
+    for zespol in zespoly_migawki(migawka):
         tor = next(
             (
                 b
                 for b in migawka["branches"]
-                if b.get("type") == "breaker" and b["to_bus_ref"] == zespol["bus_ref"]
+                if b.get("type") == "breaker" and b["to_bus_ref"] == zespol["hv_bus_ref"]
             ),
             None,
         )
@@ -409,15 +407,19 @@ def test_sonda_wartosci_bezwzgledne_z_podstawa() -> None:
     """Liczby przepisane do dokumentu karty (sonda B-01) — przypięte, by dokument nie kłamał.
 
     R_N = 43,3 Ω (U_f/200 A), X_L = 86,60 Ω (U_f/100 A), R_W = 288,7 Ω (U_f/30 A),
-    Z_0,TU = 1,5 + j6,0 Ω (katalog, wartość robocza)."""
+    Z_0,TU = 0,637 + j3,185 Ω (pozycja katalogu transformatora uziemiającego ZNyn11 15/0,4 kV
+    100 kVA, wartość robocza — karta ZU-JEDEN-NOSNIK; dawna pozycja kolekcji zespołów niosła
+    1,5 + j6,0 Ω, więc liczby niżej różnią się od dawnych 216,9 / 235,4 / 3 460 A wyłącznie
+    o Z_0,TU — sonda 1e-9 przy tej samej Z_0,TU w meldunku karty), 2·Z_1 = 0,101 + j2,103 Ω
+    (równoważnik 110 kV 3000 MVA przez TR 110/15 kV 25 MVA, IEC 60909-0 pkt 6.2–6.3)."""
     assert R_N == pytest.approx(U_F_V / 200.0, rel=1e-3)
     oczekiwane = {
-        # Z0 = Z_0,TU + 3R_N = 131,40+j6,00 Ω → |2Z1+Z0| = 131,75 Ω → 28 579 V / 131,75 Ω
-        "rezystor": 216.9,
-        # Z_N = R_N‖jX_L = 34,64+j17,32 Ω → Z0 = 105,42+j57,96 Ω → |2Z1+Z0| = 121,42 Ω
-        "dlawik_rezystor": 235.4,
-        # Z0 = Z_0,TU = 1,5+j6,0 Ω → |2Z1+Z0| = 8,26 Ω
-        "bezposrednie": 3_460.0,
+        # Z0 = Z_0,TU + 3R_N = 130,54+j3,18 Ω → |2Z1+Z0| = 130,75 Ω → 28 579 V / 130,75 Ω
+        "rezystor": 218.6,
+        # Z_N = R_N‖jX_L = 34,64+j17,32 Ω → Z0 = 104,56+j55,14 Ω → |2Z1+Z0| = 119,29 Ω
+        "dlawik_rezystor": 239.6,
+        # Z0 = Z_0,TU = 0,637+j3,185 Ω → |2Z1+Z0| = 5,339 Ω
+        "bezposrednie": 5_352.6,
     }
     for klucz, ik1 in oczekiwane.items():
         wariant, stan = (
@@ -459,7 +461,9 @@ def test_kombinacja_sprzeczna_to_odmowa_nazwana_nie_liczba() -> None:
     with pytest.raises(AssertionError, match="Uziemienie bezpośrednie"):
         _siec("sprzeczny")
     migawka = _siec("rezystor")
-    migawka["zespoly_uziemiajace"][0]["uziemienie_bezposrednie"] = True
+    # Rekord sprzeczny z innej drogi wczytania: punkt neutralny transformatora uziemiającego
+    # zadeklarowany jako uziemiony bezpośrednio, z rezystorem w punkcie neutralnym.
+    zespoly_migawki(migawka)[0]["hv_neutral"]["type"] = "directly_grounded"
     enm = EnergyNetworkModel.model_validate(migawka)
     kody = [i.code for i in ENMValidator().validate(enm).issues]
     assert "E-ZU-02" in kody
@@ -482,14 +486,21 @@ Z0_ZU = Z0_TU + 3.0 * R_N
 #: IZOLOWANĄ: prąd doziemny to prąd pojemnościowy, nie prąd zwarciowy IEC 60909 (warunek
 #: odbioru 2026-10-29) — dawniej „brak drogi” odcinał ją jak węzeł bez drogi zerowej.
 IZOL = "poza_zakresem_iec60909"
+#: Dwa zespoły w ruchu w jednej galwanicznej sieci SN — bloker E-W5-04 (karta ZU-JEDEN-NOSNIK,
+#: decyzja D1 karty POLA-GPZ-SZABLONY): ENEA Zeszyt 1 §16 s. 29 dobiera zespół na pracę
+#: JEDNEGO zespołu na sieć sekcji A+B, §26.10.7 s. 56 — przy zamkniętym łączniku szyn AWSCz
+#: blokowane w jednej sekcji. Dawniej (kolekcja zespołów) walidator ostrzegał W-ZU-04, a bieg
+#: liczył równoległe boczniki Z_0,ZU/2 — praca równoległa nie jest stanem projektowym, więc
+#: bieg odmawia nazwanym blokerem, zamiast liczyć prąd układu, którego ruch nie dopuszcza.
+BLOKADA = "E-W5-04"
 UKLADY: dict[tuple[int, str, str, str], tuple[Any, Any]] = {
-    (1, "-", "obie", "zamkniety"): (Z0_ZU / 2.0, None),
+    (1, "-", "obie", "zamkniety"): (BLOKADA, None),
     (1, "-", "obie", "otwarty"): (Z0_ZU, None),
     (1, "-", "jedna", "zamkniety"): (Z0_ZU, None),
     (1, "-", "jedna", "otwarty"): (IZOL, None),
     (1, "-", "zadna", "zamkniety"): (IZOL, None),
     (1, "-", "zadna", "otwarty"): (IZOL, None),
-    (2, "zamkniete", "obie", "zamkniety"): (Z0_ZU / 2.0, Z0_ZU / 2.0),
+    (2, "zamkniete", "obie", "zamkniety"): (BLOKADA, BLOKADA),
     (2, "zamkniete", "obie", "otwarty"): (Z0_ZU, Z0_ZU),
     (2, "zamkniete", "jedna", "zamkniety"): (Z0_ZU, Z0_ZU),
     (2, "zamkniete", "jedna", "otwarty"): (IZOL, IZOL),
@@ -502,6 +513,29 @@ UKLADY: dict[tuple[int, str, str, str], tuple[Any, Any]] = {
     (2, "otwarte", "zadna", "zamkniety"): (IZOL, IZOL),
     (2, "otwarte", "zadna", "otwarty"): (IZOL, IZOL),
 }
+
+
+def _sprawdz_blokade_dwoch_zespolow(migawka: dict[str, Any], przypadek: OperatingScenario) -> None:
+    """Model efektywny przypadku ma dwa zespoły w ruchu na jednej sieci SN: walidator zgłasza
+    E-W5-04 z oboma transformatorami uziemiającymi, a bieg odmawia nazwanym blokerem (bez
+    liczby) — ta sama reguła na modelu, który byłby liczony."""
+    from network_model.odmowa_danych import OdmowaNazwana
+
+    efektywny = EnergyNetworkModel.model_validate(
+        apply_scenario(EnergyNetworkModel.model_validate(migawka), przypadek).snapshot
+    )
+    (blokada,) = (i for i in ENMValidator().validate(efektywny).issues if i.code == BLOKADA)
+    assert sorted(blokada.element_refs) == [z["ref_id"] for z in zespoly_migawki(migawka)]
+    assert "jednej sieci SN" in blokada.message_pl
+    set_enm("blokada", EnergyNetworkModel.model_validate(migawka))
+    with pytest.raises(OdmowaNazwana, match="Dwa uziemione nośniki punktu neutralnego"):
+        create_run(
+            case_id="blokada",
+            klucz_twin="blokada",
+            analysis_type="short_circuit_sn",
+            options={"fault_type": "SC_1F"},
+            scenariusz=przypadek,
+        )
 
 
 def _uklad(
@@ -527,6 +561,9 @@ def test_iloczyn_sekcji_zu_i_lacznika_ik1_z_wyroczni(
         # Zwarcie na szynie sekcji ``indeks`` (bieg ze scenariuszem liczy węzeł zwarcia).
         migawka, przypadek = _uklad(sekcje, sprzeglo, zu, lacznik, szyna_zwarcia=indeks)
         szyna = _szyny(migawka)[indeks]
+        if oczekiwanie == BLOKADA:
+            _sprawdz_blokade_dwoch_zespolow(migawka, przypadek)
+            continue
         wiersz = _wiersz(_bieg(migawka, przypadek, klucz=f"uklad-{indeks}"), szyna)
         if isinstance(oczekiwanie, str):
             _sprawdz_odmowe(wiersz, oczekiwanie)
@@ -582,7 +619,7 @@ def test_konsumenci_czytaja_jedna_prawde(wariant: str, uklad: tuple[int, str, st
     otwarte: list[str] = []
     if sprzeglo == "otwarte":
         otwarte.append(_sprzeglo(migawka))
-    if lacznik == "otwarty" and wariant != "uzwojenie_tr" and migawka["zespoly_uziemiajace"]:
+    if lacznik == "otwarty" and wariant != "uzwojenie_tr" and zespoly_migawki(migawka):
         otwarte.append(_lacznik_zu(migawka, 1))
     bazowy = EnergyNetworkModel.model_validate(migawka)
     przypadek = _przypadek(migawka, otwarte=tuple(otwarte))
@@ -602,15 +639,16 @@ def test_konsumenci_czytaja_jedna_prawde(wariant: str, uklad: tuple[int, str, st
     warianty = [sekcja_szyny[s].wariant("spoczynek") for s in szyny]
     assert warianty == oczekiwane
 
-    # Walidator: praca równoległa zespołów na jednej sieci → W-ZU-04 z wyjaśnieniem.
+    # Walidator: praca równoległa zespołów na jednej sieci → bloker E-W5-04 z wyjaśnieniem
+    # (W-ZU-04 zostaje wyłącznie ostrzeżeniem o rezonansie nastaw dławików).
     problemy = ENMValidator().validate(enm).issues
     rownolegle = sum(
         1
         for s in {id(u): u for u in sekcja_szyny.values()}.values()
         if len([p for p in s.punkty_w_ruchu if p.rodzaj == "zespol_uziemiajacy"]) > 1
     )
-    assert sum(1 for i in problemy if i.code == "W-ZU-04") == rownolegle
-    if wariant in ("rezystor", "dlawik_rezystor") and enm.zespoly_uziemiajace:
+    assert sum(1 for i in problemy if i.code == "E-W5-04") == rownolegle
+    if wariant in ("rezystor", "dlawik_rezystor") and zespoly_migawki(migawka):
         # Rezystor bez wyłączenia od TR WN/SN (IRiESD II.4.5.4.3) — ostrzeżenie z treścią.
         assert any(i.code == "W-ZU-02" and i.message_pl for i in problemy)
 
@@ -827,11 +865,13 @@ def test_determinizm_dwa_biegi_ten_sam_artefakt_i_odcisk() -> None:
     assert compute_enm_hash(EnergyNetworkModel.model_validate(migawka_a)) == compute_enm_hash(
         EnergyNetworkModel.model_validate(migawka_b)
     )
-    assert [z["ref_id"] for z in migawka_a["zespoly_uziemiajace"]] == [
-        z["ref_id"] for z in migawka_b["zespoly_uziemiajace"]
+    assert [z["ref_id"] for z in zespoly_migawki(migawka_a)] == [
+        z["ref_id"] for z in zespoly_migawki(migawka_b)
     ]
-    a = _bieg(migawka_a, _przypadek(migawka_a), klucz="det-a")
-    b = _bieg(migawka_b, _przypadek(migawka_b), klucz="det-b")
+    # Sprzęgło otwarte: dwa zespoły w dwóch sieciach SN (w jednej — bloker E-W5-04).
+    otwarte = (_sprzeglo(migawka_a),)
+    a = _bieg(migawka_a, _przypadek(migawka_a, otwarte=otwarte), klucz="det-a")
+    b = _bieg(migawka_b, _przypadek(migawka_b, otwarte=otwarte), klucz="det-b")
     wiersze_a = {k: (v["ikss_a"], v["z0_ohm"]) for k, v in _wiersze(a).items()}
     wiersze_b = {k: (v["ikss_a"], v["z0_ohm"]) for k, v in _wiersze(b).items()}
     assert wiersze_a == wiersze_b
@@ -1093,7 +1133,7 @@ def test_wiersz_zwarcia_doziemnego_niesie_dane_przyjete_bocznika(
         assert zalozenia == []
     else:
         (zalozenie,) = zalozenia
-        assert zalozenie["bus_ref"] == migawka["zespoly_uziemiajace"][0]["bus_ref"]
+        assert zalozenie["bus_ref"] == zespoly_migawki(migawka)[0]["hv_bus_ref"]
         assert all(d["jakosc"] == "ESTIMATED" for d in zalozenie["dane_przyjete"])
         assert "Zespół uziemiający sekcji 1: bocznik" in zalozenie["message_pl"]
     # Agregat biegu (werdykty spoza wiersza) niesie te same dane.
@@ -1158,7 +1198,8 @@ def test_wartosci_projektanta_bez_danych_przyjetych() -> None:
     inne niż pozycja typowa) — bocznik nie stoi na wartości roboczej: bieg bez założenia
     zespołu, wiersz bez danych przyjętych, a I″k1 z wyroczni ręcznej z wartości projektanta."""
     migawka = _siec("rezystor")
-    zespol = migawka["zespoly_uziemiajace"][0]
+    zespol = zespoly_migawki(migawka)[0]
+    hv = zespol["hv_neutral"]
     wynik_op = execute_domain_operation(
         enm_dict=migawka,
         op_name="update_element_parameters",
@@ -1167,7 +1208,7 @@ def test_wartosci_projektanta_bez_danych_przyjetych() -> None:
             "parameters": {
                 "r0_ohm": 2.0,
                 "x0_ohm": 7.0,
-                "rezystor": {**zespol["rezystor"], "r_ohm": 40.0},
+                "hv_neutral": {**hv, "rezystor": {**hv["rezystor"], "r_ohm": 40.0}},
             },
         },
     )
@@ -1185,7 +1226,7 @@ def test_parametr_spoza_kontraktu_zespolu_to_nazwana_odmowa() -> None:
     zapisuje się, klucz spoza kontraktu jest odmową ``params.key_not_allowed`` bez migawki —
     nigdy cichym sukcesem, który walidacja modelu zgubiłaby po cichu."""
     migawka = _siec("dlawik")
-    zespol = migawka["zespoly_uziemiajace"][0]
+    zespol = zespoly_migawki(migawka)[0]
     zapis = execute_domain_operation(
         enm_dict=migawka,
         op_name="update_element_parameters",
@@ -1211,6 +1252,10 @@ def test_dane_przyjete_bocznika_wg_skladowej_sieci_zerowej(zu: str, sprzeglo_otw
     otwarte = (_sprzeglo(migawka),) if sprzeglo_otwarte else ()
     szyny = _szyny(migawka)
     zespoly_sekcji = {1: {1}, 2: {2} if zu == "obie" else set()}
+    if zu == "obie" and not sprzeglo_otwarte:
+        # Dwa zespoły w jednej sieci SN — bloker E-W5-04 zamiast danych przyjętych liczby.
+        _sprawdz_blokade_dwoch_zespolow(migawka, _przypadek(migawka))
+        return
     if not sprzeglo_otwarte:
         zespoly_sekcji = {1: zespoly_sekcji[1] | zespoly_sekcji[2]}
         zespoly_sekcji[2] = zespoly_sekcji[1]

@@ -583,6 +583,11 @@ def _z_nosnikiem(enm: dict[str, Any], nosnik: str, stan: str | None) -> tuple[di
         galaz(enm, ref)["catalog_ref"] = WYLACZNIK_SF6
         galaz(enm, ref)["stan_obiektu"] = stan
         pole["stan_obiektu"] = stan
+        # Pole ma tor z szablonu roli (`enm.aparaty_pol_sn`): aparat główny wskazuje łącznik
+        # i jest drugim źródłem jego stanu (`stan_obiektu_lacznika`) — zapis zastany spójny
+        # opisuje stan na każdym rekordzie tego samego aparatu.
+        for aparat in pole.get("primary_devices") or []:
+            aparat["stan_obiektu"] = stan
         return enm, pole["ref_id"]
     raise AssertionError(nosnik)
 

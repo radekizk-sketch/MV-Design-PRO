@@ -21,6 +21,8 @@ from solver_input.v126_contracts import (
     ograniczniki_bez_uziemienia_sieci,
 )
 
+from tests.utils.zespol_uziemiajacy import dodaj_zespol
+
 
 def _pole(ref: str, szyna: str, rola: str = "OUT", **dane: Any) -> dict[str, Any]:
     wlasciciel = (
@@ -200,17 +202,16 @@ def test_wejscie_izolacji_v126_czyta_ograniczniki_typowane_pola() -> None:
     """Ogranicznik przepięć pola (`Bay.surge_arresters`) trafia do wejścia koordynacji
     izolacji. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sieć SN bez punktu uziemienia jest siecią
     izolowaną wyprowadzoną z modelu (wiersz powstaje); nazwanym brakiem (szyna pola) jest
-    zespół uziemiający bez elementu w punkcie neutralnym."""
+    transformator uziemiający bez elementu w punkcie neutralnym."""
     z_ogranicznikiem = [_pole("sn-out", "sn", surge_arresters=[{"device_ref": "ogr-1"}])]
     model = EnergyNetworkModel.model_validate(_model(bays=z_ogranicznikiem))
     assert [w.location_bus_ref for w in build_v126_insulation_from_enm(model)] == ["sn"]
     assert ograniczniki_bez_uziemienia_sieci(model) == ()
-    nieokreslony = EnergyNetworkModel.model_validate(
-        _model(
-            bays=z_ogranicznikiem,
-            zespoly_uziemiajace=[{"ref_id": "zu", "name": "ZU", "bus_ref": "sn"}],
-        )
-    )
+    # Transformator uziemiający bez opisu punktu neutralnego (karta ZU-JEDEN-NOSNIK: jedyny
+    # nośnik zespołu) — odmowa nazwana sieci, wiersza izolacji nie ma.
+    surowy = _model(bays=z_ogranicznikiem)
+    dodaj_zespol(surowy, "zu", "sn")["hv_neutral"] = None
+    nieokreslony = EnergyNetworkModel.model_validate(surowy)
     assert ograniczniki_bez_uziemienia_sieci(nieokreslony) == ("sn",)
     bez = EnergyNetworkModel.model_validate(_model(bays=[_pole("sn-out", "sn")]))
     assert ograniczniki_bez_uziemienia_sieci(bez) == ()

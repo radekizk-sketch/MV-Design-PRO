@@ -16,7 +16,7 @@
  *  (f) kod ramki bloku zabezpieczeń nigdy nie jest zasłonięty;
  *  (kol-a…e) kolumny opisów pola (wzorzec właściciela 2026-11-05, `naruszeniaKolumnOpisow`).
  *
- * Iloczyn cech: fikstura (58 plików z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
+ * Iloczyn cech: fikstura (64 pliki z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
  * plus macierz W1c pól stacji) × LOD {0, 1, 2} × wyrocznia (a)–(d). Iniekcje: kropka i odczep
  * przesunięte na port wyłącznika, opis nałożony na symbol, napis i przewód.
  */
@@ -148,12 +148,14 @@ function naruszenia(scena: SceneV3): string[] {
 const SCENY = FIKSTURY.flatMap(([nazwa, enm]) => LODY.map((lod) => [nazwa, lod, enm] as const));
 
 describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstura × LOD', () => {
-  it('kontrola wejścia: 60 fikstur i macierz W1c', () => {
-    // Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): +1 fikstura —
-    // `harness-fixtures/generated/glowice_kablowe_pol_gpz.json` (scena głowic kablowych pól GPZ
-    // karty BKR, strona integracji); pozostałe fikstury identyczne z czubkiem karty (sonda per
-    // fikstura × LOD na obu drzewach).
-    expect(FIKSTURY).toHaveLength(60);
+  it('kontrola wejścia: 66 fikstur i macierz W1c', () => {
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 60 → 64 — sceny generatora
+    // `gpz110kvPolaSzablonow`, `gpz110kvPoleZu{Z13,Z14,Z15}` (public/test-fixtures).
+    // Pomiar 2026-11-11 (karta ZU-JEDEN-NOSNIK, scalenie z gałęzią integracji): 64 → 67 —
+    // `stacjeKonstrukcjiPol.enm.json` (public/test-fixtures i sceny; dopisane na gałęzi szablonów
+    // pól po poprzednim pomiarze) oraz `glowice_kablowe_pol_gpz.json` (harness, gałąź
+    // integracji); 66 plików z modelem ENM + macierz W1c.
+    expect(FIKSTURY).toHaveLength(67);
   });
 
   it.each(SCENY)('%s L%i', (_nazwa, lod, enm) => {

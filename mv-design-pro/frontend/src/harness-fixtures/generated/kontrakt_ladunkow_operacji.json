@@ -340,7 +340,7 @@
         "x_ohm",
         "z0_z1_ratio",
         "zero_sequence",
-        "zespoly_uziemiajace"
+        "zespoly_sekcji"
       ],
       "zagniezdzone": {
         "catalog_binding": {
@@ -959,7 +959,6 @@
         "dlawik",
         "dry_run",
         "name",
-        "odbior_pw_ref",
         "rezystor",
         "spz",
         "uziemienie_bezposrednie",

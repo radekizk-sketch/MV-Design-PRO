@@ -233,11 +233,6 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
                 "rezystory_rozladowcze_wewnetrzne",
             ),
         ),
-        "EarthingTransformerType": _mapa(
-            identyfikacja=(*_META, KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
-            fundamental=("u_n_kv", "s_n_kva", "grupa_polaczen", "s_pw_kva", "u_pw_kv"),
-            short_circuit=("r0_ohm", "x0_ohm"),
-        ),
         "ArcSuppressionCoilType": _mapa(
             identyfikacja=(*_META, KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
             fundamental=("u_n_kv", "u_wtorne_v"),
@@ -269,7 +264,9 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
             ),
         ),
         "TransformerType": _mapa(
-            identyfikacja=(*_META, "cooling_class"),
+            identyfikacja=(*_META, "cooling_class", KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+            # Impedancja zerowa uzwojenia zygzakowego (transformator uziemiający ZNyn11).
+            short_circuit=("r0_ohm", "x0_ohm"),
             fundamental=(
                 "rated_power_mva",
                 "voltage_hv_kv",
@@ -371,7 +368,6 @@ PRZESTRZENIE_Z_SEKCJAMI: Mapping[str, tuple[str, str]] = MappingProxyType(
         "GENERATOR_SN": ("SynchronousGeneratorType", "get_synchronous_generator_type"),
         "ZRODLO_SN": ("SourceSystemType", "get_source_system_type"),
         "KOMPENSATOR_SN": ("ShuntCapacitorType", "get_shunt_capacitor_type"),
-        "TRANSFORMATOR_UZIEMIAJACY": ("EarthingTransformerType", "get_earthing_transformer_type"),
         "DLAWIK_GASZACY": ("ArcSuppressionCoilType", "get_arc_suppression_coil_type"),
         "REZYSTOR_UZIEMIAJACY": (
             "NeutralEarthingResistorType",
@@ -457,7 +453,6 @@ ETYKIETY_SKLADNIKOW_PL: Mapping[str, str] = MappingProxyType(
         "impedancja": "impedancja podłużna",
         "impedancja_rms": "impedancja do dynamiki RMS",
         "impedancja_wewnetrzna_z_karty": "impedancja wewnętrzna z karty widmowej",
-        "impedancja_zerowa": "impedancja składowej zerowej uzwojenia",
         "impedancja_zwarciowa": "impedancja zwarciowa",
         "krzywa_pq": "krzywa zdolności P-Q",
         "magazyn": "parametry magazynu energii",
@@ -481,13 +476,13 @@ ETYKIETY_SKLADNIKOW_PL: Mapping[str, str] = MappingProxyType(
         "regulacja": "regulacja mocy biernej i częstotliwości",
         "rozladowanie": "rozładowanie",
         "skladowa_zerowa": "impedancja składowej zerowej",
+        "skladowa_zerowa_zygzaka": "impedancja składowej zerowej uzwojenia zygzakowego",
         "statyzmy_gfm": "statyzmy przekształtnika formującego sieć",
         "straty": "straty",
         "tolerancja_pojemnosci": "tolerancja pojemności",
         "tor_maszyny": "tor maszyny za przekształtnikiem",
         "udzial_zwarciowy": "udział zwarciowy (krotność prądu zwarciowego)",
         "uklad_polaczen": "układ połączeń",
-        "uzwojenie_potrzeb_wlasnych": "uzwojenie potrzeb własnych",
         "uzwojenie_wtorne": "uzwojenie dodatkowe (wtórne)",
         "wytrzymalosc_cieplna": "wytrzymałość cieplna",
         "zaczepy": "zaczepy regulacyjne",
@@ -541,6 +536,7 @@ _ETYKIETY_POL_SEKCJI_PL: Mapping[str, str] = MappingProxyType(
         "qu_q_max_mvar": "maksymalna moc bierna charakterystyki Q(U) [Mvar]",
         "qu_q_min_mvar": "minimalna moc bierna charakterystyki Q(U) [Mvar]",
         "qu_slope_pu_per_pu": "nachylenie charakterystyki Q(U) [p.u./p.u.]",
+        "r0_ohm": "rezystancja zerowa uzwojenia zygzakowego na fazę [Ω]",
         "r0_ohm_per_km": "rezystancja zerowa [Ω/km]",
         "return_conductor_jth_1s_a_per_mm2": "dopuszczalna gęstość prądu jednosekundowego żyły powrotnej [A/mm²]",
         "return_conductor_r_ohm_per_km_20c": "rezystancja żyły powrotnej w 20 °C [Ω/km]",
@@ -558,6 +554,7 @@ _ETYKIETY_POL_SEKCJI_PL: Mapping[str, str] = MappingProxyType(
         "voltage_hv_kv": "napięcie strony GN [kV]",
         "voltage_lv_kv": "napięcie strony DN [kV]",
         "voltage_loop_bandwidth_hz": "pasmo pętli napięciowej [Hz]",
+        "x0_ohm": "reaktancja zerowa uzwojenia zygzakowego na fazę [Ω]",
         "x0_ohm_per_km": "reaktancja zerowa [Ω/km]",
         "z0_reference_bonding": "sposób połączenia żyły powrotnej przy wyznaczeniu impedancji zerowej",
     }
@@ -706,13 +703,6 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
                 _s("rozladowanie", False, "rezystory_rozladowcze_wewnetrzne"),
             ),
         },
-        "EarthingTransformerType": {
-            "fundamental": (
-                _s("parametry_znamionowe", True, "u_n_kv", "s_n_kva", "grupa_polaczen"),
-                _s("uzwojenie_potrzeb_wlasnych", False, "s_pw_kva", "u_pw_kv"),
-            ),
-            "short_circuit": (_s("impedancja_zerowa", True, "r0_ohm", "x0_ohm"),),
-        },
         "ArcSuppressionCoilType": {
             "fundamental": (
                 _s("napiecie_znamionowe", True, "u_n_kv"),
@@ -759,6 +749,7 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
             ),
             "short_circuit": (
                 _s("impedancja_zwarciowa", True, "uk_percent", "pk_kw", "vector_group"),
+                _s("skladowa_zerowa_zygzaka", False, "r0_ohm", "x0_ohm"),
             ),
             "dynamic": (_s("impedancja_rms", True, "uk_percent", "pk_kw"),),
         },

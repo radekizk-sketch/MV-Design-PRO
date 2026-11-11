@@ -70,16 +70,6 @@ def test_pole_baterii_kondensatorow_ma_zestaw_wg_iriesd() -> None:
     assert funkcje_eaz_roli("BKR") == ["51", "50", "51N", "60N", "59", "50BF"]
 
 
-def test_pole_zespolu_uziemiajacego_ma_funkcje_rysunku_z13() -> None:
-    """Zestaw roli ``ZU`` = funkcje słownika z podstawą cytującą rysunek pola ZU (Zeszyt 1,
-    Z.13) — predykaty parami: tablica roli i podstawy słownika z jednego kanonu (iniekcja:
-    pusta lista roli albo funkcja spoza rysunku zapala test)."""
-    from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ
-
-    z_rysunku = [kod for kod, f in FUNKCJE_EAZ.items() if "Z.13" in f.podstawa]
-    assert funkcje_eaz_roli("ZU") == z_rysunku == ["51N", "50N", "ZAWSC", "BT", "BD"]
-
-
 def test_rola_spoza_modelu_bez_funkcji() -> None:
     assert funkcje_eaz_roli("XYZ") == []
 
@@ -90,3 +80,14 @@ def test_endpoint_odczytu_zwraca_kazda_role_modelu_z_tego_samego_zrodla() -> Non
     for rola, kody in odczyt.items():
         assert kody == funkcje_eaz_roli(rola), rola
         assert "67N" not in kody, rola
+
+
+def test_zestaw_roli_zu_to_czesc_wspolna_wariantow_zespolu() -> None:
+    """Rola ZU bez wariantu czyta zestaw wspólny wszystkich wariantów Z.13–Z.15 — żadna
+    funkcja jednego wariantu (SPZ 79 z Z.15) nie trafia do odczytu roli."""
+    from network_model.catalog.bay_templates import SZABLON_WARIANTU_ZESPOLU
+
+    wspolne = set.intersection(*(set(s.funkcje_eaz) for s in SZABLON_WARIANTU_ZESPOLU.values()))
+    assert set(funkcje_eaz_roli("ZU")) == wspolne
+    assert "79" not in funkcje_eaz_roli("ZU")
+    assert "79" in SZABLON_WARIANTU_ZESPOLU["Z15"].funkcje_eaz

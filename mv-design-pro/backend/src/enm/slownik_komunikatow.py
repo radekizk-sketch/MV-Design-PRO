@@ -107,8 +107,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_nn_load:cos_phi": "Współczynnik mocy",  # odbior/strings.ts cosPhi
     "ct_catalog_ref": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
     "ct_arrangement": "Układ przekładników prądowych",  # przekładnik CT (bez pola kreatora)
-    "rdzenie": "Rdzenie przekładnika prądowego",  # przekładnik CT (lista rdzeni, bez pola kreatora)
-    "uzwojenia": "Uzwojenia przekładnika napięciowego",  # przekładnik VT (lista uzwojeń, bez pola kreatora)
+    "rdzenie": "Rdzenie przekładnika prądowego",  # przekładnik CT (tabliczka rdzeni)
+    "uzwojenia": "Uzwojenia wtórne przekładnika napięciowego",  # przekładnik VT (tabliczka uzwojeń)
     "vt_arrangement": "Układ połączeń przekładników napięciowych",  # przekładnik VT (bez pola kreatora)
     "vt_mounting": "Miejsce montażu przekładnika napięciowego",  # przekładnik VT (bez pola kreatora)
     "vt_uzwojenie": "Uzwojenie przekładnika napięciowego",  # przekładnik VT (etykieta edytora obwodu wtórnego pola)
@@ -528,7 +528,6 @@ NAZWY_KOLEKCJI_PL: dict[str, str] = {
     "loads": "odbiór",
     "generators": "wytwórca",
     "shunt_capacitors": "bateria kondensatorów",
-    "zespoly_uziemiajace": "zespół uziemiający",
     "substations": "stacja",
     "bays": "pole rozdzielnicy",
     "junctions": "węzeł rozgałęźny",

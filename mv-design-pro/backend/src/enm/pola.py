@@ -396,8 +396,9 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
         raise BladPola(
             f"pole {rekord.get('ref_id')!r}: klucze spoza kontraktu Bay: {', '.join(nieznane)}",
             przyczyna_pl=(
-                "parametry spoza opisu pola rozdzielnicy: "
-                + ", ".join(f"„{klucz}”" for klucz in nieznane)
+                "rekord pola niesie parametry spoza opisu pola rozdzielnicy (liczba parametrów: "
+                f"{len(nieznane)}) — model zapisany przez inną wersję programu albo zmieniony "
+                "poza operacjami"
             ),
         )
     meta = rekord.get("meta")

@@ -199,6 +199,22 @@ materializuja sie z geometrii slupa przez solver `network_model/solvers/
 parametry_linii_napowietrznej.py` (standard ENEA Operator linii 110 kV §7.1 lit. j), a brak
 geometrii daje wartosc robocza rejestru `wartosci_robocze` (jakosc `ESTIMATED`).
 
+Karta POLA-GPZ-SZABLONY (przestrzen `TRAFO_SN_NN`, `TransformerType`): transformator
+uziemiajacy ZNyn11 15/0,4 kV i 20/0,4 kV 100 kVA (`tu-sn-nn-{15,20}-04-100kva-znyn11`; ENEA
+Operator, Stacje 110 kV, Zeszyt 1 §16 s.29–30 — zrodlo deklarowane, `NIEWERYFIKOWANY`; poza
+Tier 2 wg rozporzadzenia 548/2014 art. 1 ust. 2, `objety_tier2`) niesie impedancje zerowa
+uzwojenia zygzakowego `r0_ohm`/`x0_ohm` [Ω na faze po stronie SN, IEC 60076-6]. Pola sa
+opcjonalne kontraktu materializacji (`pola_opcjonalne` — pozycje bez zygzaka nie niosa kluczy)
+i jedynym nosnikiem drogi zerowej zygzaka w `enm/zero_sequence_transformer.py` (u_k NIE wchodzi
+do Z0 zygzaka). Wartosc pozycji to wartosc robocza oznaczona w `wartosci_robocze`
+(`ZALOZENIE_Z0_ZYGZAKA`; liczba z `pochodne.impedancja_zerowa_zygzaka_robocza_ohm`: spadek 5 %
+napiecia fazowego przy I_N = 400 A, X0/R0 = 5 — 15 kV: 0,637 + j3,185 Ω, 20 kV: 0,849 +
+j4,246 Ω), a bieg zwarcia doziemnego niesie ja jako dana przyjeta `ESTIMATED`
+(`branch.z0_wartosc_robocza`, element „transformatora”); wartosc projektanta na elemencie
+(`Transformer.r0_ohm`/`x0_ohm`) zdejmuje dana przyjeta. R0/X0 dla grupy bez uzwojenia
+zygzakowego — odmowa walidacji modelu. Przekladnik pradowy pola zespolu uziemiajacego
+`ct_typ_ogolny_osd_100_5_z13` (100/5 A, 15 VA 5P20, Z.13 s.93).
+
 Karta KATALOG-APARATURA-WN (linia UI/UX; numer nadany przy scaleniu z programem, bo karta
 wziela `048` rownolegle z karta LINIA-110): `KAT-T-050` wielkosci zwarciowe lacznika
 (`SwitchEquipmentType`: I_k, I_cw, I_cu) i aparatu SN (`MVApparatusType`) dodatnie i skonczone
@@ -314,8 +330,7 @@ decyzje podejmuje czlowiek.
 | `bess-inverter` | 66 | 0 | 43 | 9,9 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `cable` | 63 | 54 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
 | `converter` | 192 | 9 | 56 | 19,2 | 192 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
-| `ct` | 14 | 0 | 7 | 59,2 | 14 | `idyn_ka_peak`, `rct_ohm` | brak |
-| `earthing-transformer` | 2 | 0 | 3 | 66,7 | 2 | `manufacturer` | brak |
+| `ct` | 24 | 0 | 7 | 55,4 | 24 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
 | `lv-apparatus` | 18 | 18 | 15 | 55,9 | 18 | `curve_ref`, `ics_ka`, `poles`, `trip_unit` | brak |
@@ -337,10 +352,10 @@ decyzje podejmuje czlowiek.
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
 | `switch-equipment` | 52 | 33 | 7 | 68,1 | 52 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
-| `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
+| `transformer` | 265 | 1 | 8 | 50,6 | 265 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 30. Pozycji łącznie: 8120, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8120.
+Rodzin objętych pomiarem: 29. Pozycji łącznie: 8130, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8130.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

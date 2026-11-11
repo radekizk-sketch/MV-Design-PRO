@@ -210,7 +210,7 @@ def _payload_zespol_uziemiajacy_obca(snapshot: dict[str, Any]) -> dict[str, Any]
     """Zespół Z.14 (dławik ‖ rezystor) — każda z trzech pozycji pod CUDZĄ kategorią."""
     return {
         "bus_ref": _szyna_sn_ref(snapshot),
-        "catalog_binding": _wiazanie("TU_ZNYN11_15KV_PW160"),
+        "catalog_binding": _wiazanie("tu-sn-nn-15-04-100kva-znyn11"),
         "dlawik": {"catalog_binding": _wiazanie("DL_40_400A_15KV_CIAGLY")},
         "rezystor": {"catalog_binding": _wiazanie("REZ_200A_15KV")},
     }
@@ -378,14 +378,20 @@ def _znaczniki_kompensatora(snapshot: dict[str, Any]) -> dict[str, str | None]:
 
 
 def _znaczniki_zespolu_uziemiajacego(snapshot: dict[str, Any]) -> dict[str, str | None]:
-    zespol = _jedyny(snapshot.get("zespoly_uziemiajace") or [], "zespol_uziemiajacy")
+    """Jedyny nośnik zespołu (karta ZU-JEDEN-NOSNIK): transformator uziemiający ZNyn11 z dławikiem
+    i rezystorem w opisie punktu neutralnego uzwojenia górnego."""
+    zespol = _jedyny(
+        [t for t in snapshot.get("transformers") or [] if t.get("vector_group") == "ZNyn11"],
+        "transformator_uziemiajacy",
+    )
+    punkt = zespol.get("hv_neutral") or {}
     return {
         "element": _znacznik(zespol),
         "meta.catalog_binding": (zespol.get("meta") or {})
         .get("catalog_binding", {})
         .get("catalog_namespace"),
-        "dlawik": (zespol.get("dlawik") or {}).get("catalog_namespace"),
-        "rezystor": (zespol.get("rezystor") or {}).get("catalog_namespace"),
+        "dlawik": (punkt.get("dlawik") or {}).get("catalog_namespace"),
+        "rezystor": (punkt.get("rezystor") or {}).get("catalog_namespace"),
     }
 
 
@@ -527,14 +533,15 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
     ZnacznikPochodzenia(
         "add_zespol_uziemiajacy_sn",
         "add_zespol_uziemiajacy_sn",
-        # Transformator uziemiający w operacji, dławik i rezystor w pisarzu urządzenia punktu
-        # neutralnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
-        ("add_zespol_uziemiajacy_sn", "_urzadzenie_punktu_neutralnego"),
+        # Transformator uziemiający (pozycja TRAFO_SN_NN) przez wspólny pomocnik metadanych
+        # katalogu, dławik i rezystor w pisarzu urządzenia punktu neutralnego (karta
+        # ZU-JEDEN-NOSNIK: zespół = transformator, jedna przestrzeń katalogu transformatorów).
+        ("_urzadzenie_punktu_neutralnego",),
         _payload_zespol_uziemiajacy_obca,
         _znaczniki_zespolu_uziemiajacego,
         {
-            "element": "TRANSFORMATOR_UZIEMIAJACY",
-            "meta.catalog_binding": "TRANSFORMATOR_UZIEMIAJACY",
+            "element": "TRAFO_SN_NN",
+            "meta.catalog_binding": "TRAFO_SN_NN",
             "dlawik": "DLAWIK_GASZACY",
             "rezystor": "REZYSTOR_UZIEMIAJACY",
         },

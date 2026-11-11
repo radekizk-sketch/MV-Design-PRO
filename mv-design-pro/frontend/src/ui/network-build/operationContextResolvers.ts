@@ -693,7 +693,9 @@ export function resolveBranchSourceContext(
     return {
       fromRef,
       sourceType: LINE_BAY_SOURCE_TYPE_LABEL,
-      sourceName: stationOfBay?.name ? `${stationOfBay.name} · ${bay.name}` : bay.name,
+      sourceName: stationOfBay
+        ? `${formatElementContextLabel(stationOfBay.name, stationOfBay.ref_id, 'stacja', snapshot.substations)} · ${formatElementContextLabel(bay.name, bay.ref_id, 'pole', snapshot.bays)}`
+        : formatElementContextLabel(bay.name, bay.ref_id, 'pole', snapshot.bays),
       sourceBusRef,
       voltageLabel: sourceBus ? `${sourceBus.voltage_kv} kV` : FALLBACK_LABEL,
       portLabel: 'zacisk pola liniowego',

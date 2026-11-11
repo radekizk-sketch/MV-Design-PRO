@@ -77,7 +77,15 @@ describe('parytet toru głównego backend ↔ schemat (fikstura z wyniku backend
       it(`${p.nazwa}${odwrocona ? ' (kolejność danych odwrócona)' : ''}: aparaty odgałęzień = backend`, () => {
         const wejscie = zSymbolem(aparaty(p));
         const { galezie, braki, kolejnosc } = torPolaZPortow(odwrocona ? [...wejscie].reverse() : wejscie);
-        expect(refy(galezie.flatMap((g) => g.aparaty)).sort(), p.nazwa).toEqual([...p.poza_torem_glownym].sort());
+        // Parytet dotyczy aparatów rysowanych w torze pola (`zSymbolem`): przekładniki
+        // międzyfazowe pola baterii (Z.16 s.96) rysuje glif baterii na jej zaciskach
+        // (`symbolAparatuPola` → null), więc backend nadal zalicza je do odgałęzienia toru, a tor
+        // rysunku ich nie niesie — intencja testu (przynależność do odgałęzienia = backend)
+        // obowiązuje dla każdego aparatu, który tor rysuje.
+        const rysowane = new Set(refy(wejscie));
+        expect(refy(galezie.flatMap((g) => g.aparaty)).sort(), p.nazwa).toEqual(
+          [...p.poza_torem_glownym].filter((ref) => rysowane.has(ref)).sort(),
+        );
         // Każdy aparat raz w kolejności rysunku; tor główny przed odgałęzieniami.
         expect(refy(kolejnosc).sort()).toEqual(refy(wejscie).sort());
         const wGalezi = new Set(refy(galezie.flatMap((g) => g.aparaty)));

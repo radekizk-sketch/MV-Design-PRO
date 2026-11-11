@@ -4,6 +4,7 @@
     "arrester",
     "aux_load",
     "bay",
+    "bay_coupler",
     "bay_device",
     "bay_terminal",
     "bess",
@@ -108,9 +109,10 @@
     "vt",
     "wind_inverter",
     "wn_sn",
-    "zespol",
     "zksn",
-    "zu"
+    "zu",
+    "zu_bus_nn",
+    "zu_transformer"
   ],
   "przyrostki_podzialu": [
     "_L",

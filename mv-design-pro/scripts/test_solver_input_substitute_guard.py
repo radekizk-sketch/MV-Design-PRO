@@ -2051,7 +2051,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
     # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
     # w konfiguracji stacji — druga prawda punktu neutralnego, pilnowana przez grep-zero), +48 (pola encji
-    # `ZespolUziemiajacy` i jej aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
+    # zespolu uziemiajacego i jego aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
     # payloady operacji zespolu; trzy przestrzenie katalogu aparatow zespolu; wejscie solvera
     # skladowej zerowej `y0_bus`/`node_index`/`galezie_sieci`/`brak_wyniku_zerowego`; kontekst
     # V12.6 `uziemienie_sn`/`prad_dlawikow_a`). PASS niezmieniony.
@@ -2217,6 +2217,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (skasowana przez strone integracji w `proof_engine/unit_verifier.py`) wraca jako pole
     # nowego `network_model/solvers/wytrzymalosc_cieplna_pola.py` strony karty. PASS
     # niezmieniony.
+    # Scalenie karty ZU-JEDEN-NOSNIK (`7f041331c`) do drzewa integracji (2026-11-11): 4597 bez
+    # zmiany liczby — POMIAR zbiorow `contract_fields()` (`git archive`): baza scalenia `ffbd81d15`
+    # 4501, strona integracji 4597, strona karty 4579, drzewo scalone 4597 = (integracja ∪ dodane
+    # karty) − skasowane karty, z jednym wyjatkiem rozstrzygnietym na korzysc integracji:
+    # `funkcje_eaz_zasilane`, `funkcje_eaz_wylaczajace`, `zrodlo_u0_ref` (dodane przez galaz
+    # szablonow pol w karcie, skasowane karta delt — jeden sterownik pola). Wzgledem strony
+    # integracji +7 (`dawca`, `wyposazenie` — wyposazenie punktu neutralnego; `do_utworzenia`,
+    # `jawny`, `polaczony_z`, `section_a_bus_ref`, `section_b_bus_ref` — sprzeglo sekcji i
+    # szablony pol GPZ) i -7 (kolekcja dawnych zespolow uziemiajacych i szesc pol dawnego
+    # nosnika zespolu: odbior potrzeb wlasnych, uziemienie bezposrednie, typy transformatorow
+    # uziemiajacych, grupa polaczen, moc i napiecie potrzeb wlasnych). PASS niezmieniony.
     assert "Pol kontraktow wejsciowych: 4597." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
@@ -2574,7 +2585,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # +`application/equipment_proof/wymagania_pola.py`; zero skasowanych) — POMIAR guardem na
         # bazie scalenia, obu stronach i drzewie scalonym (zbior plikow = integracja ∪ dodane
         # karty − skasowane karty); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 621 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie karty ZU-JEDEN-NOSNIK do drzewa integracji (2026-11-11): 621 + 3 = 624
+        # (+`enm/aparaty_pol_sn.py`, +`enm/punkt_neutralny_zespolu.py`,
+        # +`enm/zespol_uziemiajacy.py`; zero skasowanych) — POMIAR guardem na drzewie scalonym
+        # i lista plikow wobec `git archive` pierwszego rodzica; dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 624 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2908,7 +2923,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 76, karta 83); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
         # Scalenie karty delt scenariusza zabezpieczen: enm 86 -> 87 (+1 `enm/zabezpieczenie.py`,
         # jeden pisarz sterownika pola); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=87, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Scalenie karty ZU-JEDEN-NOSNIK: enm 87 -> 90 (te same trzy pliki co wyzej); dlug 7/64
+        # BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
+        "  enm: pliki_skanowane=90, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

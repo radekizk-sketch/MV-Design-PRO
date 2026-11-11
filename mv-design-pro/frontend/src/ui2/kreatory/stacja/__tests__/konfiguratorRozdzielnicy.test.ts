@@ -41,7 +41,11 @@ import { zbudujPodglad } from '../podgladRozdzielnicy';
 import { zbudujWyposazeniePolaDoPayloadu } from '../stacjaModel';
 import { SZABLON_SAFERING_LINE_OUT } from './fixturySzablonowPol';
 
-/** Komplet wartości `BayKind` kontraktu — spisany z typu, nie z pamięci. */
+/** Komplet wartości `BayKind` kontraktu — spisany z typu i z listy backendu
+ *  (`complete_mv_bay_template.py`), nie z pamięci. Kompletność mapy źródłowej wymusza `tsc`
+ *  (`Record<BayKind, …>` w `konfiguratorRozdzielnicy.ts`); pliki testów są poza `tsc`, więc tę
+ *  listę dopisuje się ręcznie — `zespol_uziemiajacy` (karta POLA-GPZ-SZABLONY) dopisano
+ *  dopiero po czerwieni tego testu. */
 const FUNKCJE_POLA: readonly BayKind[] = [
   'liniowe_doplywowe',
   'liniowe_odplywowe',

@@ -1255,17 +1255,13 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
 #: albo oznaczeniem normowym — klucz ``moduł:wyrażenie kolekcji``; uzasadnienie wskazuje,
 #: skąd pochodzi tekst (żywotność: ``test_wylaczenia_sklejen_sa_zywe``).
 KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
-    "enm/zrodlo_napiecia_zerowego.py:zrodlo.czego_brakuje": (
-        "zdania braków źródła napięcia zerowego pola (`zrodlo_u0_pola`, ten sam moduł — opisy "
-        "aparatu i pola słowami)"
-    ),
-    "enm/zrodlo_napiecia_zerowego.py:funkcje": (
-        "kody funkcji zabezpieczeń pola (numery IEEE C37.2 słownika `funkcje_eaz`, np. 67N) — "
-        "oznaczenie normowe, nie kod wewnętrzny"
-    ),
     "enm/pole_liniowe_gpz.py:nz.wyjscia": (
-        "nazwy sygnałów wyjściowych bloku z rysunku pola ENEA (`SygnalPola.nazwa`) — oznaczenia "
-        "rysunku cytowane w cudzysłowie"
+        "nazwy sygnałów wyjściowych bloku napięcia zwrotnego w zapisie rysunku pola ENEA "
+        "Zeszyt 1 (`PowiazanieFunkcjiEaz.wyjscia` — nazwy `SygnalPola`, np. „Blokowanie ZS”)"
+    ),
+    "enm/zrodlo_napiecia_zerowego.py:zrodlo.czego_brakuje": (
+        "zdania braków źródła napięcia zerowego z `zrodlo_u0_pola` (`braki_i0` i `braki` tej "
+        "samej funkcji) — pola nazwane `opis_elementu`, kody braków osobno w `kody_brakow`"
     ),
     "api/cloud_backup.py:result.errors": (
         "błędy `ProjectArchiveService.import_project`: zdania `verify_archive_integrity` "
@@ -1376,6 +1372,9 @@ KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
 #: dla autora danych. Klucz ``moduł:wyrażenie kolekcji`` (żywotność:
 #: ``test_wylaczenia_sklejen_sa_zywe``).
 KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
+    # Szablony pól i ich obwody wtórne są danymi katalogu zapisanymi w kodzie (rysunki ENEA
+    # Zeszyt 1); odmowa walidacji definicji trafia do autora danych katalogu, który poprawia
+    # wpis po kodzie funkcji EAZ, którego sam użył — kod spoza słownika nie ma nazwy słownej.
     "api/catalog.py:sorted(pozycje)": "slugi rodzin w ścieżce `GET …/przeglad-wiarygodnosci/{rodzina}`",
     "api/enm.py:sorted(_OP_DISPATCH.keys())": "nazwy operacji pola `op` żądania API modelu",
     "application/analyses/odpowiedz_osd.py:sorted(_COMMANDS)": (

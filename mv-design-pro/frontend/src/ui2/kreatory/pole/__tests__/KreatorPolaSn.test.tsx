@@ -87,6 +87,7 @@ const { fetchMvApparatusTypesMock, fetchSwitchgearFamiliesMock } = vi.hoisted(()
         status: 'repo_verified',
         // Pola wyliczane backendu — jedyny predykat frontu `czyRodzinaDoBudowania` je czyta
         // (izolacja powietrzna, łączniki próżniowe: bez gazów fluorowanych).
+        gaz_fluorowany: false,
         dopuszczona_do_budowania: true,
         powod_blokady_pl: null,
         dopuszczona_do_nowych_pol: true,
@@ -109,6 +110,7 @@ const { fetchMvApparatusTypesMock, fetchSwitchgearFamiliesMock } = vi.hoisted(()
         status: 'repo_verified',
         // Pola wyliczane backendu — jedyny predykat frontu `czyRodzinaDoBudowania` je czyta
         // (izolacja powietrzna, łączniki próżniowe: bez gazów fluorowanych).
+        gaz_fluorowany: false,
         dopuszczona_do_budowania: true,
         powod_blokady_pl: null,
         dopuszczona_do_nowych_pol: true,
@@ -313,7 +315,7 @@ describe('KreatorPolaSn — realna ścieżka', () => {
    * zapis nie sprawdzał, czy katalog aparatów/rodzin już doszedł.
    */
   it('aparat z gazem fluorowanym: pozycja ukryta w wyborze, nota cytuje powód backendu, zapis wiąże aparat dopuszczony', async () => {
-    const powod = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+    const powod = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF6).';
     fetchMvApparatusTypesMock.mockReturnValueOnce(
       Promise.resolve([
         { id: 'app-sf6', name: 'Wyłącznik SF6', device_kind: 'BREAKER', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: powod, u_n_kv: 24, i_n_a: 630, breaking_capacity_ka: 20 },

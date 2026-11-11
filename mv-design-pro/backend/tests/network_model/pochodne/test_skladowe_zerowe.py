@@ -44,3 +44,14 @@ def test_z_t_pu_skladowe_i_przypadki_brzegowe():
     assert impedancja_rozproszenia_transformatora_pu(6.0, 0.0, 1.0) == 0.0 + 0.06j
     # S_rT = 0 nie dzieli przez zero (R = 0).
     assert impedancja_rozproszenia_transformatora_pu(6.0, 5.0, 0.0).real == 0.0
+
+
+def test_reaktancja_dlawika_dostrojonego_rezonans_i_nadkompensacja():
+    """X_N = 1/(3·B_0·(1 + v)): przy v = 0 prąd dławika U_f/X_N równa się I_C = 3·B_0·U_f,
+    przy v = 0,1 jest o 10 % większy (nadkompensacja)."""
+    from network_model.pochodne import reaktancja_dlawika_dostrojonego_ohm
+
+    b0, u_f = 3.0e-4, 15000.0 / 3**0.5
+    i_c = 3.0 * b0 * u_f
+    assert u_f / reaktancja_dlawika_dostrojonego_ohm(b0, 0.0) == pytest.approx(i_c, rel=1e-12)
+    assert u_f / reaktancja_dlawika_dostrojonego_ohm(b0, 0.1) == pytest.approx(1.1 * i_c, rel=1e-12)

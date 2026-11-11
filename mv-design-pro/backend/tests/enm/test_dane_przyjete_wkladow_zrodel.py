@@ -50,7 +50,7 @@ from tests.application.test_tolerancja_nn_dane_przyjete_konsumentow import (
     ZNACZNIK as ZNACZNIK_TOLERANCJI,
 )
 from tests.application.test_tolerancja_nn_dane_przyjete_konsumentow import _z_tolerancja
-from tests.enm.test_canonical_sc_c_per_pasmo import N1, N2, N3
+from tests.enm.test_canonical_sc_c_per_pasmo import N1, N2, N3, ZU_NN
 from tests.enm.test_linia_110kv_dane_przyjete_werdyktow import GEOMETRIE, _migawka
 from tests.utils.biegi import wykonaj_bieg
 
@@ -198,8 +198,11 @@ def test_siec_nn_z_maszyna_dane_przyjete_rozplywu_i_wkladow(
     enm = _z_tolerancja(_siec_b(maszyna, dane_maszyny), tolerancja)
     run_id = _bieg_przez_api(client, enm)
     punkty = _odpowiedzi_punktow(client, run_id, enm)
-    wezly_nn = {ref_to_graph_id(N2), ref_to_graph_id(N3)}
-    # Punkty SN (szyna GPZ i szyna SN stacji) oraz oba punkty nN — wszystkie w wyspie maszyny.
+    # Szyna 0,4 kV potrzeb własnych transformatora uziemiającego zespołu (`ZU_NN`, karta
+    # ZU-JEDEN-NOSNIK) jest punktem nN własnej wyspy: `_z_tolerancja` zdejmuje deklarację
+    # z KAŻDEGO transformatora, więc i tam tolerancja jest daną przyjętą.
+    wezly_nn = {ref_to_graph_id(N2), ref_to_graph_id(N3), ref_to_graph_id(ZU_NN)}
+    # Punkty SN (szyna GPZ i szyna SN stacji) oraz punkty nN — wszystkie w wyspie maszyny.
     assert {ref_to_graph_id(N1)} | wezly_nn < set(punkty)
 
     n_ikss = _liczba_wpisow_b(maszyna, dane_maszyny, "ikss")

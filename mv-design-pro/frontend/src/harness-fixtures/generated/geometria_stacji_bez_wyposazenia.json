@@ -3921,7 +3921,29 @@
         "grupy_nastaw": [],
         "id": "7b4e5017-93fc-5b08-a3ea-6d1062df2310",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wejściowe 1",
@@ -3932,10 +3954,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/000::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -3967,7 +3989,29 @@
         "grupy_nastaw": [],
         "id": "66f9d11d-9898-5334-8fae-b5de595b91e7",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wyjściowe 2",
@@ -3978,10 +4022,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/001::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4013,7 +4057,29 @@
         "grupy_nastaw": [],
         "id": "9588f420-336e-537b-b8c1-8b7471365ed4",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole odgałęźne 3",
@@ -4024,10 +4090,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/002::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4059,7 +4125,29 @@
         "grupy_nastaw": [],
         "id": "94c3d35f-8d7e-5450-9b68-5f184797dca9",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole odgałęźne 4",
@@ -4070,10 +4158,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4125,7 +4213,36 @@
         "grupy_nastaw": [],
         "id": "896723df-1ace-52cf-9be3-f6c89f02e1b2",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/004"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/004"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/004"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/004"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole transformatorowe 5",
@@ -4136,10 +4253,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/004::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4171,7 +4288,29 @@
         "grupy_nastaw": [],
         "id": "fcb6fa97-3b13-5515-824d-21bbf6780e57",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wejściowe 1",
@@ -4182,10 +4321,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/000::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4217,7 +4356,29 @@
         "grupy_nastaw": [],
         "id": "8efe7c24-5047-5784-9651-639e545c25be",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wyjściowe 2",
@@ -4228,10 +4389,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/001::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4283,7 +4444,36 @@
         "grupy_nastaw": [],
         "id": "93ad809d-9109-5e5b-a462-f3907988ab72",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/002"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole transformatorowe 3",
@@ -4294,10 +4484,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/002::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4329,7 +4519,29 @@
         "grupy_nastaw": [],
         "id": "762a5c18-692f-54db-b6e9-d0c83f089474",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/000"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wejściowe 1",
@@ -4340,10 +4552,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/000::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4375,7 +4587,29 @@
         "grupy_nastaw": [],
         "id": "a8c641d2-5275-5f71-ac7d-9124e4c90a6c",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/001"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wyjściowe 2",
@@ -4386,10 +4620,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/001::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4416,7 +4650,22 @@
         "grupy_nastaw": [],
         "id": "56460d1f-a5e1-54a9-b1d9-dc9714304bbb",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_coupler"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_coupler"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole sprzęgła 3",
@@ -4482,7 +4731,36 @@
         "grupy_nastaw": [],
         "id": "4445b05d-7a3d-5a0e-bf72-a968b7341fbc",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/003"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole transformatorowe 4",
@@ -4493,10 +4771,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/003::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4528,7 +4806,29 @@
         "grupy_nastaw": [],
         "id": "86102153-d0f3-5bcb-bcb7-924fc6a438d8",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/001"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/001"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/001"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wejściowe — Stacja Końcowa",
@@ -4539,10 +4839,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "field/5479c8038b3ce967fae13b12319add05/1::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4574,7 +4874,29 @@
         "grupy_nastaw": [],
         "id": "61267a28-9022-54a3-a261-8897ec88c79f",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/003"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/003"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/003"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wyjściowe — Stacja Końcowa",
@@ -4585,10 +4907,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "field/5479c8038b3ce967fae13b12319add05/2::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4640,7 +4962,36 @@
         "grupy_nastaw": [],
         "id": "96793d7f-36c5-51cb-9f29-abd065d957bc",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole transformatorowe — Stacja Końcowa",
@@ -4651,10 +5002,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "field/5479c8038b3ce967fae13b12319add05/tr::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4686,7 +5037,29 @@
         "grupy_nastaw": [],
         "id": "39763b92-34fd-5369-b561-6642b041da5b",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/001"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/001"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/001"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole liniowe wejściowe — Stacja Końcowa odgałęzienia",
@@ -4697,10 +5070,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "field/2013a824dfb5f91e1f24ef2089b22623/1::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -4752,7 +5125,36 @@
         "grupy_nastaw": [],
         "id": "6cee11a6-8212-5b52-8ce2-af025a0cb25d",
         "is_enabled": true,
-        "macierz_wyzwolen": [],
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/002"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Sterownik pola Pole transformatorowe — Stacja Końcowa odgałęzienia",
@@ -4763,10 +5165,10 @@
         "source_mode": null,
         "tags": [],
         "wejscia": {
-          "ct_ref": null,
+          "ct_ref": "field/2013a824dfb5f91e1f24ef2089b22623/tr::dev::2",
           "ct_strony_2_refs": [],
           "i0_ct_ref": null,
-          "i0_uklad": null,
+          "i0_uklad": "HOLMGREEN",
           "u0_uklad": null,
           "u0_vt_ref": null,
           "vt_ref": null
@@ -5019,6 +5421,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -5031,7 +5434,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -5065,6 +5469,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "stn/0f850aca35bf21cbebb5b96cdfb43110/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -5077,7 +5482,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -5111,6 +5517,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -5123,7 +5530,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -5157,6 +5565,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "tr/5479c8038b3ce967fae13b12319add05/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -5169,7 +5578,8 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       },
       {
         "catalog_namespace": "TRAFO_SN_NN",
@@ -5203,6 +5613,7 @@
         "p0_kw": 1.3,
         "parameter_source": "CATALOG",
         "pk_kw": 8.0,
+        "r0_ohm": null,
         "ref_id": "tr/2013a824dfb5f91e1f24ef2089b22623/transformer",
         "sn_mva": 0.63,
         "source_mode": "KATALOG",
@@ -5215,9 +5626,9 @@
         "uhv_kv": 15.0,
         "uk_percent": 5.0,
         "ulv_kv": 0.4,
-        "vector_group": "Dyn11"
+        "vector_group": "Dyn11",
+        "x0_ohm": null
       }
-    ],
-    "zespoly_uziemiajace": []
+    ]
   }
 }

@@ -55,7 +55,9 @@ TRANSFORMATORY = (1, 2)
 BATERIA = ("brak", "sekcja_1", "sekcja_2")
 
 
-def _model(sprzeglo: str, transformatory: int, bateria: str) -> EnergyNetworkModel:
+def _model(
+    sprzeglo: str, transformatory: int, bateria: str, *, zespoly: bool = True
+) -> EnergyNetworkModel:
     """GPZ 110/15 kV z operacji domenowej (dwie sekcje, zespół z dławikiem w każdej), kable
     sekcji i kabel 110 kV, bateria w gwieździe uziemionej wg cechy, sprzęgło wg cechy."""
     pusty = EnergyNetworkModel(
@@ -76,7 +78,7 @@ def _model(sprzeglo: str, transformatory: int, bateria: str) -> EnergyNetworkMod
             },
             "transformer_count": transformatory,
             "transformer_catalog_ref": TRAFO_WN_SN,
-            "zespoly_uziemiajace": [_zespol("dlawik", 1), _zespol("dlawik", 2)],
+            "zespoly_sekcji": [_zespol("dlawik", 1), _zespol("dlawik", 2)] if zespoly else [],
         },
     )
     assert not wynik.get("error"), wynik.get("error")
@@ -319,10 +321,10 @@ def test_ferrorezonans_ocenia_kazda_siec_osobno(sprzeglo: str) -> None:
     """Ocena ferrorezonansu (analiza napięcia powrotnego) — pojemność doczepna sieci
     z punktem neutralnym izolowanym liczona dla KAŻDEJ sieci galwanicznej: przy otwartym
     sprzęgle żadna sekcja nie przekracza progu, choć suma po modelu by go przekroczyła."""
-    enm = _model(sprzeglo, 2, "brak")
+    # Bez transformatorów uziemiających — obie sieci z punktem neutralnym izolowanym.
+    enm = _model(sprzeglo, 2, "brak", zespoly=False)
     enm = enm.model_copy(
         update={
-            "zespoly_uziemiajace": [],
             "branches": [
                 (
                     g.model_copy(

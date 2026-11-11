@@ -54,7 +54,6 @@ function pustyModel(): EnergyNetworkModel {
     loads: [],
     generators: [],
     shunt_capacitors: [],
-    zespoly_uziemiajace: [],
     substations: [],
     bays: [],
     junctions: [],
@@ -78,8 +77,8 @@ describe('inspectorAdapter — parytet inwentarza klasy (KOLEKCJE_ELEMENTOW)', (
 
   it('KOLEKCJE_ELEMENTOW obejmuje każdą tablicę migawki ŻYWEGO backendu (s92Bieg.enm.json)', () => {
     // Model ręczny powyżej nie wykryje rodziny, której nikt do niego nie dopisał (tak zgubiono
-    // `zespoly_uziemiajace`: element zespołu uziemiającego nie miał karty inspektora). Kontrakt
-    // migawki z żywego biegu jest drugą, niezależną stroną parytetu.
+    // dawną osobną kolekcję zespołów uziemiających: jej element nie miał karty inspektora).
+    // Kontrakt migawki z żywego biegu jest drugą, niezależną stroną parytetu.
     const katalog = resolve(
       dirname(fileURLToPath(import.meta.url)),
       '../../../ui/sld/v3/canvas/__tests__/fixtures',
@@ -91,7 +90,7 @@ describe('inspectorAdapter — parytet inwentarza klasy (KOLEKCJE_ELEMENTOW)', (
     const tablice = Object.keys(migawka).filter(
       (k) => k !== 'header' && k !== 'katalog_projektu' && Array.isArray(migawka[k]),
     );
-    expect(tablice).toContain('zespoly_uziemiajace');
+    expect(tablice).toContain('transformers');
     for (const klucz of tablice) {
       expect(KOLEKCJE_ELEMENTOW as readonly string[], `kolekcja '${klucz}' bez karty inspektora`).toContain(klucz);
     }
@@ -303,45 +302,70 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     );
   });
 
-  it('zespół uziemiający: dane transformatora uziemiającego, dławika i rezystora z modelu', () => {
+  it('transformator uziemiający (jedyny nośnik zespołu): dane uzwojenia zygzakowego, dławika, AWSC i rezystora z modelu', () => {
+    const PODSTAWA = [
+      'Moc znamionowa',
+      'Napięcie GN',
+      'Napięcie DN',
+      'Napięcie zwarcia $u_{k}$',
+      'Straty zwarcia $P_{k}$',
+      'Grupa połączeń',
+    ];
+    const tu = (ref: string, over: Record<string, unknown>) =>
+      bazowyElement(ref, {
+        hv_bus_ref: 'bus-a',
+        lv_bus_ref: 'bus-pw',
+        sn_mva: 0.1,
+        uhv_kv: 15,
+        ulv_kv: 0.4,
+        uk_percent: 4,
+        pk_kw: 1.75,
+        vector_group: 'ZNyn11',
+        ...over,
+      });
     const model = pustyModel();
-    (model.zespoly_uziemiajace as unknown[]).push(
-      bazowyElement('zu-1', {
-        bus_ref: 'bus-a',
-        grupa_polaczen: 'ZNyn11',
-        u_n_kv: 15,
-        s_n_kva: 250,
+    (model.transformers as unknown[]).push(
+      tu('tu-1', {
         r0_ohm: 3.1,
         x0_ohm: 8.2,
-        dlawik: { i_min_a: 20, i_max_a: 200, i_nastawy_a: 110 },
-        rezystor: { r_ohm: 43, i_n_a: 200, t_s: 10 },
+        hv_neutral: {
+          type: 'petersen_coil',
+          dlawik: { i_min_a: 20, i_max_a: 200, i_nastawy_a: 110, awsc: { i_wymuszany_a: 30 } },
+          rezystor: { r_ohm: 43, i_n_a: 200, t_s: 10 },
+        },
       }),
     );
-    const obiekt = mapowanieObiektuInspektora(model, 'zu-1');
-    expect(obiekt?.typEtykieta).toBe('Zespół uziemiający');
+    const obiekt = mapowanieObiektuInspektora(model, 'tu-1');
     const katalogowe = obiekt?.wlasciwosci.find((s) => s.id === 'katalogowe');
     expect(katalogowe?.wiersze.map((w) => w.etykieta)).toEqual([
-      'Grupa połączeń',
-      'Napięcie znamionowe',
-      'Moc znamionowa',
+      ...PODSTAWA,
       'Rezystancja zerowa $R_{0}$',
       'Reaktancja zerowa $X_{0}$',
       'Dławik: prąd minimalny',
       'Dławik: prąd maksymalny',
       'Dławik: nastawa',
+      'AWSC: prąd wymuszany',
       'Rezystor: rezystancja',
       'Rezystor: prąd znamionowy',
       'Rezystor: czas przepływu prądu',
     ]);
     // Pole nieobecne w modelu = wiersz pominięty (zero fabrykacji); bez dławika i rezystora.
     const bezUrzadzen = pustyModel();
-    (bezUrzadzen.zespoly_uziemiajace as unknown[]).push(
-      bazowyElement('zu-2', { bus_ref: 'bus-a', grupa_polaczen: 'ZN', uziemienie_bezposrednie: true }),
-    );
-    const wiersze = mapowanieObiektuInspektora(bezUrzadzen, 'zu-2')
+    (bezUrzadzen.transformers as unknown[]).push(tu('tu-2', { hv_neutral: { type: 'directly_grounded' } }));
+    const wiersze = mapowanieObiektuInspektora(bezUrzadzen, 'tu-2')
       ?.wlasciwosci.find((s) => s.id === 'katalogowe')
       ?.wiersze.map((w) => w.etykieta);
-    expect(wiersze).toEqual(['Grupa połączeń', 'Uziemienie bezpośrednie']);
+    expect(wiersze).toEqual([...PODSTAWA, 'Uziemienie bezpośrednie']);
+    // Predykat parą z backendem: ta sama grupa poza pasmem SN albo zygzak bez punktu
+    // neutralnego — zwykły transformator, bez wierszy zespołu.
+    for (const over of [{ uhv_kv: 0.4, ulv_kv: 0.23 }, { vector_group: 'Zd0' }]) {
+      const inny = pustyModel();
+      (inny.transformers as unknown[]).push(tu('tu-3', { ...over, hv_neutral: { type: 'directly_grounded' } }));
+      const etykiety = mapowanieObiektuInspektora(inny, 'tu-3')
+        ?.wlasciwosci.find((s) => s.id === 'katalogowe')
+        ?.wiersze.map((w) => w.etykieta);
+      expect(etykiety).not.toContain('Uziemienie bezpośrednie');
+    }
   });
 
   it('stacja: rodzaj + liczniki szyn/transformatorów', () => {

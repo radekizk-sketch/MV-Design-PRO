@@ -46,6 +46,7 @@ import {
 import { useSldActionExecutor } from '../../sld/shared/sldActionExecutor';
 import {
   buildKartaTechniczna,
+  type CelAkcjiKarty,
   type CelWierszaTabeli,
   type AkcjaWiersza,
   type EdycjaWiersza,
@@ -53,7 +54,6 @@ import {
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
 import type { ObslugaAkcjiKarty } from './KartaTechnicznaElementu';
-import type { CelAkcjiKarty } from '../../sld/shared/kartaTechnicznaElementu';
 
 /** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
 interface ZrodloWynikowElementu {
@@ -144,6 +144,8 @@ export function wskazanieAparatuPola(
   const galezie = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
   const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie, snapshot?.bays)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
   const symbolId = urzadzenie ? symbolIdForPrimaryDeviceKind(urzadzenie.kind) ?? undefined : undefined;
+  // To samo wejście co klik w symbol aparatu na kanwie (`SldCanvasV3Workspace` — meta symbolu
+  // z `deviceRef`): temat niesie urządzenie, więc karta i działania z wiersza ≡ z kanwy.
   const wynik = resolveCanvasMenuSubject(
     { ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId, deviceRef: cel.aparatRef },
     index,

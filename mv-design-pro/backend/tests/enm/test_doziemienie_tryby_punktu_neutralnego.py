@@ -607,8 +607,17 @@ def _wyrocznia_sposobu(tryb: str) -> dict[str, float]:
     z1 = _z1_reczne()
     z0 = zu.Z0_TU + (3.0 * zu.R_N if tryb == "rezystor" else 0.0)
     _, ub, uc = wyrocznia_napiec(z1, z1, z0)
-    assert max(ub, uc) / U_F > 1.4, "warunek pkt 5.2 f): pojemności wchodzą do Z_0"
-    z0 = 1.0 / (1.0 / z0 + 1j * b0)
+    # Warunek IEC 60909-0 pkt 5.2 f) liczony ręcznie: pojemności B_0·ℓ wchodzą do Z_0 wyłącznie,
+    # gdy współczynnik zwarcia doziemnego BEZ nich przekracza 1,4. Rezystor: k ≈ 1,72 — wchodzą.
+    # Uziemienie bezpośrednie przez zygzak o Z_0,TU = 0,637 + j3,185 Ω (pozycja katalogu
+    # transformatora uziemiającego ZNyn11, karta ZU-JEDEN-NOSNIK): k ≈ 1,29 — NIE wchodzą
+    # (dawna Z_0,TU = 1,5 + j6,0 Ω kolekcji zespołów dawała k > 1,4).
+    if tryb == "rezystor":
+        assert max(ub, uc) / U_F > 1.4, "warunek pkt 5.2 f): pojemności wchodzą do Z_0"
+    else:
+        assert max(ub, uc) / U_F <= 1.4, "warunek pkt 5.2 f): pojemności poza Z_0"
+    if max(ub, uc) / U_F > 1.4:
+        z0 = 1.0 / (1.0 / z0 + 1j * b0)
     u0, ub, uc = wyrocznia_napiec(z1, z1, z0)
     if tryb == "rezystor":
         prad = wyrocznia_pradu(tryb, i_c, [(complex(zu.R_N, 0.0), zu.Z0_TU)])["prad"]

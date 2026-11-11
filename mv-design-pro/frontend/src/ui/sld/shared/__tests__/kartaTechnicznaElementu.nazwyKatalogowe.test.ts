@@ -129,6 +129,7 @@ describe('karta techniczna — szablon pola i rodzina rozdzielnicy z katalogu', 
     it(`stacja · katalog ${p.katalog}: rodzina rozdzielnicy po nazwie`, () => {
       const w = wiersze('station', true, p.katalogi);
       expect(w.get('rodzina')?.wartosc).toBe(p.rodzina);
+      expect(w.get('rodzina')?.wartosc).not.toContain(RODZINA);
     });
 
     it(`pole bez szablonu i rodziny · katalog ${p.katalog}: brak obu wierszy, config_id niewidoczny`, () => {

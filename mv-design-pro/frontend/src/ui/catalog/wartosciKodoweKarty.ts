@@ -17,6 +17,7 @@
  * w tym trzy różne nazwy `ROZLACZNIK_BEZPIECZNIKOWY`, słownik `equipment_kind` z kluczami,
  * których serwer nie wysyła, i odczyty `?? kod` przepisujące kod na ekran.
  */
+import { NAZWA_PRZEZNACZENIA_RDZENIA_PL } from '../../types/przekladniki';
 import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 import { NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL } from './pradZwarciowyKatalogu';
 
@@ -108,17 +109,6 @@ export const UKLAD_POLACZEN_BATERII_PL: Readonly<Record<string, string>> = {
   TROJKAT: 'trójkąt',
 };
 
-/** Przeznaczenie rdzenia CT / uzwojenia VT (tabliczka `rdzenie` / `uzwojenia` pozycji przekładnika)
- *  — backend `network_model/catalog/przekladniki.py::NAZWY_PRZEZNACZENIA_PL`. */
-export const NAZWA_PRZEZNACZENIA_RDZENIA_PL: Readonly<Record<string, string>> = {
-  JAKOSC_ENERGII: 'analizator jakości energii elektrycznej',
-  POMIAR: 'pomiar techniczny i telemechanika',
-  REGULACJA: 'regulacja napięcia',
-  ROZLICZENIE: 'pomiar rozliczeniowy energii',
-  ROZNICOWE: 'zabezpieczenie różnicowe',
-  ZABEZPIECZENIA: 'zabezpieczenia',
-};
-
 /** Symbol materiału przewodu w zwięzłym opisie odcinka („Al 120 mm²”) — z tego samego
  *  słownika co pełna nazwa. */
 export const SYMBOL_MATERIALU_PRZEWODU: Readonly<Record<string, string>> = {
@@ -178,11 +168,6 @@ export const POLA_KODOWE_KARTY: Readonly<Record<string, OpisPolaKodowego>> = {
     NC_RfG_typ_C: 'NC RfG — moduł typu C',
     NC_RfG_typ_D: 'NC RfG — moduł typu D',
   }),
-  grupa_polaczen: {
-    rodzaj: 'oznaczenie',
-    uzasadnienie:
-      'grupa połączeń transformatora uziemiającego wg PN-EN 60076-1 (ZNyn11) — oznaczenie normowe',
-  },
   i_th_pochodzenie: nazwy({ producent: 'dana producenta', referencyjny: 'wartość referencyjna' }),
   insulation_type: nazwy({
     XLPE: 'polietylen usieciowany (XLPE)',
@@ -191,9 +176,13 @@ export const POLA_KODOWE_KARTY: Readonly<Record<string, OpisPolaKodowego>> = {
     PAPER: 'papier przesycany (kable istniejące)',
   }),
   kind: nazwy(RODZAJ_POZYCJI_PL),
+  // Medium gaszenia łuku łącznika (`gazy_fluorowane.MEDIA_ZE_GAZEM_FLUOROWANYM` obejmuje też
+  // mieszaniny C4-FN i C5-FK) albo rodzaj odejścia punktu rozgałęzienia (kabel, linia).
   medium: nazwy({
     AIR: 'powietrze',
     SF6: 'gaz SF6',
+    'C4-FN': 'mieszanina gazowa z fluoronitrylem C4-FN',
+    'C5-FK': 'mieszanina gazowa z fluoroketonem C5-FK',
     VACUUM: 'próżnia',
     CABLE: 'sieć kablowa',
     LINE_OVERHEAD: 'linia napowietrzna',

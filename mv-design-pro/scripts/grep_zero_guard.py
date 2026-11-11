@@ -22,6 +22,11 @@ Grupy konfiguracji (katalog `config/`), każda z trzema plikami
   wariantu uziemienia, katalog wariantów audytu 2, końcówka katalogu, pole kontraktu zapisu
   i konfigurator we froncie. Sposób uziemienia sekcji SN wynika wyłącznie z elementów
   modelu (`enm/uziemienie_sekcji.py`); allowlista to tylko ten guard i jego self-test.
+* ``"zu1_"`` (karta ZU-JEDEN-NOSNIK) — bramka wskrzeszenia DRUGIEGO nośnika zespołu
+  uziemiającego: kolekcja modelu ``zespoly_uziemiajace`` i jej klasa, wskaźnik odbioru potrzeb
+  własnych, punkt zespołu prawdy o uziemieniu sekcji, zapis zespołu w ``meta`` transformatora
+  i prąd AWSC jako pole konfiguracji punktu neutralnego. Jedynym nośnikiem jest transformator
+  uziemiający ZNyn11 (``Transformer.hv_neutral``); allowlista to tylko ten guard i self-test.
 
 Self-test z czerwoną iniekcją: `scripts/test_grep_zero_guard.py`.
 """
@@ -37,7 +42,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
-GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_", "zu_")
+GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_", "zu_", "zu1_")
 TEXT_SUFFIXES = {
     ".css",
     ".html",

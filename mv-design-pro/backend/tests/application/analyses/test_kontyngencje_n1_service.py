@@ -1022,7 +1022,18 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `protection_ref`, `zrodlo_u0_ref` pól → 54 liście sterowników `protection_assignments`).
     # gn03 — widok identyczny co do bajtu; model traci 4 liście `None` (`protection_ref`,
     # `zrodlo_u0_ref` dwóch pól), poza odciskiem. Enumeracja, dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "ebe3989f7939ae5faa4ef98554b3f081bbf8930e1a63d7944882c20e4bd1ff63",
+    # 2026-11-11 (scalenie karty ZU-JEDEN-NOSNIK, z kartą szablonów pól, do drzewa integracji):
+    # gn01 ebe3989f… → 5faf46a2…, gn03 bez zmiany. Pełne widoki z kodu obu rodziców scalenia
+    # (`git archive`) i z drzewa scalonego porównane liść po liściu: IDENTYCZNY zbiór 408 kluczy
+    # widoku, różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash` (wobec obu rodziców).
+    # Model wejściowy wobec strony integracji: 765 → 1298 liści, 0 liści wspólnych o innej
+    # wartości; nowe liście to aparaty toru trzech pól SN stacji z szablonu, z którego pole ma
+    # funkcje (`Bay.primary_devices`, 507 liści — karta szablonów pól, `enm.aparaty_pol_sn`),
+    # i wiązania sterowników tych pól z aparatami (wejście prądowe z przekładnika prądowego
+    # pola i układ Holmgreena — 6 liści, wiersze macierzy wyzwoleń na wyłącznik pola —
+    # 20 liści). Sieć nie ma przekładników pomiarowych (`measurements`), więc przekładnik
+    # pola z szablonu jest jedynym. Enumeracja, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "5faf46a2a9d5eb9bed50503f1c5039c28822ccd1fca50f4f4797be9f400d3e9b",
     "gn03_pierscien": "1f688e57b125b15352400bd158d68242cbf2b2430d2f713b9ec575fdf227dcf4",
 }
 

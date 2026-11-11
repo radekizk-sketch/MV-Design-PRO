@@ -115,7 +115,7 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
 
     Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA dopisuje do `SPRAWDZANE` cztery encje zespolu
     uziemiajacego SN z lustrem w `types/enm.ts` i zachowanym parytetem zbioru wartosci:
-    `ZespolUziemiajacy.parameter_source` (CATALOG / OVERRIDE) i `.grupa_polaczen` (ZNyn11 /
+    dawnej encji zespolu: `parameter_source` (CATALOG / OVERRIDE) i `grupa_polaczen` (ZNyn11 /
     ZNyn5 / ZNy11 / ZNy5 / ZN), `DlawikGaszacy.regulacja` (ciagla / zaczepy) i
     `.stan_odlacznika`, `RezystorUziemiajacy.stan_odlacznika` (zamkniety / otwarty)
     i `RezystorWymuszajacyAwsc.strona` (wtorna / pierwotna) — licznik 125 -> 131 (pomiar
@@ -180,15 +180,34 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     scalone = strona integracji bez 10 pól starej struktury zabezpieczeń (wyżej) plus 5 pól
     strony karty (`WejsciaZabezpieczenia.i0_uklad`, `WejsciaZabezpieczenia.u0_uklad`,
     `NastawaFunkcji.pochodzenie`, `SwitchBranch.rodzaj_obwodu_nn`,
-    `FuseBranch.rodzaj_obwodu_nn`); pozostałe pola obu stron wspólne."""
+    `FuseBranch.rodzaj_obwodu_nn`); pozostałe pola obu stron wspólne.
+
+    Karta ZU-JEDEN-NOSNIK (2026-11-11, scalenie modelu A zespołu uziemiającego z gałęzią
+    POLA-GPZ-SZABLONY): kasuje osobną encję zespołu uziemiającego (jej dwa pola Literal
+    `parameter_source` i `grupa_polaczen` znikają — zespół jest transformatorem `Transformer`
+    z wyposażeniem punktu neutralnego w `GroundingConfig`), dopisuje do `SPRAWDZANE`
+    `DawcaPunktuNeutralnego` (bez pól Literal), a cztery pola Literal wyposażenia punktu
+    neutralnego (`DlawikGaszacy.regulacja` i `.stan_odlacznika`,
+    `RezystorUziemiajacy.stan_odlacznika`, `RezystorWymuszajacyAwsc.strona`) wchodzą do pomiaru
+    gałęzi POLA-GPZ-SZABLONY (134 — tamta gałąź encji zespołu nie miała). Pomiar guardem:
+    gałąź modelu A `ffbd81d15` = 132, gałąź POLA-GPZ-SZABLONY `44b3f173e` = 134, drzewo karty =
+    134 + 4 = 138.
+
+    Scalenie karty ZU-JEDEN-NOSNIK do drzewa integracji (2026-11-11): 135 - 2 = 133. Zbiory par
+    (encja, pole) liczone funkcjami guarda na stronie integracji (135), stronie karty (138)
+    i drzewie scalonym (133): drzewo scalone = strona integracji bez dwóch pól skasowanej encji
+    zespołu uziemiającego (grupa połączeń i źródło parametrów zespołu); pola
+    wyposażenia punktu neutralnego strona integracji już miała (gałąź szablonów pól scalona
+    wcześniej z kartą pola liniowego), a 10 pól starej struktury zabezpieczeń strony karty
+    skasowała karta delt."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 135, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 135 — "
+    assert int(dopasowanie.group(1)) == 133, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 133 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

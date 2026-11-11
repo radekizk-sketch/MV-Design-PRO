@@ -24,9 +24,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from network_model.catalog.rodzaje_aparatury import NAZWY_RODZAJOW_APARATU_POLA_PL
+
 from .models import Bay, BayPrimaryDevice
 from .slownik_komunikatow import opis_obiektu
-from .wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL
 
 __all__ = [
     "AKCJA_NAPRAWCZA_OZNACZEN_PL",

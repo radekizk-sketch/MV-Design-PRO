@@ -198,12 +198,13 @@ describe('InspectorEngineeringView - aparaty pola SN', () => {
   it.each(Object.keys(RODZAJE_REKORDU) as BayPrimaryDeviceKind[])('rekord %s kliknięty na kanwie: karta aparatu', (kind) => {
     const symbol = symbolIdForPrimaryDeviceKind(kind);
     if (symbol === null || symbol === 'transformer2W') {
-      // Rekord bez symbolu w torze pola (źródła DER, przekładnik niezrównoważenia baterii)
+      // Rekord bez symbolu w torze pola (źródła DER, przekładnik niezrównoważenia baterii,
+      // przekładniki napięciowe międzyfazowe baterii — rysuje je glif baterii)
       // nie jest klikalny jako aparat, a symbol transformatora scena klasyfikuje jako
       // transformator (`classifySymbolElementKind`, karta transformatora) — tych przypadków
       // iloczynu nie ma w ścieżce kliku aparatu. Lista jest ZAMKNIĘTA: nowy rodzaj bez
       // symbolu aparatu musi tu trafić jawnie.
-      expect(['GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'UNBALANCE_CT', 'TRANSFORMER_DEVICE']).toContain(kind);
+      expect(['GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'UNBALANCE_CT', 'PHASE_TO_PHASE_VT', 'TRANSFORMER_DEVICE']).toContain(kind);
       return;
     }
     kliknijAparat(symbol, wyposazPole(kind));

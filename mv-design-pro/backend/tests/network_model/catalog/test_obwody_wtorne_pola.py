@@ -29,6 +29,7 @@ from enm.models import BayPrimaryDevice
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_REGISTRY,
     BAY_TEMPLATES_GPZ_LINE,
+    BAY_TEMPLATES_GPZ_POLA,
     KLASY_POLA_LINIOWEGO,
     WARUNKI_FUNKCJI_EAZ,
     WYKONANIA_LACZNIKOW_POLA,
@@ -232,11 +233,14 @@ def test_iniekcja_powiazanie_dwukrotne() -> None:
     "wejscie,komunikat",
     [
         ({"rodzaj": "RDZEN_CT", "aparat": "T1", "numer": 2}, "nie ma obwodu nr 2"),
-        ({"rodzaj": "RDZEN_CT", "aparat": "T3", "numer": 1}, "nie jest aparatem CT"),
+        (
+            {"rodzaj": "RDZEN_CT", "aparat": "T3", "numer": 1},
+            "nie jest aparatem rodzaju „przekładnik prądowy”",
+        ),
         ({"rodzaj": "UZWOJENIE_VT", "aparat": "T3", "numer": 4}, "nie ma obwodu nr 4"),
         (
             {"rodzaj": "PRZEKLADNIK_FERRANTIEGO", "aparat": "T1"},
-            "nie jest aparatem CORE",
+            "nie jest aparatem rodzaju „przekładnik Ferrantiego”",
         ),
     ],
 )
@@ -522,7 +526,19 @@ def test_profil_eaz_statusy_i_wymogi_w_kazdej_klasie(wykonanie: str, laczniki: s
 def test_profil_tylko_dla_pola_liniowego_gpz_i_deterministyczny() -> None:
     inne = [t for t in BAY_TEMPLATE_REGISTRY.values() if t.wykonanie_pola is None]
     assert inne and all(profil_eaz_szablonu(t.template_id) is None for t in inne)
-    assert all(t.obwody_wtorne is None for t in inne)
+    # Obwody wtórne niesie wyłącznie szablon z rysunkiem standardu: pole liniowe GPZ (profil
+    # klas pola) oraz pola GPZ Z.7, Z.12, Z.16 i warianty pola zespołu uziemiającego Z.13–Z.15
+    # (karta POLA-GPZ-SZABLONY, rysunek bez klas pola).
+    z_rysunku = {t.template_id for t in BAY_TEMPLATES_GPZ_POLA if t.obwody_wtorne is not None}
+    assert z_rysunku == {
+        "bay_template_gpz_transformator_sn_enea_z7",
+        "bay_template_gpz_lacznik_szyn_enea_z12",
+        "bay_template_gpz_bateria_kondensatorow_enea_z16",
+        "bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
+        "bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14",
+        "bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15",
+    }
+    assert all(t.obwody_wtorne is None for t in inne if t.template_id not in z_rysunku)
     assert profil_eaz_szablonu("szablon-nieznany") is None
     for szablon in BAY_TEMPLATES_GPZ_LINE:
         assert profil_eaz_szablonu(szablon.template_id) == profil_eaz_szablonu(szablon.template_id)

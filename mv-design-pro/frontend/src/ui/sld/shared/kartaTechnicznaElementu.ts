@@ -41,7 +41,10 @@ import { isFuseBranch, isSwitchBranch } from '../../../types/enm';
 import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
-import { nazwaSzablonuPoReferencjiPl, type CompleteMvBayTemplateSummary } from '../../catalog/BayTemplatePicker';
+import {
+  nazwaSzablonuPoReferencjiPl,
+  type CompleteMvBayTemplateSummary,
+} from '../../catalog/BayTemplatePicker';
 import {
   formatDerDynamicProfileLabelPl,
   getDerDynamicProfile,
@@ -187,12 +190,12 @@ export interface WierszTabeli {
   readonly komorki: Readonly<Record<string, string | null>>;
   /** Karta otwierana klikiem w wiersz; brak = wiersz bez przejścia. */
   readonly cel?: CelWierszaTabeli;
+  /** Przejście z wiersza (np. do nastaw funkcji zabezpieczenia). */
+  readonly akcja?: AkcjaWierszaKarty;
   /** Kolumny, których treść zawiera już komórka poprzedniej kolumny (nazwa pola zaczynająca się
    *  etykietą roli — `opisBezPowtorzen`): renderer scala je z nią (`colSpan`), więc informacja
    *  stoi raz, a nazwa ma szerokość obu kolumn. Wartość w `komorki` zostaje (dane, testy). */
   readonly polaczone?: readonly string[];
-  /** Przejście z wiersza (np. do nastaw funkcji zabezpieczenia). */
-  readonly akcja?: AkcjaWierszaKarty;
 }
 
 export interface TabelaKarty {
@@ -767,7 +770,7 @@ function stanAparatu(ix: IndeksModelu, aparat: AparatPola, bay: Bay | null): str
 }
 
 /** Stan obiektu (istniejący / projektowany) — nazwa PL; `null` = stan nieustalony (zapis sprzed
- *  atrybutu), na karcie „brak danych", nigdy domysł „istniejący". */
+ *  atrybutu), na karcie opis braku, nigdy domysł „istniejący". */
 function nazwaStanuObiektu(stan: StanObiektu | null | undefined): string | null {
   return stan ? NAZWY_STANOW_OBIEKTU_PL[stan] : null;
 }

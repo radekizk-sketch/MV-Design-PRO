@@ -68,7 +68,6 @@
  *   `switch.catalog_ref_missing`     (enm/domain_operations.py:1346-1377) -> wspolne
  *   `protection.binding_missing`     (domain/station_field_validation.py:203) -> zabezpieczenia
  *   `relay.ct_missing`               (enm/domain_operations_v2.py:676)    -> zabezpieczenia
- *   `tcc.relay_missing`              (enm/domain_operations_v2.py:818)    -> zabezpieczenia
  *
  * Bramy katalogowe (karta W4, dług nazwany w V12K-317): siedemnaście kodów
  * przestrzeni `catalog.` emitowanych przez bramy (`api/domain_ops_policy.py`,
@@ -324,7 +323,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN (STATIONS).
   'earthing.zespol_bus_invalid': 'stacje',
   'earthing.zespol_neutral_undefined': 'stacje',
-  'earthing.zespol_auxiliary_load_missing': 'stacje',
   'earthing.network_grounding_warning': 'stacje',
   'earthing.zespol_direct_earthing': 'stacje',
   // GENERATORS (:639-668, :795-820) — poza wyjątkiem OSD wyżej
@@ -359,6 +357,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'earthing.neutral_grounding_inconsistent': 'zwarcia',
   // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z pominiętymi danymi uziemienia (SOURCES).
   'source.sn_neutral_data_ignored': 'zwarcia',
+  'earthing.multiple_grounded_neutrals_in_island': 'zwarcia',
   'nn.measurement.required_missing': 'zwarcia',
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
@@ -491,7 +490,6 @@ const KOD_DOMENOWY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // go tutaj czyniłoby nagłówek tej mapy („kody spoza rejestru") nieprawdziwym.
   'protection.binding_missing': 'zabezpieczenia',
   'relay.ct_missing': 'zabezpieczenia',
-  'tcc.relay_missing': 'zabezpieczenia',
 };
 
 /**

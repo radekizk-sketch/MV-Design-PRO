@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from network_model.catalog.bay_templates import WARUNEK_ZRODLA_U0, WARUNKI_FUNKCJI_EAZ
+from network_model.catalog.funkcje_eaz import opis_funkcji_eaz_pl
 from network_model.catalog.rodzaje_aparatury import RODZAJ_PRZEKLADNIKA_FERRANTIEGO
 
 from .slownik_komunikatow import opis_elementu
@@ -218,7 +219,7 @@ def zrodlo_u0_pola(
         braki_i0.append(
             (
                 "BRAK_FERRANTIEGO",
-                "przekładnik Ferrantiego w polu — kryterium prądowe (prąd zerowy) zabezpieczenia "
+                "przekładnik Ferrantiego w polu — kryterium prądu zerowego zabezpieczenia "
                 "ziemnozwarciowego (ENEA Z.10 s.89, Z.11.1 s.91)",
             )
         )
@@ -251,7 +252,8 @@ def zrodlo_u0_pola(
             braki.append(
                 (
                     "APARAT_NIEOBECNY",
-                    "przekładnik napięciowy wskazany jako źródło napięcia zerowego — nie ma go w modelu "
+                    "przekładnik napięciowy wskazany jako źródło napięcia zerowego — nie ma go w "
+                    "modelu "
                     "(pole pomiaru napięcia usunięte albo przebudowane)",
                 )
             )
@@ -263,7 +265,8 @@ def zrodlo_u0_pola(
                 braki.append(
                     (
                         "APARAT_NIE_JEST_VT",
-                        "źródło napięcia zerowego wskazujące przekładnik napięciowy — wskazany aparat nim nie "
+                        "źródło napięcia zerowego wskazujące przekładnik napięciowy — wskazany aparat "
+                        "nim nie "
                         "jest",
                     )
                 )
@@ -279,7 +282,8 @@ def zrodlo_u0_pola(
                 braki.append(
                     (
                         "POLE_NIE_MIERZY_SZYN",
-                        "źródło napięcia zerowego w polu pomiaru napięcia szyn — wskazany przekładnik leży "
+                        "źródło napięcia zerowego w polu pomiaru napięcia szyn — wskazany przekładnik "
+                        "leży "
                         f"w {opis_elementu(dict(enm), pole_zrodla.get('ref_id'), 'polu')}, "
                         "które nie mierzy napięcia szyn",
                     )
@@ -307,7 +311,7 @@ def zrodlo_u0_pola(
         )
     else:
         przyczyna = (
-            f"źródło napięcia zerowego {opis_pola} niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego "
+            f"źródło napięcia zerowego {opis_pola} niepotwierdzone — funkcja 67N go nie mierzy "
             f"bez tego źródła ({PODSTAWA_ZRODLA_U0})"
         )
     return ZrodloU0Pola(
@@ -400,8 +404,9 @@ def naruszenia_zrodla_u0(enm: Mapping[str, Any]) -> list[NaruszenieZrodlaU0]:
                 funkcje=funkcje,
                 czego_brakuje=zrodlo.czego_brakuje,
                 komunikat_pl=(
-                    f"{opis} ma funkcję {', '.join(funkcje)} (zabezpieczenie ziemnozwarciowe "
-                    "kierunkowe) bez potwierdzonego źródła napięcia zerowego — brakuje: "
+                    f"{opis} ma funkcję {'; '.join(opis_funkcji_eaz_pl(k) for k in funkcje)} "
+                    "(zabezpieczenie ziemnozwarciowe kierunkowe) bez potwierdzonego źródła "
+                    "napięcia zerowego — brakuje: "
                     f"{'; '.join(zrodlo.czego_brakuje)}. Funkcja bez wejścia napięcia zerowego niczego nie mierzy "
                     f"({PODSTAWA_ZRODLA_U0})."
                 ),

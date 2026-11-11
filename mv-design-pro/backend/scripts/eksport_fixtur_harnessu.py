@@ -78,7 +78,6 @@ from api.catalog import (  # noqa: E402
     list_cable_types,
     list_converter_types,
     list_ct_types,
-    list_earthing_transformer_types,
     list_line_types,
     list_load_types,
     list_lv_apparatus_types,
@@ -1300,7 +1299,6 @@ def pola_kart_katalogu() -> dict[str, Any]:
         "SYSTEM_SOURCE": list_source_system_types(),
         "SURGE_ARRESTER": list_surge_arrester_types(),
         "SHUNT_CAPACITOR": list_shunt_capacitor_types(),
-        "EARTHING_TRANSFORMER": list_earthing_transformer_types(),
         "ARC_SUPPRESSION_COIL": list_arc_suppression_coil_types(),
         "NEUTRAL_EARTHING_RESISTOR": list_neutral_earthing_resistor_types(),
         "PTPIREE_CERTIFICATE": list_ptpiree_generator_certificates(Response()),
@@ -4354,8 +4352,9 @@ _APARAT_POLA_SN_SCENY_V126 = "sw-cb-abb-vd4-17kv-630a"
 _KABEL_SN_SCENY_V126 = "cable-base-epr-al-1c-240"
 
 
-#: Pozycje katalogu typowego zespołu uziemiającego (ENEA Zeszyt 1 §16) sceny akademickiej.
-_TRANSFORMATOR_UZIEMIAJACY_SCENY_V126 = "TU_ZNYN11_15KV_PW160"
+#: Pozycje katalogu typowego zespołu uziemiającego (ENEA Zeszyt 1 §16) sceny akademickiej:
+#: transformator uziemiający ZNyn11 15/0,4 kV z przestrzeni `TRAFO_SN_NN` i dławik gaszący.
+_TRANSFORMATOR_UZIEMIAJACY_SCENY_V126 = "tu-sn-nn-15-04-100kva-znyn11"
 _DLAWIK_SCENY_V126 = "DL_40_400A_15KV_CIAGLY"
 
 
@@ -4451,7 +4450,7 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
     )
     if wynik.get("error"):
         raise SystemExit(f"[fixtury] scena akademicka: {wynik['error']}")
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sieć SN GPZ uziemiona zespołem uziemiającym
+    # Karta ZU-JEDEN-NOSNIK: sieć SN GPZ uziemiona zespołem uziemiającym
     # (transformator ZNyn11 + dławik gaszący z płynną regulacją, Z.13) — KANONICZNĄ operacją,
     # pozycjami katalogu typowego §16. Analizy V12.6 zależne od punktu neutralnego (projekt
     # uziemienia, metoda detekcji doziemień, ferrorezonans) czytają sposób uziemienia z tego
@@ -4577,7 +4576,10 @@ def _wartosci_zmiennych_segmentu() -> dict[tuple[str, str], tuple[str, ...]]:
     z tych samych map i typów, z których operacja je bierze — nie przepisane ręcznie.
     """
     from enm.domain_operations import _NN_SOURCE_KIND_MAP, _SN_FIELD_ROLE_TO_BAY_ROLE
-    from enm.domain_operations_v2 import _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO
+    from enm.domain_operations_v2 import (
+        _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO,
+        PrefiksTransformatoraZespolu,
+    )
     from enm.models import BranchPointSN
 
     technologie = tuple(k.lower() for k in _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO)
@@ -4589,6 +4591,9 @@ def _wartosci_zmiennych_segmentu() -> dict[tuple[str, str], tuple[str, ...]]:
         ("_add_converter_source_der_sn", "prefix"): technologie,
         ("add_converter_source", "prefix"): technologie,
         ("_insert_branch_point_on_segment_sn", "branch_point_type"): rodzaje_punktu,
+        ("_zainstaluj_transformator_zespolu", "prefiks"): tuple(
+            str(v) for v in typing.get_args(PrefiksTransformatoraZespolu)
+        ),
         ("append_station_on_endpoint", "field_role.lower()"): tuple(
             rola.lower() for rola in _SN_FIELD_ROLE_TO_BAY_ROLE
         ),
@@ -5558,6 +5563,23 @@ def _pole_liniowe_gpz(sekcja_staly: int | None) -> dict[str, Any]:
     )
 
 
+def _pola_gpz_szablonow() -> dict[str, Any]:
+    """Karta POLA-GPZ-SZABLONY: GPZ 110/15 kV z polami Z.7, Z.12, Z.16 i Z.17 w sekcji 1
+    (`zbuduj_gpz_pola_szablonow`) — migawka + widoki logiczne odpowiedzi operacji."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_pola_szablonow
+
+    model = EnergyNetworkModel.model_validate(zbuduj_gpz_pola_szablonow())
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
+    )
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
@@ -5704,6 +5726,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         for sekcja in (1, 2)
     },
     "pole_liniowe_z11_gpz_odgalezienie": lambda: _pole_liniowe_gpz(None),
+    "pola_gpz_szablonow": _pola_gpz_szablonow,
 }
 
 

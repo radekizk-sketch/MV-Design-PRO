@@ -44,7 +44,8 @@ TYPOSZEREG (225 rekordow, pomiar 2026-10-15):
 import math
 from typing import Any
 
-from network_model.pochodne import kva_na_mva
+from network_model.catalog.wartosci_robocze import ZALOZENIE_Z0_ZYGZAKA
+from network_model.pochodne import impedancja_zerowa_zygzaka_robocza_ohm, kva_na_mva
 
 #: Znacznik noty pozycji, ktorej straty przekraczaja pulap Tier 2 rozporzadzenia (UE)
 #: 548/2014 w brzmieniu (UE) 2019/1783 (jedno zrodlo prawdy dla danych i testu pary
@@ -1179,6 +1180,13 @@ def rodzaj_izolacji_transformatora(cooling_class: str | None) -> str | None:
     return None
 
 
+def objety_tier2(params: dict[str, Any]) -> bool:
+    """Czy pozycja podlega wymaganiom Tier 2: rozporządzenie (UE) 548/2014 art. 1 ust. 2 wyłącza
+    transformatory uziemiające (trójfazowe, przeznaczone do utworzenia punktu neutralnego sieci) —
+    rozpoznawane po uzwojeniu zygzakowym strony GN grupy połączeń (ZN…, IEC 60076-6)."""
+    return not str(params.get("vector_group") or "").startswith("Z")
+
+
 def pulap_strat_tier2_w(rodzaj: str, moc_kva: float) -> tuple[float, float] | None:
     """Pulap (Pk, P0) [W] wg tab. I.1/I.2 Tier 2 dla mocy z zakresu tabeli.
 
@@ -1431,9 +1439,109 @@ TRANSFORMER_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
 # =============================================================================
 
 
+# =============================================================================
+# TRANSFORMATORY UZIEMIAJACE ZNyn11 (zespol uziemiajacy pola GPZ, karta POLA-GPZ-SZABLONY)
+# =============================================================================
+#
+# ENEA Operator, Stacje 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.30: uklad polaczen ZNyn 11,
+# trojstopniowa beznapieciowa regulacja +/-5 % po stronie SN (zaczepy -1/0/+1 po 5 %), chlodzenie
+# ONAN, napiecie uzwojenia dolnego 400 V, moc uzwojenia potrzeb wlasnych „nie mniejsza niz
+# 100 kVA”. Standard nie podaje u_k ani strat — pozycja przyjmuje u_k, P_k, P0, i0 pozycji
+# 100 kVA Dyn11 tego samego napiecia (ABB RESIBLOC, wyzej) jako WARTOSC ROBOCZA (ZASADA NR 4);
+# rozporzadzenie UE 548/2014 art. 1 ust. 2 wylacza transformatory uziemiajace z wymagan Tier 2.
+# Impedancja zerowa uzwojenia zygzakowego (decyzja architekta karty POLA-GPZ-SZABLONY): jawny
+# parametr R0/X0 na faze po stronie SN (IEC 60076-6; dane producenta), NIE u_k — u_k pozycji
+# 100 kVA opisuje pare uzwojen SN–0,4 kV i dawalo Z0 = 0,04·15²/0,1 = 90 Ω zamiast pojedynczych
+# omow (zanizony prad ziemnozwarciowy). Wartosc robocza z jednego zrodla
+# (`pochodne.skladowe_zerowe.impedancja_zerowa_zygzaka_robocza_ohm`: 15 kV → 0,637 + j3,185 Ω,
+# 20 kV → 0,849 + j4,246 Ω), oznaczona w `wartosci_robocze` (jakosc ESTIMATED, dana przyjeta
+# biegu doziemnego). Pozycje producenta dopisuje sie osobnym rekordem z karty.
+
+_ZRODLO_ZESZYTU_1_P16 = (
+    "Deklarowane: ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja "
+    "02.2023 – 2), §16 s.29–30: grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne "
+    "400 V, moc ≥ 100 kVA — dokument nie jest dołączony do repozytorium"
+)
+
+
+def _transformator_uziemiajacy(hv_kv: float) -> dict[str, Any]:
+    wzor = next(
+        r
+        for r in TRANSFORMER_SN_NN_15_04_DYN11 + TRANSFORMER_SN_NN_20_04_DYN11
+        if r["id"] == f"tr-sn-nn-{hv_kv:g}-04-100kva-dyn11"
+    )["params"]
+    z0_zygzaka = impedancja_zerowa_zygzaka_robocza_ohm(hv_kv)
+    return {
+        "id": f"tu-sn-nn-{hv_kv:g}-04-100kva-znyn11",
+        "name": f"Transformator uziemiający {hv_kv:g}/0,4 kV ZNyn11 · 100 kVA",
+        "params": {
+            "rated_power_mva": 0.100,
+            "voltage_hv_kv": hv_kv,
+            "voltage_lv_kv": 0.4,
+            "uk_percent": wzor["uk_percent"],
+            "pk_kw": wzor["pk_kw"],
+            "i0_percent": wzor["i0_percent"],
+            "p0_kw": wzor["p0_kw"],
+            "vector_group": "ZNyn11",
+            "cooling_class": "ONAN",
+            "tap_min": -1,
+            "tap_max": 1,
+            "tap_step_percent": 5.0,
+            "standard": "ENEA Zeszyt 1 §16",
+            "verification_status": "NIEWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "r0_ohm": z0_zygzaka.real,
+            "x0_ohm": z0_zygzaka.imag,
+            "wartosci_robocze": {
+                "r0_ohm": ZALOZENIE_Z0_ZYGZAKA,
+                "x0_ohm": ZALOZENIE_Z0_ZYGZAKA,
+            },
+            "source_reference": f"{_ZRODLO_ZESZYTU_1_P16}; napięcie zwarcia, straty obciążeniowe, "
+            f"straty jałowe i prąd jałowy: pozycja tr-sn-nn-{hv_kv:g}-04-100kva-dyn11",
+            "contract_version": "2.0",
+            "verification_note": (
+                "Pozycja TYPOWA transformatora uziemiającego zespołu uziemiającego GPZ — nie "
+                "egzemplarz producenta. Grupa, zaczepy, napięcie dolne i najmniejsza moc "
+                "uzwojenia potrzeb własnych z §16 Zeszytu 1; napięcie zwarcia, straty obciążeniowe, "
+                "straty jałowe i prąd jałowy — wartość robocza "
+                "z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje); "
+                "impedancja zerowa (rezystancja i reaktancja zerowa) na fazę po stronie SN — wartość "
+                "robocza (założenie "
+                "inżynierskie, `wartosci_robocze`). Rozporządzenie UE 548/2014 art. 1 ust. 2 "
+                "wyłącza transformatory uziemiające z wymagań Tier 2."
+            ),
+        },
+    }
+
+
+#: Transformatory uziemiające ZNyn11 15/0,4 kV i 20/0,4 kV (zespół uziemiający GPZ).
+TRANSFORMATORY_UZIEMIAJACE_ZNYN11: list[dict[str, Any]] = [
+    _transformator_uziemiajacy(15.0),
+    _transformator_uziemiajacy(20.0),
+]
+
+
+def transformator_uziemiajacy_dla_napiecia(hv_kv: float) -> dict[str, Any] | None:
+    """Pozycja transformatora uziemiającego dla napięcia szyny SN (``None`` — napięcie spoza
+    pozycji; dobór najbliższej pozycji byłby domysłem)."""
+    return next(
+        (
+            r
+            for r in TRANSFORMATORY_UZIEMIAJACE_ZNYN11
+            if abs(float(r["params"]["voltage_hv_kv"]) - float(hv_kv)) < 1e-9
+        ),
+        None,
+    )
+
+
 def get_all_transformer_types() -> list[dict[str, Any]]:
     """Zwraca wszystkie typy transformatorow w katalogu."""
-    return TRANSFORMER_WN_SN_110_15 + TRANSFORMER_WN_SN_110_20 + get_sn_nn_transformer_types()
+    return (
+        TRANSFORMER_WN_SN_110_15
+        + TRANSFORMER_WN_SN_110_20
+        + get_sn_nn_transformer_types()
+        + TRANSFORMATORY_UZIEMIAJACE_ZNYN11
+    )
 
 
 def get_wn_sn_transformer_types() -> list[dict[str, Any]]:

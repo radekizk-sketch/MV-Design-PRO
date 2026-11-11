@@ -14,6 +14,7 @@ import pytest
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
     BAY_TEMPLATES_GPZ_LINE,
+    SZABLON_ROZLACZNIKOWY_ROLI,
     config_ref_for_template,
     enumerate_canonical_configurations,
     functional_group_for_role,
@@ -67,15 +68,22 @@ def test_canonical_enumeration_covers_registry() -> None:
     # trójpołożeniowy, wyłącznik stały z odłącznikiem szynowym, wyłącznik wysuwny — karta
     # UX-04/POLE-LINIOWE-WZORZEC) + 1 szablon pola pomiaru napięcia SN rozdzielni GPZ wg ENEA
     # Z.17 (s.97 — źródło napięcia zerowego 3U₀ funkcji 67N pól liniowych, decyzja właściciela
-    # 2026-10-29) + 2 warianty pola źródłowego SN (W2b).
+    # 2026-10-29) + 2 warianty pola źródłowego SN (W2b) + 3 szablony pól GPZ ze źródła ENEA
+    # (karta POLA-GPZ-SZABLONY: Z.7 s.86 pole transformatora, Z.12 s.92 łącznik szyn, Z.16 s.96
+    # bateria kondensatorów) + 3 szablony pól zespołu uziemiającego (Z.13 s.93 dławik, Z.14 s.94
+    # dławik z rezystorem równoległym, Z.15 s.95 rezystor) + 5 pól rozłącznikowych RMU stacji
+    # SN/nN (karta SZABLONY-POL, rozszerzenie 2026-11-11: linia zasilająca, odpływowa,
+    # odgałęźna, transformatorowa z wkładkami, sprzęgło).
     assert config_ref_for_template("bay_template_line_in") in refs
+    for szablon in SZABLON_ROZLACZNIKOWY_ROLI.values():
+        assert config_ref_for_template(szablon.template_id) in refs
     assert config_ref_for_template("bay_template_transformer") in refs
     for szablon in BAY_TEMPLATES_GPZ_LINE:
         assert config_ref_for_template(szablon.template_id) in refs
     assert config_ref_for_template(BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id) in refs
     assert "kanoniczny:mv_source_cb" in refs
     assert "kanoniczny:mv_source_lbs" in refs
-    assert len(configs) == 10 + len(BAY_TEMPLATES_GPZ_LINE) + 1 + 2 == 22
+    assert len(configs) == 10 + len(BAY_TEMPLATES_GPZ_LINE) + 1 + 2 + 3 + 3 + 5 == 33
 
 
 def test_enumeration_is_deterministic() -> None:
@@ -99,6 +107,14 @@ def test_main_path_order_is_canonical() -> None:
     for c in catalog["canonical"] + catalog["producer"]:
         devices = c["primary_devices"]
         main = [d["kind"] for d in devices if d["placement"] not in ("GROUND_BRANCH", "OFF_PATH")]
+        if c.get("bay_role") == "COUPLER" and "CT" in main:
+            # Pole łącznika szyn (ENEA Zeszyt 1, Z.12 s.92): tor od sekcji A do sekcji B, łącznik
+            # odłączający po OBU stronach wyłącznika — za przekładnikiem prądowym kolejność
+            # kanoniczna jest lustrzana (łącznik od strony sekcji B).
+            koniec = main.index("CT") + 1
+            assert _is_subsequence(main[:koniec], _MAIN_ORDER), c["config_ref"]
+            assert _is_subsequence(main[koniec:], ["THREE_POSITION_SWITCH", "DS"]), c["config_ref"]
+            continue
         assert _is_subsequence(main, _MAIN_ORDER), c["config_ref"]
         # Aparaty boczne poza osią toru głównego.
         for d in devices:

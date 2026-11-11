@@ -99,6 +99,25 @@ export function wierszeKabla(type: CableType): WierszKatalogu[] {
   ];
 }
 
+/**
+ * Impedancja zerowa na fazę po stronie SN — wiersze wyłącznie dla pozycji, które ją wysyłają
+ * (transformator uziemiający ZNyn11: droga prądu zerowego zespołu uziemiającego). Wartość
+ * robocza pozycji typowej (`wartosci_robocze`, jakość ESTIMATED — zasada nr 4) jest nazwana
+ * w etykiecie, a jej podstawa stoi w osobnym wierszu; dana producenta — bez dopisku.
+ */
+function wierszeImpedancjiZerowej(type: TransformerType): WierszKatalogu[] {
+  if (type.r0_ohm == null && type.x0_ohm == null) return [];
+  const robocze = type.wartosci_robocze ?? {};
+  const etykieta = (nazwa: string, klucz: 'r0_ohm' | 'x0_ohm') =>
+    robocze[klucz] ? `${nazwa} (wartość robocza)` : nazwa;
+  const podstawy = [...new Set([robocze.r0_ohm, robocze.x0_ohm].filter((p): p is string => !!p))];
+  return [
+    liczbaKatalogu(etykieta('Rezystancja zerowa $R_0$', 'r0_ohm'), type.r0_ohm, 3, 'Ω'),
+    liczbaKatalogu(etykieta('Reaktancja zerowa $X_0$', 'x0_ohm'), type.x0_ohm, 3, 'Ω'),
+    ...podstawy.map((podstawa) => ({ label: 'Podstawa wartości roboczej $Z_0$', value: podstawa })),
+  ];
+}
+
 export function wierszeTransformatora(type: TransformerType): WierszKatalogu[] {
   const zaczepy =
     Number.isInteger(type.tap_min) && Number.isInteger(type.tap_max)
@@ -116,6 +135,7 @@ export function wierszeTransformatora(type: TransformerType): WierszKatalogu[] {
     tekstKatalogu('Chłodzenie', type.cooling_class),
     zaczepy,
     liczbaKatalogu('Krok zaczepu', type.tap_step_percent, 2, '%'),
+    ...wierszeImpedancjiZerowej(type),
   ];
 }
 

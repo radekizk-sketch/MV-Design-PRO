@@ -130,6 +130,15 @@ def powyzej_pasma_nn(voltage_kv: float | None) -> bool:
     return pasmo_napieciowe(voltage_kv) in ("SN", "WN")
 
 
+def w_pasmie_sn(voltage_kv: float | None) -> bool:
+    """Czy napięcie leży w paśmie SN (brak danej albo wartość niefizyczna ⇒ ``False``).
+
+    Czyta: predykat transformatora uziemiającego (``enm.punkt_neutralny_zespolu``,
+    uzwojenie górne w zygzak z punktem neutralnym w sieci SN — karta ZU-JEDEN-NOSNIK).
+    """
+    return pasmo_napieciowe(voltage_kv) == "SN"
+
+
 def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
     """Czy szyna NA PEWNO leży poza pasmem SN.
 

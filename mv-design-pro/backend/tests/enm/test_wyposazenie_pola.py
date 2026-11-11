@@ -3,7 +3,7 @@
 Cechy iloczynu:
 
 * stan danych wyposażenia ∈ {MODEL (tryb ``katalog``), PROPOZYCJA (tryb ``szablon`` —
-  dana przyjęta ``ESTIMATED``), BRAK_DANYCH (tryb ``wyczysc`` i pole świeżo utworzone)}
+  dana przyjęta ``ESTIMATED``), BRAK_DANYCH (tryb ``wyczysc``)}; pole świeżo utworzone — PROPOZYCJA (tor roboczy szablonu roli)
   × rola pola SN ∈ {IN, OUT, TR, FEEDER (wcięcie stacji), COUPLER, MEASUREMENT, OZE
   (``add_sn_bay``)} — każda kombinacja z sieci zbudowanej operacjami domenowymi;
 * przestrzeń katalogu aparatu ∈ {APARAT_SN × rodzaj katalogowy, CT, VT, OGRANICZNIK_SN,
@@ -29,6 +29,7 @@ from enm.wyposazenie_pola import (
     PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
+    dane_przyjete_wyposazenia,
     stan_danych_wyposazenia,
 )
 from network_model.catalog.gazy_fluorowane import czy_medium_z_gazem_fluorowanym
@@ -115,9 +116,10 @@ APARATY_ROLI: dict[str, list[tuple[str, str]]] = {
 
 
 def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
-    """GPZ → 2 odcinki; stacja wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR) i pola
-    COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Zwraca (migawka, rola → pole SN,
-    pole nN stacji)."""
+    """GPZ → 2 odcinki; stacja SEKCYJNA wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR, dwie
+    sekcje szyn i sprzęgło bez pola) i pola COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Pole
+    sprzęgła wiąże się ze sprzęgłem sekcji (decyzja architekta D3 — w stacji o jednej sekcji
+    byłoby odmową). Zwraca (migawka, rola → pole SN, pole nN stacji)."""
     enm = _odcinki(_gpz(), [200, 300])
     enm = wykonaj(
         enm,
@@ -125,7 +127,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
         {
             "segment_ref": _kable(enm)[-1]["ref_id"],
             "field_apparatus_catalog_ref": APARAT_POLA,
-            "station_type": "B",
+            "station_type": "D",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "FEEDER"],
@@ -194,9 +196,20 @@ def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
 
 
 @pytest.mark.parametrize("rola", ROLE)
-def test_pole_swieze_bez_szablonu_jest_brakiem_danych(siec: Any, rola: str) -> None:
+def test_pole_swieze_bez_szablonu_ma_tor_roboczy_z_szablonu_roli(siec: Any, rola: str) -> None:
+    """KOREKTA (rozszerzenie karty SZABLONY-POL 2026-11-11, `enm.aparaty_pol_sn`): pole świeże
+    bez szablonu dostaje aparaty szablonu roli — aparat główny z pozycji katalogu gałęzi
+    (MODEL), pozostałe jako wartości robocze (ZASADA NR 4: PROPOZYCJA, dane przyjęte
+    ESTIMATED). Dawniej pole miało pustą listę aparatów (BRAK_DANYCH) i rysowało się samym
+    łącznikiem. Intencja testu (stan danych z rekordu pola) bez zmian."""
     enm, pola, _ = siec
-    assert stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"]) == "BRAK_DANYCH"
+    aparaty = _pole(enm, pola[rola])["primary_devices"]
+    assert stan_danych_wyposazenia(aparaty) == "PROPOZYCJA"
+    (glowny,) = (a for a in aparaty if a.get("linked_ref"))
+    assert glowny["catalog_ref"] == APARAT_POLA
+    przyjete = dane_przyjete_wyposazenia(aparaty)
+    assert len(przyjete) == sum(1 for a in aparaty if not a.get("catalog_ref"))
+    assert {d["jakosc"] for d in przyjete} == {"ESTIMATED"}
 
 
 @pytest.mark.parametrize("rola", ROLE)
@@ -288,11 +301,14 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
 ) -> None:
     """Karta pola (E-11) czyta stan danych wyposażenia z odczytu pola — ta sama reguła,
     co odpowiedź operacji (`stan_danych_wyposazenia`), z REKORDU pola: pole świeże bez
-    rekordu aparatów to BRAK_DANYCH, choć rysunek pola uzupełnia aparaty z gałęzi."""
+    rekordu aparatów: pole świeże ma tor roboczy szablonu roli (PROPOZYCJA, dane przyjęte
+    ESTIMATED — `enm.aparaty_pol_sn`)."""
     enm, pola, _ = siec
     ref = pola[rola]
     if tryb == "swieze":
-        migawka, oczekiwany, przyjete = enm, "BRAK_DANYCH", []
+        aparaty_swieze = _pole(enm, ref)["primary_devices"]
+        migawka, oczekiwany = enm, "PROPOZYCJA"
+        przyjete = dane_przyjete_wyposazenia(aparaty_swieze)
     else:
         ladunek: dict[str, Any] = {"bay_ref": ref, "mode": tryb}
         if tryb == "katalog":
@@ -320,7 +336,7 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
     assert (
         oczekiwany
         == {
-            "swieze": "BRAK_DANYCH",
+            "swieze": "PROPOZYCJA",
             "katalog": "MODEL",
             "szablon": "PROPOZYCJA",
             "wyczysc": "BRAK_DANYCH",

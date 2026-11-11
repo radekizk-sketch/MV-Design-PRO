@@ -104,7 +104,10 @@ for rodzaj in ("3F", "2F", "2FG", "1F"):
     wynik["galeziowe"][rodzaj] = {
         nazwy[p["fault_node_id"]]: {
             "pominiete": p.get("wklady_pominiete") or [],
-            "kroki": [k for k in p["branch_flow_trace"] if k["key"] == "wklady_pominiete"],
+            # Szyna 0,4 kV zespołu w zwarciu doziemnym: brak drogi zerowej — bez śladu rozpływu.
+            "kroki": [
+                k for k in p.get("branch_flow_trace") or [] if k["key"] == "wklady_pominiete"
+            ],
         }
         for p in bieg.raw_result["results"]
     }

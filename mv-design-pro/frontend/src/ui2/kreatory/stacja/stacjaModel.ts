@@ -475,7 +475,41 @@ export function walidujFormularz(
       });
     }
   }
+  // Decyzja architekta D3: pole sprzęgła łączy dwie sekcje szyn SN — ten sam warunek co
+  // odmowa backendu `field.coupler_requires_two_sections` (stacja sekcyjna wcięta w odcinek
+  // ma dwie sekcje; każda inna stacja — jedną).
+  if (
+    snFields !== undefined
+    && snFields.some((f) => f.field_role === 'SPRZEGLO')
+    && !czyDwieSekcjeSzyn(data.station_type, tryb)
+  ) {
+    errors.push({
+      field: 'sn_fields_sprzeglo',
+      message:
+        'Pole sprzęgła łączy dwie sekcje szyn SN — ma je wyłącznie stacja sekcyjna wcięta '
+        + 'w odcinek. Zmień rodzaj stacji albo usuń pole sprzęgła.',
+    });
+  }
   return errors;
+}
+
+/**
+ * Czy stacja z kreatora ma dwie sekcje szyn SN (decyzja architekta D3): wyłącznie stacja
+ * sekcyjna wcięta w odcinek (`insert_station_on_segment_sn`, typ D buduje sekcję B
+ * i sprzęgło). Stacja na końcu ciągu ma jedną sekcję szyn — szynę końca odcinka.
+ */
+export function czyDwieSekcjeSzyn(stationType: TypStacji, tryb?: TrybUmiejscowienia): boolean {
+  return stationType === 'sectional' && tryb !== 'ENDPOINT_APPEND';
+}
+
+/** Role pól SN do wyboru w kreatorze: pole sprzęgła tylko w stacji o dwóch sekcjach szyn. */
+export function rolePolaWyboru(
+  role: readonly SnFieldRole[],
+  stationType: TypStacji,
+  tryb?: TrybUmiejscowienia,
+): SnFieldRole[] {
+  const dwieSekcje = czyDwieSekcjeSzyn(stationType, tryb);
+  return role.filter((rola) => rola !== 'SPRZEGLO' || dwieSekcje);
 }
 
 /**

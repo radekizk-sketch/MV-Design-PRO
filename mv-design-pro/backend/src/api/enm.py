@@ -1224,7 +1224,6 @@ _KOLEKCJE_Z_TABLICZKA: tuple[str, ...] = (
     "shunt_capacitors",
     "surge_arresters",
     "transformers",
-    "zespoly_uziemiajace",
 )
 
 

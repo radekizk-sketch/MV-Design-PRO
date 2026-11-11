@@ -112,3 +112,33 @@ export const ETYKIETA_PL_ROLI_UZIEMNIKA: Readonly<Record<RolaUziemnika, string>>
   neutral_point: 'uziemienie punktu neutralnego',
   surge_ground: 'gałąź uziemiająca ogranicznika',
 };
+
+/**
+ * Grupy połączeń IEC 60076-1 transformatora uziemiającego — uzwojenie GÓRNE w zygzak
+ * z wyprowadzonym punktem neutralnym (litera „ZN”, karta ZU-JEDEN-NOSNIK). Słownik backendu
+ * `enm.grupa_polaczen.GRUPY_POLACZEN_IEC60076` przefiltrowany predykatem
+ * `enm.punkt_neutralny_zespolu.grupa_transformatora_uziemiajacego` — przypięty do snapshotu
+ * OpenAPI (`SlownikGrupPolaczen.grupy`, test `uziemienie.openapi.test.ts`).
+ */
+export const GRUPY_TRANSFORMATORA_UZIEMIAJACEGO: readonly string[] = [
+  'ZNd0',
+  'ZNd6',
+  'ZNy1',
+  'ZNy5',
+  'ZNy7',
+  'ZNy11',
+  'ZNyn1',
+  'ZNyn5',
+  'ZNyn7',
+  'ZNyn11',
+];
+
+const ZBIOR_GRUP_TRANSFORMATORA_UZIEMIAJACEGO: ReadonlySet<string> = new Set(
+  GRUPY_TRANSFORMATORA_UZIEMIAJACEGO,
+);
+
+/** Czy grupa połączeń jest grupą transformatora uziemiającego (lustro
+ *  `grupa_transformatora_uziemiajacego`; grupa spoza słownika — nie). */
+export function grupaTransformatoraUziemiajacego(grupa: string | null | undefined): boolean {
+  return typeof grupa === 'string' && ZBIOR_GRUP_TRANSFORMATORA_UZIEMIAJACEGO.has(grupa);
+}

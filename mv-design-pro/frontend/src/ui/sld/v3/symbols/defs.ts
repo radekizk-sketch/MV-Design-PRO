@@ -161,10 +161,14 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   voltageIndicator: def('voltageIndicator', 16, 16, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
   ], 'Wskaźnik obecności napięcia (VPIS)'),
+  // Karta POLA-GPZ-SZABLONY: zacisk wyprowadzonego punktu neutralnego uzwojenia górnego
+  // (`punktNeutralny`, prawa krawędź na wysokości 2×GRID) — z niego wychodzi gałąź punktu
+  // neutralnego transformatora uziemiającego ZNyn11 pola ZU (Zeszyt 1 Z.13–Z.15). Zacisk
+  // obwodu, nie toru pola (`secondaryPorts`): wieże transformatorów go nie używają.
   transformer2W: def('transformer2W', 32, 40, [
     { name: 'hv', x: 16, y: 0, dir: 'N' },
     { name: 'lv', x: 16, y: 40, dir: 'S' },
-  ], 'Transformator dwuuzwojeniowy'),
+  ], 'Transformator dwuuzwojeniowy', [{ name: 'punktNeutralny', x: 32, y: 16, dir: 'E' }]),
   // UX-04/POLE-LINIOWE-WZORZEC: głowica jest aparatem dwuzaciskowym toru pola — zacisk
   // przewodu od strony aparatów (`top`, wierzchołek trójkąta) i zacisk kabla (`line`). Bez
   // zacisku górnego przewód port → port z portów ENM nie miał gdzie dojść i tor pola z portami

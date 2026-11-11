@@ -631,8 +631,13 @@
         "hv_bus_ref": "sn",
         "lv_bus_ref": "T1_zacisk",
         "lv_neutral": {
+          "dawca": null,
+          "dlawik": null,
           "r_ohm": 2.0,
+          "rezystor": null,
+          "spz": false,
           "type": "directly_grounded",
+          "wylaczenie_od_transformatorow_refs": [],
           "x_ohm": null
         },
         "name": "T1",
@@ -656,7 +661,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "dfec90a5a2222e494d08d1cea625d633565201a48ba4d64b0324b30a0485c10d",
+  "projection_hash": "e2755f1fecb6b2f30fc98974f81c18b02da914eb03e27ac362a93dec084362f4",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

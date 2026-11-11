@@ -62,16 +62,24 @@ vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
   navigateToSld: vi.fn(),
 }));
 
+// Pozycja katalogu transformatorów SN/nN (`TRAFO_SN_NN`) z grupą ZN — kształt
+// `TransformerType.to_dict` (karta ZU-JEDEN-NOSNIK: zespół jest transformatorem uziemiającym).
 const TU = {
-  id: 'TU_ZNYN11_15KV_PW160',
-  name: 'Transformator uziemiający ZNyn11 15 kV 160 kVA',
-  u_n_kv: 15,
-  s_n_kva: 160,
-  grupa_polaczen: 'ZNyn11',
-  r0_ohm: 1.5,
-  x0_ohm: 6,
-  s_pw_kva: 160,
-  u_pw_kv: 0.4,
+  id: 'tu-sn-nn-15-04-100kva-znyn11',
+  name: 'Transformator uziemiający ZNyn11 15/0,4 kV 100 kVA',
+  rated_power_mva: 0.1,
+  voltage_hv_kv: 15,
+  voltage_lv_kv: 0.4,
+  uk_percent: 4,
+  pk_kw: 1.75,
+  i0_percent: null,
+  p0_kw: null,
+  vector_group: 'ZNyn11',
+  tap_min: 0,
+  tap_max: 0,
+  tap_step_percent: 0,
+  r0_ohm: 0.637,
+  x0_ohm: 3.185,
   wartosci_robocze: { r0_ohm: 'katalog typowy', x0_ohm: 'katalog typowy' },
 };
 const DL = {

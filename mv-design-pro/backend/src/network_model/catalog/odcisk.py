@@ -77,7 +77,6 @@ _POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
 _PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(
     (
         "karty_widmowe",
-        "earthing_transformer_types",
         "arc_suppression_coil_types",
         "neutral_earthing_resistor_types",
     )

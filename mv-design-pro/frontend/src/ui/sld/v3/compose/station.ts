@@ -418,7 +418,11 @@ function bateriaSymbolu(
   bateria: MiniBlockBayDescriptor['bateria'],
 ): GlifBaterii | undefined {
   return symbolId === 'capacitorBank' && bateria
-    ? { uklad: bateria.uklad, przekladnikNiezrownowazenia: bateria.przekladnikNiezrownowazenia }
+    ? {
+        uklad: bateria.uklad,
+        przekladnikNiezrownowazenia: bateria.przekladnikNiezrownowazenia,
+        przekladnikiMiedzyfazowe: bateria.przekladnikiMiedzyfazowe,
+      }
     : undefined;
 }
 

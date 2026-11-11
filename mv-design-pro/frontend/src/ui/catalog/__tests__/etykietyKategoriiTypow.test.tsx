@@ -29,8 +29,10 @@ vi.mock('../api', async () => {
 const KATEGORIE = Object.keys(ETYKIETY_KATEGORII_TYPOW) as TypeCategory[];
 
 describe('ETYKIETY_KATEGORII_TYPOW', () => {
-  it('ma 26 kategorii, każdą z niepustą, unikalną polską etykietą bez kodu kategorii', () => {
-    expect(KATEGORIE).toHaveLength(26);
+  // 25 kategorii: transformator uziemiający zespołu nie jest osobną kategorią — to pozycja
+  // kategorii transformatorów (grupa ZNyn11, karta ZU-JEDEN-NOSNIK).
+  it('ma 25 kategorii, każdą z niepustą, unikalną polską etykietą bez kodu kategorii', () => {
+    expect(KATEGORIE).toHaveLength(25);
     const etykiety = KATEGORIE.map((k) => ETYKIETY_KATEGORII_TYPOW[k]);
     expect(new Set(etykiety).size).toBe(etykiety.length);
     for (const kategoria of KATEGORIE) {

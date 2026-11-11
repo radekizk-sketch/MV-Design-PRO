@@ -166,6 +166,9 @@ def test_odcinek_z_szyny_sekcji_zawsze_przez_pole(operacja: str, rodzaj: str, st
         assert pole_celu in wynik["changes"]["created_element_ids"]
         pole_nowe = next(p for p in model["bays"] if p["ref_id"] == pole_celu)
         assert pole_nowe["bay_role"] in ROLE_LINIOWE
+        # Operacja projektowa nadaje stan obiektu jawnie (jedyny builder pola, argument
+        # obowiązkowy) — pole utworzone przy przyłączeniu odcinka i jego aparat są PROJEKTOWANE.
+        assert pole_nowe["stan_obiektu"] == "PROJEKTOWANY"
         zacisk = zacisk_pola(pole_nowe)
         if wzorzec is None:
             assert zacisk in (None, szyna)

@@ -399,6 +399,13 @@ def test_realny_maly_prad_nad_progiem_zostaje_na_liscie(rodzaj: str) -> None:
     # Prąd mikrogeneratora za 5 m kabla: kilka µA — fizyka, nie szum; NAD progiem.
     assert PROG < realne[0]["i_contrib_a"] < 1e-4
     for punkt in punkty.values():
+        if punkt["ikss_a"] is None:
+            # Szyna 0,4 kV transformatora uziemiającego w zwarciu doziemnym: punkt neutralny
+            # uzwojenia dolnego bez uziemienia — brak drogi zerowej, bez wkładów (karta
+            # ZU-JEDEN-NOSNIK).
+            assert punkt["brak_wyniku_zerowego"]["przyczyna"] == "brak_drogi"
+            assert not punkt["branch_contributions"]
+            continue
         wklady = punkt["branch_contributions"]
         pominiete = punkt.get("wklady_pominiete") or []
         assert all(w["i_contrib_a"] >= PROG for w in wklady)

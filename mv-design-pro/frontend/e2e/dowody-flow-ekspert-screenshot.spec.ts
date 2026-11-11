@@ -174,8 +174,8 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     // w realnej migawce nie ma; ta scena uziemia stron DN transformatora).
     const migawka = fixtura('skladowe_scena_migawka').snapshot;
     const nazwyElementow: string[] = [
+      // Zespół uziemiający jest transformatorem uziemiającym (jeden nośnik) — w `transformers`.
       ...(migawka.sources ?? []),
-      ...(migawka.zespoly_uziemiajace ?? []),
       ...(migawka.transformers ?? []),
     ]
       .map((element: { name?: string }) => element.name)

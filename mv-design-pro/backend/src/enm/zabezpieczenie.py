@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, FunkcjaEaz
 from network_model.catalog.obwody_wtorne_pola import (
     RODZAJ_APARATU_WEJSCIA,
+    RODZAJE_WEJSCIA_POZA_POLEM,
     ObwodyWtornePola,
 )
 from network_model.catalog.przekladniki import zaczepy_przekladnika
@@ -316,6 +317,23 @@ def brakujace_wejscia(sterownik: object, kod: str) -> tuple[str, ...]:
     return tuple(w for w in wpis.wejscia_wymagane if w not in dostepne)
 
 
+def zdejmij_uklady_bez_wejsc(wejscia: dict[str, Any]) -> None:
+    """Układ prądu zerowego (``i0_uklad``) i źródła napięcia zerowego (``u0_uklad``), który nie
+    realizuje już swojego wejścia, znika (zmienia ``wejscia`` w miejscu).
+
+    JEDNA reguła z odczytem wejść (`wejscia_funkcji_w_aparacie`): układ zostaje dokładnie wtedy,
+    gdy odczyt daje z niego wejście ``3I0``/``3U0`` — układ Holmgreena bez ``ct_ref``, układ
+    Ferrantiego bez ``i0_ct_ref``, otwarty trójkąt bez ``u0_vt_ref`` i napięcie zerowe z napięć
+    fazowych bez ``vt_ref`` nie zostają w sterowniku po wymianie albo usunięciu aparatu.
+    Wołają ją pisarz z szablonu (`ustaw_funkcje_pola`) i kaskada usunięcia elementu
+    (`domain_operations.delete_element`)."""
+    realizowane = wejscia_funkcji_w_aparacie(wejscia)
+    if wejscia.get("i0_uklad") and "3I0" not in realizowane:
+        wejscia.pop("i0_uklad")
+    if wejscia.get("u0_uklad") and "3U0" not in realizowane:
+        wejscia.pop("u0_uklad")
+
+
 def funkcje_zasilane_z_aparatu(sterownik: object, device_ref: str) -> list[str]:
     """Kody włączonych funkcji, które mierzą z aparatu (przekładnik przypięty do ich wejścia)."""
     wejscia = wejscia_funkcji_w_aparacie(_pole(sterownik, "wejscia") or {})
@@ -513,7 +531,10 @@ def _wiazania_z_obwodow(
                     wyzwolenia.setdefault(p.funkcja, []).append(wylacznik_obwodu)
             zerowe = "3I0" in FUNKCJE_EAZ[p.funkcja].wejscia_wymagane
             for w in p.wejscia:
-                if w.aparat is None:
+                if w.aparat is None or w.rodzaj in RODZAJE_WEJSCIA_POZA_POLEM:
+                    # Przekładnik spoza celi pola (gałąź rezystora punktu neutralnego, Z.14/Z.15)
+                    # nie jest aparatem pola — ten sam predykat co walidacja szablonu
+                    # (`bay_templates._sprawdz_obwody_wtorne`) i ocena pola (`pole_liniowe_gpz`).
                     continue
                 ref = po_oznaczeniu.get((w.aparat, RODZAJ_APARATU_WEJSCIA[w.rodzaj]))
                 if ref is None:
@@ -688,6 +709,11 @@ def _niezgodne_wejscia(
     return wynik
 
 
+#: Klucze wejść układu prądu zerowego sterownika — układ (``HOLMGREEN``/``FERRANTI``) i przekładnik
+#: prądu zerowego układu Ferrantiego; pisarz `ustaw_funkcje_pola` przenosi je z wzorca razem.
+_WEJSCIA_UKLADU_I0: tuple[str, ...] = ("i0_uklad", "i0_ct_ref")
+
+
 #: Znacznik „źródło 3U₀ bez zmian" pisarza `ustaw_funkcje_pola` (zmiana szablonu albo aparatów
 #: nie dotyka deklaracji projektanta).
 ZACHOWAJ_ZRODLO_U0: object = object()
@@ -785,13 +811,22 @@ def ustaw_funkcje_pola(
             wejscia.pop(klucz, None)
     if not wejscia.get("ct_strony_2_refs"):
         wejscia.pop("ct_strony_2_refs", None)
-    if wejscia.get("i0_uklad") == "FERRANTI" and not wejscia.get("i0_ct_ref"):
-        wejscia.pop("i0_uklad")
-    if wejscia.get("u0_uklad") == "OTWARTY_TROJKAT" and not wejscia.get("u0_vt_ref"):
-        wejscia.pop("u0_uklad")
     for klucz, wartosc in wejscia_szablonu.items():
+        if klucz in _WEJSCIA_UKLADU_I0:
+            continue
         if not wejscia.get(klucz):
             wejscia[klucz] = wartosc
+    # Układ, który po wymianie aparatów i wiązaniach wzorca nie realizuje swojego wejścia
+    # (Holmgreen bez przekładnika fazowego, Ferranti bez przekładnika prądu zerowego), znika
+    # PRZED wiązaniem układu prądu zerowego z wzorca — wzorzec wiąże wtedy swój układ.
+    zdejmij_uklady_bez_wejsc(wejscia)
+    if not wejscia.get("i0_uklad") and wejscia_szablonu.get("i0_uklad"):
+        # Układ prądu zerowego i jego przekładnik są JEDNĄ deklaracją (walidator sterownika:
+        # przekładnik prądu zerowego wyłącznie w układzie Ferrantiego) — wiązanie wzorca wchodzi
+        # w całości albo wcale; układ nadany wcześniej zostaje razem ze swoim przekładnikiem.
+        for klucz in _WEJSCIA_UKLADU_I0:
+            if wejscia_szablonu.get(klucz):
+                wejscia[klucz] = wejscia_szablonu[klucz]
     if zrodlo_u0_ref:
         # Deklaracja projektanta (albo bieżąca, gdy bez zmian) wygrywa z wcześniejszym
         # wiązaniem — zmiana źródła 3U₀ przepina wejście.

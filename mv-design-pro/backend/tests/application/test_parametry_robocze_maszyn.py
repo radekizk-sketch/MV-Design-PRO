@@ -117,7 +117,7 @@ from tests.network_model.solvers.test_zalozenia_zaniku_werdykt import (
     _migawka_ze_stacja,
     _oceny_pola,
 )
-from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
+from tests.utils.zespol_uziemiajacy import dodaj_zespol_o_impedancji_zerowej
 
 # =============================================================================
 # Wyrocznia i budowa sieci
@@ -727,11 +727,10 @@ def test_zwarcie_jednofazowe_bez_wpisow_tylko_ib(maszyna: str) -> None:
     migawka, wezel, _ = _migawka_a(maszyna, "propozycja", p_mw=0.5)
     # Sieć 33 kV za transformatorem YNd11 nie ma drogi prądu zerowego (trójkąt po stronie SN) —
     # zwarcie doziemne dostaje wtedy nazwaną przyczynę braku wyniku, nie liczbę (karta
-    # UX-04/POLE-ZU-SKLADOWA-ZEROWA). Zespół uziemiający na szynie maszyny daje drogę zerową.
+    # UX-04/POLE-ZU-SKLADOWA-ZEROWA). Transformator uziemiający zespołu na szynie maszyny daje
+    # drogę zerową (karta ZU-JEDEN-NOSNIK).
     szyna = next(g["bus_ref"] for g in migawka["generators"])
-    migawka["zespoly_uziemiajace"] = [
-        zespol_o_impedancji_zerowej("zu-33", szyna, r0_ohm=2.0, x0_ohm=20.0, u_kv=33.0)
-    ]
+    dodaj_zespol_o_impedancji_zerowej(migawka, "zu-33", szyna, r0_ohm=2.0, x0_ohm=20.0, u_kv=33.0)
     wpisy_3f = _wiersz(_bieg_a(migawka), wezel)["parametry_robocze_maszyn"]
     wpisy_1f = _wiersz(_bieg_a(migawka, rodzaj="SC_1F"), wezel)["parametry_robocze_maszyn"]
     assert [w for w in wpisy_3f if w["wielkosci"] != ["ib"]] == wpisy_1f

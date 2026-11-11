@@ -276,6 +276,11 @@ BACKEND = ROOT / "backend"
 # scalone = dokladnie 3 bledy `arg-type` w `application/protection_read_model.py`
 # (`ProtectionFunctionSummary` z `Sequence[str]`) — modul przepisany na sterownik pola
 # (`ProtectionAssignment.funkcje`, karta OCHRONA-JEDNO-ZRODLO); plik bez bledow. Zero nowych.
+# Scalenie karty ZU-JEDEN-NOSNIK (`7f041331c`, sama karta: 163/21 -> 162/20 na swojej bazie)
+# do drzewa integracji (2026-11-11): 159/19 bez zmiany. POMIAR `mypy src --no-incremental`
+# (mypy 1.19.1) na pierwszym rodzicu scalenia (`git archive`: 159/19) i na drzewie scalonym
+# (159/19); multizbior (plik, komunikat) identyczny w obie strony — blad `assignment`
+# w `enm/pole_katalogowe.py`, ktory karta zdjela, strona integracji zdjela juz wczesniej.
 BASELINE_ERRORS = 159
 BASELINE_FILES = 19
 

@@ -15,8 +15,8 @@ import type {
   Measurement,
   Source,
   Substation,
+  GroundingConfig,
   Transformer,
-  ZespolUziemiajacy,
 } from '../../../../../types/enm';
 import { buildCanonicalGpzProps, flagiStatusuPola, rolaPolaGpz } from '../enmToCanonicalGpzAdapter';
 import { czyPoleKabloweGpz } from '../canonicalGpzModel';
@@ -41,8 +41,6 @@ type EnmFragment = Pick<
   // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
   // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
   | 'sources'
-  // Karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN z zespołów uziemiających stacji.
-  | 'zespoly_uziemiajace'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -1195,17 +1193,29 @@ describe('buildCanonicalGpzProps — napięcie sekcji bez wartości domyślnej',
 });
 
 /* ---------------------------------------------------------------------------
-   Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: aparat punktu neutralnego sieci SN na schemacie
-   GPZ — WYŁĄCZNIE zainstalowany element zespołu uziemiającego na szynie SN stacji albo
-   punkt neutralny uzwojenia SN transformatora. Iloczyn cech: element zespołu {dławik,
-   rezystor, dławik ‖ rezystor, bezpośrednie, bez elementu} × nośnik {zespół na szynie
-   stacji, zespół na szynie innej stacji, uzwojenie SN TR, źródło 110 kV z opisem
-   punktu neutralnego}.
+   Karty UX-04/POLE-ZU-SKLADOWA-ZEROWA i ZU-JEDEN-NOSNIK: aparat punktu neutralnego sieci SN
+   na schemacie GPZ — WYŁĄCZNIE zainstalowany nośnik: transformator uziemiający (grupa ZN,
+   wyposażenie `hv_neutral`) albo punkt neutralny uzwojenia SN transformatora stacji. JEDEN
+   nośnik = JEDEN symbol: transformator uziemiający z polem ZU rysuje stos pola (widok pola
+   `zespolUziemiajacy`), przy sekcji go nie powtarzamy.
+   Iloczyn cech: wyposażenie punktu neutralnego {Z.13 dławik, Z.15 rezystor, Z.14 dławik ‖
+   rezystor, bezpośrednie, bez elementu} × przyłączenie {szyna SN stacji bez pola ZU, pole ZU
+   stacji, szyna SN innej stacji} × uzwojenie SN TR {brak, uziemione} × źródło 110 kV z opisem
+   punktu neutralnego.
    --------------------------------------------------------------------------- */
 
 describe('buildCanonicalGpzProps — aparat punktu neutralnego sieci SN z modelu', () => {
-  function zespol(busRef: string, elementy: Partial<ZespolUziemiajacy>): ZespolUziemiajacy {
-    return { id: 'zu-1', ref_id: 'zu-1', name: 'ZU 1', tags: [], meta: {}, bus_ref: busRef, ...elementy } as ZespolUziemiajacy;
+  function transformatorUziemiajacy(hvBusRef: string, hvNeutral: GroundingConfig | null): Transformer {
+    return transformer('tu-1', {
+      name: 'Transformator uziemiający',
+      hv_bus_ref: hvBusRef,
+      lv_bus_ref: 'bus-pw',
+      sn_mva: 0.1,
+      uhv_kv: 15,
+      ulv_kv: 0.4,
+      vector_group: 'ZNyn11',
+      hv_neutral: hvNeutral,
+    });
   }
   function siec(over: Partial<EnmFragment>): EnmFragment {
     return {
@@ -1217,29 +1227,80 @@ describe('buildCanonicalGpzProps — aparat punktu neutralnego sieci SN z modelu
           gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }],
         }),
       ],
-      buses: [bus('bus-110', 110), bus('bus-15', 15), bus('bus-obca', 15)],
+      buses: [bus('bus-110', 110), bus('bus-15', 15), bus('bus-obca', 15), bus('bus-pw', 0.4)],
       transformers: [transformer('tr-1')],
       ...over,
     };
   }
+  function polaZu(zTransformatorem: boolean): Bay[] {
+    return [
+      bay('zu-pole', 'ZU', 'g', 'bus-15', {
+        gpz_section_id: 's1',
+        equipment_refs: zTransformatorem ? ['tu-1'] : [],
+      }),
+    ];
+  }
 
-  const ZESPOLY: ReadonlyArray<readonly [string, Partial<ZespolUziemiajacy>, unknown]> = [
-    ['dławik (Z.13)', { dlawik: { i_min_a: 40, i_max_a: 400 } }, { kind: 'coil' }],
-    ['rezystor (Z.15)', { rezystor: { r_ohm: 43.3 } }, { kind: 'resistor', rOhm: 43.3 }],
-    ['dławik ‖ rezystor (Z.14)', { dlawik: {}, rezystor: { r_ohm: 50 } }, { kind: 'coil', rOhm: 50 }],
-    ['uziemienie bezpośrednie', { uziemienie_bezposrednie: true }, { kind: 'direct' }],
-    ['bez elementu', {}, null],
+  const WYPOSAZENIE: ReadonlyArray<readonly [string, GroundingConfig | null, unknown, string | null]> = [
+    [
+      'dławik (Z.13)',
+      { type: 'petersen_coil', dlawik: { catalog_ref: 'dg', i_nastawy_a: 100, awsc: { i_wymuszany_a: 30 } } },
+      { kind: 'coil' },
+      'Z13',
+    ],
+    ['rezystor (Z.15)', { type: 'resistor_grounded', rezystor: { catalog_ref: 'rz', r_ohm: 43.3 } }, { kind: 'resistor', rOhm: 43.3 }, 'Z15'],
+    [
+      'dławik ‖ rezystor (Z.14)',
+      { type: 'petersen_coil', dlawik: { catalog_ref: 'dg' }, rezystor: { catalog_ref: 'rz', r_ohm: 50 } },
+      { kind: 'coil', rOhm: 50 },
+      'Z14',
+    ],
+    ['uziemienie bezpośrednie', { type: 'directly_grounded' }, { kind: 'direct' }, null],
+    ['bez elementu', null, null, null],
   ];
-  for (const [nazwa, elementy, oczekiwane] of ZESPOLY) {
-    it(`zespół na szynie SN stacji: ${nazwa}`, () => {
-      const props = buildCanonicalGpzProps(siec({ zespoly_uziemiajace: [zespol('bus-15', elementy)] }), 'g');
+  for (const [nazwa, wyposazenie, oczekiwane, wariant] of WYPOSAZENIE) {
+    it(`transformator uziemiający na szynie SN stacji bez pola ZU: ${nazwa} — symbol przy sekcji`, () => {
+      const props = buildCanonicalGpzProps(
+        siec({ transformers: [transformer('tr-1'), transformatorUziemiajacy('bus-15', wyposazenie)], bays: polaZu(false) }),
+        'g',
+      );
       expect(props.snNeutralEarthing).toEqual(oczekiwane);
+    });
+
+    it(`transformator uziemiający w polu ZU stacji: ${nazwa} — symbol w stosie pola, nie przy sekcji`, () => {
+      const props = buildCanonicalGpzProps(
+        siec({ transformers: [transformer('tr-1'), transformatorUziemiajacy('bus-15', wyposazenie)], bays: polaZu(true) }),
+        'g',
+      );
+      expect(props.snNeutralEarthing).toBeNull();
+      const pole = props.sections.flatMap((s) => s.bays).find((b) => b.bayRef === 'zu-pole');
+      expect(pole?.zespolUziemiajacy?.transformatorRef).toBe('tu-1');
+      expect(pole?.zespolUziemiajacy?.wariant ?? null).toBe(wariant);
+    });
+
+    it(`transformator uziemiający w polu ZU × uzwojenie SN TR uziemione: ${nazwa} — dwa nośniki, dwa symbole`, () => {
+      const props = buildCanonicalGpzProps(
+        siec({
+          transformers: [
+            transformer('tr-1', { lv_neutral: { type: 'directly_grounded' } }),
+            transformatorUziemiajacy('bus-15', wyposazenie),
+          ],
+          bays: polaZu(true),
+        }),
+        'g',
+      );
+      expect(props.snNeutralEarthing).toEqual({ kind: 'direct', rOhm: undefined, xOhm: undefined });
     });
   }
 
-  it('zespół na szynie SN innej stacji nie jest aparatem tej stacji', () => {
+  it('transformator uziemiający na szynie SN innej stacji nie jest aparatem tej stacji', () => {
     const props = buildCanonicalGpzProps(
-      siec({ zespoly_uziemiajace: [zespol('bus-obca', { rezystor: { r_ohm: 43.3 } })] }),
+      siec({
+        transformers: [
+          transformer('tr-1'),
+          transformatorUziemiajacy('bus-obca', { type: 'resistor_grounded', rezystor: { r_ohm: 43.3 } }),
+        ],
+      }),
       'g',
     );
     expect(props.snNeutralEarthing).toBeNull();
@@ -1262,14 +1323,22 @@ describe('buildCanonicalGpzProps — aparat punktu neutralnego sieci SN z modelu
     expect(props.snNeutralEarthing).toBeNull();
   });
 
-  it('zespół ma pierwszeństwo przed uzwojeniem transformatora', () => {
+  it('transformator uziemiający bez pola ZU ma pierwszeństwo przed uzwojeniem transformatora', () => {
     const props = buildCanonicalGpzProps(
       siec({
-        transformers: [transformer('tr-1', { lv_neutral: { type: 'directly_grounded' } })],
-        zespoly_uziemiajace: [zespol('bus-15', { dlawik: {} })],
+        transformers: [
+          transformer('tr-1', { lv_neutral: { type: 'directly_grounded' } }),
+          transformatorUziemiajacy('bus-15', { type: 'petersen_coil', dlawik: {} }),
+        ],
       }),
       'g',
     );
     expect(props.snNeutralEarthing).toEqual({ kind: 'coil' });
+  });
+
+  it('zygzak bez wyprowadzonego punktu neutralnego (Zd0) nie jest transformatorem uziemiającym', () => {
+    const tu = { ...transformatorUziemiajacy('bus-15', { type: 'petersen_coil', dlawik: {} }), vector_group: 'Zd0' };
+    const props = buildCanonicalGpzProps(siec({ transformers: [transformer('tr-1'), tu] }), 'g');
+    expect(props.snNeutralEarthing).toBeNull();
   });
 });

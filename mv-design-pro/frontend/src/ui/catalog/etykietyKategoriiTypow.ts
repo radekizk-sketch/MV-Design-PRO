@@ -31,7 +31,6 @@ export const ETYKIETY_KATEGORII_TYPOW: Readonly<Record<TypeCategory, string>> = 
   ZKSN: 'Typy złączy kablowych SN (ZKSN)',
   SURGE_ARRESTER: 'Typy ograniczników przepięć SN',
   SHUNT_CAPACITOR: 'Typy baterii kondensatorów SN',
-  EARTHING_TRANSFORMER: 'Typy transformatorów uziemiających SN',
   ARC_SUPPRESSION_COIL: 'Typy dławików gaszących SN',
   NEUTRAL_EARTHING_RESISTOR: 'Typy rezystorów uziemiających SN',
 };

@@ -179,41 +179,7 @@ ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
 #: zmieniła. Pełny odcisk katalogu domyślnego po karcie:
 #: 179c98a7c33b3b79321978aa3ea1afefb8ad2636d5efca674424606ae251f035 (pomiar po korekcie
 #: pochodzenia przekładników pola liniowego — `source_reference` typów ogólnych OSD).
-#: (Odcisk zrzutu po samej karcie, na jej drzewie: 4d6c88a2ac72db91f224c06af7425475110c661b544488524654f0128d2070de;
-#: po scaleniu z kartą UX-04/POLE-BKR-MODEL na gałęzi karty:
-#: 81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e.)
-#: Scalenie karty do drzewa integracji (2026-11-11, po kartach ZU i BKR): zmiany katalogu karty
-#: pola liniowego są rozłączne z kartą ZU — POMIAR: zrzut drzewa scalonego po
-#: ``_cofnij_karte_pola_liniowego`` daje DOKŁADNIE ``ODCISK_PO_KARCIE_ZU`` (strona integracji).
-#: Pełny odcisk katalogu domyślnego po scaleniu:
-#: 12a624f182d5415b5cb36e50f00ad78663a2aa7f7d68f86889fa05982225cc93.
-ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA = (
-    "c97fa1019b48feb4772bcc7986b36de201c1ab875e32fc55a522401e5bb98e4b"
-)
-#: Scalenie do drzewa integracji (2026-11-11), proza słowami (strażnik
-#: `backend_proza_symboli_guard` karty ZU nad tekstami karty pola liniowego): `source_reference`
-#: dwóch typów ogólnych OSD przekładnika prądowego pola liniowego mówi „prąd znamionowy
-#: krótkotrwały wytrzymywany 20 kA przez 1 s" zamiast symbolu „Ith 20 kA/1 s". POMIAR: zrzut po
-#: cofnięciu tych 2 liści (``_cofnij_proze_slowami``) daje DOKŁADNIE
-#: ``ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA`` — żadna liczba katalogu się nie zmieniła.
-#: Pełny odcisk katalogu domyślnego:
-#: 3a2a8c591017a64036d818d714398bbca65df93c339571664be04d0804d62a36.
-ODCISK_PO_PROZIE_SLOWAMI = "8ca1f31cdb677174f57b648c542ab4ca38943e64edfd3719837311218e1b323c"
-_PROZA_ITH_SLOWAMI = ("prąd znamionowy krótkotrwały wytrzymywany 20 kA przez 1 s", "Ith 20 kA/1 s")
-
-
-def _cofnij_proze_slowami(zrzut: dict[str, object]) -> int:
-    """Cofa zapis słowami w `source_reference` typów CT (liczba cofniętych liści)."""
-    nowy, dawny = _PROZA_ITH_SLOWAMI
-    liczba = 0
-    for postac in zrzut["ct_types"].values():  # type: ignore[attr-defined]
-        zrodlo = postac.get("source_reference")
-        if isinstance(zrodlo, str) and nowy in zrodlo:
-            postac["source_reference"] = zrodlo.replace(nowy, dawny)
-            liczba += 1
-    return liczba
-
-
+ODCISK_PO_KARCIE_POLA_LINIOWEGO = "4d6c88a2ac72db91f224c06af7425475110c661b544488524654f0128d2070de"
 ROZLACZNIKI_BEZ_GAZU_F = ("sw-ls-ogolny-prozniowy-12kv-630a", "sw-ls-ogolny-prozniowy-24kv-630a")
 #: Ta sama karta: dwa typy ogólne OSD przekładnika prądowego pola liniowego GPZ (Z.10/Z.11.1
 #: jednordzeniowy, Z.11 trójrdzeniowy) z jawną listą rdzeni.
@@ -248,6 +214,14 @@ def _cofnij_karte_pola_liniowego(zrzut: dict[str, object]) -> None:
 #: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110``. Pełny odcisk katalogu domyślnego po karcie:
 #: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
 ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
+#: Scalenie gałęzi UI/UX (karta UX-04/POLE-BKR-MODEL) z kartą UX-04/POLE-LINIOWE-WZORZEC
+#: (2026-10-29): obie karty zmieniły rozłączne liście katalogu (bateria BKR —
+#: ``shunt_capacitor_types``; pole liniowe — rozłączniki próżniowe, ``medium``, przekładniki
+#: pola liniowego). Dowód obiema drogami w teście niżej. Pełny odcisk katalogu domyślnego po
+#: scaleniu: 744734f2cf6f5084f9fee0a2872a226ce4715992d587d4d0efe293fdf5c2e5cd.
+ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR = (
+    "81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e"
+)
 _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
 #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
 #: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
@@ -259,7 +233,7 @@ _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości 
 #: trzech przestrzeni zespołu daje dokładnie odcisk po baterii BKR). Pełny odcisk katalogu
 #: domyślnego po scaleniu obu kart (pomiar 2026-10-29):
 #: 98083114a6700897c31c2546658f28e926ff8e083fdf79c644f517c06d1b4e33.
-ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4"
+#: Odcisk po karcie (bez tekstów karty ZU): 1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127bf8ad95394d3630fa4.
 #: Karta ZU, punkt 4 (2026-11-04): proza katalogu dla projektanta słowami zamiast symboli
 #: spłaszczonych (`I_th`, `P0/Pk/u_k`, `R′0 = R′1 + …`, `cos φ`). Dowód liść po liściu (zrzut
 #: kanoniczny bazy karty `01c5def16` vs drzewo karty): identyczny zbiór kluczy i długości list,
@@ -268,9 +242,60 @@ ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127
 #: source_reference, note, source_ref i opisy założeń map ``wartosci_robocze``), a każdy
 #: z nich jest jednoznacznie odwracalny parą (tekst po karcie → tekst przed kartą)
 #: z ``teksty_katalogu_przed_karta_zu.json``. Zrzut z cofniętymi tekstami daje DOKŁADNIE
-#: ``ODCISK_PO_ZESPOLE_UZIEMIAJACYM``.
-ODCISK_PO_KARCIE_ZU = "ba710f9ec339f33eafeebd9b0f57a37bdee73a36f6419dfe89f7348050fc06de"
-LICZBA_TEKSTOW_KARTY_ZU = 888
+#: odcisk po zespole uziemiającym (wyżej, przed kartą ZU-JEDEN-NOSNIK). Pełny odcisk po karcie ZU:
+#: ba710f9ec339f33eafeebd9b0f57a37bdee73a36f6419dfe89f7348050fc06de.
+#: Karta ZU-JEDEN-NOSNIK (2026-11-11, scalenie modelu A zespołu z kartą POLA-GPZ-SZABLONY):
+#: katalog = teksty karty ZU (słowa zamiast symboli — także w uwagach weryfikacji dwunastu
+#: typów ogólnych OSD przekładników prądowych dodanych kartą POLA-GPZ-SZABLONY; trzy pary
+#: tekstów dopisane do ``teksty_katalogu_przed_karta_zu.json``) + pozycje i pola karty
+#: POLA-GPZ-SZABLONY − przestrzeń ``earthing_transformer_types`` (transformator uziemiający
+#: ZNyn11 jest pozycją ``TRAFO_SN_NN``). Dowód liść po liściu (zrzut drzewa karty vs zrzut
+#: gałęzi POLA-GPZ-SZABLONY ``44b3f173e``): po cofnięciu tekstów i wycięciu przestrzeni dławików
+#: i rezystorów różnic brak — dalej łańcuch karty POLA-GPZ-SZABLONY bez zmian. Pośrednie odciski
+#: karty ZU (z przestrzenią transformatorów uziemiających) nie są już osiągalne — zostają
+#: w komentarzach jako zapis historii łańcucha. Teksty karty ZU: 882 liście z gałęzi modelu A
+#: (888 minus 6 liści skasowanej przestrzeni) + 12 uwag weryfikacji typów ogólnych OSD + 10 liści
+#: prozy pozycji karty POLA-GPZ-SZABLONY przepisanej słowami po scaleniu (strażnik prozy
+#: backendu, pin 0): odnośniki źródłowe przekładników ogólnych OSD i pól GPZ (prąd znamionowy
+#: krótkotrwały wytrzymywany zamiast `Ith`), uwaga weryfikacji i odnośnik transformatora
+#: uziemiającego (napięcie zwarcia, straty, prąd jałowy, rezystancja i reaktancja zerowa zamiast
+#: `u_k, P_k, P0, i0`, `R0/X0`) i opis założenia impedancji zerowej zygzaka w mapach
+#: ``wartosci_robocze`` (wzór słowami) — sześć par dopisanych do
+#: ``teksty_katalogu_przed_karta_zu.json``. Pomiar: zrzut drzewa z cofniętą prozą (kopia
+#: ``backend/src`` z tekstami sprzed przepisania) daje dokładnie poprzedni odcisk tego ogniwa
+#: (7a592698bfe8db2f8f7edb9083f5a9766c225e19ab9f308459cdf2fe8d64c9af), różnice wyłącznie
+#: w tych 10 liściach tekstowych, zero zmian liczb, kluczy i identyfikatorów.
+ODCISK_PO_KARCIE_ZU_JEDEN_NOSNIK = (
+    "f82c42d747b2ec42aaf992184c073261b5786ccdc3b03ad9eb54094292793d3c"
+)
+#: Scalenie karty ZU-JEDEN-NOSNIK do drzewa integracji (2026-11-11). Strona integracji niosła
+#: własny łańcuch po scaleniu karty pola liniowego (ogniwa „po scaleniu pola liniowego
+#: z integracją" c97fa101… i „po prozie słowami" 8ca1f31c… — oba nieosiągalne po kasacji
+#: przestrzeni transformatorów uziemiających). POMIAR liść po liściu (zrzut drzewa scalonego vs
+#: zrzut strony karty ``7f041331c``, `git archive`): różnią się WYŁĄCZNIE 2 liście
+#: ``source_reference`` typów ogólnych OSD przekładnika prądowego pola liniowego — zapis strony
+#: integracji „20 kA przez 1 s" (proza słowami, kanon komunikatów) zamiast „20 kA/1 s" strony
+#: karty. Cofnięcie tych liści (``_cofnij_zapis_czasu_ith``) daje DOKŁADNIE
+#: ``ODCISK_PO_KARCIE_ZU_JEDEN_NOSNIK``; zero zmian liczb, kluczy i identyfikatorów.
+ODCISK_PO_SCALENIU_ZU_Z_INTEGRACJA = (
+    "b0c92bf53003db05eb24ee07f860bbc82fa25888e57c274fab54ad16fb183951"
+)
+_ZAPIS_CZASU_ITH = ("20 kA przez 1 s", "20 kA/1 s")
+
+
+def _cofnij_zapis_czasu_ith(zrzut: dict[str, object]) -> int:
+    """Cofa zapis „przez 1 s" w `source_reference` typów CT (liczba cofniętych liści)."""
+    nowy, dawny = _ZAPIS_CZASU_ITH
+    liczba = 0
+    for postac in zrzut["ct_types"].values():  # type: ignore[attr-defined]
+        zrodlo = postac.get("source_reference")
+        if isinstance(zrodlo, str) and nowy in zrodlo:
+            postac["source_reference"] = zrodlo.replace(nowy, dawny)
+            liczba += 1
+    return liczba
+
+
+LICZBA_TEKSTOW_KARTY_ZU = 904
 _TEKSTY_PRZED_KARTA_ZU: dict[str, str] = dict(
     json.loads(
         (Path(__file__).parent / "teksty_katalogu_przed_karta_zu.json").read_text(encoding="utf-8")
@@ -302,10 +327,40 @@ def _cofnij_teksty_karty_zu(zrzut: dict[str, object]) -> int:
 
 
 PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
-    "earthing_transformer_types": 2,
     "arc_suppression_coil_types": 3,
     "neutral_earthing_resistor_types": 4,
 }
+#: Karta POLA-GPZ-SZABLONY (2026-11-05): przekładniki prądowe typu ogólnego OSD pól GPZ (Z.7 s.86,
+#: Z.12 s.92 — po cztery przekładnie; Z.13 s.93; Z.16 s.96), dwa transformatory uziemiające
+#: ZNyn11 (§16 s.29–30) i trzy pola typu transformatora — impedancja zerowa uzwojenia
+#: zygzakowego R0/X0 z mapą wartości roboczych (`None` w każdej pozycji bez zygzaka). Dowód liść
+#: po liściu (zrzut bazy `9dafb6083` vs drzewo karty): różnią się WYŁĄCZNIE te liście.
+POZYCJE_POL_GPZ: dict[str, tuple[str, ...]] = {
+    "ct_types": tuple(
+        f"ct_typ_ogolny_osd_{p}_z{z}"
+        for z, przekladnie in (
+            ("7", ("800_5_5_5_5", "1000_5_5_5_5", "1200_5_5_5_5", "1600_5_5_5_5")),
+            ("12", ("800_5_5", "1000_5_5", "1200_5_5", "1600_5_5")),
+            ("13", ("100_5",)),
+            ("16", ("100_5_5_5",)),
+        )
+        for p in przekladnie
+    ),
+    "transformer_types": ("tu-sn-nn-15-04-100kva-znyn11", "tu-sn-nn-20-04-100kva-znyn11"),
+}
+POLA_Z0_ZYGZAKA_TYPU = ("r0_ohm", "x0_ohm", "wartosci_robocze")
+
+
+def _cofnij_karte_pol_gpz(zrzut: dict[str, object]) -> None:
+    """Cofa zmiany karty POLA-GPZ-SZABLONY w zrzucie (pozycje i pola typu transformatora)."""
+    for przestrzen, identyfikatory in POZYCJE_POL_GPZ.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
+    for postac in zrzut["transformer_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_Z0_ZYGZAKA_TYPU:
+            assert postac.pop(nazwa) is None, postac["id"]
+
+
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -383,17 +438,27 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_PROZIE_SLOWAMI
-    assert _cofnij_proze_slowami(zrzut) == 2
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA
-    # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: cofnięcie zmian katalogu
-    # karty pola liniowego daje odcisk strony integracji (po karcie ZU), dalej łańcuch ZU.
-    _cofnij_karte_pola_liniowego(zrzut)
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KARCIE_ZU
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_ZU_Z_INTEGRACJA
+    assert _cofnij_zapis_czasu_ith(zrzut) == 2
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KARCIE_ZU_JEDEN_NOSNIK
+    # Karta ZU-JEDEN-NOSNIK: transformator uziemiający jest pozycją TRAFO_SN_NN — dawnej
+    # przestrzeni transformatorów uziemiających nie ma (rekordy z niej nie przeszły nigdzie).
+    assert "earthing_transformer_types" not in zrzut
     assert _cofnij_teksty_karty_zu(zrzut) == LICZBA_TEKSTOW_KARTY_ZU
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
     for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
         assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
+    # Karta POLA-GPZ-SZABLONY: cofnięcie jej pozycji i pól typu daje odcisk sprzed karty.
+    zrzut_karty = copy.deepcopy(zrzut)
+    assert _odcisk_zrzutu(zrzut_karty) != ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
+    _cofnij_karte_pol_gpz(zrzut)
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
+    # Scalenie kart UX-04/POLE-LINIOWE-WZORZEC i UX-04/POLE-BKR-MODEL: rozłączne zmiany katalogu,
+    # dowód obiema drogami. Droga A — cofnięcie baterii BKR daje odcisk karty pola liniowego.
+    zrzut_bez_bkr = copy.deepcopy(zrzut)
+    assert _wytnij_pola_baterii_bkr(zrzut_bez_bkr) == 5
+    assert _odcisk_zrzutu(zrzut_bez_bkr) == ODCISK_PO_KARCIE_POLA_LINIOWEGO
+    # Droga B — cofnięcie karty pola liniowego daje odcisk karty BKR.
+    _cofnij_karte_pola_liniowego(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
     assert _wytnij_pola_baterii_bkr(zrzut) == 5
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110

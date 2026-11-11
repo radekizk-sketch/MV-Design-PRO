@@ -72,6 +72,7 @@ from network_model.catalog.switchgear.family_validation import (
     nazwa_rodziny_pl,
     opis_pola_katalogowego_pl,
 )
+from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU
 
 from .pola import napis_lub_none
 from .slownik_komunikatow import pole
@@ -269,10 +270,8 @@ def _aparat_pierwotny(
         # powstał — bez niej „katalog-first" byłoby deklaracją bez dowodu.
         "catalog_ref": catalog_ref,
     }
-    if rodzaj_enm == "ES":
-        aparat["earthing_role"] = "field_earth"
-    elif rodzaj_enm == "SURGE_ARRESTER":
-        aparat["earthing_role"] = "surge_ground"
+    if rodzaj_enm in ROLA_UZIEMIENIA_RODZAJU_APARATU:
+        aparat["earthing_role"] = ROLA_UZIEMIENIA_RODZAJU_APARATU[rodzaj_enm]
     return aparat
 
 

@@ -118,6 +118,10 @@ describe('rodzina rozdzielnicy — nazwy konstrukcji', () => {
     expect(nazwa).toBeTruthy();
     expect(nazwa).not.toMatch(/_/);
   });
+
+  it('słownik nazw nie ma konstrukcji spoza unii kontraktu', () => {
+    expect(Object.keys(CONSTRUCTION_LABELS_PL).sort()).toEqual(Object.keys(KONSTRUKCJE).sort());
+  });
 });
 
 /**

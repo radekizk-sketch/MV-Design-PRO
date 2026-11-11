@@ -57,8 +57,8 @@ class TestCatalogNamespace:
             "PTPIREE_CERTYFIKAT_GENERATORA",
             "KARTA_WIDMOWA",  # karta AB-H0 §0.7 — karta widmowa urządzenia (osobny rekord)
             "PRZEWOD_LINII_WN",  # karta LINIA-110 — przewód linii napowietrznej 110 kV
-            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — elementy zespołu uziemiającego SN.
-            "TRANSFORMATOR_UZIEMIAJACY",
+            # Elementy punktu neutralnego zespołu uziemiającego SN (transformator uziemiający
+            # ZNyn11 jest pozycją TRAFO_SN_NN — karta ZU-JEDEN-NOSNIK).
             "DLAWIK_GASZACY",
             "REZYSTOR_UZIEMIAJACY",
         }

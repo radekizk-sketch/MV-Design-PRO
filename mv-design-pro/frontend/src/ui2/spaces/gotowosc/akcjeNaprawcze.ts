@@ -106,7 +106,11 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
  * integracji po scaleniu karty delt scenariusza zabezpieczeń: 196 kodów strony integracji (183 kody
  * kart zespołu uziemiającego SN i UX-04/POLE-BKR-MODEL + 13 kodów karty pola liniowego — 11 kodów
  * `bay.*` i 2 kody stanu obiektu w katalogu) + 1 kod strony delt
- * (`conductor.thermal_data_inconsistent`, karta KD6). Brak wpisu dla kodu
+ * (`conductor.thermal_data_inconsistent`, karta KD6); scalenie karty ZU-JEDEN-NOSNIK (pomiar
+ * zbiorów `READINESS_CODES` 2026-11-11): 197 bez zmiany liczby — kod zespołu bez odbioru
+ * potrzeb własnych (kod dawnego nośnika zespołu w rodzinie `earthing.*`) skasowany,
+ * kod wielu uziemionych punktów neutralnych w wyspie
+ * (`earthing.multiple_grounded_neutrals_in_island`) dodany. Brak wpisu dla kodu
  * z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
@@ -141,20 +145,22 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // w obliczeniach — edycja parametrów źródła (kasacja opisu punktu neutralnego i Z0).
   'source.sn_neutral_data_ignored': EDYCJA,
   // Zespół uziemiający SN (walidator E-ZU-*, W-ZU-*): każdy kod wskazuje element zespołu,
-  // a jego dane (szyna, dławik, rezystor, SPZ, wyłączenie od transformatorów, odbiór potrzeb
-  // własnych, pozycja katalogu) zmienia edycja parametrów elementu — ta sama operacja, która
+  // a jego dane (szyna, dławik, rezystor, SPZ, wyłączenie od transformatorów, pozycja
+  // katalogu) zmienia edycja parametrów elementu — ta sama operacja, która
   // zapisuje nastawę i dane producenta.
   'earthing.zespol_bus_invalid': EDYCJA,
   'earthing.zespol_neutral_undefined': EDYCJA,
   'earthing.zespol_spz_without_resistor': EDYCJA,
   'earthing.zespol_transformer_trip_missing': EDYCJA,
-  'earthing.zespol_auxiliary_load_missing': EDYCJA,
   'earthing.network_grounding_warning': EDYCJA,
   'earthing.zespol_direct_earthing': EDYCJA,
   'earthing.zespol_voltage_mismatch': EDYCJA,
   // Bocznik składowej zerowej zespołu z wartości roboczej (zasada nr 4): formularz
   // parametrów zespołu — projektant wpisuje dane producenta albo nastawę dławika.
   'zespol_uziemiajacy.wartosc_robocza': EDYCJA,
+  // D1 (karta POLA-GPZ-SZABLONY): dwa uziemione nośniki punktu neutralnego w wyspie SN —
+  // edycja nadmiarowego nośnika (źródło albo transformator uziemiający, `fix_action`).
+  'earthing.multiple_grounded_neutrals_in_island': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),
   'trunk.segment_missing': formularz('continue_trunk_segment_sn'),

@@ -30,7 +30,6 @@ from enm.models import (
     OverheadLine,
     Source,
     Transformer,
-    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 from enm.validator import ENMValidator, ReadinessResult
@@ -38,7 +37,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_materialized_params, gpz_source_record
-from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekord
+from tests.utils.zespol_uziemiajacy import z_zespolem, zespol_uziemiajacy_rekordy
 
 # ===========================================================================
 # Fixtures: ENM variants
@@ -167,20 +166,23 @@ def _ready_enm_with_z0() -> EnergyNetworkModel:
     musi mieć DROGĘ POWROTU wyznaczoną sposobem pracy punktu neutralnego. Karta
     UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1: tę drogę daje zespół uziemiający na szynie SN
     (tu: dławik gaszący, sieć skompensowana typowa dla krajowych sieci kablowych SN), nie
-    opis na źródle — źródło SN nie niesie składowej zerowej.
+    opis na źródle — źródło SN nie niesie składowej zerowej. Karta ZU-JEDEN-NOSNIK: zespół to
+    transformator uziemiający ZNyn11 z dławikiem w punkcie neutralnym.
     """
     bus2 = Bus(ref_id="bus_sn2", name="Szyna SN2", voltage_kv=15.0)
     szyna = Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)
-    zespol = ZespolUziemiajacy.model_validate(
-        zespol_uziemiajacy_rekord("zu_1", "bus_sn", wariant="dlawik", i_nastawy_a=100.0)
-    )
-    return EnergyNetworkModel(
-        header=_header("Ready with Z0"),
-        buses=[szyna, bus2],
-        sources=[_valid_source()],
-        branches=[_valid_branch(with_z0=True, with_catalog=True)],
-        loads=[_valid_load()],
-        zespoly_uziemiajace=[zespol],
+    return z_zespolem(
+        EnergyNetworkModel(
+            header=_header("Ready with Z0"),
+            buses=[szyna, bus2],
+            sources=[_valid_source()],
+            branches=[_valid_branch(with_z0=True, with_catalog=True)],
+            loads=[_valid_load()],
+        ),
+        "zu_1",
+        "bus_sn",
+        wariant="dlawik",
+        i_nastawy_a=100.0,
     )
 
 
@@ -779,15 +781,14 @@ class TestEligibilitySc1EarthingModel:
         assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [b.code for b in row.blockers]
 
     def test_zespol_bez_elementu_blokuje_sc1f_wskazujac_zespol(self):
-        enm = _ready_enm().model_copy(
+        """Transformator uziemiający bez opisu punktu neutralnego (``hv_neutral`` puste) —
+        sposób uziemienia sieci nieokreślony: brak MODELU, blokada wskazuje transformator."""
+        enm = z_zespolem(_ready_enm(), "zu_1", "bus_sn", name="ZU GPZ")
+        enm = enm.model_copy(
             update={
-                "zespoly_uziemiajace": [
-                    ZespolUziemiajacy(
-                        ref_id="zu_1",
-                        name="ZU GPZ",
-                        bus_ref="bus_sn",
-                        catalog_ref="TU_ZNYN11_15KV_PW160",
-                    )
+                "transformers": [
+                    t.model_copy(update={"hv_neutral": None}) if t.ref_id == "zu_1" else t
+                    for t in enm.transformers
                 ]
             }
         )
@@ -805,24 +806,32 @@ class TestEligibilitySc1EarthingModel:
     @pytest.mark.parametrize(
         ("bez_katalogu", "czesc"),
         [
-            ("catalog_ref", "transformator uziemiający"),
+            # Sam transformator uziemiający wiąże reguła transformatora (E009 transformatora).
+            ("catalog_ref", "transformator „zespół uziemiający zu_1”"),
             ("dlawik", "dławik gaszący"),
         ],
     )
     def test_zespol_bez_pozycji_katalogu_blokuje_zwarcia(self, bez_katalogu, czesc):
         """Catalog Binding Rule: część zespołu bez pozycji katalogu = E009 walidatora i blokada
         gotowości zwarciowej (ten sam predykat `czesci_zespolu_bez_katalogu`)."""
-        rekord = zespol_uziemiajacy_rekord("zu_1", "bus_sn", wariant="dlawik")
+        rekord, szyna_nn = zespol_uziemiajacy_rekordy("zu_1", "bus_sn", wariant="dlawik")
         if bez_katalogu == "catalog_ref":
             rekord["catalog_ref"] = None
         else:
-            rekord["dlawik"]["catalog_ref"] = None
-        enm = _ready_enm_with_z0().model_copy(
-            update={"zespoly_uziemiajace": [ZespolUziemiajacy.model_validate(rekord)]}
+            rekord["hv_neutral"]["dlawik"]["catalog_ref"] = None
+        baza = _ready_enm_with_z0()
+        enm = baza.model_copy(
+            update={
+                "buses": [*baza.buses, Bus.model_validate(szyna_nn)],
+                "transformers": [
+                    *(t for t in baza.transformers if t.ref_id != "zu_1"),
+                    Transformer.model_validate(rekord),
+                ],
+            }
         )
         wynik = ENMValidator().validate(enm)
         e009 = [i for i in wynik.issues if i.code == "E009" and i.element_refs == ["zu_1"]]
-        assert len(e009) == 1 and czesc in e009[0].message_pl
+        assert len(e009) == 1 and czesc in e009[0].message_pl.lower()
         row = self._sc1_row(enm)
         assert any(
             b.code == "ELIG_SC3_MISSING_CATALOG_REF" and b.element_ref == "zu_1"

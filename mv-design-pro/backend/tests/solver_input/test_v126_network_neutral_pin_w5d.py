@@ -22,13 +22,15 @@ from __future__ import annotations
 
 import pytest
 from application.analyses.v126_gotowosc import ocen_gotowosc_v126
-from enm.models import EnergyNetworkModel, ENMHeader, GroundingConfig, ZespolUziemiajacy
+from enm.models import EnergyNetworkModel, ENMHeader, GroundingConfig
 from solver_input.v126_contracts import (
     V126AnalysisType,
     build_v126_input_from_enm,
     build_v126_insulation_from_enm,
     ograniczniki_bez_uziemienia_sieci,
 )
+
+from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekordy
 
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
 
@@ -38,7 +40,7 @@ def _model(
     strona: str,
     uziemienie: GroundingConfig | None,
     grupa: str = "YNyn0",
-    zespoly: list[ZespolUziemiajacy] | None = None,
+    zespoly: list[tuple[dict, dict]] | None = None,
 ) -> EnergyNetworkModel:
     """Ogranicznik na szynie SN 15 kV; punkt neutralny deklaruje transformator 110/15
     (`strona="lv"`) albo transformator 15/0,4 (`strona="hv"`) — obie drogi
@@ -79,9 +81,9 @@ def _model(
                 {"ref_id": "BUS_HV", "name": "110 kV", "voltage_kv": 110.0},
                 {"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": 15.0},
                 {"ref_id": "BUS_NN", "name": "Szyna nN", "voltage_kv": 0.4},
+                *(szyna for _, szyna in zespoly or []),
             ],
-            "transformers": [trafo],
-            "zespoly_uziemiajace": [z.model_dump(mode="json") for z in zespoly or []],
+            "transformers": [trafo, *(zu for zu, _ in zespoly or [])],
             "substations": [
                 {"ref_id": "ST1", "name": "Stacja", "station_type": "mv_lv", "bus_refs": ["BUS_SN"]}
             ],
@@ -142,8 +144,11 @@ def test_siec_sn_bez_punktu_uziemienia_jest_izolowana_z_modelu(strona: str, grup
 
 @pytest.mark.parametrize(("strona", "grupa"), [("lv", "YNd11"), ("hv", "Dyn11")])
 def test_zespol_bez_elementu_nie_fabrykuje_kategorii(strona: str, grupa: str) -> None:
-    zespol = ZespolUziemiajacy(ref_id="ZU1", name="ZU 1", bus_ref="BUS_SN")
-    model = _model(strona=strona, uziemienie=None, grupa=grupa, zespoly=[zespol])
+    # Transformator uziemiający ZNyn11 bez elementu w punkcie neutralnym (rekord z innej drogi
+    # wczytania niż operacja produktu, która takiego zespołu nie zapisze).
+    zespol, szyna = zespol_uziemiajacy_rekordy("ZU1", "BUS_SN", name="ZU 1")
+    zespol["hv_neutral"] = None
+    model = _model(strona=strona, uziemienie=None, grupa=grupa, zespoly=[(zespol, szyna)])
     assert build_v126_insulation_from_enm(model) == []
     assert ograniczniki_bez_uziemienia_sieci(model) == ("BUS_SN",)
     gotowosc = ocen_gotowosc_v126(model, V126AnalysisType.INSULATION_COORDINATION)

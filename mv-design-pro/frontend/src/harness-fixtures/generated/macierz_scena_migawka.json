@@ -1851,6 +1851,7 @@
       "p0_kw": 3.0,
       "parameter_source": "CATALOG",
       "pk_kw": 21.0,
+      "r0_ohm": null,
       "ref_id": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_transformer",
       "sn_mva": 2.0,
       "source_mode": "KATALOG",
@@ -1865,7 +1866,8 @@
       "uhv_kv": 15.0,
       "uk_percent": 6.0,
       "ulv_kv": 0.4,
-      "vector_group": "Dyn11"
+      "vector_group": "Dyn11",
+      "x0_ohm": null
     },
     {
       "catalog_namespace": "TRAFO_SN_NN",
@@ -1902,6 +1904,7 @@
       "p0_kw": 2.79,
       "parameter_source": "CATALOG",
       "pk_kw": 19.0,
+      "r0_ohm": null,
       "ref_id": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/block_transformer",
       "sn_mva": 2.5,
       "source_mode": "KATALOG",
@@ -1916,8 +1919,8 @@
       "uhv_kv": 15.0,
       "uk_percent": 6.0,
       "ulv_kv": 0.8,
-      "vector_group": "Dyn11"
+      "vector_group": "Dyn11",
+      "x0_ohm": null
     }
-  ],
-  "zespoly_uziemiajace": []
+  ]
 }
