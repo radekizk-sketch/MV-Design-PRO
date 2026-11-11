@@ -23,7 +23,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
 import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
-import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES } from '../../compose/protectionMarking';
+import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES } from '../../symbols/blokZabezpieczen';
 import type { PanelPolaGpz } from '../../compose/gpzAdnotacje';
 import { GRID, type V3Rect } from '../../core/grid';
 import { kolumnyBlokuWPismie } from '../../core/kolumnyBloku';

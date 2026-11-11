@@ -48,8 +48,11 @@ interface SceneSym {
   readonly meta?: { ownerRef?: unknown; apparatusSource?: unknown };
 }
 
+/** Aparaty toru pola. Blok zabezpieczeń pola (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ — kody
+ *  funkcji z modelu) to adnotacja obok toru (`elementKind: 'protectionAnnotation'`), nie aparat
+ *  sekwencji konfiguracji — nie należy do stosu porównywanego z konfiguracją. */
 function baySymbols(scene: ReturnType<typeof buildSceneV3>, fieldRef: string): SceneSym[] {
-  return scene.symbols.filter((s) => s.meta?.ownerRef === fieldRef) as SceneSym[];
+  return scene.symbols.filter((s) => s.meta?.ownerRef === fieldRef && s.symbolId !== 'protectionRelay') as SceneSym[];
 }
 
 describe('W1 — macierz wyposażenia: łańcuch danych kreator→ENM→adapter→scena', () => {

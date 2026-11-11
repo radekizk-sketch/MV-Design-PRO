@@ -20,7 +20,7 @@ import type { RouteVertex } from '../layout/route';
 import type { V3Rect } from '../core/grid';
 import { GRID } from '../core/grid';
 import { klasaWagiOdcinka, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import { KAFEL_STANU_MARGINES } from '../symbols/glyphs';
 import type { SceneV3 } from './buildScene';
 
@@ -78,14 +78,15 @@ export function kadrPolaZeSceny(scene: SceneV3, bayRef: string): KadrPola | null
 
   let rect: V3Rect | null = null;
   for (const s of symbols) {
-    const def = SYMBOL_DEFS[s.symbolId];
-    // Kafel stanu łącznika wystaje o margines poza gabaryt — kadr go mieści.
+    // Gabaryt z jednego źródła (`gabarytSymbolu`: blok zabezpieczeń = cała ramka, nie prostokąt
+    // definicji w jej rogu). Kafel stanu łącznika wystaje o margines poza gabaryt — kadr go mieści.
+    const g = gabarytSymbolu(s);
     rect = rozszerz(
       rect,
-      s.x - KAFEL_STANU_MARGINES,
-      s.y - KAFEL_STANU_MARGINES,
-      def.width + 2 * KAFEL_STANU_MARGINES,
-      def.height + 2 * KAFEL_STANU_MARGINES,
+      g.x - KAFEL_STANU_MARGINES,
+      g.y - KAFEL_STANU_MARGINES,
+      g.width + 2 * KAFEL_STANU_MARGINES,
+      g.height + 2 * KAFEL_STANU_MARGINES,
     );
   }
   for (const seg of wlasneOdcinki) for (const p of seg.points) rect = rozszerz(rect, p.x, p.y);

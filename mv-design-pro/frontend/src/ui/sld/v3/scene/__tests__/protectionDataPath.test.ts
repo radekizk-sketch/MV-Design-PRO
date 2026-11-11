@@ -52,29 +52,44 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
     expect((KONWENCJA_52S.protection_assignments ?? []).length).toBe(0);
   });
 
-  it('scena z tej fixtury niesie WIĘCEJ przekładników i adnotacji niż z 52s', () => {
+  it('scena z tej fixtury niesie WIĘCEJ przekładników i adnotacji z przypisań zabezpieczeń niż z 52s', () => {
     const dane = buildSceneV3(SCIEZKA_DANYCH, 2);
     const konwencja = buildSceneV3(KONWENCJA_52S, 2);
     const ct = (s: typeof dane) => s.symbols.filter((x) => x.symbolId === 'currentTransformer').length;
-    const adnotacje = (s: typeof dane) => s.labels.filter((l) => l.ownerKind === 'protection').length;
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: pola stacji 52s niosą kody funkcji, więc obie sceny
+    // niosą bloki z wierszami kodów (dawne porównanie liczby etykiet `protection` przestało
+    // rozróżniać fikstury). Adnotacja, której 52s nie może mieć, to ta z PRZYPISANIA
+    // zabezpieczenia (`breaker_ref` → linia wyłączania) — 52s nie niesie żadnego przypisania.
+    const linieWylaczania = (s: typeof dane) => s.segments.filter((g) => g.meta?.kind === 'protectionTrip').length;
     expect(ct(dane)).toBeGreaterThan(ct(konwencja));
-    expect(adnotacje(dane)).toBeGreaterThan(adnotacje(konwencja));
+    expect(linieWylaczania(dane)).toBeGreaterThan(0);
+    expect(linieWylaczania(konwencja)).toBe(0);
   });
 
   // TO JEST SEDNO Z7: cztery bramki (§17.5, §18.3, §20.1, §20.4) mierzyły dotąd
   // pustkę na KAŻDEJ fixturze. Ten test jest pierwszym dowodem, że warstwa
   // adnotacji zabezpieczeń w ogóle powstaje — i zarazem strażnikiem, że nie
   // wróci do stanu, w którym bramki przechodzą przy zerowej treści.
-  it('warstwa adnotacji zabezpieczeń POWSTAJE: okręgi, linie pomiarowe CT→przekaźnik, tory wyzwalania', () => {
+  // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (UX04 §11.20): pola tej fixtury nie niosą powiązań
+  // obwodów wtórnych (`funkcje_eaz_zasilane`/`_wylaczajace` aparatów), więc blok zabezpieczeń
+  // jest ramką z kodami i linią wyłączania do wyłącznika z `breaker_ref`, BEZ linii pomiarowych
+  // CT/VT — linie pomiarowe z powiązań modelu dowodzi fixtura Z.10 (`poleLinioweGpz.test.tsx`).
+  it('warstwa adnotacji zabezpieczeń POWSTAJE: bloki zabezpieczeń (ramka z kodami), tory wyzwalania; bez powiązań obwodów wtórnych — zero linii pomiarowych', () => {
     const dane = buildSceneV3(SCIEZKA_DANYCH, 2);
     const konwencja = buildSceneV3(KONWENCJA_52S, 2);
     const liniePomiarowe = (s: typeof dane) =>
       s.segments.filter((g) => g.meta?.kind === 'measurementLink').length;
     const toryWyzwalania = (s: typeof dane) =>
       s.segments.filter((g) => g.meta?.kind === 'protectionTrip').length;
-    // Na ścieżce danych wszystkie trzy elementy warstwy istnieją…
+    const bloki = dane.symbols.filter((x) => x.symbolId === 'protectionRelay');
+    // Na ścieżce danych bloki (każdy z ramką i wierszami kodów) i tory wyzwalania istnieją…
+    expect(bloki.length).toBeGreaterThan(0);
+    for (const blok of bloki) {
+      expect(blok.meta?.ramkaBlokuPrzekaznika, blok.meta?.ownerRef).toBeDefined();
+      expect((blok.meta?.wierszeBlokuPrzekaznika ?? []).length, blok.meta?.ownerRef).toBeGreaterThan(0);
+    }
     expect(dane.labels.filter((l) => l.ownerKind === 'protection').length).toBeGreaterThan(0);
-    expect(liniePomiarowe(dane)).toBeGreaterThan(0);
+    expect(liniePomiarowe(dane)).toBe(0);
     expect(toryWyzwalania(dane)).toBeGreaterThan(0);
     // …a na sieci wzorcowej NIE — to właśnie dlatego bramki przechodziły trywialnie.
     expect(liniePomiarowe(konwencja)).toBe(0);

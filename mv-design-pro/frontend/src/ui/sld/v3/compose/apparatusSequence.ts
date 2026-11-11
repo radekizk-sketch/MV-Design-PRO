@@ -45,7 +45,6 @@
 import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
 import { SYMBOL_DEFS, czySymbolQet, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import { QET_SYMBOLE_POLA_SN } from '../cad/qet/qetPoleSn';
-import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor, PortAparatuPolaView } from '../../v2/model/widokPolStacji';
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement, RodzajNapeduLacznika } from '../../../../types/enm';
@@ -831,11 +830,13 @@ export interface GalazPlanu {
   /** Plan samego odgałęzienia (kolumna + jego aparaty boczne, ten sam predykat aparatu
    *  bocznego). Indeksy sekwencji (`mainSequenceIndices`, `laterals[].sequenceIndex`)
    *  wskazują pozycje w ORYGINALNEJ sekwencji pola. */
-  readonly plan: Omit<BayApparatusPlan, 'source' | 'galezie' | 'rezerwaEtykietBocznych'>;
-  /** Szerokość pasa podpisów na prawo od aparatów odgałęzienia (podpisy aparatów kolumny
-   *  i jej aparatów bocznych stoją po prawej) — doliczana do pasa odgałęzienia. */
-  readonly rezerwaEtykiet: number;
+  readonly plan: PlanToruPola;
 }
+
+/** Plan jednego toru (główny albo kolumna odgałęzienia): aparaty szeregowe i boczne. Opisy
+ *  aparatów obu torów stoją w kolumnach opisów przy lewej krawędzi pola
+ *  (`./kolumnaOpisowPola`), więc plan nie rezerwuje na nie miejsca obok kolumn aparatów. */
+export type PlanToruPola = Omit<BayApparatusPlan, 'source' | 'galezie'>;
 
 export interface BayApparatusPlan {
   /** Aparaty szeregowe toru głównego, w kolejności sekwencji. */
@@ -845,26 +846,19 @@ export interface BayApparatusPlan {
   readonly laterals: readonly LateralApparatusPlanEntry[];
   /** Odgałęzienia toru z portów (puste, gdy pole ma jeden tor). */
   readonly galezie: readonly GalazPlanu[];
-  /** Pas podpisów na PRAWO od aparatów bocznych toru głównego, gdy podpisy stoją po prawej
-   *  (pole GPZ z symbolami QET) — liczony w kolizjach z odgałęzieniem; 0 = podpisy pod
-   *  symbolem (stacja). */
-  readonly rezerwaEtykietBocznych: number;
   readonly source: BayApparatusSource;
 }
 
-/** Opcje planu: odgałęzienia toru (pozycje z `galezieSekwencji`/`rekordyToruPola`)
- *  i rezerwy podpisów (patrz `GalazPlanu.rezerwaEtykiet`, `rezerwaEtykietBocznych`). */
+/** Opcje planu: odgałęzienia toru (pozycje z `galezieSekwencji`/`rekordyToruPola`). */
 export interface OpcjePlanuPola {
   readonly galezie?: readonly GalazSekwencji[];
-  readonly rezerwaEtykietGalezi?: (pozycje: readonly number[]) => number;
-  readonly rezerwaEtykietBocznych?: number;
 }
 
 function planToru(
   symbolIds: readonly SymbolId[],
   pozycje: readonly number[],
   czyBoczny: (symbolId: SymbolId) => boolean,
-): Omit<BayApparatusPlan, 'source' | 'galezie' | 'rezerwaEtykietBocznych'> {
+): PlanToruPola {
   const mainPath: SymbolId[] = [];
   const mainSequenceIndices: number[] = [];
   const laterals: LateralApparatusPlanEntry[] = [];
@@ -912,25 +906,7 @@ export function planApparatusSymbolIds(
     galezie: galezie.map((g) => ({
       afterMainIndex: g.zaPozycja < 0 ? -1 : tor.mainSequenceIndices.indexOf(g.zaPozycja),
       plan: planToru(symbolIds, g.pozycje, czyBoczny),
-      rezerwaEtykiet: opcje.rezerwaEtykietGalezi?.(g.pozycje) ?? 0,
     })),
-    rezerwaEtykietBocznych: opcje.rezerwaEtykietBocznych ?? 0,
-  };
-}
-
-/** Pas podpisów identyfikatorów (§19.1, konwencja — stały margines niezależny od danych,
- *  jak `layout/measure.ts apparatusIdentifierLeftReserve`) aparatów odgałęzienia pola stacji:
- *  podpisy kolumny odgałęzienia stoją PO PRAWEJ jej aparatów. */
-export function rezerwaIdentyfikatorowNaPozycjach(
-  symbolIds: readonly SymbolId[],
-): (pozycje: readonly number[]) => number {
-  const identyfikatory = apparatusIdentifiers(symbolIds);
-  return (pozycje) => {
-    const szerokosci = pozycje
-      .map((i) => identyfikatory[i])
-      .filter((t): t is string => t != null)
-      .map((t) => measureLabelWidth(t, 't4'));
-    return szerokosci.length > 0 ? snapUp(GRID + Math.max(...szerokosci)) : 0;
   };
 }
 
@@ -939,10 +915,7 @@ export function planBayApparatus(
 ): BayApparatusPlan {
   const { symbolIds, source, galezie } = resolveBayApparatusSymbolIds(bay);
   return {
-    ...planApparatusSymbolIds(symbolIds, czyAparatBoczny, {
-      galezie,
-      rezerwaEtykietGalezi: rezerwaIdentyfikatorowNaPozycjach(symbolIds),
-    }),
+    ...planApparatusSymbolIds(symbolIds, czyAparatBoczny, { galezie }),
     source,
   };
 }
@@ -1027,7 +1000,7 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  * powtarzalna: te same dane ⇒ te same oznaczenia).
  *
  * F10.6 (DOMAIN, V12K-035, D1): parametr `designations` opcjonalny — wywołanie
- * BEZ niego (`layout/measure.ts` `apparatusIdentifierLeftReserve`) zachowuje
+ * BEZ niego zachowuje
  * dokładnie zachowanie 100% konwencji (rezerwacja szerokości LICZONA Z
  * KONWENCJI — stały margines geometryczny niezależny od danych, dlatego glif
  * priorytetu (2) nie może poszerzać etykiety, patrz wyżej). Źródło
@@ -1165,40 +1138,56 @@ function ulozPasyBoczne(pasy: readonly PasBoczny[]): readonly number[] {
  * odgałęzienia bocznego pola (§18.1) — JEDNA reguła planu (`bayApparatusPlanFootprint`)
  * i rysunku (`compose/station.ts::buildBayStack`, `compose/gpz.ts::buildFieldStack`).
  *
- * Odgałęzienie zajmuje pas pionowy od kotwicy do dołu symbolu z podpisem identyfikatora
- * pod nim (`labelLineHeight('t4')`), ułożony regułą `ulozPasyBoczne`. Skutki: laterale
+ * Odgałęzienie zajmuje pas pionowy od kotwicy do dołu rysunku aparatu z oczkiem odstępu
+ * (`wysokoscPasaBocznego`), ułożony regułą `ulozPasyBoczne`. Skutki: laterale
  * wspólnej kotwicy siedzą obok siebie (kolejne `LATERAL_BRANCH_GAP + width`, jak dotąd);
  * karta UX-04 — odgałęzienia na RÓŻNYCH węzłach toru z portów (przekładnik napięciowy za
  * przekładnikiem prądowym, uziemnik za odłącznikiem liniowym) stoją jedno pod drugim, gdy
- * pasy się mieszczą, a gdy symbol z podpisem sięga do niższej kotwicy, wyższe odgałęzienie
+ * pasy się mieszczą, a gdy rysunek aparatu sięga do niższej kotwicy, wyższe odgałęzienie
  * odsuwa się w prawo, a jego odczep biegnie NAD niższym.
  */
 export function przesunieciaOdgalezien(
   laterals: readonly Pick<LateralApparatusPlanEntry, 'symbolId' | 'afterMainIndex'>[],
   kotwicaY: (afterMainIndex: number) => number,
 ): readonly number[] {
-  return ukladBocznyPola({ laterals, galezie: [], rezerwaEtykietBocznych: 0 }, kotwicaY).boczne;
+  return ukladBocznyPola({ laterals, galezie: [] }, kotwicaY).boczne;
 }
 
-/** Wysokość podpisu pod symbolem bocznym (pas aparatu bocznego). */
+/**
+ * Wysokość pasa aparatu bocznego od kotwicy: zwis pod węzłem odczepu
+ * (`zwisAparatuBocznego`), dół rysunku aparatu (prostokąt definicji, obrys QET i kafel stanu —
+ * największy) i oczko odstępu pionowego stosu. Wzorzec właściciela 2026-11-05 (opisy pola po
+ * lewej, `./kolumnaOpisowPola`): oznaczenie aparatu bocznego stoi w kolumnie oznaczeń pola, nie
+ * pod symbolem — dawny składnik „wysokość podpisu t4 pod symbolem” nie miał już treści, a
+ * jednocześnie pomijał zwis (pas kończył się 2 j.św. nad dołem kafla aparatu z kaflem). Iniekcja
+ * (pas = sam prostokąt definicji): kafel uziemnika Q51 kolumny odgałęzienia Z.11 wchodzi na
+ * przekładnik T3 pod nim (`poleLinioweGpz.test.tsx`, kafle stanu bez kolizji).
+ */
 function wysokoscPasaBocznego(symbolId: SymbolId): number {
-  return SYMBOL_DEFS[symbolId].height + labelLineHeight('t4');
+  const qet = czySymbolQet(symbolId) ? QET_SYMBOLE_POLA_SN[symbolId] : null;
+  const dol = Math.max(
+    SYMBOL_DEFS[symbolId].height,
+    qet ? qet.obrys.y + qet.obrys.height : 0,
+    qet?.kafel ? qet.kafel.y + qet.kafel.height : 0,
+  );
+  return zwisAparatuBocznego(symbolId) + dol + APPARATUS_STACK_VERTICAL_GAP;
 }
 
-/** Gabaryt pasa odgałęzienia: kolumna z jej aparatami bocznymi i pasem podpisów po prawej;
- *  wysokość od kotwicy: odstęp rastru + kolumna. */
+/** Gabaryt pasa odgałęzienia: kolumna z jej aparatami bocznymi (opisy stoją w kolumnach opisów
+ *  pola, `./kolumnaOpisowPola`); wysokość od kotwicy: odstęp rastru + kolumna. */
 export function pasOdgalezienia(galaz: GalazPlanu): { readonly szerokosc: number; readonly wysokosc: number } {
-  const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [], rezerwaEtykietBocznych: 0 });
+  const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [] });
   return {
-    szerokosc: sub.width + galaz.rezerwaEtykiet,
-    wysokosc: APPARATUS_STACK_VERTICAL_GAP + sub.height + labelLineHeight('t4'),
+    szerokosc: sub.width,
+    // Odstęp rastru nad kolumną, kolumna i oczko odstępu pod nią (opisy kolumny w kolumnach
+    // opisów pola — pod kolumną nie stoi podpis).
+    wysokosc: APPARATUS_STACK_VERTICAL_GAP + sub.height + APPARATUS_STACK_VERTICAL_GAP,
   };
 }
 
 /**
  * Położenie poziome aparatów bocznych i odgałęzień toru pola — JEDNA reguła planu
- * (`bayApparatusPlanFootprint`) i rysunku (stacja, GPZ). Aparat boczny: pas symbolu
- * z podpisem (+ `rezerwaEtykietBocznych`, gdy podpis stoi po prawej); odgałęzienie: pas
+ * (`bayApparatusPlanFootprint`) i rysunku (stacja, GPZ). Aparat boczny: pas symbolu; odgałęzienie: pas
  * `pasOdgalezienia` od kotwicy. Wspólne ułożenie `ulozPasyBoczne` — odczep odgałęzienia nie
  * przecina aparatu bocznego i odwrotnie.
  */
@@ -1206,14 +1195,13 @@ export function ukladBocznyPola(
   plan: {
     readonly laterals: readonly Pick<LateralApparatusPlanEntry, 'symbolId' | 'afterMainIndex'>[];
     readonly galezie: readonly GalazPlanu[];
-    readonly rezerwaEtykietBocznych: number;
   },
   kotwicaY: (afterMainIndex: number) => number,
 ): { readonly boczne: readonly number[]; readonly galezie: readonly number[] } {
   const pasy: PasBoczny[] = [
     ...plan.laterals.map((lat) => ({
       y0: kotwicaY(lat.afterMainIndex),
-      szerokosc: SYMBOL_DEFS[lat.symbolId].width + plan.rezerwaEtykietBocznych,
+      szerokosc: SYMBOL_DEFS[lat.symbolId].width,
       wysokosc: wysokoscPasaBocznego(lat.symbolId),
     })),
     ...plan.galezie.map((g) => ({ y0: kotwicaY(g.afterMainIndex), ...pasOdgalezienia(g) })),
@@ -1437,7 +1425,7 @@ function kotwicaWzglednaY(
  * `ukladBocznyPola` (ta sama funkcja co rysunek stacji i GPZ).
  */
 export function bayApparatusPlanFootprint(
-  plan: Pick<BayApparatusPlan, 'mainPath' | 'laterals'> & Partial<Pick<BayApparatusPlan, 'galezie' | 'rezerwaEtykietBocznych'>>,
+  plan: Pick<BayApparatusPlan, 'mainPath' | 'laterals'> & Partial<Pick<BayApparatusPlan, 'galezie'>>,
 ): BayApparatusPlanFootprint {
   const galezie = plan.galezie ?? [];
   const mainStack = { width: stackFootprint(plan.mainPath).width, height: polozeniaToruGlownego(plan).height };
@@ -1445,10 +1433,7 @@ export function bayApparatusPlanFootprint(
     return { width: mainStack.width, height: mainStack.height, lateralExtension: 0, mainStack };
   }
   const anchorRelY = (afterMainIndex: number): number => kotwicaWzglednaY(plan, afterMainIndex);
-  const uklad = ukladBocznyPola(
-    { laterals: plan.laterals, galezie, rezerwaEtykietBocznych: plan.rezerwaEtykietBocznych ?? 0 },
-    anchorRelY,
-  );
+  const uklad = ukladBocznyPola({ laterals: plan.laterals, galezie }, anchorRelY);
   let lateralExtension = 0;
   let height = mainStack.height;
   plan.laterals.forEach((lat, i) => {
@@ -1457,8 +1442,8 @@ export function bayApparatusPlanFootprint(
     height = Math.max(height, anchorRelY(lat.afterMainIndex) + zwisAparatuBocznego(lat.symbolId) + def.height);
   });
   galezie.forEach((galaz, i) => {
-    const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [], rezerwaEtykietBocznych: 0 });
-    lateralExtension = Math.max(lateralExtension, uklad.galezie[i] + sub.width + galaz.rezerwaEtykiet);
+    const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [] });
+    lateralExtension = Math.max(lateralExtension, uklad.galezie[i] + pasOdgalezienia(galaz).szerokosc);
     height = Math.max(height, anchorRelY(galaz.afterMainIndex) + APPARATUS_STACK_VERTICAL_GAP + sub.height);
   });
   return { width: mainStack.width + lateralExtension, height, lateralExtension, mainStack };
@@ -1476,8 +1461,8 @@ export interface PozycjaOdgalezienia {
 
 /**
  * Rysunek JEDNEGO odgałęzienia toru pola — JEDNA reguła stacji (`compose/station.ts`) i GPZ
- * (`compose/gpz.ts`). Kolumna odgałęzienia stoi osią `lewaX + mainStack.width/2` (lewa
- * krawędź pasu z `ukladBocznyPola`), pierwszy aparat o raster poniżej kotwicy; aparaty boczne
+ * (`compose/gpz.ts`). Kolumna odgałęzienia stoi osią `lewaX + mainStack.width/2` (`lewaX` — lewa
+ * krawędź pasu z `ukladBocznyPola`, tuż przy torze głównym), pierwszy aparat o raster poniżej kotwicy; aparaty boczne
  * odgałęzienia wiszą na prawo od kolumny (`ukladBocznyPola` planu odgałęzienia). Odczep:
  * poziomo z kotwicy do osi portu N pierwszego aparatu, potem pion do portu. Przewody kolumny
  * z portów (`przewodyToruZPortow`), odczepy aparatów bocznych wyłącznie na węźle kotwicy
@@ -1499,7 +1484,7 @@ export function ukladGalezi(
   /** Odczepy aparatów bocznych kolumny — od węzła odczepu (`points[0]`, kropka węzła). */
   readonly odczepyBoczne: readonly (readonly { readonly x: number; readonly y: number }[])[];
 } {
-  const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [], rezerwaEtykietBocznych: 0 });
+  const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [] });
   const osX = lewaX + sub.mainStack.width / 2;
   const kolumna: PozycjaOdgalezienia[] = [];
   // Położenia kolumny — ta sama reguła co tor główny (`polozeniaToruGlownego`: raster, zwis

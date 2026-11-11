@@ -26,6 +26,12 @@ WŁASNOŚCI:
   staje się JEDNYM rekordem o `ref_id = field_ref` wpisu; odwołania do dawnego `bay/…`
   (komplet: `_ODWOLANIA_DO_POLA`) są przepisywane na nowy identyfikator.
 
+Kody funkcji EAZ wpisu: wpisy sprzed karty jednej nomenklatury (2026-10-30,
+`network_model.catalog.funkcje_eaz`) niosą klucze-nazwy zabezpieczeń technologicznych
+transformatora; promocja przepisuje je na numery IEEE C37.2 słownika
+(`DAWNE_KLUCZE_FUNKCJI_EAZ`). Każdy inny kod spoza słownika jest odmową kontraktu `Bay`
+(`BladPola` z nazwanym kodem) — nigdy cichym porzuceniem.
+
 Nazwa wpisu bez nazwy: reguła `enm.pola.nazwa_domyslna_pola` (ta sama, którą stosuje
 builder) — dawniej nazwę roli podstawiał każdy czytelnik osobno.
 """
@@ -52,6 +58,11 @@ from enm.pola import (
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 
 MIGRATION_VERSION = "field_specs_promocja_001"
+
+#: Klucze-nazwy funkcji EAZ wpisów sprzed karty jednej nomenklatury (2026-10-30) → numery
+#: IEEE C37.2 słownika `network_model.catalog.funkcje_eaz` (63 Buchholz, 26 temperatura,
+#: 63P ciśnienie; `funkcje_eaz.py`, nagłówek). Zamknięta lista — wyłącznie wpisy migrowane.
+DAWNE_KLUCZE_FUNKCJI_EAZ: dict[str, str] = {"Buchholz": "63", "temp": "26", "ciśnienie": "63P"}
 
 KLUCZ_FIELD_SPECS = "field_specs"
 KLUCZ_NN_FIELD_SPECS = "nn_field_specs"
@@ -205,7 +216,10 @@ def rekord_z_wpisu(
         gpz_section_id=_napis(_z_wpisu("gpz_section_id")) or _napis(z_meta.get("gpz_section_id")),
         equipment_refs=equipment,
         protection_ref=_napis(_z_wpisu("protection_ref")),
-        protection_codes=_lista_z_wpisu("protection_codes"),
+        protection_codes=[
+            DAWNE_KLUCZE_FUNKCJI_EAZ.get(kod, kod) if isinstance(kod, str) else kod
+            for kod in _lista_z_wpisu("protection_codes")
+        ],
         bay_template_ref=_napis(_z_wpisu("bay_template_ref")),
         switchgear_family_ref=_napis(_z_wpisu("switchgear_family_ref")),
         manufacturer_ref=_napis(_z_wpisu("manufacturer_ref")),

@@ -136,6 +136,7 @@ import { LvDomainPortal, LV_DOMAIN_PORTAL_MAX_WIDTH_PX } from '../lv-domain/LvDo
 import { LassoSelector, pointInLasso, rectFromPoints, type LassoRect } from '../../v2/canvas/LassoSelector';
 import { worldToScreen } from '../../v2/viewport/ViewportController';
 import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import {
   CANVAS_LAYER_IDS,
   CANVAS_LAYER_LABELS_PL,
@@ -636,7 +637,7 @@ export interface LassoSelectionCandidate {
 
 /**
  * Symbole sceny (LOD efektywny wołającego), których środek bboxa (world,
- * `SYMBOL_DEFS[symbolId].width/height`) po `worldToScreen(point, transform)`
+ * `gabarytSymbolu` — definicja symbolu, a dla bloku zabezpieczeń jego ramka) po `worldToScreen(point, transform)`
  * wpada w `rect` (screen-space, ten sam układ co `LassoRect` z pointer
  * eventów kanwy — `transform` mapuje 1:1 world→CSS-px kanwy, bo
  * `SldCanvasV3`'s `viewBox` jest skonstruowany z DOKŁADNIE tego samego
@@ -658,8 +659,9 @@ export function symbolsInLassoRect(
     const ownerRef = symbol.meta?.ownerRef;
     const elementKind = symbol.meta?.elementKind;
     if (!ownerRef || !elementKind || seen.has(ownerRef)) continue;
-    const def = SYMBOL_DEFS[symbol.symbolId];
-    const worldCenter = { x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
+    // Środek gabarytu z jednego źródła (`gabarytSymbolu`: blok zabezpieczeń = środek ramki).
+    const g = gabarytSymbolu(symbol);
+    const worldCenter = { x: g.x + g.width / 2, y: g.y + g.height / 2 };
     const screenCenter = worldToScreen(worldCenter, transform);
     if (pointInLasso(screenCenter, rect)) {
       seen.add(ownerRef);

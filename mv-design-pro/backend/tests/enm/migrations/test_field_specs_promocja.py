@@ -305,6 +305,12 @@ def test_substrat_52_stacji_migruje_sie_w_calosci() -> None:
         assert zacisk_pola(pole) == aparat["to_bus_ref"]
     tekst = json.dumps(dane)
     assert "field_specs" not in tekst
+    # Kody funkcji EAZ: archiwum sprzed karty jednej nomenklatury (2026-10-30) niesie w 53
+    # wpisach pól transformatora klucze-nazwy „Buchholz", „temp", „ciśnienie"; promocja
+    # przepisuje je na numery słownika (kontrakt `Bay` odrzuca kod spoza słownika).
+    kody = [k for pole in dane["bays"] for k in pole["protection_codes"]]
+    assert not {"Buchholz", "temp", "ciśnienie"} & set(kody)
+    assert (kody.count("63"), kody.count("26"), kody.count("63P")) == (53, 53, 53)
     drugi, zmieniono_drugi = przygotuj_model_po_odczycie(copy.deepcopy(model))
     assert zmieniono_drugi is False
     assert drugi.model_dump(mode="json") == dane

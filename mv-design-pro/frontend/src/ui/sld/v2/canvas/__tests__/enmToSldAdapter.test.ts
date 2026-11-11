@@ -35,6 +35,7 @@ import type {
 import { pole } from '../../../../../test/pola';
 import { polaSnStacji } from '../../../../shared/polaStacji';
 import { ctRatingLabelText } from '../../../v3/compose/protectionMarking';
+import { zrodloU0Deskryptora } from '../../model/zrodloNapieciaZerowego';
 
 function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
   return {
@@ -2203,8 +2204,8 @@ describe('F10.6 — designation per-aparat (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035
 
 /**
  * F10.6 / CTVT-RENDER — projekcje adnotacji pola (CT, VT, strefa 87T) liczone wprost z rekordu
- * pola i migawki (`resolveBay*`, te same funkcje rzutuje blok GPZ). Karta W5-B: blok STACJI ich
- * nie rzutuje (przypięte niżej — decyzja wyglądu SLD oczekuje werdyktu właściciela B-02).
+ * pola i migawki (`resolveBay*`, te same funkcje rzutuje blok GPZ). Blok STACJI rzutuje blok
+ * zabezpieczeń (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ), tabliczek CT/VT i miernika nie (W5-B).
  */
 describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3/D4/D5, V12K-036)', () => {
   it('odbiór B-02 (pkt 6): adnotacja pomiaru CT = nazwa · przekładnia — układ 3×CT i rdzenie poza schematem', () => {
@@ -2336,15 +2337,21 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('bay-2')).toBeUndefined();
   });
 
-  it('W5-B: blok STACJI nie rzutuje adnotacji pola mimo danych (zabezpieczenia, CT, VT) — rysunek bez zmian wyglądu', () => {
+  it('JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok STACJI rzutuje blok zabezpieczeń pola tak jak GPZ (kody, przypisanie, źródło 3U₀), tabliczek CT/VT i miernika nie', () => {
+    // Decyzja właściciela 2026-11-05 („tak ma być ramka we wszystkich tak samo”) odwraca dawną
+    // decyzję karty W5-B dla BLOKU ZABEZPIECZEŃ: pole stacji z zabezpieczeniem w modelu rysuje
+    // blok jak pole GPZ — ta sama funkcja projekcji (`resolveBayProtectionMarking`,
+    // `zrodloU0Deskryptora`). Tabliczki CT/VT i miernik to notacje odrębne od bloku; zostają
+    // poza blokiem stacji (decyzja W5-B bez zmian) — para przypięta tu, żeby żadna z dwóch
+    // projekcji nie przesunęła się bez decyzji.
     const snap = makeStationOnlySnapshot('ST-1');
     snap.bays = [
       pole({
         ref_id: 'bay-1', bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn',
         protection_codes: ['87T', '67N'], protection_ref: 'prot-1',
-        // Powiązanie źródła 3U₀ (karta UX-04/POLE-LINIOWE-WZORZEC) — adnotacja pola jak inne.
         zrodlo_u0_ref: 'vt-z17',
       }),
+      pole({ ref_id: 'bay-2', bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn' }),
     ];
     snap.protection_assignments = [
       {
@@ -2360,19 +2367,22 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const bay = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays?.[0];
+    const polaStacji = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
+    const bay = polaStacji.find((b) => b.bayRef === 'bay-1');
+    const bezKodow = polaStacji.find((b) => b.bayRef === 'bay-2');
     expect(bay?.bayRef).toBe('bay-1');
-    // Dane są (resolver je widzi)…
-    expect(resolveBayProtectionMarking(snap.bays[0], snap)?.codes).toEqual(['87T', '67N']);
+    // Blok zabezpieczeń: TA SAMA projekcja co pole GPZ.
+    expect(bay?.protectionMarking).toEqual(resolveBayProtectionMarking(snap.bays[0], snap));
+    expect(bay?.protectionMarking?.codes).toEqual(['87T', '67N']);
+    expect(bay?.protectionMarking?.breakerRef).toBe('cb-1');
+    expect(bay?.zrodloU0).toEqual(zrodloU0Deskryptora(snap, snap.bays[0]).zrodloU0);
+    // Pole bez kodów funkcji: brak bloku (§17.2 „brak danych = brak oznaczenia").
+    expect(bezKodow).toBeDefined();
+    expect(bezKodow).not.toHaveProperty('protectionMarking');
+    // Tabliczki CT/VT i miernik: dane są (resolver je widzi), blok stacji ich nie rzutuje.
     expect(resolveBayCtRatingAnnotations(snap.bays[0], snap)).toHaveLength(1);
-    // …a blok stacji ich nie rzutuje.
-    expect(bay?.protectionMarking).toBeUndefined();
     expect(bay?.ctRatingAnnotations).toBeUndefined();
     expect(bay?.meteringMeasurementRef).toBeUndefined();
-    // Źródło 3U₀ (odniesienie przy przekaźniku) to adnotacja pola — blok stacji jej nie rzutuje,
-    // tak jak oznaczenia zabezpieczeń (dawne `vtArrangements` usunięte: adapter nigdy go nie
-    // wypełniał, a reguła 67N czyta teraz źródło 3U₀).
-    expect(bay).not.toHaveProperty('zrodloU0');
     expect(bay?.vtMountingAnnotations).toBeUndefined();
   });
 });

@@ -106,6 +106,7 @@
 import { rectsOverlap, type V3Rect } from '../core/grid';
 import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
+import { blokKrawedzi, zasiegWierszaWRamce } from '../symbols/blokZabezpieczen';
 import {
   enlargedFontSizeWithinProportion,
   fontSizeForScreenFloorWithinProportion,
@@ -389,11 +390,21 @@ const NAME_ROW_SUFFIX = /#name-row-\d+$/;
  *  przekaźnika; `null` — etykieta poza pasmem. */
 function kluczPasma(label: OwnedLabel): string | null {
   if (label.ownerKind === 'station-name') return `nazwy:${label.ownerRef.replace(NAME_ROW_SUFFIX, '')}`;
-  if (label.ownerKind === 'protection' && WIERSZ_BLOKU_PRZEKAZNIKA.test(label.ownerRef)) {
-    return `blok:${label.ownerRef.replace(WIERSZ_BLOKU_PRZEKAZNIKA, '')}`;
-  }
-  return null;
+  const blok = blokWiersza(label);
+  return blok === null ? null : `blok:${blok}`;
 }
+
+/** Ref pola-właściciela wiersza bloku zabezpieczeń (= `meta.ownerRef` symbolu bloku i `blok`
+ *  krawędzi jego ramki, `symbols/blokZabezpieczen.ts::blokKrawedzi`); `null` — inna etykieta. */
+function blokWiersza(label: OwnedLabel): string | null {
+  return label.ownerKind === 'protection' && WIERSZ_BLOKU_PRZEKAZNIKA.test(label.ownerRef)
+    ? label.ownerRef.replace(WIERSZ_BLOKU_PRZEKAZNIKA, '')
+    : null;
+}
+
+/** Zbiór, z którym prostokąt planu nie może kolidować (indeks przestrzenny albo widok indeksu
+ *  dla jednego kandydata — wiersz bloku nie widzi krawędzi własnej ramki). */
+type ZbiorKolizji = Pick<RectIndex, 'anyOverlap'>;
 
 function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map<number, V3Rect> {
   const pasma = new Map<string, Kandydat[]>();
@@ -536,8 +547,8 @@ function stronyWKolejnosci(placement: OwnedLabel['placement']): readonly SimpleA
  */
 function najlepszeDopasowanie(
   kandydat: Kandydat,
-  zajete: RectIndex,
-  obstacles: RectIndex,
+  zajete: ZbiorKolizji,
+  obstacles: ZbiorKolizji,
   sheet: SheetOutline,
 ): Dopasowanie | null {
   const { label, fontSize, slot, tekstBazowy } = kandydat;
@@ -714,18 +725,24 @@ function ustapSasiadow(
   kandydat: Kandydat,
   zaplanowane: Map<number, PlannedLabel>,
   uzyteKandydaty: Map<number, Kandydat>,
-  obstacles: RectIndex,
+  przeszkodyDla: (k: Kandydat) => ZbiorKolizji,
+  ramkiZajete: ZbiorKolizji,
   sheet: SheetOutline,
 ): boolean {
   const { label, slot, tekstBazowy, fontSize } = kandydat;
   if (!kandydat.enlarged || tekstBazowy.length === 0) return false;
   const rotated = label.rotated === true;
   const strony = stronyWKolejnosci(label.placement);
+  const obstacles = przeszkodyDla(kandydat);
   for (const strona of strony.length === 0 ? [label.placement] : strony) {
     const rect = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, strona);
-    if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect)) continue;
+    // Ramka dorysowana do powiększonych wierszy bloku zabezpieczeń jest rysunkiem — nie ustępuje.
+    if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect) || ramkiZajete.anyOverlap(rect)) continue;
     const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
     if (blokujace.length === 0) continue;
+    // Wiersz bloku zabezpieczeń nie ustępuje: blok to ramka z wierszami (jedna notacja), wiersz
+    // przeniesiony na inną stronę wyszedłby z ramki.
+    if (blokujace.some((p) => blokWiersza(p.label) !== null)) continue;
     const odsuniete = new Set(blokujace.map((p) => p.index));
     const zajeteBez = buildRectIndex([
       ...[...zaplanowane.values()].filter((p) => !odsuniete.has(p.index)).map((p) => p.rect),
@@ -735,7 +752,8 @@ function ustapSasiadow(
     let wszystkieMieszcza = true;
     for (const p of blokujace) {
       const sasiad = uzyteKandydaty.get(p.index);
-      const d = sasiad ? najlepszeDopasowanie(sasiad, zajeteBez, obstacles, sheet) : null;
+      const zajeteSasiada: ZbiorKolizji = { anyOverlap: (r) => zajeteBez.anyOverlap(r) || ramkiZajete.anyOverlap(r) };
+      const d = sasiad ? najlepszeDopasowanie(sasiad, zajeteSasiada, przeszkodyDla(sasiad), sheet) : null;
       if (!sasiad || !d || d.text.length === 0) {
         wszystkieMieszcza = false;
         break;
@@ -953,16 +971,66 @@ export function planSceneLabels(
 
   // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
   // przyrostowo — jak w `declutterLabels`, jedna maszyneria dla obu.
-  const obstacleIndex = buildRectIndex(obstacles);
+  //
+  // JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (karta 2026-11-05, pomiar na fiksturze 52 stacji): kanwa
+  // dorysowuje ramkę bloku do NARYSOWANYCH wierszy (`ramkaBlokuPrzekaznika`), a plan traktował
+  // krawędzie ramki SCENY jako przeszkodę także dla wierszy tego samego bloku — wiersz powiększony
+  // podłogą opisów celu przecinał własną krawędź i wypadał („63P", „51N" pola transformatorowego
+  // w kadrze stacji, skala 1). Para predykatów z jednego źródła (`symbols/blokZabezpieczen.ts`):
+  // wiersz bloku NIE widzi krawędzi własnej ramki, za to ZASIĘG ramki dorysowanej do powiększonego
+  // wiersza (`zasiegWierszaWRamce`) musi być wolny od rysunku i od obcych napisów, a każdy inny
+  // napis omija ten zasięg (`ramkiZajete`).
+  const obstacleIndex = buildRectIndex(obstacles.filter((r) => blokKrawedzi(r) === null));
+  const krawedzieRamek = obstacles.filter((r) => blokKrawedzi(r) !== null);
+  const krawedzieIndex = buildRectIndex(krawedzieRamek);
   let zajete = createRectIndex();
+  let ramkiZajete = createRectIndex();
+  const przeszkodyDla = (k: Kandydat): ZbiorKolizji => {
+    const blok = blokWiersza(k.label);
+    const rozszerz = blok !== null && k.enlarged;
+    return {
+      anyOverlap: (r) => {
+        const probe = rozszerz ? zasiegWierszaWRamce(r) : r;
+        if (obstacleIndex.anyOverlap(probe)) return true;
+        if (!krawedzieIndex.anyOverlap(probe)) return false;
+        return krawedzieRamek.some((e) => blokKrawedzi(e) !== blok && rectsOverlap(probe, e));
+      },
+    };
+  };
   const zaplanowane = new Map<number, PlannedLabel>();
   /** Kandydat, z którego powstała każda zaplanowana etykieta (po ewentualnym
    *  przejściu na postać zapasową) — potrzebny `ustapSasiadow`, żeby sąsiada
    *  ustępującego miejsca dopasować TĄ SAMĄ postacią, którą plan go rysuje. */
   const uzyteKandydaty = new Map<number, Kandydat>();
+  const zajeteDla = (k: Kandydat): ZbiorKolizji => {
+    const blok = blokWiersza(k.label);
+    if (blok === null) return { anyOverlap: (r) => zajete.anyOverlap(r) || ramkiZajete.anyOverlap(r) };
+    const rozszerz = k.enlarged;
+    return {
+      anyOverlap: (r) => {
+        const probe = rozszerz ? zasiegWierszaWRamce(r) : r;
+        if (!zajete.anyOverlap(probe) && !ramkiZajete.anyOverlap(probe)) return false;
+        for (const p of zaplanowane.values()) {
+          const blokP = blokWiersza(p.label);
+          // Wiersze własnego bloku: ramka jest wspólna, więc liczy się tylko ich tusz.
+          if (blokP === blok) {
+            if (rectsOverlap(r, p.rect)) return true;
+            continue;
+          }
+          if (rectsOverlap(probe, p.rect)) return true;
+          if (blokP !== null && p.enlarged && rectsOverlap(probe, zasiegWierszaWRamce(p.rect))) return true;
+        }
+        return false;
+      },
+    };
+  };
+  const zajmij = (label: OwnedLabel, rect: V3Rect, enlarged: boolean): void => {
+    zajete.add(rect);
+    if (enlarged && blokWiersza(label) !== null) ramkiZajete.add(zasiegWierszaWRamce(rect));
+  };
   for (const kandydatPierwotny of kolejnosc) {
     let kandydat = kandydatPierwotny;
-    let dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+    let dopasowanie = najlepszeDopasowanie(kandydat, zajeteDla(kandydat), przeszkodyDla(kandydat), sheet);
     if ((!dopasowanie || dopasowanie.text.length === 0) && kandydat.zapasowy !== undefined) {
       // Podłoga celu bez miejsca: postać standardowa (albo kubełek bez podłogi).
       const zapasowy = kandydat.zapasowy;
@@ -977,14 +1045,16 @@ export function planSceneLabels(
       // Pasmo nazw przestawiono pod postać celu; postać standardowa pisma
       // naturalnego stoi w swoim slocie sceny (tak jak bez podłogi celu).
       kandydat = zapasowy.enlarged ? { ...zapasowy, slot: przestawione.get(zapasowy.index) ?? zapasowy.slot } : zapasowy;
-      dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
+      dopasowanie = najlepszeDopasowanie(kandydat, zajeteDla(kandydat), przeszkodyDla(kandydat), sheet);
     }
     if (
       (!dopasowanie || dopasowanie.text.length === 0) &&
       (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) &&
-      ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, obstacleIndex, sheet)
+      ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, przeszkodyDla, ramkiZajete, sheet)
     ) {
-      zajete = buildRectIndex([...zaplanowane.values()].map((p) => p.rect));
+      zajete = createRectIndex();
+      ramkiZajete = createRectIndex();
+      for (const p of zaplanowane.values()) zajmij(p.label, p.rect, p.enlarged);
       continue;
     }
     if (!dopasowanie || dopasowanie.text.length === 0) {
@@ -1000,7 +1070,7 @@ export function planSceneLabels(
       }
       continue;
     }
-    zajete.add(dopasowanie.rect);
+    zajmij(kandydat.label, dopasowanie.rect, dopasowanie.enlarged);
     uzyteKandydaty.set(kandydat.index, kandydat);
     zaplanowane.set(kandydat.index, {
       label: kandydat.label,

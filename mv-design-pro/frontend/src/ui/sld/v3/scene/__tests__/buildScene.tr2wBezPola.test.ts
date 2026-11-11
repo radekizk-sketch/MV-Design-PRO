@@ -320,9 +320,27 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //  · szerokości kolumn pola zaokrąglane w górę do rastru (`snapUp` w `layout/measure.ts`,
   //    +8/+16 — widoczne także w wariancie z dawną szerokością 0,62 em);
   //  · etykiety po lewej kotwiczone prawą krawędzią (decyzja 8): podpis łącznika Q1 o 2 w lewo.
+  // AKTUALIZACJA ŚWIADOMA (JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, decyzja właściciela 2026-11-05:
+  // „tak ma być ramka we wszystkich tak samo"). Sonda sygnatury element po elemencie, kod karty
+  // vs baza `9dafb6083`, ta fikstura (L1: 25 pozycji ubyło / 28 doszło; L2: 30 / 46):
+  //  · +3 bloki `protectionRelay` — pola z kodami w modelu (IN 51/50/51N, OUT 51/50/51N,
+  //    TR 87T/51/50/51N/63/26/63P); pole pomiarowe (bez kodów) bez bloku. Na L2 +13 wierszy
+  //    kodów w dwóch kolumnach ramki; L1 sama ramka, bez wierszy;
+  //  · kolumny pól z blokiem poszerzone o ramkę obok toru: zejścia pól 001/002/003
+  //    x 560/672/816 → 624/800/944 (L1), szyna SN do x 944, bbox 984×790 → 1184×806;
+  //  · strona nN pola TR pod dołem ramki bloku (`lvColumnBottoms`): szyna nN y 608 → 624,
+  //    portal nN 624 → 640, wiersze nazwy stacji +16, pętla kabla pod stacją 672 → 688.
+  // AKTUALIZACJA ŚWIADOMA (wzorzec właściciela 2026-11-05: „Opisy pól po lewej dzięki temu pole
+  // robi się czytelniejsze i węższe”). L1 bez zmian (oznaczenia aparatów stacji są od L2). Na L2
+  // zmieniają się WYŁĄCZNIE oznaczenia aparatów: stoją w jednej kolumnie oznaczeń od lewej
+  // krawędzi pola, tekst od lewej (dawniej każde dosunięte prawą krawędzią do swojego symbolu).
+  // Sonda sygnatury vs baza `9dafb6083`, L2 (75 vs 59 pozycji): oznaczenia Q1 pól 000…003
+  // x 421/565/677/813 (baza) → 416/624/800/936 (przesunięcia kolumn pól — blok ramki, jak wyżej),
+  // T1 pola transformatorowego 814 → 936 — ta sama lewa krawędź co Q1 tego pola (dawniej 813
+  // i 814 — dwie krawędzie); symbole, odcinki i pozostałe etykiety jak w poprzednim punkcie.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '5320dc6486437d8375747cd5de3a657e',
-    2: '0cc819141ed93063401020389247859a',
+    1: 'c6c32bd1eef46c635e3f8c98f0319f98',
+    2: 'fdf4f2386a1b99c984889a5e8f90225c',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
@@ -339,8 +357,12 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   it('L2: aparatura pola TR z modelu (wyłącznik z gałęzi pola) i transformator NADAL na rysunku', () => {
     const scene = buildSceneV3(enmZPolem, 2);
     const poleTr = (enmZPolem.bays ?? []).find((b) => b.bay_role === 'TR' && b.ref_id.includes('/sn_field/'))!;
-    const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id);
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok zabezpieczeń pola (kody funkcji z modelu) to
+    // adnotacja obok toru, nie aparat — aparatura toru porównywana bez niego, blok osobno.
+    const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id && s.symbolId !== 'protectionRelay');
     expect(symbolePolaTr.map((s) => s.symbolId).sort()).toEqual(['breaker', 'transformer2W']);
+    const bloki = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id && s.symbolId === 'protectionRelay');
+    expect(bloki).toHaveLength((poleTr.protection_codes ?? []).length > 0 ? 1 : 0);
     expect(symbolePolaTr.find((s) => s.symbolId === 'breaker')?.meta?.deviceRef).toBe(
       poleTr.equipment_refs.find((ref) => (enmZPolem.branches ?? []).some((g) => g.ref_id === ref && g.type === 'breaker')),
     );

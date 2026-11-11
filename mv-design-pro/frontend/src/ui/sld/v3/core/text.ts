@@ -591,7 +591,7 @@ const PION_ZNAKOW: Readonly<Record<KrojSchematu, Readonly<Record<'400' | '700', 
  *  (`metrykiKroju.json`, `pionowe`); znak spoza tabeli liczony pełnym wznoszeniem i zejściem
  *  kroju (zasięg górny, nigdy niedoszacowany); tekst bez tuszu (pusty, spacje) — {0, 0}.
  *  Służy rozstrzygnięciu, czy litera mieści się w obrysie symbolu bez nakładania na kreskę
- *  (okrąg przekaźnika, pierścień przekładnika, test podłogi liter symboli). */
+ *  (pierścień przekładnika, test podłogi liter symboli). */
 export function zasiegPionowyTuszu(
   text: string,
   fontSize: number,

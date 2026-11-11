@@ -2153,3 +2153,310 @@ tabliczki po prawej, P1/P2 po prawej, blok poza osią Q0, zasięg ramki bez pasa
 z większego opisu zamiast sumy. Zrzuty: `docs/uiux/zrzuty/ux04-pole-liniowe/` (oba motywy,
 LOD0–2, stany aparatów); stan sprzed korekty v2: `przed/*-przed-v2.png` (Z.10 trójpołożeniowy,
 Z.11.1). Werdykt wizualny — właściciel (B-02).
+
+**Jedna notacja bloku zabezpieczeń (decyzja właściciela 2026-11-05: „tak ma być ramka we
+wszystkich tak samo”) — wykonanie → test.** Każdy przekaźnik i sterownik pola na schemacie jest
+tą samą prostokątną ramką: GPZ z powiązaniami obwodów wtórnych i bez nich, pola SN stacji
+(liniowe, sprzęgło, transformatorowe), pola odgałęzień, pola źródeł OZE (PV, BESS, wiatr),
+podgląd rozdzielnicy w kreatorze stacji i arkusz symboli.
+
+1. *Geometria z jednej funkcji.* `symbols/blokZabezpieczen.ts`: `ramkaBlokuZWierszy` (ramka
+   z wierszy kodów), `gabarytSymbolu` (gabaryt każdego symbolu sceny — dla bloku cała ramka),
+   `przeszkodySymbolu` (cztery krawędzie ramki oznaczone właścicielem bloku), `zasiegRamkiBloku`,
+   `zasiegWierszaWRamce`. Kompozycja pola — jedna funkcja `compose/blokZabezpieczenPola.ts`
+   (`ulozBlokZabezpieczenPola`, `pionBlokuPola`) dla GPZ (`compose/gpz.ts`) i stacji
+   (`compose/station.ts`); w `station.ts` nie ma własnej logiki bloku. Moduł okręgu przekaźnika
+   (`symbols/okragPrzekaznika.ts`) skasowany; glif `ProtectionRelayGlyph` rysuje wyłącznie ramkę
+   (i znak „!” braku topologicznego).
+2. *Kody z modelu, dwie kolumny.* Treścią bloku są `Bay.protection_codes` w kolejności danych,
+   ⌈n/2⌉ wierszy w dwóch kolumnach. LOD2 — kody, LOD1 — goła ramka tego samego kształtu, LOD0 —
+   nic. Brak kodów — brak bloku.
+3. *Wysokość.* Środek ramki na wysokości łącznika, który zabezpieczenie wyłącza (zacisk cewki
+   albo środek symbolu); gdy model nie wskazuje łącznika wyłączanego — pierwszego łącznika pola;
+   gdy oś wypada ponad rysunkiem aparatów, górna krawędź ramki w górnej krawędzi rysunku (ramka
+   nie przecina szyny).
+4. *Pole bez powiązań obwodów wtórnych (reguła).* Pole, którego model nie niesie powiązań
+   funkcji z przekładnikami (`BayPrimaryDevice.funkcje_eaz_zasilane`), nie ma linii
+   pomiarowych CT/VT — rysunek nie dorabia powiązań, których nie ma w danych. Linia wyłączania
+   istnieje wyłącznie wtedy, gdy model wskazuje łącznik wyłączany (`funkcje_eaz_wylaczajace`
+   albo przypisanie zabezpieczenia z `breaker_ref`); bez wskazania blok stoi przy pierwszym
+   łączniku pola bez linii, a scena niesie brak danych `trip_link_unresolved`.
+5. *Rzutowanie bloku stacji (odwrócenie decyzji W5-B w zakresie bloku).* Adapter
+   `v2/canvas/enmToSldAdapter.ts::buildExplicitStationMiniBays` rzutuje dla pól stacji
+   `protectionMarking` (ten sam resolver co GPZ) i źródło napięcia zerowego; tabliczki CT/VT
+   i miernik stacji nadal NIE są rzutowane (W5-B bez zmian w tym zakresie).
+6. *Rezerwacja miejsca — predykaty parami.* Wysokość kolumny pola stacji
+   (`layout/measure.ts::stationBlockHeight`) rezerwuje dół ramki z tej samej funkcji, z której
+   kompozycja stawia blok (`dolRamkiBlokuPolaStacji` → `pionBlokuPola`); strona nN pola
+   transformatorowego schodzi pod dół ramki (`lvColumnBottoms`). Plan etykiet
+   (`canvas/labelLegibility.ts`): wiersz bloku nie widzi krawędzi własnej ramki, powiększony
+   wiersz sprawdza zasięg w ramce, obce napisy omijają ramki rozrośnięte do narysowanych
+   wierszy, wiersze bloku nie ustępują w declutterze.
+7. *Gabaryt z jednego źródła w kanwie.* Kotwica widoku, indeks przynależności, obrys
+   zaznaczenia, minimapa, cel fitu, sondy przeszkód etykiet, kadr pola i sondy GPZ czytają
+   `gabarytSymbolu` zamiast kwadratu definicji symbolu.
+
+**Znaleziska po drodze, naprawione u źródła.** (i) Kadr celu zależał od drogi: wspinaczka
+poziomu szczegółu startowała z poziomu kamery, więc ścieżka „Sieć › stacja” po kadrze pola dawała
+inny kadr stacji niż dwuklik (pomiar: stacja S03 fikstury 52 stacji, L1 szer. 890, L2 szer. 1054
+j.św.). `canvas/camera.ts::applyKadr` startuje z najniższego dostępnego poziomu (kryterium (d):
+kadr zależy wyłącznie od prostokąta celu); test `camera.kadr.test.ts` „kadr nie zależy od drogi”
+(poziom kamery {0, 1, 2} × szerokość celu przez oba pasma histerezy × minLod {brak, 1}).
+(ii) Przycięcie odcinka toru do portu łącznika na torze zostawiało wierzchołek powtórzony, gdy
+port wypadał w narożniku trasy (`koordynacja_scena_migawka` L0, `…/segment_L_SL` (456, 432)):
+`scene/elementyToru.ts` normalizuje przycięte łamane tą samą funkcją co scena
+(`layout/route.ts::dedupeVertices`, przeniesiona z `buildScene.ts`); test
+`elementyToru.przyciecie.test.ts` (rodzaj łącznika × port względem narożnika × strona dobiegu).
+
+**Piny przesunięte z pomiarem.** Fikstura 52 stacji: arkusz 7432×6286 → 8100×7038, trzy wiersze
+zamiast dwóch; suma pionów (test sceny) 21608/45128/45128 → 19696/43232/43232; skrzyżowania
+z mostkiem 19 → 16; odcisk stacji z polem TR (L1/L2) — sonda element po elemencie
+w `buildScene.tr2wBezPola.test.ts`. Akceptacja `accept:sld-v3`: piony 19976/43040/43040 →
+20616/46432/46432 (footprint L1/L2 +848 = 53 × 16, zejście nN pod ramkę), poziomy
+45312/58832/62784 → 60216/78608/82560, podłoga wypełnienia arkusza L0 0.01615 → 0.01384, L1/L2
+podniesione do 0.03025/0.03081; zero nowych kolizji. Atrybucje — w komentarzach przy stałych.
+
+**Testy.** `scene/__tests__/blokZabezpieczenNotacja.contract.test.tsx` — iloczyn rodzaj pola
+{GPZ z powiązaniami, GPZ bez powiązań, pole liniowe stacji, sprzęgło, pole TR, pole źródła OZE}
+× liczba kodów {0, 1, 2, 7} × LOD {0, 1, 2} × motyw {ciemny, jasny}; wyrocznie (a) brak okręgu,
+(b) ramka z jednej funkcji, (c) wysokość łącznika, (d) opisy pola bez kolizji, (e) ramka bez
+styku z obcym przewodem, para rezerwacja↔rysunek; fikstura 52 stacji (każdy blok stacji × LOD
+1/2); iniekcja dla każdej wyroczni. Podgląd kreatora: `podgladRozdzielnicy.test.tsx` (ramka,
+zero okręgów). e2e `ux04-blok-zabezpieczen-zrzuty-screenshot.spec.ts` (pole stacji SN, pole GPZ
+bez powiązań, pole źródła OZE; oba motywy; kody z modelu w ramce, zero okręgów na kanwie).
+Zrzuty: `docs/uiux/zrzuty/ux04-pole-liniowe/blok-*.png`; stan sprzed karty:
+`przed/blok-*-przed-v3.png`. Werdykt wizualny — właściciel (B-02).
+
+#### Werdykt B-02 właściciela dla pola liniowego (2026-11-05) → wykonanie → test
+
+**B-02 ZAAKCEPTOWANE 2026-11-05 z wyjątkiem opisów odgałęzienia → poprawione w karcie JEDNA
+NOTACJA BLOKU ZABEZPIECZEŃ.** Werdykt właściciela dla zrzutu Z.11.1 po korekcie `9dafb6083`,
+dosłownie: „Wszystko jest piękne! Akceptacja z wyjątkiem opisów które mogą być po lewej stronie
+wtedy wszystko stanie się czytelniejsze i bez kolizji”. Zrzut z zaznaczeniem właściciela
+wskazywał podpisy Q5, GK1, T3 i tabliczkę „15/√3 / 0,1/√3 kV” po prawej kolumnie odgałęzienia,
+obok ramki bloku zabezpieczeń.
+
+Punkty 1, 2 i 5 oraz „Skutki z pomiarem” niżej opisują stan pośredni tej karty; zastąpił je
+wzorzec właściciela z 2026-11-05 (podsekcja „Wzorzec właściciela 2026-11-05 — opisy pola po
+lewej” na końcu §11.20). Zostają jako historia decyzji.
+
+1. *Opisy odgałęzienia po lewej — ta sama reguła co T1/T2 toru głównego.* Podpisy WSZYSTKICH
+   aparatów odgałęzienia toru (aparaty szeregowe kolumny Q5, GK1 i jej aparaty boczne Q51, T3)
+   stoją w kolumnie podpisów PO LEWEJ kolumny odgałęzienia, a tabliczki przekładników
+   odgałęzienia — w pasie opisów przekładników między tą kolumną podpisów a kolumną aparatów
+   (`compose/gpz.ts::szukajPoLewej`, prawa granica pasa = lewa krawędź kolumny). Szerokość obu
+   pasów liczy ta sama para funkcji co tor główny: szerokość podpisów i
+   `pasOpisowPrzekladnikowLewy` (rozszerzona o parametr pozycji aparatów, bez kopii; zbiór
+   pozycji — `pozycjeOdgalezienia`). Pas wchodzi do planu jako `GalazPlanu.rezerwaLewa`
+   (`compose/apparatusSequence.ts`): pas odgałęzienia (`pasOdgalezienia`) i rozszerzenie boczne
+   kolumny pola (`bayApparatusPlanFootprint`) rezerwują go przed kolumną, a rysunek
+   (`ukladGalezi`) stawia kolumnę za nim i zwraca jej lewą krawędź (`lewaKolumnyX`) jako kotwicę
+   podpisów — rezerwacja i rysunek z jednego źródła; kolumna odgałęzienia odsuwa się od toru
+   głównego dokładnie o pas opisów. Po prawej podstosu odgałęzienia nie stoi żaden opis
+   (`GalazPlanu.rezerwaPrawa` = 0 w GPZ).
+2. *Pole stacji.* Identyfikatory aparatów szeregowych kolumny odgałęzienia stoją po lewej kolumny
+   (`rezerwyIdentyfikatorowGalezi`, kotwica `lewaKolumnyX`); aparat boczny odgałęzienia ma podpis
+   POD symbolem — ta sama reguła co aparat boczny toru głównego stacji.
+3. *Kod ramki nigdy nie jest zasłonięty.* Wyrocznia sceny (f) `naruszeniaKodowRamki`
+   (`scene/__tests__/wyroczniaOpisowPola.ts`): pełny obrys każdego wiersza bloku (kody i odniesienie
+   3U₀) we wnętrzu własnej ramki, rozłączny z gabarytem każdego innego symbolu, każdym odcinkiem
+   i każdym innym napisem — w kontrakcie notacji bloku (iloczyn rodzaj pola × liczba kodów × LOD ×
+   motyw, fikstura 52 stacji) i na 59 fiksturach × LOD {0, 1, 2}; iniekcje: obcy napis, linia przez
+   kod, obcy symbol, kod na krawędzi ramki. Wyrocznia ekranu `e2e/kodyRamkiBloku.ts`
+   (`zaslonieciaKodowRamki`: tusz przeglądarki wobec każdego napisu, każdej kreski i każdego
+   wypełnienia namalowanego później) w każdym kadrze pola obu speców zrzutowych; iniekcja kreski
+   przez kod w spece bloku. Kod „81O” stoi w całości wewnątrz ramki na scenie (wyrocznia (f))
+   i na żywej kanwie: bieg e2e 2026-11-05 na drzewie karty — `zaslonieciaKodowRamki` puste
+   w każdym kadrze Z.10 i Z.11.1 (asercja twarda w `zmierzBlokPrzekaznika`) i w każdym kadrze
+   bloku; na drzewie `9dafb6083` przesłona z zaznaczenia właściciela również się nie odtwarza —
+   wyrocznie pilnują, żeby nie pojawiła się w żadnym kadrze.
+4. *Zrzuty przed i po.* Z.11.1 i Z.11 (wykonanie z wyłącznikiem stałym i odłącznikiem — dwa
+   aparaty boczne odgałęzienia Q51 i T3), oba motywy, LOD2 (`pole-z11-1-stan-wyjsciowy-*`,
+   `pole-z11-stan-wyjsciowy-*`) i LOD1 (`pole-z11-1-lod1-*`, `pole-z11-lod1-*`); stan przed:
+   `przed/<kadr>-przed-v3.png` (Z.11.1 — zrzuty z `9dafb6083`, Z.11 — ten sam spek na drzewie
+   `9dafb6083`). Nowy test e2e „pole liniowe Z.11 GPZ: opisy odgałęzienia po lewej”. Sprawdzenie
+   podpisów `zmierzPodpisyPola`: wspólna prawa krawędź w KAŻDEJ kolumnie podpisów (tor główny,
+   kolumna odgałęzienia — `data-odgalezienie-toru` symbolu aparatu na kanwie) i podpis
+   odgałęzienia na lewo od jego symboli. Kadr „Dopasuj do → Pole” pola Z.11 przy oknie
+   1600 × 1000 kończy na LOD1 (pole mieści się w całości dopiero poniżej progu LOD2; dolna
+   granica kadru pola to LOD1, `canvas/zakresKadru.ts`) — tak samo na drzewie `9dafb6083`; zrzut
+   LOD2 pola Z.11 powstaje ruchem projektanta: kadr pola, potem kółko wokół środka pola do LOD2
+   (`zrzut(…, dobijDoLod2)`).
+5. *Odbiór architekta zrzutu Z.11.1 LOD2 (2026-11-05): podpis przy SWOIM symbolu, w stałym
+   odstępie od lewej krawędzi — tym samym co T1/T2 względem toru.* Pomiar przed korektą (scena,
+   j.św.): odstęp podpis–krawędź kolumny w Z.11.1 tor 72, odgałęzienie 80; w polu pomiaru
+   napięcia Z.17 tor 8, odgałęzienie 80 — dwa niezależne pasy opisów (toru i każdej kolumny)
+   zaokrąglane osobno. Wykonanie: JEDEN pas opisów pola `pasOpisowPolaGpz` (`compose/gpz.ts`) =
+   najszerszy opis przekładnika wśród aparatów toru głównego i wszystkich odgałęzień — ten sam
+   pas w rezerwacji kolumny pola, osi pola, kolumnie podpisów toru i kotwicy podpisów każdej
+   kolumny odgałęzienia; odstęp jest równy z konstrukcji. Kolumna odgałęzienia odsuwa się od toru
+   dokładnie o kolumnę swoich podpisów i ten pas — bez nadmiaru (Z.11.1: prawa krawędź
+   gabarytu toru 232, podpisy kolumny od 245, pas 72, kolumna od 344). Po korekcie: Z.10 bez zmian (pole bez odgałęzienia —
+   pas toru), Z.11.1 i Z.11 odstęp 80 we wszystkich kolumnach, Z.17 — pas pola 72 także przy
+   torze (pole szersze o 72 j.św., podpis Q1 toru w tym samym odstępie co podpisy kolumny VT).
+   Wyrocznia (g) `naruszeniaOdstepuPodpisow` (`scene/__tests__/wyroczniaOpisowPola.ts`): odstęp
+   lewa krawędź kolumny − prawa krawędź podpisu jest jeden (±1) w każdym polu z odgałęzieniem —
+   pola GPZ (`#etykieta-aparatu-…`) i pola stacji (`#apparatus-id-…`), 59 fikstur × LOD {0, 1, 2},
+   z przypiętym pokryciem GPZ i stacji na LOD1 i LOD2; iniekcja: podpis kolumny odgałęzienia
+   odsunięty o 48 → (g); iniekcja w kodzie: osobne pasy toru i odgałęzień → 15 naruszeń (g).
+6. *Wady z oględzin zrzutów bloku zabezpieczeń (2026-11-05) — wszystkie naprawione w tej karcie.*
+   (a) Kadr pola stacji pokazywał sam aparat Q1 bez ramki bloku, a kadr pola źródła ucinał podpisy
+   dolnych aparatów i nagłówek: spek bloku kadrował po obwiedni samych uchwytów aparatów. Teraz
+   kadr = obwiednia CAŁEGO rysunku pola na kanwie (symbole aparatów pola ∪ każdy element
+   `data-owner-ref` pola: ramka z kodami, podpisy, tabliczki, linie, nagłówek) z asercją, że cały
+   rysunek leży w kanwie na LOD2. (b) „Pole GPZ bez oznaczeń aparatów” — oznaczenia są na kanwie,
+   wycinek zrzutu ucinał kolumnę podpisów (ta sama przyczyna co (a)). (c) „Pole GPZ bez powiązań”
+   z liniami pomiarowymi — pole wzorca ENEA Z.10 dostaje powiązania obwodów wtórnych z szablonu
+   (`obwody_wtorne_pola.py::powiazania_aparatow_pola`), więc kody 50/51/51N/79 mają linie pomiaru
+   i wyłączania zgodnie z modelem; błędna była nazwa kadru. Spek ma teraz oba przypadki karty:
+   `blok-pole-gpz-z-powiazaniami-*` (linie pomiarowe i linia wyłączania — asercja) i
+   `blok-pole-gpz-bez-powiazan-*` (drugie pole sekcji z funkcjami 27 i 81U, których żaden aparat
+   nie zasila ani nie wyłącza: ramka bez linii pomiarowych i bez linii wyłączania — asercja).
+   (d) Znak „?” kafla wyłącznika kanonicznego nachodził na kreskę symbolu: rysunek symbolu
+   kanonicznego wypełnia cały gabaryt, a kafel z marginesem 2 nie miał wolnego rogu — dotyczyło
+   wszystkich dziewięciu łączników kanonicznych. Kafel kanoniczny ma po lewej kolumnę znaku
+   `KOLUMNA_ZNAKU_KAFLA` (`symbols/glyphs.tsx`, szerokość z tabeli posuwów kroju: szerszy z „?”
+   i „!” pogrubionych przy wysokości podłogi czytelności + 1), znak leży poza obrysem rysunku
+   z konstrukcji; kafel QET ma wolny róg z importera. Test `kafelStanu.test.tsx` „znak „?”/„!”
+   kafla leży poza rysunkiem symbolu” — każdy łącznik z kaflem × znak (kanoniczny: rozłączny
+   z obrysem; QET: z obrysem wariantu bez napędu i z osprzętem napędu); iniekcja: kafel bez
+   kolumny → czerwony. Okrąg w rogu ramki na kanwie pola stacji to znak ostrzeżenia topologii
+   („!” w okręgu, `data-topology-warning`), nie okrąg przekaźnika — predykaty e2e „bez okręgu”
+   pomijają go tą samą regułą co wyrocznia sceny (a).
+
+**Skutki z pomiarem.** Linia wyłączania Q0 → ramka (fikstura Z.11): Z.10 40 j.św. bez zmian,
+Z.11.1 128 → 176 j.św., Z.11 184 → 240 j.św. — ramka stoi za podstosem odgałęzienia (jej linie
+pomiarowe schodzą w dół i nie mogą przeciąć odgałęzienia), a kolumna odsunęła się o pas opisów
+(Z.11.1: podpisy Q5/GK1/T3 + tabliczka T3, 72 j.św.).
+
+**Testy.** `torZPortowStacjaGpz.test.ts` (pas podpisów odgałęzienia po lewej: stacja i GPZ ×
+konfiguracje katalogu × iniekcje portów), `zaczepKrawedziEtykiet.test.tsx` (C) — wspólna krawędź
+w każdej kolumnie podpisów, z pokryciem kolumn odgałęzień, `blokZabezpieczenNotacja.contract.test.tsx`
+(f) z iniekcjami, `wezelOdczepuPozaKaflem.contract.test.ts` (f) i (g) na 59 fiksturach,
+`poleLinioweGpz.test.tsx` (linia wyłączania), `kafelStanu.test.tsx` (znak kafla poza rysunkiem).
+Iniekcje w kodzie (każda czerwona, plik przywrócony): podpisy odgałęzienia GPZ z powrotem po
+prawej — 3 testy; kolumna odgałęzienia bez rezerwy lewej (`ukladGalezi`) — 4; identyfikatory
+kolumny odgałęzienia stacji po prawej — 2; osobne pasy opisów toru i odgałęzienia — 5 (15
+naruszeń (g)); kafel kanoniczny bez kolumny znaku — 1.
+
+#### Wzorzec właściciela 2026-11-05 — opisy pola po lewej → wykonanie → test
+
+**Wytyczna.** Właściciel przekazał 2026-11-05 rysunek wzorcowy pola liniowego Z.11.1 (zrzut
+kanwy z naniesionym układem opisów) ze słowami: „Opisy pól po lewej dzięki temu pole robi się
+czytelniejsze i węższe”. Wzorzec zastępuje punkty 1, 2 i 5 werdyktu B-02 wyżej (opisy
+odgałęzienia w osobnym pasie między torem a kolumną odgałęzienia, jeden odstęp podpis–krawędź
+kolumny). Reguła:
+
+1. *Kolumna oznaczeń.* Oznaczenia WSZYSTKICH aparatów pola — tor główny, aparaty boczne, kolumna
+   odgałęzienia i jej aparaty boczne (Z.11.1: PF0, Q1, Q0, Q5, GK1, T3, T1, PF1, GK, T2) — stoją
+   w JEDNEJ kolumnie przy lewej krawędzi pola, wyrównane do lewej, każde w wierszu swojego
+   symbolu.
+2. *Kolumna przekładni.* Tabliczki przekładników („200–400/5”, „1/100”, „15/√3 / 0,1/√3 kV”)
+   i montaż przekładnika napięciowego stoją w drugiej kolumnie tuż za kolumną oznaczeń, w wierszu
+   oznaczenia swojego aparatu. P1/P2 zostają przy T1, po jego lewej (między kolumnami a
+   pierścieniem).
+3. *Kolumna odgałęzienia tuż przy torze głównym.* Bez rezerwy na opisy po żadnej stronie
+   odgałęzienia; na prawo od toru głównego nie stoi żaden opis aparatu.
+4. *Ramka bloku zabezpieczeń bliżej* — tuż za kolumną odgałęzienia; pole jest węższe.
+5. *Nazwa pola* zostaje w prawym górnym rogu.
+
+**Wykonanie — jedna funkcja pasów i wierszy dla wszystkich pól.** Nowy moduł
+`compose/kolumnaOpisowPola.ts`: `pasyOpisowPola` (szerokość kolumny oznaczeń i kolumny
+przekładni: najszerszy tekst + oczko, w górę do siatki), `wierszeOpisowPola` (wiersze kolumn:
+każdy na wysokości środka swojego symbolu; aparaty o zachodzących wysokościach — aparat boczny
+obok aparatu toru, Z.11 stałe: GK1 i Q51 — tworzą blok wierszy jeden pod drugim wyśrodkowany na
+średniej środków ich symboli; kolejność: środek symbolu, położenie X, kolejność wejścia —
+deterministyczna; górne krawędzie na siatce), `opisyAparatowPolaStacji` / `pasyOpisowPolaStacji`
+(teksty z tej samej sekwencji i tych samych oznaczeń co rysunek). Rozszerzenie dawnego
+`pasOpisowPrzekladnikowLewy`, bez kopii: pole GPZ — `compose/gpz.ts::pasyOpisowPolaGpz` (te same
+pasy + własny pas zacisków P1/P2), pole stacji SN i nN, pole źródła OZE, pole z kolumną
+odgałęzienia — `compose/station.ts::buildBayStack` i rezerwacja `layout/measure.ts`. Teksty
+tabliczek dla rezerwacji i rysunku z jednej funkcji `protectionMarking.ts::tekstyOpisowPrzekladnika`
+(predykaty `czyTabliczkaAparatu`, `czyMontazVtAparatu` wspólne z resolverami tabliczek).
+Rezerwacja kolumny pola, oś toru i kotwice obu kolumn czytają te same pasy (predykaty parami).
+Skasowane: rezerwy podpisów odgałęzień (`GalazPlanu.rezerwaLewa`/`rezerwaPrawa`,
+`rezerwyEtykietGalezi`, `rezerwyIdentyfikatorowGalezi`, `lewaKolumnyX`), pas CT/VT po prawej toru
+w `protectionAnnotationColumnWidth`, `apparatusIdentifierLeftReserve`, `ctRatingAnnotationsWidth`,
+`vtMountingAnnotationsWidth`, `podpisyWPasieBezNakladania`, wyszukiwanie tabliczki po lewej
+symbolu (`szukajPoLewej`). Etykieta opisu niesie `symbolOpisu` (prostokąt symbolu opisywanego
+aparatu, `layout/labels.ts`) — powiązanie opis → aparat dla wyroczni, bez wpływu na plan etykiet.
+Wyjątek świadomy: pola wieży transformatora GPZ nie rysują oznaczeń aparatów, więc nie mają
+kolumny oznaczeń; ich tabliczki zostają przy symbolu po prawej (`szukajMiejscaTabliczki`).
+
+**Znalezisko po drodze, naprawione u źródła — pas aparatu bocznego.** Wysokość pasa aparatu
+bocznego (`apparatusSequence.ts::wysokoscPasaBocznego`, układ `ulozPasyBoczne`) liczyła
+„prostokąt definicji + wysokość podpisu t4 pod symbolem”, a pas odgałęzienia — „kolumna + podpis
+t4”. Po przeniesieniu oznaczeń do kolumny pod aparatem bocznym nie stoi podpis, a ten sam składnik
+maskował drugi błąd: pas pomijał zwis aparatu z kaflem pod węzłem odczepu (2·GRID) i kończył się
+2 j.św. nad dołem kafla. Iniekcja (pas = sam prostokąt definicji): kafel uziemnika Q51 kolumny
+odgałęzienia Z.11 wchodzi na przekładnik T3 (28 czerwonych w `poleLinioweGpz.test.tsx`). Teraz
+pas = zwis + dół rysunku (prostokąt definicji, obrys i kafel QET — największy) + oczko odstępu
+stosu; pas odgałęzienia = odstęp rastru + kolumna + oczko. Na fiksturach wzorca i w akceptacji
+`accept:sld-v3` geometria bez zmian (piony, poziomy, wypełnienie arkusza — te same wartości);
+`przesunieciaOdgalezien.test.ts` z wyrocznią pasa z danych i nową komórką „QET z kaflem i zwisem”
+(czerwona na dawnej regule).
+
+**Znalezisko po drodze, naprawione u źródła — kod funkcji spoza słownika.** Spek bloku ustawiał
+polu GPZ „bez powiązań” kody 46 i 49, których słownik funkcji EAZ
+(`network_model/catalog/funkcje_eaz.py`) nie zna. Operacja `update_element_parameters` zapisywała
+je bez sprzeciwu, a walidacja gotowości po operacji (ocena pola liniowego GPZ,
+`enm/pole_liniowe_gpz.py::_obwody_funkcji` → `opis_funkcji_eaz_pl`) kończyła się błędem serwera
+500 (`KeyError`) — operacja padała, a kadr „bez powiązań” nigdy nie powstał (zmierzone w biegu
+e2e 2026-11-05). Słownik deklaruje: „kod spoza słownika jest błędem szablonu i operacji”.
+Naprawa w JEDYNYM pisarzu rekordu pola `enm/pola.py::waliduj_rekord_pola` (wołają go oba
+pisarze — `zbuduj_pole` i `zmien_pole`): kod spoza słownika = `BladPola`, w operacji odmowa
+nazwana `params.invalid_value` bez skutku w modelu (kod błędu istniejący). Spek używa kodów
+słownika: pole bez powiązań 27 i 81U (wzorzec Z.10 ich nie rysuje), pole stacji
+50/51/51N/67N/50N/59N/79.
+
+Inwentarz klasy (każda droga zapisu kodu pola): szablony pól (`bay_templates.py:177`)
+i powiązania obwodów wtórnych (`obwody_wtorne_pola.py:212`) sprawdzały słownik już wcześniej;
+operacje i budowa pola — naprawione w pisarzu; automigracja dawnych słowników pól
+(`enm/migrations/field_specs_promocja.py`) przechodzi przez tego samego pisarza, a archiwum
+sprzed karty jednej nomenklatury (2026-10-30) niesie w 53 polach transformatora klucze-nazwy
+„Buchholz”, „temp”, „ciśnienie” — promocja przepisuje je na numery słownika 63, 26, 63P
+(`DAWNE_KLUCZE_FUNKCJI_EAZ`, przypięte w `test_substrat_52_stacji_migruje_sie_w_calosci`).
+Reguła świadomie NIE stoi w kontrakcie `Bay`: magazyn zastępuje migawkę, która nie przechodzi
+walidacji modelu, modelem domyślnym (`enm/store.py::_load_persisted_enm`), więc odmowa
+kontraktu zamieniłaby zapisany projekt z kodem spoza słownika w cichą utratę danych
+(przypięte w `test_kody_funkcji_eaz_pola.py::test_kontrakt_modelu_nie_odrzuca_kodu`).
+Do decyzji architekta zostają dwie rzeczy: (1) modele zapisane po karcie W5-B, a przed kartą
+jednej nomenklatury, niosą klucze-nazwy wprost w `bays` (archiwum
+`tests/reference_networks/dane/w3g2_pasma_rozplywu_przed_gpz_model.enm.json.gz`) — wczytują się,
+ale edycja takiego pola transformatora jest odmową pisarza, dopóki kody nie zostaną zmienione
+(migracja zapisu zastanego w `enm/models.py::migruj_zapis_zastany_slownika` albo brak
+zgodności wstecznej wg zasady inżynierskiej nr 1); (2) ciche zastąpienie niepoprawnej migawki
+modelem domyślnym w magazynie jest osobnym ryzykiem utraty danych dla każdej reguły
+kontraktu.
+
+**Pomiar (scena, j.św., rozpiętość X symboli z ramką bloku, napisów i przewodów pola).**
+Z.11.1: przed wzorcem (baza `9dafb6083`) LOD2 393, LOD1 387 → po 369 (LOD1 i LOD2 równe);
+podziałka pól Z.11.1 w sekcji 472 → 432. Z.11 stałe 434/428 → 425; Z.10 stałe 306/300 → 305;
+Z.10 trójpołożeniowe 281/275 → 280 (pole bez odgałęzienia nie zyskuje jego pasa; na LOD1 kolumny
+opisów są zarezerwowane jak na LOD2). Z.11.1 po: oznaczenia x = 64, tabliczki x = 96, P1/P2 x = 174,
+tor 184–248, kolumna odgałęzienia od 248 (tuż przy torze), ramka bloku od x = 304. Linia wyłączania
+Q0 → ramka: Z.10 16 i 24, Z.11.1 176 → 72, Z.11 240 → 136.
+
+**Testy.** Wyrocznia sceny `scene/__tests__/wyroczniaOpisowPola.ts::naruszeniaKolumnOpisow` na 59
+fiksturach modelu i macierzy W1c × LOD {0, 1, 2} (`wezelOdczepuPozaKaflem.contract.test.ts`, 188):
+(kol-a) oznaczenia pola mają jedną lewą krawędź, każde ma `symbolOpisu`, a jego środek pionowy
+różni się od środka symbolu najwyżej o pół wysokości symbolu i jeden wiersz kolumny; (kol-b)
+tabliczki w jednej lewej krawędzi, na prawo od kolumny oznaczeń, pierwsza w wierszu oznaczenia
+swojego aparatu; (kol-c) żaden opis na prawo od lewej krawędzi symboli pola; (kol-d) bez kolizji
+z symbolem, napisem i przewodem; (kol-e) kolumna odgałęzienia ≤ oczko od toru głównego. Pokrycie
+przypięte (GPZ i stacja × LOD1/LOD2 × oznaczenie toru i odgałęzienia, przekładnie na LOD2).
+Iniekcje sceny: oznaczenie odgałęzienia przy swoim symbolu zamiast w kolumnie → (kol-a)
+i (kol-c); kolumna odgałęzienia odsunięta o 80 → (kol-e); tabliczka zsunięta o 16 → (kol-b).
+`compose/__tests__/kolumnaOpisowPola.test.ts` (pasy; wiersze: rozłączne, zachodzące Z.11 GK1/Q51
+× kolejność wejścia, równa wysokość × X, kilka tabliczek, same tabliczki, łańcuch bloków).
+`poleLinioweGpz.test.tsx`: szerokość rysunku pola (zapadka, Z.11.1 < 393) i linia wyłączania
+(zapadka 3/9/17·GRID). `tabliczkiPrzekladnikow.test.ts` (tabliczka po lewej symbolu, na prawo od
+oznaczenia, w jego wierszu; iniekcje: T1, T2, T3 po prawej swojego symbolu, tabliczka poza
+wierszem), `torZPortowStacjaGpz.test.ts` (oznaczenia odgałęzienia w kolumnie toru, powiązane
+przez `symbolOpisu`), `zaciskiPrzekladnikaGpz.test.ts`, odcisk stacji z polem TR
+(`buildScene.tr2wBezPola.test.ts`, sonda w komentarzu). e2e: `zmierzPodpisyPola` (wspólna lewa
+krawędź oznaczeń i tabliczek na ekranie, nic po prawej symboli pola) w każdym kadrze Z.10, Z.11.1
+i Z.11; spek bloku — kolumna oznaczeń w kadrach pola stacji, GPZ i źródła OZE.
+Zrzuty: `docs/uiux/zrzuty/ux04-pole-liniowe/` (oba motywy: `pole-z11-1-*`, `pole-z11-*`,
+`blok-*`); stan przed wzorcem: `przed/<kadr>-przed-v3.png` z drzewa `9dafb6083`. Werdykt
+wizualny — właściciel (B-02).

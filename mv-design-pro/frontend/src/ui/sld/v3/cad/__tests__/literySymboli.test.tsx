@@ -44,13 +44,8 @@ import {
   type GlyphProps,
   type SwitchState,
 } from '../../symbols/glyphs';
-import {
-  KRESKA_OKREGU_PRZEKAZNIKA,
-  OKRAG_PRZEKAZNIKA,
-  PISMO_KODU_W_OKREGU,
-  kodyPozaOkregiemPrzekaznika,
-  ukladKodowWOkregu,
-} from '../../symbols/okragPrzekaznika';
+import { ramkaBlokuZabezpieczen, wierszeBlokuZabezpieczen } from '../../compose/blokZabezpieczenPola';
+import { prostokatEtykietyZakotwiczonej } from '../../layout/labels';
 import { STATE_COLOR } from '../../theme/colorTokens';
 import { CAD_SYMBOL_STROKE_PX, CadSymbol, WAGA_LITERY_SYMBOLU } from '../CadSymbol';
 import { CAD_LITERA_MIN_U, CAD_SYMBOL_IDS, ELECTRICAL_CAD_SYMBOL_REGISTRY, prymitywy, type CadPrimitive } from '../cadSymbolRegistry';
@@ -356,8 +351,6 @@ const WARIANTY_GLIFU: readonly (readonly [string, Partial<GlyphProps>])[] = [
   ...(['closed', 'open', 'unknown', 'earthed', 'bad'] as const satisfies readonly SwitchState[]).map(
     (state) => [`kafel/${state}`, { state, kafleStanu: STATE_COLOR }] as const,
   ),
-  ['kody 1', { labelLines: ['51'] }],
-  ['kody 2', { labelLines: ['51', '51N'] }],
   ['ostrzeżenie topologii', { hasTopologyWarning: true }],
   ['brak pola TR', { hasFieldGapWarning: true }],
   ['uzwojenia brak', { uzwojenia: { stan: 'brak' } }],
@@ -405,7 +398,9 @@ describe('(A) podłoga S9-7 na liście wszystkich liter symboli z rejestrów', (
     // odpowiada rysunkowi — litera, której symbol nie ma, nie może się w niej pojawić.
     expect(LITERY.some((l) => l.zrodlo === 'qet' && /^qetCoreBalanceCt$/.test(l.opis))).toBe(false);
     expect(jest('qet', 'M', /^qetBreakerZNapedem$/)).toBe(true);
-    expect(jest('glif', '51N', /^protectionRelay\//)).toBe(true);
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: glif bloku zabezpieczeń nie rysuje kodów (kody są
+    // wierszami etykiet sceny wewnątrz ramki) — w glifie zostaje wyłącznie znak ostrzeżenia.
+    expect(LITERY.some((l) => l.zrodlo === 'glif' && /^protectionRelay\//.test(l.opis) && l.tekst !== '!')).toBe(false);
     expect(jest('glif', '!', /^protectionRelay\//)).toBe(true);
     expect(jest('glif', '!', /^transformer2W\//)).toBe(true);
     expect(jest('glif', '?', /\/kafel\/unknown$/)).toBe(true);
@@ -415,7 +410,6 @@ describe('(A) podłoga S9-7 na liście wszystkich liter symboli z rejestrów', (
 
   it('stała pisma liter CAD = podłoga w jednostkach biblioteki', () => {
     expect(CAD_LITERA_MIN_U * CAD_U_PX).toBe(MIN_TEXT_SCREEN_PX);
-    expect(PISMO_KODU_W_OKREGU.fontSize).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
     expect(PISMO_ZNAKU_OSTRZEZENIA.fontSize).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
   });
 });
@@ -425,9 +419,8 @@ describe('(A) podłoga S9-7 na liście wszystkich liter symboli z rejestrów', (
 // ---------------------------------------------------------------------------
 
 describe('(B) tusz litery nie dotyka kreski własnego symbolu', () => {
-  it('importer QET mierzy litery odmianą rysowaną przez renderer, a kreska okręgu przekaźnika = kreska aparatu', () => {
+  it('importer QET mierzy litery odmianą rysowaną przez renderer', () => {
     expect(QET_ODMIANA_KROJU_LITER).toBe(odmianaWagi(WAGA_LITERY_SYMBOLU));
-    expect(KRESKA_OKREGU_PRZEKAZNIKA).toBe(V3_STROKE_APPARATUS);
   });
 
   it('rejestr CAD: każda litera każdego symbolu w każdym stanie', () => {
@@ -570,12 +563,11 @@ describe('(B) tusz litery nie dotyka kreski własnego symbolu', () => {
   });
 });
 
-describe('(B) okrąg przekaźnika: kody słownika funkcji EAZ pismem 8 px', () => {
+describe('(B) blok zabezpieczeń: kody słownika funkcji EAZ wierszami wewnątrz ramki', () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const zrodlo = readFileSync(resolve(here, '../../../../../../../backend/src/network_model/catalog/funkcje_eaz.py'), 'utf8');
   // Wpis może mieć komentarz między nawiasem a kodem — pomijany.
   const KODY = [...zrodlo.matchAll(/FunkcjaEaz\(\s*(?:#[^\n]*\n\s*)*"([^"]+)"/g)].map((m) => m[1]);
-  const R_WEWN = OKRAG_PRZEKAZNIKA.r - KRESKA_OKREGU_PRZEKAZNIKA / 2;
 
   // 34 kody: jedna nomenklatura, każda funkcja raz (decyzja architekta 2026-10-30 — SCO
   // z ponownym załączeniem po SCO jednym wpisem, numery IEEE C37.2 zamiast nazw własnych).
@@ -584,45 +576,25 @@ describe('(B) okrąg przekaźnika: kody słownika funkcji EAZ pismem 8 px', () =
     expect(new Set(KODY).size).toBe(KODY.length);
   });
 
-  it('iloczyn: każdy kod sam i każda uporządkowana para — tusz w okręgu, wiersze rozłączne, okrąg ∪ reszta = lista', () => {
+  it('iloczyn: każdy kod sam i każda uporządkowana para — wiersze = lista w kolejności danych, tusz wierszy rozłączny i wewnątrz ramki', () => {
     let przypadki = 0;
-    let wOkregu = 0;
     const listy = [...KODY.map((k) => [k]), ...KODY.flatMap((a) => KODY.filter((b) => b !== a).map((b) => [a, b]))];
     for (const lista of listy) {
-      const uklad = ukladKodowWOkregu(lista);
-      expect([...uklad.kody, ...kodyPozaOkregiemPrzekaznika(lista)], lista.join('+')).toEqual(lista);
-      expect(uklad.kody, lista.join('+')).toEqual(lista.slice(0, uklad.kody.length));
-      expect(uklad.linieBazowe).toHaveLength(uklad.kody.length);
-      const tusze = uklad.kody.map((kod, i) =>
-        tuszTekstu(kod, OKRAG_PRZEKAZNIKA.cx, uklad.linieBazowe[i], PISMO_KODU_W_OKREGU.fontSize, PISMO_KODU_W_OKREGU.fontWeight),
-      );
-      for (const [i, t] of tusze.entries()) {
-        for (const n of [[t.x0, t.y0], [t.x1, t.y0], [t.x0, t.y1], [t.x1, t.y1]] as const) {
-          expect(Math.hypot(n[0] - OKRAG_PRZEKAZNIKA.cx, n[1] - OKRAG_PRZEKAZNIKA.cy), `${lista.join('+')}: „${uklad.kody[i]}”`).toBeLessThan(R_WEWN);
-        }
+      const wiersze = wierszeBlokuZabezpieczen('pole', lista, [], 800, 400);
+      expect(wiersze.map((w) => w.text), lista.join('+')).toEqual(lista);
+      const ramka = ramkaBlokuZabezpieczen(wiersze, 800, 400, 0)!;
+      const prostokaty = wiersze.map(prostokatEtykietyZakotwiczonej);
+      for (const r of prostokaty) {
+        expect(r.x >= ramka.x && r.y >= ramka.y, lista.join('+')).toBe(true);
+        expect(r.x + r.width <= ramka.x + ramka.width && r.y + r.height <= ramka.y + ramka.height, lista.join('+')).toBe(true);
       }
-      if (tusze.length === 2) expect(tusze[0].y1, lista.join('+')).toBeLessThan(tusze[1].y0);
-      wOkregu += uklad.kody.length;
+      if (prostokaty.length === 2) {
+        const [p, q] = prostokaty;
+        const rozlaczne = p.x + p.width <= q.x || q.x + q.width <= p.x || p.y + p.height <= q.y || q.y + q.height <= p.y;
+        expect(rozlaczne, lista.join('+')).toBe(true);
+      }
       przypadki += 1;
     }
     expect(przypadki).toBe(34 + 34 * 33);
-    expect(wOkregu).toBeGreaterThan(0);
-  });
-
-  it('kody, które pismem 8 px nie mieszczą się w okręgu same — jawna lista (idą do wierszy bloku)', () => {
-    const zaSzerokie = KODY.filter((k) => ukladKodowWOkregu([k]).kody.length === 0);
-    expect(zaSzerokie).toMatchInlineSnapshot(`
-      [
-        "50BF",
-        "SPZE",
-        "OWG",
-        "ZAWSC",
-      ]
-    `);
-  });
-
-  it('para kodów pola liniowego ENEA (51, 50) i (51N, 67N) mieści się w dwóch wierszach', () => {
-    expect(ukladKodowWOkregu(['51', '50', '51N']).kody).toEqual(['51', '50']);
-    expect(ukladKodowWOkregu(['51N', '67N']).kody).toEqual(['51N', '67N']);
   });
 });

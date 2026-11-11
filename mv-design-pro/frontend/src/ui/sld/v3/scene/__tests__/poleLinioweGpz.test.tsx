@@ -41,7 +41,8 @@ import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gp
 import fxStacjeZamkniete from '../../../../../harness-fixtures/generated/geometria_stacji_zamkniete.json';
 import fxGpz110 from '../../../../../harness-fixtures/generated/geometria_stacji_gpz_110kv.json';
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
-import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps, ODSTEP_BLOKU_OD_WYLACZNIKA } from '../../compose/gpz';
+import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps } from '../../compose/gpz';
+import { ODSTEP_BLOKU_OD_WYLACZNIKA } from '../../compose/blokZabezpieczenPola';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import { czySymbolQet, obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
@@ -958,9 +959,18 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
   // odgałęzienia (Q5, T3 z tabliczką przekładni), więc najbliższe wolne położenie jest za
   // tabliczką T3: 128 px (16·GRID); Z.11 — ramka 112 px sięga pasma podpisów odgałęzienia
   // (podpis „Q5" pod ramką), położenie za pasem podpisów: 184 px (23·GRID). Przed korektą v2:
-  // Z.10 112 px, Z.11.1 176 px, Z.11 232 px.
-  const DLUGOSC_WYLACZANIA: Readonly<Record<WykonaniePola, number>> = { Z10: 5 * GRID, Z11_1: 16 * GRID, Z11: 23 * GRID };
-  it('linia wyłączania pozioma na wysokości Q0, krótka: Z.10 ≤ 5·GRID, Z.11.1 ≤ 16·GRID, Z.11 ≤ 23·GRID', () => {
+  // Z.10 112 px, Z.11.1 176 px, Z.11 232 px. Werdykt B-02 właściciela 2026-11-05 (opisy kolumny
+  // odgałęzienia PO LEWEJ jej symboli): kolumna odgałęzienia odsuwa się od toru głównego o pas
+  // opisów (podpisy Q5, GK1, T3 + tabliczka T3: 72 px), a ramka bloku stoi za podstosem
+  // odgałęzienia (jej linie pomiarowe schodzą w dół i nie mogą przeciąć odgałęzienia) — pomiar
+  // 2026-11-05: Z.10 40 px (bez zmian), Z.11.1 176 px (22·GRID), Z.11 240 px (30·GRID).
+  // Wzorzec właściciela 2026-11-05 („Opisy pól po lewej dzięki temu pole robi się czytelniejsze
+  // i węższe”): wszystkie opisy w kolumnach po lewej toru, kolumna odgałęzienia tuż przy torze,
+  // ramka tuż za nią, bez pasa opisów po prawej toru — pomiar 2026-11-05 (zapadka w dół): Z.10
+  // 16 px i 24 px (pola o 6 i 7 aparatach w fiksturach), Z.11.1 72 px (9·GRID), Z.11 136 px
+  // (17·GRID).
+  const DLUGOSC_WYLACZANIA: Readonly<Record<WykonaniePola, number>> = { Z10: 3 * GRID, Z11_1: 9 * GRID, Z11: 17 * GRID };
+  it('linia wyłączania pozioma na wysokości Q0, krótka: Z.10 ≤ 3·GRID, Z.11.1 ≤ 9·GRID, Z.11 ≤ 17·GRID', () => {
     for (const [, enm] of FIKSTURY) {
       const scena = buildSceneV3(enm, 2);
       for (const pole of polaLiniowe(enm)) {
@@ -972,6 +982,46 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
         expect(dlugosc, `${pole.ref} (${pole.pole})`).toBeLessThanOrEqual(DLUGOSC_WYLACZANIA[pole.pole]);
       }
     }
+  });
+
+  // Wzorzec właściciela 2026-11-05: „Opisy pól po lewej dzięki temu pole robi się czytelniejsze
+  // i węższe”. Szerokość rysunku pola = rozpiętość X symboli (ramka bloku — jej prostokąt),
+  // etykiet i przewodów pola. Pomiar przed wzorcem (baza `9dafb6083`, LOD2/LOD1): Z.11.1 393/387,
+  // Z.11 stałe 434/428, Z.10 stałe 306/300, Z.10 trójpołożeniowe 281/275. Pomiar po (LOD1
+  // i LOD2 równe — kolumny opisów rezerwowane niezależnie od LOD): Z.11.1 369, Z.11 425, Z.10
+  // stałe 305, Z.10 trójpołożeniowe 280 (Z.10 na LOD1 o 5 szersze niż przed wzorcem, na LOD2
+  // o 1 węższe — pole Z.10 nie ma kolumny odgałęzienia, więc nie zyskuje jej pasa). Zapadka
+  // w dół; Z.11.1 — kryterium (e) wzorca: węższe niż przed wzorcem.
+  const SZEROKOSC_POLA: Readonly<Record<string, number>> = {
+    z11_1_trojpolozeniowy: 369,
+    z11_staly_z_odlacznikiem: 425,
+    z10_staly_z_odlacznikiem: 305,
+    z10_trojpolozeniowy: 280,
+  };
+  it('szerokość rysunku pola po przeniesieniu opisów na lewo (zapadka; Z.11.1 węższe niż przed wzorcem: 393)', () => {
+    const zmierzone = new Map<string, number>();
+    for (const [, enm] of FIKSTURY) {
+      for (const lod of [1, 2] as const) {
+        const scena = buildSceneV3(enm, lod);
+        for (const b of (enm.bays ?? []).filter((x) => (x.bay_template_ref ?? '').startsWith('bay_template_gpz_line_enea_'))) {
+          const wzor = b.bay_template_ref!.replace('bay_template_gpz_line_enea_', '');
+          const nalezy = (r: string | undefined) => r === b.ref_id || (r ?? '').startsWith(`${b.ref_id}#`);
+          const xs: number[] = [];
+          for (const sym of scena.symbols.filter((x) => nalezy(x.meta?.ownerRef))) {
+            const r = sym.meta?.ramkaBlokuPrzekaznika;
+            if (r) xs.push(sym.x + r.x, sym.x + r.x + r.width);
+            else xs.push(sym.x, sym.x + SYMBOL_DEFS[sym.symbolId].width);
+          }
+          for (const l of scena.labels.filter((x) => nalezy(x.ownerRef))) xs.push(l.rect.x, l.rect.x + l.rect.width);
+          for (const g of scena.segments.filter((x) => nalezy(x.meta?.ownerRef))) for (const q of g.points) xs.push(q.x);
+          const w = Math.max(...xs) - Math.min(...xs);
+          expect(w, `${b.ref_id} (${wzor}) L${lod}`).toBeLessThanOrEqual(SZEROKOSC_POLA[wzor]);
+          zmierzone.set(wzor, Math.max(zmierzone.get(wzor) ?? 0, w));
+        }
+      }
+    }
+    expect([...zmierzone.keys()].sort()).toEqual(Object.keys(SZEROKOSC_POLA).sort());
+    expect(zmierzone.get('z11_1_trojpolozeniowy')!).toBeLessThan(393);
   });
 });
 
@@ -1289,9 +1339,10 @@ describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja f
   });
 
   // Rysunek bloku (karta pkt 1): glif symbolu z meta sceny rysuje TEN SAM prostokąt co ramka
-  // sceny i ŻADNEGO okręgu ani kodów; ten sam glif bez ramki (przekaźnik modelu stacji, pole bez
-  // powiązań obwodów wtórnych) rysuje okrąg — świadomie zostawiona inna notacja.
-  it('glif bloku: ramka z meta sceny, bez okręgu i bez tekstu kodów; glif bez ramki — okrąg', () => {
+  // sceny i ŻADNEGO okręgu ani kodów. Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela
+  // 2026-11-05: „tak ma być ramka we wszystkich tak samo”): glif bez meta ramki (podgląd kreatora,
+  // katalog symboli) rysuje ramkę gabarytu definicji — okręgu nie ma na żadnej ścieżce.
+  it('glif bloku: ramka z meta sceny, bez okręgu i bez tekstu kodów; glif bez ramki — ramka gabarytu definicji, bez okręgu', () => {
     const p = przekaznikZ(scenaBazowa);
     const doc = glifSymbolu(p);
     const rama = doc.querySelector('[data-przekaznik="ramka-bloku"]')!;
@@ -1302,7 +1353,10 @@ describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja f
     expect(okregiGlifu(doc).length, 'okrąg w bloku').toBe(0);
     expect(doc.querySelectorAll('text').length, 'kody w symbolu').toBe(0);
     const bezRamki = glifSymbolu({ ...p, meta: { ...p.meta, ramkaBlokuPrzekaznika: undefined } });
-    expect(bezRamki.querySelectorAll('circle').length, 'przekaźnik modelu stacji — okrąg').toBeGreaterThan(0);
+    expect(bezRamki.querySelectorAll('circle').length, 'glif bez meta ramki — okrąg').toBe(0);
+    const ramaDomyslna = bezRamki.querySelector('[data-przekaznik="ramka-bloku"]')!;
+    expect([ramaDomyslna.getAttribute('x'), ramaDomyslna.getAttribute('y'), ramaDomyslna.getAttribute('width'), ramaDomyslna.getAttribute('height')].map(Number))
+      .toEqual([0, 0, SYMBOL_DEFS.protectionRelay.width, SYMBOL_DEFS.protectionRelay.height]);
   });
 });
 
@@ -1402,12 +1456,12 @@ function rodzajAdnotacjiZabezpieczen(l: OwnedLabel): string {
 }
 
 describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w krawędzi prostokąta', () => {
-  // Iloczyn: kompozytor (pole GPZ z powiązaniami obwodów — blok przekaźnika; GPZ bez powiązań;
-  // stacja SN — lista R-2 pod okręgiem) × rodzaj etykiety (wiersz kodów, odniesienie 3U₀,
+  // Iloczyn: kompozytor (pole GPZ z powiązaniami obwodów i bez nich, stacja SN — jeden blok
+  // zabezpieczeń, karta JEDNA NOTACJA) × rodzaj etykiety (wiersz kodów, odniesienie 3U₀,
   // adnotacja CT/VT, numer 52) × LOD (1, 2). Strona prostokąta względem kotwicy wyznacza
   // krawędź zaczepu tekstu: z prawej kotwicy — lewa krawędź; z lewej kotwicy (tabliczki
-  // przekładników toru głównego po lewej symbolu, korekta v2 2026-11-04) i wiersze
-  // prawo-dosunięte pod okręgiem — prawa (tekst dosunięty do symbolu).
+  // przekładników toru głównego po lewej symbolu, korekta v2 2026-11-04) — prawa (tekst
+  // dosunięty do symbolu).
   const ZESTAW: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
     ...FIKSTURY,
     ['stacje SN i GPZ (geometria stacji, łączniki zamknięte)', (fxStacjeZamkniete as unknown as { snapshot: EnergyNetworkModel }).snapshot],
@@ -1431,19 +1485,21 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
       });
     }
   }
-  it('pokrycie iloczynu na scenie: blok przekaźnika (prawa strona, lewa krawędź), tabliczki przekładników po lewej (prawa krawędź) i lista pola GPZ bez powiązań (pod okręgiem, prawa krawędź)', () => {
-    // Kolejność `it` w pliku: ten test biegnie po komórkach iloczynu wyżej. Lista stacji SN
-    // pod okręgiem i adnotacje CT/„52" stacji — kompozytor stacji,
-    // `compose/__tests__/station.test.ts` (opis „R-2 × zaczep tekstu").
-    expect([...pokrycie].sort()).toEqual(
-      expect.arrayContaining([
-        'wiersz kodów · right · poczatek',
-        'odniesienie 3U₀ · right · poczatek',
-        'wiersz kodów · below · koniec',
-        'adnotacja CT · left · koniec',
-        'tabliczka przekładnika Ferrantiego · left · koniec',
-      ]),
-    );
+  it('pokrycie iloczynu na scenie: blok zabezpieczeń (prawa strona, lewa krawędź) i tabliczki przekładników w kolumnie przekładni (lewa krawędź kolumny); zero wierszy kodów pod okręgiem', () => {
+    // Kolejność `it` w pliku: ten test biegnie po komórkach iloczynu wyżej. Adnotacje CT/„52"
+    // stacji — kompozytor stacji, `compose/__tests__/station.test.ts` (opis „R-2 × zaczep tekstu").
+    // Wzorzec właściciela 2026-11-05 (opisy pola po lewej): tabliczki wszystkich rodzajów stoją
+    // w kolumnie przekładni od jej LEWEJ krawędzi (dawniej po lewej symbolu, prawą krawędzią).
+    expect([...pokrycie].sort()).toEqual([
+      'adnotacja CT · right · poczatek',
+      'odniesienie 3U₀ · right · poczatek',
+      'tabliczka VT · right · poczatek',
+      'tabliczka przekładnika Ferrantiego · right · poczatek',
+      'wiersz kodów · right · poczatek',
+    ]);
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: dawna lista kodów pod okręgiem (pole GPZ bez
+    // powiązań, stacja SN) nie istnieje — każdy wiersz kodu jest wierszem ramki bloku.
+    expect([...pokrycie].filter((k) => k.startsWith('wiersz kodów') && k !== 'wiersz kodów · right · poczatek')).toEqual([]);
   });
 
   it('zaczep tekstu: lewa krawędź / prawa krawędź / środek; etykieta obrócona zawsze w środku (obrót wokół środka)', () => {

@@ -27,7 +27,7 @@
  *
  * Moduł czysty: zero React, zero DOM, zero fizyki.
  */
-import { ramkaBlokuPrzekaznika } from '../compose/gpz';
+import { ramkaBlokuPrzekaznika } from '../symbols/blokZabezpieczen';
 import { panelePolGpz, type PanelPolaGpz } from '../compose/gpzAdnotacje';
 import type { PreviewSymbol } from '../compose/preview';
 import { GRID, type V3Rect } from '../core/grid';

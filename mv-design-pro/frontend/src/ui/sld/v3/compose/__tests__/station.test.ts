@@ -46,15 +46,15 @@ function planOrderedSymbols(role: FieldRole): readonly string[] {
   const plan = planApparatusSymbolIds([...symbolePolaBezDanych({ fieldRole: role })]);
   return [...plan.mainPath, ...plan.laterals.map((l) => l.symbolId)];
 }
+import { protectionAnnotationColumnWidth } from '../blokZabezpieczenPola';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
   bayHasProtectionAnnotation,
   ctRatingLabelText,
-  protectionAnnotationColumnWidth,
   vtMountingAnnotationLabelText,
-  vtMountingAnnotationsWidth,
   vtMountingLabelText,
 } from '../protectionMarking';
+import { pasyOpisowPolaStacji } from '../kolumnaOpisowPola';
 
 // ---------------------------------------------------------------------------
 // Helpery syntetyczne (wzorzec z layout.test.ts / labels.test.ts).
@@ -876,11 +876,35 @@ function makeLineBayPrimaryDevices(): readonly BayPrimaryDeviceView[] {
   ];
 }
 
+/** Teksty wierszy kodów bloku zabezpieczeń pola (`#protection-codes-full…`) w kolejności wierszy
+ *  kompozycji (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: kody są wierszami w ramce bloku). */
+function wierszeKodowBloku(composition: ReturnType<typeof composeStation>, bayRef: string): string[] {
+  return composition.labels.protection
+    .filter((l) => l.ownerRef === `${bayRef}#protection-codes-full` || l.ownerRef.startsWith(`${bayRef}#protection-codes-full-`))
+    .map((l) => l.text);
+}
+
+/** Ramka bloku zabezpieczeń w świecie. */
+function ramkaBlokuWSwiecie(relay: { readonly x: number; readonly y: number; readonly ramkaBloku?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } }) {
+  const r = relay.ramkaBloku!;
+  return { x: relay.x + r.x, y: relay.y + r.y, width: r.width, height: r.height };
+}
+
+/** Wejścia linii na krawędziach ramki bloku w świecie. */
+function wejsciaBlokuWSwiecie(relay: { readonly x: number; readonly y: number; readonly wejsciaBloku?: readonly { readonly x: number; readonly y: number }[] }) {
+  return (relay.wejsciaBloku ?? []).map((p) => ({ x: relay.x + p.x, y: relay.y + p.y }));
+}
+
+/** Porty (toru i wtórne) symbolu kompozycji w świecie. */
+function portyAparatuWSwiecie(s: { readonly symbolId: keyof typeof SYMBOL_DEFS; readonly x: number; readonly y: number }) {
+  const def = SYMBOL_DEFS[s.symbolId];
+  return [...def.ports, ...def.secondaryPorts].map((p) => ({ x: s.x + p.x, y: s.y + p.y }));
+}
+
 describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection_marking_probe, spec §17.5)', () => {
   // Kody ze słownika funkcji EAZ (`funkcje_eaz.py`: kod = numer IEEE; karta UX-04, deduplikacja
-  // u źródła 2026-10-30). Dawny zapis „50/51" nie jest kodem słownika, a jego tusz pismem 8 px
-  // nie mieści się w okręgu (podłoga S9-7, `symbols/okragPrzekaznika.ts`) — intencja „okrąg
-  // niesie prefiks dwóch kodów" zostaje na kodach, które się w nim mieszczą.
+  // u źródła 2026-10-30). Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: przekaźnik pola stacji jest
+  // blokiem zabezpieczeń — ramką z kodami w dwóch kolumnach (ta sama kompozycja co pole GPZ).
   it('(a) brak danych = brak oznaczenia: pole BEZ protectionMarking/meteringMeasurementRef ⇒ ZERO okręgów/torów wyzwalania', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: makeLineBayPrimaryDevices() });
     const station = makeStation('no-protection', [bay]);
@@ -891,7 +915,7 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
   });
 
-  it('(b/c) dane kompletne (breaker_ref + ct_ref rozwiązywalne w stosie): okrąg z kodami (prefiks, bez sortowania) + tor wyzwalania do WŁAŚCIWEGO wyłącznika + „52" + „M" na CT', () => {
+  it('(b/c) dane kompletne (breaker_ref + ct_ref rozwiązywalne w stosie): ramka bloku z WSZYSTKIMI kodami (kolejność danych) + tor wyzwalania do WŁAŚCIWEGO wyłącznika + „52" + „M" na CT', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51N', '51', '87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -900,41 +924,41 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     const station = makeStation('protection-ok', [bay]);
     const composition = composeStation(buildComposeInput(station));
 
-    // Okrąg przekaźnika: DOKŁADNIE 1, kody = DWA PIERWSZE z listy źródłowej,
-    // W TEJ SAMEJ kolejności (prefiks, zero sortowania — §17.3).
+    // Blok zabezpieczeń: DOKŁADNIE 1, z ramką; wiersze = WSZYSTKIE kody listy źródłowej
+    // W TEJ SAMEJ kolejności (zero sortowania — §17.3), zadeklarowane jako członkowie ramki.
     const relays = composition.protectionSymbols.filter((s) => s.symbolId === 'protectionRelay');
     expect(relays).toHaveLength(1);
-    expect(relays[0].protectionCodes).toEqual(['51N', '51']);
+    expect(relays[0].ramkaBloku).toBeDefined();
+    expect(wierszeKodowBloku(composition, bay.bayRef)).toEqual(['51N', '51', '87T']);
+    expect(relays[0].wierszeBloku).toEqual(composition.labels.protection.filter((l) => l.ownerRef.includes('#protection-codes-full')).map((l) => l.ownerRef));
     expect(relays[0].bayRef).toBe(bay.bayRef);
 
     // Miernik: DOKŁADNIE 1 okrąg „M" (kotwica CT przez linked_ref).
     const meters = composition.protectionSymbols.filter((s) => s.symbolId === 'meter');
     expect(meters).toHaveLength(1);
 
-    // Tor wyzwalania: DOKŁADNIE 1 linia przerywana, kończąca się na
-    // REJESTROWANYM porcie WŁAŚCIWEGO wyłącznika (cb-1, deviceRef match) i na
-    // REJESTROWANYM porcie okręgu (zero linii „do domyślnego aparatu", §17.2).
+    // Tor wyzwalania: DOKŁADNIE 1 linia przerywana, zaczynająca się na REJESTROWANYM porcie
+    // (toru albo cewki) WŁAŚCIWEGO wyłącznika (cb-1, deviceRef match), kończąca na WEJŚCIU ramki
+    // bloku (zero linii „do domyślnego aparatu", §17.2).
     expect(composition.protectionSegments).toHaveLength(1);
     const tripLine = composition.protectionSegments[0];
     const breakerInstance = composition.symbols.find((s) => s.deviceRef === 'cb-1');
     expect(breakerInstance).toBeDefined();
-    const breakerTopPort = { x: breakerInstance!.x + 8, y: breakerInstance!.y }; // 'top' port (dir N), offset (8,0)
-    expect(tripLine.points[0]).toEqual(breakerTopPort);
+    expect(portyAparatuWSwiecie(breakerInstance!)).toContainEqual(tripLine.points[0]);
     const relaySymbol = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
-    const relayLinkPort = { x: relaySymbol.x, y: relaySymbol.y + 8 }; // 'link' port (dir W), offset (0,8)
-    expect(tripLine.points[tripLine.points.length - 1]).toEqual(relayLinkPort);
+    expect(wejsciaBlokuWSwiecie(relaySymbol)).toContainEqual(tripLine.points[tripLine.points.length - 1]);
 
     expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
     expect(composition.missingData).not.toContain('bay.protection.meter_anchor_unresolved');
 
-    // Etykieta „52" (numer urządzenia ANSI/IEEE C37.2, notacja — nie
-    // kodename) + R-2: 3 kody (>2) ⇒ pełna lista w etykiecie slotu pola.
+    // Etykieta „52" (numer urządzenia ANSI/IEEE C37.2, notacja — nie kodename), gdy linia
+    // wyłączania kończy się na porcie toru wyłącznika (linia do cewki sama wskazuje aparat).
     const deviceNumber = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#device-number'));
-    expect(deviceNumber).toHaveLength(1);
-    expect(deviceNumber[0].text).toBe('52');
-    const fullList = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'));
-    expect(fullList).toHaveLength(1);
-    expect(fullList[0].text).toBe('51N · 51 · 87T'); // kolejność ŹRÓDŁOWA (zero sortowania).
+    const doPortuToru = SYMBOL_DEFS[breakerInstance!.symbolId].ports.some(
+      (p) => p.x + breakerInstance!.x === tripLine.points[0].x && p.y + breakerInstance!.y === tripLine.points[0].y,
+    );
+    expect(deviceNumber).toHaveLength(doPortuToru ? 1 : 0);
+    if (doPortuToru) expect(deviceNumber[0].text).toBe('52');
 
     // Zero kolizji z konstrukcji: okrąg/miernik na siatce, wewnątrz kolumny
     // adnotacji zarezerwowanej przez `bayColumnRequiredWidth` (measure.ts).
@@ -944,14 +968,13 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     }
 
     // Regresja (znalezisko harnessu wizualnego nadzorcy, `render-v3-
-    // protection.tsx`): przekaźnik i miernik kotwiczą na TYM SAMYM CT (ct-1)
-    // — bez odsunięcia lądowały DOKŁADNIE na sobie. Okręgi NIE MOGĄ się
-    // nakładać (ta sama reguła co `noCompositionSymbolOverlaps`, tu policzona
-    // wprost bo `protectionSymbols` jest POZA `composition.symbols`).
-    const relay = relays[0];
+    // protection.tsx`): blok i miernik kotwiczą na TYM SAMYM CT (ct-1) — ramka bloku i okrąg
+    // miernika NIE MOGĄ się nakładać (ta sama reguła co `noCompositionSymbolOverlaps`, tu
+    // policzona wprost, bo `protectionSymbols` jest POZA `composition.symbols`).
+    const ramka = ramkaBlokuWSwiecie(relays[0]);
     const meter = meters[0];
-    const overlapsX = relay.x < meter.x + PROTECTION_ANNOTATION_DIAMETER && meter.x < relay.x + PROTECTION_ANNOTATION_DIAMETER;
-    const overlapsY = relay.y < meter.y + PROTECTION_ANNOTATION_DIAMETER && meter.y < relay.y + PROTECTION_ANNOTATION_DIAMETER;
+    const overlapsX = ramka.x < meter.x + PROTECTION_ANNOTATION_DIAMETER && meter.x < ramka.x + ramka.width;
+    const overlapsY = ramka.y < meter.y + PROTECTION_ANNOTATION_DIAMETER && meter.y < ramka.y + ramka.height;
     expect(overlapsX && overlapsY).toBe(false);
   });
 
@@ -964,10 +987,12 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     const composition = composeStation(buildComposeInput(station));
 
     const relays = composition.protectionSymbols.filter((s) => s.symbolId === 'protectionRelay');
-    expect(relays).toHaveLength(1); // kody SĄ — okrąg SIĘ rysuje (§17.2: dane są, tylko link złamany).
+    expect(relays).toHaveLength(1); // kody SĄ — blok SIĘ rysuje (§17.2: dane są, tylko link złamany).
     expect(composition.protectionSegments).toHaveLength(0); // ZERO linii wyzwalania.
     expect(composition.missingData).toContain('bay.protection.trip_link_unresolved');
-    expect(composition.labels.protection).toHaveLength(0); // „52" NIE rysowany bez rozwiązanego celu.
+    // „52" NIE rysowany bez rozwiązanego celu; z etykiet zabezpieczeń zostają wiersze kodów.
+    expect(composition.labels.protection.filter((l) => l.ownerRef.endsWith('#device-number'))).toHaveLength(0);
+    expect(wierszeKodowBloku(composition, bay.bayRef)).toEqual(['51']);
   });
 
   it('(§17.2 zero zgadywania) konwencja (§12.4, brak primary_devices) z protectionMarking: okrąg BEZ toru (brak device_ref w stosie ⇒ breaker_ref NIGDY nie może się dopasować)', () => {
@@ -1022,7 +1047,7 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
   // B-1 (recenzja F9.9, spec §17.4): annotationDetail='circle-only' (L1).
   // -------------------------------------------------------------------------
 
-  it('B-1 (§17.4 L1, circle-only): SAM okrąg przekaźnika BEZ kodów — zero toru wyzwalania, zero „52", zero „M", zero pełnej listy, zero missingData §17', () => {
+  it('B-1 (§17.4 L1, circle-only): GOŁA ramka bloku BEZ kodów + linia wyłączania do wyłącznika — zero „52", zero „M", zero wierszy, zero missingData §17', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51N', '51', '87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -1032,10 +1057,14 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     const composition = composeStation({ ...buildComposeInput(station), annotationDetail: 'circle-only' });
 
     const relays = composition.protectionSymbols.filter((s) => s.symbolId === 'protectionRelay');
-    expect(relays).toHaveLength(1); // okrąg OBECNY (dowód pozytywny §17.4 L1).
-    expect(relays[0].protectionCodes).toBeUndefined(); // BEZ kodów.
+    expect(relays).toHaveLength(1); // ramka OBECNA (dowód pozytywny §17.4 L1).
+    expect(relays[0].ramkaBloku).toBeDefined();
+    expect(relays[0].wierszeBloku).toEqual([]); // BEZ kodów.
     expect(composition.protectionSymbols.filter((s) => s.symbolId === 'meter')).toHaveLength(0);
-    expect(composition.protectionSegments).toHaveLength(0);
+    // Linia wyłączania zostaje na L1 (odbiór B-02 2026-11-04: blok połączony z łącznikiem,
+    // który wyłącza — od karty JEDNA NOTACJA jednakowo w GPZ i stacjach); linii pomiarowych brak.
+    expect(composition.protectionSegments.map((g) => g.ownerRef)).toEqual([`${bay.bayRef}#trip-line`]);
+    expect(composition.measurementSegments).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
     expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
     expect(composition.missingData).not.toContain('bay.protection.meter_anchor_unresolved');
@@ -1064,7 +1093,7 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     const station = makeStation('protection-l2-kontrast', [bay]);
     const full = composeStation({ ...buildComposeInput(station), annotationDetail: 'full' });
 
-    expect(full.protectionSymbols.filter((s) => s.symbolId === 'protectionRelay')[0].protectionCodes).toEqual(['51']);
+    expect(wierszeKodowBloku(full, bay.bayRef)).toEqual(['51']);
     expect(full.protectionSymbols.filter((s) => s.symbolId === 'meter')).toHaveLength(1);
     expect(full.protectionSegments).toHaveLength(1);
     expect(full.labels.protection.some((l) => l.text === '52')).toBe(true);
@@ -1074,7 +1103,7 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
   // R-2 (recenzja F9.9, §17.3 zd. 2): pełna lista kodów przy >2 funkcjach.
   // -------------------------------------------------------------------------
 
-  it('R-2 (§17.3 zd. 2): 4 kody ⇒ okrąg z DWOMA pierwszymi + etykieta slotu z PEŁNĄ listą w kolejności źródłowej', () => {
+  it('R-2 (§17.3 zd. 2): 4 kody ⇒ cztery wiersze w ramce bloku, w kolejności źródłowej, w rezerwacji kolumny', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51', '51N', '67N', '87T'], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -1083,34 +1112,36 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     const composition = composeStation(buildComposeInput(station));
 
     const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
-    expect(relay.protectionCodes).toEqual(['51', '51N']);
-    const fullList = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'));
-    expect(fullList).toHaveLength(1);
-    expect(fullList[0].text).toBe('51 · 51N · 67N · 87T');
-    expect(fullList[0].labelClass).toBe('t4');
+    expect(wierszeKodowBloku(composition, bay.bayRef)).toEqual(['51', '51N', '67N', '87T']);
+    const fullList = composition.labels.protection.filter((l) => l.ownerRef.includes('#protection-codes-full'));
+    for (const l of fullList) expect(l.labelClass).toBe('t4');
 
-    // Etykieta MIEŚCI SIĘ w rezerwacji kolumny (measure zarezerwował
-    // szerokość listy — `protectionAnnotationColumnWidth`): prostokąt po
-    // resolveLabels nie wystaje poza `bx + reservedWidth` (± zapas GRID).
+    // Wiersze i ramka MIESZCZĄ SIĘ w rezerwacji kolumny (measure zarezerwował szerokość bloku —
+    // `protectionAnnotationColumnWidth`): prostokąty po resolveLabels i ramka nie wystają poza
+    // `bx + reservedWidth`.
     const reservedWidth = bayColumnRequiredWidth(station.snBays, 0, undefined);
     const bx = buildComposeInput(station).column.x + GRID;
-    const [resolved] = resolveLabels({ simpleAnchored: fullList });
-    expect(resolved.rect.x).toBeGreaterThanOrEqual(bx);
-    expect(resolved.rect.x + resolved.rect.width).toBeLessThanOrEqual(bx + reservedWidth + GRID);
+    const ramka = ramkaBlokuWSwiecie(relay);
+    expect(ramka.x).toBeGreaterThanOrEqual(bx);
+    expect(ramka.x + ramka.width).toBeLessThanOrEqual(bx + reservedWidth);
+    for (const resolved of resolveLabels({ simpleAnchored: fullList })) {
+      expect(resolved.rect.x).toBeGreaterThanOrEqual(ramka.x);
+      expect(resolved.rect.x + resolved.rect.width).toBeLessThanOrEqual(ramka.x + ramka.width);
+    }
   });
 
   // Karta UX-04/POLE-LINIOWE-WZORZEC (zrzut pola Z.10 2026-10-29): tekst wyśrodkowany
   // w prostokącie SZACOWANEJ szerokości (`measureTextWidth`) rozjeżdżał wiersze kolumny.
-  // Iloczyn: rodzaj etykiety (wiersz listy × adnotacja CT × „52") × treść listy (same
-  // zabezpieczenia; zabezpieczenia i automatyka ponad wiersz) — wiersze listy pod okręgiem
-  // kończą się przy prawej krawędzi rezerwacji (zaczep „koniec"), etykiety z prawej kotwicy
-  // zaczynają się w lewej krawędzi (zaczep „poczatek"). Lista niesie WSZYSTKIE kody pola po
-  // pięć w wierszu, bez licznika „+N" (odbiór B-02 właściciela 2026-11-04, korekta).
-  for (const [kody, wierszeListy] of [
-    [['51', '50', '51N', '67N'], ['51 · 50 · 51N · 67N']],
-    [['51', '50', '51N', '67N', 'ZS', '50BF', '79'], ['51 · 50 · 51N · 67N · ZS', '50BF · 79']],
+  // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: kody pola są wierszami w DWÓCH kolumnach ramki
+  // bloku (lewa ⌈n/2⌉ kodów, prawa reszta — ta sama kompozycja co pole GPZ). Iloczyn: rodzaj
+  // etykiety (wiersz kodu × adnotacja CT × „52") × liczba kodów (4, 7) — każda etykieta
+  // zaczyna się w lewej krawędzi swojego prostokąta (zaczep „poczatek"), wiersze jednej
+  // kolumny mają wspólną lewą krawędź.
+  for (const [kody, lewaKolumna] of [
+    [['51', '50', '51N', '67N'], ['51', '50']],
+    [['51', '50', '51N', '67N', 'ZS', '50BF', '79'], ['51', '50', '51N', '67N']],
   ] as const) {
-    it(`R-2 × zaczep tekstu: lista z ${kody.length} kodami — wiersze listy „koniec", adnotacja CT i „52" „poczatek"`, () => {
+    it(`R-2 × zaczep tekstu: ${kody.length} kodów w dwóch kolumnach ramki — wiersze, adnotacja CT i „52" „poczatek"`, () => {
       const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
         primaryDevices: makeLineBayPrimaryDevices(),
         protectionMarking: { codes: [...kody], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -1120,11 +1151,14 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
       const composition = composeStation(buildComposeInput(station));
       const etykiety = composition.labels.protection;
       const wiersze = etykiety.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef));
-      expect(wiersze.map((l) => l.text)).toEqual([...wierszeListy]);
+      expect(wiersze.map((l) => l.text)).toEqual([...kody]);
       for (const l of wiersze) {
-        expect(l.placement, l.ownerRef).toBe('below');
-        expect(l.wyrownanieTekstu, l.ownerRef).toBe('koniec');
+        expect(l.placement, l.ownerRef).toBe('right');
+        expect(l.wyrownanieTekstu, l.ownerRef).toBe('poczatek');
       }
+      const xLewej = wiersze[0].anchor.x;
+      expect(wiersze.filter((l) => l.anchor.x === xLewej).map((l) => l.text)).toEqual([...lewaKolumna]);
+      expect(new Set(wiersze.map((l) => l.anchor.x)).size).toBe(2);
       const prawe = etykiety.filter((l) => l.ownerRef.includes('#ct-rating-') || l.ownerRef.endsWith('#device-number'));
       expect(prawe.map((l) => l.ownerRef.split('#')[1].replace(/-.*$/, '')).sort()).toEqual(['ct', 'device']);
       for (const l of prawe) {
@@ -1136,15 +1170,16 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
       for (const l of etykiety) {
         expect(resolved.find((r) => r.ownerRef === l.ownerRef)?.wyrownanieTekstu, l.ownerRef).toBe(l.wyrownanieTekstu);
       }
-      // Prawe krawędzie wierszy listy — w granicy kratki (prostokąty slotów leżą na siatce).
-      const praweKrawedzie = resolved
-        .filter((r) => wiersze.some((w) => w.ownerRef === r.ownerRef))
-        .map((r) => r.rect.x + r.rect.width);
-      expect(Math.max(...praweKrawedzie) - Math.min(...praweKrawedzie)).toBeLessThanOrEqual(GRID);
+      // Wiersze leżą wewnątrz ramki bloku (jedna funkcja geometrii ramki i wierszy).
+      const ramka = ramkaBlokuWSwiecie(composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!);
+      for (const r of resolved.filter((q) => wiersze.some((w) => w.ownerRef === q.ownerRef))) {
+        expect(r.rect.x >= ramka.x && r.rect.x + r.rect.width <= ramka.x + ramka.width, r.ownerRef).toBe(true);
+        expect(r.rect.y >= ramka.y && r.rect.y + r.rect.height <= ramka.y + ramka.height, r.ownerRef).toBe(true);
+      }
     });
   }
 
-  it('R-2 (§17.3 zd. 2): 2 kody ⇒ ZERO etykiety pełnej listy (okrąg niesie kody w całości)', () => {
+  it('R-2 (§17.3 zd. 2): 2 kody ⇒ dwa wiersze w ramce bloku (lewa i prawa kolumna, jeden wiersz)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51', '51N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -1152,11 +1187,12 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     const station = makeStation('protection-two-codes', [bay]);
     const composition = composeStation(buildComposeInput(station));
 
-    expect(composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'))).toHaveLength(0);
-    expect(composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!.protectionCodes).toEqual(['51', '51N']);
+    expect(wierszeKodowBloku(composition, bay.bayRef)).toEqual(['51', '51N']);
+    const wiersze = composition.labels.protection.filter((l) => l.ownerRef.includes('#protection-codes-full'));
+    expect(new Set(wiersze.map((l) => l.anchor.y)).size).toBe(1);
   });
 
-  it('R-2 + miernik: pełna lista POD okręgiem, miernik odsunięty POD etykietę (zero nachodzenia okrąg↔etykieta↔miernik)', () => {
+  it('R-2 + miernik: wiersze kodów w ramce bloku, miernik poza ramką (zero nachodzenia ramka↔wiersze↔miernik)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51', '51N', '67N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -1167,13 +1203,18 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
 
     const relay = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
     const meter = composition.protectionSymbols.find((s) => s.symbolId === 'meter')!;
-    const fullList = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'));
-    const [resolved] = resolveLabels({ simpleAnchored: fullList });
-
-    // Miernik zaczyna się PONIŻEJ dolnej krawędzi etykiety pełnej listy.
-    expect(meter.y).toBeGreaterThanOrEqual(resolved.rect.y + resolved.rect.height);
-    // Etykieta zaczyna się PONIŻEJ dolnej krawędzi okręgu przekaźnika.
-    expect(resolved.rect.y).toBeGreaterThanOrEqual(relay.y + PROTECTION_ANNOTATION_DIAMETER);
+    const fullList = composition.labels.protection.filter((l) => l.ownerRef.includes('#protection-codes-full'));
+    const ramka = ramkaBlokuWSwiecie(relay);
+    const okragMiernika = { x: meter.x, y: meter.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
+    const nachodzi = (a: typeof ramka, b: typeof ramka) =>
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    // Miernik poza ramką bloku i poza każdym wierszem kodu; wiersze wewnątrz ramki.
+    expect(nachodzi(ramka, okragMiernika)).toBe(false);
+    for (const resolved of resolveLabels({ simpleAnchored: fullList })) {
+      expect(nachodzi(resolved.rect, okragMiernika), resolved.ownerRef).toBe(false);
+      expect(resolved.rect.y).toBeGreaterThanOrEqual(ramka.y);
+      expect(resolved.rect.y + resolved.rect.height).toBeLessThanOrEqual(ramka.y + ramka.height);
+    }
   });
 });
 
@@ -1185,9 +1226,20 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/station — F10.5 §20.1: linia pomiarowa CT→przekaźnik (secondary_link_duality_probe)', () => {
-  it('(a/c) ct_ref rozwiązywalny w stosie ⇒ DOKŁADNIE JEDNA linia measurementSegments, ODRĘBNA od protectionSegments (tor wyzwalania), zakotwiczona na REJESTROWANYCH portach CT+przekaźnika', () => {
+  // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: linie pomiarowe bloku wynikają z POWIĄZAŃ OBWODÓW
+  // WTÓRNYCH modelu (`funkcje_eaz_zasilane` aparatu ∩ kody pola) — ta sama reguła co pole GPZ.
+  // Pole bez powiązań (sam `ct_ref`) ma ramkę BEZ linii pomiarowych (UX04 §11.20).
+  it('(a/c) pole z powiązaniami obwodów wtórnych (CT zasila 51, CB wyłączany przez 51) ⇒ DOKŁADNIE JEDNA linia measurementSegments, ODRĘBNA od protectionSegments, zakotwiczona na zacisku CT i wejściu ramki', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
-      primaryDevices: makeLineBayPrimaryDevices(),
+      primaryDevices: makeLineBayPrimaryDevices().map((d) =>
+        // Rysunek QET EN 60617 (szablon ENEA Z.10) — przekładnik niesie zacisk wtórny, z którego
+        // biegnie linia pomiarowa; wyłącznik — cewkę wyłączającą.
+        d.deviceRef === 'ct-1'
+          ? { ...d, renderVariant: 'qet_en60617', funkcjeEazZasilane: ['51'] }
+          : d.deviceRef === 'cb-1'
+            ? { ...d, renderVariant: 'qet_en60617', funkcjeEazWylaczajace: ['51'] }
+            : d,
+      ),
       protectionMarking: { codes: ['51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
     });
     const station = makeStation('measurement-link-ok', [bay]);
@@ -1202,13 +1254,22 @@ describe('V3 compose/station — F10.5 §20.1: linia pomiarowa CT→przekaźnik 
 
     const ctInstance = composition.symbols.find((s) => s.deviceRef === 'ct-1');
     expect(ctInstance).toBeDefined();
-    const ctTopPort = { x: ctInstance!.x + 8, y: ctInstance!.y }; // 'top' port (dir N), offset (8,0)
-    expect(composition.measurementSegments[0].points[0]).toEqual(ctTopPort);
+    expect(portyAparatuWSwiecie(ctInstance!)).toContainEqual(composition.measurementSegments[0].points[0]);
     const relaySymbol = composition.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
-    const relayLinkPort = { x: relaySymbol.x, y: relaySymbol.y + 8 }; // 'link' port (dir W), offset (0,8)
     const lastPoint = at(composition.measurementSegments[0].points, -1);
-    expect(lastPoint).toEqual(relayLinkPort);
+    expect(wejsciaBlokuWSwiecie(relaySymbol)).toContainEqual(lastPoint);
 
+    expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');
+  });
+
+  it('(UX04 §11.20) pole BEZ powiązań obwodów wtórnych z rozwiązywalnym ct_ref ⇒ ramka BEZ linii pomiarowej, linia wyłączania do wyłącznika wskazanego przez model, zero braku danych pomiaru', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      protectionMarking: { codes: ['51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+    });
+    const composition = composeStation(buildComposeInput(makeStation('measurement-link-bez-powiazan', [bay])));
+    expect(composition.measurementSegments).toHaveLength(0);
+    expect(composition.protectionSegments.map((g) => g.ownerRef)).toEqual([`${bay.bayRef}#trip-line`]);
     expect(composition.missingData).not.toContain('bay.protection.measurement_link_unresolved');
   });
 
@@ -1434,7 +1495,7 @@ describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_anno
     expect(composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'))).toHaveLength(1);
   });
 
-  it('koegzystencja z okręgiem przekaźnika + miernikiem na TYM SAMYM CT (§17.2 kotwica) — etykieta CT i oba okręgi bez wzajemnego nachodzenia (dwa różne pasma kolumny, §18.3 rozstrzygnięcie F10.4)', () => {
+  it('koegzystencja z blokiem zabezpieczeń + miernikiem na TYM SAMYM CT (§17.2 kotwica) — etykieta CT i oba okręgi bez wzajemnego nachodzenia (dwa różne pasma kolumny, §18.3 rozstrzygnięcie F10.4)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
       protectionMarking: { codes: ['51'], breakerRef: 'cb-1', ctRef: 'ct-1' },
@@ -1450,7 +1511,7 @@ describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_anno
     expect(ctLabels).toHaveLength(1);
     const [ctLabelResolved] = resolveLabels({ simpleAnchored: ctLabels });
 
-    // Etykieta CT nie nachodzi na okrąg przekaźnika (rects rozłączne w X LUB Y).
+    // Etykieta CT nie nachodzi na ramkę bloku zabezpieczeń (rects rozłączne w X LUB Y).
     const disjoint = (
       rectA: { x: number; y: number; width: number; height: number },
       rectB: { x: number; y: number; width: number; height: number },
@@ -1460,7 +1521,7 @@ describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_anno
       rectA.y + rectA.height <= rectB.y ||
       rectB.y + rectB.height <= rectA.y;
 
-    const relayRect = { x: relay.x, y: relay.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
+    const relayRect = ramkaBlokuWSwiecie(relay);
     const meterRect = { x: meter.x, y: meter.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER };
     expect(disjoint(ctLabelResolved.rect, relayRect)).toBe(true);
     expect(disjoint(ctLabelResolved.rect, meterRect)).toBe(true);
@@ -1673,7 +1734,7 @@ describe('CTVT-RENDER §20.2: adnotacja montażu VT (vt_mounting)', () => {
     expect(composition.missingData).not.toContain('bay.protection.vt_mounting_anchor_unresolved');
 
     // Rezerwacja szerokości NIEZMIENIONA: pole bez adnotacji ma zerową kolumnę.
-    expect(vtMountingAnnotationsWidth(bayNoData)).toBe(0);
+    expect(pasyOpisowPolaStacji(bayNoData).przekladnie).toBe(0);
     expect(protectionAnnotationColumnWidth(bayNoData)).toBe(0);
     expect(bayHasProtectionAnnotation(bayNoData)).toBe(false);
 

@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
+import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 
 import { rectsOverlap, type V3Rect } from '../../core/grid';
 import { LABEL_TYPOGRAPHY, measureTextWidth, shortenPreservingIdentity } from '../../core/text';
@@ -189,7 +190,10 @@ describe('obrys kotwicy w scenie — para z symbolem sceny (jedno źródło)', (
     ).enm;
     it.each([0, 1, 2] as const)(`${plik}, L%i: każdy obrys kotwicy jest prostokątem symbolu sceny; każdy podpis DER i „NO" go niesie`, (lod) => {
       const scena = buildSceneV3(enm, lod);
-      const prostokatySymboli = new Set(sceneObstacleRects(scena).slice(0, scena.symbols.length).map((r) => JSON.stringify(r)));
+      // Gabaryt symbolu z jednego źródła (`gabarytSymbolu`). Dawniej indeks pierwszych
+      // `symbols.length` przeszkód sceny — założenie „jedna przeszkoda na symbol" przestało być
+      // prawdą, gdy blok zabezpieczeń daje cztery krawędzie ramki (`przeszkodySymbolu`).
+      const prostokatySymboli = new Set(scena.symbols.map((s) => JSON.stringify(gabarytSymbolu(s))));
       let zObrysem = 0;
       for (const l of scena.labels) {
         if (l.ownerKind === 'der' || l.ownerKind === 'no-point') {

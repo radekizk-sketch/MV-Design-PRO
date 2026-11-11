@@ -407,10 +407,6 @@ export interface PreviewElementMeta {
    *  DANYMI (uwaga 10). Konsument: audytor DOM (`data-config-id`) i generator
    *  macierzy W1c. `undefined` dla DER i pól bez szablonu kanonicznego. */
   readonly configId?: string;
-  /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla symboli
-   *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
-   *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
-  readonly protectionCodes?: readonly string[];
   /** F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń
    *  (`protectionFunctionTopologyGaps`, `./protectionTopologyValidation`) —
    *  WYŁĄCZNIE dla symboli `protectionRelay`. Obecność (długość > 0) steruje
@@ -418,11 +414,11 @@ export interface PreviewElementMeta {
    *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
    *  scenie jako osobna etykieta tekstowa. */
   readonly topologyGaps?: readonly ProtectionTopologyGap[];
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): ramka BLOKU
-   *  ZABEZPIECZEŃ układu powiązań obwodów wtórnych pola GPZ (prostokąt bez okręgu; wewnątrz
-   *  wiersze kodów funkcji i odniesienie źródła 3U₀), względem symbolu — WYŁĄCZNIE dla symboli
-   *  `protectionRelay`; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. Ramka jest
-   *  gabarytem symbolu (`symbols/blokZabezpieczen.ts`). */
+  /** Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: ramka BLOKU ZABEZPIECZEŃ pola (GPZ i stacji, z
+   *  powiązaniami obwodów wtórnych i bez nich — prostokąt bez okręgu; wewnątrz wiersze kodów
+   *  funkcji i odniesienie źródła 3U₀), względem symbolu — każdy symbol `protectionRelay` sceny
+   *  ją niesie; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. Ramka jest gabarytem
+   *  symbolu (`symbols/blokZabezpieczen.ts`). */
   readonly ramkaBlokuPrzekaznika?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** Wejścia linii bloku zabezpieczeń (linia wyłączania, linie pomiarowe) na krawędziach ramki,
    *  względem symbolu — porty bloku dla wyroczni sceny (`symbols/blokZabezpieczen.ts`). */
@@ -455,7 +451,7 @@ export interface PreviewElementMeta {
   /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): podsumowanie sylwetki stacji dla
    *  glifu mini-RMU na L0 — WYŁĄCZNIE dla symboli `stationCollapsed`. Steruje
    *  markerami typu/TR/DER/NO w `StationCollapsedGlyph` (`symbols/glyphs.tsx`),
-   *  przekazane 1:1 do `GlyphProps` (wzór `protectionCodes`/`meterQuantity`).
+   *  przekazane 1:1 do `GlyphProps` (wzór `meterQuantity`).
    *  Rodzaj stacji WYPROWADZONY z TYPU elementów (topologia/sprzęgło/TR/DER/NO),
    *  nie z nazw (spec §19.3, macierz §3). */
   readonly stationGlyph?: StationCompactGlyphSummary;
@@ -553,7 +549,6 @@ export function daneGlifuSymbolu(
     earthingKind: symbol.earthingKind,
     uzwojenia: symbol.uzwojenia,
     bateria: symbol.bateria,
-    labelLines: meta?.protectionCodes,
     hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
     ramkaBloku: meta?.ramkaBlokuPrzekaznika,
     // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora

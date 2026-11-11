@@ -43,7 +43,7 @@
  * (P7 determinizm: te same wejścia = ten sam wynik, zero `Date`/losowości).
  */
 import type { V3Rect } from '../core/grid';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { SceneV3 } from '../scene/buildScene';
 
 /** Prostokąt w układzie MINIMAPY (piksele panelu, początek w jej lewym górnym rogu). */
@@ -149,8 +149,9 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
     });
   }
   for (const symbol of scene.symbols) {
-    const def = SYMBOL_DEFS[symbol.symbolId];
-    const topLeft = projectPoint(projection, symbol.x, symbol.y);
+    // Gabaryt z jednego źródła: blok zabezpieczeń pola = cała ramka (`gabarytSymbolu`).
+    const g = gabarytSymbolu(symbol);
+    const topLeft = projectPoint(projection, g.x, g.y);
     shapes.push({
       // KD-5: blok GPZ zwinięty jest STACJĄ (zasilającą) — ta sama klasa
       // nawigacyjna co `stationCollapsed`. Minimapa nie ma własnej ścieżki
@@ -163,8 +164,8 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
         // Minimalny ślad 1,5 px: element sieci, który po zrzutowaniu ma
         // ułamek piksela, MUSI zostać widoczny jako punkt orientacyjny —
         // inaczej nawigator gubi stacje, po których użytkownik nawiguje.
-        width: Math.max(1.5, def.width * projection.scale),
-        height: Math.max(1.5, def.height * projection.scale),
+        width: Math.max(1.5, g.width * projection.scale),
+        height: Math.max(1.5, g.height * projection.scale),
       },
     });
   }

@@ -36,10 +36,12 @@ import {
 } from '../defs';
 import {
   KAFEL_STANU_MARGINES,
+  KOLUMNA_ZNAKU_KAFLA,
   OPIS_POLOZENIA_PL,
   SYMBOL_GLYPHS,
   V3_STROKE_APPARATUS,
   prostokatKaflaStanu,
+  rozmiarZnakuKafla,
   stanKaflaLacznika,
   type SwitchState,
 } from '../glyphs';
@@ -49,7 +51,7 @@ import { LIGHT_TECHNICAL_V3 } from '../../export/exportPalette';
 import { symbolIdForPrimaryDeviceKind, symboleRodzajuAparatu } from '../../compose/apparatusSequence';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import type { BayPrimaryDeviceKind } from '../../../../../types/enm';
-import { MIN_TEXT_SCREEN_PX } from '../../core/text';
+import { MIN_TEXT_SCREEN_PX, posuwZnakuEm } from '../../core/text';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/camera';
 import type { CadPrimitive } from '../../cad/cadSymbolRegistry';
 
@@ -114,11 +116,12 @@ function oczekiwanyProstokat(id: SymbolId): { x: number; y: number; width: numbe
     const y = QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].kafel?.y ?? 0;
     return { x: 0, y, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
   }
+  // Kanoniczny: obrys + margines, po lewej kolumna znaku „?"/„!" (odbiór architekta 2026-11-05).
   const o = obrysSymbolu(id);
   return {
-    x: o.x - KAFEL_STANU_MARGINES,
+    x: o.x - KAFEL_STANU_MARGINES - KOLUMNA_ZNAKU_KAFLA,
     y: o.y - KAFEL_STANU_MARGINES,
-    width: o.width + 2 * KAFEL_STANU_MARGINES,
+    width: o.width + 2 * KAFEL_STANU_MARGINES + KOLUMNA_ZNAKU_KAFLA,
     height: o.height + 2 * KAFEL_STANU_MARGINES,
   };
 }
@@ -176,7 +179,7 @@ describe('kafel stanu — iloczyn rodzaj × wariant × stan × motyw', () => {
           // Kolor kafla z JEDNEJ tabeli — identyczny w każdym motywie i w eksporcie.
           expect(tlo.getAttribute('fill')).toBe(STATE_COLOR[oczekiwany!]);
           expect(tlo.getAttribute('fill')).toBe(kafle[oczekiwany!]);
-          // Kafel: QET — kwadrat z jednej stałej; kanoniczny — obrys + margines. W obu
+          // Kafel: QET — kwadrat z jednej stałej; kanoniczny — obrys + margines + kolumna znaku. W obu
           // konwencjach obejmuje cały rysunek (wszystkie położenia noża).
           const r = oczekiwanyProstokat(id);
           const tx = Number(tlo.getAttribute('x'));
@@ -272,11 +275,53 @@ describe('kafel stanu — geometria i sąsiedztwo', () => {
     for (const id of SYMBOLE_LACZNIKOW_Z_POLOZENIEM) {
       const r = prostokatKaflaStanu(id);
       const d = SYMBOL_DEFS[id];
-      expect(r.x, id).toBeGreaterThanOrEqual(-KAFEL_STANU_MARGINES);
+      // Po lewej kafla kanonicznego — kolumna znaku „?"/„!" (`KOLUMNA_ZNAKU_KAFLA`); sąsiedzi
+      // stosu stoją nad i pod aparatem, więc pion i prawa strona zostają w marginesie.
+      expect(r.x, id).toBeGreaterThanOrEqual(-KAFEL_STANU_MARGINES - (czySymbolQet(id) ? 0 : KOLUMNA_ZNAKU_KAFLA));
       expect(r.y, id).toBeGreaterThanOrEqual(-KAFEL_STANU_MARGINES);
       expect(r.x + r.width, id).toBeLessThanOrEqual(d.width + KAFEL_STANU_MARGINES);
       expect(r.y + r.height, id).toBeLessThanOrEqual(d.height + KAFEL_STANU_MARGINES);
     }
+  });
+
+  // Odbiór architekta 2026-11-05 (zrzut bloku zabezpieczeń pola źródła OZE: „?" kafla Q0
+  // nachodzi na kreskę symbolu). Iloczyn: każdy łącznik z kaflem (kanoniczny i QET) × znak
+  // („?" nieustalony, „!" awaria). Prostokąt znaku = posuw pogrubionego znaku z tabeli kroju ×
+  // wysokość znaku kafla, od `x + 1` jak w `zKafelemStanu`, od górnej krawędzi kafla.
+  // Symbol kanoniczny: rysunek ⊂ obrys (`obrysSymbolu`) — znak rozłączny z obrysem. QET:
+  // nóż, styki, przewody i znaczniki ⊂ obrys wariantu BEZ napędu (wolny róg importera);
+  // osprzęt napędu (okrąg „M", zasobnik) — rozłączny ze znakiem.
+  it('znak „?"/„!" kafla leży poza rysunkiem symbolu (każdy łącznik × znak)', () => {
+    const bezNapedu: Partial<Record<SymbolId, SymbolId>> = {
+      qetBreakerZNapedem: 'qetBreaker',
+      qetBreakerWysuwnyZNapedem: 'qetBreakerWysuwny',
+      qetThreePositionSwitchZNapedem: 'qetThreePositionSwitch',
+    };
+    const prost = (p: CadPrimitive): { x0: number; y0: number; x1: number; y1: number } | null => {
+      if (p.k === 'line') return { x0: Math.min(p.x1, p.x2), y0: Math.min(p.y1, p.y2), x1: Math.max(p.x1, p.x2), y1: Math.max(p.y1, p.y2) };
+      if (p.k === 'circle') return { x0: p.cx - p.r, y0: p.cy - p.r, x1: p.cx + p.r, y1: p.cy + p.r };
+      if (p.k === 'letter') return { x0: p.x - p.size / 2, y0: p.y - p.size / 2, x1: p.x + p.size / 2, y1: p.y + p.size / 2 };
+      return null;
+    };
+    let sprawdzone = 0;
+    for (const id of SYMBOLE_LACZNIKOW_Z_POLOZENIEM) {
+      const r = prostokatKaflaStanu(id);
+      const h = rozmiarZnakuKafla(r);
+      for (const znak of ['?', '!']) {
+        const z = { x0: r.x + 1, y0: r.y, x1: r.x + 1 + posuwZnakuEm(znak, 700) * h, y1: r.y + h };
+        const rozlaczne = (o: { x0: number; y0: number; x1: number; y1: number }) => z.x1 <= o.x0 || o.x1 <= z.x0 || z.y1 <= o.y0 || o.y1 <= z.y0;
+        const o = obrysSymbolu(bezNapedu[id] ?? id);
+        expect(rozlaczne({ x0: o.x, y0: o.y, x1: o.x + o.width, y1: o.y + o.height }), `${id} „${znak}" ∩ obrys rysunku`).toBe(true);
+        if (czySymbolQet(id)) {
+          for (const p of QET_SYMBOLE_POLA_SN[id as QetSymbolPolaSnId].osprzet) {
+            const b = prost(p);
+            if (b) expect(rozlaczne(b), `${id} „${znak}" ∩ osprzęt ${p.k}`).toBe(true);
+          }
+        }
+        sprawdzone += 1;
+      }
+    }
+    expect(sprawdzone).toBe(SYMBOLE_LACZNIKOW_Z_POLOZENIEM.length * 2);
   });
 
   for (const id of ['qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem'] as const) {

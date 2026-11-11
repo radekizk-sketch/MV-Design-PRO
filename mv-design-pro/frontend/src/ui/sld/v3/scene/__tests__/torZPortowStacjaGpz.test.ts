@@ -281,41 +281,51 @@ function sprawdzOdgalezienia(
 }
 
 /**
- * Pas podpisów kolumny odgałęzienia (predykaty PARAMI z rezerwą planu `GalazPlanu.rezerwaEtykiet`,
- * doliczaną za szerokością CAŁEGO podstosu: kolumna + aparaty boczne odgałęzienia). Podpis aparatu
- * kolumny stoi na prawo od prawej krawędzi podstosu i nie nachodzi na żaden symbol pola. Pomiar
- * 2026-10-29: podpis kotwiczony tuż za własnym symbolem wchodził w kolumnę aparatów bocznych
- * odgałęzienia (stacja: 12 z 12 podpisów kolumn macierzy W1c; GPZ: kafel stanu sąsiada).
- * Etykieta: stacja — `#apparatus-id-<symbol>-odgalezienie-<n>-…` na wysokości symbolu (podpis aparatu
- * bocznego stoi POD symbolem i nie jest podpisem kolumny),
- * GPZ — `#etykieta-aparatu-<deviceRef>`. Zwraca liczbę sprawdzonych podpisów.
+ * Oznaczenia aparatów kolumny odgałęzienia w KOLUMNIE OZNACZEŃ pola (wzorzec właściciela
+ * 2026-11-05: „Opisy pól po lewej dzięki temu pole robi się czytelniejsze i węższe”; dawniej —
+ * werdykt B-02 z 2026-11-05 — pas opisów między torem głównym a kolumną odgałęzienia). Oznaczenie
+ * każdego aparatu odgałęzienia (szeregowego i bocznego) stoi po lewej toru głównego, z tą samą
+ * lewą krawędzią co oznaczenia aparatów toru głównego, w wierszu swojego symbolu (najwyżej
+ * o wiersz kolumny od środka) i nie nachodzi na żaden symbol pola. Powiązanie oznaczenie →
+ * aparat z `symbolOpisu` etykiety (prostokąt symbolu opisywanego aparatu), więc oznaczenie
+ * zgubione albo postawione przy symbolu jest wykrywane (nie „pomijane, gdy nie znaleziono").
+ * Pomiary historyczne: 2026-10-29 podpis kotwiczony tuż za własnym symbolem wchodził w kolumnę
+ * aparatów bocznych odgałęzienia (stacja: 12 z 12 podpisów kolumn macierzy W1c; GPZ: kafel stanu
+ * sąsiada); 2026-11-05 podpisy i tabliczka T3 po prawej podstosu stały w pasie bloku zabezpieczeń
+ * (Z.11.1). Zwraca liczbę sprawdzonych oznaczeń.
  */
 function sprawdzPasPodpisowOdgalezien(scena: SceneV3, bayRef: string, opis: string): number {
   const wszystkie = scena.symbols.filter((s) => s.meta?.ownerRef === bayRef);
-  const numery = [...new Set(wszystkie.filter((s) => s.meta?.odgalezienieToru != null).map((s) => s.meta!.odgalezienieToru!))];
+  const torGlowny = wszystkie.filter((s) => s.meta?.odgalezienieToru == null && !boczny(s) && s.symbolId !== 'protectionRelay');
+  const lewaToru = Math.min(...torGlowny.map((s) => s.x + obrysSymbolu(s.symbolId).x));
+  const oznaczenia = scena.labels.filter(
+    (l) => (l.ownerRef ?? '').startsWith(`${bayRef}#`) && /#(etykieta-aparatu-|apparatus-id-)/.test(l.ownerRef ?? '') && l.symbolOpisu,
+  );
+  const oznaczenieAparatu = (s: PreviewSymbol) =>
+    oznaczenia.find((l) => l.symbolOpisu!.x === s.x && l.symbolOpisu!.y === s.y);
+  const krawedzieToru = new Set(torGlowny.flatMap((s) => (oznaczenieAparatu(s) ? [oznaczenieAparatu(s)!.rect.x] : [])));
+  expect(krawedzieToru.size, `${opis}: oznaczenia toru głównego w jednej kolumnie`).toBeLessThanOrEqual(1);
   let sprawdzone = 0;
-  for (const n of numery) {
-    const podstos = wszystkie.filter((s) => s.meta?.odgalezienieToru === n);
-    const prawaPodstosu = Math.max(...podstos.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width));
-    for (const s of podstos.filter((x) => !boczny(x))) {
-      const srodekY = s.y + SYMBOL_DEFS[s.symbolId].height / 2;
-      const podpis = scena.labels.find(
-        (l) =>
-          l.ownerRef === `${bayRef}#etykieta-aparatu-${s.meta?.deviceRef}`
-          || ((l.ownerRef ?? '').startsWith(`${bayRef}#apparatus-id-${s.symbolId}-odgalezienie-${n}-`)
-            && Math.abs(l.rect.y + l.rect.height / 2 - srodekY) < SYMBOL_DEFS[s.symbolId].height / 2),
-      );
-      if (!podpis) continue;
-      expect(podpis.rect.x, `${opis}: podpis „${podpis.text}" w pasie za podstosem odgałęzienia ${n}`).toBeGreaterThanOrEqual(prawaPodstosu);
-      for (const inny of wszystkie) {
-        const o = obrysSymbolu(inny.symbolId);
-        const r = { x: inny.x + o.x, y: inny.y + o.y, width: o.width, height: o.height };
-        const zachodzi = podpis.rect.x < r.x + r.width && r.x < podpis.rect.x + podpis.rect.width
-          && podpis.rect.y < r.y + r.height && r.y < podpis.rect.y + podpis.rect.height;
-        expect(zachodzi, `${opis}: podpis „${podpis.text}" × ${inny.symbolId}`).toBe(false);
-      }
-      sprawdzone += 1;
+  for (const s of wszystkie.filter((x) => x.meta?.odgalezienieToru != null)) {
+    const podpis = oznaczenieAparatu(s);
+    if (!podpis) continue;
+    const h = SYMBOL_DEFS[s.symbolId].height;
+    expect(podpis.rect.x + podpis.rect.width, `${opis}: oznaczenie „${podpis.text}" po lewej toru głównego`).toBeLessThanOrEqual(lewaToru);
+    if (krawedzieToru.size === 1) {
+      expect(podpis.rect.x, `${opis}: oznaczenie „${podpis.text}" w kolumnie oznaczeń toru`).toBe([...krawedzieToru][0]);
     }
+    expect(
+      Math.abs(podpis.rect.y + podpis.rect.height / 2 - (s.y + h / 2)),
+      `${opis}: oznaczenie „${podpis.text}" w wierszu swojego symbolu`,
+    ).toBeLessThanOrEqual(h / 2 + 2 * GRID);
+    for (const inny of wszystkie) {
+      const o = obrysSymbolu(inny.symbolId);
+      const r = { x: inny.x + o.x, y: inny.y + o.y, width: o.width, height: o.height };
+      const zachodzi = podpis.rect.x < r.x + r.width && r.x < podpis.rect.x + podpis.rect.width
+        && podpis.rect.y < r.y + r.height && r.y < podpis.rect.y + podpis.rect.height;
+      expect(zachodzi, `${opis}: oznaczenie „${podpis.text}" × ${inny.symbolId}`).toBe(false);
+    }
+    sprawdzone += 1;
   }
   return sprawdzone;
 }

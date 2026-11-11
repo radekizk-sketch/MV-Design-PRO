@@ -58,7 +58,7 @@ import {
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
   ctAnnotationGaps,
-  protectionAnnotationAtLod1IsCircleOnly,
+  protectionAnnotationAtLod1IsBareFrame,
   protectionMarkingGaps,
   allSecondaryLinksValid,
   secondaryLinkDualityGaps,
@@ -119,6 +119,7 @@ import {
 } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayEquipmentTruthful, bayEquipmentGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { labelReservationRect, overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
+import { przeszkodySymbolu } from '../src/ui/sld/v3/symbols/blokZabezpieczen.ts';
 import {
   SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
@@ -622,7 +623,21 @@ const EXPECTED_STATION_COUNT = 53;
 // `starting_port_ref`, nowe identyfikatory korytarzy, inna kolejność remisu ciągów
 // odgałęzień — atrybucja w `crossings.test.ts`): −352 przy 0,62 em, −400 przy tabeli.
 // Cały spadek siedzi w przyczynie „rezerwacja-kanalu" (niżej); pozostałe przyczyny bez zmian.
-const VERTICAL_LENGTH_BASELINE = { 0: 19976, 1: 43040, 2: 43040 };
+// KARTA JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela 2026-11-05, „tak ma być ramka
+// we wszystkich tak samo"; zmierzone 2026-11-05, baza `9dafb6083` = poprzednie stałe co do
+// piksela): każde pole stacji z kodami funkcji w modelu niesie ramkę bloku obok toru
+// (najbliższe wolne położenie na prawo od wyłącznika, `compose/blokZabezpieczenPola.ts`),
+// a wysokość stacji rezerwuje dół ramki (`dolRamkiBlokuPolaStacji`). Świadome odstępstwo od
+// reguły „nie-rosnąca" (jak F9.10/F10.3: notacja zabezpieczeń ma pierwszeństwo przed
+// minimalizacją, spec §15.1 „redukcja jest ograniczeniem MIĘKKIM"); zero nowych kolizji
+// (sondy kolizji tego pliku zielone).
+// Piony 19976/43040/43040 → 20616/46432/46432 (+640/+3392/+3392), po przyczynach (sonda
+// `vertical_length_by_cause_probe`): „footprint" L1/L2 1936 → 2784 (+848 = 53 stacje × 16:
+// zejście zacisku nN transformatora pod dół ramki bloku pola TR, `lvColumnBottoms`
+// w `compose/station.ts`); „rezerwacja-kanalu" 19648/40736/40736 → 20224/43264/43264
+// (+576/+2528 — wyższe i szersze stacje, dłuższe kanały pasm między wierszami);
+// „jog-trasy" 88/160/160 → 152/176/176; „slupek-terminalny" bez zmian.
+const VERTICAL_LENGTH_BASELINE = { 0: 20616, 1: 46432, 2: 46432 };
 
 // Rozstrzygnięcie architekta S7-P2 (2026-10-30): skrzyżowania toru mocy z mostkiem §22.1
 // na fiksturze referencyjnej, zmierzone po skasowaniu rozcinania kabli „węzłem T" (dawniej
@@ -698,10 +713,11 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // przywraca jog 88. Wartości sondy „rezerwacja-kanalu": fikstura sprzed — 0,62 em
   // 20952/42048/42048, tabela 20048/41136/41136; fikstura po — 0,62 em 20600/41696/41696,
   // tabela 19648/40736/40736. footprint i „slupek-terminalny" bez zmian w każdym wariancie.
-  0: { footprint: 32, 'rezerwacja-kanalu': 19648, 'jog-trasy': 88, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1936, 'rezerwacja-kanalu': 40736, 'jog-trasy': 160, 'slupek-terminalny': 208 },
-  2: { footprint: 1936, 'rezerwacja-kanalu': 40736, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (2026-11-05): atrybucja przy `VERTICAL_LENGTH_BASELINE`.
+  0: { footprint: 32, 'rezerwacja-kanalu': 20224, 'jog-trasy': 152, 'slupek-terminalny': 208 },
+  1: { footprint: 2784, 'rezerwacja-kanalu': 43264, 'jog-trasy': 176, 'slupek-terminalny': 208 },
+  2: { footprint: 2784, 'rezerwacja-kanalu': 43264, 'jog-trasy': 176, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -792,7 +808,12 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // posuwów kroju: −8304/−10296/−11016 na fiksturze sprzed i −8424/−10416/−11160 na fiksturze
 // po (węższe kolumny pól i stacji). Regeneracja fikstury: −32 na każdym LOD przy tabeli.
 // Załamania bez zmian (43/171/171 w każdym wariancie).
-const HORIZONTAL_LENGTH_BASELINE = { 0: 45312, 1: 58832, 2: 62784 };
+// Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (2026-11-05, zmierzone; uzasadnienie przy
+// `VERTICAL_LENGTH_BASELINE`): 45312/58832/62784 → 60216/78608/82560 (+14904/+19776/+19776) —
+// kolumny pól z blokiem poszerzone o ramkę obok toru, więc dłuższe szyny SN stacji i przęsła
+// między stacjami; L0 dzieli położenia stacji z L1/L2 (ciągłość poziomów szczegółu), więc
+// rośnie razem z nimi. Załamania bez zmian (43/171/171).
+const HORIZONTAL_LENGTH_BASELINE = { 0: 60216, 1: 78608, 2: 82560 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**
@@ -846,7 +867,12 @@ const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 // 0.014760/0.022099/0.022865, tabela 0.016201/0.024810/0.025599. Tabela posuwów kroju
 // zwęża arkusz (krótsze poziomy i piony przy tej samej treści), więc udział pokrytych
 // komórek rośnie. Podłoga = zmierzona wartość minus ~0.00005 (reguła S7-P1/P4).
-const SHEET_FILL_FLOOR = { 0: 0.01615, 1: 0.02476, 2: 0.02555 };
+// Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (2026-11-05, zmierzone 0.013891/0.030296/0.030864):
+// L0 OBNIŻONA 0.01615 → 0.01384 (arkusz szerszy o ramki bloków obok torów pól, a L0 nie rysuje
+// bloków — pokrycie komórek spada), L1/L2 PODNIESIONE 0.02476/0.02555 → 0.03025/0.03081
+// (zaryglowanie zysku: ramki i wiersze kodów to realna treść w komórkach arkusza). Podłoga =
+// zmierzona wartość minus ~0.00005 (reguła S7-P1/P4).
+const SHEET_FILL_FLOOR = { 0: 0.01384, 1: 0.03025, 2: 0.03081 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -879,11 +905,12 @@ function check(label, pass, detail) {
   return pass;
 }
 
+// Prostokąty symboli z JEDNEGO źródła geometrii (`przeszkodySymbolu`): blok zabezpieczeń pola
+// to cztery krawędzie ramki — wiersze kodów stoją WEWNĄTRZ ramki z konstrukcji, więc kwadrat
+// definicji (24×24 w lewym górnym rogu ramki) dawał fałszywą kolizję z pierwszym wierszem
+// każdego bloku (pomiar 2026-11-05: overlapCount=171 na L2 = 171 bloków).
 function symbolRectsOf(scene) {
-  return scene.symbols.map((s) => {
-    const def = SYMBOL_DEFS[s.symbolId];
-    return { x: s.x, y: s.y, width: def.width, height: def.height };
-  });
+  return scene.symbols.flatMap(przeszkodySymbolu);
 }
 
 /** Hash identyfikatora stacji (`stn/<hash>/station` → `<hash>`) — jak w
@@ -1386,19 +1413,37 @@ for (const lod of LODS) {
         !allSwitchSymbolsUnambiguous(sabotagedInvalidState),
       );
     }
-    // Test negatywny — dowód, że wyrocznia GRYZIE: „52" wstrzyknięte do
-    // protectionCodes okręgu przekaźnika MUSI dać FAIL (c).
+    // Test negatywny — dowód, że wyrocznia GRYZIE: „52" wstrzyknięte jako wiersz kodu
+    // funkcji ramki bloku zabezpieczeń MUSI dać FAIL (c).
     const anyRelay = scene.symbols.find((s) => s.symbolId === 'protectionRelay');
-    const relayBase = anyRelay ?? { symbolId: 'protectionRelay', x: 0, y: 0, meta: { ownerRef: 'accept-sld-v3-fabricated-relay' } };
+    const relayBase = anyRelay ?? {
+      symbolId: 'protectionRelay',
+      x: 0,
+      y: 0,
+      meta: { ownerRef: 'accept-sld-v3-fabricated-relay', ramkaBlokuPrzekaznika: { x: 0, y: 0, width: 24, height: 24 } },
+    };
+    const wierszFabrykowany = `${relayBase.meta.ownerRef}#protection-codes-full-9`;
     const sabotagedRelayCode52 = {
       ...scene,
       symbols: [
         ...scene.symbols.filter((s) => s !== anyRelay),
-        { ...relayBase, meta: { ...relayBase.meta, protectionCodes: ['50/51', '52'] } },
+        { ...relayBase, meta: { ...relayBase.meta, wierszeBlokuPrzekaznika: [...(relayBase.meta.wierszeBlokuPrzekaznika ?? []), wierszFabrykowany] } },
+      ],
+      labels: [
+        ...scene.labels,
+        {
+          ownerRef: wierszFabrykowany,
+          ownerKind: 'protection',
+          labelClass: 't4',
+          labelRole: 'dane',
+          text: '52',
+          slotIndex: 1,
+          rect: { x: relayBase.x + 8, y: relayBase.y + 8, width: 8, height: 8 },
+        },
       ],
     };
     check(
-      'switch_symbol_unambiguity_probe (test negatywny (c) — dowód, że wyrocznia gryzie): „52" w protectionCodes okręgu przekaźnika MUSI dać FAIL',
+      'switch_symbol_unambiguity_probe (test negatywny (c) — dowód, że wyrocznia gryzie): „52" jako wiersz kodu ramki bloku zabezpieczeń MUSI dać FAIL',
       !allSwitchSymbolsUnambiguous(sabotagedRelayCode52),
     );
     // Test negatywny — dowód, że wyrocznia GRYZIE: etykieta „52" z ownerKind
@@ -2213,8 +2258,8 @@ for (const lod of LODS) {
   // -- §17.5 protection_marking_probe (F9.9) ---------------------------------
   // Fixtura referencyjna niesie 0 Bay[]/protection_assignments/measurements
   // (patrz `scene/__tests__/buildScene.test.ts` F9.9) — na TEJ fixturze ta
-  // sonda dowodzi „zero okręgów bez danych" WPROST (0 okręgów w ogóle, dowód
-  // vacuously true, nie fałszywy pozytyw); dowód pozytywny (okrąg z danych,
+  // sonda dowodzi „zero bloków bez danych" WPROST (0 bloków w ogóle, dowód
+  // vacuously true, nie fałszywy pozytyw); dowód pozytywny (blok z danych,
   // negatyw obowiązkowy) żyje w testach vitest syntetycznych
   // (`compose/__tests__/station.test.ts`, `scene/__tests__/buildScene.test.ts`).
   const relayCount = scene.symbols.filter((s) => s.symbolId === 'protectionRelay').length;
@@ -2222,20 +2267,20 @@ for (const lod of LODS) {
   const tripLineCount = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip').length;
   const markingGaps = protectionMarkingGaps(scene);
   check(
-    'protection_marking_probe (§17.5 a-c): okręgi przekaźnika mają kody+ownerRef (≤2), tory wyzwalania kończą się na REJESTROWANYCH portach wyłącznika+przekaźnika TEGO SAMEGO pola',
+    'protection_marking_probe (§17.5 a-c): każdy przekaźnik to ramka bloku zabezpieczeń z ownerRef (na L2 z wierszami kodów wewnątrz ramki), tory wyzwalania kończą się na REJESTROWANYM porcie wyłącznika i wejściu ramki bloku TEGO SAMEGO pola',
     allProtectionMarkingsValid(scene),
-    `okręgi=${relayCount} mierniki=${meterCount} tory=${tripLineCount} luki=${markingGaps.length}`,
+    `bloki=${relayCount} mierniki=${meterCount} tory=${tripLineCount} luki=${markingGaps.length}`,
   );
   check(
     'protection_marking_probe (§17.5e): L0 bez warstwy adnotacji zabezpieczeń',
     noProtectionAnnotationAtLod0(scene),
   );
-  // B-1 (§17.4 L1): sam okrąg bez kodów/toru/„52"/„M" — na tej fixturze
+  // B-1 (§17.4 L1): goła ramka bloku (bez kodów/linii pomiarowych/„52"/„M") — na tej fixturze
   // pusto-prawdziwe (0 danych §17.2); dowód POZYTYWNY + negatywy na scenach
   // syntetycznych w `buildScene.test.ts` (wymóg recenzji F9.9).
   check(
-    'protection_marking_probe (§17.4 L1, B-1): warstwa adnotacji na L1 = sam okrąg (bez kodów/toru/„52"/„M")',
-    protectionAnnotationAtLod1IsCircleOnly(scene),
+    'protection_marking_probe (§17.4 L1, B-1): warstwa adnotacji na L1 = goła ramka bloku zabezpieczeń (bez kodów/linii pomiarowych/„52"/„M")',
+    protectionAnnotationAtLod1IsBareFrame(scene),
   );
 
   // -- §18.3 ct_annotation_probe (F10.4) -------------------------------------
@@ -2306,25 +2351,22 @@ for (const lod of LODS) {
 }
 
 // -- protection_marking_probe (negatyw obowiązkowy, §17.5a) ----------------
-// Dowód, że wyrocznia GRYZIE (nie zawsze zielona) — okrąg fabrykowany bez
-// kodów na scenie realnej MUSI failować `allProtectionMarkingsValid`.
+// Dowód, że wyrocznia GRYZIE (nie zawsze zielona) — na scenie realnej L2: (1) ramka bloku
+// zabezpieczeń fabrykowana BEZ wierszy kodów, (2) przekaźnik BEZ ramki (dawny okrąg) — każdy
+// MUSI failować `allProtectionMarkingsValid` (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ).
 {
   const scene = buildSceneV3(enm, 2);
-  const fabricated = {
+  const zPrzekaznikiem = (meta) => ({
     ...scene,
-    symbols: [
-      ...scene.symbols,
-      {
-        symbolId: 'protectionRelay',
-        x: 0,
-        y: 0,
-        meta: { ownerRef: 'accept-sld-v3-fabricated', elementKind: 'protectionAnnotation', protectionCodes: [] },
-      },
-    ],
-  };
+    symbols: [...scene.symbols, { symbolId: 'protectionRelay', x: 0, y: 0, meta: { ownerRef: 'accept-sld-v3-fabricated', elementKind: 'protectionAnnotation', ...meta } }],
+  });
   check(
-    'protection_marking_probe (test negatywny — dowód, że wyrocznia gryzie): okrąg BEZ kodów fabrykowany na scenie MUSI dać FAIL',
-    allProtectionMarkingsValid(fabricated) === false,
+    'protection_marking_probe (test negatywny — dowód, że wyrocznia gryzie): ramka bloku BEZ wierszy kodów fabrykowana na scenie L2 MUSI dać FAIL',
+    allProtectionMarkingsValid(zPrzekaznikiem({ ramkaBlokuPrzekaznika: { x: 0, y: 0, width: 24, height: 24 }, wierszeBlokuPrzekaznika: [] })) === false,
+  );
+  check(
+    'protection_marking_probe (test negatywny — dowód, że wyrocznia gryzie): przekaźnik BEZ ramki bloku (okrąg) fabrykowany na scenie MUSI dać FAIL',
+    allProtectionMarkingsValid(zPrzekaznikiem({})) === false,
   );
 }
 

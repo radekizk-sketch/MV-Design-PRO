@@ -50,11 +50,9 @@ import {
   gpzInternalSegmentsEndAtPortsOrBus,
   noDirectTransformerBusTies,
   noGpzSymbolOverlaps,
-  podpisyWPasieBezNakladania,
   type GpzComposition,
-  type PodpisAparatuWPasie,
 } from '../gpz';
-import { labelLineHeight, measureLabelWidth } from '../../core/text';
+import { measureLabelWidth } from '../../core/text';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -940,11 +938,14 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
 // `describe` niżej „F11.1: rejestr device-ref".
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez rejestru device-ref', () => {
+describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): blok zabezpieczeń bez rejestru device-ref', () => {
   // Kody ze słownika funkcji EAZ (`funkcje_eaz.py`: kod = numer IEEE; karta UX-04, deduplikacja
-  // u źródła 2026-10-30). Dawny zapis „50/51" nie jest kodem słownika, a jego tusz pismem 8 px
-  // nie mieści się w okręgu (podłoga S9-7, `symbols/okragPrzekaznika.ts`) — intencja „okrąg
-  // niesie prefiks dwóch kodów" zostaje na kodach, które się w nim mieszczą.
+  // u źródła 2026-10-30). Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: przekaźnik pola GPZ bez
+  // powiązań obwodów wtórnych jest tą samą ramką z kodami co pole z powiązaniami.
+  const wierszeKodow = (composition: GpzComposition, bayRef: string): string[] =>
+    composition.labels.protection
+      .filter((l) => l.ownerRef === `${bayRef}#protection-codes-full` || l.ownerRef.startsWith(`${bayRef}#protection-codes-full-`))
+      .map((l) => l.text);
   const propsWithCodes = (codes: readonly string[]): CanonicalGpzProps =>
     baseProps({
       sections: [
@@ -958,22 +959,23 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
       ],
     });
 
-  it('§17.2 brak danych = brak oznaczenia: pola bez protectionCodes ⇒ ZERO okręgów (wszystkie istniejące fixtury tego pliku)', () => {
+  it('§17.2 brak danych = brak oznaczenia: pola bez protectionCodes ⇒ ZERO bloków (wszystkie istniejące fixtury tego pliku)', () => {
     const composition = composeGpz(baseProps(), ORIGIN);
     expect(composition.protectionSymbols).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
   });
 
-  it('F11.1 (usunięcie wyjątku §17.6): pole z kodami, ale BEZ `primaryDevices`/`protectionMarking` refów (bare `protectionCodes`, wywołujący sprzed F11.1) ⇒ DOKŁADNIE jeden okrąg z DWOMA pierwszymi kodami, ZERO segmentów wtórnych, ale missingData JEST zgłaszana TERAZ (parytet ze stacjami — dawny wyjątek R-1 ZNIESIONY)', () => {
+  it('F11.1 (usunięcie wyjątku §17.6): pole z kodami, ale BEZ `primaryDevices`/`protectionMarking` refów (bare `protectionCodes`, wywołujący sprzed F11.1) ⇒ DOKŁADNIE jeden blok (ramka) z OBOMA kodami, ZERO segmentów wtórnych, ale missingData JEST zgłaszana TERAZ (parytet ze stacjami — dawny wyjątek R-1 ZNIESIONY)', () => {
     const composition = composeGpz(propsWithCodes(['51', '51N']), ORIGIN);
     expect(composition.protectionSymbols).toHaveLength(1);
     expect(composition.protectionSymbols[0].bayRef).toBe('b-prot');
-    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['51', '51N']);
+    expect(composition.protectionSymbols[0].ramkaBloku).toBeDefined();
+    expect(wierszeKodow(composition, 'b-prot')).toEqual(['51', '51N']);
     // BEZ danych refów (brak `protectionMarking.breakerRef`/`ctRef`) — brak
     // linii wtórnych z KONSTRUKCJI, dokładnie jak stacja z `protection_ref==null`.
     expect(composition.protectionSegments).toHaveLength(0);
     expect(composition.measurementSegments).toHaveLength(0);
-    // F11.1: wyjątek §17.6 ZNIESIONY — okrąg bez toru JEST TERAZ missingData
+    // F11.1: wyjątek §17.6 ZNIESIONY — blok bez toru JEST TERAZ missingData
     // (dokładnie jak dla stacji, `bay.protection.trip_link_unresolved`/
     // `measurement_link_unresolved`).
     expect(composition.missingData).toEqual(
@@ -984,18 +986,19 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
     );
   });
 
-  it('R-2 (§17.3 zd. 2): >2 kody ⇒ okrąg z dwoma pierwszymi + etykieta pełnej listy (kolejność źródłowa)', () => {
+  it('R-2 (§17.3 zd. 2): >2 kody ⇒ WSZYSTKIE kody wierszami w ramce bloku (kolejność źródłowa), członkowie ramki', () => {
     const composition = composeGpz(propsWithCodes(['87T', '51', '50', '51N']), ORIGIN);
-    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['87T', '51']);
-    const fullList = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'));
-    expect(fullList).toHaveLength(1);
-    expect(fullList[0].text).toBe('87T · 51 · 50 · 51N');
+    expect(wierszeKodow(composition, 'b-prot')).toEqual(['87T', '51', '50', '51N']);
+    expect(composition.protectionSymbols[0].wierszeBloku).toEqual(
+      composition.labels.protection.filter((l) => l.ownerRef.includes('#protection-codes-full')).map((l) => l.ownerRef),
+    );
   });
 
-  it('B-1 (§17.4 L1, circle-only): okrąg BEZ kodów, zero etykiet protection', () => {
+  it('B-1 (§17.4 L1, circle-only): goła ramka bloku BEZ wierszy, zero etykiet protection', () => {
     const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN, [], 'circle-only');
     expect(composition.protectionSymbols).toHaveLength(1);
-    expect(composition.protectionSymbols[0].protectionCodes).toBeUndefined();
+    expect(composition.protectionSymbols[0].ramkaBloku).toBeDefined();
+    expect(composition.protectionSymbols[0].wierszeBloku).toEqual([]);
     expect(composition.labels.protection).toHaveLength(0);
   });
 
@@ -1090,10 +1093,12 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
   });
 
-  it('dane zgodne z szablonem ⇒ linia pomiarowa (#measurement-link) od CT deviceRef="ct-1"', () => {
+  // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (UX04 §11.20): pole BEZ powiązań obwodów wtórnych
+  // (sam `ct_ref`, bez `funkcje_eaz_zasilane`) ma ramkę BEZ linii pomiarowych CT/VT — linie
+  // pomiarowe wynikają wyłącznie z powiązań modelu (`poleLinioweGpz.test.tsx`, Z.10).
+  it('dane zgodne z szablonem, pole bez powiązań obwodów wtórnych ⇒ ZERO linii pomiarowej, CT dowiązany (deviceRef="ct-1"), zero braku danych pomiaru', () => {
     const composition = composeGpz(propsWithRegistry(), ORIGIN);
-    expect(composition.measurementSegments).toHaveLength(1);
-    expect(composition.measurementSegments[0].ownerRef).toBe('b-prot#measurement-link');
+    expect(composition.measurementSegments).toHaveLength(0);
     const ct = composition.symbols.find(
       (s) => s.meta.bayRef === 'b-prot' && s.symbolId === 'currentTransformer',
     )!;
@@ -1110,8 +1115,21 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     expect(composition.missingData).not.toContain('bay.protection.ct_rating_anchor_unresolved');
   });
 
-  it('dwie linie wtórne mają RÓŻNE ownerRef (§20.1 „zakaz jednej anonimowej linii")', () => {
-    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+  it('dwie linie wtórne mają RÓŻNE ownerRef (§20.1 „zakaz jednej anonimowej linii") — pole z powiązaniami obwodów wtórnych', () => {
+    const composition = composeGpz(
+      propsWithRegistry({
+        primaryDevices: alignedLineDevices.map((d) =>
+          d.deviceRef === 'ct-1'
+            ? { ...d, renderVariant: 'qet_en60617', funkcjeEazZasilane: ['51'] }
+            : d.deviceRef === 'cb-1'
+              ? { ...d, renderVariant: 'qet_en60617', funkcjeEazWylaczajace: ['51'] }
+              : d,
+        ),
+      }),
+      ORIGIN,
+    );
+    expect(composition.measurementSegments).toHaveLength(1);
+    expect(composition.protectionSegments).toHaveLength(1);
     expect(composition.protectionSegments[0].ownerRef).not.toBe(composition.measurementSegments[0].ownerRef);
   });
 
@@ -1667,62 +1685,3 @@ describe('GPZ-PARYTET — determinizm adnotacji', () => {
   });
 });
 
-/**
- * Karta UX-04/POLE-LINIOWE-WZORZEC — pas podpisów aparatów pola bez nakładania.
- *
- * Iloczyn: {podpisy rozłączne, zachodzące, równej wysokości} × {jeden pas, dwa pasy (inna
- * kotwica X, inna strona)} × {kolejność wejścia wprost, odwrócona}. Defekt, który przypina:
- * Z.11 wykonanie stałe — głowica GK1 odgałęzienia i uziemnik Q51 obok niej dawały ten sam
- * prostokąt podpisu, rozwiązywacz zdejmował drugi (aparat bez oznaczenia na schemacie).
- */
-describe('podpisyWPasieBezNakladania — pas podpisów aparatów pola', () => {
-  const H = labelLineHeight('t3');
-  const podpis = (ref: string, y: number, x = 100, placement: 'left' | 'right' = 'right', symbolX = 0): PodpisAparatuWPasie => ({
-    ownerRef: ref,
-    text: ref,
-    anchor: { x, y },
-    placement,
-    symbolX,
-  });
-  const gora = (p: PodpisAparatuWPasie): number => Math.round((p.anchor.y - H / 2) / GRID) * GRID;
-
-  it('podpisy rozłączne — kotwice nietknięte (geometria bez kolizji bez zmian)', () => {
-    const wejscie = [podpis('a', 100), podpis('b', 140), podpis('c', 200)];
-    expect(podpisyWPasieBezNakladania(wejscie)).toEqual(wejscie);
-  });
-
-  it.each([
-    ['wprost', false],
-    ['odwrócona', true],
-  ])('podpisy zachodzące w jednym pasie — rozłączne, kolejność wg wysokości symbolu (wejście %s)', (_n, odwroc) => {
-    // Pomiar sceny Z.11 stałego: GK1 środek 676, Q51 środek 680 (kafel 48 px), T3 środek 712.
-    const baza = [podpis('Q5', 632, 2128, 'right', 1976), podpis('Q51', 680, 2128, 'right', 2072), podpis('GK1', 676, 2128, 'right', 1992), podpis('T3', 712, 2128, 'right', 2032)];
-    const wejscie = odwroc ? [...baza].reverse() : baza;
-    const wynik = podpisyWPasieBezNakladania(wejscie);
-    expect(wynik.map((p) => p.ownerRef)).toEqual(wejscie.map((p) => p.ownerRef));
-    const wgRef = new Map(wynik.map((p) => [p.ownerRef, gora(p)]));
-    expect(Object.fromEntries(wgRef)).toEqual({ Q5: 624, GK1: 672, Q51: 688, T3: 704 });
-    const posortowane = [...wgRef.values()].sort((a, b) => a - b);
-    for (let i = 1; i < posortowane.length; i += 1) expect(posortowane[i]).toBeGreaterThanOrEqual(posortowane[i - 1] + H);
-    // Podpis przesunięty ma prostokąt na siatce — rozwiązywacz (`snapToGrid(kotwica − H/2)`)
-    // nie przesuwa go z powrotem na podpis poprzedni.
-    const przesuniete = wynik.filter((p, i) => p !== wejscie[i]);
-    expect(przesuniete.map((p) => p.ownerRef).sort()).toEqual(['Q51']);
-    for (const p of przesuniete) expect((p.anchor.y - H / 2) % GRID).toBe(0);
-  });
-
-  it('równa wysokość — kolejność wg położenia X symbolu (deterministyczna niezależnie od wejścia)', () => {
-    const a = podpis('lewy', 300, 100, 'right', 10);
-    const b = podpis('prawy', 300, 100, 'right', 50);
-    const wprost = podpisyWPasieBezNakladania([a, b]);
-    const odwrotnie = podpisyWPasieBezNakladania([b, a]);
-    expect(gora(wprost[0])).toBe(gora(odwrotnie[1]));
-    expect(gora(wprost[1])).toBe(gora(odwrotnie[0]));
-    expect(gora(wprost[0])).toBeLessThan(gora(wprost[1]));
-  });
-
-  it('dwa pasy (inna kotwica X albo inna strona) nie przesuwają się nawzajem', () => {
-    const wejscie = [podpis('a', 300, 100), podpis('b', 300, 200), podpis('c', 300, 100, 'left')];
-    expect(podpisyWPasieBezNakladania(wejscie)).toEqual(wejscie);
-  });
-});

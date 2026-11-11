@@ -11,9 +11,12 @@
  * jawne wyrównanie wytwórcy (wyrocznia: tabela prawdy w teście); (B) render kanwy na fiksturach
  * GPZ (Z.10, Z.11.1/Z.11), sieci wielostacyjnej i stacji z polem pomiarowym na LOD 2: każda
  * etykieta `dane` / podpis aparatu po stronie lewej/prawej niesie `text-anchor` end/start,
- * a iloczyn {dane, aparat} × {lewa, prawa} jest niepusty; (C) wspólną krawędź podpisów
- * aparatów kolumny pola GPZ (podpisy po lewej stronie toru jednego pola — jedna prawa krawędź,
- * tolerancja 1 jednostki świata). Krawędź tuszu na ekranie (metryki przeglądarki) mierzy e2e
+ * a iloczyn {dane, aparat} × {lewa, prawa} osiągalny w danych jest niepusty; (C) wspólną krawędź
+ * oznaczeń aparatów pola GPZ — wzorzec właściciela 2026-11-05 („Opisy pól po lewej dzięki temu
+ * pole robi się czytelniejsze i węższe”): oznaczenia WSZYSTKICH aparatów jednego pola (tor
+ * główny i kolumna odgałęzienia) stoją w jednej kolumnie przy lewej krawędzi pola, zaczepione
+ * w lewej krawędzi, z jedną lewą krawędzią (tolerancja 1 jednostki świata). Krawędź tuszu na
+ * ekranie (metryki przeglądarki) mierzy e2e
  * `ux04-pole-liniowe-zrzuty-screenshot.spec.ts::zmierzPodpisyPola`.
  */
 import { readFileSync } from 'node:fs';
@@ -89,6 +92,9 @@ interface EtykietaKanwy {
   readonly anchor: string;
   readonly x: number;
   readonly obrocona: boolean;
+  /** Kolumna podpisu aparatu: `tor` albo numer odgałęzienia toru (`data-odgalezienie-toru`
+   *  symbolu aparatu na kanwie). */
+  readonly kolumna: string;
 }
 
 /** Kanwa 16 000 × 9 000 px: kadr „Dopasuj widok" daje skalę, przy której etykiety `dane`
@@ -98,8 +104,12 @@ function etykietyKanwy(enm: EnergyNetworkModel): EtykietaKanwy[] {
   const { container } = render(<SldCanvasV3 snapshot={enm} width={16000} height={9000} lodOverride={2} animateLodTransitions={false} />);
   const wynik = [...container.querySelectorAll('g[data-testid^="sld-v3-label-"]')].map((g) => {
     const t = g.querySelector('text')!;
+    const ownerRef = g.getAttribute('data-owner-ref') ?? '';
+    const deviceRef = /#etykieta-aparatu-(.*)$/.exec(ownerRef)?.[1];
+    const symbol = deviceRef ? container.querySelector(`g[data-device-ref="${deviceRef}"]`) : null;
     return {
-      ownerRef: g.getAttribute('data-owner-ref') ?? '',
+      kolumna: symbol?.getAttribute('data-odgalezienie-toru') ?? 'tor',
+      ownerRef,
       kind: g.getAttribute('data-owner-kind') ?? '',
       role: g.getAttribute('data-label-role') ?? '',
       strona: g.getAttribute('data-label-strona') ?? '',
@@ -126,11 +136,11 @@ describe('(B) render kanwy LOD 2 — etykiety danych i podpisy aparatów zaczepi
     });
   }
 
-  // Komórka „dane po lewej" występuje od korekty v2 (polecenie właściciela 2026-11-04):
-  // tabliczki przekładników toru głównego pola GPZ (T1 „200–400/5", T2 „1/100") stoją po LEWEJ
-  // symbolu, tekst dosunięty do symbolu (prawa krawędź). Pozostałe etykiety `dane` mają stronę
-  // prawą (wiersze bloku zabezpieczeń, tabliczka VT kolumny odgałęzienia), dolną (lista kodów
-  // R-2, wiersze nazw stacji) albo żadną (opisy odcinków, portów, końców toru).
+  // Wzorzec właściciela 2026-11-05: tabliczki przekładników stoją w kolumnie przekładni od jej
+  // LEWEJ krawędzi (strona prawa kotwicy kolumny), więc komórka „dane po lewej" (korekta v2
+  // 2026-11-04: tabliczka dosunięta prawą krawędzią do symbolu) nie występuje w danych produktu.
+  // Etykiety `dane` mają stronę prawą (tabliczki w kolumnie, wiersze bloku zabezpieczeń), dolną
+  // (lista kodów R-2, wiersze nazw stacji) albo żadną (opisy odcinków, portów, końców toru).
   it('iloczyn {dane, podpis aparatu} × {lewa, prawa} osiągalny w danych produktu pokryty na kolekcji fikstur (test nie jest pusty)', () => {
     const komorki = new Set<string>();
     for (const [, etykiety] of ETYKIETY) {
@@ -140,24 +150,29 @@ describe('(B) render kanwy LOD 2 — etykiety danych i podpisy aparatów zaczepi
         if (e.kind === 'apparatus') komorki.add(`aparat|${e.strona}`);
       }
     }
-    expect([...komorki].sort()).toEqual(['aparat|left', 'aparat|right', 'dane|left', 'dane|right']);
+    expect([...komorki].sort()).toEqual(['aparat|left', 'aparat|right', 'dane|right']);
   });
 
-  it('(C) podpisy aparatów po lewej stronie toru jednego pola GPZ mają wspólną prawą krawędź (≤ 1 jednostka świata)', () => {
+  it('(C) oznaczenia aparatów jednego pola GPZ (tor główny i kolumna odgałęzienia) w jednej kolumnie: zaczep w lewej krawędzi, wspólna lewa krawędź (≤ 1 jednostka świata)', () => {
     let pola = 0;
+    let polaZOdgalezieniem = 0;
     for (const [nazwa, etykiety] of ETYKIETY.slice(0, 2)) {
-      const wPolu = new Map<string, number[]>();
+      const wPolu = new Map<string, { x: number; kolumna: string; anchor: string }[]>();
       for (const e of etykiety) {
         const dopasowanie = /^(.*)#etykieta-aparatu-/.exec(e.ownerRef);
-        if (!dopasowanie || e.strona !== 'left' || e.obrocona) continue;
-        wPolu.set(dopasowanie[1], [...(wPolu.get(dopasowanie[1]) ?? []), e.x]);
+        if (!dopasowanie || e.obrocona) continue;
+        wPolu.set(dopasowanie[1], [...(wPolu.get(dopasowanie[1]) ?? []), { x: e.x, kolumna: e.kolumna, anchor: e.anchor }]);
       }
-      for (const [pole, krawedzie] of wPolu) {
-        if (krawedzie.length < 2) continue;
+      for (const [pole, oznaczenia] of wPolu) {
+        if (oznaczenia.length < 2) continue;
         pola += 1;
-        expect(Math.max(...krawedzie) - Math.min(...krawedzie), `${nazwa}: ${pole} (${krawedzie.join(', ')})`).toBeLessThanOrEqual(1);
+        if (oznaczenia.some((o) => o.kolumna !== 'tor')) polaZOdgalezieniem += 1;
+        for (const o of oznaczenia) expect(o.anchor, `${nazwa}: ${pole} — zaczep w lewej krawędzi`).toBe('start');
+        const xs = oznaczenia.map((o) => o.x);
+        expect(Math.max(...xs) - Math.min(...xs), `${nazwa}: ${pole} (${xs.join(', ')})`).toBeLessThanOrEqual(1);
       }
     }
-    expect(pola, 'pola GPZ z co najmniej dwoma podpisami po lewej').toBeGreaterThan(0);
+    expect(pola, 'pola GPZ z co najmniej dwoma oznaczeniami').toBeGreaterThan(0);
+    expect(polaZOdgalezieniem, 'pola z kolumną odgałęzienia (Z.11.1, Z.11, pole pomiarowe) w iloczynie').toBeGreaterThan(0);
   });
 });

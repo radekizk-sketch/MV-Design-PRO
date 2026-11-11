@@ -33,6 +33,7 @@ import {
 } from '../scene/buildScene';
 import { scenyWszystkichPoziomow } from '../scene/scenaSld';
 import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import { SYMBOL_GLYPHS, skalaZnacznikaKafla } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import {
@@ -544,7 +545,7 @@ function SceneSymbolNode(props: {
   readonly lod: SceneLod;
   /** Ramka bloku zabezpieczeń wg PLANU etykiet (`canvas/obrysyWgPlanu.ts`) — ramka sceny
    *  (`meta.ramkaBlokuPrzekaznika`) poszerzona o NARYSOWANE wiersze bloku; `undefined` = symbol
-   *  bez ramki (okrąg przekaźnika modelu stacji). */
+   *  nie jest blokiem zabezpieczeń. */
   readonly ramkaBloku: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | undefined;
 }): JSX.Element {
   const { symbol, index, overlay, cameraScale } = props;
@@ -586,6 +587,9 @@ function SceneSymbolNode(props: {
       data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
       data-owner-ref={symbol.meta?.ownerRef}
       data-device-ref={symbol.meta?.deviceRef}
+      // Numer odgałęzienia toru pola, w którym stoi aparat (kolumna podpisów odgałęzienia po
+      // lewej, werdykt B-02 2026-11-05) — sonda odbioru grupuje podpisy aparatów wg kolumny.
+      data-odgalezienie-toru={symbol.meta?.odgalezienieToru}
       data-apparatus-kind={symbol.meta?.apparatusKind}
       data-element-kind={symbol.meta?.elementKind}
       data-der-kind={symbol.meta?.derKind}
@@ -1034,10 +1038,9 @@ export function computeFlowOverlayPlacements(
   if (!flowByOwnerRef) return [];
   const obstacles: FlowRect[] = [
     ...scene.labels.map((l) => l.rect),
-    ...scene.symbols.map((s) => {
-      const def = SYMBOL_DEFS[s.symbolId];
-      return { x: s.x, y: s.y, width: def.width, height: def.height };
-    }),
+    // Gabaryt symbolu z JEDNEGO źródła (`symbols/blokZabezpieczen.ts`): blok zabezpieczeń zajmuje
+    // całą ramkę (kody, odniesienie 3U₀), nie prostokąt definicji symbolu w jej rogu.
+    ...scene.symbols.map(gabarytSymbolu),
   ];
   const placements: FlowPlacement[] = [];
   scene.segments.forEach((segment, segmentIndex) => {
@@ -1794,10 +1797,9 @@ export function layoutResultLabels(
   }
   const obstacles: FlowRect[] = [
     ...scene.labels.map((l) => l.rect),
-    ...scene.symbols.map((s) => {
-      const def = SYMBOL_DEFS[s.symbolId];
-      return { x: s.x, y: s.y, width: def.width, height: def.height };
-    }),
+    // Gabaryt symbolu z JEDNEGO źródła (`symbols/blokZabezpieczen.ts`): blok zabezpieczeń zajmuje
+    // całą ramkę (kody, odniesienie 3U₀), nie prostokąt definicji symbolu w jej rogu.
+    ...scene.symbols.map(gabarytSymbolu),
     ...extraObstacles,
   ];
   // Kotwice: symbol (TR/źródło/DER) lub odcinek (szyna/przęsło) — indeks po
@@ -1806,8 +1808,8 @@ export function layoutResultLabels(
   for (const s of scene.symbols) {
     const ref = s.meta?.ownerRef;
     if (!ref || symbolAnchor.has(ref)) continue;
-    const def = SYMBOL_DEFS[s.symbolId];
-    symbolAnchor.set(ref, { cx: s.x + def.width / 2, cy: s.y + def.height / 2, halfW: def.width / 2, halfH: def.height / 2 });
+    const g = gabarytSymbolu(s);
+    symbolAnchor.set(ref, { cx: g.x + g.width / 2, cy: g.y + g.height / 2, halfW: g.width / 2, halfH: g.height / 2 });
   }
   const segmentAnchor = new Map<string, { cx: number; cy: number; horizontal: boolean }>();
   for (const seg of scene.segments) {
@@ -1965,10 +1967,9 @@ export function layoutResultLabels(
   // flagi plasowania (dowód, nie deklaracja).
   const sceneObstacles: FlowRect[] = [
     ...scene.labels.map((l) => l.rect),
-    ...scene.symbols.map((s) => {
-      const def = SYMBOL_DEFS[s.symbolId];
-      return { x: s.x, y: s.y, width: def.width, height: def.height };
-    }),
+    // Gabaryt symbolu z JEDNEGO źródła (`symbols/blokZabezpieczen.ts`): blok zabezpieczeń zajmuje
+    // całą ramkę (kody, odniesienie 3U₀), nie prostokąt definicji symbolu w jej rogu.
+    ...scene.symbols.map(gabarytSymbolu),
     ...extraObstacles,
   ];
   const finalRects: FlowRect[] = [
@@ -2388,11 +2389,11 @@ export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
   let maxY = -Infinity;
   for (const s of scene.symbols) {
     if (!s.meta?.ownerRef) continue;
-    const def = SYMBOL_DEFS[s.symbolId];
-    minX = Math.min(minX, s.x);
-    minY = Math.min(minY, s.y);
-    maxX = Math.max(maxX, s.x + def.width);
-    maxY = Math.max(maxY, s.y + def.height);
+    const g = gabarytSymbolu(s);
+    minX = Math.min(minX, g.x);
+    minY = Math.min(minY, g.y);
+    maxX = Math.max(maxX, g.x + g.width);
+    maxY = Math.max(maxY, g.y + g.height);
   }
   for (const seg of scene.segments) {
     if (!seg.meta?.ownerRef) continue;
@@ -2554,11 +2555,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     let maxX = -Infinity;
     let maxY = -Infinity;
     for (const s of gpzSymbols) {
-      const def = SYMBOL_DEFS[s.symbolId];
-      minX = Math.min(minX, s.x);
-      minY = Math.min(minY, s.y);
-      maxX = Math.max(maxX, s.x + def.width);
-      maxY = Math.max(maxY, s.y + def.height);
+      const g = gabarytSymbolu(s);
+      minX = Math.min(minX, g.x);
+      minY = Math.min(minY, g.y);
+      maxX = Math.max(maxX, g.x + g.width);
+      maxY = Math.max(maxY, g.y + g.height);
     }
     // KD-7: punkt fokusu to wartość BEZWZGLĘDNA kamery — jak cel fitu, w
     // świecie arkusza.

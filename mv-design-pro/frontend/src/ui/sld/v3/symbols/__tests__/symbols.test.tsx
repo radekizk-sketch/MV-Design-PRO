@@ -47,7 +47,11 @@ describe('V3 symbols — grid_probe (spec §11.2)', () => {
       expect(names.has(p.name)).toBe(false);
       names.add(p.name);
     }
-    expect(d.ports.length).toBeGreaterThan(0);
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok zabezpieczeń pola nie ma portów definicji —
+    // wejścia linii leżą na krawędziach ramki z danych pola (meta sceny
+    // `wejsciaBlokuPrzekaznika`); każdy inny symbol ma co najmniej jeden port.
+    if (id === 'protectionRelay') expect(d.ports).toEqual([]);
+    else expect(d.ports.length).toBeGreaterThan(0);
     expect(d.labelPl.length).toBeGreaterThan(2);
   });
 

@@ -30,6 +30,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.catalog.funkcje_eaz import kody_spoza_slownika
 from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU, StanObiektu
 from network_model.catalog.obwody_wtorne_pola import powiazania_aparatow_pola
 from network_model.catalog.rodzaje_aparatury import porty_toru_pola
@@ -346,7 +347,16 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
     """Rekord pola po walidacji kontraktem `Bay` (postać `model_dump(mode="json")`).
     Klucz spoza kontraktu = błąd (pydantic domyślnie IGNORUJE nadmiarowe klucze — dana
     zniknęłaby po cichu przy `model_validate` całego modelu); klucz `meta` z typowanym
-    odpowiednikiem = błąd."""
+    odpowiednikiem = błąd; kod funkcji EAZ (`protection_codes`) spoza słownika
+    `network_model.catalog.funkcje_eaz` = błąd (każdy kod ma wpis z nazwą i podstawą — ocena
+    pola i opis funkcji czytają go ze słownika; kod nieznany zrywał ocenę pola liniowego GPZ
+    błędem serwera przy walidacji gotowości po operacji).
+
+    Reguła stoi w PISARZU rekordu pola (każda operacja i każda budowa pola, także automigracja
+    dawnych słowników pól), nie w kontrakcie `Bay`: magazyn zastępuje migawkę, która nie
+    przechodzi walidacji modelu, modelem domyślnym (`enm.store._load_persisted_enm`), więc
+    reguła kontraktu zamieniłaby zapisany projekt z kodem spoza słownika w cichą utratę
+    danych."""
     nieznane = sorted(set(rekord) - set(Bay.model_fields))
     if nieznane:
         raise BladPola(
@@ -359,6 +369,14 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
             raise BladPola(
                 f"pole {rekord.get('ref_id')!r}: klucze meta z typowanym odpowiednikiem: "
                 f"{', '.join(zakazane)}"
+            )
+    kody = rekord.get("protection_codes")
+    if isinstance(kody, Iterable) and not isinstance(kody, str | bytes):
+        spoza = kody_spoza_slownika([str(k) for k in kody])
+        if spoza:
+            raise BladPola(
+                f"pole {rekord.get('ref_id')!r}: kody funkcji EAZ spoza słownika: "
+                f"{', '.join(spoza)}"
             )
     try:
         model = Bay.model_validate(dict(rekord))

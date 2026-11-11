@@ -119,10 +119,10 @@ import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
 import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
-import { gabarytSymbolu, przeszkodySymbolu, wejsciaBlokuSymbolu } from '../symbols/blokZabezpieczen';
-import { ukladKodowWOkregu } from '../symbols/okragPrzekaznika';
+import { gabarytSymbolu, przeszkodySymbolu, ramkaBlokuSymbolu, wejsciaBlokuSymbolu } from '../symbols/blokZabezpieczen';
 import {
   classifyRouteNodes,
+  dedupeVertices,
   type RouteGeometry,
   type RouteNode,
   type RouteVertex,
@@ -1685,8 +1685,8 @@ function composeRowStation(
       .map((bay) => bay.bayRef)
       .join(', ') || 'brak id';
     stopNotes.push(
-      `Stacja „${measureInput.id}": okrąg przekaźnika narysowany bez toru wyzwalania — ` +
-        `„ProtectionAssignment.breaker_ref" nierozwiązywalny na aparat stosu pola (spec §17.2): ${affected}.`,
+      `Stacja „${measureInput.id}": blok zabezpieczeń narysowany bez linii wyłączania — ` +
+        `model nie wskazuje wyłącznika wyłączanego przez zabezpieczenie pola („ProtectionAssignment.breaker_ref" ani „funkcje_eaz_wylaczajace" aparatu stosu, spec §17.2): ${affected}.`,
     );
   }
   if (composition.missingData.includes('bay.protection.meter_anchor_unresolved')) {
@@ -1696,15 +1696,16 @@ function composeRowStation(
   }
   // F10.5 (spec §20.1): wzorzec `bay.protection.trip_link_unresolved` wyżej —
   // brak `ProtectionAssignment.ct_ref` rozwiązywalnego na aparat
-  // `currentTransformer` stosu pola = okrąg BEZ linii pomiarowej.
+  // `currentTransformer` stosu pola (albo — pole z powiązaniami obwodów wtórnych — żaden aparat
+  // stosu nie zasila funkcji pola) = blok zabezpieczeń BEZ linii pomiarowej.
   if (composition.missingData.includes('bay.protection.measurement_link_unresolved')) {
     const affected = measureInput.snBays
       .filter((bay) => bayHasProtectionAnnotation(bay) && (bay.protectionMarking?.codes.length ?? 0) > 0)
       .map((bay) => bay.bayRef)
       .join(', ') || 'brak id';
     stopNotes.push(
-      `Stacja „${measureInput.id}": okrąg przekaźnika narysowany bez linii pomiarowej — ` +
-        `„ProtectionAssignment.ct_ref" nierozwiązywalny na aparat currentTransformer stosu pola (spec §20.1): ${affected}.`,
+      `Stacja „${measureInput.id}": blok zabezpieczeń narysowany bez linii pomiarowej — ` +
+        `model nie wiąże przekładnika stosu pola z funkcjami zabezpieczenia („ProtectionAssignment.ct_ref" ani „funkcje_eaz_zasilane", spec §20.1): ${affected}.`,
     );
   }
   // F10.5 (spec §20.2): walidacja topologiczna funkcji zabezpieczeń — kody
@@ -1898,7 +1899,17 @@ function composeRowStation(
       testId: unikalnyTestId(`${s.bayRef}#${s.symbolId}`),
       ownerRef: s.bayRef,
       elementKind: 'protectionAnnotation',
-      protectionCodes: s.protectionCodes,
+      // GEOMETRIA-STACJI §0 pkt 5: rezerwa pola przepisana 1:1 — blok pola wolnego jest rezerwą.
+      bayReserve: s.bayReserve,
+      // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: ramka bloku zabezpieczeń pola stacji — ta sama
+      // meta co pole GPZ (`./blokZabezpieczenPola`), rysuje ją `ProtectionRelayGlyph`.
+      ...(s.ramkaBloku
+        ? {
+            ramkaBlokuPrzekaznika: s.ramkaBloku,
+            wierszeBlokuPrzekaznika: s.wierszeBloku ?? [],
+            wejsciaBlokuPrzekaznika: s.wejsciaBloku ?? [],
+          }
+        : {}),
       // F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń —
       // przepisane 1:1, `ProtectionRelayGlyph` (`symbols/glyphs.tsx`) czyta
       // WYŁĄCZNIE obecność/pustkę (adnotacja „!"), treść żyje w
@@ -3314,25 +3325,6 @@ function composeCollapsedGpz(
   return { symbols, segments, nameBand };
 }
 
-/** Usuwa POWTÓRZONE kolejno wierzchołki łamanej (łamana degenerująca się do
- *  prostego odcinka, gdy oś źródła/pola pokrywa się z osią bloku) — ten sam
- *  wzorzec co objazd rynną w sekcji 5 — ORAZ wierzchołki pośrednie leżące na prostej
- *  sąsiadów. Wierzchołek współliniowy nie zmienia rysunku, ale dzieli odcinek na dwie
- *  krawędzie, a skrzyżowanie w takim wierzchołku nie jest „wnętrzem” żadnej z nich:
- *  `interiorCrossings` go nie widzi i kanwa nie rysuje mostka (karta
- *  UX-04/POLE-LINIOWE-WZORZEC, decyzja §11.7 pkt 1; pomiar przed naprawą: zejście źródła
- *  `#grid-source-drop` bloku GPZ na L0 — jeden taki wierzchołek na każdej scenie z GPZ:
- *  57 fikstur na L0 i 6 sieci syntetycznych, żaden na obcym przewodzie). */
-function dedupeVertices(points: readonly RouteVertex[]): readonly RouteVertex[] {
-  const bezPowtorzen = points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
-  return bezPowtorzen.filter((p, i) => {
-    if (i === 0 || i === bezPowtorzen.length - 1) return true;
-    const a = bezPowtorzen[i - 1];
-    const b = bezPowtorzen[i + 1];
-    return !((a.x === p.x && b.x === p.x) || (a.y === p.y && b.y === p.y));
-  });
-}
-
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
   // F13.1 (spec §21.2, D3-2/D3-2bis): `busbarKind` (compose/gpz.ts, szyny
   // sekcji SN GPZ) ma pierwszeństwo nad domyślnym bus/sn — `undefined` dla
@@ -4048,7 +4040,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // -- 4. Skomponuj GPZ → preview + etykiety + meta. -------------------------
   if (gpzComposition) {
     allSymbols.push(...gpzComposition.symbols.map(gpzSymbolToPreview));
-    // F9.9 R-1 (spec §17.1): okręgi przekaźników GPZ — warstwa adnotacji, ten
+    // F9.9 R-1 (spec §17.1): bloki zabezpieczeń pól GPZ — warstwa adnotacji, ten
     // sam kształt meta co stacje (`composeRowStation`). F11.1: tor wyzwalania
     // TERAZ możliwy (patrz `protectionSegments`/`measurementSegments` niżej) —
     // wyjątek „zawsze bez toru" ZNIESIONY, patrz docstring
@@ -4067,18 +4059,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           testId: unikalnyTestIdGpzAdnotacji(`${s.bayRef}#${s.symbolId}`),
           ownerRef: s.bayRef,
           elementKind: 'protectionAnnotation',
-          protectionCodes: s.protectionCodes,
           // F10.5 (spec §20.2), parytet ze stacjami (`composeRowStation`): adnotacja „!".
           topologyGaps: s.protectionTopologyGaps,
-          // Karta UX-04 (uwaga właściciela 2026-10-29 pkt 5): ramka bloku przekaźnika układu
-          // powiązań — przepisana 1:1, rysuje ją `ProtectionRelayGlyph`.
-          ...(s.ramkaBloku
-            ? {
-                ramkaBlokuPrzekaznika: s.ramkaBloku,
-                wierszeBlokuPrzekaznika: s.wierszeBloku ?? [],
-                wejsciaBlokuPrzekaznika: s.wejsciaBloku ?? [],
-              }
-            : {}),
+          // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: ramka bloku zabezpieczeń pola — przepisana
+          // 1:1, rysuje ją `ProtectionRelayGlyph` (ta sama meta co pole stacji).
+          ramkaBlokuPrzekaznika: s.ramkaBloku,
+          wierszeBlokuPrzekaznika: s.wierszeBloku,
+          wejsciaBlokuPrzekaznika: s.wejsciaBloku,
         },
       })),
     );
@@ -6656,27 +6643,27 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
   }
 
   // (c) „52" wyłącznie jako etykieta ownerKind:'protection' przy wyłączniku
-  // (ownerRef `#device-number`, `compose/station.ts`), nigdy w
-  // protectionCodes okręgu przekaźnika.
+  // (ownerRef `#device-number`, `compose/blokZabezpieczenPola.ts`), nigdy jako
+  // wiersz kodu funkcji w ramce bloku zabezpieczeń.
+  const wierszeBlokow = new Set(
+    scene.symbols
+      .filter((s) => s.symbolId === 'protectionRelay')
+      .flatMap((s) => s.meta?.wierszeBlokuPrzekaznika ?? []),
+  );
   for (const l of scene.labels) {
     if (l.text !== '52') continue;
-    if (l.ownerKind !== 'protection' || !l.ownerRef.endsWith('#device-number')) {
+    if (wierszeBlokow.has(l.ownerRef)) {
+      gaps.push({
+        reason: 'device-number-52-in-protection-codes',
+        symbolId: 'protectionRelay',
+        ownerRef: l.ownerRef,
+        detail: `„52" jako wiersz kodu funkcji bloku zabezpieczeń (${l.ownerRef}) — 52 to numer urządzenia ANSI/IEEE C37.2, NIE kod funkcji (§17.1)`,
+      });
+    } else if (l.ownerKind !== 'protection' || !l.ownerRef.endsWith('#device-number')) {
       gaps.push({
         reason: 'device-number-52-misplaced',
         ownerRef: l.ownerRef,
         detail: `etykieta „52" poza kontraktem ownerKind:'protection'/#device-number (ownerKind=${l.ownerKind})`,
-      });
-    }
-  }
-  for (const s of scene.symbols) {
-    if (s.symbolId !== 'protectionRelay') continue;
-    const codes = s.meta?.protectionCodes ?? [];
-    if (codes.includes('52')) {
-      gaps.push({
-        reason: 'device-number-52-in-protection-codes',
-        symbolId: s.symbolId,
-        ownerRef: s.meta?.ownerRef,
-        detail: `„52" w protectionCodes (${codes.join(',')}) okręgu przekaźnika — 52 to numer urządzenia ANSI/IEEE C37.2, NIE kod funkcji (§17.1)`,
       });
     }
   }
@@ -8961,62 +8948,48 @@ export function allSourcesConnected(scene: SceneV3): boolean {
 
 export interface ProtectionMarkingGap {
   readonly reason:
-    | 'circle-without-codes'
-    | 'circle-without-owner'
-    | 'codes-exceed-two'
-    | 'codes-overflow-circle'
+    | 'relay-without-frame'
+    | 'relay-without-owner'
+    | 'frame-without-codes'
     | 'codes-present-at-lod1'
+    | 'code-row-outside-frame'
     | 'trip-line-endpoint-mismatch';
   readonly ownerRef?: string;
 }
 
+/** Czy prostokąt `r` leży w całości wewnątrz ramki `ramka` (krawędzie włącznie). */
+function wRamce(r: V3Rect, ramka: V3Rect): boolean {
+  return r.x >= ramka.x && r.y >= ramka.y && r.x + r.width <= ramka.x + ramka.width && r.y + r.height <= ramka.y + ramka.height;
+}
+
 /**
- * protection_marking_probe (spec §17.5): (a) każdy okrąg przekaźnika
- * (`symbolId==='protectionRelay'`) ma `meta.ownerRef` niepusty ORAZ — na L2
- * — `meta.protectionCodes` niepuste — zero okręgów bez danych (§17.2 „brak
- * danych = brak oznaczenia"), negatyw obowiązkowy pokryty testem
- * (`buildScene.test.ts`: syntetyczny okrąg bez kodów ⇒ FAIL). Na L1 (§17.4,
- * B-1 recenzji): okrąg MUSI być BEZ kodów (`'codes-present-at-lod1'` — kody
- * na L1 to naruszenie kontraktu LOD, nie luka danych); pełny kształt L1
- * dowodzi `protectionAnnotationAtLod1IsCircleOnly` niżej. (c, część
- * STRUKTURALNA — granica liczności): maks. 2 kody w okręgu; DOWÓD PEŁNY
- * „kody = prefiks `protection_codes` bez sortowania/fabrykacji" żyje na
- * warstwie `compose/station.ts` (`compose/__tests__/station.test.ts`) — scena
- * sama nie niesie źródłowej listy `Bay.protection_codes` (WYŁĄCZNIE dwa
- * wybrane kody trafiają na symbol), więc nie może dowieść WOBEC źródła, tylko
- * granicy liczności tutaj; kody na symbolu mieszczą się w okręgu pismem
- * podłogi 8 px (`'codes-overflow-circle'`, `symbols/okragPrzekaznika.ts`),
- * a okrąg L2 bez kodów jest legalny tylko przy pełnej liście pola na scenie
- * (żaden kod się nie mieści). (b) każda linia wyzwalania
- * (`meta.kind==='protectionTrip'`) łączy REJESTROWANY port aparatu `breaker`
- * z REJESTROWANYM portem `protectionRelay` TEGO SAMEGO pola (`ownerRef` bay
- * wspólny, odczytany z sufiksu `#trip-line` — WHITE BOX, zero zgadywania
- * którędy linia biegnie/do jakiego aparatu).
+ * protection_marking_probe (spec §17.5), karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja
+ * właściciela 2026-11-05: „tak ma być ramka we wszystkich tak samo”): (a) każdy przekaźnik
+ * sceny (`symbolId==='protectionRelay'`) jest BLOKIEM ZABEZPIECZEŃ — niesie ramkę
+ * (`meta.ramkaBlokuPrzekaznika`, `'relay-without-frame'`; okręgu przekaźnika nie ma na
+ * żadnej ścieżce) i `meta.ownerRef` (`'relay-without-owner'`). Na L2 ramka niesie co najmniej
+ * jeden wiersz kodu funkcji pola (`#protection-codes-full…`, §17.2 „brak danych = brak
+ * oznaczenia" — `'frame-without-codes'`), a każdy wiersz bloku obecny na scenie leży WEWNĄTRZ
+ * ramki (`'code-row-outside-frame'` — ramka i wiersze z jednej funkcji geometrii,
+ * `symbols/blokZabezpieczen.ts::ramkaBlokuZWierszy`). Na L1 (§17.4, B-1 recenzji) ramka jest
+ * GOŁA: zero wierszy bloku (`'codes-present-at-lod1'`); pełny kształt L1 dowodzi
+ * `protectionAnnotationAtLod1IsBareFrame` niżej. DOWÓD PEŁNY „wiersze = `protection_codes`
+ * pola w kolejności danych, bez fabrykacji" żyje na warstwie kompozycji
+ * (`compose/__tests__/blokZabezpieczenNotacja.contract.test.ts`) — scena nie niesie źródłowej
+ * listy `Bay.protection_codes`. (b) każda linia wyzwalania (`meta.kind==='protectionTrip'`)
+ * łączy REJESTROWANY port (albo zacisk wtórny — cewkę) aparatu `breaker` z wejściem ramki
+ * bloku TEGO SAMEGO pola (`ownerRef` bay wspólny, odczytany z sufiksu `#trip-line` — WHITE
+ * BOX, zero zgadywania którędy linia biegnie/do jakiego aparatu).
  *
- * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15) — ZWĘŻONY w
- * F11.1 (spec §17.6 doprecyzowanie, rejestr device-ref w GPZ): okrąg BEZ
- * ŻADNEJ linii wyzwalania jest LEGALNY WYŁĄCZNIE gdy `breaker_ref`/`ct_ref`
- * są nierozwiązywalne na aparat NARYSOWANEGO stosu (§17.2 — raportowane
- * osobno przez `missingData`, `bay.protection.trip_link_unresolved`/
- * `bay.protection.measurement_link_unresolved`, nie przez tę sondę). Do F11.1
- * GPZ miała TU dodatkowy, blankietowy wyjątek („okrąg w GPZ zawsze bez toru,
- * nigdy nie jest to missingData") — bo kompozycja GPZ nie śledziła
- * `device_ref` per aparat (stosy z SZABLONÓW `FieldApparatusSpec`, nie z
- * `primary_devices`). F11.1 dostarczyła rejestr device-ref (`compose/gpz.ts`
- * `primaryDeviceItemsForTemplate`, `bay.primaryDevices` dopasowany DOKŁADNIE
- * do szablonu pola) — GPZ TERAZ rozwiązuje tor wyzwalania/linię pomiarową
- * DOKŁADNIE jak stacja (`resolveStationProtectionMarking` reużyta wprost,
- * `./protectionMarking`) i, gdy refy się NIE rozwiążą, zgłasza TĘ SAMĄ
- * missingData co stacja — wyjątek blankietowy dla GPZ ZNIESIONY, zero
- * specjalnego traktowania GPZ w tej sondzie. Sonda (b) sprawdza więc
- * WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH — nigdy nie wymaga linii per
- * okrąg (uczciwy brak danych/refów pozostaje legalny, dla stacji i GPZ
- * jednakowo).
+ * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15, zwężony w F11.1): blok BEZ linii
+ * wyzwalania jest LEGALNY WYŁĄCZNIE, gdy model nie wskazuje łącznika wyłączanego
+ * (`breaker_ref` nierozwiązywalny i brak `funkcje_eaz_wylaczajace` w stosie pola) — luka
+ * raportowana osobno przez `missingData` (`bay.protection.trip_link_unresolved`), nie przez tę
+ * sondę; stacje i GPZ jednakowo (jedna kompozycja, `compose/blokZabezpieczenPola.ts`). Sonda (b)
+ * sprawdza więc WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH.
  *
- * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7) — dziedziczony z
- * konstrukcji, bez odrębnej maszynerii (zero `Date`/`Math.random` w całej
- * dostawie F9.9). (e) L0: patrz `noProtectionAnnotationAtLod0` niżej (inny
- * kształt dowodu — per-LOD, nie per-scena pojedynczej).
+ * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7) — dziedziczony z konstrukcji.
+ * (e) L0: patrz `noProtectionAnnotationAtLod0` niżej (inny kształt dowodu — per-LOD).
  */
 export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkingGap[] {
   const gaps: ProtectionMarkingGap[] = [];
@@ -9024,24 +8997,27 @@ export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkin
   const breakerSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'breaker');
 
   relaySymbols.forEach((s) => {
-    const codes = s.meta?.protectionCodes ?? [];
-    // §17.4 (B-1): wymaganie kodów jest funkcją LOD — L2 wymaga, L1 ZAKAZUJE. Karta
-    // UX-04/POLE-LINIOWE-WZORZEC (§11.7 pkt 5): okrąg L2 bez kodów jest legalny WYŁĄCZNIE,
-    // gdy żaden kod pola nie mieści się w nim pismem 8 px — wtedy wszystkie kody niesie
-    // pełna lista pola (`#protection-codes-full`) na tej samej scenie.
-    const listaPola = `${s.meta?.ownerRef ?? ''}#protection-codes-full`;
-    if (scene.meta.lod === 2 && codes.length === 0 && !scene.labels.some((l) => l.ownerRef === listaPola)) {
-      gaps.push({ reason: 'circle-without-codes', ownerRef: s.meta?.ownerRef });
+    const ownerRef = s.meta?.ownerRef;
+    if (!ownerRef) gaps.push({ reason: 'relay-without-owner' });
+    const ramka = ramkaBlokuSymbolu(s);
+    if (!ramka) {
+      gaps.push({ reason: 'relay-without-frame', ownerRef });
+      return;
     }
-    if (scene.meta.lod === 1 && codes.length > 0) {
-      gaps.push({ reason: 'codes-present-at-lod1', ownerRef: s.meta?.ownerRef });
+    // Wiersze kodów pola na scenie: zadeklarowane przez symbol ORAZ każda etykieta
+    // `#protection-codes-full…` tego pola (wiersz bez deklaracji też jest wierszem bloku).
+    const prefiksKodow = `${ownerRef ?? ''}#protection-codes-full`;
+    const zadeklarowane = new Set(s.meta?.wierszeBlokuPrzekaznika ?? []);
+    const wiersze = scene.labels.filter(
+      (l) => zadeklarowane.has(l.ownerRef) || l.ownerRef === prefiksKodow || l.ownerRef.startsWith(`${prefiksKodow}-`),
+    );
+    const kodyNaScenie = wiersze.some((l) => l.ownerRef.startsWith(prefiksKodow));
+    if (scene.meta.lod === 2 && !kodyNaScenie) gaps.push({ reason: 'frame-without-codes', ownerRef });
+    if (scene.meta.lod === 1 && (wiersze.length > 0 || zadeklarowane.size > 0)) {
+      gaps.push({ reason: 'codes-present-at-lod1', ownerRef });
     }
-    if (!s.meta?.ownerRef) gaps.push({ reason: 'circle-without-owner' });
-    if (codes.length > 2) gaps.push({ reason: 'codes-exceed-two', ownerRef: s.meta?.ownerRef });
-    // Podłoga S9-7 w okręgu: kody na symbolu = dokładnie to, co mieści się w okręgu pismem
-    // 8 px (`ukladKodowWOkregu` — to samo źródło co kompozycja i glif).
-    if (codes.length > 0 && ukladKodowWOkregu(codes).kody.length !== codes.length) {
-      gaps.push({ reason: 'codes-overflow-circle', ownerRef: s.meta?.ownerRef });
+    for (const w of wiersze) {
+      if (!wRamce(w.rect, ramka)) gaps.push({ reason: 'code-row-outside-frame', ownerRef: w.ownerRef });
     }
   });
 
@@ -9051,17 +9027,16 @@ export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkin
       const bayRef = seg.meta?.ownerRef?.replace(/#trip-line$/, '');
       const first = seg.points[0];
       const last = seg.points[seg.points.length - 1];
-      const touchesOwnBreaker = breakerSymbols.some(
-        (b) =>
-          b.meta?.ownerRef === bayRef &&
-          symbolAllPortsInWorld(b).some((p) => p.x === first?.x && p.y === first?.y),
-      );
-      const touchesOwnRelay = relaySymbols.some(
-        (r) =>
-          r.meta?.ownerRef === bayRef &&
-          symbolAllPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
-      );
-      if (!touchesOwnBreaker || !touchesOwnRelay) {
+      const dotyka = (sym: PreviewSymbol, p: RouteVertex | undefined): boolean =>
+        symbolAllPortsInWorld(sym).some((q) => q.x === p?.x && q.y === p?.y);
+      // Kierunek linii nie jest kontraktem: jeden koniec na łączniku pola, drugi na wejściu
+      // ramki bloku tego pola.
+      const ownBreakers = breakerSymbols.filter((b) => b.meta?.ownerRef === bayRef);
+      const ownRelays = relaySymbols.filter((r) => r.meta?.ownerRef === bayRef);
+      const zakotwiczona =
+        (ownBreakers.some((b) => dotyka(b, first)) && ownRelays.some((r) => dotyka(r, last)))
+        || (ownBreakers.some((b) => dotyka(b, last)) && ownRelays.some((r) => dotyka(r, first)));
+      if (!zakotwiczona) {
         gaps.push({ reason: 'trip-line-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
       }
     });
@@ -9091,30 +9066,28 @@ export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
 }
 
 /**
- * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją): na L1 warstwa
- * adnotacji zabezpieczeń to WYŁĄCZNIE okrąg przekaźnika BEZ kodów —
- * (1) każdy `protectionRelay` ma puste/nieobecne `protectionCodes`;
- * (2) zero segmentów `protectionTrip`/`measurementLink` (F10.5, §20.1: obie
- *     linie wtórne ukryte na L1, TA SAMA gałąź LOD co tor wyzwalania);
+ * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją), karta JEDNA NOTACJA BLOKU
+ * ZABEZPIECZEŃ: na L1 warstwa adnotacji zabezpieczeń to GOŁA RAMKA bloku zabezpieczeń —
+ * (1) każdy `protectionRelay` niesie ramkę i nie deklaruje wierszy (`wierszeBlokuPrzekaznika`
+ *     puste);
+ * (2) zero segmentów `measurementLink` (F10.5, §20.1: linie pomiarowe dopiero na L2); linia
+ *     wyłączania (`protectionTrip`) ZOSTAJE — blok na L1 stoi tam, gdzie na L2, przy łączniku,
+ *     z którym łączy go linia wyłączania (odbiór B-02, oględziny koordynatora 2026-11-04; od tej
+ *     karty jednakowo w polach GPZ i stacji);
  * (3) zero symboli `meter` („M" nieobecne);
- * (4) zero etykiet `ownerKind==='protection'` („52"/pełna lista nieobecne).
- * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne
- * dowody: `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
- * Dowód POZYTYWNY (okrąg NA SCENIE L1 i nic poza nim) + negatywy — testy
- * syntetyczne w `buildScene.test.ts` (fixtura referencyjna jest
- * pusto-prawdziwa: 0 danych §17.2).
+ * (4) zero etykiet `ownerKind==='protection'` („52", kody, przekładnie — nieobecne).
+ * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne dowody:
+ * `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
  */
-export function protectionAnnotationAtLod1IsCircleOnly(scene: SceneV3): boolean {
+export function protectionAnnotationAtLod1IsBareFrame(scene: SceneV3): boolean {
   if (scene.meta.lod !== 1) return true;
-  const relaysHaveNoCodes = scene.symbols
+  const relaysAreBareFrames = scene.symbols
     .filter((s) => s.symbolId === 'protectionRelay')
-    .every((s) => (s.meta?.protectionCodes ?? []).length === 0);
-  const noSecondaryLines = !scene.segments.some(
-    (s) => s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink',
-  );
+    .every((s) => ramkaBlokuSymbolu(s) !== null && (s.meta?.wierszeBlokuPrzekaznika ?? []).length === 0);
+  const noMeasurementLines = !scene.segments.some((s) => s.meta?.kind === 'measurementLink');
   const noMeters = !scene.symbols.some((s) => s.symbolId === 'meter');
   const noProtectionLabels = !scene.labels.some((l) => l.ownerKind === 'protection');
-  return relaysHaveNoCodes && noSecondaryLines && noMeters && noProtectionLabels;
+  return relaysAreBareFrames && noMeasurementLines && noMeters && noProtectionLabels;
 }
 
 // ---------------------------------------------------------------------------

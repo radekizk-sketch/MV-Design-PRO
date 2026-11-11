@@ -44,7 +44,7 @@ export type SymbolId =
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
-  | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
+  | 'protectionRelay'  // F9.9: blok zabezpieczeń pola (ramka + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
   | 'loadArrow'        // odbiór (strzałka IEC 60617) — projekcja nN (`lv-domain/`)
   | 'capacitorBank'    // bateria kondensatorów równoległych SN (UX-04/POLE-BKR-MODEL)
@@ -342,25 +342,20 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'e', x: 128, y: 64, dir: 'E' },
     { name: 'w', x: 0, y: 64, dir: 'W' },
   ], 'Rozdzielnia zasilająca GPZ (widok zbiorczy)'),
-  // F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg 24×24
-  // (3×GRID) w kolumnie adnotacji pola. Element ADNOTACJI (NIE aparat toru
-  // mocy, §17.1: „nie uczestniczy w ciągłości elektrycznej ani w wyroczniach
-  // toru") — port `link` WYŁĄCZNIE geometryczny (zaczep TORU WYZWALANIA
-  // przerywanego, §17.1), nie oznacza udziału w routingu elektrycznym.
-  // Port `link` na y=8 (NIE geometryczny środek y=12 — 24/2=12 NIE jest
-  // wielokrotnością GRID=8, złamałoby grid_probe §11.2; y=8 jest najbliższą
-  // wielokrotnością GRID w bboxie 24×24, wybór wizualnie równoważny).
-  protectionRelay: def('protectionRelay', 24, 24, [
-    { name: 'link', x: 0, y: 8, dir: 'W' },
-  ], 'Przekaźnik zabezpieczeniowy'),
-  // Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): pole GPZ
-  // z powiązaniami obwodów wtórnych rysuje BLOK ZABEZPIECZEŃ — prostokątną ramkę bez okręgu
-  // (`ProtectionRelayGlyph` z `ramkaBloku`); jego wejścia (linia wyłączania, linie pomiarowe)
-  // leżą na krawędziach ramki i zależą od danych pola, więc niesie je meta sceny
-  // (`wejsciaBlokuPrzekaznika`), nie stała definicja symbolu. Dawne zaciski wtórne okręgu
-  // (`wylacz`, `pomiar-gorny`, `pomiar-lewy`, `pomiar`) skasowane razem z okręgiem bloku.
-  // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), TA SAMA średnica co
-  // przekaźnik (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
+  // F9.9 (spec §17.1/§17.3), karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela
+  // 2026-11-05: „tak ma być ramka we wszystkich tak samo”): przekaźnik/sterownik pola to BLOK
+  // ZABEZPIECZEŃ — prostokątna ramka bez okręgu w kolumnie adnotacji pola. Element ADNOTACJI
+  // (NIE aparat toru mocy, §17.1: „nie uczestniczy w ciągłości elektrycznej ani w wyroczniach
+  // toru"). Gabaryt 24×24 (3×GRID) to ramka bloku bez kodów (`RAMKA_BLOKU_BEZ_KODOW`,
+  // `symbols/blokZabezpieczen.ts` — podgląd składu pola w kreatorze, katalog symboli); na
+  // schemacie ramkę i jej wejścia (linia wyłączania, linie pomiarowe — na krawędziach ramki,
+  // zależne od danych pola) niesie meta sceny (`ramkaBlokuPrzekaznika`,
+  // `wejsciaBlokuPrzekaznika`), więc definicja symbolu NIE ma portów. Dawny port `link` okręgu
+  // i zaciski wtórne okręgu (`wylacz`, `pomiar-gorny`, `pomiar-lewy`, `pomiar`) skasowane
+  // razem z okręgiem.
+  protectionRelay: def('protectionRelay', 24, 24, [], 'Blok zabezpieczeń pola'),
+  // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), ten sam gabaryt co ramka bloku
+  // zabezpieczeń bez kodów (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
   // linii do miernika (kotwiczenie WYŁĄCZNIE pozycją, §17.2 „okrąg M przy
   // przekładniku pomiarowym") — port `anchor` WYŁĄCZNIE dla spójności z
   // biblioteką (każdy symbol ma ≥1 port, `symbols/__tests__/symbols.test.tsx`

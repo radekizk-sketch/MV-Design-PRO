@@ -59,15 +59,24 @@ const enm = zRekordamiAparatowPol(
 
 const CANVAS_WIDTH = 1322;
 const CANVAS_HEIGHT = 696;
+// Płótno dla testów, które klikają w NAPIS: przy kadrze całego arkusza na
+// 1322×696 fikstura 52 stacji ma skalę 0,076 (pomiar 2026-11-05 — arkusz
+// 8100×7038 po wpięciu bloku zabezpieczeń w każde pole stacji, trzy wiersze
+// arkusza zamiast dwóch; wcześniej 7432×6286, skala 0,085), a podpisy stacji
+// spadają pod podłogę czytelności 13 px ekranu i słusznie nie są rysowane.
+// Test uchwytu napisu potrzebuje napisu NARYSOWANEGO, więc renderuje płótno
+// ekranu Full HD (skala ~0,118), na którym plan etykiet je umieszcza.
+const CANVAS_FHD_WIDTH = 1920;
+const CANVAS_FHD_HEIGHT = 1080;
 
 function svgOf(container: HTMLElement): SVGSVGElement {
   return container.querySelector('[data-testid="sld-canvas-v3"]') as SVGSVGElement;
 }
 
 /** Skala kamery odczytana z kadru — ta sama wielkość, którą liczy render. */
-function scaleOf(container: HTMLElement): number {
+function scaleOf(container: HTMLElement, szerokosc: number = CANVAS_WIDTH): number {
   const viewBox = svgOf(container).getAttribute('viewBox')!.split(' ').map(Number);
-  return CANVAS_WIDTH / viewBox[2];
+  return szerokosc / viewBox[2];
 }
 
 function hitNode(container: HTMLElement, testId: string, rola: 'obrys' | 'obszar'): Element | null {
@@ -188,7 +197,7 @@ describe('S9-4 — inwentarz klasy: KAŻDY rodzaj obiektu kanwy ma uchwyt ≥ 24
 
   it('L0 niesie łączniki wierszy arkusza (S9-1) i bloki stacji — oba z uchwytem', () => {
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_FHD_WIDTH} height={CANVAS_FHD_HEIGHT} lodOverride={0} onElementClick={() => {}} />,
     );
     const zDrzewa = hitAreasFromDom(svgOf(container) as unknown as HitDomNode);
     expect(zDrzewa.filter((a) => a.klasa === 'lacznik-wiersza').length).toBeGreaterThan(0);
@@ -302,10 +311,10 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
     const user = userEvent.setup();
     const onElementClick = vi.fn();
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} onElementClick={onElementClick} />,
+      <SldCanvasV3 snapshot={enm} width={CANVAS_FHD_WIDTH} height={CANVAS_FHD_HEIGHT} lodOverride={2} onElementClick={onElementClick} />,
     );
     const scene = buildSceneV3(enm, 2);
-    const scale = scaleOf(container);
+    const scale = scaleOf(container, CANVAS_FHD_WIDTH);
     const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
     const etykieta = plan.drawn.find((p) => p.label.ownerKind === 'apparatus')
       ?? plan.drawn.find((p) => p.label.ownerKind === 'station-name')!;

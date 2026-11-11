@@ -627,6 +627,25 @@ describe('SLD-GEN-POLA — wyposażenie pola rysowane TYLKO z danych formularza'
     expect(symbole).toEqual(['protectionRelay', 'breaker']);
   });
 
+  it('przekaźnik w podglądzie kreatora to TA SAMA ramka bloku co na schemacie (bez okręgu)', () => {
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela 2026-11-05: „tak ma być ramka
+    // we wszystkich tak samo"): podgląd rozdzielnicy rysuje glif kanonu `protectionRelay` —
+    // ramkę bloku bez kodów (kreator nie zna jeszcze funkcji pola), bez okręgu przekaźnika.
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_IN', 'ap-WYLACZNIK', { relay: { catalog_ref: 'rel-1' } })]}
+        aparaty={KATALOG}
+        transformatory={TRAFO}
+        transformatorRef="tr-630"
+        snVoltageKv={15}
+        szablonyPol={[]}
+      />,
+    );
+    const blok = container.querySelector('[data-symbol-canon="protectionRelay"]')!;
+    expect(blok.querySelectorAll('[data-przekaznik="ramka-bloku"]')).toHaveLength(1);
+    expect(blok.querySelectorAll('circle')).toHaveLength(0);
+  });
+
   it('pełne wyposażenie pola pomiarowego: odłącznik + VT + przekaźnik', () => {
     const symbole = symboleWRenderze([
       pole('LINIA_ODG', 'ap-ODLACZNIK', {

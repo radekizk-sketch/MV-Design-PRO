@@ -69,6 +69,7 @@ import type { RdzenPrzekladnikaPradowego } from '../src/types/przekladniki';
 import { krotkaPrzekladniaRdzeni } from '../src/ui/sld/v2/model/tabliczkaPrzekladnika';
 import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../src/ui/sld/v3/compose/zaciskiPrzekladnika';
 import { katalogZrzutow } from './katalogZrzutow';
+import { zaslonieciaKodowRamki } from './kodyRamkiBloku';
 import { przelaczMotyw } from './powloka';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -80,6 +81,7 @@ const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux',
 const SZABLON_Z10 = 'bay_template_gpz_line_enea_z10_trojpolozeniowy';
 const SZABLON_Z10_STALY = 'bay_template_gpz_line_enea_z10_staly_z_odlacznikiem';
 const SZABLON_Z11_1 = 'bay_template_gpz_line_enea_z11_1_trojpolozeniowy';
+const SZABLON_Z11_STALY = 'bay_template_gpz_line_enea_z11_staly_z_odlacznikiem';
 // Konwencja kafla stanu — lustro `sld/v3/theme/colorTokens.ts::STATE_COLOR` (jedna tabela
 // kanwy, eksportu, legendy i inspektora; testy jednostkowe pilnują lustra w kodzie).
 const KAFEL = { zamkniety: '#C62828', otwarty: '#2E7D32', nieustalony: '#6B7280' } as const;
@@ -571,7 +573,11 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     return [...svg.querySelectorAll('[data-przekaznik="ramka-bloku"]')].map((rama) => {
       const wlasciciel = rama.closest('[data-owner-ref]')?.getAttribute('data-owner-ref') ?? '';
       // Odbiór właściciela 2026-11-04 (korekta v2): blok zabezpieczeń BEZ okręgu przekaźnika.
-      const okregi = rama.parentElement?.querySelectorAll('circle').length ?? 0;
+      // Znak ostrzeżenia topologii („!" w okręgu, `data-topology-warning`) nie jest notacją bloku —
+      // ta sama reguła co wyrocznia sceny (a) `blokZabezpieczenNotacja.contract.test.tsx`.
+      const okregi = [...(rama.parentElement?.querySelectorAll('circle, ellipse') ?? [])].filter(
+        (e) => !e.closest('[data-topology-warning]'),
+      ).length;
       return {
         pole: wlasciciel,
         ramka: prost(rama.getBoundingClientRect()),
@@ -592,6 +598,9 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     });
   }, KANWA);
   const pomiary: PomiarBloku[] = [];
+  // Werdykt B-02 właściciela 2026-11-05 (kod „81O” zasłonięty na zrzucie Z.11.1): żaden kod ramki
+  // nie jest zasłonięty narysowanym elementem kanwy (`zaslonieciaKodowRamki` — tusz przeglądarki).
+  expect(await zaslonieciaKodowRamki(page, KANWA), `${kadr} · ${motyw}: kody ramki niezasłonięte`).toEqual([]);
   for (const b of bloki.filter((x) => x.wiersze.length > 0)) {
     // Odbiór B-02 pkt 7: kody w DWÓCH kolumnach pionowych — lewa krawędź każdej komórki należy do
     // jednej z co najwyżej dwóch kolumn; komórka prawej kolumny leży w wierszu lewej i na prawo
@@ -685,8 +694,9 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
   const ramkaT1 = (await page.locator(`${KANWA} g[data-device-ref="${t1.device_ref}"]`).first().boundingBox())!;
   const srodekT1 = ramkaT1.y + ramkaT1.height / 2;
   const [odSzyny, odOdplywu] = ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne;
-  // Strona podpisu aparatu T1 (`data-label-strona` grupy podpisu) — kolumna podpisów po lewej
-  // toru; oznaczenia zacisków między nią a pierścieniem.
+  // Strona podpisu aparatu T1 (`data-label-strona` grupy podpisu) — wzorzec właściciela
+  // 2026-11-05: oznaczenie w kolumnie oznaczeń przy lewej krawędzi pola, kotwica w lewej krawędzi
+  // kolumny, tekst w prawo (`right`); oznaczenia zacisków między nim a pierścieniem.
   const stronaPodpisu = await page
     .locator(`${KANWA} g[data-owner-ref^="${pole.ref_id}#etykieta-aparatu-"][data-label-strona]`)
     .filter({ has: page.locator('text', { hasText: /^T1$/ }) })
@@ -727,8 +737,8 @@ async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): 
     const pierscienLewa = pierscien.x;
     lewaPierscieniaT1 = Math.min(lewaPierscieniaT1, pierscienLewa);
     // Polecenie właściciela 2026-11-04 (korekta v2): P1/P2 po LEWEJ stronie symbolu T1 —
-    // w pasie opisów przekładników między kolumną podpisów aparatów a pierścieniem.
-    expect(stronaPodpisu, `${kadr}: podpis T1 w kolumnie podpisów po lewej toru`).toBe('left');
+    // między kolumnami opisów pola a pierścieniem.
+    expect(stronaPodpisu, `${kadr}: podpis T1 w kolumnie oznaczeń (kotwica w lewej krawędzi)`).toBe('right');
     expect(r.x + r.width, `${kadr}: ${oznaczenie} na lewo od pierścienia T1`).toBeLessThanOrEqual(pierscienLewa + TOLERANCJA_EKRANU_PX);
     expect(r.x, `${kadr}: ${oznaczenie} na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpisT1.x + podpisT1.width - TOLERANCJA_EKRANU_PX);
     const przeciete = tusz.filter(
@@ -793,43 +803,72 @@ type PomiarPodpisow = {
   kadr: string;
   motyw: string;
   pole: string;
-  /** Prawe krawędzie tuszu podpisów aparatów po lewej stronie toru [px ekranu] i ich rozrzut. */
-  prawe: number[];
+  /** Lewe krawędzie tuszu oznaczeń aparatów pola (kolumna oznaczeń) [px ekranu] i ich rozrzut. */
+  lewe: number[];
   rozrzut: number;
   podpisy: string[];
 };
 const POMIARY_PODPISOW: PomiarPodpisow[] = [];
 const POMIARY_PODPISOW_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-podpisow.json');
 
-/** Wspólna krawędź tuszu podpisów pola (decyzja architekta §11.7 pkt 8): podpisy aparatów pola
- *  stojące po lewej stronie toru (`data-label-strona="left"`, tekst poziomy) kończą się w jednej
- *  prawej krawędzi tuszu — tolerancja 1 px ekranu, metryki czcionki PRZEGLĄDARKI (jednostkowy
- *  odpowiednik w świecie: `zaczepKrawedziEtykiet.test.tsx` (C)). */
+/** Kolumny opisów pola na ekranie (wzorzec właściciela 2026-11-05: „Opisy pól po lewej dzięki
+ *  temu pole robi się czytelniejsze i węższe”). Oznaczenia WSZYSTKICH aparatów pola (tor główny,
+ *  aparaty boczne, kolumna odgałęzienia — `#etykieta-aparatu-`, tekst poziomy) zaczepione w lewej
+ *  krawędzi (`text-anchor="start"`) i zaczynają się w JEDNEJ lewej krawędzi tuszu; tabliczki
+ *  przekładników (`#ct-rating-`, `#vt-rating-`, `#cbct-rating-`) — w jednej lewej krawędzi na
+ *  prawo od kolumny oznaczeń; żaden z tych opisów nie kończy się na prawo od lewej krawędzi
+ *  symboli aparatów pola (opis nie stoi przy torze ani po jego prawej) — tolerancja 1 px ekranu,
+ *  metryki czcionki PRZEGLĄDARKI (odpowiednik w świecie: `wyroczniaOpisowPola.ts` (kol-a…kol-c)).
+ */
 async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<void> {
   const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
-  const podpisy = await page.evaluate(
-    ([kanwa, prefiks]) =>
-      [...document.querySelectorAll(`${kanwa} g[data-owner-ref^="${prefiks}"][data-label-strona="left"] > text`)]
-        .filter((t) => !t.hasAttribute('transform'))
-        .map((t) => {
-          const r = t.getBoundingClientRect();
-          return {
-            tekst: t.textContent ?? '',
-            prawa: r.x + r.width,
-            anchor: t.getAttribute('text-anchor') ?? '',
-            szerokosc: r.width,
-            fontSize: Number(t.getAttribute('font-size')),
-            fontWeight: Number(t.getAttribute('font-weight')),
-            skala: (t as SVGTextElement).getScreenCTM()!.a,
-          };
-        }),
-    [KANWA, `${pole.ref_id}#etykieta-aparatu-`] as const,
+  const { podpisy, tabliczki, lewaSymboli } = await page.evaluate(
+    ([kanwa, ref, refy]) => {
+      const teksty = (wzor: RegExp) =>
+        [...document.querySelectorAll(`${kanwa} g[data-owner-ref^="${ref}#"] > text`)]
+          .filter((t) => wzor.test(t.parentElement!.getAttribute('data-owner-ref') ?? '') && !t.hasAttribute('transform'))
+          .map((t) => {
+            const r = t.getBoundingClientRect();
+            return {
+              tekst: t.textContent ?? '',
+              lewa: r.x,
+              prawa: r.x + r.width,
+              anchor: t.getAttribute('text-anchor') ?? '',
+              szerokosc: r.width,
+              fontSize: Number(t.getAttribute('font-size')),
+              fontWeight: Number(t.getAttribute('font-weight')),
+              skala: (t as SVGTextElement).getScreenCTM()!.a,
+            };
+          });
+      const symbole = refy
+        .flatMap((d) => [...document.querySelectorAll(`${kanwa} g[data-device-ref="${d}"]`)])
+        .map((g) => g.getBoundingClientRect())
+        .filter((r) => r.width > 0);
+      return {
+        podpisy: teksty(/#etykieta-aparatu-/),
+        tabliczki: teksty(/#(ct|vt|cbct)-rating-/),
+        lewaSymboli: symbole.length > 0 ? Math.min(...symbole.map((r) => r.x)) : Number.NaN,
+      };
+    },
+    [KANWA, pole.ref_id, (pole.primary_devices ?? []).map((d) => d.device_ref)] as const,
   );
-  expect(podpisy.length, `${kadr}: co najmniej dwa podpisy aparatów po lewej toru pola`).toBeGreaterThanOrEqual(2);
-  for (const p of podpisy) expect(p.anchor, `${kadr}: „${p.tekst}" zaczepiony w prawej krawędzi`).toBe('end');
-  const prawe = podpisy.map((p) => p.prawa);
-  const rozrzut = Math.max(...prawe) - Math.min(...prawe);
-  expect(rozrzut, `${kadr} · ${motyw}: wspólna prawa krawędź podpisów (${podpisy.map((p) => `${p.tekst}@${p.prawa.toFixed(1)}`).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+  expect(podpisy.length, `${kadr}: co najmniej dwa oznaczenia aparatów pola`).toBeGreaterThanOrEqual(2);
+  expect(Number.isFinite(lewaSymboli), `${kadr}: symbole aparatów pola na kanwie`).toBe(true);
+  for (const p of podpisy) expect(p.anchor, `${kadr}: „${p.tekst}" zaczepiony w lewej krawędzi`).toBe('start');
+  const lewe = podpisy.map((p) => p.lewa);
+  const rozrzut = Math.max(...lewe) - Math.min(...lewe);
+  expect(rozrzut, `${kadr} · ${motyw}: wspólna lewa krawędź oznaczeń pola (${podpisy.map((p) => `${p.tekst}@${p.lewa.toFixed(1)}`).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+  const prawaOznaczen = Math.max(...podpisy.map((p) => p.prawa));
+  if (tabliczki.length > 0) {
+    const leweT = tabliczki.map((t) => t.lewa);
+    expect(Math.max(...leweT) - Math.min(...leweT), `${kadr} · ${motyw}: wspólna lewa krawędź tabliczek (${tabliczki.map((t) => `${t.tekst}@${t.lewa.toFixed(1)}`).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    for (const t of tabliczki) {
+      expect(t.lewa, `${kadr} · ${motyw}: tabliczka „${t.tekst}" na prawo od kolumny oznaczeń`).toBeGreaterThanOrEqual(prawaOznaczen - TOLERANCJA_EKRANU_PX);
+    }
+  }
+  for (const p of [...podpisy, ...tabliczki]) {
+    expect(p.prawa, `${kadr} · ${motyw}: opis „${p.tekst}" po lewej symboli aparatów pola (${lewaSymboli.toFixed(1)})`).toBeLessThanOrEqual(lewaSymboli + TOLERANCJA_EKRANU_PX);
+  }
   // Decyzja architekta §11.7 pkt 7 na podpisach aparatów (Q1, PF0, GK1 — przewaga wielkich
   // liter): szerokość na ekranie = tabela posuwów kroju × pismo × skala kamery, ± 1 px. Blok
   // przekaźnika niesie po karcie bloku LOD2 wyłącznie kody zabezpieczeń (przewaga cyfr), więc
@@ -839,7 +878,7 @@ async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<
     expect(Math.abs(p.szerokosc - zTabeli), `${kadr} · ${motyw}: podpis „${p.tekst}" szerokość ${p.szerokosc.toFixed(2)} px = tabela posuwów ${zTabeli.toFixed(2)} px`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
     zapiszPomiarSzerokosci({ kadr, motyw, rodzaj: 'podpis aparatu', tekst: p.tekst, klasa: klasaTresci(p.tekst), fontSize: p.fontSize, szerokoscPx: p.szerokosc, zTabeliPx: zTabeli });
   }
-  POMIARY_PODPISOW.push({ kadr, motyw, pole: pole.ref_id, prawe, rozrzut, podpisy: podpisy.map((p) => p.tekst) });
+  POMIARY_PODPISOW.push({ kadr, motyw, pole: pole.ref_id, lewe, rozrzut, podpisy: podpisy.map((p) => p.tekst) });
   mkdirSync(dirname(POMIARY_PODPISOW_PLIK), { recursive: true });
   writeFileSync(POMIARY_PODPISOW_PLIK, `${JSON.stringify(POMIARY_PODPISOW, null, 2)}\n`);
 }
@@ -1089,13 +1128,19 @@ function zapiszOdcisk(nazwa: string, bufor: Buffer): void {
 /** Zrzut POLA aparatu: natywny klik w aparat (zaznacza pole), „Dopasuj do… → Pole" — kamera
  *  kadruje całe pole na środku kanwy, sąsiedzi pod kurtyną. Aparat celu poza kurtyną i w
  *  środkowej części kanwy (każdy zrzut kadruje SWOJE pole — pomiar 2026-10-29: przybliżanie
- *  kółkiem zostawiało kamerę z poprzedniego zrzutu, dwa zrzuty były identyczne bajt w bajt). */
+ *  kółkiem zostawiało kamerę z poprzedniego zrzutu, dwa zrzuty były identyczne bajt w bajt).
+ *  `dobijDoLod2`: pole, które w całości mieści się w kanwie dopiero poniżej progu LOD2 (Z.11 —
+ *  pomiar 2026-11-05 przy oknie 1600 × 1000: kadr pola kończy na LOD1 także na drzewie sprzed
+ *  karty; kadr pola ma dolną granicę LOD1, `zakresKadru.ts`), projektant dobija kółkiem wokół
+ *  środka pola do LOD2 — ta sama ścieżka tutaj; kadr zrzutu pozostaje kadrem pola przyciętym
+ *  do kanwy. */
 async function zrzut(
   page: Page,
   nazwa: string,
   deviceRef: string,
   pole: Pole,
   oznaczenia: readonly string[] = [],
+  dobijDoLod2 = false,
 ): Promise<void> {
   const aparatyPola = (pole.primary_devices ?? []).map((d) => d.device_ref);
   await klikAparatu(page, deviceRef);
@@ -1118,6 +1163,16 @@ async function zrzut(
   // Escape zdejmuje zaznaczenie, nie kadr (K2b §0.3) — zrzut bez ramki zaznaczenia.
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
+  if (dobijDoLod2) {
+    const svg = page.locator(KANWA);
+    for (let i = 0; i < 12 && (await svg.getAttribute('data-scene-lod')) !== '2'; i += 1) {
+      const p = await kadrPola(page, aparatyPola);
+      await page.mouse.move(p.x + p.width / 2, p.y + p.height / 2);
+      await page.mouse.wheel(0, -120);
+      await page.waitForTimeout(250);
+    }
+    await czekajNaStabilnaGeometrie(uchwyt);
+  }
   // Oznaczenia aparatów stoją przy symbolach na poziomie szczegółu pola (kadr „Pole"); na
   // widoku przeglądowym stacji ich nie ma — stan niesie wtedy wyłącznie kafel.
   for (const ozn of oznaczenia) {
@@ -1696,4 +1751,52 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
     await zrzut(page, `pole-z11-1-wylacznik-otwarty-uziemiony-${klucz}`, q5.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
   }
   oczekujPokryciaKlasSzerokosci('pole-z11-1-');
+});
+
+/**
+ * Werdykt B-02 właściciela 2026-11-05 (pole liniowe Z.11.1, dosłownie: „Wszystko jest piękne!
+ * Akceptacja z wyjątkiem opisów które mogą być po lewej stronie wtedy wszystko stanie się
+ * czytelniejsze i bez kolizji”): opisy kolumny odgałęzienia PO LEWEJ jej symboli także w polu Z.11
+ * (ENEA Zeszyt 1 s.90) — wykonanie z wyłącznikiem stałym i odłącznikiem, gdzie odgałęzienie niesie
+ * dwa aparaty boczne (uziemnik Q51 i przekładnik napięciowy T3). Zrzuty LOD2 (kadr pola) i LOD1
+ * w obu motywach; sprawdzenia kadru (`zrzut`): kafle stanu, blok zabezpieczeń z kodami
+ * niezasłoniętymi, wspólna krawędź podpisów w każdej kolumnie i podpisy odgałęzienia na lewo od
+ * jego symboli.
+ */
+test('UX-04 — pole liniowe Z.11 GPZ: opisy pola po lewej — kolumna oznaczeń i kolumna przekładni (oba motywy, LOD2 i LOD1)', async ({ page, request }) => {
+  test.setTimeout(900_000);
+  mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
+  const { caseId } = await otworzAplikacje(page, request, 'Z.11');
+  const { sekcjaA } = await wstawGpz(page, request, caseId);
+  let enm = await pobierzEnm(request, caseId);
+  const pole = polaLiniowe(enm).find((p) => p.gpz_section_id === sekcjaA)!;
+  expect(pole, 'pole sekcji 1').toBeTruthy();
+  await wrocNaSchemat(page);
+  const menu = await prawyKlikAparatu(page, aparat(pole, 'Q0').device_ref);
+  await menu.getByTestId('sld-menu-open-bay').click();
+  await expect(page.getByTestId('bay-configurator-surface')).toBeVisible({ timeout: 30000 });
+  await page.getByTestId('wyposazenie-pola-edytuj').click();
+  const szablon = page.getByTestId('wyposazenie-pola-szablon');
+  await page.getByTestId('wyposazenie-pola-tryb').selectOption('szablon');
+  await expect.poll(async () => szablon.locator(`option[value="${SZABLON_Z11_STALY}"]`).count(), { timeout: 30000 }).toBe(1);
+  await szablon.selectOption(SZABLON_Z11_STALY);
+  await page.getByTestId('wyposazenie-pola-zapisz').click();
+  await expect
+    .poll(async () => polaLiniowe(await pobierzEnm(request, caseId)).find((p) => p.ref_id === pole.ref_id)?.bay_template_ref, { timeout: 60000 })
+    .toBe(SZABLON_Z11_STALY);
+  enm = await pobierzEnm(request, caseId);
+  const polePo = polaLiniowe(enm).find((p) => p.ref_id === pole.ref_id)!;
+  const oznaczenia = (polePo.primary_devices ?? []).map((d) => d.designation);
+  for (const ozn of ['Q5', 'GK1', 'Q51', 'T3']) expect(oznaczenia, `Z.11: aparat odgałęzienia ${ozn} w modelu`).toContain(ozn);
+  const q0 = aparat(polePo, 'Q0');
+  await wrocNaSchemat(page);
+  for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await ustawMotyw(page, theme);
+    await przyblizDoAparatu(page, aparat(polePo, 'Q5').device_ref);
+    for (const ozn of ['Q5', 'GK1', 'Q51', 'T3']) {
+      await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(polePo, ozn).device_ref}"]`), `${klucz}: ${ozn} na kanwie`).toHaveCount(1);
+    }
+    await zrzut(page, `pole-z11-stan-wyjsciowy-${klucz}`, q0.device_ref, polePo, ['PF0', 'Q1', 'Q0', 'Q5', 'Q51', 'T3'], true);
+    await zrzutLod(page, `pole-z11-lod1-${klucz}`, q0.device_ref, polePo, 1);
+  }
 });

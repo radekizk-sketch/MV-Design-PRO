@@ -16,8 +16,8 @@
  * prądowym bez portów (aparat poza torem — model zdegenerowany)} × rodzaj przekładnika {prądowy,
  * napięciowy, Ferrantiego} × skala planu {1,0; 1,5; 2,5} (LOD2 — warstwa adnotacji) × przeszkoda
  * {symbol, etykieta, przewód i linie przekaźnika (pomiarowe, wyłączania), ramka bloku
- * zabezpieczeń} × strona {lewa — przekładnik toru głównego (podpis w kolumnie po lewej, korekta
- * v2 2026-11-04), prawa — przekładnik kolumny odgałęzienia (podpis po prawej)}.
+ * zabezpieczeń} × położenie aparatu {tor główny, kolumna odgałęzienia} — wzorzec właściciela
+ * 2026-11-05: tabliczki obu w kolumnie przekładni po lewej pola, w wierszu oznaczenia.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -128,33 +128,23 @@ function naruszeniaTabliczek(enm: EnergyNetworkModel, scena: SceneV3, rodzaj: Ro
       n.push(`${ref}: brak symbolu ${w.symbol} aparatu na scenie`);
       continue;
     }
-    // „Bezpośrednio przy symbolu": tabliczka po stronie PODPISU aparatu (polecenie właściciela
-    // 2026-11-04, korekta v2: przekładnie T1 i T2 toru głównego po LEWEJ symbolu — tam stoi
-    // kolumna podpisów; przekładnik kolumny odgałęzienia, np. T3, ma podpis po prawej), w pasie
-    // jego wysokości (± oczko), a w korytarzu między symbolem a tabliczką nie stoi żaden INNY
-    // aparat ani napis — dopuszczalne są tylko oznaczenia TEGO aparatu (podpis, zaciski P1/P2).
-    // Po lewej tabliczka stoi na prawo od podpisu (między podpisem a symbolem).
+    // Wzorzec właściciela 2026-11-05 („Opisy pól po lewej dzięki temu pole robi się czytelniejsze
+    // i węższe”): tabliczka stoi w kolumnie PRZEKŁADNI pola — po lewej toru, tuż za kolumną
+    // oznaczeń, w wierszu oznaczenia swojego aparatu (T1 toru głównego i T3/T2 kolumny
+    // odgałęzienia tak samo; dawne „przy symbolu po stronie podpisu" zastąpione kolumną).
+    // Wyrocznia: tabliczka po lewej symbolu i na prawo od oznaczenia swojego aparatu, górna
+    // krawędź = górna krawędź oznaczenia (ten sam wiersz), oznaczenie najwyżej o wiersz kolumny
+    // od symbolu w pionie. Wspólna lewa krawędź kolumn — `wyroczniaOpisowPola` (kol-a, kol-b).
     const o = obrysNaScenie(symbol);
-    const { dx, dy } = odstep(l.rect, o);
     const podpis = scena.labels.find((x) => x.ownerRef === `${bay.ref_id}#etykieta-aparatu-${d.device_ref}`);
-    const strona: 'left' | 'right' = podpis && podpis.rect.x + podpis.rect.width <= o.x ? 'left' : 'right';
-    const korytarz: V3Rect =
-      strona === 'right'
-        ? { x: o.x + o.width, y: l.rect.y, width: Math.max(0, l.rect.x - (o.x + o.width)), height: l.rect.height }
-        : { x: l.rect.x + l.rect.width, y: l.rect.y, width: Math.max(0, o.x - (l.rect.x + l.rect.width)), height: l.rect.height };
-    // Model zdegenerowany (`przySymbolu = false`) — tylko kolizje (niżej).
-    if (przySymbolu && dy > GRID) n.push(`${ref}: tabliczka ${dy} j.św. nad/pod symbolem`);
-    if (przySymbolu && strona === 'right' && l.rect.x < o.x + o.width) n.push(`${ref}: tabliczka nie stoi po prawej symbolu (strona podpisu)`);
-    if (przySymbolu && strona === 'left' && l.rect.x + l.rect.width > o.x) n.push(`${ref}: tabliczka nie stoi po lewej symbolu (strona podpisu)`);
-    if (przySymbolu && strona === 'left' && podpis && l.rect.x < podpis.rect.x + podpis.rect.width) n.push(`${ref}: tabliczka nie stoi między podpisem a symbolem`);
-    if (przySymbolu && dx > 12 * GRID) n.push(`${ref}: tabliczka ${dx} j.św. od symbolu w poziomie`);
-    if (przySymbolu && korytarz.width > 0) {
-      for (const s of scena.symbols) {
-        if (s !== symbol && zachodzi(korytarz, obrysNaScenie(s))) n.push(`${ref}: między symbolem a tabliczką stoi ${s.symbolId}`);
-      }
-      for (const inna of scena.labels) {
-        if (inna === l || inna.ownerRef.includes(d.device_ref)) continue;
-        if (zachodzi(korytarz, inna.rect)) n.push(`${ref}: między symbolem a tabliczką stoi napis ${inna.ownerRef}`);
+    if (przySymbolu) {
+      if (l.rect.x + l.rect.width > o.x) n.push(`${ref}: tabliczka nie stoi po lewej symbolu (kolumna przekładni)`);
+      if (!podpis) n.push(`${ref}: brak oznaczenia aparatu w kolumnie oznaczeń`);
+      else {
+        if (l.rect.x < podpis.rect.x + podpis.rect.width) n.push(`${ref}: tabliczka nie stoi na prawo od oznaczenia aparatu`);
+        if (l.rect.y !== podpis.rect.y) n.push(`${ref}: tabliczka ${l.rect.y} poza wierszem oznaczenia ${podpis.rect.y}`);
+        const { dy } = odstep(podpis.rect, o);
+        if (dy > 2 * GRID) n.push(`${ref}: wiersz oznaczenia ${dy} j.św. nad/pod symbolem`);
       }
     }
     for (const s of scena.symbols) {
@@ -265,10 +255,10 @@ describe('wyrocznia tabliczek — iniekcje', () => {
     expect(naruszeniaTabliczek(enm, zepsuta, 'napięciowy').join('\n')).toContain('kolizja z symbolem');
   });
 
-  it('tabliczka Ferrantiego odsunięta od symbolu — wykryte', () => {
+  it('tabliczka Ferrantiego zsunięta z wiersza swojego oznaczenia — wykryte', () => {
     const cb = scena.labels.find((l) => l.ownerRef.includes('#cbct-rating-'))!;
     const zepsuta = { ...scena, labels: scena.labels.map((l) => (l === cb ? { ...l, rect: { ...l.rect, y: l.rect.y + 10 * GRID } } : l)) };
-    expect(naruszeniaTabliczek(enm, zepsuta, 'Ferrantiego').join('\n')).toMatch(/nad\/pod symbolem/);
+    expect(naruszeniaTabliczek(enm, zepsuta, 'Ferrantiego').join('\n')).toContain('poza wierszem oznaczenia');
   });
 
   it('tabliczka CT na linii pomiarowej przekaźnika — kolizja z przewodem wykryta', () => {
@@ -298,11 +288,14 @@ describe('wyrocznia tabliczek — iniekcje', () => {
   });
 
   // Korekta v2 (2026-11-04): stan sprzed korekty — tabliczki T1 (prądowy) i T2 (Ferrantiego)
-  // toru głównego po PRAWEJ symbolu, po stronie przeciwnej do podpisu — czerwień.
+  // toru głównego po PRAWEJ symbolu — czerwień. Wzorzec 2026-11-05: także tabliczka
+  // przekładnika napięciowego kolumny odgałęzienia (T3) przy swoim symbolu po prawej zamiast
+  // w kolumnie przekładni — czerwień.
   it.each([
     ['prądowy', '#ct-rating-'],
     ['Ferrantiego', '#cbct-rating-'],
-  ] as const)('tabliczka %s toru głównego po prawej symbolu (stan sprzed korekty v2) — wykryte', (rodzaj, przyrostek) => {
+    ['napięciowy', '#vt-rating-'],
+  ] as const)('tabliczka %s po prawej swojego symbolu zamiast w kolumnie przekładni — wykryte', (rodzaj, przyrostek) => {
     const tab = scena.labels.find((l) => l.ownerRef.includes(przyrostek))!;
     const symbol = scena.symbols.find((s) => tab.ownerRef.endsWith(`-${s.meta?.deviceRef ?? '∅'}`) && rodzajSymbolu(s.symbolId) === WZORCE[rodzaj].symbol)!;
     const o = obrysNaScenie(symbol);

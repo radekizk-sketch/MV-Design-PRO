@@ -36,6 +36,7 @@ import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import { bateriaWidokuPola } from '../model/bateriaPola';
+import { zrodloU0Deskryptora } from '../model/zrodloNapieciaZerowego';
 import {
   przeznaczeniePrzekladnika,
   krotkaPrzekladniaRdzeni,
@@ -1837,14 +1838,17 @@ function collectStationTransformerUnits(
  *  - oznaczenie: numer dyspozytorski (`bay_number`), krótka nazwa odpływu, skrót roli, nazwa;
  *  - stany łączników z modelu (`stanyAparatowPolaZModelu`: `status` gałęzi łączeniowych pola);
  *  - tor pierwotny i konfiguracja pola z danych rekordu.
- * ADNOTACJE pola (oznaczenie zabezpieczeń, miernik, CT, VT, odniesienie źródła napięcia
- * zerowego 3U₀ funkcji 67N) blok stacji NIE projektuje —
- * dokładnie tak, jak rysowała je produkcyjna ścieżka pól stacji przed kartą W5-B (stacje
- * budowane operacjami). Rzutowanie `protection_codes` rekordów pól stacji powiększa arkusz
- * substratu 52 stacji z 8328×5771 do 11096×7467 (171 okręgów przekaźnika) — to zmiana wyglądu
- * SLD wymagająca werdyktu właściciela (B-02), nie skutek zmiany nośnika danych; decyzja
- * nazwana w meldunku karty W5-B/C. Blok GPZ rzutuje adnotacje jak dotąd
- * (`enmToCanonicalGpzAdapter.ts`).
+ *  - BLOK ZABEZPIECZEŃ pola (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, decyzja właściciela
+ *    2026-11-05: „tak ma być ramka we wszystkich tak samo”): kody funkcji `Bay.protection_codes`
+ *    z przypisaniem zabezpieczenia (`resolveBayProtectionMarking`) i odniesienie źródła 3U₀
+ *    funkcji 67N (`zrodloU0Deskryptora`) — TA SAMA projekcja co pola GPZ
+ *    (`enmToCanonicalGpzAdapter.ts`), rysowana tą samą ramką bloku
+ *    (`compose/blokZabezpieczenPola.ts`). Do tej karty blok stacji kodów nie rzutował (decyzja
+ *    karty W5-B/C: rzutowanie dawnych okręgów przekaźnika wymagało werdyktu właściciela B-02),
+ *    więc pole stacji z zabezpieczeniem w modelu rysowało się bez zabezpieczenia.
+ * Pozostałe ADNOTACJE pola (miernik, tabliczki przekładników CT/VT) blok stacji nadal NIE
+ * projektuje — to notacje odrębne od bloku zabezpieczeń, nieobjęte decyzją właściciela
+ * 2026-11-05; ich rzutowanie zmienia wygląd pól stacji i należy do odbioru B-02 pola stacji.
  * Pola nN stacji (szyna pola w paśmie nN, `czyPoleNn`) nie są polami bloku SN.
  */
 function buildExplicitStationMiniBays(
@@ -1890,6 +1894,14 @@ function buildExplicitStationMiniBays(
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
       // nieprzezroczysty — pin `enmToSldAdapter.configIdOpaque.test.ts`).
       configId: bay.config_id ?? undefined,
+      // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok zabezpieczeń pola z modelu — ta sama
+      // projekcja co pola GPZ (`enmToCanonicalGpzAdapter.ts`). Pole bez kodów funkcji daje
+      // `undefined` (§17.2 „brak danych = brak oznaczenia").
+      ...(() => {
+        const marking = resolveBayProtectionMarking(bay, snapshot);
+        return marking ? { protectionMarking: marking } : {};
+      })(),
+      ...zrodloU0Deskryptora(snapshot, bay),
       // GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe (rodzaj pola katalogowego) albo wolne
       // (pole liniowe bez odcinka na zacisku) — jedna para predykatów `rodzajStacji.ts`.
       ...(czyPoleRezerwowe(bay)

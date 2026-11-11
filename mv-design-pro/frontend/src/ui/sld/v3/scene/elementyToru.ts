@@ -25,7 +25,7 @@ import { GRID, snapToGrid } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import type { PreviewSegment, PreviewSymbol } from '../compose/preview';
 import type { SimpleAnchoredOwnerInput } from '../layout/labels';
-import type { RouteVertex } from '../layout/route';
+import { dedupeVertices, type RouteVertex } from '../layout/route';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { stanStatusuGalezi, TYPY_GALEZI_LACZNIKA_TORU } from '../../v2/model/stanAparatowPola';
 
@@ -113,7 +113,12 @@ export function elementyToru(
   };
   const zamienPunkt = (indeks: number, stary: RouteVertex, nowy: RouteVertex): void => {
     const segment = odcinki[indeks];
-    odcinki[indeks] = { ...segment, points: segment.points.map((p) => (rowne(p, stary) ? nowy : p)) };
+    // Przycięcie do portu glifu może zdegenerować ostatni bieg: łącznik stoi na krótkim
+    // biegu tuż przy narożniku trasy (pomiar 2026-11-05, `koordynacja_scena_migawka` L0:
+    // `…/segment_L_SL` kończył się biegiem 8 jednostek do punktu łącznika, a port glifu
+    // wypadł w narożniku — wierzchołek powtórzony (456, 432)). Ta sama normalizacja co
+    // cała scena (`dedupeVertices`): bez powtórzeń i bez wierzchołków współliniowych.
+    odcinki[indeks] = { ...segment, points: dedupeVertices(segment.points.map((p) => (rowne(p, stary) ? nowy : p))) };
   };
   /** Kawałek odcinka, który ma wierzchołek `p`, i sąsiedni wierzchołek (kierunek biegu). */
   const kawalekPrzy = (p: RouteVertex): { indeks: number; sasiad: RouteVertex } | null => {

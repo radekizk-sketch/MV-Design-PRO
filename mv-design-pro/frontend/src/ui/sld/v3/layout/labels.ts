@@ -262,6 +262,14 @@ export interface OwnedLabel {
    */
   readonly obrysKotwicy?: V3Rect;
   /**
+   * Opis w kolumnach opisów pola (`compose/kolumnaOpisowPola.ts`, wzorzec właściciela
+   * 2026-11-05): prostokąt definicji symbolu opisywanego aparatu — oznaczenie i opisy jego
+   * przekładnika stoją w wierszu tego symbolu. Powiązanie opis → aparat (WHITE BOX) dla wyroczni
+   * kolumn opisów; geometrycznie neutralne (nie zmienia `rect` ani planu etykiet — w odróżnieniu
+   * od `obrysKotwicy` nie daje stron zastępczych: opis zostaje w kolumnie).
+   */
+  readonly symbolOpisu?: V3Rect;
+  /**
    * BLOK-PUSTY: SZEROKOŚĆ REZERWACJI, w której napis wolno POWIĘKSZYĆ
    * (`canvas/labelLegibility.ts`, tryb ratunkowy KD-11: przy oddaleniu pismo
    * tożsamości rośnie do rozmiaru minimalnego czytelnego). Dla wiersza pasma
@@ -802,6 +810,8 @@ export interface SimpleAnchoredOwnerInput {
   /** Wyrównanie tekstu w prostokącie — przenoszone 1:1 na `OwnedLabel.wyrownanieTekstu`
    *  (etykiety warstwy adnotacji zabezpieczeń). */
   readonly wyrownanieTekstu?: WyrownanieTekstu;
+  /** Przenoszone 1:1 na `OwnedLabel.symbolOpisu` (opis w kolumnach opisów pola). */
+  readonly symbolOpisu?: V3Rect;
 }
 
 /** Przesunięcie etykiety zakotwiczonej o (dx, dy): kotwica i obrys symbolu
@@ -816,6 +826,9 @@ export function przesunKotwiczonaEtykiete(
     anchor: { x: owner.anchor.x + dx, y: owner.anchor.y + dy },
     ...(owner.obrysKotwicy !== undefined
       ? { obrysKotwicy: { ...owner.obrysKotwicy, x: owner.obrysKotwicy.x + dx, y: owner.obrysKotwicy.y + dy } }
+      : {}),
+    ...(owner.symbolOpisu !== undefined
+      ? { symbolOpisu: { ...owner.symbolOpisu, x: owner.symbolOpisu.x + dx, y: owner.symbolOpisu.y + dy } }
       : {}),
   };
 }
@@ -904,6 +917,7 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     // K2b×K3: obrys symbolu kotwicy — strony zastępcze planu etykiet.
     ...(owner.obrysKotwicy !== undefined ? { obrysKotwicy: owner.obrysKotwicy } : {}),
+    ...(owner.symbolOpisu !== undefined ? { symbolOpisu: owner.symbolOpisu } : {}),
     // Wiersze bloku przekaźnika: wyrównanie tekstu do wspólnej krawędzi prostokątów.
     ...(owner.wyrownanieTekstu !== undefined ? { wyrownanieTekstu: owner.wyrownanieTekstu } : {}),
   };

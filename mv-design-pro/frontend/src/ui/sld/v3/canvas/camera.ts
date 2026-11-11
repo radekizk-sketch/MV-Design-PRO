@@ -868,7 +868,8 @@ function ulozenieKadru(
  *     się pod dokami.
  *  3. **Poziom szczegółu wynika ze skali** — ta sama histereza co zoom
  *     (`lodFromScaleWithHysteresis` na `refScale`), z dolną granicą `minLod`
- *     (kadr stacji pokazuje wnętrze). Prostokąt celu brany jest z poziomu, na
+ *     (kadr stacji pokazuje wnętrze). Wspinaczka startuje z najniższego
+ *     dostępnego poziomu, nie z poziomu kamery — kadr nie zależy od drogi. Prostokąt celu brany jest z poziomu, na
  *     którym kamera kończy (stąd `anchorByLod`); poziom bez rysunku celu (`null`)
  *     jest pomijany. Pętla ma limit trzech obrotów, a gdy histereza zawraca na
  *     poziom już odwiedzony, wybierany jest NIŻSZY z dwóch — czysta arytmetyka,
@@ -909,7 +910,14 @@ function applyKadr(state: CameraState, action: AkcjaKadru): CameraState {
     return (nizsze[nizsze.length - 1] ?? wyzsze[0]) as SceneLod;
   };
 
-  let lod: SceneLod = przyciagnij(state.lod, 'gora');
+  // Start z NAJNIŻSZEGO dostępnego poziomu, NIE z bieżącego poziomu kamery:
+  // kryterium (d) mówi, że kadr zależy WYŁĄCZNIE od prostokąta celu. Start
+  // z `state.lod` czynił go zależnym od drogi — ten sam kadr stacji z dwukliku
+  // (kamera na L0 → L1) i ze ścieżki „Sieć › stacja" (kamera na L2 po kadrze
+  // pola) kończył na różnych poziomach, gdy skala celu leżała w paśmie
+  // histerezy (pomiar 2026-11-05, stacja S03 fikstury 52 stacji po wpięciu
+  // bloku zabezpieczeń: L1 szer. 890, L2 szer. 1054 jednostek świata).
+  let lod: SceneLod = dostepne[0];
   const odwiedzone = new Set<SceneLod>();
   for (let obrot = 0; obrot < 3; obrot += 1) {
     odwiedzone.add(lod);

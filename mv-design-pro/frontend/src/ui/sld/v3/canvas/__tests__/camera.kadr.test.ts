@@ -553,3 +553,37 @@ describe("akcja 'resize' — odsłonięcie obiektu zasłony (poza kadrem)", () =
     wKadrze(anchor[zOdslonem.lod], zOdslonem, ZASLONA);
   });
 });
+
+describe('kadr nie zależy od drogi — poziom kamery przed kadrem nie zmienia wyniku', () => {
+  // Cechy iloczynu: poziom kamery przed kadrem {0, 1, 2} × szerokość celu
+  // przemiatająca OBA pasma histerezy (martwe strefy wokół progów 0,6 i 1,2,
+  // gdzie start z różnych poziomów dawał różne wyniki) × dolna granica
+  // {brak, 1}. Defekt z pomiaru 2026-11-05: ścieżka „Sieć › stacja" po kadrze
+  // pola (kamera na L2) dawała inny kadr stacji niż dwuklik (kamera na L0).
+  const szerokosci = Array.from({ length: 60 }, (_, i) => 400 + i * 120);
+  for (const minLod of [undefined, 1] as const) {
+    it(`minLod ${minLod ?? 'brak'}: ten sam cel z poziomów 0/1/2 → ten sam poziom i transform`, () => {
+      let wPasmie = 0;
+      for (const w of szerokosci) {
+        const akcja: AkcjaKadru = {
+          type: 'kadruj',
+          anchorByLod: cel(w),
+          lodBboxes: swiat,
+          viewportSize: VIEWPORT,
+          ...(minLod !== undefined ? { minLod } : {}),
+        };
+        const wyniki = ([0, 1, 2] as const).map((l) => cameraReducer(stan(0.3, l), akcja));
+        for (const r of wyniki.slice(1)) {
+          expect(r.lod, `szerokość ${w}`).toBe(wyniki[0].lod);
+          expect(r.transform).toEqual(wyniki[0].transform);
+        }
+        // Sanity: przemiatanie trafia w pasmo histerezy (inaczej test przechodziłby
+        // także na starej regule startu z poziomu kamery).
+        const skala = wyniki[0].transform.scale;
+        const ref = refScaleFor(skala, wyniki[0].lod, swiat);
+        if (lodFromScaleWithHysteresis(ref, 2) !== lodFromScaleWithHysteresis(ref, 0)) wPasmie += 1;
+      }
+      expect(wPasmie).toBeGreaterThan(0);
+    });
+  }
+});

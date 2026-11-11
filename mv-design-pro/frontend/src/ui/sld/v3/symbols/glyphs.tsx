@@ -32,17 +32,18 @@ import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwo
 import type { UkladPolaczenBaterii } from '../../../../types/enm';
 import { PORTY_APARATU_POLA, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatuPola';
 import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
-import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, zasiegPionowyTuszu } from '../core/text';
+import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, posuwZnakuEm, zasiegPionowyTuszu } from '../core/text';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
-import { KRESKA_OKREGU_PRZEKAZNIKA, OKRAG_PRZEKAZNIKA, PISMO_KODU_W_OKREGU, ukladKodowWOkregu } from './okragPrzekaznika';
+import { RAMKA_BLOKU_BEZ_KODOW } from './blokZabezpieczen';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
  *  zmiany zachowania. Re-eksport zachowuje istniejący import w `SldCanvasV3.tsx`. */
 export const V3_STROKE_BASE = BASE_STROKE;
-export const V3_STROKE_APPARATUS = KRESKA_OKREGU_PRZEKAZNIKA;
-/** Kreska ramki bloku przekaźnika [px świata] — cieńsza od okręgu przekaźnika: ramka grupuje
- *  okrąg i wiersze funkcji, nie jest aparatem. */
+/** Kreska aparatów pola [px świata]. */
+export const V3_STROKE_APPARATUS = 1.2;
+/** Kreska ramki bloku zabezpieczeń [px świata] — cieńsza od kreski aparatu: ramka grupuje
+ *  wiersze funkcji zabezpieczeń pola, nie jest aparatem toru pierwotnego. */
 export const V3_STROKE_RAMKI_BLOKU = 0.8;
 
 /** Położenie łącznika na rysunku. `'earthed'` (uziemiony) — WYŁĄCZNIE łącznik
@@ -56,6 +57,21 @@ export type SwitchState = 'closed' | 'open' | 'unknown' | 'earthed' | 'bad';
 
 /** Margines kafla stanu wokół obrysu symbolu [px świata]. */
 export const KAFEL_STANU_MARGINES = 2;
+
+/**
+ * Kolumna znaku „?"/„!" po LEWEJ kafla symbolu kanonicznego [px świata] (odbiór architekta
+ * 2026-11-05 zrzutów bloku zabezpieczeń: „?" kafla Q0 pola źródła OZE nachodził na kreskę
+ * symbolu). Rysunek symbolu kanonicznego wypełnia CAŁY gabaryt (obrys = gabaryt 16 × 16…32),
+ * a kafel z samym marginesem nie ma wolnego rogu — znak o wysokości podłogi czytelności
+ * (8, `rozmiarZnakuKafla`) wchodził w rysunek każdego z dziewięciu łączników kanonicznych.
+ * Kolumna = szerokość szerszego ze znaków pogrubionych przy wysokości podłogi czytelności (tabela
+ * posuwów kroju `posuwZnakuEm`; kafel kanoniczny ma krótszy bok ≤ 32, więc znak ma wysokość
+ * podłogi) + odsunięcie 1 od krawędzi kafla: znak kończy się przed marginesem obrysu, więc leży
+ * POZA rysunkiem z konstrukcji (test `kafelStanu.test.tsx`). Kafel rośnie wyłącznie w lewo —
+ * sąsiedzi stosu stoją nad i pod aparatem. Kafel QET ma wolny róg z importera (`kafel`), kolumny
+ * nie dostaje.
+ */
+export const KOLUMNA_ZNAKU_KAFLA = Math.ceil(Math.max(posuwZnakuEm('?', 700), posuwZnakuEm('!', 700)) * MIN_TEXT_SCREEN_PX) + 1;
 
 /** Położenie rysowane GEOMETRIĄ łącznika (nóż, wypełnienie korpusu, przerwa toru). */
 export type PolozenieGeometrii = 'closed' | 'open' | 'earthed' | 'unknown';
@@ -150,16 +166,11 @@ export interface GlyphProps {
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
   /** Nadpisanie koloru bazowego (nakładka napięcia na szynach itd.). */
   readonly stroke?: string;
-  /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["51","51N"], maks.
-   *  2 linie) — WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole, pozostałe
-   *  glify je ignorują (wspólny `GlyphProps`, jak `state`, zero rozgałęzień
-   *  sygnatury per symbol). */
-  readonly labelLines?: readonly string[];
   /** F10.5 (spec §20.2): `true` gdy przekaźnik ma nierozstrzygnięty
    *  prerekwizyt topologiczny funkcji (67N⇒VT/87T⇒TR/51N⇒I0) —
-   *  WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole (jak `labelLines`).
-   *  Rysuje MAŁY badge „!" w rogu okręgu (geometria WEWNĄTRZ 24×24 bboxa,
-   *  zero nowej rezerwacji width/height w `layout/measure.ts` — §20.3
+   *  WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole.
+   *  Rysuje MAŁY badge „!" w prawym górnym narożniku ramki bloku (zero nowej
+   *  rezerwacji width/height w `layout/measure.ts` — §20.3
    *  „warstwa zabezpieczeń zwarta, nie zasłania toru pierwotnego"). Treść
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
@@ -167,11 +178,11 @@ export interface GlyphProps {
   /** Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): ramka BLOKU
    *  ZABEZPIECZEŃ (względem symbolu) — WYŁĄCZNIE `ProtectionRelayGlyph`; z ramką glif rysuje sam
    *  prostokąt bez okręgu (kody funkcji i odniesienie 3U₀ są wierszami etykiet wewnątrz ramki).
-   *  Brak = okrąg przekaźnika modelu stacji. */
+   *  Brak = ramka gabarytu definicji symbolu (`RAMKA_BLOKU_BEZ_KODOW` — kreator, katalog). */
   readonly ramkaBloku?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** TR2W-BEZ-POLA (§0.C.5): `true` gdy transformator SN/nN wisi na szynie SN
    *  BEZ skonfigurowanego pola transformatorowego — WYŁĄCZNIE
-   *  `Transformer2WGlyph` czyta to pole (jak `labelLines`/`hasTopologyWarning`
+   *  `Transformer2WGlyph` czyta to pole (jak `hasTopologyWarning`
    *  dla przekaźnika). Rysuje MAŁY marker „!" w narożniku strony WN (geometria
    *  WEWNĄTRZ bboxa 32×40, w polu wolnym od okręgów uzwojeń — zero nowej
    *  rezerwacji width/height w `layout/measure.ts`). Symbol transformatora
@@ -181,12 +192,12 @@ export interface GlyphProps {
   readonly hasFieldGapWarning?: boolean;
   /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej WIELKOŚCI miernika
    *  (A = prąd z CT, V = napięcie z VT) — WYŁĄCZNIE `MeterGlyph` czyta to
-   *  pole (wzorzec `labelLines`). Brak danych ⇒ fallback „M" (rozstrzygany
+   *  pole (wzorzec `hasTopologyWarning`). Brak danych ⇒ fallback „M" (rozstrzygany
    *  wpisem legendy arkusza). */
   readonly meterQuantity?: 'A' | 'V';
   /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): stacja SEKCYJNA (sprzęgło w
    *  topologii, rodzaj z `ui/shared/rodzajStacji.ts`) — WYŁĄCZNIE `Station
-   *  CollapsedGlyph` rysuje przerwę sekcyjną na szynie (wzór `labelLines`).
+   *  CollapsedGlyph` rysuje przerwę sekcyjną na szynie (wzór `hasTopologyWarning`).
    *  Rodzaj stacji (SN/nN · rozdzielnia sieciowa · sekcyjna) WYPROWADZONY z
    *  TYPU elementów, nie z nazw (spec §19.3). */
   readonly stationSectioned?: boolean;
@@ -328,7 +339,7 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
  * skali 1:1, więc byłaby to plama, nie informacja. Rozróżnialność niesie ŁUK
  * (kształt), zgodnie z zasadą biblioteki: treść wyrażona geometrią, nie kolorem
  * ani mikropismem. Kody funkcji zabezpieczeniowych mają własny nośnik
- * (`ProtectionRelayGlyph`, 24×24 z `labelLines`).
+ * (blok zabezpieczeń pola, `ProtectionRelayGlyph`).
  */
 export function RecloserGlyph(props: GlyphProps): JSX.Element {
   const state = polozenieGeometrii('recloser', props.state);
@@ -1227,68 +1238,36 @@ export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
 }
 
 /**
- * F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg z kodami
- * funkcji ANSI/IEEE C37.2 (np. „51" nad „51N", maks. 2 linie). Wybór kodów
- * mieszczących się w okręgu pismem podłogi 8 px i ich linie bazowe — JEDNA
- * funkcja `ukladKodowWOkregu` (`symbols/okragPrzekaznika.ts`), którą woła
- * kompozycja (`compose/station.ts`/`compose/gpz.ts`) i ten glif.
- * Brak wypełnienia (P5: rysunek bazowy mono) — element ADNOTACJI, nie stanu.
- *
- * Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): z `ramkaBloku`
- * glif rysuje BLOK ZABEZPIECZEŃ — wyłącznie prostokątną ramkę, BEZ okręgu; kody funkcji są
- * wierszami etykiet sceny wewnątrz ramki (LOD2), na LOD1 ramka tego samego kształtu bez kodów.
+ * F9.9 (spec §17.1/§17.3), karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela
+ * 2026-11-05: „tak ma być ramka we wszystkich tak samo”): przekaźnik/sterownik pola to BLOK
+ * ZABEZPIECZEŃ — wyłącznie prostokątna ramka, BEZ okręgu. Kody funkcji ANSI/IEEE C37.2 są
+ * wierszami etykiet sceny wewnątrz ramki (LOD2, dwie kolumny — `compose/blokZabezpieczenPola.ts`),
+ * na LOD1 ramka tego samego kształtu bez kodów. Ramkę podaje meta sceny
+ * (`ramkaBlokuPrzekaznika`, zależy od liczby i treści kodów); glif bez meta (podgląd składu pola
+ * w kreatorze, katalog symboli) rysuje ramkę gabarytu definicji symbolu
+ * (`RAMKA_BLOKU_BEZ_KODOW`, `symbols/blokZabezpieczen.ts`). Brak wypełnienia (P5: rysunek
+ * bazowy mono) — element ADNOTACJI, nie stanu.
  */
 export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
-  const ramka = props.ramkaBloku;
-  if (ramka) {
-    return (
-      <g {...glyphGroupProps('protectionRelay', props)}>
-        <rect
-          x={ramka.x}
-          y={ramka.y}
-          width={ramka.width}
-          height={ramka.height}
-          fill="none"
-          stroke={stroke(props)}
-          strokeWidth={grubosc(props, V3_STROKE_RAMKI_BLOKU)}
-          data-przekaznik="ramka-bloku"
-        />
-        {/* F10.5 (spec §20.2): „!" nierozstrzygniętego prerekwizytu topologicznego funkcji —
-         *  w prawym górnym narożniku ramki (wiersze kodów zaczynają się oczko pod górną
-         *  krawędzią, więc narożnik jest wolny). */}
-        {props.hasTopologyWarning && (
-          <g data-topology-warning="true">
-            <ZnakOstrzezenia cx={ramka.x + ramka.width} cy={ramka.y} glif={props} />
-          </g>
-        )}
-      </g>
-    );
-  }
-  // Kody i ich linie bazowe z JEDNEGO źródła (`symbols/okragPrzekaznika.ts`): kompozycja
-  // podaje prefiks mieszczący się w okręgu pismem 8 px, glif rysuje go w liniach bazowych
-  // tej samej funkcji (blok tuszu wyśrodkowany w okręgu).
-  const uklad = ukladKodowWOkregu(props.labelLines ?? []);
+  const ramka = props.ramkaBloku ?? RAMKA_BLOKU_BEZ_KODOW;
   return (
     <g {...glyphGroupProps('protectionRelay', props)}>
-      <circle cx={OKRAG_PRZEKAZNIKA.cx} cy={OKRAG_PRZEKAZNIKA.cy} r={OKRAG_PRZEKAZNIKA.r} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      {uklad.kody.map((line, i) => (
-        <text
-          key={line}
-          x={OKRAG_PRZEKAZNIKA.cx} y={uklad.linieBazowe[i]} textAnchor="middle"
-          fill={stroke(props)} fontFamily={SLD_FONT_FAMILY}
-          fontSize={PISMO_KODU_W_OKREGU.fontSize} fontWeight={PISMO_KODU_W_OKREGU.fontWeight}
-        >
-          {line}
-        </text>
-      ))}
-      {/* F10.5 (spec §20.2): badge „!" — nierozstrzygnięty prerekwizyt
-       *  topologiczny funkcji (67N⇒VT/87T⇒TR/51N⇒I0). Geometria WEWNĄTRZ
-       *  bboxa 24×24 (róg NE okręgu głównego, r=11 wokół (12,12) zostawia
-       *  narożniki wolne) — zero nowej rezerwacji miejsca, mono (jak reszta
-       *  glifu bazowego, P5 — kolor NIE koduje tu stanu fizycznego). */}
+      <rect
+        x={ramka.x}
+        y={ramka.y}
+        width={ramka.width}
+        height={ramka.height}
+        fill="none"
+        stroke={stroke(props)}
+        strokeWidth={grubosc(props, V3_STROKE_RAMKI_BLOKU)}
+        data-przekaznik="ramka-bloku"
+      />
+      {/* F10.5 (spec §20.2): „!" nierozstrzygniętego prerekwizytu topologicznego funkcji —
+       *  w prawym górnym narożniku ramki (wiersze kodów zaczynają się oczko pod górną
+       *  krawędzią, więc narożnik jest wolny). */}
       {props.hasTopologyWarning && (
         <g data-topology-warning="true">
-          <ZnakOstrzezenia cx={19.5} cy={4.5} glif={props} />
+          <ZnakOstrzezenia cx={ramka.x + ramka.width} cy={ramka.y} glif={props} />
         </g>
       )}
     </g>
@@ -1455,7 +1434,7 @@ const ZNAK_KAFLA: Readonly<Partial<Record<StanKafla, string>>> = { nieustalony: 
 /** Prostokąt kafla stanu względem lewego górnego rogu gabarytu. Łącznik QET: JEDNOLITY kafel
  *  z importera (`kafel` — ten sam rozmiar dla każdego łącznika z nożem, gabaryt symbolu =
  *  kafel), więc kafle aparatów jednego pola są równe. Symbol kanoniczny: obrys CAŁEGO
- *  rysunku (`obrysSymbolu`) + `KAFEL_STANU_MARGINES`. */
+ *  rysunku (`obrysSymbolu`) + `KAFEL_STANU_MARGINES`, po lewej + `KOLUMNA_ZNAKU_KAFLA`. */
 export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
   const kafel = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id].kafel : null;
   if (kafel) {
@@ -1465,7 +1444,8 @@ export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonl
   }
   const o = obrysSymbolu(id);
   const m = KAFEL_STANU_MARGINES;
-  return { x: o.x - m, y: o.y - m, width: o.width + 2 * m, height: o.height + 2 * m };
+  const k = KOLUMNA_ZNAKU_KAFLA;
+  return { x: o.x - m - k, y: o.y - m, width: o.width + 2 * m + k, height: o.height + 2 * m };
 }
 
 /** Wysokość znaku „?"/„!" kafla [px świata]: jedna czwarta krótszego boku kafla, nie mniej

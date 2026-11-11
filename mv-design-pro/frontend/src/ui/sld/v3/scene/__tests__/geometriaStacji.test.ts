@@ -39,6 +39,8 @@ import { buildResultRefBridge } from '../../canvas/resultRefBridge';
 import { obrysyZaznaczenia } from '../../canvas/obrysZaznaczenia';
 import { zakresCelu } from '../../canvas/zakresKadru';
 import { SYMBOL_DEFS } from '../../symbols/defs';
+import { gabarytSymbolu, ramkaBlokuSymbolu } from '../../symbols/blokZabezpieczen';
+import { rectsOverlap } from '../../core/grid';
 import { allBayEquipmentTruthful, bayEquipmentGaps, buildSceneV3, type SceneV3 } from '../buildScene';
 
 type Wariant = 'zamkniete' | 'otwarte' | 'bez_wyposazenia';
@@ -90,6 +92,12 @@ function symbolePola(sc: SceneV3, bayRef: string) {
   return sc.symbols.filter((s) => s.meta?.ownerRef === bayRef);
 }
 
+/** Aparaty TORU pola — bez bloku zabezpieczeń (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok
+ *  to adnotacja pola obok toru, `elementKind: 'protectionAnnotation'`, nie aparat nad szyną). */
+function aparatyToruPola(sc: SceneV3, bayRef: string) {
+  return symbolePola(sc, bayRef).filter((s) => s.symbolId !== 'protectionRelay');
+}
+
 const STACJE_RODZAJE: readonly (readonly [string, string, number])[] = [
   ['Stacja Przelotowa', 'inline', 1],
   ['Stacja Odgałęźna', 'branch', 1],
@@ -122,12 +130,23 @@ describe('GEOMETRIA-STACJI — sekcje szyn SN z modelu (rodzaj × liczba sekcji 
           if (pole.bay_role === 'COUPLER') continue; // sprzęgło stoi MIĘDZY sekcjami, test niżej
           const odcinek = odcinekSzyny(sc, `${pole.bus_ref}#sn-bus`);
           expect(odcinek, pole.ref_id).not.toBeNull();
-          const symbole = symbolePola(sc, pole.ref_id);
+          const symbole = aparatyToruPola(sc, pole.ref_id);
           expect(symbole.length, pole.ref_id).toBeGreaterThan(0);
           for (const s of symbole) {
             const srodek = s.x + SYMBOL_DEFS[s.symbolId].width / 2;
             expect(srodek, `${pole.ref_id} ${s.symbolId}`).toBeGreaterThanOrEqual(odcinek!.x0);
             expect(srodek, `${pole.ref_id} ${s.symbolId}`).toBeLessThanOrEqual(odcinek!.x1);
+          }
+          // Blok zabezpieczeń pola stoi PRZY torze swojego pola: na prawo od jego osi, od lewej
+          // krawędzi sekcji, bez wejścia na aparat innego pola.
+          for (const blok of symbolePola(sc, pole.ref_id).filter((s) => s.symbolId === 'protectionRelay')) {
+            const ramka = ramkaBlokuSymbolu(blok)!;
+            const os = Math.min(...symbole.map((s) => s.x + SYMBOL_DEFS[s.symbolId].width / 2));
+            expect(ramka.x, `${pole.ref_id} blok`).toBeGreaterThan(os);
+            expect(ramka.x, `${pole.ref_id} blok`).toBeGreaterThanOrEqual(odcinek!.x0);
+            const polaModelu = new Set((snapshot.bays ?? []).map((b) => b.ref_id));
+            const obce = sc.symbols.filter((s) => s.meta?.ownerRef !== pole.ref_id && polaModelu.has(s.meta?.ownerRef ?? ''));
+            for (const s of obce) expect(rectsOverlap(gabarytSymbolu(s), ramka), `${pole.ref_id} blok ∩ ${s.meta?.ownerRef}`).toBe(false);
           }
         }
       });
@@ -182,7 +201,7 @@ describe('GEOMETRIA-STACJI — sekcje szyn SN z modelu (rodzaj × liczba sekcji 
 
     it(`${wariant}: rola toru pól — przelotowa/końcowa tor główny, odgałęźna rozróżnia odgałęzienie, sekcyjna bez roli`, () => {
       const rola = (bayRef: string) =>
-        [...new Set(symbolePola(sc, bayRef).map((s) => s.meta?.trackRole ?? null))];
+        [...new Set(aparatyToruPola(sc, bayRef).map((s) => s.meta?.trackRole ?? null))];
       const pola = (nazwa: string) => polaSn(snapshot, stacja(snapshot, nazwa));
       for (const p of pola('Stacja Przelotowa')) {
         if (p.bay_role === 'IN' || p.bay_role === 'OUT') expect(rola(p.ref_id), p.ref_id).toEqual(['glowny']);
@@ -285,6 +304,12 @@ describe('GEOMETRIA-STACJI — aparat {z modelu, brak danych} (tożsamość ze z
         const symbole = symbolePola(sc, pole.ref_id);
         expect(symbole.filter((s) => s.symbolId === 'bayNoEquipment'), pole.ref_id).toHaveLength(1);
         for (const s of symbole) {
+          // Blok zabezpieczeń pola (kody funkcji z modelu) to adnotacja pola, nie aparat — dane
+          // zabezpieczeń są, choć wyposażenia brak (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ).
+          if (s.symbolId === 'protectionRelay') {
+            expect(pole.protection_codes?.length ?? 0, `${pole.ref_id}: blok tylko z kodami w modelu`).toBeGreaterThan(0);
+            continue;
+          }
           expect(['bayNoEquipment', 'bayReserve', 'transformer2W'], `${pole.ref_id} ${s.symbolId}`).toContain(s.symbolId);
           expect(s.meta?.deviceRef, pole.ref_id).toBeUndefined();
           expect(s.state, pole.ref_id).toBeUndefined();

@@ -75,7 +75,12 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
     const scene = buildSceneV3(enm, 2);
     const crossings = interiorCrossings(scene.segments);
     expect(crossings.filter((c) => c.involvesBus)).toHaveLength(0);
-    expect(crossings).toHaveLength(19);
+    // 19 → 16 (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, 2026-11-05): stacje z blokiem
+    // zabezpieczeń w każdym polu z kodami są szersze, arkusz łamie się na trzy wiersze zamiast
+    // dwóch, więc zejścia odgałęzień trafiają na inne kable. Sonda klasyfikacji (L2):
+    // odgałęzienie × odgałęzienie 8 → 5, ciąg × zejście odgałęzienia 11 → 11 (inne pary:
+    // `segment_R` +2, `segment` −2, `segment_L` +1, `segment_L_L` −1); każde z mostkiem.
+    expect(crossings).toHaveLength(16);
     expect(przecieciaBezMostka(scene.segments)).toEqual([]);
     expect(crossingBusGaps(scene.segments)).toHaveLength(0);
   });

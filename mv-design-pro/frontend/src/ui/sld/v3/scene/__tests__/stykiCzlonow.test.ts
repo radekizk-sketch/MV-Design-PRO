@@ -25,6 +25,7 @@ import { describe, expect, it } from 'vitest';
 import type { PreviewSegment, PreviewSegmentKind } from '../../compose/preview';
 import { GRID, type V3Rect } from '../../core/grid';
 import type { RouteVertex } from '../../layout/route';
+import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3 } from '../buildScene';
 import { BRIDGE_RADIUS, interiorCrossings, junctionDotGaps, przecieciaBezMostka, wezlyModeluEnm } from '../crossings';
@@ -209,7 +210,7 @@ describe('scena realna: sieć referencyjna + odgałęzienie stacji z odgałęzie
     it(`${nazwa}: zejście odgałęzienia przecina obcy kabel w swoim wnętrzu (z mostkiem); iniekcja styku na przecięciu — wyrocznie gryzą, naprawa przywraca`, () => {
       const model = appendLateralBranch(siec, lancuch);
       const scena = buildSceneV3(model, 2);
-      const prostokaty = scena.symbols.map((s) => ({ x: s.x, y: s.y, width: rozmiary[s.symbolId].width, height: rozmiary[s.symbolId].height }));
+      const prostokaty = scena.symbols.map(gabarytSymbolu);
       const wezly = wezlyModeluEnm(model);
       expect(stykiCzlonowNaObcychPrzewodach(scena.segments, prostokaty)).toEqual([]);
       expect(junctionDotGaps(scena, rozmiary, wezly)).toEqual([]);
@@ -224,11 +225,19 @@ describe('scena realna: sieć referencyjna + odgałęzienie stacji z odgałęzie
       const za = scena.segments[iZa]!;
       const styk = przed.points[przed.points.length - 1]!;
       expect(za.points[0]).toEqual(styk);
-      // Przecięcie zejścia z obcym kablem na prostej styku, w odległości rastru od styku.
-      const przeciecie = interiorCrossings(scena.segments).find(
-        (c) => c.x === styk.x && Math.abs(c.y - styk.y) === GRID && [przed.meta?.ownerRef, za.meta?.ownerRef].includes(c.vOwnerRef),
-      );
-      expect(przeciecie, 'skrzyżowanie zejścia z obcym kablem tuż przy styku (przypadek z pomiaru)').toBeDefined();
+      // Przecięcie zejścia z obcym kablem na prostej styku — NAJBLIŻSZE styku.
+      // Do 2026-11-05 surowy układ kładł styk dokładnie na takim przecięciu
+      // (naprawa odsuwała go o raster, przecięcie leżało o GRID od styku). Po
+      // wpięciu bloku zabezpieczeń w pola stacji rezerwa wysokości stacji
+      // przesunęła styk (pomiar: styk y=1576, przecięcia y=1392 i y=728 na
+      // x=4808), więc przypadek nie powstaje już samorzutnie — iniekcja niżej
+      // ODTWARZA go na najbliższym przecięciu tej samej prostej, a wyrocznie
+      // i naprawa muszą zadziałać tak samo jak na geometrii z pomiaru.
+      const przeciecie = interiorCrossings(scena.segments)
+        .filter((c) => c.x === styk.x && c.y !== styk.y && [przed.meta?.ownerRef, za.meta?.ownerRef].includes(c.vOwnerRef))
+        .sort((a, b) => Math.abs(a.y - styk.y) - Math.abs(b.y - styk.y))[0];
+      expect(przeciecie, 'skrzyżowanie zejścia z obcym kablem na prostej styku').toBeDefined();
+      expect(Math.abs(przeciecie!.y - styk.y)).toBeGreaterThanOrEqual(GRID);
 
       // INIEKCJA: styk z powrotem na przecięciu (geometria sprzed naprawy).
       const naPrzecieciu = P(przeciecie!.x, przeciecie!.y);

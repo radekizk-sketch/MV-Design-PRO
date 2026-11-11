@@ -151,7 +151,9 @@ function sprawdzPole(
   expect(r.x, `${bay.ref_id}: tabliczka na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpis.rect.x + podpis.rect.width);
   expect(r.y + r.height, `${bay.ref_id}: tabliczka w paśmie symbolu (góra)`).toBeGreaterThan(sym.y);
   expect(r.y, `${bay.ref_id}: tabliczka w paśmie symbolu (dół)`).toBeLessThan(sym.y + def.height);
-  expect(tab[0].wyrownanieTekstu, `${bay.ref_id}: tekst dosunięty do symbolu`).toBe('koniec');
+  // Wzorzec właściciela 2026-11-05 (opisy pola po lewej): tabliczka stoi w kolumnie przekładni,
+  // wyrównana do LEWEJ krawędzi kolumny (dawniej dosunięta prawą krawędzią do symbolu).
+  expect(tab[0].wyrownanieTekstu, `${bay.ref_id}: tekst od lewej krawędzi kolumny przekładni`).toBe('poczatek');
 }
 
 describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur generatora', () => {

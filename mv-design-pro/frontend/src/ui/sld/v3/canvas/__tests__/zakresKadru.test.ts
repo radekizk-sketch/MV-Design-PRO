@@ -24,7 +24,7 @@ import { sheetSizeFor } from '../../sheet/outline';
 import { MIN_OPIS_CELU_KADRU_PX, fontSizeForScreenFloorWithinProportion } from '../../core/text';
 import { planSceneLabels } from '../labelLegibility';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
-import { SYMBOL_DEFS } from '../../symbols/defs';
+import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo } from '../viewAnchor';
 import { stationSnSectionBusRefs } from '../../../shared/stationBusResolution';
 import {
@@ -383,8 +383,9 @@ describe('determinizm i jedno źródło przynależności', () => {
       };
       for (const s of scene.symbols) {
         if (!nalezy(s.meta?.ownerRef)) continue;
-        const def = SYMBOL_DEFS[s.symbolId];
-        dolicz(s.x, s.y, s.x + def.width, s.y + def.height);
+        // Gabaryt z jedynego źródła geometrii symbolu: blok zabezpieczeń pola to cała ramka.
+        const g = gabarytSymbolu(s);
+        dolicz(g.x, g.y, g.x + g.width, g.y + g.height);
       }
       for (const s of scene.segments) {
         if (!nalezy(s.meta?.ownerRef)) continue;

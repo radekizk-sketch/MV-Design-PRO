@@ -11,7 +11,9 @@
  *      toru — dwa odcinki w jednym porcie to rozgałęzienie na krawędzi kafla (dawny odczep
  *      wprost z portu S wyłącznika);
  *  (c) koniec odcinka toru leżący na kaflu jest portem symbolu tego kafla;
- *  (d) opis pola ∩ symbol, opis pola ∩ inny napis, opis pola ∩ przewód — zero.
+ *  (d) opis pola ∩ symbol, opis pola ∩ inny napis, opis pola ∩ przewód — zero;
+ *  (f) kod ramki bloku zabezpieczeń nigdy nie jest zasłonięty;
+ *  (kol-a…e) kolumny opisów pola (wzorzec właściciela 2026-11-05, `naruszeniaKolumnOpisow`).
  *
  * Iloczyn cech: fikstura (58 plików z modelem ENM, loader jak `wezlyMostkiRozlacznoscFikstur`,
  * plus macierz W1c pól stacji) × LOD {0, 1, 2} × wyrocznia (a)–(d). Iniekcje: kropka i odczep
@@ -26,10 +28,18 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { QET_SYMBOLE_POLA_SN } from '../../cad/qet/qetPoleSn';
 import type { V3Rect } from '../../core/grid';
-import { czySymbolQet, obrysSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
+import { czySymbolQet, SYMBOL_DEFS } from '../../symbols/defs';
 import { prostokatKaflaStanu } from '../../symbols/glyphs';
-import { buildSceneV3, labelWireCollisions, type SceneV3 } from '../buildScene';
+import { buildSceneV3, type SceneV3 } from '../buildScene';
 import { buildW1cMatrixFixture } from './fixtures/w1cMatrixCatalog';
+import {
+  kolumnyOpisowPol,
+  naruszeniaKodowRamki,
+  naruszeniaKolumnOpisow,
+  naruszeniaOpisowPola,
+  obrysNaScenie,
+  OPIS_POLA,
+} from './wyroczniaOpisowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FRONTEND = resolve(here, '../../../../../..');
@@ -72,24 +82,11 @@ type SymbolSceny = SceneV3['symbols'][number];
 const naProstokacie = (p: Punkt, r: V3Rect): boolean =>
   p.x >= r.x && p.x <= r.x + r.width && p.y >= r.y && p.y <= r.y + r.height;
 
-const zachodzi = (a: V3Rect, b: V3Rect): boolean =>
-  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-
 const zKaflem = (s: SymbolSceny): boolean => czySymbolQet(s.symbolId) && QET_SYMBOLE_POLA_SN[s.symbolId].kafel !== null;
 
 function kafelNaScenie(s: SymbolSceny): V3Rect {
   const k = prostokatKaflaStanu(s.symbolId);
   return { x: s.x + k.x, y: s.y + k.y, width: k.width, height: k.height };
-}
-
-/** Prostokąt `w` leży w całości wewnątrz `r` (krawędź wspólna dozwolona). */
-function zawiera(r: V3Rect, w: V3Rect): boolean {
-  return w.x >= r.x && w.y >= r.y && w.x + w.width <= r.x + r.width && w.y + w.height <= r.y + r.height;
-}
-
-function obrysNaScenie(s: SymbolSceny): V3Rect {
-  const o = obrysSymbolu(s.symbolId);
-  return { x: s.x + o.x, y: s.y + o.y, width: o.width, height: o.height };
 }
 
 const portyNaScenie = (s: SymbolSceny): Punkt[] => SYMBOL_DEFS[s.symbolId].ports.map((p) => ({ x: s.x + p.x, y: s.y + p.y }));
@@ -109,9 +106,6 @@ function naLamanej(p: Punkt, pts: readonly Punkt[]): boolean {
 /** Odcinki toru mocy — bez linii obwodu wtórnego przekaźnika i bez odnośników opisów. */
 const BEZ_TORU = new Set(['leader', 'protectionTrip', 'measurementLink', 'sheetContinuation', 'tieMarker']);
 const torMocy = (scena: SceneV3) => scena.segments.filter((g) => !BEZ_TORU.has(g.meta?.kind ?? ''));
-
-/** Opisy pola objęte kontraktem: zaciski P1/P2, tabliczki przekładników, wiersze kodów zabezpieczenia. */
-const OPIS_POLA = /#(zacisk-przekladnika-|ct-rating-|vt-rating-|cbct-rating-|protection-codes-full)/;
 
 function naruszenia(scena: SceneV3): string[] {
   const n: string[] = [];
@@ -140,31 +134,13 @@ function naruszenia(scena: SceneV3): string[] {
       }
     }
   }
-  // (d) opisy pola — kolizje z symbolami, innymi napisami i przewodami
-  const opisy = scena.labels.filter((l) => OPIS_POLA.test(l.ownerRef));
-  for (const l of opisy) {
-    for (const s of scena.symbols) {
-      // Blok zabezpieczeń (UX04 §11.16, korekta v2 2026-11-04): symbolem jest prostokątna ramka
-      // z meta sceny. Wiersz WŁASNEGO bloku leży w całości wewnątrz ramki; każdy inny opis jest
-      // z ramką rozłączny.
-      const r = s.meta?.ramkaBlokuPrzekaznika;
-      if (s.symbolId === 'protectionRelay' && r) {
-        const ramka = { x: s.x + r.x, y: s.y + r.y, width: r.width, height: r.height };
-        const wlasny = (s.meta?.wierszeBlokuPrzekaznika ?? []).includes(l.ownerRef);
-        if (wlasny ? !zawiera(ramka, l.rect) : zachodzi(l.rect, ramka)) {
-          n.push(`(d) ${l.ownerRef} ${wlasny ? 'poza ramką' : '∩ ramka'} bloku ${s.meta?.ownerRef ?? '—'}`);
-        }
-        continue;
-      }
-      if (zachodzi(l.rect, obrysNaScenie(s))) n.push(`(d) ${l.ownerRef} ∩ symbol ${s.symbolId} ${s.meta?.ownerRef ?? '—'}`);
-    }
-    for (const inna of scena.labels) {
-      if (inna !== l && zachodzi(l.rect, inna.rect)) n.push(`(d) ${l.ownerRef} ∩ napis ${inna.ownerRef}`);
-    }
-  }
-  for (const k of labelWireCollisions(scena)) {
-    if (OPIS_POLA.test(k.ownerRef)) n.push(`(d) ${k.ownerRef} ∩ przewód ${scena.segments[k.segmentIndex].meta?.ownerRef ?? '—'}`);
-  }
+  // (d) opisy pola — kolizje z symbolami, innymi napisami i przewodami (wspólna wyrocznia).
+  n.push(...naruszeniaOpisowPola(scena));
+  // (f) kod ramki bloku zabezpieczeń nigdy nie jest zasłonięty (werdykt B-02 2026-11-05).
+  n.push(...naruszeniaKodowRamki(scena));
+  // (kol-a…e) kolumny opisów pola przy jego lewej krawędzi (wzorzec właściciela 2026-11-05: „Opisy
+  // pól po lewej dzięki temu pole robi się czytelniejsze i węższe”).
+  n.push(...naruszeniaKolumnOpisow(scena));
   return n;
 }
 
@@ -196,6 +172,33 @@ describe('węzeł odczepu poza kaflem i opisy pola bez kolizji — każda fikstu
       }
     }
     expect(kropkiPrzyKaflu).toBeGreaterThan(0);
+    // (kol-…) ćwiczy iloczyn: rodzaj pola (GPZ, stacja) × LOD {1, 2} × opis (oznaczenie aparatu
+    // toru głównego, aparatu kolumny odgałęzienia, aparatu bocznego; opis przekładnika — LOD2).
+    const pokrycieKolumn = new Set<string>();
+    for (const [, lod, enm] of SCENY) {
+      const scena = buildSceneV3(enm, lod);
+      for (const [pole, { oznaczenia, przekladnie }] of kolumnyOpisowPol(scena)) {
+        const rodzaj = pole.startsWith('gpz/') ? 'gpz' : 'stacja';
+        for (const l of oznaczenia) {
+          const s = scena.symbols.find((x) => x.meta?.ownerRef === pole && l.symbolOpisu && x.x === l.symbolOpisu.x && x.y === l.symbolOpisu.y);
+          const tor = s?.meta?.odgalezienieToru != null ? 'odgałęzienie' : 'tor';
+          pokrycieKolumn.add(`${rodzaj}·L${lod}·oznaczenie·${tor}`);
+        }
+        if (przekladnie.length > 0) pokrycieKolumn.add(`${rodzaj}·L${lod}·przekładnia`);
+      }
+    }
+    expect([...pokrycieKolumn].sort()).toEqual([
+      'gpz·L1·oznaczenie·odgałęzienie',
+      'gpz·L1·oznaczenie·tor',
+      'gpz·L2·oznaczenie·odgałęzienie',
+      'gpz·L2·oznaczenie·tor',
+      'gpz·L2·przekładnia',
+      'stacja·L1·oznaczenie·odgałęzienie',
+      'stacja·L1·oznaczenie·tor',
+      'stacja·L2·oznaczenie·odgałęzienie',
+      'stacja·L2·oznaczenie·tor',
+      'stacja·L2·przekładnia',
+    ]);
     expect([...rodzaje].sort()).toEqual(['cbct-rating-', 'ct-rating-', 'protection-codes-full', 'vt-rating-', 'zacisk-przekladnika-']);
   });
 });
@@ -248,6 +251,41 @@ describe('wyrocznie kontraktu — iniekcje na realnej scenie pola Z.11', () => {
   it('opis pola nałożony na inny napis → (d) napis', () => {
     const inny = scena.labels.find((l) => l !== opis && !OPIS_POLA.test(l.ownerRef))!;
     expect(naruszenia(przesun(inny.rect.x, inny.rect.y)).some((x) => x.startsWith(`(d) ${opis.ownerRef} ∩ napis`))).toBe(true);
+  });
+
+  // Oznaczenie aparatu kolumny odgałęzienia (Q5 pola Z.11.1/Z.11) i jego symbol.
+  const symbolGalezi = scena.symbols.find((s) => s.meta?.odgalezienieToru != null && scena.labels.some((l) => l.symbolOpisu?.x === s.x && l.symbolOpisu?.y === s.y))!;
+  const oznaczenieGalezi = scena.labels.find((l) => l.symbolOpisu?.x === symbolGalezi.x && l.symbolOpisu?.y === symbolGalezi.y && /#etykieta-aparatu-/.test(l.ownerRef))!;
+
+  it('oznaczenie aparatu odgałęzienia przy jego symbolu zamiast w kolumnie oznaczeń (dawny podpis Q5 przy kolumnie) → (kol-a) i (kol-c)', () => {
+    expect(oznaczenieGalezi, 'oznaczenie aparatu odgałęzienia w scenie Z.11').toBeTruthy();
+    const z: SceneV3 = {
+      ...scena,
+      labels: scena.labels.map((l) =>
+        l === oznaczenieGalezi ? { ...l, rect: { ...l.rect, x: symbolGalezi.x + SYMBOL_DEFS[symbolGalezi.symbolId].width + 8 } } : l,
+      ),
+    };
+    const w = naruszenia(z);
+    expect(w.some((x) => x.startsWith('(kol-a)'))).toBe(true);
+    expect(w.some((x) => x.startsWith(`(kol-c) ${oznaczenieGalezi.ownerRef}`))).toBe(true);
+  });
+
+  it('kolumna odgałęzienia odsunięta od toru głównego (dawny pas opisów przed kolumną) → (kol-e)', () => {
+    const pole = symbolGalezi.meta!.ownerRef!;
+    const z: SceneV3 = {
+      ...scena,
+      symbols: scena.symbols.map((s) => (s.meta?.ownerRef === pole && s.meta?.odgalezienieToru != null ? { ...s, x: s.x + 80 } : s)),
+    };
+    expect(naruszenia(z).some((x) => x.startsWith(`(kol-e) ${pole}`))).toBe(true);
+  });
+
+  it('opis przekładnika poza wierszem oznaczenia swojego aparatu → (kol-b)', () => {
+    const tabliczka = scena.labels.find((l) => /#(ct|vt|cbct)-rating-/.test(l.ownerRef) && l.symbolOpisu)!;
+    const z: SceneV3 = {
+      ...scena,
+      labels: scena.labels.map((l) => (l === tabliczka ? { ...l, rect: { ...l.rect, y: l.rect.y + 16 } } : l)),
+    };
+    expect(naruszenia(z).some((x) => x.startsWith(`(kol-b) ${tabliczka.ownerRef}`))).toBe(true);
   });
 
   it('opis pola na przewodzie toru (dawny korytarz magistrali przez blok kodów) → (d) przewód', () => {

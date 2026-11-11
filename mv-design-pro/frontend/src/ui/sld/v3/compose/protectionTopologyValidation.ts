@@ -12,7 +12,7 @@
  *  - `StationComposition.missingData` (prefiks `protection.topology.`) →
  *    `scene.meta.stopNotes` (`scene/buildScene.ts`, wzorzec
  *    `bay.protection.trip_link_unresolved`);
- *  - adnotację „!" przy okręgu przekaźnika (`ComposedSymbolInstance.
+ *  - adnotację „!" w narożniku ramki bloku zabezpieczeń (`ComposedSymbolInstance.
  *    protectionTopologyGaps` → `PreviewElementMeta.topologyGaps` →
  *    `GlyphProps.hasTopologyWarning`, `symbols/glyphs.tsx`
  *    `ProtectionRelayGlyph`).
@@ -102,7 +102,7 @@ const REASON_LABEL_PL: Readonly<Record<ProtectionTopologyGapReason, string>> = {
 };
 
 /** Tekst adnotacji ostrzeżenia (§20.2, np. „67N: brak potwierdzonego źródła 3U₀") — zwięzły,
- *  dla etykiety/tooltipa przy okręgu przekaźnika. */
+ *  dla etykiety/tooltipa przy bloku zabezpieczeń pola. */
 export function protectionTopologyGapLabel(gap: ProtectionTopologyGap): string {
   return `${gap.code}: ${REASON_LABEL_PL[gap.reason]}`;
 }
