@@ -100,7 +100,7 @@ def kwantyzuj_kontrakt(
         if scisle and not math.isfinite(obiekt):
             raise KontraktNiefinitowyError(
                 f"{_sciezka}: wartość niefinitowa {obiekt!r} w kontrakcie wyjściowym — "
-                "użyj jawnego pola albo `None` z powodem"
+                "wynik musi nieść wartość skończoną albo wartość pustą z nazwanym powodem"
             )
         return kanoniczna_liczba(obiekt, cyfry_znaczace)
     if isinstance(obiekt, dict):

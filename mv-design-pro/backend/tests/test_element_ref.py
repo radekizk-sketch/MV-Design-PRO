@@ -1,4 +1,4 @@
-"""Tests for ElementRefV1 + ReadinessProfileV1 + ResultJoinV1 (KROK 1)."""
+"""Tests for ElementRefV1 + ResultJoinV1 (KROK 1)."""
 
 import pytest
 from domain.element_ref import (
@@ -7,12 +7,6 @@ from domain.element_ref import (
     ElementScopeV1,
     ElementTypeV1,
     build_element_ref_index,
-)
-from domain.readiness import (
-    ReadinessAreaV1,
-    ReadinessIssueV1,
-    ReadinessPriority,
-    build_readiness_profile,
 )
 from domain.result_join import (
     OverlayTokenKindV1,
@@ -70,128 +64,6 @@ class TestElementRefV1:
         ]
         index = build_element_ref_index(refs)
         assert list(index.keys()) == ["a", "b", "c"]
-
-
-# ---------------------------------------------------------------------------
-# ReadinessProfileV1
-# ---------------------------------------------------------------------------
-
-
-class TestReadinessProfileV1:
-    def test_no_issues_all_ready(self) -> None:
-        profile = build_readiness_profile(
-            snapshot_id="snap_1",
-            snapshot_fingerprint="fp_1",
-            issues=[],
-        )
-        assert profile.sld_ready is True
-        assert profile.short_circuit_ready is True
-        assert profile.load_flow_ready is True
-        assert profile.protection_ready is True
-        assert len(profile.issues) == 0
-        assert len(profile.content_hash) == 64
-
-    def test_topology_blocker_blocks_sld_and_sc(self) -> None:
-        issue = ReadinessIssueV1(
-            code="bus.voltage_missing",
-            area=ReadinessAreaV1.TOPOLOGY,
-            priority=ReadinessPriority.BLOCKER,
-            message_pl="Szyna bus_1 nie ma jawnego napiecia",
-            element_id="bus_1",
-        )
-        profile = build_readiness_profile(
-            snapshot_id="snap_1",
-            snapshot_fingerprint="fp_1",
-            issues=[issue],
-        )
-        assert profile.sld_ready is False
-        assert profile.short_circuit_ready is False
-        assert profile.load_flow_ready is False
-        # protection also blocked by topology
-        assert profile.protection_ready is False
-
-    def test_catalog_blocker_blocks_sc_but_not_sld(self) -> None:
-        issue = ReadinessIssueV1(
-            code="catalog.ref_missing",
-            area=ReadinessAreaV1.CATALOGS,
-            priority=ReadinessPriority.BLOCKER,
-            message_pl="Brak referencji katalogowej",
-            element_id="cb_1",
-        )
-        profile = build_readiness_profile(
-            snapshot_id="snap_1",
-            snapshot_fingerprint="fp_1",
-            issues=[issue],
-        )
-        assert profile.sld_ready is True
-        assert profile.short_circuit_ready is False
-        assert profile.load_flow_ready is False
-        assert profile.protection_ready is False
-
-    def test_warning_does_not_block(self) -> None:
-        issue = ReadinessIssueV1(
-            code="station.typology_conflict",
-            area=ReadinessAreaV1.STATIONS,
-            priority=ReadinessPriority.WARNING,
-            message_pl="Konflikt stationType vs topologia",
-            element_id="sta_1",
-        )
-        profile = build_readiness_profile(
-            snapshot_id="snap_1",
-            snapshot_fingerprint="fp_1",
-            issues=[issue],
-        )
-        assert profile.sld_ready is True
-        assert profile.short_circuit_ready is True
-
-    def test_determinism(self) -> None:
-        issues = [
-            ReadinessIssueV1(
-                code="b_issue",
-                area=ReadinessAreaV1.SOURCES,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl="B",
-            ),
-            ReadinessIssueV1(
-                code="a_issue",
-                area=ReadinessAreaV1.CATALOGS,
-                priority=ReadinessPriority.WARNING,
-                message_pl="A",
-            ),
-        ]
-        p1 = build_readiness_profile(snapshot_id="s", snapshot_fingerprint="f", issues=issues)
-        p2 = build_readiness_profile(
-            snapshot_id="s", snapshot_fingerprint="f", issues=list(reversed(issues))
-        )
-        assert p1.content_hash == p2.content_hash
-
-    def test_by_area_grouping(self) -> None:
-        issues = [
-            ReadinessIssueV1(
-                code="a",
-                area=ReadinessAreaV1.TOPOLOGY,
-                priority=ReadinessPriority.INFO,
-                message_pl="x",
-            ),
-            ReadinessIssueV1(
-                code="b",
-                area=ReadinessAreaV1.CATALOGS,
-                priority=ReadinessPriority.INFO,
-                message_pl="y",
-            ),
-            ReadinessIssueV1(
-                code="c",
-                area=ReadinessAreaV1.TOPOLOGY,
-                priority=ReadinessPriority.WARNING,
-                message_pl="z",
-            ),
-        ]
-        profile = build_readiness_profile(snapshot_id="s", snapshot_fingerprint="f", issues=issues)
-        by_area = profile.by_area
-        assert "TOPOLOGY" in by_area
-        assert len(by_area["TOPOLOGY"]) == 2
-        assert "CATALOGS" in by_area
-        assert len(by_area["CATALOGS"]) == 1
 
 
 # ---------------------------------------------------------------------------

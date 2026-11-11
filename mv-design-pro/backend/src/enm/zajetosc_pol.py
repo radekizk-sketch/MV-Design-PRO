@@ -11,7 +11,8 @@ przyłączające odcinek do pola (odmowa kodem `field.line_field_occupied`), wal
 bierze dostępność punktu startu — front zajętości nie liczy.
 
 Reguły (wyłącznie z JAWNYCH danych modelu, bez domysłu):
-  R1 odcinek terenowy z `meta.origin_bay_ref == field_ref`, który kończy się w punkcie
+  R1 odcinek terenowy z `meta.origin_bay_ref == field_ref` albo `meta.target_bay_ref ==
+     field_ref` (koniec doprowadzony do pola — `KLUCZE_POLA_ODCINKA`), który kończy się w punkcie
      przyłączenia pola (zacisk pola albo, dla pola bez własnego zacisku, szyna pola) —
      warunek końca odróżnia odcinek wyprowadzony z pola od połówki podzielonego odcinka,
      która w starszych migawkach dziedziczyła metadane pochodzenia;
@@ -21,6 +22,9 @@ Reguły (wyłącznie z JAWNYCH danych modelu, bez domysłu):
   R4 pole GPZ o indeksie 0 BEZ własnego zacisku (migawki sprzed przydziałów): zajęte, gdy
      magistrala tego GPZ zaczyna się odcinkiem na szynie pola, a odcinek nie niesie
      pochodzenia z pola (przy pochodzeniu rozstrzyga R1).
+Na tych samych regułach stoi JEDYNY predykat „odcinek na szynie sekcji SN bez pola”
+(`odcinki_bez_pola`, karta INSPEKTOR-POLA-DOMKNIECIE): koniec odcinka na szynie sekcji jest
+przyłączony przez pole wyłącznie wtedy, gdy niesie go fizycznie pole o tym punkcie przyłączenia.
 R1 i R2 to przyłączenie FIZYCZNE (odcinek ma koniec na polu) — tylko one liczą się do stanu
 „dwa odcinki na jednym polu”. R3 i R4 to przyłączenie DEKLARATYWNE (pole zasila korytarz).
 
@@ -35,6 +39,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
+
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 from .pola import czy_pole_nn, pola_wg_stacji, poziom_pol, zacisk_pola
 
@@ -119,9 +125,10 @@ def zajetosc_pol(enm: Mapping[str, Any]) -> dict[str, ZajetoscPola]:
             szyna = _napis(koniec)
             if szyna:
                 odcinki_na_szynie.setdefault(szyna, set()).add(ref)
-        pochodzenie = _napis(_slownik(galaz.get("meta")).get("origin_bay_ref"))
-        if pochodzenie:
-            odcinki_z_pochodzenia.setdefault(pochodzenie, []).append(galaz)
+        meta_galezi = _slownik(galaz.get("meta"))
+        for pochodzenie in {_napis(meta_galezi.get(klucz)) for klucz in KLUCZE_POLA_ODCINKA}:
+            if pochodzenie:
+                odcinki_z_pochodzenia.setdefault(pochodzenie, []).append(galaz)
 
     galezie = {
         ref: galaz
@@ -214,6 +221,110 @@ def pole_dla_zacisku(enm: Mapping[str, Any], bus_ref: str | None) -> str | None:
         return None
     stan = pola_wg_wlasnego_zacisku(zajetosc_pol(enm)).get(bus_ref)
     return stan.field_ref if stan is not None else None
+
+
+# ---------------------------------------------------------------------------
+# Odcinek na szynie sekcji bez pola (karta INSPEKTOR-POLA-DOMKNIECIE, punkt 2)
+# ---------------------------------------------------------------------------
+
+#: Klucze `meta` odcinka wskazujące pole, przez które odcinek jest przyłączony: koniec
+#: wyprowadzony z pola (`origin_bay_ref`) i koniec doprowadzony do pola (`target_bay_ref` —
+#: kabel zamykający pierścień w polu bez własnego zacisku). Reguła R1 czyta oba.
+KLUCZE_POLA_ODCINKA: tuple[str, ...] = ("origin_bay_ref", "target_bay_ref")
+
+#: Kod ostrzeżenia walidatora: odcinek SN przyłączony do szyny sekcji stacji bez pola.
+KOD_WALIDATORA_ODCINEK_BEZ_POLA = "W049"
+#: Kanoniczny kod gotowości tego samego faktu (`domain/readiness_bridge.py`).
+KOD_KANONICZNY_ODCINEK_BEZ_POLA = "station.segment_without_field"
+
+
+@dataclass(frozen=True)
+class OdcinekBezPola:
+    """Koniec odcinka terenowego leżący na szynie sekcji SN stacji, którego nie przyłącza
+    żadne pole (ani zacisk pola, ani pole bez zacisku przez regułę R1)."""
+
+    branch_ref: str
+    #: `from_bus_ref` albo `to_bus_ref`.
+    koniec: str
+    szyna_ref: str
+    station_ref: str
+
+
+def szyny_sekcji_sn(enm: Mapping[str, Any]) -> dict[str, str]:
+    """Szyna sekcji SN → stacja: szyny główne stacji (`Substation.bus_refs`) w paśmie SN, a w
+    GPZ także szyna sekcji poza pasmem WN (GPZ w paśmie nN sieci benchmarkowej ma pola liniowe
+    — ten sam wyjątek co predykat poziomu pola `enm.pola.czy_pole_nn`). Szyny WN GPZ i szyny
+    nN stacji SN/nN nie są szynami sekcji rozdzielnicy SN. Pierwsza stacja w kolejności
+    modelu wygrywa przy szynie zapisanej w dwóch stacjach."""
+    napiecia = {
+        ref: szyna.get("voltage_kv")
+        for szyna in enm.get("buses") or []
+        if isinstance(szyna, Mapping) and (ref := _napis(szyna.get("ref_id")))
+    }
+    wynik: dict[str, str] = {}
+    for stacja in enm.get("substations") or []:
+        if not isinstance(stacja, Mapping):
+            continue
+        station_ref = _napis(stacja.get("ref_id"))
+        if station_ref is None:
+            continue
+        gpz = stacja.get("station_type") == "gpz"
+        for szyna in stacja.get("bus_refs") or []:
+            ref = _napis(szyna)
+            if ref is None or ref not in napiecia:
+                continue
+            napiecie = napiecia[ref]
+            pasmo = pasmo_napieciowe(napiecie if isinstance(napiecie, int | float) else None)
+            if pasmo == "SN" or (gpz and pasmo == "nN"):
+                wynik.setdefault(ref, station_ref)
+    return wynik
+
+
+def _konce_przylaczone_przez_pole(
+    zajetosc: Mapping[str, ZajetoscPola],
+) -> set[tuple[str, str]]:
+    """Pary (odcinek, szyna) przyłączone FIZYCZNIE przez pole: punkt przyłączenia pola i każdy
+    odcinek, który pole niesie fizycznie (R1, R2)."""
+    wynik: set[tuple[str, str]] = set()
+    for stan in zajetosc.values():
+        if stan.punkt_przylaczenia:
+            for ref in stan.odcinki_fizyczne:
+                wynik.add((ref, stan.punkt_przylaczenia))
+    return wynik
+
+
+def odcinki_bez_pola(enm: Mapping[str, Any]) -> list[OdcinekBezPola]:
+    """JEDYNY predykat „gałąź na szynie sekcji bez pola” — czytają go operacje domenowe
+    (przyłączenie przez pole albo utworzenie pola), walidator modelu (`W049`) i akcja naprawcza
+    (`przepnij_element_na_pole`).
+
+    Koniec odcinka terenowego na szynie sekcji SN (`szyny_sekcji_sn`) jest przyłączony przez
+    pole wyłącznie wtedy, gdy pole o punkcie przyłączenia równym tej szynie niesie ten odcinek
+    fizycznie (`zajetosc_pol`, reguła R1: pole bez własnego zacisku wskazane w
+    `KLUCZE_POLA_ODCINKA`). Pole z własnym zaciskiem przyłącza odcinek na zacisku, więc koniec
+    na szynie sekcji takiego pola nie ma nigdy. Przydział deklaratywny korytarza (R3, R4) nie
+    przyłącza końca odcinka. Wynik posortowany deterministycznie."""
+    sekcje = szyny_sekcji_sn(enm)
+    if not sekcje:
+        return []
+    przylaczone = _konce_przylaczone_przez_pole(zajetosc_pol(enm))
+    wynik: list[OdcinekBezPola] = []
+    for galaz in enm.get("branches") or []:
+        if not isinstance(galaz, Mapping) or galaz.get("type") not in TYPY_ODCINKA_TERENOWEGO:
+            continue
+        ref = _napis(galaz.get("ref_id"))
+        if ref is None:
+            continue
+        for koniec in ("from_bus_ref", "to_bus_ref"):
+            szyna = _napis(galaz.get(koniec))
+            if szyna and szyna in sekcje and (ref, szyna) not in przylaczone:
+                wynik.append(OdcinekBezPola(ref, koniec, szyna, sekcje[szyna]))
+    return sorted(wynik, key=lambda o: (o.station_ref, o.branch_ref, o.koniec))
+
+
+def galaz_przylaczona_przez_pole(enm: Mapping[str, Any], branch_ref: str) -> bool:
+    """Czy żaden koniec odcinka nie leży na szynie sekcji bez pola (predykat `odcinki_bez_pola`)."""
+    return not any(o.branch_ref == branch_ref for o in odcinki_bez_pola(enm))
 
 
 def widok_pol_liniowych(enm: Mapping[str, Any]) -> list[dict[str, Any]]:

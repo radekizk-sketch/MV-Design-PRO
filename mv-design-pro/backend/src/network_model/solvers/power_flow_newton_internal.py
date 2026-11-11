@@ -531,7 +531,10 @@ def odmowy_wejscia(pf_input: PowerFlowInput) -> tuple[list[str], list[RekordOdmo
             )
 
     if pf_input.slack.u_pu < 0.8 or pf_input.slack.u_pu > 1.2:
-        warnings.append("slack.u_pu outside typical range [0.8, 1.2]")
+        warnings.append(
+            f"Napięcie zadane węzła bilansującego {pf_input.slack.u_pu:.3f} j.w. jest poza "
+            "typowym zakresem 0,8–1,2 j.w."
+        )
 
     return warnings, errors
 
@@ -1491,9 +1494,15 @@ def _get_branch_admittances_ohm(branch: Branch) -> tuple[complex, complex]:
     if isinstance(branch, TransformerBranch):
         impedance = branch.get_short_circuit_impedance_ohm_lv()
         if impedance == 0:
-            raise ZeroDivisionError("Cannot compute transformer admittance: impedance is zero")
+            raise ZeroDivisionError(
+                "Impedancja zwarciowa transformatora jest zerowa — admitancji gałęzi "
+                "transformatora nie da się wyznaczyć."
+            )
         return 1.0 / impedance, 0.0 + 0.0j
-    raise ValueError(f"Unsupported branch type: {branch.branch_type}")
+    raise ValueError(
+        "Gałąź spoza klas linii i transformatora nie ma modelu admitancji w rozpływie — błąd "
+        "programu (komplet klas gałęzi przypina test zamkniętości rodzajów gałęzi)."
+    )
 
 
 def _apply_shunts_pu(

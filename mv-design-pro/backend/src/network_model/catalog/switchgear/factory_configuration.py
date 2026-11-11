@@ -737,6 +737,7 @@ def get_factory_configuration(configuration_ref: str) -> FactoryConfiguration:
     if configuration_ref not in FACTORY_CONFIGURATION_REGISTRY:
         available = ", ".join(sorted(FACTORY_CONFIGURATION_REGISTRY))
         raise BrakZasobuError(
-            f"Unknown factory configuration_ref: {configuration_ref}. Available: {available}"
+            f"Nieznana konfiguracja fabryczna {configuration_ref!r}. Dostępne konfiguracje: "
+            f"{available}"
         )
     return FACTORY_CONFIGURATION_REGISTRY[configuration_ref]

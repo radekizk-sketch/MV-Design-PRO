@@ -18,6 +18,7 @@ import {
   RUN_STATUS_COLORS,
   type ExecutionRun,
 } from './types';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface RunHistoryPanelProps {
   /** Handler called when a run is selected for result viewing. */
@@ -62,9 +63,9 @@ const RunRow: React.FC<{
   isSelected: boolean;
   onSelect?: (runId: string) => void;
 }> = ({ run, isSelected, onSelect }) => {
-  const statusLabel = RUN_STATUS_LABELS[run.status] || run.status;
+  const statusLabel = etykietaZeSlownika(RUN_STATUS_LABELS, run.status);
   const statusColor = RUN_STATUS_COLORS[run.status] || 'text-gray-500';
-  const analysisLabel = ANALYSIS_TYPE_LABELS[run.analysis_type] || run.analysis_type;
+  const analysisLabel = etykietaZeSlownika(ANALYSIS_TYPE_LABELS, run.analysis_type);
   const timestamp = formatTimestamp(run.started_at || run.finished_at);
   const hashAbbr = abbreviateHash(run.solver_input_hash);
 

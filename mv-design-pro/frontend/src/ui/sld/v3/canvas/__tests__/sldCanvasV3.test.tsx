@@ -220,6 +220,8 @@ describe('SldCanvasV3 — klik w symbol', () => {
       // S9-10: lewy klik niesie też KLASĘ trafienia (wspólny `metaZTrafienia`
       // z prawym klikiem) — pierwszy symbol L0 to blok stacji.
       klasa: 'stacja',
+      // Rodzaj trafionego symbolu sceny (`SymbolId`) — tożsamość aparatu pola dla menu.
+      symbolId: scene.symbols[0].symbolId,
     });
   });
 
@@ -239,6 +241,7 @@ describe('SldCanvasV3 — klik w symbol', () => {
       elementKind: 'station',
       // S9-10: klasa trafienia w lewym kliku — patrz test wyżej.
       klasa: 'stacja',
+      symbolId: 'stationCollapsed',
     });
   });
 

@@ -185,7 +185,7 @@ class VDROPPackInput:
                 raise ValueError(
                     f"Krok łańcucha '{krok.segment_id}' nie jest transformatorem, "
                     "ale nie niesie danych fizycznych odcinka — niezmiennik "
-                    "LancuchSpadkuNapiecia naruszony."
+                    "łańcucha spadku napięcia naruszony."
                 )
             segments.append(
                 VDROPPackSegment(

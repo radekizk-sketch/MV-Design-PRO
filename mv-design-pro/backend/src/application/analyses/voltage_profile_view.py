@@ -39,13 +39,13 @@ from analysis.voltage_profile.segment_decomposition import (
     VoltageProfileSegmentPathError,
     find_worst_nn_path,
 )
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 
 # Jedno źródło odtwarzania grafu/PowerFlowResult dla widoków tej rodziny
 # (energy-validation, voltage-profile, sanity-bounds — wszystkie czytają TEN SAM
 # przebieg PF; karta W3-G2 wyodrębniła je z energy_validation.service do
 # dedykowanego modułu, żeby nie zostawiać duplikatu mechanizmu w trzecim miejscu).
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.nazwy import nazwa_nadana
@@ -93,7 +93,7 @@ def _wymagana_liczba_galezi(row: dict[str, Any], klucz: str, branch_id: str) -> 
     if wartosc is None:
         raise ValueError(
             f"Profil napięć: gałąź {branch_id!r} w zapisie biegu rozpływu nie ma pola "
-            f"{klucz!r} — zamrożony wynik (PowerFlowBranchResult) nie dopuszcza tu braku, "
+            f"{klucz!r} — zamrożony wynik rozpływu gałęzi nie dopuszcza tu braku, "
             "zapis biegu jest uszkodzony."
         )
     return float(wartosc)
@@ -106,7 +106,7 @@ def _wymagana_liczba_podsumowania(summary_raw: dict[str, Any], klucz: str) -> fl
     if wartosc is None:
         raise ValueError(
             f"Profil napięć: podsumowanie przebiegu rozpływu nie ma pola {klucz!r} — "
-            "zamrożony wynik (PowerFlowSummary) nie dopuszcza tu braku, zapis biegu "
+            "zamrożone podsumowanie rozpływu nie dopuszcza tu braku, zapis biegu "
             "jest uszkodzony."
         )
     return float(wartosc)

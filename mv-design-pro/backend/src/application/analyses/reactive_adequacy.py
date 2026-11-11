@@ -28,7 +28,7 @@ from analysis.reactive_adequacy.models import (
     SourceReactiveInput,
     worst_field_quality,
 )
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.nazwy_elementow import zbuduj_indeks_nazw

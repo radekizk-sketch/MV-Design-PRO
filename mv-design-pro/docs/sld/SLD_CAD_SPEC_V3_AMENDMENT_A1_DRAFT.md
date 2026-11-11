@@ -19,7 +19,7 @@ Każdy paragraf ma format: **Wymaganie** + **Źródło danych** + **Wyrocznia od
 
 - **Wymaganie:** stos aparatów pola jest budowany z `Bay.primary_devices` (ENM), gdy lista jest niepusta.
   Kolejność aparatów wynika z `placement` (UPSTREAM przy szynie → MIDSTREAM → DOWNSTREAM przy głowicy)
-  oraz `section_side`; symbol z `kind`→`ApparatusKind` (`apparatusContracts.ts`). Konwencja-wg-roli
+  oraz `section_side`; symbol z `kind`→`SymbolId` (`v3/compose/apparatusSequence.ts::symbolIdForPrimaryDeviceKind`; korekta 2026-10-30: dawny słownik `ApparatusKind` z `apparatusContracts.ts` nie miał konsumenta i został skasowany). Konwencja-wg-roli
   (§12.4) jest dozwolona WYŁĄCZNIE jako fallback dla pola bez `primary_devices`, i wtedy pole MUSI nieść
   znacznik `data-apparatus-source="konwencja"` (audytor odróżnia rysunek z danych od typowego).
 - **Źródło danych:** `Bay.primary_devices[*].{kind, placement, section_side, symbol_ref, switch_state}`

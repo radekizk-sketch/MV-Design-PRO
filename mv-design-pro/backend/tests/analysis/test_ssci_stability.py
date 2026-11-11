@@ -232,7 +232,7 @@ def test_missing_card_fields_payload_names_card_field() -> None:
     _sprawdz_bez_werdyktu(v)
     assert "pll_bandwidth_hz" in v.missing_data
     braki = v.ocena["wyjasnienie"]["czego_brakuje"]
-    assert "Pole karty przekształtnika: pll_bandwidth_hz." in braki
+    assert "Pole karty przekształtnika: pasmo pętli synchronizacji fazowej (PLL)." in braki
     assert BRAK_TABLIC_SSCI_PL in braki
 
 
@@ -368,3 +368,35 @@ def test_przedmiot_oceny_nazwy_z_modelu_nigdy_identyfikator(
     )
     for identyfikator in ("INV1", "CONV"):
         assert identyfikator not in przedmiot["nazwa_pl"] + przedmiot["opis_pl"]
+
+
+# ---------------------------------------------------------------------------
+# Opisy braków — jeden słownik backendu, lustro frontu
+# ---------------------------------------------------------------------------
+
+
+def test_opisy_brakow_ssci_kompletne_i_w_lustrze() -> None:
+    """Słownik ``OPISY_BRAKOW_SSCI_PL`` obejmuje DOKŁADNIE kody ``missing_fields`` solvera
+    (przekształtnik w modelu, jego szyna, pola karty Z_conv(f) z ``POLA_KARTY_ZCONV``),
+    a lustro frontu niesie te same teksty oraz opis statusu „dane niekompletne” (brak
+    tablic impedancji). Kod spoza słownika jest błędem programu, nie tekstem dla projektanta."""
+    from analysis.ssci_stability.models import OPISY_BRAKOW_SSCI_PL, ocena_ssci_niewykonana
+    from network_model.solvers.v126_academic import POLA_KARTY_ZCONV
+
+    from tests.utils.lustro_ts import FRONT_SRC, slownik_ts
+
+    assert set(OPISY_BRAKOW_SSCI_PL) == {
+        "converter",
+        "converter.bus_ref",
+        *(pole for pole, _opis in POLA_KARTY_ZCONV),
+    }
+    lustro = slownik_ts(FRONT_SRC / "ui2" / "wyniki" / "ssci" / "strings.ts", "OPISY_BRAKOW_SSCI")
+    assert lustro == {**OPISY_BRAKOW_SSCI_PL, SOLVER_INCOMPLETE_STATUS: BRAK_TABLIC_SSCI_PL}
+    with pytest.raises(AssertionError, match="OPISY_BRAKOW_SSCI_PL"):
+        ocena_ssci_niewykonana(
+            converter_ref=None,
+            bus_ref=None,
+            nazwy=_NAZWY,
+            tablice_obecne=False,
+            braki_danych=["pole_spoza_slownika"],
+        )

@@ -25,7 +25,7 @@
       "headroom_down_mvar": null,
       "is_saturated": false,
       "at_limit_pl": null,
-      "why_pl": "Dane niekompletne — brak: q_actual_mvar. Ocena rezerwy biernej wymaga aktualnej mocy biernej (z wyniku rozpływu mocy) oraz minimalnej i maksymalnej mocy biernej regulatora źródła.",
+      "why_pl": "Dane niekompletne — brak: aktualna moc bierna źródła (z rozpływu mocy). Ocena rezerwy biernej wymaga aktualnej mocy biernej (z wyniku rozpływu mocy) oraz minimalnej i maksymalnej mocy biernej regulatora źródła.",
       "missing_data": [
         "q_actual_mvar"
       ],

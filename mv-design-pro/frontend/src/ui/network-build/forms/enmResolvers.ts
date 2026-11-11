@@ -1,3 +1,4 @@
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../shared/nazwaObiektu';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { szynyStacji } from '../../shared/szynyStacji';
@@ -495,7 +496,7 @@ function nazwaRcdOdbioru(snapshot: EnergyNetworkModel, loadRef: string): string 
     const meta = asRecord(branch.meta);
     return meta !== null && meta.device_role === 'RCD' && meta.load_ref === loadRef;
   });
-  return rcd ? rcd.name || rcd.ref_id : null;
+  return rcd ? nazwaObiektuPl(rcd.name, 'wylacznik_roznicowopradowy') : null;
 }
 
 /**
@@ -512,9 +513,9 @@ export function listNnLoadOptions(snapshot: EnergyNetworkModel | null): Resolved
     if (!isLowVoltageBus(bus)) continue;
     opcje.push({
       ref_id: load.ref_id,
-      name: load.name || load.ref_id,
+      name: nazwaObiektuPl(load.name, 'odbior', miejsceWKolekcji(snapshot.loads, load)),
       bus_ref: bus.ref_id,
-      bus_name: bus.name || bus.ref_id,
+      bus_name: nazwaObiektuPl(bus.name, 'szyna', miejsceWKolekcji(snapshot.buses, bus)),
       rcd_name: nazwaRcdOdbioru(snapshot, load.ref_id),
     });
   }

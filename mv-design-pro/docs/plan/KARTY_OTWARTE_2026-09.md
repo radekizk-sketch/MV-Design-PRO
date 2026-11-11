@@ -1126,6 +1126,424 @@ uruchamiaj `npm ci`. Commit: `git -c user.name="radekizk-sketch" -c user.email="
 commit --cleanup=verbatim`, stopka:
 (stopka commita: dwie linie z bieżących wytycznych sesji — współautor i łącze sesji)
 
+#### Przekazanie (stan na przerwaniu, 2026-10-30, commit 5 karty, drzewo `wt-bkr`)
+
+Prace przerwano na polecenie koordynatora (kończy się tygodniowy limit). Commit WIP zawiera cały
+stan drzewa. Na przerwaniu jedna seria iniekcji nie była dokończona; po wznowieniu ją dokończono
+— stan końcowy w akapicie „Domknięcie weryfikacji commitu 5” niżej.
+
+**Zrobione (z dowodem):**
+- A, reguła języka strażnika:
+  - `backend/tests/enm/test_klucze_pol_w_komunikatach_src.py` (`po_angielsku`, iniekcje: jedno
+    słowo, jedno słowo z kropką, słowo spoza listy funkcyjnej, tekst krótki z wstawką);
+  - `backend/tests/enm/test_komunikaty_operacji_bez_kodow.py` (`teksty_komunikatow(...,
+    jednowyrazowe=True)`).
+  - Pomiar: 18 miejsc w `src`, w tym 8 w rdzeniach B-01 — `power_flow_newton.py`,
+    `power_flow_gauss_seidel.py`, `power_flow_fast_decoupled.py`, `protection_iec60255.py`.
+  - Wszystkie 18 przetłumaczono. Dodatkowo przetłumaczono dwa bliźniacze ImportError
+    w `network_model/reporting/protection_report_{pdf,docx}.py`.
+  - Porównanie AST rdzeni wobec 98c6f8d20: IDENTYCZNE, RC=0 dla 4 plików.
+  - Sankcje w `scripts/solver_boundary_guard.py`, odciski w
+    `scripts/guard_references/solver_hashes.json` (zmienione tylko te 4).
+  - Parytet liczb assemblera bitowo identyczny wobec 98c6f8d20 i wobec 1e535d489: 366 wpisów,
+    18 odmów, 187 083 liczby; sha pliku f8248c56…, sha kanoniczny 58396066… — ten sam co
+    w commicie 4.
+  - Zapadka `ODMOWY_B01_OCZEKUJACE` pusta.
+- B, karta szczegółów katalogu:
+  - `frontend/src/ui/catalog/wierszeKartyKatalogu.ts` zastępuje `render*Params` z
+    `TypeLibraryBrowser.tsx`;
+  - typy `ui/catalog/types.ts` niosą `| null` zgodnie z serwerem;
+  - poprawiono `StationConfiguratorSurface.tsx`, `StationConfigTransformerCard.tsx`
+    i `SwitchReview.tsx` (słownik `RODZAJ_GALEZI_PL`);
+  - dodano `NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL` z parytetem do wyroczni harnessu
+    `nazwy_lacznika` (`backend/scripts/eksport_fixtur_harnessu.py`, fikstura przegenerowana).
+  - Nowe testy: `kartaSzczegolowKatalogu.test.tsx` (60), `katalogTransformatorowKonfiguratora.test.tsx`,
+    `massReview.test.tsx` (zamiast `.ts`) oraz rozszerzone `etykietyKategoriiTypow.test.tsx`
+    i `pradZwarciowyKatalogu.test.ts`.
+- Biegi (kody wyjścia):
+
+  | Bieg | Wynik |
+  |---|---|
+  | celowany backend (31 plików, `-m "not pandapower and not andes"`) | RC=0, 1168 passed |
+  | `guardy_z_ci.py --rownoleglosc 3` | RC=0, 107/107 strażników, samotesty 4119 passed, „KOMPLET ZIELONY” |
+  | vitest related | RC=0 (62 pliki, 837 testów) |
+  | tsc | RC=0 |
+  | eslint | RC=0 |
+
+  Iniekcje I1, I2, I4 i I5 były czerwone (RC=1), pliki przywrócono.
+
+**Aktualizacja po wznowieniu (2026-10-30):** test konfiguratora z cechą kolejności: RC=0,
+4 passed. Iniekcje I3a (lewa strona komparatora) i I3b (prawa strona) czerwone (RC=1, po 1 failed),
+przywrócone; tsc RC=0. Iniekcja I3c na `buildTransformerCatalogSummary` była ZIELONA, bo pole
+`summary` opcji katalogu transformatora nie miało ŻADNEGO konsumenta (karta
+`StationConfigTransformerCard` buduje etykietę opcji sama w `optionLabel`) — martwe pole, druga
+etykieta tej samej opcji. Usunięte: pole `summary` z `StationTransformerCatalogOption`,
+`buildTransformerCatalogSummary` i `formatMva` ze `StationConfiguratorSurface.tsx`, `summary`
+z fikstur `StationConfigurator.test.tsx`.
+
+**Domknięcie weryfikacji commitu 5 (2026-10-30):** po kasacji pola `summary` testy konfiguratora
+(`katalogTransformatorowKonfiguratora.test.tsx` i `StationConfigurator.test.tsx`) RC=0, 21 passed;
+iniekcja I3c przeniesiona na `optionLabel` karty (`String(option.vectorGroup)`) czerwona (RC=1,
+4 failed), przywrócona; eslint zmienionych plików RC=0; tsc RC=0. Komplet iniekcji commitu 5
+(I1, I2, I3a, I3b, I3c, I4, I5) czerwony. Znanych czerwonych testów i strażników brak (lokalnie
+33 testy `pandapower` padają z braku pakietu w środowisku). Commit 5 jest gotowy do pełnej bramki
+sesji głównej; następca nie ma kroku do wykonania w tej karcie poza odbiorem bramki.
+
+**Commit 6 (zamknięty, 2026-10-30) — jedno źródło rodzajów łącznika i jawny brak danych w panelu
+katalogu.** Krok 1 (WIP, niezweryfikowany): lista rodzajów gałęzi w `frontend/src/types/enm.ts`
+(`KLASA_RODZAJU_GALEZI` z `satisfies` względem unii, `RODZAJE_GALEZI`, `RODZAJE_GALEZI_LACZNIKA`,
+`RODZAJE_GALEZI_APARATU`, `jestRodzajemGaleziAparatu`, `isApparatusBranch`), słownik nazw
+przeniesiony do `frontend/src/ui/shared/rodzajGalezi.ts`. Usunięte kopie frontu:
+`SchematContextPanel.tsx`, `kartaTechnicznaElementu.ts` (`TYPY_LACZNIKOW`, `PRIORYTET_GALEZI`),
+`operacjeNn.ts`, `zakresKadru.ts`, `SwitchCard.tsx` (dwie), `SwitchReview.tsx`,
+`MassReviewPanel.tsx`, `fixActionSurfaceRuntime.ts`, `InspectorEngineeringView.tsx` (predykat
+i nazwy), `inspectorAdapter.ts` (`TYPY_GALEZI`, `ETYKIETA_TYPU_GALEZI`); `LvDeviceType` =
+`Branch['type']`. Backend: `enm.models.RODZAJE_GALEZI_LACZNIKA` / `RODZAJE_GALEZI_APARATU`
+z typów pól zamiast kopii w `topology.py`, `tor_pola.py`, `validator.py`,
+`domain_operations_v2.py`, `topology_ops.py`, `v126_contracts.py`, `nn_circuit_sheet.py`,
+`zacisk_zabezpieczenia.py`. Wyrocznia harnessu dostała `rodzaje_galezi` i `nazwy_galezi`; test
+`frontend/src/ui/shared/__tests__/rodzajGalezi.test.ts`. Krok 2 (WIP, niezweryfikowany): panel ogólny karty katalogu
+pokazuje KAŻDE pole schematu kategorii — schemat `frontend/src/ui/catalog/polaKartyKatalogu.ts`
+(lustro serializacji `api/catalog.py`, wyrocznia `pola_kart_katalogu.json`, test
+`polaKartyKatalogu.test.ts`), brak wartości = „brak danych”, wartości złożone czytelne (nie
+„[object Object]”); test iloczynu `panelOgolnyKatalogu.test.tsx` (19 kategorii × {pełne, null,
+pominięte}). Pomiar: 136 ze 179 pól schematu nie ma polskiej etykiety (dotąd pokazywane jako
+angielski klucz po „uczłowieczeniu”). Krok 3 (WIP, niezweryfikowany): jeden słownik etykiet
+`frontend/src/ui/catalog/etykietyPolKarty.ts` (`ETYKIETY_POL_KARTY` — każde pole schematu i każdy
+klucz wartości złożonej z wyroczni, bez wpisów martwych; `KOLEJNOSC_POL_KARTY` bez pól spoza
+serwera), jakość pól karty (`card_field_status`) po polsku z `NAZWA_JAKOSCI_DANEJ_PL`
+(przeniesione z `KartaWerdyktu.tsx` do `ui2/wyniki/wzorzec/werdykt.ts`, parytet z
+`FieldQuality.label_pl` przez wyrocznię), skrót wykazu kategorii złożonych (przekładniki,
+przekształtniki) bez pól, których serwer nie wysyła (`measurement_kind`, `kind`, `sn_mva`,
+`pmax_mw`). Krok 4 (WIP): kopia `INTERNAL_STATION_DEVICE_LABELS_PL` i
+`stationRefFromInternalElement` w `InspectorEngineeringView.tsx` usunięta. Krok 5 (WIP, po
+strażniku `lv_domain_projection_guard` R4 — domena nN nie importuje `types/enm`): lista rodzajów
+gałęzi w osobnym module bez modelu sieci `frontend/src/types/rodzajeGalezi.ts`
+(`KLASA_RODZAJU_GALEZI`, typy `RodzajGaleziLacznika`/`RodzajGaleziBezpiecznika`, z których unia
+`Branch` bierze pola `type`; zgodność w obie strony wymusza kompilacja
+`RODZAJE_GALEZI_ZGODNE_Z_UNIA`); backend: `enm.stan_normalny.RodzajGaleziLacznika` jest typem
+pola `SwitchBranch.type`, kopia `TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM` i słownik
+`_RODZAJ_GALEZI_PL` usunięte; kopie w testach (`operacjeNn.test.ts`,
+`stanAparatuParytetGlifu.test.tsx`) i `czyLacznik` w `stanLacznika.ts` czytają jedno źródło.
+Weryfikacja commitu 6 (2026-10-30, drzewo `f2cb1ab19`): vitest related 347 plików / 7474
+testów RC=0, tsc RC=0, eslint RC=0, pytest celowany `-n 3` (lista importów kroku 1 + `tests/enm`,
+`tests/golden`, `tests/invariants`, `tests/cgmes`, migawka OpenAPI, determinizm e2e) 11104
+passed RC=0, `guardy_z_ci.py` KOMPLET ZIELONY RC=0. Iniekcje (każda czerwona, drzewo
+przywrócone): bezpiecznik poza klasą rodzajów, wyrocznia bez bezpiecznika, rodzaj mapy bez
+interfejsu gałęzi (tsc TS2322 na `RODZAJE_GALEZI_ZGODNE_Z_UNIA`), bezpiecznik jako łącznik
+w mapie frontu (test lustra backendu), panel ukrywający `null`, pole schematu usunięte,
+etykieta usunięta, nazwa jakości rozjechana z backendem (front i świeżość wyroczni), skrót
+przekształtnika z pola fantomowego, jakość pól karty jako kod.
+
+Znalezisko do decyzji architekta (zmierzone, nie naprawione w commicie 6): słowniki
+`APPARATUS_KIND_LABELS_PL` (`ui/inspector/EmptyInspectorPanel.tsx:64`,
+`ui/network-build/InspectorEngineeringView.tsx:1031`, rozjechane: „port odpływu” / „port
+odpływowy”), `APPARATUS_ROLE_LABELS_PL` i porównania `apparatusKind === 'cable_head'`
+(`InspectorEngineeringView.tsx:1167`, `ui/sld/shared/sldActionExecutor.ts:609`,
+`ui/sld/v2/command/SldCommandService.ts:421`) są kluczowane słownikiem (`disconnect_bus`,
+`cable_head`, `transformer_symbol`…), którego nie emituje żaden producent kanwy v3: identyfikator
+aparatu na kanwie to `${bayRef}#${symbolId}` z `SymbolId` (`cableHead`, `currentTransformer`…,
+`ui/sld/v3/symbols/defs.ts`), a klik i temat menu niosą `ownerRef = bayRef` bez `#`
+(`scene/buildScene.ts:1727`, `canvas/canvasMenuSubject.ts`). Wszystkie testy tych ścieżek
+podają syntetyczne `…#cable_head`. Skutek: akcja „Wyprowadź ciąg główny z głowicy” i pozycja
+menu „extend-trunk” na aparacie są nieosiągalne z kanwy; identyfikatory `…/internal-bay/…`
+(`daneElementuKanwy.ts`, `InspectorEngineeringView.tsx`) pochodzą ze skasowanego
+`StationInternalView`. Rozstrzygnięcie (kasacja martwej ścieżki albo wpięcie akcji głowicy
+w temat menu pola) należy do wątku SLD — bez zmian w commicie 6.
+
+**Commit 7 (WIP, 2026-10-30, niezweryfikowany — rozstrzygnięcie architekta: wpięcie, nie
+kasacja).** Jedna tożsamość aparatu pola `frontend/src/ui/sld/shared/identyfikatorAparatu.ts`
+(`${bayRef}#${SymbolId}`, jedyny konstruktor i parser, nazwa z `SYMBOL_DEFS.labelPl`, rola
+z `ROLA_SYMBOLU_PL`). `SymbolId` jedzie z meta kliku kanwy v3 do tematu menu
+(`CanvasMenuSubject.symbolAparatu`, `refOperacjiTematu`), stąd do menu, paska działań
+inspektora, wykonawcy (`extend-trunk` z głowicy: bramka zajętości pola z `line_fields`,
+`field_ref`) i karty aparatu inspektora. Skasowane: `APPARATUS_KIND_LABELS_PL` ×2,
+`APPARATUS_ROLE_LABELS_PL`, identyfikatory `…/internal-bay/…`, `EmptyInspectorPanel`,
+`inspectorTabRegistry`, słownik `APPARATUS_KIND` v2, martwe bramki `bayHasOutgoingRun`/
+`bayIsRunEndpoint`. Nowe testy: `identyfikatorAparatu.test.ts`,
+`identyfikatorAparatuSceny.contract.test.ts`, natywny klik w `punktStartuCiagu.test.tsx`.
+Następny krok: bieg tsc/eslint/vitest pod `flock`, iniekcje, test e2e głowicy
+(`s95-budowa-z-kanwy.spec.ts`), potem klasy 2–4 (typy katalogu wg wyroczni, nazwy wartości
+kodowych, „—” a „brak danych”).
+
+**Commit 8 (WIP, 2026-10-30).** Pierwszy bieg vitest commitu 7: 65 czerwonych w 12 plikach —
+testy z dawnymi kodami (`pole-1#cb`, temat aparatu z kompozytem w `modelRef`), meta kliku bez
+`symbolId`, niepełny kształt `LogicalViewsV1`, test martwej konwencji `…/transformer/…`.
+Przepisane na identyfikatory emitowane przez scenę. Pomiar klasy: głowica kablowa jest na
+kanwie WYŁĄCZNIE z rekordu aparatu pola (`primary_devices`, `CABLE_HEAD`); GPZ z
+`add_grid_source_sn` ma pola z samym łącznikiem, więc głowicę daje dopiero wyposażenie pola
+(`set_bay_equipment`, szablon pola odpływowego). Nowa scena generatora
+`glowice_kablowe_pol_gpz` (pole wolne i zajęte, wyposażone tą operacją) zasila natywny klik
+i kontrakt sceny (głowica na kanwie ⇔ rekord głowicy). Otwarte: karta aparatu inspektora
+(40 czerwonych w `InspectorEngineeringView.apparatus.test.tsx`, diagnoza w toku).
+
+**Commit 9 (WIP, 2026-10-30) — typy katalogu TS = wyrocznia serwera.** Wyrocznia
+`pola_kart_katalogu.json` mierzy też klucze typów pozycji (`typy_pozycji`: linia, kabel,
+transformator, łącznik, przekształtnik, generator SN, przełącznik zaczepów) i części punktu
+rozgałęzienia (`params`, `route_ports`, `apparatus_specs`); `polaKartyKatalogu.ts` trzyma
+rejestr kluczy `KluczeTypu<T>` (tsc wymusza równość z interfejsem), vitest — równość z
+wyrocznią. Usunięte pola fantomowe: łańcuch napięć PV/BESS (`u_n_kv`, `voltage_kv`,
+`voltage_lv_kv`), `switching_time_s` i `operations_before_maintenance_thousand` przełącznika
+zaczepów (skasowane w backendzie kartą K-Q), płaski kształt punktu rozgałęzienia (kreatory
+słupa i ZKSN pokazywały „undefined” i „—”; `TypePicker` czytał pola spoza `params`). Jedna
+ścieżka przekształtników (`fetchDerConverterTypes` → `/api/catalog/converter-types`),
+druga projekcja frontu skasowana razem ze strażnikiem `katalog_parytet_pol_guard.py`
+(zastąpionym testem parytetu). Fikstury kreatorów = rekordy serwera
+(`katalog_punktow_rozgalezienia.json`).
+
+**Commit 10 (WIP, 2026-11-04) — karta aparatu pola w inspektorze, punkt 1 zablokowany kanonem.**
+Przyczyna 40 czerwonych testów karty aparatu: pięć plików testów inspektora atrapowało
+`../../selection`, ale nie `../../selection/store`, więc karta K6 nie powstawała, a testy
+sprawdzały sekcje dawnych budowniczych, których projektant pod kartą nie widzi. Testy
+przepisane na kanon karty (podwójna atrapa wyboru, świeża migawka na przypadek — pamięć
+indeksu karty jest kluczowana tożsamością migawki). Luki produktu naprawione u źródła:
+karta aparatu podaje rolę techniczną z jednego słownika symboli (`ROLA_SYMBOLU_PL`), karta
+sieci zasilającej — napięcie zadane szyny bilansującej (`u_set_pu`), tryb karty pokazuje
+sekcję „Kontrola” (jedna funkcja `sekcjaKontroli` dla obu trybów), gałąź łącznikowa
+(wyłącznik, rozłącznik, bezpiecznik) wybrana jako odcinek dostaje kartę łącznika, nie kartę
+odcinka (predykat parami z `menuKindGalezi`, test iloczynu po wszystkich `RODZAJE_GALEZI`).
+Dawne budowniczowie sekcji aparatu skasowani (zostaje akcja „Skonfiguruj pole SN”).
+Otwarte, wymaga decyzji architekta: „Wyprowadź ciąg główny z głowicy” jest nieosiągalne —
+głowica kablowa jest rysowana tylko na polu zajętym (tam akcja jest bramkowana), a pole
+wolne z rekordem głowicy rysuje `bayReserve` zgodnie z rozstrzygnięciem
+GEOMETRIA-STACJI-BRAK-WYPOSAZENIA (`compose/apparatusSequence.ts::zakonczenieRezerwy`).
+Dwa testy `punktStartuCiagu.test.tsx` (głowica wolnego pola) są czerwone z tego powodu.
+Warianty: (A) głowica z rekordu rysowana także na polu wolnym (zmiana rysunku, bramka B-02),
+(B) akcja na zakończeniu `bayReserve` pola wolnego, (C) kasacja pozycji menu głowicy.
+
+**Commit 11 (2026-11-04) — nazwy z jednego słownika zamiast kodów katalogu (punkt 3).**
+Inwentarz zmierzony na wyroczni serwera: 85/85 szablonów rodzin bez `template_name_pl`
+i bez `template_code`; 5 producentów z kodami referencji (`ZPUE_WLOSZCZOWA`,
+`SCHNEIDER_ELECTRIC`). Na ekran trafiały: referencja szablonu (lista szablonów kreatora
+źródła, rysunek podglądu rozdzielnicy kreatora stacji, pozycja „szablon zapisany w polu”
+edytora wyposażenia), kod producenta (listy rodzin kreatorów pola i źródła, nagłówek rodziny,
+podsumowanie i podgląd kreatora stacji przy braku dopasowania), `notes_pl` jako nazwa
+szablonu (kreator pola), surowy kod jakości danej przyjętej (edytor wyposażenia), `undefined`
+dla statusu źródła spoza unii (`templateOptionLabel`, podgląd), wyjątek dla rodzaju pola spoza
+słownika (`bayKindLabelPl`). Jedno źródło nazw: `nazwaSzablonuPolaPl` /
+`nazwaSzablonuPoReferencjiPl` (`ui/catalog/BayTemplatePicker.tsx`), `nazwaProducentaPl`
+i `describeManufacturerStatusPl` (`ui/catalog/manufacturer.ts`), `grupaZrodlaSzablonuPl`,
+`etykietaZeSlownika` × `NAZWA_JAKOSCI_DANEJ_PL`; wartość spoza słownika ma opis jawny.
+Status producenta widoczny przy nazwie w kreatorze stacji (decyzja PLAN_DOKONCZENIA_100 pkt 2).
+Skasowane martwe wyspy bez miejsca montażu: komponenty `BayTemplatePicker`,
+`SwitchgearFamilyPicker` (pliki zostają z typami i predykatami), `ManufacturerPicker` z testem;
+nieczytane pola `manufacturerName`/`familyName` wyboru rozdzielnicy. Edytor wyposażenia pola i kreator źródła nie
+oferują już szablonów/rodzin, których backend nie złoży jako pojedynczego pola (blok RMU,
+rodzina bez karty, szablon bez rodziny) — predykat `czySzablonPojedynczegoPola`. Kreator pola SN
+(`ui2/kreatory/pole/KreatorPolaSn.tsx`) zostawia rodzinę blokową wybieralną z informacją
+`mvd-kreator-pole-rodzina-blokowa`, ale nie oferuje jej szablonu pojedynczego pola
+(`pole_katalogowe.aparaty_pola_z_referencji`: rodzina blokowa bez wyboru bloku kończy się
+twardym błędem). Parytet backendu
+słowników statusów katalogu przepięty na `ui/catalog/wartosciKodoweKarty.ts`. Punkt 4
+(„—” kontra „brak danych”) wstrzymany decyzją właściciela, nietknięty.
+
+
+**Commit 12 (2026-11-04) — decyzje architekta: punkt wyprowadzenia ciągu, karta źródła K6,
+jeden słownik statusów źródła szablonu, klasa „kod → etykieta z własnym zapasem”.**
+(1) Wariant (B): „Wyprowadź ciąg główny z głowicy” wpięte w zakończenie `bayReserve` pola
+wolnego z rekordem `CABLE_HEAD`; jeden predykat `jestPunktemWyprowadzeniaCiagu`
+(`ui/sld/shared/identyfikatorAparatu.ts`) czyta menu (`akcjeElementu.ts` →
+`aparatWyprowadzaCiag`) i wykonawca (`sldActionExecutor.ts`); rysunek bez zmian. Testy
+`punktStartuCiagu.test.tsx` (prawy i lewy klik natywny) i e2e s95:389 zielone na nowym punkcie.
+(2) Karta źródła K6 niesie sekcje „Zgodność przyłączeniowa (NC RfG, FRT)” (profil operatora,
+zakres Q, cos φ min, P(f), LVRT, HVRT, model dynamiczny) i „Zabezpieczenie źródła”
+(`protection_intent`) oraz typ i producenta przekształtnika z katalogu — wyłącznie z pól
+modelu; katalog, który nie zna wiązania, daje opis jawny, nie identyfikator. Martwe
+budowniczowie sekcji generatora/źródła/GPZ w `InspectorEngineeringView.tsx` skasowane (zostały
+działania). (3) `SOURCE_STATUS_LABEL_PL` grupowy wyprowadzony z jednego słownika
+`STATUS_ZRODLA` (status → etykieta, grupa) w `ui/catalog/BayTemplatePicker.tsx`; test parytetu
+po całej unii. (4) Inwentarz klasy zmierzony w całym `frontend/src` i przypięty strażnikiem
+`ui/__tests__/kodyZamiastOpisow.guard.test.ts`: R2 rozszerzona o klucz-wyrażenie składowe
+(28 miejsc w 15 plikach → `etykietaZeSlownika`) i o słownik `Map` (`nazwy.get(ref) ?? ref`,
+12 trafień: 10 naprawionych etykietą zapasową `etykietaZapasowaRefu` albo zdaniem, 2 wyjątki
+— znak czcionki PDF i kolor SVG eksportu), nowa R3 „przełącznik zwraca kod” (16 miejsc:
+4 martwe haki etykiet bez konsumenta skasowane, 11 przepisanych na słowniki, 1 wyjątek —
+przyrostek `data-testid` GPZ). Przy okazji: trzy rozbieżne słowniki wariantu przyłączenia
+(nagłówek inspektora znał 2 z 5 kodów, karta zbiorcza opisywała `block_transformer` jako
+„po stronie nN”) zastąpione jednym `wariantPrzylaczeniaPl`; identyfikator elementu w miejscu
+zwarcia scenariusza i serii zastąpiony mostem nazw; `katalogiKarty.ts` nie rzuca przy odpowiedzi
+spoza kontraktu (15 nieobsłużonych odrzuceń w `ui2/__tests__/integracja.test.tsx`).
+Zgłoszone architektowi, niewdrożone: klasa sąsiednia `name || ref_id` (pole nazwy z zapasem
+identyfikatora, około 30 miejsc ekranowych, zapas zależny od rodzaju obiektu) oraz katalog
+`ui/network-build/cards/` — 8 kart bez konsumenta produkcyjnego (tylko testy), w tym jedyny
+edytor sekcji GPZ (`add/update/delete_gpz_section` bez ścieżki UI). Czerwone e2e
+`kanon-menu-sld`, `menu-schematu-nn` (commit `d320685fe`) i `zwarcie-przez-impedancje-przejscia`
+(commit `88de3b242`) są naprawione na gałęzi `fix-e2e-a`, nie duplikowane. Punkt 4 („—”
+kontra „brak danych”) nadal wstrzymany.
+
+**Commit 13 (2026-11-04) — decyzje architekta do punktów „nie zrobiłem” commitu 12: klasa
+`name || ref_id`, kasacja martwych kart, sekcje szyn GPZ w karcie K6.**
+(1) Klasa „pole nazwy z zapasem identyfikatora” zmierzona w całym `frontend/src` (wzorce `??`/`||`
+z `ref_id`/`id`/`ref`/`*_ref` po polu nazwy, także wielowierszowe, oraz `xId.split('/').pop()`):
+jeden pomocnik ekranowy `ui/shared/nazwaObiektu.ts` (`nazwaObiektuPl`, `nazwaZRodzajemPl`,
+`nazwaPoReferencjiPl`, `miejsceWKolekcji`, `pierwszaNazwa`, `jestNazwa`) — nazwa, a gdy jej brak,
+jawny opis z rodzajem obiektu i miejscem („Szyna bez nazwy (2 z 3)”, „Stacja spoza modelu”);
+identyfikator nigdy nie jest nazwą (`isRawTechnicalIdentifier`). Przepięto ~100 wywołań w 49
+plikach; martwe `nazwaLubRef` (wyszukiwarka) i `stationNameFromData` skasowane. Strażnik
+`kodyZamiastOpisow.guard.test.ts` dostał reguły R4 (pole nazwy z zapasem identyfikatora) i
+R4_CZLON (ostatni człon identyfikatora jako nazwa); wyjątki uzasadnione: klucz dopasowania
+preselekcji macierzy NC RfG (`sldActionExecutor.ts`) i dwa klucze sortowania
+(`operationContextResolvers.ts`). Most po samej referencji `nazwaObiektuZMigawki` (ekrany wyników)
+zostaje — inny kontrakt wejścia, odsyłacz w dokumentacji pomocnika. Testy: rodzaj (19) × nazwa (9
+wariantów) × miejsce (8) oraz konsumenci × nazwa jest/pusta/brak. (2) Skasowano 8 kart
+`ui/network-build/cards/` bez konsumenta produkcyjnego (Station, Trunk, Transformer, Switch,
+NnSwitchgear, RenewableSource, BranchPole, Zksn) z `index.ts` i 6 plikami testów; komentarz
+`operationFormRegistry.tsx` wskazuje realną ścieżkę otwórz/zamknij łącznik (menu SLD i pasek
+działań inspektora). `cards/GpzSectionsEditor.tsx` zostaje — reużywa go konfigurator GPZ (karta
+katalogu, drzewo `wt-katalog`), jedyny edytor sekcji GPZ. (3) Karta techniczna K6 stacji GPZ:
+sekcja „Sekcje szyn” zaraz po identyfikacji — zwarte tabele SN i 110 kV (jedna sekcja = jeden
+wiersz w kolejności modelu: nazwa, szyna, Uₙ; odczyt z modelu, tylko do odczytu; tabela mieści się
+w szerokości inspektora bez przewijania — pierwsza wersja z kolumną surowego `order` liczonego od
+zera ucinała Uₙ, wykryte na zrzucie i usunięte) i w trybie edycji przycisk
+„Konfiguruj GPZ” otwierający konfigurator GPZ (E-10) wprost na karcie „Sekcje SN”
+(`payload.defaultCard: 'sections'`, mechanizm `gpzDefaultCard`). Pomiar (§10 standardu
+warsztatu): przed — sekcji w karcie brak (0 px), do karty sekcji konfiguratora 3 kliknięcia
+(prawy klik, „Otwórz źródło”, zakładka); po — wysokość sekcji 222 px, 1 kliknięcie.
+Zrzuty `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (materiał B-02, bez
+werdyktu). Czerwone e2e `sld-gpz-zwiniety` (wyłącznik niewidoczny) jest sprzed zmiany i należy do
+listy 22 czerwonych prowadzonej osobno — nie duplikowane. Punkt 4 („—” kontra „brak danych”)
+nadal wstrzymany.
+
+**Commit 14 (2026-11-04) — oględziny karty GPZ: każda informacja raz, bez sekcji i wierszy bez
+treści (standard KD6, §10 kontraktu prezentacji).** Karta stacji GPZ w kolejności toru energii:
+identyfikacja (bez „Podstawy rodzaju: nie dotyczy…”), „Zasilanie” (sieć zasilająca z modelu —
+przypisana do GPZ albo na jego szynie: nazwa, Sₖ″ maks., R/X; GPZ bez sieci — jawna luka modelu),
+transformator 110 kV/SN tylko, gdy model go zawiera, „Sekcje szyn”, „Rozdzielnia SN” (bez listy
+sekcji powtarzającej tabelę), „Przyłączenia”; bez „Transformator: brak” i „Strona nN”. Klasa w całej
+karcie K6: sekcje stacji wg jednego słownika `SEKCJE_Z_DEFINICJI_STACJI` (rodzaj stacji → sekcje z
+definicji; sekcja spoza definicji tylko z treścią modelu — rozdzielnia sieciowa SN i rozdzielnica
+nN też bez pustych sekcji); wiersze „nie dotyczy” bez treści zdjęte (aparat niełączeniowy —
+położenie i zdolność wyłączalna; linia napowietrzna — izolacja; źródło po stronie nN — transformator
+blokowy i kabel SN; pole bez zacisku — sekcja „Przyłączenie”); ogólnikowe „Źródło danych” zdjęte
+(sekcje szyn, tabela pól stacji, zgodność NC RfG), źródło danych tabliczki i znamion konkretnego
+elementu zostaje. Komórki tabel „nie dotyczy” zostają (odróżnienie od „brak danych” — punkt 4
+wstrzymany). Tabela pól stacji zwarta: pole, nr (tylko gdy którekolwiek pole ma numer), rodzaj
+aparatu głównego, stan — rola, typ katalogowy, znamiona, zabezpieczenie i przekładniki mówi karta
+pola. Tabele karty stacji mają cechę modelu `TabelaKarty.zwarta` (komórki zawijają się w szerokości
+inspektora, bez przewijania w poziomie; e2e: tabela pól GPZ i stacji SN/nN przy 420 i 560 px);
+tabela aparatów karty pola (liczby znamionowe z jednostką) świadomie zostaje w jednej linii
+z przewijaniem — pierwsza próba zawijania wszystkich tabel rozdzielała „17,5 / kV” i nadal ucinała
+„Stan”, a wersja z kolumnami roli i typu wypychała transformator z pierwszego ekranu (974 px przy
+granicy 871 px, e2e K6). Przy okazji: odbiór SN na szynie stacji nie trafia
+już do „Strona nN · Odbiory” (filtr pasma nN). Pomiar (e2e GPZ, 1600×1000, realny backend): przed
+(`6e72f2502`) — 6 sekcji (w tym „Transformator: brak” i pusta „Strona nN”), tabela pól 9 kolumn
+z przewijaniem, „Sekcje szyn” 222 px, karta niemieszcząca się w oknie inspektora (ucięta na zrzucie
+przy „Strona nN”; wysokości całej karty wtedy nie mierzono); po — 5 sekcji, karta 714 px, „Sekcje
+szyn” 179 px, tabela pól 3 kolumny bez przewijania, 1 kliknięcie do karty „Sekcje SN”
+konfiguratora. Zrzuty `docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed:
+te same ścieżki w `6e72f2502`); materiał B-02, bez werdyktu.
+
+**Commit 15 (2026-11-04) — decyzje architekta po oględzinach karty GPZ (6 punktów).** (1) Tabela
+pól stacji: Pole · (Nr — tylko gdy pole ma numer) · Rola · Stan; rola słowami kanonu ról pól
+(`FIELD_ROLE_LABEL_PL`, jedyne źródło etykiet ról — strażnik `test_etykiety_rol_pol_sn.py`
+zabrania drugiej listy i słów „liniowe odpływowe/dopływowe”, więc „Pole liniowe wejściowe /
+wyjściowe”, nie słowa z notatki architekta); rodzaj aparatu i reszta — karta pola. (2) Tabela
+aparatów karty pola zwarta: Aparat · Uᵣ [kV] · Iᵣ [A] · Iₖ [kA] — jednostka w nagłówku, liczby bez
+jednostek, wyrównane do prawej i niełamane (`KolumnaTabeli.liczbowa`); typ katalogowy, Iₜₕ, I_dyn
+i położenie — karta aparatu, którą otwiera klik w wiersz (`WierszTabeli.cel`, przycisk w pierwszej
+komórce); wskazanie z wiersza to TO SAMO, co klik w symbol aparatu na kanwie
+(`wskazanieAparatuPola`: selekcja pod refem pola z typem `elementTypeForKind('apparatus')` —
+funkcja przeniesiona z `SldCanvasV3Workspace.tsx` do `canvasMenuSubject.ts`, jedno źródło dla kanwy
+i inspektora — kontekst z refem urządzenia, temat z symbolem aparatu z sekwencji rysunku);
+test iloczynu sieć {gałęzie pola · rekordy aparatów} × rodzaj symbolu (8) × tryb {edycja, wyniki}
+porównuje kontekst, selekcję i treść karty po obu klikach. (3) Podpis tabeli tylko w sekcji z
+więcej niż jedną tabelą (renderer; tabela jedyna nazwana tytułem sekcji przez `aria-labelledby`):
+zdjęte „Sieć zasilająca”, „Pola rozdzielnicy SN”, „Odcinki przyłączone do stacji”, „Aparaty pola”;
+„Sekcje szyn” (SN i 110 kV) zachowuje podpisy. (4) Zasilanie GPZ: Sₖ″ i R/X w stanie maksymalnym
+i minimalnym (`sk3_mva`, `rx_ratio`, `sk3_min_mva`, `rx_ratio_min`) — wejścia zwarć maks. i min.;
+brak wartości w modelu — „—” w komórce liczbowej (wyjątek od wstrzymanego punktu 4 z polecenia
+architekta). (5) „Przyłączenia”: odczyt był poprawny — szyny stacji to szyny główne i zaciski pól
+SN (`szynyStacji`, lustro `enm.tor_pola.szyny_stacji`); scena z oględzin nie miała żadnego odcinka
+(`add_grid_source_sn` tworzy pola GPZ bez zacisku, jedyną gałęzią jest łącznik sprzęgła — sonda
+backendu). Spec GPZ dostał odcinek wyprowadzony z pola GPZ (`continue_trunk_segment_sn`
+z `field_ref`): liczba wierszy równa ENM, kolumna „Pole stacji” niesie nazwę pola; test jednostkowy
+iloczynu rodzaj stacji {GPZ, SN/nN} × odcinek {na zacisku pola · na szynie sekcji · wewnątrz
+stacji}. (6) „Strona nN” w GPZ przy potrzebach własnych — bez zmian (model niesie treść). Przy okazji: komórka aparatu
+gałęzi nie powtarza rodzaju, gdy nazwa gałęzi się nim zaczyna („Wyłącznik pola SN 3”, nie
+„Wyłącznik · Wyłącznik pola SN 3”). Pomiar (e2e GPZ, 1600×1000, realny backend): przed (`3975ecb15`,
+scena bez odcinka) — karta GPZ 714 px, tabela pól 3 kolumny z „Aparat główny”, tabela aparatów
+pola 6 kolumn z przewijaniem w poziomie (szerokości przewijania wtedy nie mierzono); po (scena
+z odcinkiem z pola GPZ) — 5 sekcji, karta 783 px (zasilanie 5 kolumn i wiersz przyłączenia),
+„Sekcje szyn” 179 px, tabela pól 3 kolumny (Pole · Rola · Stan), 1 wiersz przyłączeń równy ENM;
+karta pola GPZ: tabela aparatów 4 kolumny bez przewijania przy 420 px i przy 340 px (wysokość
+92 px w obu), 1 kliknięcie z wiersza do karty aparatu z typem katalogowym. Zrzuty
+`docs/uiux/zrzuty/k6-inspektor/gpz-sekcje-szyn-{ciemny,jasny}.png` (przed: te same ścieżki
+w `3975ecb15`), nowe `gpz-pole-aparaty-{420,340}-{ciemny,jasny}.png` (inspektor 420 px i 340 px) i odświeżone
+`k6-stacja-*`, `k6-pole-*`; materiał B-02, bez werdyktu.
+
+**Commit 16 (2026-11-05) — INSPEKTOR-POLA-DOMKNIECIE: opis bez powtórzeń, jedno źródło
+zabezpieczenia pola, braki z nazwą (punkty 1 i 3 karty oraz uwagi architekta a–d).** (1) Jedna
+funkcja `ui/shared/opisBezPowtorzen.ts` (rodzaj, rola i nazwa obiektu nadrzędnego, granica słowa,
+bez wielkości liter): tabela pól stacji K6 (kolumny Nr · Pole · Rola · Stan — nazwa zaczynająca
+się etykietą roli obejmuje kolumnę roli `colSpan`, `WierszTabeli.polaczone`; wybrane scalenie, nie
+pusta komórka — pusta komórka czytałaby się jak brak danej, a scalona daje nazwie szerokość dwóch
+kolumn przy 340 px), komórka i nagłówek karty aparatu pola (zdejmuje też nazwę pola: „Aparat Pole
+liniowe GPZ 1.1” → „Wyłącznik”), konfigurator stacji — tabela pól (Oznaczenie · Typ) i tabela
+źródeł (Nazwa · Rodzaj). Inwentarz klasy (grep kolumn nazwa + rodzaj/rola w inspektorze
+i konfiguratorach): tabele karty K6 (pola stacji, aparaty pola, przyłączenia — odcinek ma nazwę
+własną, sekcje szyn — sekcja nie niesie rodzaju), `StationConfigBaysCard`,
+`StationConfigDerSourcesCard`; `StationConfigProtectionCard` (Pole · Typ zabezpieczenia) i
+`StationConfigTopologyCard` (identyfikator portu · rodzaj portu) nie stawiają obok siebie nazwy
+i jej rodzaju — bez zmian; tabela pól konfiguratora GPZ (`TabelaPolSn`) jest na drzewie
+katalogu, nie na tej gałęzi. (3) Jedna funkcja odczytu `ui/shared/zabezpieczeniePola.ts`:
+funkcje WYMAGANE przez wzorzec (`Bay.protection_codes`) odróżnione od sterownika PRZYPISANEGO
+(`Bay.protection_ref` → `ProtectionAssignment`, a bez niego sterownik, którego `breaker_ref` jest
+aparatem pola — zabezpieczenie źródła nN i `add_relay` wskazaniem wyłącznika zapisują tylko
+`breaker_ref`); konsumenci: karta pola K6, oznaczenie zabezpieczeń na kanwie
+(`resolveBayProtectionMarking`), inspektor ui2, lista przekaźników i znacznik „Z” konfiguratora
+stacji. Brak sterownika przy funkcjach wymaganych — jedno zdanie („Brak sterownika — wzorzec pola
+wymaga funkcji 51, 50, 51N, 67N”) z akcją „dodaj zabezpieczenie” (`add_relay` z `bay_ref`).
+`opisPolaSn.ts` konfiguratora GPZ (drzewo katalogu, niezacommitowane zmiany innego wykonawcy) nie
+dał się przenieść cherry-pickiem — zależy od łańcucha 26 commitów gałęzi katalogu i od plików
+skasowanych tutaj; jego `zabezpieczeniePola`/`TEKST_BRAKU_STEROWNIKA` przy scaleniu przechodzą na
+funkcję wspólną (kształt `SterownikPola` zgodny). Karty pola i stacji: każdy wiersz, który może być
+pusty, ma `WierszKarty.brakPl` (czego brakuje i jak to uzupełnić — „bez numeru dyspozytorskiego —
+nadaj numer”, „na szynie, bez pola”, „bez typu”); brak z edycją jest przyciskiem kreatora edycji;
+test parytetu wymaga opisu przy każdym braku tych kart. (a) Lista „Odcinki na zacisku pola”:
+liczba w wierszu etykiety, pozycje w osobnym `dd` na całą szerokość. (d) Jeden układ wiersza
+w całym inspektorze (karta K6, stan i telemetria aparatu, wyniki elementu, węzeł): etykieta nigdy
+nie łamie się w połowie, wartość przechodzi pod etykietę. Testy: opis × granica słowa × wielkość
+liter; zabezpieczenie: wymagane × sterownik (7 wariantów) × rola × aparat oraz parytet
+konsumentów; renderer: scalenie × pozycja, brak × opis × edycja × tryb, akcja × tryb, lista;
+karta: nazwa × rola × rodzaj stacji × numer; panel: natywny klik w kanwę → „dodaj
+zabezpieczenie” → `add_relay` z `bay_ref`; 7 iniekcji czerwonych. Punkt 2 karty (odcinek bez
+wskazania pola tworzy pole, reguła walidatora) — NIE wykonany w tym commicie; inwentarz i sonda
+w meldunku wykonawcy.
+
+**Commit 17 (2026-11-05) — INSPEKTOR-POLA-DOMKNIECIE punkt 2: odcinek z szyny sekcji zawsze
+przez pole liniowe.** Decyzja architekta: odcinek SN przyłączany do szyny sekcji bez wskazania
+pola przechodzi przez wolne pole liniowe tej szyny, a bez wolnego pola (brak pól albo wszystkie
+zajęte) przez pole utworzone w tej samej operacji, wyposażone jak pole wzorcowe sekcji (kopia
+aparatu wzorca: OUT, FEEDER, IN; w GPZ kanon pól GPZ). Odmowa tylko z przyczyny modelowej:
+`branch_connection.gpz_line_fields_exhausted` (limit pól sekcji GPZ) i
+`field.auto_field_section_unknown` (sekcja GPZ nieopisana w modelu). Jeden predykat
+`enm/zajetosc_pol.py` (`szyny_sekcji_sn`, `odcinki_bez_pola`, reguła R1 zajętości rozszerzona
+o `meta.target_bay_ref`) czytany przez operacje, `tor_pola` (reguła N1) i walidator. Nowa
+reguła W049 / `station.segment_without_field` (WARNING, obszar STATIONS; aparat pola ma
+impedancję zerową, więc rozpływ i zwarcia są poprawne — błędny jest tor aparatu: SLD,
+selektywność, dobór; parytet z W042, który zostaje regułą transformatora), akcja naprawcza
+`przepnij_element_na_pole` — bez wolnego pola tworzy pole. Zdarzenie `LINE_FIELD_CREATED`
+z wpisem `audit_trail` dopisywanym do potwierdzenia operacji na froncie. Inwentarz klasy:
+`continue_trunk_segment_sn`, `start_branch_segment_sn`, `connect_secondary_ring_sn` (oba końce),
+`przepnij_element_na_pole` — naprawione; `insert_station_on_segment_sn`,
+`append_station_on_endpoint` i szablony stacji (przez `insert_station`) już przyłączały przez pole
+(POLA-W-TORZE); import XLSX buduje sieć operacjami domenowymi (`enm/kompilator_grafu.py`);
+archiwum i modele zastane nie są migrowane — W049 wskazuje odcinek, przepięcie tworzy pole;
+szyna spoza rozdzielnicy stacji zostaje przyłączeniem wprost (punkt sieci, nie rozdzielnica).
+Sonda rozpływu i I″k na 5 rodzajach × 4 stanach × 3 operacjach: tam, gdzie pole było, wyniki
+identyczne co do bitu (różnica migawki w pierścieniach z GPZ i stacji: brak
+`assigned_corridor_ref` dopisywanego dawniej przez samonaprawę alokatora pól GPZ); tam, gdzie
+pole powstało, względem kabla wprost na szynie dU ≤ 6,1·10⁻⁸ kV i dI″k ≤ 2,9·10⁻¹¹ A (łącznik
+o impedancji zerowej, różnica z kolejności węzłów w iteracji NR, poniżej tolerancji 10⁻⁸ p.u.).
+Testy: `tests/enm/test_odcinek_bez_pola.py` (operacja × rodzaj stacji × stan pól × sekcja,
+determinizm, odmowy, model zastany z parytetem predykat–walidator–tor_pola). Iniekcje czerwone:
+predykat lokalny w kontynuacji (16), brak pola w stacji (27), brak pierwszego pola GPZ (16),
+walidator z własnym warunkiem (12), front bez zdania o polu (2).
+Znaleziska uboczne naprawione: spec `e2e/gpz-sekcje-szyn.spec.ts` mierzył wąski inspektor
+jako 420 px (zmiana motywu przy zrzutach zabierała fokus z uchwytu, klawisz nie zwężał panelu) —
+fokus przed każdym przebiegiem i asercja 340 px; osierocone zrzuty bez szerokości w nazwie
+usunięte; typ `audit_trail` odpowiedzi operacji (`unknown[]` → `AuditEntry[]`); błąd typu
+w teście tabel karty technicznej (bramka typów poza zasięgiem 1 → 0).
 ---
 
 ## LICZBY-PL

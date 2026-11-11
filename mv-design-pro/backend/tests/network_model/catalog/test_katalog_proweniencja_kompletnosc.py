@@ -129,12 +129,12 @@ def test_przyszla_pozycja_bez_zrodla_jest_odrzucana_w_kazdym_katalogu() -> None:
             model="x",
         )
     # przekształtnik: rekord literalny bez źródła
-    with pytest.raises(ValueError, match="catalog.source_missing"):
+    with pytest.raises(ValueError, match="nie ma wskazanego źródła danych"):
         konw._apply_quality_defaults({"id": "x", "params": {"kind": "PV"}})
     # turbina wiatrowa jest pozycją przekształtnika (rodzaj WIND) — te same dwa wejścia;
     # równoległy model turbin (`wind_turbines.catalog`) skasowany kartą
     # KATALOG-TURBINY-TOR-V112, więc trzeciego wejścia klasy już nie ma.
-    with pytest.raises(ValueError, match="catalog.source_missing"):
+    with pytest.raises(ValueError, match="nie ma wskazanego źródła danych"):
         konw._apply_quality_defaults({"id": "x", "params": {"kind": "WIND"}})
 
 

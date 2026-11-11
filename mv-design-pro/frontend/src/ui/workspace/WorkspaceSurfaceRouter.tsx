@@ -1,3 +1,4 @@
+import { miejsceWKolekcji, nazwaObiektuPl } from '../shared/nazwaObiektu';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { useAnalysisEligibilityStore, useEligibilityMatrix } from '../analysis-eligibility';
@@ -148,6 +149,7 @@ import { szynyStacji } from '../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
 import { MathInline } from '../proof/MathRenderer';
 import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -790,7 +792,7 @@ function buildAnalysisTableRows(
     rows.push({
       key: `bus:${bus.ref_id}`,
       type: 'Węzeł',
-      name: bus.name || bus.ref_id,
+      name: nazwaObiektuPl(bus.name, 'szyna', miejsceWKolekcji(snapshot.buses, bus)),
       voltage: formatTechnicalNumber(bus.voltage_kv, 'kV'),
       input: bus.zone ? `Strefa: ${bus.zone}` : 'topologia ENM',
       resultA: 'U: nie wyznaczono',
@@ -808,7 +810,7 @@ function buildAnalysisTableRows(
     rows.push({
       key: `branch:${branch.ref_id}`,
       type: branch.type === 'cable' ? 'Odcinek kablowy SN' : 'Gałąź SN',
-      name: branch.name || branch.ref_id,
+      name: nazwaObiektuPl(branch.name, 'odcinek', miejsceWKolekcji(snapshot.branches, branch)),
       voltage: 'SN',
       input: `${length}; ${rx}; katalog: ${formatCatalogRef(branch.catalog_ref)}`,
       resultA: 'I: nie wyznaczono',
@@ -821,7 +823,7 @@ function buildAnalysisTableRows(
     rows.push({
       key: `transformer:${transformer.ref_id}`,
       type: 'Transformator',
-      name: transformer.name || transformer.ref_id,
+      name: nazwaObiektuPl(transformer.name, 'transformator', miejsceWKolekcji(snapshot.transformers, transformer)),
       voltage: `${formatTechnicalNumber(transformer.uhv_kv, 'kV')} / ${formatTechnicalNumber(transformer.ulv_kv, 'kV')}`,
       input: `$S_{n}$ ${formatTechnicalNumber(transformer.sn_mva, 'MVA')}; $u_{k}$ ${formatTechnicalNumber(transformer.uk_percent, '%')}; katalog: ${formatCatalogRef(transformer.catalog_ref)}`,
       resultA: 'obciążenie: nie wyznaczono',
@@ -840,7 +842,7 @@ function buildAnalysisTableRows(
     rows.push({
       key: `generator:${generator.ref_id}`,
       type: sourceType,
-      name: generator.name || generator.ref_id,
+      name: nazwaObiektuPl(generator.name, 'generator', miejsceWKolekcji(snapshot.generators, generator)),
       voltage: generator.connection_variant ?? 'brak danych',
       input: `P ${formatTechnicalNumber(generator.p_mw, 'MW')}; Q ${formatTechnicalNumber(generator.q_mvar, 'MVAr')}; katalog: ${formatCatalogRef(generator.catalog_ref)}`,
       resultA: 'wpływ U/I: nie wyznaczono',
@@ -1380,7 +1382,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       label: 'Etap 9 NC RfG / PTPiREE',
       status: allDers.length === 0 ? 'brak_danych' : incompleteDers.length > 0 || derAxesAggregate.anyPartial ? 'czesciowy' : 'gotowe',
       dataSummary: `${allDers.length} układów PV/BESS/FW, ${incompleteDers.length} do uzupełnienia`,
-      missingFields: allDers.length === 0 ? ['PCC źródła', 'profil NC RfG', 'LVRT/HVRT'] : incompleteDers.map((der) => der.name ?? der.id),
+      missingFields: allDers.length === 0 ? ['PCC źródła', 'profil NC RfG', 'LVRT/HVRT'] : incompleteDers.map((der) => nazwaObiektuPl(der.name, 'generator', miejsceWKolekcji(allDers, der))),
       sourceRef: 'DER / NC RfG',
       fixAction: { label: 'Testy NC RfG', onClick: openNcRfgSurface },
     },
@@ -1780,7 +1782,7 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       : 'Nie wykonano obliczeń do prezentacji';
 
   const lastCalculationLabel = lastCompleted
-    ? `${ANALYSIS_TYPE_LABELS[lastCompleted.analysis_type] ?? lastCompleted.analysis_type} · ${formatDateTime(lastCompleted.finished_at ?? lastCompleted.started_at)}`
+    ? `${etykietaZeSlownika(ANALYSIS_TYPE_LABELS, lastCompleted.analysis_type)} · ${formatDateTime(lastCompleted.finished_at ?? lastCompleted.started_at)}`
     : 'Nie wykonano obliczeń';
 
   const nextStepLabel = !activeCaseName

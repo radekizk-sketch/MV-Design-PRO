@@ -312,22 +312,22 @@ def create_power_flow_comparison(
     except PowerFlowRunNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow run nie znaleziony: {e.run_id}",
+            detail=f"Nie znaleziono biegu rozpływu mocy {e.run_id}.",
         ) from e
     except PowerFlowRunWrongTypeError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Bieg {e.run_id} nie jest biegiem rozpływu mocy (rodzaj: {e.analysis_type})",
+            detail=str(e),
         ) from e
     except PowerFlowRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Power flow run nie zakończony (status: {e.status}): {e.run_id}",
+            detail=str(e),
         ) from e
     except PowerFlowProjectMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
+            detail=str(e),
         ) from e
     except PowerFlowComparisonError as e:
         raise HTTPException(
@@ -369,7 +369,7 @@ def get_power_flow_comparison(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
 
@@ -397,7 +397,7 @@ def get_power_flow_comparison_results(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
 
@@ -425,7 +425,7 @@ def get_power_flow_comparison_trace(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
 
@@ -455,7 +455,7 @@ def export_power_flow_comparison_json(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
     # Build export payload
@@ -506,7 +506,10 @@ def export_power_flow_comparison_docx(
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="DOCX export requires python-docx. Install with: pip install python-docx",
+            detail=(
+                "Eksport porównania do DOCX jest niedostępny — na serwerze obliczeń nie "
+                "zainstalowano biblioteki python-docx."
+            ),
         )
 
     service = _build_service(uow_factory)
@@ -517,7 +520,7 @@ def export_power_flow_comparison_docx(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
     # Create DOCX document
@@ -646,7 +649,10 @@ def export_power_flow_comparison_pdf(
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF export requires reportlab. Install with: pip install reportlab",
+            detail=(
+                "Eksport porównania do PDF jest niedostępny — na serwerze obliczeń nie "
+                "zainstalowano biblioteki reportlab."
+            ),
         )
 
     service = _build_service(uow_factory)
@@ -657,7 +663,7 @@ def export_power_flow_comparison_pdf(
     except PowerFlowComparisonNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Power flow comparison nie znalezione: {e.comparison_id}",
+            detail=f"Nie znaleziono porównania rozpływów mocy {e.comparison_id}.",
         ) from e
 
     # Create PDF in memory

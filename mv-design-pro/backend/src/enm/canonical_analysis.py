@@ -40,6 +40,7 @@ from application.v126_artifacts import (
 )
 from domain.canonical_operations import READINESS_CODES
 from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
+from domain.opis_przebiegu import RODZAJE_PRZEBIEGU_PL, rodzaj_przebiegu_pl
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
     KOD_PUNKT_PRACY_BRAK,
@@ -682,7 +683,22 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         # `ExecutionAnalysisType` (FROZEN, `domain/execution.py`) nie ma
         # odpowiednika V12.6, więc etykieta jest własna, nie z tego wyliczenia.
         return f"V126_{run.analysis_type.removeprefix('v126:').upper()}"
-    raise ValueError(f"Unsupported canonical analysis type: {run.analysis_type}")
+    if run.analysis_type not in RODZAJE_PRZEBIEGU_PL:
+        raise ValueError(
+            f"Rodzaj przebiegu {run.analysis_type!r} spoza słownika aplikacji — rejestr "
+            f"biegów zna wyłącznie: {_lista_rodzajow_przebiegu()}."
+        )
+    raise AssertionError(
+        "Błąd programu: rodzaj przebiegu ze słownika aplikacji bez typu wykonania — "
+        "`test_kazdy_rodzaj_przebiegu_ma_typ_wykonania_i_wykonawce` przypina komplet"
+    )
+
+
+def _lista_rodzajow_przebiegu() -> str:
+    """Rodzaje przebiegu słowami projektanta (biegi V12.6 — prefiks ``v126:``)."""
+    return ", ".join(f"„{nazwa}”" for nazwa in RODZAJE_PRZEBIEGU_PL.values()) + (
+        " oraz biegi pakietu akademickiego V12.6"
+    )
 
 
 #: Mapowanie statusu DOMENOWEGO biegu na status KONTRAKTU HTTP — JEDYNE zrodlo prawdy.
@@ -1426,8 +1442,9 @@ def _wykonaj_analize_biegu(
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
-            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy (analysis_type='PF'); "
-            f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
+            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy; dla przebiegu "
+            f"„{rodzaj_przebiegu_pl(run.analysis_type)}” graf buduje wykonawca z migawki "
+            "biegu."
         )
     if run.analysis_type == "PF":
         _execute_power_flow(run, graf, uow_factory=uow_factory)
@@ -1443,8 +1460,16 @@ def _wykonaj_analize_biegu(
         _execute_protection(run, uow_factory)
     elif run.analysis_type.startswith("v126:"):
         _execute_v126(run)
+    elif run.analysis_type not in RODZAJE_PRZEBIEGU_PL:
+        raise ValueError(
+            f"Rodzaj przebiegu {run.analysis_type!r} spoza słownika aplikacji — wykonawca "
+            f"biegów zna wyłącznie: {_lista_rodzajow_przebiegu()}."
+        )
     else:
-        raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
+        raise AssertionError(
+            "Błąd programu: rodzaj przebiegu ze słownika aplikacji bez wykonawcy — "
+            "`test_kazdy_rodzaj_przebiegu_ma_typ_wykonania_i_wykonawce` przypina komplet"
+        )
 
 
 #: Nazwana ODMOWA OBLICZENIA biegu (karta #151) — JEDNO źródło dla każdego miejsca,
@@ -1458,8 +1483,8 @@ def _wykonaj_analize_biegu(
 #: `ValueError`). `ArithmeticError` to osobliwość liczbowa DANYCH (`ZeroDivisionError`
 #: przy zerowej impedancji transformatora, `OverflowError` przy rozbieżności). Każdy
 #: INNY wyjątek (`AttributeError`, `TypeError`, `KeyError`...) jest błędem programu:
-#: wariant w pamięci po prostu wybucha, a bieg persystowany dostaje FAILED z nazwą
-#: błędu wewnętrznego i wyjątek leci dalej (500 + pełny ślad w dzienniku).
+#: wariant w pamięci po prostu wybucha, a bieg persystowany dostaje FAILED ze zdaniem
+#: o błędzie wewnętrznym i wyjątek leci dalej (500 + pełny ślad w dzienniku).
 #: Karta ODMOWA-DANYCH-422 ŚWIADOMIE zostawia tu `ValueError`, nie `OdmowaDanychError`:
 #: bieg woła rdzenie B-01 (IEC 60909, rozpływ NR/GS/FD, stan fazowy, PTPiREE, V12.6),
 #: które zgłaszają odmowę wejścia gołym `ValueError` i `LinAlgError` — zawężenie krotki
@@ -1697,15 +1722,16 @@ def execute_run(
         run.finished_at = datetime.now(UTC)
         _save_run(run)
         return run
-    except Exception as exc:
+    except Exception:
         # Błąd programu (karta #151): bieg NIE zostaje w RUNNING (atomowe przejęcie
-        # zablokowałoby ponowne uruchomienie), dostaje FAILED z nazwą błędu wewnętrznego
-        # — bez treści wyjątku na ekranie — a wyjątek leci dalej: 500 i pełny ślad.
+        # zablokowałoby ponowne uruchomienie), dostaje FAILED ze zdaniem o błędzie
+        # wewnętrznym — bez treści i bez nazwy klasy wyjątku na ekranie (identyfikator kodu
+        # nie jest zdaniem dla projektanta; nazwę i ślad niesie dziennik serwera) — a wyjątek
+        # leci dalej: 500 i pełny ślad.
         logger.exception("Bieg %s przerwany błędem wewnętrznym programu", run_id)
         run.status = "FAILED"
         run.error_message = (
-            f"Błąd wewnętrzny programu ({type(exc).__name__}) — bieg przerwany. "
-            "Szczegóły są w dzienniku serwera."
+            "Błąd wewnętrzny programu — bieg przerwany. Szczegóły są w dzienniku serwera."
         )
         run.finished_at = datetime.now(UTC)
         _save_run(run)
@@ -1930,7 +1956,7 @@ def _bieg_rozplywu_punktu_pracy(run: CanonicalRun) -> PunktPracyRozplywu:
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_BRAK,
             "Bieg dynamiki czasowej wymaga punktu pracy z rozpływu mocy: wskaż zakończony "
-            f"bieg rozpływu tej samej migawki w opcjach biegu (`{KLUCZ_BIEGU_ROZPLYWU}`). "
+            "bieg rozpływu tej samej migawki w opcjach biegu. "
             "Start od napięć znamionowych byłby wynikiem policzonym z danych, których nikt "
             "nie wyznaczył",
             elementy=(KLUCZ_BIEGU_ROZPLYWU,),
@@ -2129,7 +2155,7 @@ def build_dynamika_time_series(
     os_czasu_s, strona_probki, probki = wynik
     if strona_probki is None:
         raise BrakZasobuError(
-            f"Szeregi biegu {run.id} zapisano przed kontraktem resultset_dynamic_v2 (brak "
+            f"Szeregi biegu {run.id} zapisano przed obecnym kontraktem wyniku dynamiki (brak "
             "strony próbek) — przelicz bieg dynamiki, żeby odczytać przebieg"
         )
     if klucze_kanalow and not probki:
@@ -2432,7 +2458,7 @@ def rozszerzenia_audit2_dla_opcji(
     if not project_id_str or not station_id:
         raise OdmowaDanychError(
             "Opcje biegu wskazują konfigurację audytu 2 połową pary: potrzebne są OBA "
-            "`audit2_project_id` i `audit2_station_id`"
+            "wskazania — projektu i stacji, której konfiguracja dotyczy"
         )
     try:
         project_uuid = UUID(str(project_id_str))
@@ -2445,9 +2471,10 @@ def rozszerzenia_audit2_dla_opcji(
         ) from exc
     if uow_factory is None:
         raise ValueError(
-            "Opcje biegu wskazują konfigurację audytu 2 stacji "
-            f"({project_id_str}/{station_id}), a wykonawca nie dostał fabryki UnitOfWork "
-            "wołającego — bieg nie buduje własnego połączenia z bazą (CV-4.2b)"
+            "Opcje biegu wskazują konfigurację audytu stacji "
+            f"(projekt {project_id_str}, stacja {station_id}), a wykonawca nie dostał fabryki "
+            "jednostki pracy bazy danych od wołającego — bieg nie buduje własnego połączenia "
+            "z bazą"
         )
     from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
@@ -2675,6 +2702,23 @@ def _zalozenie_czasu_tb_roboczego(
 #: zmieniły się od biegu — wtedy wkłady nie należą do tego biegu i są ODMAWIANE.
 _POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva", "kappa")
 
+#: Wielkości zapisanego wiersza wyniku zwarciowego → nazwy dla komunikatu (karta #145:
+#: komunikat nie niesie klucza zapisu) — jedno źródło dla bramki spójności wkładów
+#: (``_POLA_SPOJNOSCI_WKLADOW``) i oceny cieplnej przewodów.
+NAZWY_WIELKOSCI_WIERSZA_ZWARCIOWEGO_PL: dict[str, str] = {
+    "c_factor": "współczynnik napięciowy c",
+    "un_v": "napięcie znamionowe sieci",
+    "ikss_a": "prąd zwarciowy początkowy",
+    "ip_a": "prąd zwarciowy udarowy",
+    "ith_a": "prąd zastępczy cieplny",
+    "sk_mva": "moc zwarciowa",
+    "rx_ratio": "stosunek R/X",
+    "kappa": "współczynnik udaru κ",
+    "tk_s": "czas trwania zwarcia Tk",
+    "ib_a": "prąd wyłączeniowy symetryczny",
+    "tb_s": "czas wyłączania",
+}
+
 
 def _policz_rozplyw_punktu_na_zadanie(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
@@ -2721,7 +2765,9 @@ def _policz_rozplyw_punktu_na_zadanie(
     if rozjazd:
         raise ValueError(
             "Wkłady gałęziowe na żądanie niespójne z biegiem "
-            f"{run.id} (punkt {fault_node_id}, pola {rozjazd}): dane wejściowe biegu "
+            f"{run.id} (punkt {fault_node_id}, wielkości: "
+            f"{', '.join(NAZWY_WIELKOSCI_WIERSZA_ZWARCIOWEGO_PL[p] for p in rozjazd)}): dane "
+            "wejściowe biegu "
             "(migawka, opcje, konfiguracja audytu 2) zmieniły się od jego wykonania — "
             "uruchom analizę ponownie."
         )

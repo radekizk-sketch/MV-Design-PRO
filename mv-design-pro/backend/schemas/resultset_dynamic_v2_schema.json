@@ -167,13 +167,13 @@
           "type": "number"
         },
         "szerokosc_przedzialu_s": {
-          "description": "Szerokosc przedziału lokalizacji (0 dla chwili zdarzenia).",
+          "description": "Szerokość przedziału lokalizacji (0 dla chwili zdarzenia).",
           "minimum": 0.0,
           "title": "Szerokosc Przedzialu S",
           "type": "number"
         },
         "t_s": {
-          "description": "Chwila przekroczenia (strona po przekroczeniu). Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "description": "Chwila przekroczenia (strona po przekroczeniu). Czas skwantyzowany do 9 cyfr znaczących na granicy kontraktu (rozdzielczość publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
           "title": "T S",
           "type": "number"
         },
@@ -212,7 +212,7 @@
           "type": "number"
         },
         "przed": {
-          "description": "Wartość stanu tuz przed przypisaniem.",
+          "description": "Wartość stanu tuż przed przypisaniem.",
           "title": "Przed",
           "type": "number"
         }
@@ -465,7 +465,7 @@
       "description": "Zdarzenie harmonogramu FAKTYCZNIE wykonane przez solver (nie zaplanowane).\n\nSkutki topologiczne CHWILI (wspolne dla zdarzen rownoczesnych, jak pomiar\nre-inicjalizacji): wezly, ktore w tej chwili staly sie beznapieciowe, odbiory,\nktore stracily obwod, i wezly zasilone ponownie. Przypisania stanu (komendy\nregulacji, przypisania) z pomiarem ciaglosci stanow NIEprzypisanych. Zdarzenie\nWARUNKOWE (akcja dozoru) niesie przyczyne `dozor:<ident>` i pomiar lokalizacji.",
       "properties": {
         "delta_x_nieprzypisane_max": {
-          "description": "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanow sprzed całej chwili — 0,0 dokładnie (ciągłość stanow mierzona, nie deklarowana).",
+          "description": "Maks. skok stanu różniczkowego NIEprzypisanego w tej chwili, wobec stanów sprzed całej chwili — 0,0 dokładnie (ciągłość stanów mierzona, nie deklarowana).",
           "title": "Delta X Nieprzypisane Max",
           "type": "number"
         },
@@ -483,7 +483,7 @@
               "type": "null"
             }
           ],
-          "description": "Wielkość minus próg na prawym koncu przedziału lokalizacji.",
+          "description": "Wielkość minus próg na prawym końcu przedziału lokalizacji.",
           "title": "G Po"
         },
         "g_przed": {
@@ -495,7 +495,7 @@
               "type": "null"
             }
           ],
-          "description": "Wielkość minus próg na lewym koncu przedziału lokalizacji.",
+          "description": "Wielkość minus próg na lewym końcu przedziału lokalizacji.",
           "title": "G Przed"
         },
         "iteracje_lokalizacji": {
@@ -579,16 +579,16 @@
               "type": "null"
             }
           ],
-          "description": "Szerokosc przedziału lokalizacji pobudzenia; None dla planowanego.",
+          "description": "Szerokość przedziału lokalizacji pobudzenia; None dla planowanego.",
           "title": "Szerokosc Przedzialu S"
         },
         "t_wykonany_s": {
-          "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "description": "Czas skwantyzowany do 9 cyfr znaczących na granicy kontraktu (rozdzielczość publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
           "title": "T Wykonany S",
           "type": "number"
         },
         "t_zaplanowany_s": {
-          "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "description": "Czas skwantyzowany do 9 cyfr znaczących na granicy kontraktu (rozdzielczość publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
           "title": "T Zaplanowany S",
           "type": "number"
         },
@@ -601,7 +601,7 @@
               "type": "null"
             }
           ],
-          "description": "Chwila pobudzenia dozoru (zdarzenie warunkowe); None dla planowanego. Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+          "description": "Chwila pobudzenia dozoru (zdarzenie warunkowe); None dla planowanego. Czas skwantyzowany do 9 cyfr znaczących na granicy kontraktu (rozdzielczość publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
           "title": "T Zlokalizowany S"
         }
       },
@@ -675,7 +675,7 @@
     },
     "os_czasu_s": {
       "default": [],
-      "description": "Czas skwantyzowany do 9 cyfr znaczacych na granicy kontraktu (rozdzielczosc publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
+      "description": "Czas skwantyzowany do 9 cyfr znaczących na granicy kontraktu (rozdzielczość publikacji); chwile zdarzeń warunkowych rdzeń lokalizuje z tolerancja z nastaw solvera w pełnej precyzji.",
       "items": {
         "type": "number"
       },

@@ -18,11 +18,15 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, EnergyNetworkModel } from '../../../../types/enm';
+import { symbolIdForPrimaryDeviceKind } from '../../v3/compose/apparatusSequence';
+import { ROLA_SYMBOLU_PL } from '../identyfikatorAparatu';
 import { KartaTechnicznaElementu } from '../../../network-build/inspektor-elementu/KartaTechnicznaElementu';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import {
   BRAK_DANYCH_PL,
+  KATALOGI_PUSTE,
+  POZYCJA_KATALOGU_BEZ_NAZWY_PL,
   RODZAJE_KARTY,
   WYMAGANE_POLA_KARTY,
   buildKartaTechniczna,
@@ -34,6 +38,28 @@ import {
 } from '../kartaTechnicznaElementu';
 
 type Wariant = 'pelne' | 'brak';
+
+/** Rejestr ZAMKNIĘTY rodzajów rekordu aparatu pola — nowy rodzaj w `types/enm.ts` bez wpisu
+ *  tu nie skompiluje się (iloczyn testu roli niżej). */
+const RODZAJE_REKORDU = {
+  CB: true,
+  LOAD_SWITCH: true,
+  DS: true,
+  ES: true,
+  CT: true,
+  VT: true,
+  CABLE_HEAD: true,
+  TRANSFORMER_DEVICE: true,
+  FUSE: true,
+  GENERATOR_PV: true,
+  GENERATOR_BESS: true,
+  GENERATOR_FW: true,
+  PCS: true,
+  BATTERY: true,
+  SURGE_ARRESTER: true,
+  UNBALANCE_CT: true,
+  PHASE_TO_PHASE_VT: true,
+} as const satisfies Record<BayPrimaryDeviceKind, true>;
 
 const KATALOGI: KatalogiKarty = {
   aparatySn: new Map([
@@ -52,6 +78,55 @@ const KATALOGI: KatalogiKarty = {
     ],
   ]),
   transformatory: new Map([['tr-630-15-04', { name: 'TNOSCT 630 kVA 15/0,4 kV' }]]),
+  przeksztaltniki: new Map([['conv-bess-2500', { name: 'PCS BESS 2,5 MW / 0,8 kV', manufacturer: 'Producent PCS' }]]),
+  systemyZasilajace: new Map([['siec-110-250', { name: 'Sieć 110 kV · Sₖ″ 250 MVA' }]]),
+  rodzinyRozdzielnic: new Map(),
+  szablonyPol: [],
+  operatorzyNcRfg: [
+    {
+      operator_id: 'pse',
+      operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+      reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+      ride_through: { lvrt: [{ time_s: 0, voltage_pu: 0.05 }], hvrt: [{ time_s: 0, voltage_pu: 1.3 }] },
+    } as never,
+  ],
+  krzywePf: new Map([['pf-1', 'Charakterystyka P(f) operatora']]),
+  profileDynamiki: [
+    // Pełna pozycja katalogu (typ `DerDynamicProfileItem`, bez rzutowania) — niepełna atrapa
+    // ukrywała, że etykieta profilu czyta proweniencję.
+    {
+      profile_id: 'dyn-bess',
+      profile_name_pl: 'Profil BESS grid-following',
+      der_kind: 'BESS',
+      control_mode: 'grid_following',
+      tp_s: 0.05,
+      tq_s: 0.05,
+      p_f_droop_pu: 0.04,
+      p_f_dead_band_hz: 0.2,
+      q_u_droop_pu: 4.0,
+      q_u_dead_band_pu: 0.02,
+      i_max_pu: 1.1,
+      v_min_continuous_pu: 0.9,
+      v_max_continuous_pu: 1.1,
+      frt_response_time_ms: 30,
+      iq_max_during_fault_pu: 1.0,
+      iq_priority_during_fault: true,
+      p_recovery_rate_pu_per_s: 0.2,
+      p_recovery_delay_ms: 0,
+      virtual_inertia_h_s: null,
+      pll_kp: 50,
+      pll_ki: 500,
+      current_kp: 1,
+      current_ki: 100,
+      frt_k_factor: 2,
+      gfm_control: null,
+      virtual_damping_pu: null,
+      virtual_resistance_pu: null,
+      virtual_reactance_pu: null,
+      current_limit_strategy: null,
+      proweniencja: { zrodlo: 'karta_producenta', odniesienie: 'karta PCS 2,5 MW', data: null },
+    },
+  ],
 };
 
 /** Ta sama topologia w obu wariantach; `pelne` dokłada parametry, katalogi i oznaczenia. */
@@ -265,7 +340,22 @@ function model(wariant: Wariant): EnergyNetworkModel {
         nc_rfg_module: jesli('B'),
         catalog_ref: jesli('conv-bess-2500'),
         source_mode: jesli('KATALOG'),
-        materialized_params: p ? { name: 'PCS BESS 2,5 MW / 0,8 kV', control_mode: 'Q_U_DROOP' } : undefined,
+        // Tabliczka w kształcie zapisu backendu: wiązania profili w `profiles`, model
+        // dynamiczny i zamiar ochrony płasko (`set_der_catalog_bindings`, `_materialize_nn_source`).
+        materialized_params: p
+          ? {
+              catalog_item_id: 'conv-bess-2500',
+              control_mode: 'Q_U_DROOP',
+              dynamic_model_ref: 'dyn-bess',
+              profiles: { nc_rfg_profile_ref: 'pse', lvrt_curve_ref: 'pse', hvrt_curve_ref: 'pse', pf_curve_ref: 'pf-1' },
+              protection_intent: {
+                breaker_role: 'wyłącznik źródła BESS',
+                device_label: 'Zabezpieczenie źródła BESS',
+                protected_object: 'przekształtnik BESS i kabel SN',
+                analysis_scope: 'nadprądowe i ziemnozwarciowe',
+              },
+            }
+          : undefined,
         tags: [],
         meta: { der_mv_field_ref: 'bay-oze', der_mv_cable_ref: 'kab-oze', ...(p ? { control_mode: 'Q_U_DROOP' } : {}) },
       },
@@ -290,12 +380,14 @@ function model(wariant: Wariant): EnergyNetworkModel {
         name: p ? 'Sieć zasilająca 110 kV' : '',
         bus_ref: 'bus-gpz',
         substation_ref: 'gpz-1',
+        model: jesli('short_circuit_power'),
         sk3_mva: jesli(250),
         ik3_ka: jesli(9.62),
         rx_ratio: jesli(0.1),
         sk3_min_mva: jesli(180),
         ik3_min_ka: jesli(6.93),
         rx_ratio_min: jesli(0.12),
+        u_set_pu: jesli(1.05),
         catalog_ref: jesli('siec-110-250'),
         tags: [],
         meta: {},
@@ -400,39 +492,56 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
         }
         expect(wiersz.wartosc, `${rodzaj}: ${pole} ma wartość zastępczą „${wiersz.wartosc}"`).toBeNull();
         expect(element).toHaveAttribute('data-brak', 'true');
-        expect(within(element).getByTestId(`inspektor-karta-wartosc-${pole}`)).toHaveTextContent(BRAK_DANYCH_PL);
+        // Karty pola i stacji: każdy brak nazywa, czego brakuje i jak to uzupełnić — nigdy ogólne
+        // „brak danych” (decyzja architekta pkt 3). Pozostałe rodzaje: opis braku, gdy model go
+        // podaje, inaczej „brak danych”.
+        if (rodzaj === 'pole' || rodzaj === 'stacja') {
+          expect(wiersz.brakPl, `${rodzaj}: ${pole} bez opisu braku`).toBeTruthy();
+          expect(wiersz.brakPl).not.toMatch(/brak danych/u);
+        }
+        expect(within(element).getByTestId(`inspektor-karta-wartosc-${pole}`)).toHaveTextContent(wiersz.brakPl ?? BRAK_DANYCH_PL);
       }
     });
   });
 
-  it('stacja, dane pełne: tabela pól — nr, rola, aparat główny z katalogu, Uᵣ, Iᵣ, zdolność wyłączalna, stan, zabezpieczenie i CT', () => {
+  // Tabela pól stacji jest ZWARTA (§10 kontraktu prezentacji, decyzja architekta 2026-11-04):
+  // jedno pole = jeden wiersz mieszczący się w szerokości inspektora — pole, nr, rola i stan
+  // (rola ważniejsza dla inżyniera niż rodzaj aparatu głównego — decyzja architekta pkt 1).
+  // Aparaty i ich znamiona, zabezpieczenie i przekładniki mówi karta pola, typ katalogowy
+  // aparatu — karta aparatu (jedna informacja w jednym miejscu) — przypięte niżej.
+  it('stacja, dane pełne: zwarta tabela pól — pole, nr, rola, stan; reszta na karcie pola i aparatu', () => {
     const k = karta('stacja', 'pelne');
     const pola = tabele(k).get('tabela:pola_sn')!;
+    expect(pola.kolumny.map((c) => c.etykieta)).toEqual(['Nr', 'Pole', 'Rola', 'Stan']);
+    expect(pola.zrodloPl ?? null).toBeNull();
     const pole01 = pola.wiersze.find((r) => r.klucz === 'bay-in')!;
     expect(pole01.komorki).toEqual({
       nr: '01',
       pole: 'Pole liniowe 01',
-      rola: expect.any(String),
-      aparat: 'Wyłącznik · VD4 24 kV 630 A 20 kA',
-      ur: '24 kV',
-      ir: '630 A',
-      ik: '20 kA',
+      rola: 'Pole liniowe wejściowe',
       stan: 'zamknięty',
-      zabezpieczenie: 'Zabezpieczenie pola 01 (nadprądowe) · funkcje 50, 51 · przekładnik prądowy 200/5 A · kl. 5P20',
     });
-    // Pole bez aparatu w modelu: komórki aparatu „brak danych", nie aparat z konwencji.
+    // Rola słowami kanonu ról pól, także dla pola bez aparatu w modelu.
     const poleTr = pola.wiersze.find((r) => r.klucz === 'bay-tr')!;
-    expect(poleTr.komorki.aparat).toBeNull();
-    expect(poleTr.komorki.ik).toBeNull();
+    expect(poleTr.komorki.rola).toBe('Pole transformatorowe');
+    // Znamiona i zabezpieczenie pola z tabeli stacji są na karcie pola.
+    const pole = wiersze(karta('pole', 'pelne'));
+    expect(pole.get('rola')!.wartosc).toBeTruthy();
+    // Jedno źródło zabezpieczenia pola (`zabezpieczeniePola`): sterownik przypisany (tu przez
+    // wyłącznik pola) z funkcjami z nastaw, obok funkcje wymagane przez wzorzec pola.
+    expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01: bez nastaw funkcji');
+    expect(pole.get('funkcje_wymagane')!.wartosc).toBe('50, 51');
+    const aparaty = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!;
+    expect(aparaty.wiersze.find((r) => r.klucz === 'cb-in')!.komorki).toMatchObject({ ur: '24', ir: '630', ik: '20' });
+    expect(wiersze(karta('aparat', 'pelne')).get('typ')?.wartosc).toBe('VD4 24 kV 630 A 20 kA');
     const tr = wiersze(k);
     expect(tr.get('tr_typ')!.wartosc).toBe('TNOSCT 630 kVA 15/0,4 kV');
     expect(k.sekcje.find((s) => s.id === 'transformator')!.zrodloPl).toBe('katalog: TNOSCT 630 kVA 15/0,4 kV');
   });
 
   // Iloczyn rodzaju przekładnika {prądowy · napięciowy}: lista pola pokazuje oba z polską
-  // nazwą (bez kodu CT/VT), komórka „Zabezpieczenie / przekładniki" tabeli pól — tylko prądowy
-  // (predykat z pola modelu `measurement_type`, nie z napisu).
-  it('przekładniki pola: oba rodzaje z polską nazwą; do komórki zabezpieczenia trafia tylko prądowy', () => {
+  // nazwą (bez kodu CT/VT).
+  it('przekładniki pola: oba rodzaje z polską nazwą', () => {
     const lista = wiersze(karta('pole', 'pelne')).get('przekladniki')!.lista;
     expect(lista).toEqual(['przekładnik prądowy 200/5 A · kl. 5P20', 'przekładnik napięciowy 15 000/100 V · kl. 0.5']);
     expect(lista!.join(' ')).not.toMatch(/\b(CT|VT)\b/);
@@ -448,6 +557,67 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     ]);
   });
 
+  it('źródło OZE: typ i producent z katalogu, zgodność NC RfG/FRT i zabezpieczenie z pól modelu', () => {
+    const w = wiersze(karta('zrodlo', 'pelne'));
+    expect(w.get('typ')!.wartosc).toBe('PCS BESS 2,5 MW / 0,8 kV');
+    expect(w.get('producent')!.wartosc).toBe('Producent PCS');
+    expect(w.get('profil_ncrfg')!.wartosc).toBe('PSE — Polskie Sieci Elektroenergetyczne');
+    expect(w.get('zakres_q')!.wartosc).toBe('od -33 % do 33 % Pₙ');
+    expect(w.get('cos_phi_min')!.wartosc).toBe('0,95');
+    expect(w.get('krzywa_pf')!.wartosc).toBe('Charakterystyka P(f) operatora');
+    expect(w.get('lvrt')!.wartosc).toBe('PSE — Polskie Sieci Elektroenergetyczne · liczba punktów obwiedni: 1');
+    expect(w.get('model_dynamiczny')!.wartosc).toContain('Profil BESS grid-following');
+    expect(w.get('zab_urzadzenie')!.wartosc).toBe('Zabezpieczenie źródła BESS');
+    expect(w.get('zab_zakres')!.wartosc).toBe('nadprądowe i ziemnozwarciowe');
+  });
+
+  /**
+   * Iloczyn: wiązanie w modelu {jest, brak} × katalog {zna pozycję, nie zna (niewczytany albo
+   * pozycja spoza katalogu)} dla KAŻDEGO wiersza karty źródła i sieci czytającego katalog.
+   * Wiązanie + katalog zna → nazwa; wiązanie + katalog nie zna → opis jawny (nigdy
+   * identyfikator); brak wiązania → „brak danych”.
+   */
+  it.each([
+    ['zrodlo', 'typ', POZYCJA_KATALOGU_BEZ_NAZWY_PL],
+    ['zrodlo', 'profil_ncrfg', 'profil spoza katalogu profili operatorów'],
+    ['zrodlo', 'krzywa_pf', 'charakterystyka spoza katalogu charakterystyk P(f)'],
+    ['zrodlo', 'lvrt', 'obwiednia spoza katalogu profili operatorów'],
+    ['zrodlo', 'hvrt', 'obwiednia spoza katalogu profili operatorów'],
+    ['zrodlo', 'model_dynamiczny', 'profil spoza katalogu modeli dynamicznych'],
+    ['siec_zasilajaca', 'typ', POZYCJA_KATALOGU_BEZ_NAZWY_PL],
+  ] as const)('%s.%s: katalog nie zna wiązania — opis jawny, nie identyfikator', (rodzaj, klucz, opis) => {
+    const k = buildKartaTechniczna(model('pelne'), WSKAZANIE[rodzaj] as DaneElementuKanwy, KATALOGI_PUSTE)!;
+    expect(wiersze(k).get(klucz)!.wartosc).toBe(opis);
+    expect(wiersze(karta(rodzaj, 'pelne')).get(klucz)!.wartosc).not.toBe(opis);
+    expect(wiersze(karta(rodzaj, 'brak')).get(klucz)!.wartosc).toBeNull();
+  });
+
+  /** Żaden wiersz żadnej karty nie pokazuje identyfikatora pozycji katalogu ani wiązania
+   *  profilu — ani z katalogami, ani bez nich (katalog niewczytany). */
+  it.each(RODZAJE_KARTY.map((r) => [r] as const))('%s: identyfikatory katalogu nie trafiają na kartę', (rodzaj) => {
+    const KODY = ['vd4-24-630-20', 'tr-630-15-04', 'conv-bess-2500', 'siec-110-250', 'pse', 'pf-1', 'dyn-bess'];
+    for (const katalogi of [KATALOGI, KATALOGI_PUSTE]) {
+      const k = buildKartaTechniczna(model('pelne'), WSKAZANIE[rodzaj] as DaneElementuKanwy, katalogi)!;
+      const teksty = k.sekcje.flatMap((s) => [
+        s.zrodloPl ?? '',
+        ...s.wiersze.flatMap((w) => [w.wartosc ?? '', w.zrodloPl ?? '', ...(w.lista ?? [])]),
+        ...(s.tabele ?? []).flatMap((t) => t.wiersze.flatMap((r) => Object.values(r.komorki).map((v) => v ?? ''))),
+      ]);
+      for (const kod of KODY) {
+        expect(teksty.filter((t) => t === kod || t.includes(`${kod} `) || t.endsWith(` ${kod}`) || t.includes(`: ${kod}`)), `${rodzaj}: ${kod}`).toEqual([]);
+      }
+    }
+  });
+
+  it('sieć zasilająca: typ z katalogu sieci i model zastępczy nazwą ze słownika zamkniętego', () => {
+    const w = wiersze(karta('siec_zasilajaca', 'pelne'));
+    expect(w.get('typ')!.wartosc).toBe('Sieć 110 kV · Sₖ″ 250 MVA');
+    expect(w.get('model')!.wartosc).toBe('moc zwarciowa Sₖ″ i stosunek R/X');
+    const nieznany = { ...model('pelne'), sources: [{ ...model('pelne').sources![0], model: 'toString' }] } as unknown as EnergyNetworkModel;
+    const k = buildKartaTechniczna(nieznany, WSKAZANIE.siec_zasilajaca as DaneElementuKanwy, KATALOGI)!;
+    expect(wiersze(k).get('model')!.wartosc).toBe('model zastępczy spoza słownika aplikacji');
+  });
+
   it('źródło OZE po stronie SN: tor przyłączenia (pole SN, transformator blokowy, kabel) i tryb regulacji ze źródłem', () => {
     const w = wiersze(karta('zrodlo', 'pelne'));
     expect(w.get('pole_zrodlowe')!.wartosc).toBe('Pole źródłowe OZE');
@@ -456,6 +626,41 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     expect(w.get('tryb_regulacji')!.wartosc).toBe('Regulacja Q(U) — charakterystyka opadająca');
     expect(w.get('tryb_regulacji')!.zrodloPl).toBe('katalog przekształtnika');
   });
+
+  it('odcinek kablowy: materiał żyły i izolacja nazwą z jednego słownika wartości kodowych, nie kodem', () => {
+    const w = wiersze(karta('odcinek', 'pelne'));
+    expect(w.get('material')!.wartosc).toBe('aluminium (Al)');
+    expect(w.get('izolacja')!.wartosc).toBe('polietylen usieciowany (XLPE)');
+    expect(wiersze(karta('odcinek', 'brak')).get('material')!.wartosc).toBeNull();
+  });
+
+  // Iloczyn: KAŻDY rodzaj rekordu aparatu pola (`BayPrimaryDeviceKind`, rejestr zamknięty
+  // `satisfies Record<…>`) × karta aparatu. Rola techniczna pochodzi z JEDNEGO słownika
+  // symboli kanwy (`ROLA_SYMBOLU_PL`) przez symbol, którym scena rysuje rekord
+  // (`symbolIdForPrimaryDeviceKind`); rekord bez symbolu na kanwie nie dostaje roli zastępczej.
+  it.each(Object.keys(RODZAJE_REKORDU) as BayPrimaryDeviceKind[])(
+    'aparat pola z rekordu %s: rola techniczna z rodzaju symbolu kanwy albo brak wiersza',
+    (kind) => {
+      const snapshot = model('pelne');
+      const zRekordem = {
+        ...snapshot,
+        bays: snapshot.bays.map((b) =>
+          b.ref_id === 'bay-in'
+            ? { ...b, primary_devices: [{ device_ref: 'dev-x', kind, symbol_ref: 'x', placement: 'MIDSTREAM', is_controllable: false }] }
+            : b,
+        ),
+      } as EnergyNetworkModel;
+      const k = buildKartaTechniczna(zRekordem, { kind: 'apparatus', elementId: 'dev-x' } as DaneElementuKanwy, KATALOGI);
+      expect(k?.rodzaj).toBe('aparat');
+      const symbol = symbolIdForPrimaryDeviceKind(kind);
+      const rola = wiersze(k!).get('rola');
+      if (symbol === null) {
+        expect(rola).toBeUndefined();
+        return;
+      }
+      expect(rola?.wartosc).toBe(ROLA_SYMBOLU_PL[symbol]);
+    },
+  );
 
   it('stacja bez transformatora w modelu: jawny stan pusty sekcji, nie tabliczka zastępcza', () => {
     const snapshot = model('pelne');

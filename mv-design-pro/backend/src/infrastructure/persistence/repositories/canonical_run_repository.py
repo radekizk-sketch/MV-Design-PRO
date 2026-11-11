@@ -142,7 +142,7 @@ def _wiersz_rozplywu(
     """Wiersz tabeli rozpływu z ładunku punktu — kolumny z mapy `KOLUMNY_ROZPLYWU`."""
     obce = sorted(set(rozplyw) - set(KOLUMNY_ROZPLYWU))
     if obce:
-        raise ValueError(f"Klucze spoza klasy ładunku rozpływu punktu: {obce}")
+        raise ValueError(f"Klucze spoza klasy ładunku rozpływu punktu: {', '.join(obce)}")
     if rozplyw.get(KLUCZ_ROZPLYWU) is None:
         raise ValueError(
             f"Rozpływ punktu {fault_node_id} bez wkładów gałęziowych ({KLUCZ_ROZPLYWU}) — "
@@ -379,7 +379,7 @@ class CanonicalRunRepository:
         """
         if len(strona_probki) != len(os_czasu_s):
             raise ValueError(
-                f"strona_probki ({len(strona_probki)}) i os_czasu_s ({len(os_czasu_s)}) "
+                f"Znaczniki strony próbek ({len(strona_probki)}) i oś czasu ({len(os_czasu_s)}) "
                 "muszą mieć tę samą długość"
             )
         if self._session.get(CanonicalRunORM, run_id) is None:

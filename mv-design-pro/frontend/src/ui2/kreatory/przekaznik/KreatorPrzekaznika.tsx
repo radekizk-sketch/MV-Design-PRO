@@ -10,6 +10,7 @@
  * dawny poglądowy wykres IDMT liczony w przeglądarce (trzecia kopia wzoru IEC 60255) skasowany.
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../../../ui/shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -180,7 +181,7 @@ export function KreatorPrzekaznika() {
     () => typy.map((t) => {
       // Katalog MV podaje `name_pl`; ta sama unia typu obsługuje też `name`
       // biblioteki analitycznej — wzorzec identyczny jak w `KreatorStacjiSnNn`.
-      const nazwa = t.name_pl ?? t.name ?? t.id;
+      const nazwa = nazwaObiektuPl(pierwszaNazwa(t.name_pl, t.name), 'pozycja_katalogu');
       return { id: t.id, etykieta: t.vendor ? `${t.vendor} · ${nazwa}` : nazwa };
     }),
     [typy],

@@ -17,11 +17,15 @@ import {
 } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useNetworkBuildStore } from '../networkBuildStore';
-import { buildSldDataFromSnapshot } from '../../sld/v2/canvas/enmToSldAdapter';
+import { buildSldDataFromSnapshot, projectBayPrimaryDevices } from '../../sld/v2/canvas/enmToSldAdapter';
+import { symbolIdForPrimaryDeviceKind } from '../../sld/v3/compose/apparatusSequence';
+import type { SelectedElement } from '../../types';
 import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import {
   buildCanvasModelIndex,
   ELEMENT_KIND_KOTWICY,
+  elementTypeForKind,
+  refOperacjiTematu,
   resolveCanvasMenuSubject,
   type CanvasMenuSubject,
   type CanvasModelIndex,
@@ -42,6 +46,8 @@ import {
 import { useSldActionExecutor } from '../../sld/shared/sldActionExecutor';
 import {
   buildKartaTechniczna,
+  type CelWierszaTabeli,
+  type AkcjaWiersza,
   type EdycjaWiersza,
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
@@ -116,6 +122,43 @@ export function kontekstEfektywny(
   };
 }
 
+/**
+ * Wskazanie aparatu pola z wiersza tabeli karty pola — TO SAMO, które zapisuje klik w symbol
+ * aparatu na kanwie (`SldCanvasV3Workspace.handleElementClick`): selekcja pod refem pola
+ * (właściciel symbolu) z typem `elementTypeForKind('apparatus')`, kontekst z rodzajem
+ * `'apparatus'`, refem pola i refem urządzenia, temat z `resolveCanvasMenuSubject` z symbolem
+ * aparatu tej samej sekwencji co rysunek (`projectBayPrimaryDevices` →
+ * `symbolIdForPrimaryDeviceKind`). Dzięki temu karta aparatu i jej pasek działań są te same,
+ * co po kliknięciu symbolu. Rodzaj bez symbolu toru (np. przekładnik niezrównoważenia) — temat
+ * pola bez symbolu aparatu (bez domysłu rodzaju, jak napis pola na kanwie).
+ */
+export function wskazanieAparatuPola(
+  snapshot: EnergyNetworkModel | null,
+  index: CanvasModelIndex,
+  cel: CelWierszaTabeli,
+  tylkoOdczyt: boolean,
+): { readonly zaznaczenie: SelectedElement; readonly kontekst: KontekstElementuKanwy } {
+  const pole = (snapshot?.bays ?? []).find((b) => b.ref_id === cel.poleRef) ?? null;
+  const galezie = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
+  const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
+  const symbolId = urzadzenie ? symbolIdForPrimaryDeviceKind(urzadzenie.kind) ?? undefined : undefined;
+  const wynik = resolveCanvasMenuSubject({ ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId }, index);
+  const typ = elementTypeForKind('apparatus');
+  return {
+    zaznaczenie: typ
+      ? { id: cel.poleRef, type: typ, name: cel.poleRef }
+      : { id: cel.poleRef, type: 'DescriptiveElement', name: cel.poleRef },
+    kontekst: {
+      selekcjaId: cel.poleRef,
+      elementKind: 'apparatus',
+      ref: cel.poleRef,
+      deviceRef: cel.aparatRef,
+      temat: wynik.stan === 'temat' ? wynik.temat : null,
+      tylkoOdczyt,
+    },
+  };
+}
+
 /** Wejście do konfiguratora odcinka (E-12, karta trasy) albo karty węzła (E-14 / E-15). */
 export interface OtwarcieKonfiguracji {
   readonly etykietaPl: string;
@@ -136,6 +179,11 @@ export interface StanPaneluElementu {
   /** Zmiana wartości karty operacją domenową; `null` poza trybem edycji modelu i dla
    *  obiektu tylko do odczytu (bez przycisku „Zmień" — bez atrapy). */
   readonly edytuj: ((edycja: EdycjaWiersza) => void) | null;
+  /** Otwarcie karty aparatu z wiersza tabeli aparatów pola (`wskazanieAparatuPola`). */
+  readonly otworzAparat: (cel: CelWierszaTabeli) => void;
+  /** Operacja usuwająca brak z wiersza karty (kreator `add_relay` z `bay_ref`); `null` poza
+   *  trybem edycji modelu — jak `edytuj`. */
+  readonly wykonajAkcjeWiersza: ((akcja: AkcjaWiersza) => void) | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -201,6 +249,21 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
       }),
     [openOperationForm],
   );
+  const wykonajAkcjeWiersza = useCallback(
+    (akcja: AkcjaWiersza) => openOperationForm(akcja.operacja, { ...akcja.kontekst }),
+    [openOperationForm],
+  );
+
+  const tylkoOdczytKontekstu = kontekst?.tylkoOdczyt ?? false;
+  const otworzAparat = useCallback(
+    (cel: CelWierszaTabeli) => {
+      const { zaznaczenie, kontekst: kontekstAparatu } = wskazanieAparatuPola(snapshot, index, cel, tylkoOdczytKontekstu);
+      // Kontekst przed selekcją: odczyt inspektora po zmianie selekcji od razu go widzi.
+      useKontekstElementuKanwy.getState().ustawKontekst(kontekstAparatu);
+      useSelectionStore.getState().selectElement(zaznaczenie);
+    },
+    [index, snapshot, tylkoOdczytKontekstu],
+  );
 
   const temat = kontekst?.temat ?? null;
   const akcje = useMemo(
@@ -210,7 +273,8 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   const wykonajAkcje = useCallback(
     (actionId: string) => {
       if (!temat) return;
-      wykonawca(actionId, temat.menuKind, temat.modelRef);
+      // Ten sam ref operacji co menu kanwy — aparat pola jako `${bayRef}#${SymbolId}`.
+      wykonawca(actionId, temat.menuKind, refOperacjiTematu(temat));
     },
     [temat, wykonawca],
   );
@@ -270,5 +334,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     konfiguracja,
     karta,
     edytuj: edycjaDozwolona ? edytuj : null,
+    wykonajAkcjeWiersza: edycjaDozwolona ? wykonajAkcjeWiersza : null,
+    otworzAparat,
   };
 }

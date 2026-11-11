@@ -31,12 +31,15 @@ from werdykt import (
     format_liczba,
     format_wielkosc,
 )
-from werdykt.kontrakt import KOLEJNOSC_METOD, STATUSY_Z_BRAKAMI
-from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
-from werdykt.wyjasnienie import (
+from werdykt.kontrakt import (
+    KOLEJNOSC_METOD,
     NAZWA_METODY_PL,
     NAZWA_RODZAJU_PODSTAWY_PL,
     NAZWA_STANU_ZRODLA_PL,
+    STATUSY_Z_BRAKAMI,
+)
+from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
+from werdykt.wyjasnienie import (
     metody_przydatne_pl,
     nazwa_skladowej,
     opis_podstawy,
@@ -655,7 +658,10 @@ def test_rodzaj_podstawy_na_iloczynie_ze_stanem_zrodla(
         "status": stan,
     }
     if rodzaj == "NIEUSTALONA" and pelna:
-        with pytest.raises(ValidationError, match="NIEUSTALONA"):
+        with pytest.raises(
+            ValidationError,
+            match="Podstawa rodzaju „warstwa o nieustalonym pochodzeniu” nie może mieć",
+        ):
             PodstawaWymagania.model_validate(dane)
         return
     podstawa = PodstawaWymagania.model_validate(dane)

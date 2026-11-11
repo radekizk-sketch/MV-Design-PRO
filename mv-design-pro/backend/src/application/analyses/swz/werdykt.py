@@ -26,8 +26,8 @@ bezwarunkowo NIEROZSTRZYGALNY — P0.7 zasilił bramki KONWENCJONALNE gG
 podwójnie zweryfikowane). Werdykt „NIE SPEŁNIA" jest ROZSTRZYGALNY z tych
 bramek: Ik1_min<=Inf ⇒ norma gwarantuje brak stopienia NAWET w (dłuższym)
 czasie umownym normy (1-4h) ⇒ a fortiori nie stopi się w KRÓTSZYM
-t_wymagany SWZ (monotoniczność charakterystyki t-I). Werdykt „SPEŁNIA"
-wymaga OSOBNEJ bramki I-t przy t_wymagany dokładnym (0,1-5 s, inny czas niż
+t_wym SWZ (monotoniczność charakterystyki t-I). Werdykt „SPEŁNIA"
+wymaga OSOBNEJ bramki I-t przy t_wym dokładnym (0,1-5 s, inny czas niż
 umowny normy) — rejestr `protection_lv_curves.
 FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER` jest PUSTY (próba pozyskania podwójnie
 zweryfikowanych wartości podjęta i udokumentowana w tamtym module, bez
@@ -73,6 +73,24 @@ PROG_PRADU_OBWODU_ODBIORCZEGO_A = 63.0
 
 _TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG", "MCCB")
 
+#: Rodzaj aparatu zabezpieczającego po polsku — każdy typ werdyktu SWZ (kompletność przypina
+#: ``tests/application/analyses/swz/test_werdykt.py::test_kazdy_typ_aparatu_ma_nazwe``).
+NAZWY_TYPOW_APARATU_SWZ_PL: dict[str, str] = {
+    "MCB": "wyłącznik nadprądowy instalacyjny (MCB)",
+    "WKLADKA_GG": "wkładka bezpiecznikowa gG",
+    "MCCB": "wyłącznik kompaktowy (MCCB)",
+}
+
+
+def nazwa_typu_aparatu_swz_pl(typ: str) -> str:
+    """Rodzaj aparatu zabezpieczającego po polsku (typ spoza słownika → opis ogólny)."""
+    return NAZWY_TYPOW_APARATU_SWZ_PL.get(typ, "aparat rodzaju spoza słownika werdyktu SWZ")
+
+
+#: Rodzaje obwodu PN-HD 60364-4-41 §411.3.2.2 (odbiorczy) i §411.3.2.3 (rozdzielczy) — słowa
+#: polskie, wartości stoją wprost w zdaniach werdyktu SWZ (TN i TT/IT).
+RODZAJE_OBWODU: tuple[str, ...] = ("odbiorczy", "rozdzielczy")
+
 
 def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> str:
     """Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDEN predykat dla werdyktu TN i TT/IT.
@@ -83,6 +101,11 @@ def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> s
     brak In w śladzie).
     """
     if rodzaj_jawny is not None:
+        if rodzaj_jawny not in RODZAJE_OBWODU:
+            raise ValueError(
+                "Rodzaj obwodu musi być odbiorczy, rozdzielczy albo nieokreślony "
+                "(wtedy wynika z prądu znamionowego aparatu)."
+            )
         return rodzaj_jawny
     return (
         "odbiorczy"
@@ -105,10 +128,10 @@ class AparatZabezpieczajacy:
     ``typ="WKLADKA_GG"`` (karta D2): wymaga ``in_a`` (> 16 A — jedyny
     zweryfikowany zakres G-D2). Bramki KONWENCJONALNE Inf/If (IEC 60269-1)
     rozstrzygają „nie spełnia" wprost (Ik1_min<=Inf); „spełnia" wymaga
-    dodatkowo bramki przy t_wymagany dokładnym — pusta do czasu potwierdzenia
+    dodatkowo bramki przy t_wym dokładnym — pusta do czasu potwierdzenia
     źródłowego (zob. docstring modułu i `protection_lv_curves.
     FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER`), więc pośredni zakres prądów daje
-    NIEROZSTRZYGALNE (fail-closed, nigdy PASS bez dowodu przy t_wymagany).
+    NIEROZSTRZYGALNE (fail-closed, nigdy PASS bez dowodu przy t_wym).
     ``typ="MCCB"`` (karta D1): wymaga ``ii_a`` (nastawa zwarciowa/magnetyczna
     Ii, RESOLWOWANA — wartość absolutna [A], nie zakres) — Ia = ``ii_a``
     wprost (bez interpolacji, Ii jest już konkretną nastawą, nie normatywnym
@@ -266,12 +289,9 @@ def ocen_swz(
             Tab. 41.1 (``pasmo_dla_u0``).
     """
     if ik1_min_a < 0:
-        raise ValueError(f"ik1_min_a musi być ≥ 0, otrzymano {ik1_min_a}.")
-    if rodzaj_obwodu not in (None, "odbiorczy", "rozdzielczy"):
         raise ValueError(
-            f"rodzaj_obwodu musi być 'odbiorczy'/'rozdzielczy'/None, otrzymano {rodzaj_obwodu!r}."
+            f"Minimalny prąd zwarcia jednofazowego Ik1min musi być ≥ 0, otrzymano {ik1_min_a:g} A."
         )
-
     trace: list[dict[str, Any]] = []
     pasmo = pasmo_dla_u0(u0_v)
 
@@ -628,10 +648,10 @@ def ocen_swz(
             SwzResult(
                 status=SwzStatus.NIEROZSTRZYGALNE,
                 przyczyna_pl=(
-                    f"Typ aparatu '{aparat.typ}' nieobsłużony w werdykcie SWZ karty P0.6 "
-                    f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu prądu "
-                    "zapewniającego samoczynne wyłączenie, "
-                    "nie fabrykacja."
+                    f"Rodzaj aparatu „{nazwa_typu_aparatu_swz_pl(aparat.typ)}” nieobsłużony "
+                    "w werdykcie samoczynnego wyłączenia zasilania (obsługiwane: "
+                    f"{', '.join(NAZWY_TYPOW_APARATU_SWZ_PL[t] for t in _TYPY_APARATU_DOZWOLONE)}"
+                    ") — brak modelu prądu zadziałania Ia, nie fabrykacja."
                 ),
                 ik1_min_a=ik1_min_a,
                 ia_wymagane_a=None,

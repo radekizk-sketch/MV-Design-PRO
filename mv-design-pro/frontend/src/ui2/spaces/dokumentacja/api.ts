@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { bladZapytania } from '../../shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -38,7 +39,7 @@ export async function fetchDokumentyProjektu(
   projectId: string,
 ): Promise<readonly RekordDokumentu[]> {
   const response = await fetch(`${API_BASE}/projects/${projectId}/documents`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw bladZapytania(response);
   const data = (await response.json()) as OdpowiedzListy;
   return data.items;
 }

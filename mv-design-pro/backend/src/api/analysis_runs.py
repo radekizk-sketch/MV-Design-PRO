@@ -49,6 +49,7 @@ from application.proof_engine.pakiet_nastaw import (
     zbuduj_pakiet_nastaw,
 )
 from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi_migawki
+from domain.opis_przebiegu import stan_przebiegu_pl
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -145,7 +146,10 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
     if canonical_run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Wyniki obliczenia {run_id} są niedostępne (status={canonical_run.status})",
+            detail=(
+                f"Wyniki obliczenia {run_id} są niedostępne — stan obliczenia: "
+                f"{stan_przebiegu_pl(canonical_run.status)}."
+            ),
         )
     return canonicalize_json(build_result_items(canonical_run))
 

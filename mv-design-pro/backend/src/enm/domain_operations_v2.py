@@ -133,7 +133,7 @@ from .katalog_projektu_karty import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
-from .models import TRYBY_PRACY_ZRODLA, liczba_torow
+from .models import RODZAJE_GALEZI_APARATU, TRYBY_PRACY_ZRODLA, liczba_torow
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import (
     nazwa_elementu,
@@ -4439,7 +4439,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         return _error_response(
             "Wskazany aparat odpływowy nie istnieje w modelu sieci.", "nn.copy_feeder_not_found"
         )
-    if root.get("type") not in ("switch", "breaker", "fuse", "disconnector", "bus_coupler"):
+    if root.get("type") not in RODZAJE_GALEZI_APARATU:
         return _error_response(
             "Kopiowany odpływ musi zaczynać się od aparatu łączeniowego.",
             "nn.copy_feeder_wrong_root",
@@ -5675,7 +5675,7 @@ def _der_cable_laying_conditions(
             opis_pl=raw.get("opis_pl"),
         )
     except ValueError as exc:
-        return None, _komunikat_obciazalnosci(exc)
+        return None, str(exc)
     opis: dict[str, Any] = {"set_name": wspolczynniki.nazwa}
     if wspolczynniki.nazwa == cable_derating.NAZWA_WLASNE:
         # Własne współczynniki muszą pojechać z modelem — nazwa „wlasne" sama niczego
@@ -5685,40 +5685,6 @@ def _der_cable_laying_conditions(
         opis["f_grupa"] = wspolczynniki.f_grupa
         opis["opis_pl"] = wspolczynniki.etykieta_pl
     return opis, None
-
-
-#: Współczynnik korekcyjny obciążalności (klucz rdzenia obciążalności) → nazwa w treści.
-_NAZWY_WSPOLCZYNNIKOW_OBCIAZALNOSCI_PL: dict[str, str] = {
-    "f_grunt": "współczynnik gruntu",
-    "f_wiazka": "współczynnik wiązki",
-    "f_grupa": "współczynnik grupowania",
-}
-
-
-def _komunikat_obciazalnosci(blad: ValueError) -> str:
-    """Odmowa rdzenia obciążalności kabla w treści dla projektanta (karta #142).
-
-    Rdzeń ``network_model/solvers/cable_ampacity_derating.py`` jest FROZEN — jego
-    ``ValueError`` niesie klucze współczynników (``f_grunt``), nazwy kodowe zestawów
-    warunków i nazwę rejestru tablic. Rozstrzygnięcie (predykat) zostaje JEDNO — w rdzeniu;
-    na granicy operacji zamieniamy wyłącznie słownictwo: klucze współczynników na ich
-    nazwy, nazwy kodowe zestawów na etykiety zestawów z rejestru rdzenia, nazwę rejestru
-    na normę, z której pochodzą tablice.
-    """
-    tekst = str(blad)
-    rezystywnosc = pole("cable_laying_conditions.soil_thermal_resistivity_km_w")
-    tekst = tekst.replace(
-        "rezystywnosc_gruntu_km_w musi być None", f"pole {rezystywnosc} musi zostać puste"
-    ).replace("rezystywnosc_gruntu_km_w", f"pole {rezystywnosc}")
-    for klucz, nazwa in _NAZWY_WSPOLCZYNNIKOW_OBCIAZALNOSCI_PL.items():
-        # „Współczynnik f_grunt musi…” → „Współczynnik gruntu musi…” (bez powtórzenia słowa).
-        tekst = tekst.replace(f"Współczynnik {klucz}", nazwa[:1].upper() + nazwa[1:])
-        tekst = tekst.replace(klucz, nazwa)
-    for nazwa_zestawu, zestaw in sorted(cable_derating.ZESTAWY_WARUNKOW.items()):
-        tekst = tekst.replace(nazwa_zestawu, f"„{zestaw.etykieta_pl}”")
-    return tekst.replace(
-        "w rejestrze G-D1", "w zweryfikowanych tablicach PN-HD 60364-5-52"
-    ).replace("WPROST", "wprost")
 
 
 def _nn_cable_laying_conditions(
@@ -5796,7 +5762,7 @@ def _nn_cable_laying_conditions(
             rezystywnosc_gruntu_km_w=soil_resistivity,
         )
     except ValueError as exc:
-        return None, _komunikat_obciazalnosci(exc)
+        return None, str(exc)
 
     opis: dict[str, Any] = {
         "environment": wspolczynniki.srodowisko,

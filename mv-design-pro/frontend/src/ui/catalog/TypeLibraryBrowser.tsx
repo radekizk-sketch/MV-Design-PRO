@@ -7,12 +7,33 @@ import {
 } from './api';
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
 import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
+import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
+import {
+  NAZWA_JAKOSCI_DANEJ_PL,
+  type FieldQuality,
+} from '../../ui2/wyniki/wzorzec/werdykt';
+import { etykietaPolaKarty, KOLEJNOSC_POL_KARTY } from './etykietyPolKarty';
+import { nazwaWartosciKodowej } from './wartosciKodoweKarty';
+import { skrotParametrowTypu } from './skrotTypuKatalogu';
+import {
+  maBudowniczegoWierszy,
+  POLA_KARTY_KATEGORII,
+  POLA_POZA_PANELEM_OGOLNYM,
+  type KategoriaPaneluOgolnego,
+} from './polaKartyKatalogu';
 import {
   BRAK_DANYCH_PL,
   pradAparatuSnKatalogu,
-  pradKaLubBrakDanych,
-  pradLacznikaKatalogu,
 } from './pradZwarciowyKatalogu';
+import {
+  formatNumber,
+  wierszeKabla,
+  wierszeLacznika,
+  wierszeLinii,
+  wierszeTransformatora,
+  wierszeZrodlaSystemowegoMin,
+  type WierszKatalogu,
+} from './wierszeKartyKatalogu';
 import type {
   CableType,
   LineType,
@@ -26,142 +47,30 @@ import type {
 
 interface TabDefinition {
   id: TypeCategory;
-  label: string;
   icon: string;
 }
 
+// Etykieta zakładki = `ETYKIETY_KATEGORII_TYPOW[id]` (jedno źródło, pełny słownik).
 const TAB_DEFINITIONS: readonly TabDefinition[] = [
-  { id: 'LINE', label: 'Typy linii napowietrznych', icon: '≋' },
-  { id: 'HV_OVERHEAD_CONDUCTOR', label: 'Typy przewodów linii 110 kV', icon: '≈' },
-  { id: 'CABLE', label: 'Typy kabli SN', icon: '⟂' },
-  { id: 'SYSTEM_SOURCE', label: 'Typy zasilania systemowego SN', icon: '⚡' },
-  { id: 'TRANSFORMER', label: 'Typy transformatorów SN/nN', icon: '⬍' },
-  { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '⎆' },
-  { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '◫' },
-  { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '▥' },
-  { id: 'LV_RCD', label: 'Typy wyłączników różnicowoprądowych nN', icon: '⊜' },
-  { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '⟃' },
-  { id: 'LOAD', label: 'Typy obciążeń', icon: '◔' },
-  { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
-  { id: 'VT', label: 'Typy przekładników napięciowych', icon: '◌' },
-  { id: 'MEASUREMENT_TRANSFORMER', label: 'Typy przekładników pomiarowych', icon: '◍' },
-  { id: 'PV_INVERTER', label: 'Typy falowników źródeł fotowoltaicznych', icon: '☀' },
-  { id: 'BESS_INVERTER', label: 'Typy falowników magazynów energii', icon: '▣' },
-  { id: 'CONVERTER', label: 'Typy konwerterów', icon: '⟲' },
-  { id: 'PROTECTION_DEVICE', label: 'Typy zabezpieczeń', icon: '🛡' },
-  { id: 'PTPIREE_CERTIFICATE', label: 'Wykaz certyfikatów PTPiREE', icon: '☑' },
-] as const;
-
-const CATEGORY_LABELS: Record<TypeCategory, string> = Object.fromEntries(
-  TAB_DEFINITIONS.map((tab) => [tab.id, tab.label]),
-) as Record<TypeCategory, string>;
-
-const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
-  vendor: 'Dostawca',
-  manufacturer: 'Producent',
-  model: 'Model',
-  series: 'Seria',
-  equipment_kind: 'Rodzaj aparatu',
-  device_kind: 'Rodzaj urządzenia',
-  measurement_kind: 'Rodzaj przekładnika',
-  source_catalog: 'Źródło katalogu',
-  operator_name: 'Operator',
-  supply_role: 'Rola zasilania',
-  short_circuit_model: 'Model zwarciowy',
-  notes_pl: 'Uwagi',
-  standard: 'Norma',
-  control_mode: 'Tryb sterowania',
-  grid_code: 'Wymagania przyłączeniowe',
-  model_type: 'Model',
-  functions_supported: 'Funkcje obsługiwane',
-  curves_supported: 'Krzywe obsługiwane',
-  unverified: 'Niezweryfikowane',
-  unverified_ranges: 'Zakresy niezweryfikowane',
-  voltage_rating_kv: 'Napięcie znamionowe [kV]',
-  sk3_mva: 'Moc zwarciowa $S\'\'_{k3}$ [MVA]',
-  ik3_ka: 'Prąd zwarciowy $I\'\'_{k3}$ [kA]',
-  rx_ratio: 'Stosunek R/X',
-  u_n_kv: 'Napięcie znamionowe [kV]',
-  i_n_a: 'Prąd znamionowy [A]',
-  breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
-  making_capacity_ka: 'Zdolność załączalna [kA]',
-  i_th_ka: 'Prąd wytrzymywany krótkotrwale $I_{th}$ [kA]',
-  i_th_duration_s: 'Czas odniesienia $I_{th}$ [s]',
-  i_th_pochodzenie: 'Pochodzenie $I_{th}$',
-  i_dyn_ka: 'Prąd dynamiczny szczytowy $I_{dyn}$ [kA]',
-  i_dyn_pochodzenie: 'Pochodzenie $I_{dyn}$',
-  break_time_s: 'Czas własny aparatu [s]',
-  cross_section_mm2: 'Przekrój [mm²]',
-  number_of_cores: 'Liczba żył',
-  ratio_primary_a: 'Przekładnia pierwotna [A]',
-  ratio_secondary_a: 'Przekładnia wtórna [A]',
-  ratio_primary_v: 'Przekładnia pierwotna [V]',
-  ratio_secondary_v: 'Przekładnia wtórna [V]',
-  accuracy_class: 'Klasa dokładności',
-  burden_va: 'Moc obciążeniowa [VA]',
-  p_kw: 'Moc czynna $P$ [kW]',
-  q_kvar: 'Moc bierna $Q$ [kvar]',
-  cos_phi: 'Współczynnik mocy $\\cos\\varphi$',
-  cos_phi_mode: 'Tryb współczynnika mocy $\\cos\\varphi$',
-  profile_id: 'Profil',
-  s_n_kva: 'Moc znamionowa $S_n$ [kVA]',
-  p_max_kw: 'Moc maksymalna $P_{max}$ [kW]',
-  p_charge_kw: 'Moc ładowania [kW]',
-  p_discharge_kw: 'Moc rozładowania [kW]',
-  e_kwh: 'Pojemność energii [kWh]',
-  rated_current_a: 'Prąd znamionowy [A]',
-  catalog_number: 'Numer katalogowy',
-};
-
-const GENERIC_FIELD_ORDER = [
-  'model',
-  'series',
-  'equipment_kind',
-  'device_kind',
-  'measurement_kind',
-  'voltage_rating_kv',
-  'u_n_kv',
-  'sk3_mva',
-  'ik3_ka',
-  'rx_ratio',
-  'rated_current_a',
-  'i_n_a',
-  'breaking_capacity_ka',
-  'making_capacity_ka',
-  'i_th_ka',
-  'i_th_duration_s',
-  'i_th_pochodzenie',
-  'i_dyn_ka',
-  'i_dyn_pochodzenie',
-  'break_time_s',
-  'cross_section_mm2',
-  'number_of_cores',
-  'ratio_primary_a',
-  'ratio_secondary_a',
-  'ratio_primary_v',
-  'ratio_secondary_v',
-  'accuracy_class',
-  'burden_va',
-  'p_kw',
-  'q_kvar',
-  'cos_phi',
-  'cos_phi_mode',
-  's_n_kva',
-  'p_max_kw',
-  'p_charge_kw',
-  'p_discharge_kw',
-  'e_kwh',
-  'functions_supported',
-  'curves_supported',
-  'operator_name',
-  'supply_role',
-  'short_circuit_model',
-  'standard',
-  'source_catalog',
-  'catalog_number',
-  'notes_pl',
-  'unverified',
-  'unverified_ranges',
+  { id: 'LINE', icon: '≋' },
+  { id: 'HV_OVERHEAD_CONDUCTOR', icon: '≈' },
+  { id: 'CABLE', icon: '⟂' },
+  { id: 'SYSTEM_SOURCE', icon: '⚡' },
+  { id: 'TRANSFORMER', icon: '⬍' },
+  { id: 'SWITCH_EQUIPMENT', icon: '⎆' },
+  { id: 'MV_APPARATUS', icon: '◫' },
+  { id: 'LV_APPARATUS', icon: '▥' },
+  { id: 'LV_RCD', icon: '⊜' },
+  { id: 'LV_CABLE', icon: '⟃' },
+  { id: 'LOAD', icon: '◔' },
+  { id: 'CT', icon: '◎' },
+  { id: 'VT', icon: '◌' },
+  { id: 'MEASUREMENT_TRANSFORMER', icon: '◍' },
+  { id: 'PV_INVERTER', icon: '☀' },
+  { id: 'BESS_INVERTER', icon: '▣' },
+  { id: 'CONVERTER', icon: '⟲' },
+  { id: 'PROTECTION_DEVICE', icon: '🛡' },
+  { id: 'PTPIREE_CERTIFICATE', icon: '☑' },
 ] as const;
 
 interface TypeLibraryBrowserProps {
@@ -180,32 +89,10 @@ function getCatalogManufacturer(type: CatalogListItem): string | null {
   return null;
 }
 
-function formatNumber(value: number): string {
-  if (Number.isInteger(value)) {
-    return String(value);
-  }
-  return value.toFixed(3).replace(/\.?0+$/, '');
-}
-
-function formatDetailValue(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.map((entry) => formatDetailValue(entry)).join(', ');
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'Tak' : 'Nie';
-  }
-  if (typeof value === 'number') {
-    return formatNumber(value);
-  }
-  if (value == null || value === '') {
-    return '—';
-  }
-  return String(value);
-}
-
-function humanizeKey(key: string): string {
-  if (GENERIC_FIELD_LABELS[key]) {
-    return GENERIC_FIELD_LABELS[key] as string;
+function humanizeKey(key: string, kategoria?: TypeCategory): string {
+  const etykieta = etykietaPolaKarty(key, kategoria);
+  if (etykieta) {
+    return etykieta;
   }
 
   const cleaned = key
@@ -219,97 +106,91 @@ function humanizeKey(key: string): string {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
-function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
-  const record = type as unknown as Record<string, unknown>;
+/**
+ * Wielkości zwarciowe pozycji aparatu SN: brak liczby niesie dwie różne informacje —
+ * „nie dotyczy” (rodzaj aparatu jej nie ma) albo „brak danych” (karta jej nie podaje).
+ */
+const WIELKOSCI_ZWARCIOWE_APARATU_SN = ['breaking_capacity_ka', 'i_th_ka'] as const;
 
-  switch (category) {
-    case 'LINE':
-      return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · $I_n$ = ${formatDetailValue(record.rated_current_a)} A`;
-    case 'HV_OVERHEAD_CONDUCTOR':
-      return `${formatDetailValue(record.oznaczenie)} · ${record.przeznaczenie === 'ODGROMOWY' ? 'przewód odgromowy' : 'przewód fazowy'} · $R_{20}$ = ${formatDetailValue(record.r20_dc_ohm_per_km)} Ohm/km · d=${formatDetailValue(record.srednica_mm)} mm`;
-    case 'CABLE':
-      return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · C=${formatDetailValue(record.c_nf_per_km)} nF/km`;
-    case 'TRANSFORMER':
-      return `${formatDetailValue(record.rated_power_mva)} MVA · ${formatDetailValue(record.voltage_hv_kv)}/${formatDetailValue(record.voltage_lv_kv)} kV · $u_k$ = ${formatDetailValue(record.uk_percent)}%`;
-    case 'SWITCH_EQUIPMENT':
-      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · $I_k$ ${pradLacznikaKatalogu(record, 'ik_ka')}`;
-    case 'SYSTEM_SOURCE':
-      return `${formatDetailValue(record.voltage_rating_kv)} kV · $S''_{k3}$ = ${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
-    case 'MV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · $I_k$ ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
-    case 'LV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · $I_k$ ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
-    case 'LV_RCD':
-      return `$I_{\\Delta n}$ = ${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · $I_n$ = ${formatDetailValue(record.in_a)} A · $t_a$ = ${formatDetailValue(record.t_a_s)} s`;
-    case 'LV_CABLE':
-      return `${formatDetailValue(record.cross_section_mm2)} mm² · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
-    case 'LOAD':
-      return `P=${formatDetailValue(record.p_kw)} kW · $\\cos\\varphi$ = ${formatDetailValue(record.cos_phi)} · model=${formatDetailValue(record.model)}`;
-    case 'CT':
-      return `${formatDetailValue(record.ratio_primary_a)}/${formatDetailValue(record.ratio_secondary_a)} A · klasa=${formatDetailValue(record.accuracy_class)}`;
-    case 'VT':
-      return `${formatDetailValue(record.ratio_primary_v)}/${formatDetailValue(record.ratio_secondary_v)} V · klasa=${formatDetailValue(record.accuracy_class)}`;
-    case 'MEASUREMENT_TRANSFORMER':
-      return `${formatDetailValue(record.measurement_kind)} · klasa=${formatDetailValue(record.accuracy_class)} · obciążenie znamionowe ${formatDetailValue(record.burden_va)} VA`;
-    case 'PV_INVERTER':
-      return `$S_n$ = ${formatDetailValue(record.s_n_kva)} kVA · $P_{max}$ = ${formatDetailValue(record.p_max_kw)} kW · sterowanie=${formatDetailValue(record.control_mode)}`;
-    case 'BESS_INVERTER':
-      return `rozładowanie ${formatDetailValue(record.p_discharge_kw)} kW · ładowanie ${formatDetailValue(record.p_charge_kw)} kW · energia ${formatDetailValue(record.e_kwh)} kWh`;
-    case 'CONVERTER':
-      return `$S_n$ = ${formatDetailValue(record.s_n_kva ?? record.sn_mva)} · $P_{max}$ = ${formatDetailValue(record.p_max_kw ?? record.pmax_mw)} · typ=${formatDetailValue(record.kind)}`;
-    case 'PROTECTION_DEVICE':
-      return `${formatDetailValue(record.series)} · funkcje=${Array.isArray(record.functions_supported) ? record.functions_supported.length : 0} · krzywe=${Array.isArray(record.curves_supported) ? record.curves_supported.length : 0}`;
-    default:
-      return 'Brak zdefiniowanego skrótu parametrów.';
+/**
+ * Wartość pola karty w panelu ogólnym: brak wartości = jawne „brak danych” (zasada nr 4);
+ * wartość pola kodowego (`kind`, `medium`, `device_kind`… także wewnątrz `params` i list) —
+ * nazwa z jednego słownika wartości kodowych (`wartosciKodoweKarty.ts`), nigdy kod.
+ */
+function wartoscPolaKarty(value: unknown, klucz: string): string {
+  if (value == null || value === '') return BRAK_DANYCH_PL;
+  if (Array.isArray(value)) {
+    return value.length === 0 ? 'brak pozycji' : value.map((v) => wartoscPolaKarty(v, klucz)).join(', ');
   }
+  if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
+  if (typeof value === 'number') return Number.isFinite(value) ? formatNumber(value) : BRAK_DANYCH_PL;
+  if (typeof value === 'object') {
+    const wpisy = Object.entries(value as Record<string, unknown>);
+    return wpisy.length === 0
+      ? BRAK_DANYCH_PL
+      : wpisy.map(([k, v]) => `${humanizeKey(k)}: ${wartoscPolaKarty(v, k)}`).join('; ');
+  }
+  return nazwaWartosciKodowej(klucz, String(value));
 }
 
 /**
- * Wielkości zwarciowe pozycji aparatu SN pokazywane ZAWSZE, także bez liczby: panel
- * generyczny ukrywa pola `null`, a dla tych wielkości brak liczby niesie informację —
- * „nie dotyczy” (rodzaj aparatu jej nie ma) albo „brak danych” (karta jej nie podaje).
+ * Jakość pól karty (`card_field_status`: pole → {quality, note, source_ref}) — zdanie dla
+ * projektanta: nazwa pola, jakość danej po polsku (`FieldQuality.label_pl`), uwaga i źródło.
+ * Jakość spoza enumeracji nie udaje znanej: „jakość nieokreślona”.
  */
-const WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE = ['breaking_capacity_ka', 'i_th_ka'] as const;
+function opisJakosciPolKarty(value: unknown): string {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return wartoscPolaKarty(value, 'card_field_status');
+  }
+  const wpisy = Object.entries(value as Record<string, unknown>);
+  if (wpisy.length === 0) return BRAK_DANYCH_PL;
+  return wpisy
+    .map(([pole, stan]) => {
+      const opis = (stan ?? {}) as { quality?: unknown; note?: unknown; source_ref?: unknown };
+      const jakosc =
+        typeof opis.quality === 'string' &&
+        Object.prototype.hasOwnProperty.call(NAZWA_JAKOSCI_DANEJ_PL, opis.quality)
+          ? NAZWA_JAKOSCI_DANEJ_PL[opis.quality as FieldQuality]
+          : 'jakość nieokreślona';
+      const uwaga = typeof opis.note === 'string' && opis.note ? ` — ${opis.note}` : '';
+      const zrodlo =
+        typeof opis.source_ref === 'string' && opis.source_ref ? ` (źródło: ${opis.source_ref})` : '';
+      return `${humanizeKey(pole)}: ${jakosc}${uwaga}${zrodlo}`;
+    })
+    .sort((a, b) => a.localeCompare(b, 'pl'))
+    .join('; ');
+}
 
+/**
+ * Wiersze panelu ogólnego: KAŻDE pole schematu kategorii (`POLA_KARTY_KATEGORII` — lustro
+ * serializacji serwera) i każde pole rekordu spoza schematu, także `null` i pominięte —
+ * brak wartości jest jawny, nie ukryty.
+ */
 function getGenericDetailEntries(
   type: CatalogListItem,
-  category: TypeCategory,
-): Array<{ label: string; value: string }> {
+  category: KategoriaPaneluOgolnego,
+): Array<{ klucz: string; label: string; value: string }> {
   const record = type as unknown as Record<string, unknown>;
-  const zawsze: ReadonlySet<string> = new Set(
-    category === 'MV_APPARATUS' ? WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE : [],
+  const pola = [...new Set([...POLA_KARTY_KATEGORII[category], ...Object.keys(record)])].filter(
+    (key) => !POLA_POZA_PANELEM_OGOLNYM.has(key),
   );
-  // CV-4.3 K7: sk3_min_mva/ik3_min_ka/rx_ratio_min ukryte tu — panel generyczny
-  // UKRYWA pola null zamiast "brak danych" (K1), więc renderują się WYŁĄCZNIE
-  // przez bespoke `renderSystemSourceMinParams` (etykiety PL + jawny brak danych,
-  // zero duplikatu wartości pod dwiema różnymi etykietami).
-  const hiddenKeys = new Set([
-    'id',
-    'name',
-    'manufacturer',
-    'vendor',
-    'sk3_min_mva',
-    'ik3_min_ka',
-    'rx_ratio_min',
-    // Propozycje wartości roboczych (V12K-351) mają własną sekcję — nie są daną karty.
-    'wartosci_robocze',
-  ]);
-  const presentKeys = [
-    ...Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== ''),
-    ...[...zawsze].filter((key) => record[key] == null),
-  ];
   const orderedKeys = [
-    ...GENERIC_FIELD_ORDER.filter((key) => presentKeys.includes(key)),
-    ...presentKeys
-      .filter((key) => !GENERIC_FIELD_ORDER.includes(key as (typeof GENERIC_FIELD_ORDER)[number]))
+    ...KOLEJNOSC_POL_KARTY.filter((key) => pola.includes(key)),
+    ...pola
+      .filter((key) => !KOLEJNOSC_POL_KARTY.includes(key))
       .sort(),
   ];
 
   return orderedKeys.map((key) => ({
-    label: humanizeKey(key),
-    value: zawsze.has(key)
-      ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE)[number])
-      : formatDetailValue(record[key]),
+    klucz: key,
+    label: humanizeKey(key, category),
+    value:
+      category === 'MV_APPARATUS'
+      && (WIELKOSCI_ZWARCIOWE_APARATU_SN as readonly string[]).includes(key)
+        ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN)[number])
+        : key === 'card_field_status'
+          ? opisJakosciPolKarty(record[key])
+          : wartoscPolaKarty(record[key], key),
   }));
 }
 
@@ -467,7 +348,7 @@ export function TypeLibraryBrowser({
                 )}
               >
                 <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                {ETYKIETY_KATEGORII_TYPOW[tab.id]}
               </button>
             );
           })}
@@ -550,8 +431,11 @@ export function TypeLibraryBrowser({
                       <td className="px-4 py-3 text-sm text-gray-700">
                         {getCatalogManufacturer(type) ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <TekstZWzorami tekst={getTypeSummary(type, activeTab)} />
+                      <td
+                        className="px-4 py-3 text-sm text-gray-600"
+                        data-testid={`type-library-skrot-${type.id}`}
+                      >
+                        <TekstZWzorami tekst={skrotParametrowTypu(type, activeTab)} />
                       </td>
                     </tr>
                   );
@@ -583,7 +467,10 @@ function TypeDetailsPanel({
   type: CatalogListItem;
   category: TypeCategory;
 }) {
-  const genericEntries = useMemo(() => getGenericDetailEntries(type, category), [type, category]);
+  const genericEntries = useMemo(
+    () => (maBudowniczegoWierszy(category) ? [] : getGenericDetailEntries(type, category)),
+    [type, category],
+  );
   const manufacturer = getCatalogManufacturer(type);
 
   return (
@@ -598,8 +485,8 @@ function TypeDetailsPanel({
           Informacje podstawowe
         </h3>
         <div className="grid grid-cols-2 gap-4">
-          <DetailField label="Kategoria" value={CATEGORY_LABELS[category]} />
-          <DetailField label="Producent" value={manufacturer ?? '—'} />
+          <DetailField label="Kategoria" value={ETYKIETY_KATEGORII_TYPOW[category]} />
+          <DetailField label="Producent" value={manufacturer ?? BRAK_DANYCH_PL} />
         </div>
       </div>
 
@@ -608,18 +495,26 @@ function TypeDetailsPanel({
           Dane katalogowe
         </h3>
         <div className="grid grid-cols-2 gap-4" data-testid="type-library-details-grid">
-          {category === 'LINE' ? renderLineParams(type as LineType) : null}
-          {category === 'CABLE' ? renderCableParams(type as CableType) : null}
-          {category === 'TRANSFORMER' ? renderTransformerParams(type as TransformerType) : null}
-          {category === 'SWITCH_EQUIPMENT' ? renderSwitchParams(type as SwitchEquipmentType) : null}
-          {!['LINE', 'CABLE', 'TRANSFORMER', 'SWITCH_EQUIPMENT'].includes(category) ? (
+          {category === 'LINE' ? <WierszeKatalogu wiersze={wierszeLinii(type as LineType)} /> : null}
+          {category === 'CABLE' ? <WierszeKatalogu wiersze={wierszeKabla(type as CableType)} /> : null}
+          {category === 'TRANSFORMER' ? (
+            <WierszeKatalogu wiersze={wierszeTransformatora(type as TransformerType)} />
+          ) : null}
+          {category === 'SWITCH_EQUIPMENT' ? (
+            <WierszeKatalogu wiersze={wierszeLacznika(type as SwitchEquipmentType)} />
+          ) : null}
+          {!maBudowniczegoWierszy(category) ? (
             <GenericTypeDetailsPanel entries={genericEntries} />
           ) : null}
-          {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — bespoke (nie generyczny
-              panel powyżej), bo panel generyczny UKRYWA pola `null` zamiast
-              pokazać "brak danych" (wzór K1: `renderLineParams` / `max_temperature_c`).
-              Dokłada się DO generycznych wpisów (moc i prąd zwarciowy maksymalny oraz R/X maks. już tam są). */}
-          {category === 'SYSTEM_SOURCE' ? renderSystemSourceMinParams(type as SourceSystemCatalogType) : null}
+          {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — etykiety PL z jednostkami
+              (`wierszeZrodlaSystemowegoMin`); panel ogólny pomija te klucze, żeby ta sama
+              wartość nie wystąpiła pod dwiema etykietami. */}
+          {category === 'SYSTEM_SOURCE' ? (
+            <WierszeKatalogu
+              wiersze={wierszeZrodlaSystemowegoMin(type as SourceSystemCatalogType)}
+              prefiksTestId="type-library-zrodlo-min"
+            />
+          ) : null}
         </div>
       </div>
 
@@ -685,7 +580,7 @@ function WartosciRoboczePozycji({
 function GenericTypeDetailsPanel({
   entries,
 }: {
-  entries: Array<{ label: string; value: string }>;
+  entries: Array<{ klucz: string; label: string; value: string }>;
 }) {
   if (entries.length === 0) {
     return (
@@ -699,9 +594,10 @@ function GenericTypeDetailsPanel({
     <>
       {entries.map((entry) => (
         <DetailField
-          key={entry.label}
+          key={entry.klucz}
           label={entry.label}
           value={entry.value}
+          testId={`type-library-pole-${entry.klucz}`}
         />
       ))}
     </>
@@ -712,13 +608,15 @@ function DetailField({
   label,
   value,
   unit,
+  testId,
 }: {
   label: string;
   value: string;
   unit?: string;
+  testId?: string;
 }) {
   return (
-    <div>
+    <div data-testid={testId}>
       <dt className="text-xs font-medium uppercase tracking-wider text-gray-500"><TekstZWzorami tekst={label} /></dt>
       <dd className="mt-1 text-sm text-gray-900">
         {value}
@@ -728,106 +626,25 @@ function DetailField({
   );
 }
 
-function renderLineParams(type: LineType) {
+function WierszeKatalogu({
+  wiersze,
+  prefiksTestId,
+}: {
+  wiersze: readonly WierszKatalogu[];
+  prefiksTestId?: string;
+}) {
   return (
     <>
-      <DetailField label="Rezystancja R" value={type.r_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Reaktancja X" value={type.x_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Susceptancja B" value={type.b_us_per_km.toFixed(3)} unit="uS/km" />
-      <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
-      <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField
-        label="Przekrój"
-        value={type.cross_section_mm2 == null ? BRAK_DANYCH_PL : type.cross_section_mm2.toFixed(0)}
-        unit="mm²"
-      />
-      <DetailField
-        label="Maks. temperatura"
-        value={type.max_temperature_c == null ? BRAK_DANYCH_PL : type.max_temperature_c.toFixed(0)}
-        unit="C"
-      />
+      {wiersze.map((w, i) => (
+        <DetailField
+          key={w.label}
+          label={w.label}
+          value={w.value}
+          unit={w.unit}
+          testId={prefiksTestId ? `${prefiksTestId}-${i}` : undefined}
+        />
+      ))}
     </>
   );
 }
 
-/**
- * CV-4.3 K7: trzy pola scenariusza MIN (warunki przyłączenia OSD) dla ZRODLO_SN —
- * „brak danych" gdy null (wzór K1, `max_temperature_c` w `renderLineParams`).
- * Dokładany OBOK generycznego panelu (moc i prąd zwarciowy maksymalny oraz R/X MAKS. już renderują tamtędy).
- */
-function renderSystemSourceMinParams(type: SourceSystemCatalogType) {
-  return (
-    <>
-      <DetailField
-        label="Moc zwarciowa minimalna $S''_{k3,min}$"
-        value={type.sk3_min_mva == null ? BRAK_DANYCH_PL : formatNumber(type.sk3_min_mva)}
-        unit="MVA"
-      />
-      <DetailField
-        label="Prąd zwarciowy minimalny $I''_{k3,min}$"
-        value={type.ik3_min_ka == null ? BRAK_DANYCH_PL : formatNumber(type.ik3_min_ka)}
-        unit="kA"
-      />
-      <DetailField
-        label="Stosunek R/X min"
-        value={type.rx_ratio_min == null ? BRAK_DANYCH_PL : formatNumber(type.rx_ratio_min)}
-      />
-    </>
-  );
-}
-
-function renderCableParams(type: CableType) {
-  return (
-    <>
-      <DetailField label="Rezystancja R" value={type.r_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Reaktancja X" value={type.x_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Pojemność C" value={type.c_nf_per_km.toFixed(0)} unit="nF/km" />
-      <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
-      <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Izolacja" value={type.insulation_type ?? '—'} />
-      <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm²" />
-    </>
-  );
-}
-
-function renderTransformerParams(type: TransformerType) {
-  return (
-    <>
-      <DetailField label="Moc znamionowa" value={type.rated_power_mva.toFixed(1)} unit="MVA" />
-      <DetailField label="Napięcie HV" value={type.voltage_hv_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Napięcie LV" value={type.voltage_lv_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Napięcie zwarcia $u_k$" value={type.uk_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty zwarcia $P_k$" value={type.pk_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Prąd jałowy $i_0$" value={type.i0_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty jałowe $P_0$" value={type.p0_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Grupa połączeń" value={type.vector_group} />
-      <DetailField label="Chłodzenie" value={type.cooling_class ?? '—'} />
-      <DetailField label="Zakres zaczepów" value={`${type.tap_min} ... ${type.tap_max}`} />
-    </>
-  );
-}
-
-function renderSwitchParams(type: SwitchEquipmentType) {
-  return (
-    <>
-      <DetailField label="Rodzaj aparatu" value={type.equipment_kind} />
-      <DetailField label="Napięcie znamionowe" value={type.un_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Prąd znamionowy" value={type.in_a.toFixed(0)} unit="A" />
-      {/* Brak liczby: „nie dotyczy” (rodzaj aparatu tej wielkości nie ma) albo „brak danych”
-          (wielkość właściwa rodzajowi, karta jej nie podaje) — rozstrzyga rodzaj. */}
-      <DetailField
-        label="Prąd wyłączalny $I_k$"
-        value={type.ik_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'ik_ka') : type.ik_ka.toFixed(1)}
-        unit={type.ik_ka == null ? undefined : 'kA'}
-      />
-      <DetailField
-        label="Prąd wytrzymałości $I_{cw}$"
-        value={type.icw_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'icw_ka') : type.icw_ka.toFixed(1)}
-        unit={type.icw_ka == null ? undefined : 'kA'}
-      />
-      <DetailField label="Ośrodek gaszący" value={type.medium ?? '—'} />
-    </>
-  );
-}

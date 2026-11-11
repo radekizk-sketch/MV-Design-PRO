@@ -139,11 +139,11 @@ class ProtectionSanityCheckResult:
     def __post_init__(self) -> None:
         """Validate invariants."""
         if not self.message_pl or self.message_pl.strip() == "":
-            raise ValueError("message_pl nie może być puste")
+            raise ValueError("Wynik kontroli poprawności nastaw wymaga treści komunikatu")
         if not self.element_id or self.element_id.strip() == "":
-            raise ValueError("element_id nie może być puste")
+            raise ValueError("Wynik kontroli poprawności nastaw wymaga wskazania elementu")
         if not self.element_type or self.element_type.strip() == "":
-            raise ValueError("element_type nie może być puste")
+            raise ValueError("Wynik kontroli poprawności nastaw wymaga rodzaju elementu")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""

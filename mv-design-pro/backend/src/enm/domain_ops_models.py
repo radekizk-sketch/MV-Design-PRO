@@ -973,16 +973,19 @@ class ConnectSecondaryRingSNPayload(_FrozenBase):
 
 
 class PrzepnijElementNaPolePayload(_FrozenBase):
-    """Payload operacji: przepnij_element_na_pole (karta POLA-W-TORZE, akcja naprawcza W042).
+    """Payload operacji: przepnij_element_na_pole (karta POLA-W-TORZE, akcja naprawcza W042
+    i W049).
 
-    Przepina element z szyny głównej stacji na zacisk pola, które mu służy.
+    Przepina element z szyny głównej stacji na zacisk pola, które mu służy; odcinek bez
+    wolnego pola dostaje pole liniowe utworzone w tej operacji (karta INSPEKTOR-POLA-DOMKNIECIE).
     """
 
     element_ref: str
     """Odcinek terenowy SN albo transformator leżący na szynie głównej stacji."""
 
     field_ref: str | None = None
-    """Pole docelowe — bez niego pole wskazane przez walidator (wolne pole właściwej roli)."""
+    """Pole docelowe — bez niego pole wskazane przez walidator (wolne pole właściwej roli),
+    a dla odcinka bez wolnego pola — nowe pole liniowe."""
 
 
 class SetNormalOpenPointPayload(_FrozenBase):
@@ -1398,6 +1401,7 @@ DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "GPZ_SECTION_ADDED",
     "GPZ_SECTION_DELETED",
     "GPZ_SECTION_UPDATED",
+    "LINE_FIELD_CREATED",
     "LOAD_SN_CREATED",
     "LOGICAL_VIEWS_UPDATED",
     "MEASUREMENT_SECONDARY_CIRCUIT_SET",

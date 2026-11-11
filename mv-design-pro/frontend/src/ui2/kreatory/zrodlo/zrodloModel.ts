@@ -27,6 +27,7 @@ import {
   zbudujPayload as zbudujPayloadZespolu,
   type ZespolFormData,
 } from '../zespol-uziemiajacy/zespolModel';
+import { nazwaWartosciKodowej, zWielkiejLitery } from '../../../ui/catalog/wartosciKodoweKarty';
 
 export type ShortCircuitInputSide = 'SN' | 'HV_110';
 export type GpzLineFieldApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH';
@@ -961,23 +962,11 @@ export function etykietaZrodlaKatalogu(item: SourceSystemCatalogType): string {
   return [item.name, manufacturer, voltage, sk].filter(Boolean).join(' · ');
 }
 
+/** Rodzaj aparatu SN pozycji katalogu — jeden słownik wartości kodowych kart katalogu
+ *  (dawna lokalna tabela nazywała rozłącznik z bezpiecznikami „Rozłącznik” i przepisywała
+ *  kod spoza niej na ekran). */
 function apparatusKindLabel(value: string | undefined): string {
-  switch ((value ?? '').trim().toUpperCase()) {
-    case 'WYLACZNIK':
-    case 'BREAKER':
-      return 'Wyłącznik';
-    case 'ODLACZNIK':
-    case 'DISCONNECTOR':
-      return 'Odłącznik';
-    case 'ROZLACZNIK':
-    case 'ROZLACZNIK_BEZPIECZNIKOWY':
-    case 'LOAD_SWITCH':
-      return 'Rozłącznik';
-    case 'REKLOZER':
-      return 'Reklozer';
-    default:
-      return value ?? 'Aparat SN';
-  }
+  return value ? zWielkiejLitery(nazwaWartosciKodowej('device_kind', value)) : 'Aparat SN';
 }
 
 export function etykietaAparatu(item: MVApparatusType): string {

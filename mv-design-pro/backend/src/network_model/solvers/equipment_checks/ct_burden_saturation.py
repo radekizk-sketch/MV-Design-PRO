@@ -350,7 +350,7 @@ def _slad_ct(
     wyzej w tym samym solverze. Tekst i formatowanie to prezentacja dowodu, fizyka
     zostaje w jednym miejscu.
     """
-    wykaz = ", ".join(f"{p.nazwa}: {liczba_tex(p.moc_va)} VA" for p in pozycje) or "brak aparatow"
+    wykaz = ", ".join(f"{p.nazwa}: {liczba_tex(p.moc_va)} VA" for p in pozycje) or "brak aparatów"
 
     kroki: list[dict[str, Any]] = [
         {

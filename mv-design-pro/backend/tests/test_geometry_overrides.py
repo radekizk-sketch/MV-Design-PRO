@@ -194,6 +194,9 @@ class TestValidation:
         result = validate_overrides(ov, KNOWN_NODES, KNOWN_BLOCKS)
         assert not result.valid
         assert result.errors[0].code == "geometry.override_forbidden_for_station_type"
+        komunikat = result.errors[0].message
+        assert "_" not in komunikat and "scope" not in komunikat, komunikat
+        assert "zakresu „" in komunikat and "Operacja „" in komunikat, komunikat
 
     def test_rejects_missing_payload_fields(self):
         ov = make_overrides([make_item(payload={})])  # missing dx, dy
@@ -332,3 +335,22 @@ class TestDeterminism:
             result = canonicalize_overrides(ov)
             assert result.items[0].element_id == reference.items[0].element_id
             assert result.items[1].element_id == reference.items[1].element_id
+
+
+def test_nazwy_zakresow_i_operacji_nadpisania_kompletne_bez_kodow() -> None:
+    """Komunikat walidacji nazywa zakres i operację słowami — każdy element wyliczeń ma
+    nazwę (słownik węższy niż wyliczenie kończyłby się ``KeyError`` w walidacji)."""
+    from domain.geometry_overrides import (
+        NAZWY_OPERACJI_NADPISANIA_PL,
+        NAZWY_ZAKRESOW_NADPISANIA_PL,
+        OverrideOperationV1,
+        OverrideScopeV1,
+    )
+
+    assert set(NAZWY_ZAKRESOW_NADPISANIA_PL) == set(OverrideScopeV1)
+    assert set(NAZWY_OPERACJI_NADPISANIA_PL) == set(OverrideOperationV1)
+    for kod, nazwa in (
+        *NAZWY_ZAKRESOW_NADPISANIA_PL.items(),
+        *NAZWY_OPERACJI_NADPISANIA_PL.items(),
+    ):
+        assert kod.value not in nazwa and "_" not in nazwa

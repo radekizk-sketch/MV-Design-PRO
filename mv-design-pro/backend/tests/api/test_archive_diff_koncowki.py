@@ -453,7 +453,7 @@ def _uszkodzone_archiwa(poprawne: bytes) -> dict[str, tuple[bytes, str]]:
         ),
         "naruszona_integralnosc": (
             _podmien_project_json(poprawne, naruszona),
-            "Błąd integralności sekcji 'project_meta'",
+            "Błąd integralności sekcji „metadane projektu”",
         ),
         "uszkodzona_kompresja": (bytes(uszkodzona_kompresja), "archiwum ZIP"),
     }

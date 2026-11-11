@@ -8835,6 +8835,10 @@
       "title": "Dane Przyjete",
       "type": "array"
      },
+     "etykieta_pl": {
+      "title": "Etykieta Pl",
+      "type": "string"
+     },
      "nazwa": {
       "title": "Nazwa",
       "type": "string"
@@ -8866,6 +8870,7 @@
     },
     "required": [
      "nazwa",
+     "etykieta_pl",
      "wymagany",
      "uwzgledniony",
      "status",

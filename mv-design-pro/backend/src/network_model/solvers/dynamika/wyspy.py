@@ -232,10 +232,11 @@ def sprawdz_zasilanie_wysp(
         )
         raise OdmowaDynamiki(
             KOD_WYSPA_BEZ_ZRODLA,
-            f"Wyspa {wezly_wyspy} niesie odbiór ({opis_odbiorow}) przy t = {t_s} s, a żadne "
+            f"Wyspa węzłów {', '.join(wezly_wyspy)} niesie odbiór ({opis_odbiorow}) przy "
+            f"t = {t_s} s, a żadne "
             f"przyłączone do niej urządzenie nie wnosi prądu ani pochodnej prądu po napięciu"
             + (
-                f" (urządzenia bez wkładu: {bezczynne})"
+                f" (urządzenia bez wkładu: {', '.join(bezczynne)})"
                 if bezczynne
                 else " (w wyspie nie ma żadnego urządzenia)"
             )

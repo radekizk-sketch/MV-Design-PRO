@@ -43,12 +43,12 @@ def test_odmowa_braku_pola_ma_ksztalt_z_karty() -> None:
 @pytest.mark.parametrize(
     ("zmiana", "fragment"),
     [
-        ({"dt_s": 0.01, "dt_min_s": 0.001, "dt_max_s": 0.005}, "poza granicami"),
+        ({"dt_s": 0.01, "dt_min_s": 0.001, "dt_max_s": 0.005}, "leży poza granicami"),
         ({"tolerancja": 0.0}, "musi być dodatnia"),
         ({"eps_init": -1.0}, "musi być dodatnia"),
         ({"max_iteracji_newtona": 0}, "max_iteracji_newtona"),
         ({"max_nawrotow": -1}, "max_nawrotow"),
-        ({"krok_wyjscia_s": 5.0, "horyzont_s": 1.0}, "krok_wyjscia_s"),
+        ({"krok_wyjscia_s": 5.0, "horyzont_s": 1.0}, "jest większa niż `horyzont_s`"),
         ({"tolerancja_lokalizacji_zdarzen_s": 0.0}, "musi być dodatnia"),
         ({"tolerancja_lokalizacji_zdarzen_s": -1e-9}, "musi być dodatnia"),
     ],

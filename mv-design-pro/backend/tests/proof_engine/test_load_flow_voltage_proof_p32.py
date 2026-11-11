@@ -107,8 +107,17 @@ def test_p32_not_computed_propagation() -> None:
 
     proof = ProofGenerator.generate_load_flow_voltage_proof(input_data)
 
-    assert any("NOT COMPUTED" in warning for warning in proof.summary.warnings)
-    assert any("missing_data" in warning for warning in proof.summary.warnings)
+    assert proof.summary.warnings == (
+        "element „Linia SN testowa”: nie obliczono — brak danych: moc czynna P, rezystancja R "
+        "gałęzi, napięcie międzyprzewodowe U z rozpływu mocy, napięcie znamionowe Un.",
+        "szyna „Szyna SN testowa”: nie obliczono — brak danych: napięcie międzyprzewodowe U z "
+        "rozpływu mocy, napięcie znamionowe Un.",
+    )
+    status = proof.summary.key_results["computed_status"]
+    assert (status.value, status.formatted) == ("NOT COMPUTED", "nie obliczono — brak danych")
+    for warning in proof.summary.warnings:
+        assert "u_ll_kv" not in warning and "u_nom_kv" not in warning, warning
+        assert "NOT COMPUTED" not in warning and "missing_data" not in warning, warning
 
 
 def test_p32_json_determinism(p32_input: LoadFlowVoltageInput) -> None:
@@ -124,3 +133,50 @@ def test_p32_json_determinism(p32_input: LoadFlowVoltageInput) -> None:
         del payload["created_at"]
 
     assert json_a == json_b
+
+
+def test_ostrzezenie_braku_nazywa_wielkosci_i_miejsce() -> None:
+    """Każdy kod braku, który dowód spadku napięcia może zgłosić (szyna i element), ma nazwę
+    wielkości — ostrzeżenie nie niesie kodu pola wejścia."""
+    import ast
+    import inspect
+    import textwrap
+
+    from application.proof_engine.proof_generator import NAZWY_WEJSC_DOWODU_LF_PL
+
+    kody: set[str] = set()
+    for funkcja in (
+        ProofGenerator._missing_lf_bus_inputs,
+        ProofGenerator._missing_lf_element_inputs,
+    ):
+        for wezel in ast.walk(ast.parse(textwrap.dedent(inspect.getsource(funkcja)))):
+            if (
+                isinstance(wezel, ast.Call)
+                and isinstance(wezel.func, ast.Attribute)
+                and wezel.func.attr == "append"
+                and isinstance(wezel.args[0], ast.Constant)
+            ):
+                kody.add(wezel.args[0].value)
+    assert kody == set(NAZWY_WEJSC_DOWODU_LF_PL)
+
+
+def test_status_obliczen_dowodu_ma_tekst_dla_projektanta() -> None:
+    """Każdy status obliczeń, który generator może nadać (stałe ``computed_status = "…"``
+    w całym module), ma tekst wyniku; wartość maszynowa zostaje w ``value``."""
+    import ast
+    import inspect
+
+    import application.proof_engine.proof_generator as modul
+    from application.proof_engine.proof_generator import STATUSY_OBLICZEN_DOWODU_PL
+
+    statusy: set[str] = set()
+    for wezel in ast.walk(ast.parse(inspect.getsource(modul))):
+        if isinstance(wezel, ast.Assign) and any(
+            isinstance(c, ast.Name) and c.id == "computed_status" for c in wezel.targets
+        ):
+            for stala in ast.walk(wezel.value):
+                if isinstance(stala, ast.Constant) and isinstance(stala.value, str):
+                    statusy.add(stala.value)
+    assert statusy == set(STATUSY_OBLICZEN_DOWODU_PL)
+    for tekst in STATUSY_OBLICZEN_DOWODU_PL.values():
+        assert tekst and tekst[0].islower() and "COMPUTED" not in tekst

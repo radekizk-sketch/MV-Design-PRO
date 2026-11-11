@@ -12,6 +12,7 @@ import {
   executeRunAndWait,
 } from '../../../ui/study-cases/api';
 import type { ExecutionAnalysisType, RunStatus } from '../../../ui/study-cases/types';
+import { bladZapytania } from '../../shared/bladZapytania';
 
 // ---------------------------------------------------------------------------
 // Kontrakt raportu zgodności (1:1 z application/analyses/raport_zgodnosci.py).
@@ -116,7 +117,7 @@ const DER_SN_BASE = '/api/der-sn';
 async function odczytaj<T>(response: Response): Promise<T | null> {
   if (response.status === 404) return null;
   if (!response.ok) {
-    throw new Error(`Błąd ${response.status} podczas pobierania dokumentu toru DER-SN.`);
+    throw bladZapytania(response, 'Nie udało się pobrać dokumentu toru przyłączenia źródła do sieci SN');
   }
   return (await response.json()) as T;
 }

@@ -17,8 +17,14 @@
  * Wszystkie etykiety w języku polskim (100% PL).
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
+import {
+  nazwaWartosciKodowej,
+  STAN_WERYFIKACJI_PL,
+  zWielkiejLitery,
+} from '../catalog/wartosciKodoweKarty';
 import {
   fetchProtectionTypesByCategory,
   exportProtectionLibrary,
@@ -322,7 +328,7 @@ export function ProtectionLibraryBrowser({
                     )}
                   >
                     <div className="font-medium text-sm">
-                      {(type as any).name_pl || type.id}
+                      {nazwaObiektuPl(pierwszaNazwa((type as { readonly name_pl?: unknown }).name_pl), 'pozycja_katalogu')}
                     </div>
                     {(type as any).vendor && (
                       <div className="text-xs text-gray-500 mt-1">
@@ -331,7 +337,7 @@ export function ProtectionLibraryBrowser({
                     )}
                     {(type as any).unverified && (
                       <div className="mt-1 text-xs font-medium text-amber-700">
-                        Dane analityczne - wymagaja weryfikacji
+                        Dane analityczne — wymagają weryfikacji
                       </div>
                     )}
                   </button>
@@ -391,7 +397,7 @@ function TypeDetailsPanel({
       {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800">
-          {(type as any).name_pl || type.id}
+          {nazwaObiektuPl(pierwszaNazwa((type as { readonly name_pl?: unknown }).name_pl), 'pozycja_katalogu')}
         </h3>
         <p className="text-xs text-gray-500 mt-1">ID: {type.id}</p>
       </div>
@@ -428,14 +434,16 @@ function DeviceTypeDetails({ type }: { type: ProtectionDeviceType }) {
         value={type.rated_current_a}
         unit="A"
       />
-      <DetailField label="Zrodlo danych" value={type.source_catalog} />
+      <DetailField label="Źródło danych" value={type.source_catalog} />
       <DetailField
         label="Status weryfikacji"
-        value={type.unverified ? 'NIEZWERYFIKOWANY' : 'Zweryfikowany'}
+        value={zWielkiejLitery(
+          STAN_WERYFIKACJI_PL[type.unverified ? 'NIEWERYFIKOWANY' : 'ZWERYFIKOWANY'],
+        )}
       />
       <DetailField
         label="Zakresy nastaw"
-        value={type.unverified_ranges ? 'Wymagaja weryfikacji' : 'Zweryfikowane'}
+        value={type.unverified_ranges ? 'Wymagają weryfikacji' : 'Zweryfikowane'}
       />
       <DetailField label="Notatki (PL)" value={type.notes_pl} multiline />
       {type.functions_supported && type.functions_supported.length > 0 && (
@@ -480,7 +488,10 @@ function CurveDetails({ type }: { type: ProtectionCurve }) {
     <>
       <DetailField label="Nazwa (PL)" value={type.name_pl} />
       <DetailField label="Standard" value={type.standard} />
-      <DetailField label="Typ krzywej" value={type.curve_kind} />
+      <DetailField
+        label="Typ krzywej"
+        value={type.curve_kind ? nazwaWartosciKodowej('curve_kind', type.curve_kind) : undefined}
+      />
       {type.parameters && Object.keys(type.parameters).length > 0 && (
         <div className="border-t border-gray-200 pt-3">
           <div className="text-xs font-medium text-gray-600 mb-2">Parametry:</div>

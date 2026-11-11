@@ -24,7 +24,7 @@
 import { useEffect, useMemo } from 'react';
 
 import { PakietDowodowy, PrzegladDowodu, ZrodloLatex } from '../../wyniki/dowod';
-import { useAkcjaUruchomObliczenie } from '../../wyniki/wzorzec';
+import { useAkcjaUruchomObliczenie, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { resolveTraceStepsForElement } from '../../../ui/proof/ElementCalculationProofPanel';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { useSelectionStore } from '../../../ui/selection';
@@ -80,21 +80,24 @@ export function DowodPrzebiegu({
   );
 
   // L-11: wskazanie jawne (2× klik) przed selekcją na schemacie. Nazwa
-  // pierwszoplanowa z selekcji, gdy dotyczy tego samego elementu; inaczej sam
-  // ref (zero zgadywania nazwy nieznanego elementu).
+  // pierwszoplanowa z selekcji, gdy dotyczy tego samego elementu; inaczej z migawki
+  // modelu (most nazw wyników) — nigdy surowa referencja na pierwszym planie. Do
+  // dopasowania kroków śladu idzie wyłącznie nazwa z selekcji (nie opis zapasowy).
+  const nazwaObiektu = useNazwaObiektu();
   const wskazanyElement = useMemo(() => {
     const jawne = wskazanyElementRef !== null;
     const ref = wskazanyElementRef ?? selekcja?.id ?? null;
     if (!ref || selectedRunId !== runId || !slad) return null;
-    const nazwa = selekcja?.id === ref ? selekcja.name ?? ref : ref;
-    const krokiElementu = resolveTraceStepsForElement(slad, { id: ref, name: nazwa });
+    const nazwaSelekcji = selekcja?.id === ref ? selekcja.name : null;
+    const nazwa = nazwaObiektu(ref, nazwaSelekcji);
+    const krokiElementu = resolveTraceStepsForElement(slad, { id: ref, name: nazwaSelekcji });
     // Selekcja to KONTEKST, nie żądanie: gdy ślad nie wiąże z nią kroków,
     // okno milczy zamiast pokazywać wyłączony przełącznik z ostrzeżeniem przy
     // każdym wejściu. Wskazanie JAWNE (użytkownik kliknął wartość) zasługuje
     // na odpowiedź także wtedy, gdy jest ona negatywna.
     if (!jawne && krokiElementu.length === 0) return null;
     return { nazwa, kroki: krokiElementu };
-  }, [wskazanyElementRef, selekcja, selectedRunId, runId, slad]);
+  }, [wskazanyElementRef, selekcja, selectedRunId, runId, slad, nazwaObiektu]);
 
   return (
     <div data-testid="mvd-dowod-przebiegu" data-run-id={runId ?? undefined} style={{ display: 'contents' }}>

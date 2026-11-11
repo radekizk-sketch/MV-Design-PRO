@@ -247,6 +247,19 @@ class ProtectionSetpointBasis(StrEnum):
     HZ = "HZ"
     ABS = "ABS"
 
+    @property
+    def nazwa_pl(self) -> str:
+        """Baza nastawy po polsku (komunikaty walidacji nastawy)."""
+        return _NAZWY_BAZ_NASTAWY_PL[self]
+
+
+_NAZWY_BAZ_NASTAWY_PL: dict[ProtectionSetpointBasis, str] = {
+    ProtectionSetpointBasis.UN: "napięcia znamionowego Un",
+    ProtectionSetpointBasis.IN: "prądu znamionowego In",
+    ProtectionSetpointBasis.HZ: "częstotliwości znamionowej",
+    ProtectionSetpointBasis.ABS: "wartości bezwzględnej",
+}
+
 
 class ProtectionSetpointOperator(StrEnum):
     """
@@ -298,9 +311,14 @@ class ProtectionSetpoint:
         """Validate setpoint invariants."""
         if self.basis in (ProtectionSetpointBasis.UN, ProtectionSetpointBasis.IN):
             if self.unit != "pu":
-                raise ValueError(f"Dla bazy {self.basis.value} jednostka musi być 'pu'")
+                raise ValueError(
+                    f"Nastawa względem {self.basis.nazwa_pl} musi być w jednostkach względnych "
+                    "(pu)."
+                )
             if self.multiplier is None:
-                raise ValueError(f"Dla bazy {self.basis.value} wymagany jest multiplier")
+                raise ValueError(
+                    f"Nastawa względem {self.basis.nazwa_pl} wymaga krotności wartości bazowej."
+                )
         if self.basis == ProtectionSetpointBasis.ABS:
             if self.abs_value is None:
                 raise ValueError(
@@ -352,7 +370,7 @@ class ProtectionComputedValue:
     def __post_init__(self) -> None:
         """Validate computed value invariants."""
         if not self.computed_from or self.computed_from.strip() == "":
-            raise ValueError("Wartość computed musi mieć wypełnione pole computed_from")
+            raise ValueError("Wartość wyliczona musi wskazywać, z czego ją wyliczono")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""

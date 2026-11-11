@@ -3965,7 +3965,7 @@
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
       "input_hash": "8b12f6fe970a833cadbf1f24e724e5526369143746b5b124e3fd6f98274c39c4",
-      "result_hash": "21a99d083b4b07352e124be010625fcde0c968a1d3f2fa793661686894603be7",
+      "result_hash": "18542560f6e67de07749987293fcc8252de6f5fd6650e2a00fff61b7ec1df448",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

@@ -348,7 +348,7 @@ class TestCreateBatch:
             json={"scenario_ids": [s1["scenario_id"], s1["scenario_id"]]},
         )
         assert response.status_code == 400
-        assert "duplikaty" in response.json()["detail"]
+        assert "ten sam scenariusz więcej niż raz" in response.json()["detail"]
 
     def test_nieznany_scenariusz_404(self):
         response = client.post(
@@ -658,7 +658,9 @@ class TestExecuteBatch:
         assert first.json()["status"] == "FINISHED"
         second = wykonaj_serie(client, batch["batch_id"])
         assert second.status_code == 409
-        assert "wymagany CREATED" in second.json()["detail"]
+        assert "w stanie „zakończony”" in second.json()["detail"]
+        assert "FINISHED" not in second.json()["detail"]
+        assert "CREATED" not in second.json()["detail"]
 
     def test_wykonanie_nieznanej_serii_404(self):
         response = wykonaj_serie(client, uuid4())
@@ -1085,8 +1087,9 @@ def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
     """Dawniej `except Exception` robiło z błędu programu „scenariusz nieudany"; błąd
     programu zostaje błędem (ślad w dzienniku wykonawcy — karta DYNAMIKA-W-TLE: seria
     liczy się w tle, więc nie ma żądania HTTP, które dostałoby 500), a seria NIE zostaje
-    w RUNNING: bieżąca i niewykonane pozycje FAILED z nazwą błędu wewnętrznego (bez
-    treści wyjątku), wcześniejsze zachowują wynik."""
+    w RUNNING: bieżąca i niewykonane pozycje FAILED ze zdaniem o błędzie wewnętrznym (bez
+    treści i bez nazwy klasy wyjątku — identyfikator kodu nie jest zdaniem dla projektanta;
+    nazwę i ślad niesie dziennik serwera), wcześniejsze zachowują wynik."""
     batch = _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji)
     done = wykonaj_serie(client, batch["batch_id"])
     assert done.status_code == 200, done.text
@@ -1094,7 +1097,8 @@ def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
     assert stan["status"] == ("FAILED" if na_pozycji == 1 else "PARTIAL")
     for pozycja in stan["items"][na_pozycji - 1 :]:
         assert pozycja["status"] == "FAILED"
-        assert typ.__name__ in pozycja["error_message"]
+        assert "błędem wewnętrznym programu" in pozycja["error_message"]
+        assert typ.__name__ not in pozycja["error_message"]
         assert "wstrzyknięty wyjątek" not in pozycja["error_message"]
     if na_pozycji == 2:
         assert stan["items"][0]["status"] == "FINISHED"
@@ -1132,3 +1136,16 @@ def test_bieg_ze_scenariusza_odmowa_409_a_blad_programu_500_przez_handler_global
     if kod_http == 500:
         assert odpowiedz.json()["detail"] == "Wewnętrzny błąd serwera"
         assert odpowiedz.json()["error_type"] == typ.__name__
+
+
+def test_kazdy_stan_serii_ma_polska_nazwe() -> None:
+    """Każdy człon ``RunBatchStatus`` ma nazwę po polsku bez kodu; wartość spoza słownika
+    daje uczciwe zdanie (nie kod)."""
+    from domain.opis_przebiegu import STAN_SPOZA_SLOWNIKA_PL
+    from domain.run_batch import NAZWY_STANOW_SERII_PL, RunBatchStatus, stan_serii_pl
+
+    assert set(NAZWY_STANOW_SERII_PL) == set(RunBatchStatus)
+    for stan in RunBatchStatus:
+        nazwa = stan_serii_pl(stan)
+        assert nazwa and stan.value not in nazwa, (stan, nazwa)
+    assert stan_serii_pl("NOWY_STAN") == STAN_SPOZA_SLOWNIKA_PL

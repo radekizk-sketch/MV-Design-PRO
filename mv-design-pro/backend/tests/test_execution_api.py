@@ -215,10 +215,14 @@ class TestCreateRunEndpoint:
         )
         assert response.status_code == 400
         detail = response.json()["detail"]
+        # Wskazanie właściwej ścieżki i jej warunków słowami projektanta — bez kluczy
+        # parametrów (`sc_run_id`, `protection_case_id`) i bez odsyłacza do rejestru
+        # konfliktów dokumentacji (klasa surowych kluczy w komunikatach).
         assert "protection-runs" in detail
-        assert "sc_run_id" in detail
-        assert "protection_case_id" in detail
-        assert "V12K-025" in detail
+        assert "zakończonego biegu zwarciowego 3F albo 2F" in detail
+        assert "nastawy zabezpieczeń" in detail
+        for zakazane in ("sc_run_id", "protection_case_id", "V12K-025", "REJESTR"):
+            assert zakazane not in detail
 
     def test_create_run_without_canonical_enm_snapshot_is_rejected(self, client):
         """Przypadek ISTNIEJACY w bazie, ale BEZ zasianego modelu ENM — 409.
@@ -429,7 +433,9 @@ class TestGetRunResultsEndpoint:
 
         response = client.get(f"/api/execution/runs/{run_id}/results")
         assert response.status_code == 409
-        assert "CREATED" in response.json()["detail"]
+        # Stan obliczenia słowami (`stan_przebiegu_pl`), bez kodu `CREATED`.
+        assert "utworzony, nieuruchomiony" in response.json()["detail"]
+        assert "CREATED" not in response.json()["detail"]
 
     def test_get_results_run_not_found(self, client):
         response = client.get(f"/api/execution/runs/{uuid4()}/results")

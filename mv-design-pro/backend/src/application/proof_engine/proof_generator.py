@@ -370,6 +370,31 @@ class LoadFlowBusInput:
     nazwa: str = field(kw_only=True)
 
 
+#: Status obliczeń dowodu (``computed_status``, wartość maszynowa) → tekst wyniku dla
+#: projektanta (``ProofValue.formatted``). Komplet przypina
+#: ``tests/proof_engine/test_load_flow_voltage_proof_p32.py::
+#: test_status_obliczen_dowodu_ma_tekst_dla_projektanta``.
+STATUSY_OBLICZEN_DOWODU_PL: dict[str, str] = {
+    "COMPUTED": "obliczono",
+    "PARTIAL": "obliczono częściowo — część wielkości bez danych",
+    "NOT COMPUTED": "nie obliczono — brak danych",
+}
+
+
+#: Wejścia dowodu spadku napięcia zgłaszane jako braki (``_missing_lf_bus_inputs``,
+#: ``_missing_lf_element_inputs``) → nazwa wielkości w ostrzeżeniu dowodu. Komplet przypina
+#: ``tests/proof_engine/test_load_flow_voltage_proof_p32.py::
+#: test_ostrzezenie_braku_nazywa_wielkosci_i_miejsce``.
+NAZWY_WEJSC_DOWODU_LF_PL: dict[str, str] = {
+    "r_ohm": "rezystancja R gałęzi",
+    "x_ohm": "reaktancja X gałęzi",
+    "p_mw": "moc czynna P",
+    "q_mvar": "moc bierna Q",
+    "u_nom_kv": "napięcie znamionowe Un",
+    "u_ll_kv": "napięcie międzyprzewodowe U z rozpływu mocy",
+}
+
+
 @dataclass
 class LoadFlowElementInput:
     """Dane wejściowe dla elementu w dowodzie P32."""
@@ -522,7 +547,7 @@ class ProofGenerator:
                 missing_sections += 1
                 warnings.append(
                     cls._format_missing_warning(
-                        scope=f"ELEMENT {element.element_id}",
+                        scope=f"element „{element.nazwa}”",
                         missing=missing,
                     )
                 )
@@ -604,7 +629,7 @@ class ProofGenerator:
                 missing_sections += 1
                 warnings.append(
                     cls._format_missing_warning(
-                        scope=f"BUS {bus.bus_id}",
+                        scope=f"szyna „{bus.nazwa}”",
                         missing=missing,
                     )
                 )
@@ -1025,20 +1050,21 @@ class ProofGenerator:
 
         if data.quantities is None:
             raise ValueError(
-                "SC1Input.quantities jest wymagane — proof engine nie liczy fizyki "
-                "(NOT-A-SOLVER); wielkości zwarciowe SC1 liczy solver "
-                "network_model/solvers/short_circuit_asymmetrical_quantities."
+                "Dane wejściowe dowodu zwarcia niesymetrycznego nie niosą wielkości "
+                "zwarciowych — generator dowodu nie liczy fizyki; wielkości zwarciowe liczy "
+                "solver zwarć niesymetrycznych."
             )
         quantities = data.quantities
         if quantities.fault_type != fault_type:
             raise ValueError(
-                f"SC1Input.quantities policzone dla typu {quantities.fault_type}, "
-                f"a dowód dotyczy typu {fault_type}"
+                "Wielkości zwarciowe danych wejściowych dowodu policzono dla innego rodzaju "
+                "zwarcia niż rodzaj zwarcia dowodu."
             )
         if quantities.z_f_ohm != data.z_f_ohm:
             raise AssertionError(
-                "SC1Input.quantities policzone dla innej impedancji przejścia Z_f niż ta, "
-                "której dotyczy dowód (karta OD-14: jedna prawda Z_f wyniku i dowodu)."
+                "Wielkości zwarciowe danych wejściowych dowodu policzono dla innej impedancji "
+                "przejścia Z_f niż ta, której dotyczy dowód — wynik i dowód muszą nieść tę samą "
+                "impedancję przejścia."
             )
 
         z_equiv = quantities.z_equiv_ohm
@@ -1058,7 +1084,7 @@ class ProofGenerator:
         for eq_id in step_order:
             equation = EquationRegistry.get_equation(eq_id)
             if equation is None:
-                raise ValueError(f"Missing equation definition for {eq_id}")
+                raise ValueError(f"Brak definicji równania {eq_id} w rejestrze równań.")
             step_number += 1
 
             if eq_id == "EQ_SC1_001":
@@ -1154,7 +1180,9 @@ class ProofGenerator:
                     idyn_ka=idyn_ka,
                 )
             else:
-                raise ValueError(f"Unsupported SC1 equation in step order: {eq_id}")
+                raise ValueError(
+                    f"Równanie {eq_id} nie należy do kolejności kroków dowodu zwarcia jednofazowego."
+                )
             steps.append(step)
 
         header = ProofHeader(
@@ -1216,7 +1244,10 @@ class ProofGenerator:
             return ProofType.SC2F_IEC60909
         if fault_type == "SC2FZ":
             return ProofType.SC2FG_IEC60909
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+        raise ValueError(
+            "Nieobsługiwany rodzaj zwarcia niesymetrycznego w dowodzie — obsługiwane: "
+            "zwarcie jednofazowe z ziemią, zwarcie dwufazowe, zwarcie dwufazowe z ziemią."
+        )
 
     @staticmethod
     def _normalize_sc1_fault_type(fault_type: str) -> str:
@@ -1582,7 +1613,7 @@ class ProofGenerator:
     ) -> ProofStep:
         equation = EquationRegistry.get_equation(equation_id)
         if equation is None:
-            raise ValueError(f"Missing equation definition for {equation_id}")
+            raise ValueError(f"Brak definicji równania {equation_id} w rejestrze równań.")
 
         input_values: tuple[ProofValue, ...]
         if equation_id == "EQ_SC1_003":
@@ -2630,7 +2661,7 @@ class ProofGenerator:
             artifact_id = uuid4()
 
         if not data.segments:
-            raise ValueError("VDROP proof requires at least one segment.")
+            raise ValueError("Dowód spadku napięcia wymaga co najmniej jednego odcinka toru.")
 
         steps: list[ProofStep] = []
         step_number = 0
@@ -3623,7 +3654,10 @@ class ProofGenerator:
         for f in fields(obj):
             mapping_key = f.metadata.get("mapping_key")
             if not mapping_key:
-                raise ValueError(f"Brak mapping_key dla pola {path}{f.name}.")
+                raise ValueError(
+                    "Dane wejściowe dowodu zawierają pole bez klucza mapowania na wielkość "
+                    "dowodu — definicja danych wejściowych jest niekompletna."
+                )
             value = getattr(obj, f.name)
             if value is None:
                 continue
@@ -3825,10 +3859,13 @@ class ProofGenerator:
             if data.sn_mva is None:
                 raise ValueError("Brak mocy znamionowej transformatora.")
         else:
-            raise ValueError(f"Nieobsługiwany element_kind: {data.element_kind}")
+            raise ValueError(
+                "Nieobsługiwany rodzaj elementu dowodu prądów roboczych — dozwolone: linia, "
+                "kabel albo transformator."
+            )
 
         if data.u_ll_kv is None:
-            raise ValueError("Brak napięcia międzyfazowego u_ll_kv.")
+            raise ValueError("Brak napięcia międzyfazowego U.")
         if data.p_mw is None or data.q_mvar is None:
             raise ValueError("Brak mocy czynnej albo biernej.")
 
@@ -4141,11 +4178,10 @@ class ProofGenerator:
 
     @staticmethod
     def _format_missing_warning(scope: str, missing: list[str]) -> str:
-        missing_sorted = ", ".join(sorted(missing))
-        return (
-            f"{scope}: NOT COMPUTED — brak danych: {missing_sorted} | "
-            f"missing_data: [{missing_sorted}]"
-        )
+        """Ostrzeżenie dowodu spadku napięcia: miejsce (nazwa z modelu) i nazwy brakujących
+        wielkości (``NAZWY_WEJSC_DOWODU_LF_PL``) — bez kodów pól wejścia."""
+        opisy = ", ".join(NAZWY_WEJSC_DOWODU_LF_PL[kod] for kod in sorted(missing))
+        return f"{scope}: nie obliczono — brak danych: {opisy}."
 
     @staticmethod
     def _missing_lf_bus_inputs(bus: LoadFlowBusInput) -> list[str]:
@@ -4565,11 +4601,14 @@ class ProofGenerator:
 
     @staticmethod
     def _status_value(symbol: str, status: str, source_key: str) -> ProofValue:
+        """Wartość opisowa wyniku dowodu: ``value`` niesie status maszynowy (agregacja, API),
+        ``formatted`` — tekst dla projektanta (``STATUSY_OBLICZEN_DOWODU_PL`` dla statusu
+        obliczeń, tekst opisowy modelu bez zmian)."""
         return ProofValue(
             symbol=symbol,
             value=status,
             unit="—",
-            formatted=status,
+            formatted=STATUSY_OBLICZEN_DOWODU_PL.get(status, status),
             source_key=source_key,
         )
 

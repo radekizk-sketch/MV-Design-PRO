@@ -87,16 +87,28 @@ class ZipCoeffs:
 def validate_zip_coeffs(c: ZipCoeffs) -> None:
     """Validate the ZIP polynomial (Rule: no guessing — reject malformed input)."""
     if c.v0_pu <= 0.0:
-        raise OdmowaDanychError(f"ZIP v0_pu must be > 0, got {c.v0_pu}")
+        raise OdmowaDanychError(
+            f"Napięcie odniesienia modelu ZIP U₀ musi być > 0 p.u., otrzymano {c.v0_pu}."
+        )
     if c.f0_hz <= 0.0:
-        raise OdmowaDanychError(f"ZIP f0_hz must be > 0, got {c.f0_hz}")
+        raise OdmowaDanychError(
+            f"Częstotliwość odniesienia modelu ZIP f₀ musi być > 0 Hz, otrzymano {c.f0_hz}."
+        )
     for label, a, b, k in (("P", c.a_p, c.b_p, c.c_p), ("Q", c.a_q, c.b_q, c.c_q)):
-        for name, val in ((f"a_{label}", a), (f"b_{label}", b), (f"c_{label}", k)):
+        for czesc, val in (
+            ("stałej impedancji", a),
+            ("stałego prądu", b),
+            ("stałej mocy", k),
+        ):
             if not (0.0 <= val <= 1.0):
-                raise OdmowaDanychError(f"ZIP {name} must be in [0, 1], got {val}")
+                raise OdmowaDanychError(
+                    f"Model ZIP mocy {label}: udział części {czesc} musi leżeć w [0, 1], "
+                    f"otrzymano {val}."
+                )
         if abs(a + b + k - 1.0) > _SUM_TOL:
             raise OdmowaDanychError(
-                f"ZIP {label} coefficients must sum to 1, got {a + b + k} (a={a}, b={b}, c={k})"
+                f"Model ZIP mocy {label}: udziały części Z, I i P muszą sumować się do 1, "
+                f"otrzymano {a + b + k} (Z = {a}, I = {b}, P = {k})."
             )
 
 
@@ -241,8 +253,9 @@ def assert_const_part_is_restorable(
     ]
     if missing:
         raise ValueError(
-            f"ZIP split lost the constant part at bus indices {missing}: "
-            "they are not in the ZIP recompute table"
+            f"Rozdział odbioru na składowe ZIP zgubił składową stałomocową w węzłach "
+            f"o indeksach {', '.join(f'{i:d}' for i in missing)}: nie ma ich w tablicy "
+            "przeliczania składowych ZIP"
         )
 
 

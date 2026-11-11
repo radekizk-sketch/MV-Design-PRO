@@ -69,11 +69,11 @@ def test_rated_currents_reference_values() -> None:
         ),
         (
             {"rated_power_kva": 630.0, "primary_voltage_kv": 0.0, "secondary_voltage_kv": 0.4},
-            "Napiecie pierwotne",
+            "Napięcie pierwotne",
         ),
         (
             {"rated_power_kva": 630.0, "primary_voltage_kv": 15.0, "secondary_voltage_kv": 0.0},
-            "Napiecie wtorne",
+            "Napięcie wtórne",
         ),
     ],
 )

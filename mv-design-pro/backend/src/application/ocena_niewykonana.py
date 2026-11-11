@@ -72,9 +72,7 @@ def ocena_niewykonana(
             ``czego_brakuje`` jest puste — ocena niewykonana ZAWSZE nazywa konkretny brak.
     """
     if not czego_brakuje:
-        raise ValueError(
-            "Ocena niewykonana musi nazwać konkretny brak powierzchni (czego_brakuje)."
-        )
+        raise ValueError("Ocena niewykonana musi nazwać konkretny brak powierzchni (listę braków).")
     return ocen_kryterium(
         kryterium_id=kryterium_id,
         przedmiot=przedmiot,

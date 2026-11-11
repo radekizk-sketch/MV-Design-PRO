@@ -89,6 +89,16 @@ async function szerokosc(lokator: Locator): Promise<number> {
 }
 
 /** Liczba kolumn tabeli widocznych w całości w obszarze przewijania (bez przewijania w poziomie). */
+/** Liczba kolumn nagłówka tabeli. */
+async function kolumnyTabeli(tabela: Locator): Promise<number> {
+  return tabela.locator('thead th').count();
+}
+
+/** Tabela mieści się w obszarze bez przewijania w poziomie (szerokość treści ≤ widocznej). */
+async function bezPrzewijaniaPoziomego(tabela: Locator): Promise<boolean> {
+  return tabela.evaluate((t) => t.parentElement!.scrollWidth <= t.parentElement!.clientWidth);
+}
+
 async function widoczneKolumny(tabela: Locator): Promise<number> {
   return tabela.evaluate((t) => {
     const obszar = t.parentElement!.getBoundingClientRect();
@@ -207,7 +217,12 @@ test('K6 — karta techniczna stacji na pierwszym ekranie, szerokość inspektor
   // 3. Tryb szeroki 560 px — przycisk w nagłówku inspektora i powrót tym samym poleceniem.
   const szeroki = inspektor.getByTestId('mvd-inspector-szeroki');
   await expect(szeroki).toHaveAttribute('aria-pressed', 'false');
-  const kolumnyZwykly = await widoczneKolumny(tabelaPol);
+  // Zwarta tabela pól (§10 kontraktu prezentacji, decyzja architekta 2026-11-04): wszystkie kolumny
+  // widoczne bez przewijania w poziomie — w inspektorze zwykłym (420 px) i w trybie szerokim.
+  // (Dawniej: tabela 9 kolumn przewijana w poziomie, tryb szeroki pokazywał ich więcej.)
+  const kolumnyPol = await kolumnyTabeli(tabelaPol);
+  expect(await widoczneKolumny(tabelaPol), 'inspektor zwykły: wszystkie kolumny tabeli pól widoczne').toBe(kolumnyPol);
+  expect(await bezPrzewijaniaPoziomego(tabelaPol), 'inspektor zwykły: tabela pól bez przewijania w poziomie').toBe(true);
   await szeroki.click();
   await expect(szeroki).toHaveAttribute('aria-pressed', 'true');
   expect(await szerokosc(inspektor)).toBe(560);
@@ -235,8 +250,8 @@ test('K6 — karta techniczna stacji na pierwszym ekranie, szerokość inspektor
       { timeout: 20000, message: 'tryb szeroki: cztery stacje planu sieci w całości w kanwie' },
     )
     .toBe('4 stacji, poza kanwą 0');
-  // Tryb szeroki pokazuje więcej kolumn tabeli pól bez przewijania niż inspektor zwykły.
-  expect(await widoczneKolumny(tabelaPol)).toBeGreaterThan(kolumnyZwykly);
+  expect(await widoczneKolumny(tabelaPol), 'tryb szeroki: wszystkie kolumny tabeli pól widoczne').toBe(kolumnyPol);
+  expect(await bezPrzewijaniaPoziomego(tabelaPol), 'tryb szeroki: tabela pól bez przewijania w poziomie').toBe(true);
   await szeroki.click();
   await expect(szeroki).toHaveAttribute('aria-pressed', 'false');
   expect(await szerokosc(inspektor)).toBe(420);

@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../shared/bladZapytania';
 /*
  * Klient API ekranu „Ocena techniczna wyników" (karta B-02 / W3-E; następca
  * ekranu „Werdykt projektowy" z karty F-K3 i huba „Analizy techniczne").
@@ -175,7 +176,7 @@ export async function fetchOcenaTechniczna(caseId: string): Promise<OdpowiedzOce
   const url = `/api/quality/design-verdict?case_id=${encodeURIComponent(caseId)}`;
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return (await response.json()) as OdpowiedzOceny;
 }

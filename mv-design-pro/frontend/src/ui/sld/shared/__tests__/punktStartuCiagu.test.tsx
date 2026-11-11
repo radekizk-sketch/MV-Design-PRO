@@ -59,6 +59,11 @@ import {
   type SldElementKindForMenu,
 } from '../../v2/command/SldCommandService';
 import { HIT_ATTR } from '../../v3/canvas/hitAreas';
+import {
+  identyfikatorAparatu,
+  jestPunktemWyprowadzeniaCiagu,
+  rozbierzIdentyfikatorAparatu,
+} from '../identyfikatorAparatu';
 import { SldCanvasV3Workspace } from '../../v3/canvas/SldCanvasV3Workspace';
 import {
   buildSldOperationContext,
@@ -152,6 +157,34 @@ const OCZEKIWANA: Record<StanPol, boolean> = {
 const BAZA = scena('stacja_na_odcinku', 'wolne_kilka');
 const STACJA_REF = stacjaSnNn(BAZA.snapshot).ref_id;
 const POLE_GPZ = (BAZA.logical_views.line_fields ?? []).find((w) => w.station_ref.startsWith('gpz/'))!.field_ref;
+/**
+ * Scena głowicy kablowej (`eksport_fixtur_harnessu.py::glowice_kablowe_pol_gpz`): scena
+ * bazowa + oba pola liniowe GPZ wyposażone operacją `set_bay_equipment` z szablonu pola
+ * odpływowego. Głowica jest REKORDEM aparatu pola (`primary_devices`, `CABLE_HEAD`) — pole
+ * GPZ z samym łącznikiem (scena bazowa) nie ma głowicy na kanwie. Pole wolne i zajęte
+ * wskazuje backend (`zajetosc_pol`).
+ */
+interface ScenaGlowic {
+  readonly pole_wolne: string;
+  readonly pole_zajete: string;
+  readonly snapshot: EnergyNetworkModel;
+  readonly logical_views: LogicalViewsV1;
+}
+const GLOWICE = JSON.parse(
+  readFileSync(resolve(GENERATED, 'glowice_kablowe_pol_gpz.json'), 'utf8'),
+) as ScenaGlowic;
+const POLE_GPZ_WOLNE = GLOWICE.pole_wolne;
+const POLE_GPZ_ZAJETE = GLOWICE.pole_zajete;
+/** Ta sama scena, ale pole wolne BEZ rekordu głowicy kablowej (rekord usunięty z
+ *  `primary_devices`): zakończenie `bayReserve` takiego pola nie jest punktem wyprowadzenia. */
+const GLOWICE_BEZ_GLOWICY_POLA_WOLNEGO: EnergyNetworkModel = {
+  ...GLOWICE.snapshot,
+  bays: (GLOWICE.snapshot.bays ?? []).map((b) =>
+    b.ref_id === POLE_GPZ_WOLNE
+      ? { ...b, primary_devices: (b.primary_devices ?? []).filter((u) => u.kind !== 'CABLE_HEAD') }
+      : b,
+  ),
+};
 const ODCINEK_KONCOWY = (() => {
   const korytarz = (BAZA.snapshot.corridors ?? []).find((c) => (c.ordered_segment_refs ?? []).length > 0)!;
   return korytarz.ordered_segment_refs[korytarz.ordered_segment_refs.length - 1];
@@ -235,22 +268,62 @@ const PRZYPADKI: readonly Przypadek[] = [
     widoki: BAZA.logical_views,
     oczekiwanaDostepnosc: true,
   },
+  // Aparat pola × zajętość pola × rekord głowicy: ciąg główny wychodzi WYŁĄCZNIE z punktu
+  // wyprowadzenia (głowica albo — kanon pola wolnego — zakończenie `bayReserve` pola, którego
+  // rekord ma głowicę) pola, które backend widzi jako wolne (dawniej głowica zajętego pola
+  // otwierała kreator).
   {
-    nazwa: 'aparat pola: głowica kablowa',
+    nazwa: 'aparat pola: zakończenie wolnego pola z głowicą w rekordzie',
     kind: 'apparatus',
     actionId: 'extend-trunk',
-    elementId: `${POLE_GPZ}#cable_head`,
-    enm: BAZA.snapshot,
-    widoki: BAZA.logical_views,
+    elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'bayReserve'),
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
     oczekiwanaDostepnosc: true,
   },
   {
-    nazwa: 'aparat pola: wyłącznik (nie głowica)',
+    nazwa: 'aparat pola: zakończenie wolnego pola bez głowicy w rekordzie',
     kind: 'apparatus',
     actionId: 'extend-trunk',
-    elementId: `${POLE_GPZ}#breaker`,
-    enm: BAZA.snapshot,
-    widoki: BAZA.logical_views,
+    elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'bayReserve'),
+    enm: GLOWICE_BEZ_GLOWICY_POLA_WOLNEGO,
+    widoki: GLOWICE.logical_views,
+    oczekiwanaDostepnosc: false,
+  },
+  {
+    nazwa: 'aparat pola: zakończenie zajętego pola z głowicą w rekordzie',
+    kind: 'apparatus',
+    actionId: 'extend-trunk',
+    elementId: identyfikatorAparatu(POLE_GPZ_ZAJETE, 'bayReserve'),
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
+    oczekiwanaDostepnosc: false,
+  },
+  {
+    nazwa: 'aparat pola: głowica kablowa wolnego pola',
+    kind: 'apparatus',
+    actionId: 'extend-trunk',
+    elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'cableHead'),
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
+    oczekiwanaDostepnosc: true,
+  },
+  {
+    nazwa: 'aparat pola: głowica kablowa zajętego pola',
+    kind: 'apparatus',
+    actionId: 'extend-trunk',
+    elementId: identyfikatorAparatu(POLE_GPZ_ZAJETE, 'cableHead'),
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
+    oczekiwanaDostepnosc: false,
+  },
+  {
+    nazwa: 'aparat pola: wyłącznik wolnego pola (nie głowica)',
+    kind: 'apparatus',
+    actionId: 'extend-trunk',
+    elementId: identyfikatorAparatu(POLE_GPZ_WOLNE, 'breaker'),
+    enm: GLOWICE.snapshot,
+    widoki: GLOWICE.logical_views,
     oczekiwanaDostepnosc: false,
   },
 ];
@@ -329,7 +402,9 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
 
       const pozycja = getMenuActions(kind, {
         trunkStartAvailable: dostepnosc,
-        apparatusKind: elementId.includes('#') ? elementId.slice(elementId.lastIndexOf('#') + 1) : undefined,
+        ...(kind === 'apparatus'
+          ? { aparatWyprowadzaCiag: jestPunktemWyprowadzeniaCiagu(enm, rozbierzIdentyfikatorAparatu(elementId)) }
+          : {}),
       }).find((a) => a.id === actionId)!;
       expect(pozycja, `pozycja ${actionId} w menu ${kind}`).toBeTruthy();
       expect(pozycja.disabled ?? false).toBe(!oczekiwanaDostepnosc);
@@ -506,4 +581,85 @@ describe('S95-START — pasek działań inspektora czyta TO SAMO rozstrzygnięci
     },
     30000,
   );
+});
+
+/**
+ * Aparat pola na kanwie v3 — tożsamość `${bayRef}#${SymbolId}` z meta trafionego symbolu.
+ *
+ * Do tej karty kanwa v3 nie niosła rodzaju aparatu (temat menu = samo pole), a menu,
+ * wykonawca i inspektor czekały na kody skasowanej nakładki v2 (`…#cable_head`) — pozycja
+ * „Wyprowadź ciąg główny z głowicy" była zawsze zablokowana, a karta aparatu inspektora
+ * martwa. Natywny prawy/lewy klik w symbol sceny ćwiczy realną ścieżkę: trafienie → meta
+ * symbolu → temat → menu / pasek inspektora → wykonawca → kreator z polem startu.
+ */
+describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajętość × rodzaj)', () => {
+  function uchwytSymbolu(container: HTMLElement, bayRef: string, symbol: string): Element {
+    const uchwyt = container.querySelector(
+      `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(bayRef)}"][${HIT_ATTR.for}*="${symbol}"]`,
+    );
+    expect(uchwyt, `uchwyt symbolu ${symbol} pola ${bayRef}`).toBeTruthy();
+    return uchwyt!;
+  }
+
+  /**
+   * Kanon rysunku (`compose/apparatusSequence.ts::czyGlowicaRezerwy`): pole wolne nie rysuje
+   * głowicy — kończy się symbolem `bayReserve`, choć rekord pola ma głowicę; pole zajęte
+   * rysuje głowicę. Punktem wyprowadzenia ciągu jest więc zakończenie pola wolnego
+   * (`jestPunktemWyprowadzeniaCiagu`) — predykaty parami: scena i bramka menu z jednego kanonu.
+   */
+  it('kanon rysunku: pole wolne kończy się zakończeniem pola, pole zajęte — głowicą', () => {
+    useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const uchwyt = (pole: string, symbol: string) =>
+      container.querySelector(
+        `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(pole)}"][${HIT_ATTR.for}*="${symbol}"]`,
+      );
+    expect(uchwyt(POLE_GPZ_WOLNE, 'cableHead')).toBeNull();
+    expect(uchwyt(POLE_GPZ_WOLNE, 'bayReserve')).toBeTruthy();
+    expect(uchwyt(POLE_GPZ_ZAJETE, 'cableHead')).toBeTruthy();
+  });
+
+  it.each([
+    { nazwa: 'zakończenie wolnego pola z głowicą', pole: POLE_GPZ_WOLNE, symbol: 'bayReserve', aktywna: true },
+    { nazwa: 'głowica zajętego pola', pole: POLE_GPZ_ZAJETE, symbol: 'cableHead', aktywna: false },
+    { nazwa: 'wyłącznik wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'breaker', aktywna: false },
+  ])('$nazwa: prawy klik → pozycja menu → kreator z polem startu', async ({ pole, symbol, aktywna }) => {
+    useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    await userEvent.pointer({ keys: '[MouseRight]', target: uchwytSymbolu(container, pole, symbol) });
+    const menu = screen.getByRole('menu');
+    const pozycja = within(menu).getByTestId('sld-menu-extend-trunk') as HTMLButtonElement;
+    expect(pozycja.disabled).toBe(!aktywna);
+    if (!aktywna) {
+      expect(pozycja.getAttribute('title')).toBeTruthy();
+      return;
+    }
+    await userEvent.click(pozycja);
+    const kontekst = useNetworkBuildStore.getState().activeSurface?.routeState.payload?.context as
+      | Record<string, unknown>
+      | undefined;
+    expect(maStartOperacjiCiagu(kontekst)).toBe(true);
+    expect(kontekst?.field_ref).toBe(pole);
+  });
+
+  it('lewy klik w zakończenie wolnego pola z głowicą: inspektor pokazuje głowicę pola i aktywną pozycję paska', async () => {
+    useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
+    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    await userEvent.click(uchwytSymbolu(container, POLE_GPZ_WOLNE, 'bayReserve'));
+    cleanup();
+    renderWithQueryClient(<InspectorEngineeringView />);
+    // Symbol bez rekordu aparatu: karta pola z rekordami aparatów — wśród nich głowica kablowa,
+    // z której projektant wyprowadza ciąg (rysunek jej nie pokazuje, model ją ma).
+    const karta = await screen.findByTestId('inspektor-karta');
+    expect(karta.getAttribute('data-rodzaj-karty')).toBe('pole');
+    expect(within(karta).getAllByText(/^Głowica kablowa/).length).toBeGreaterThan(0);
+    const pasek = await screen.findByTestId('inspektor-dzialania');
+    const pozycja = within(pasek).getByTestId('inspektor-akcja-extend-trunk');
+    expect(pozycja.getAttribute('aria-disabled')).not.toBe('true');
+    await userEvent.click(pozycja);
+    const kontekst = useNetworkBuildStore.getState().activeSurface?.routeState.payload?.context as
+      | Record<string, unknown>
+      | undefined;
+    expect(kontekst?.field_ref).toBe(POLE_GPZ_WOLNE);
+  });
 });

@@ -315,10 +315,11 @@ def _czyste_biegi() -> Any:
         # Decyzja karty: bieg łapie `ValueError` (rdzenie B-01 zgłaszają nim odmowy) —
         # status FAILED z komunikatem, nie 422 i nie 500.
         (lambda: ValueError(KOMUNIKAT), KOMUNIKAT),
-        # Błąd programu: bieg FAILED z NAZWĄ błędu wewnętrznego (bez treści wyjątku);
+        # Błąd programu: bieg FAILED ze ZDANIEM o błędzie wewnętrznym (bez treści wyjątku
+        # i bez nazwy klasy — identyfikator kodu nie jest zdaniem dla projektanta);
         # karta DYNAMIKA-W-TLE — bieg liczy się w tle, więc nie ma żądania HTTP, które
         # mogłoby dostać 500: ślad idzie do dziennika wykonawcy, stan do rejestru.
-        (lambda: KeyError("brak-klucza"), "Błąd wewnętrzny programu (KeyError)"),
+        (lambda: KeyError("brak-klucza"), "Błąd wewnętrzny programu — bieg przerwany"),
     ],
     ids=["odmowa_danych", "obcy_valueerror", "key_error"],
 )
@@ -471,5 +472,5 @@ def test_odmowa_rdzenia_b01_przez_realna_trase_klasyfikacji_modulu() -> None:
     )
     assert odpowiedz.status_code == 422, odpowiedz.text
     assert odpowiedz.json()["detail"] == (
-        "Klasyfikacja modułu: p_max_kw = inf — wymagana liczba skończona ≥ 0."
+        "Klasyfikacja modułu: moc maksymalna P_max [kW] = inf — wymagana liczba skończona ≥ 0."
     )

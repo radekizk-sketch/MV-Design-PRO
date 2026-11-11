@@ -163,7 +163,7 @@ def zakresy_waznosci_elementow(
         zakresy = element.zakresy_waznosci
         if len(zakresy) != len(element.nazwy_stanow):
             raise AssertionError(
-                f"Element {element.ident!r} podal {len(zakresy)} zakresów ważności "
+                f"Element {element.ident!r} podał {len(zakresy)} zakresów ważności "
                 f"wobec {len(element.nazwy_stanow)} stanów — deklaracja musi być "
                 "kompletna"
             )
@@ -211,7 +211,7 @@ def pochodne_ukladu(
         pozycja = kontekst.model.indeks_wezla[element.wezel]
         czesci.append(element.pochodne(stan, complex(napiecia[pozycja])))
     pochodne = spakuj_stany(tuple(czesci))
-    sprawdz_wektor(pochodne, kontekst.adresy_stanow, "pochodne stanow", t_s)
+    sprawdz_wektor(pochodne, kontekst.adresy_stanow, "pochodne stanów", t_s)
     return pochodne
 
 
@@ -267,6 +267,20 @@ def _najwieksze_residua(
     del liczba_wezlow
     kolejnosc = np.argsort(-np.abs(wektor_residuum))[:ile]
     return tuple((adresy[int(i)], float(wektor_residuum[int(i)])) for i in kolejnosc)
+
+
+def _opis_residuow(residua: tuple[tuple[str, float], ...]) -> str:
+    """Największe residua W TEKŚCIE odmowy: adres stanu ``element.stan`` zostaje (tłumacz
+    odmów zamienia go na opis stanu z nazwą elementu), adres równania bilansu prądów węzła
+    (``KCL.Re[w]`` / ``KCL.Im[w]``) — słowami; pole maszynowe odmowy niesie adresy bez zmian."""
+    czesci: list[str] = []
+    for adres, wartosc in residua:
+        for przedrostek, czesc in (("KCL.Re[", "rzeczywista"), ("KCL.Im[", "urojona")):
+            if adres.startswith(przedrostek) and adres.endswith("]"):
+                adres = f"bilans prądów węzła {adres[len(przedrostek):-1]} (część {czesc})"
+                break
+        czesci.append(f"{adres}: {wartosc:.3g}")
+    return "; ".join(czesci)
 
 
 def blok_algebry_po_stanie(
@@ -636,7 +650,8 @@ class TrapezNiejawny:
                     KOD_KROK_NIEZBIEZNY,
                     f"Żaden nawrót nie obniżył residuum kroku przy t = {t_s} s "
                     f"(dt = {dt_s} s, iteracja {iteracja}, residuum {norma}); "
-                    f"największe residua: {_najwieksze_residua(kontekst, wektor_residuum)}.",
+                    "największe residua: "
+                    f"{_opis_residuow(_najwieksze_residua(kontekst, wektor_residuum))}.",
                     t_s=t_s,
                     dt_s=dt_s,
                     iteracja=iteracja,
@@ -657,7 +672,7 @@ class TrapezNiejawny:
             )
         raise OdmowaDynamiki(
             KOD_KROK_NIEZBIEZNY,
-            f"Newton kroku nie zbiegl przy t={t_s} s (dt={dt_s} s, "
+            f"Newton kroku nie zbiegł przy t={t_s} s (dt={dt_s} s, "
             f"{nastawy.max_iteracji_newtona} iteracji, residuum {norma} > "
             f"tolerancja {nastawy.tolerancja})",
             t_s=t_s,

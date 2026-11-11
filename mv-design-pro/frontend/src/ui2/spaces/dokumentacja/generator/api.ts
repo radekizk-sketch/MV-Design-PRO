@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { bladZapytania } from '../../../shared/bladZapytania';
 
 export interface TabelaWyniku {
   readonly table_id: string;
@@ -23,7 +24,7 @@ interface OdpowiedzIndeksu {
 
 export async function fetchTabeleWyniku(runId: string): Promise<readonly TabelaWyniku[]> {
   const response = await fetch(`/api/analysis-runs/${encodeURIComponent(runId)}/results/index`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw bladZapytania(response);
   const data = (await response.json()) as OdpowiedzIndeksu;
   return data.tables ?? [];
 }
@@ -87,7 +88,7 @@ export async function fetchGotowoscDokumentacji(runId: string): Promise<Gotowosc
   const response = await fetch(
     `/api/analysis-runs/${encodeURIComponent(runId)}/gotowosc-dokumentacji-wykonawczej`,
   );
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw bladZapytania(response);
   const data = (await response.json()) as Partial<GotowoscDokumentacji>;
   return { gotowy: data.gotowy !== false, blokady: data.blokady ?? [] };
 }

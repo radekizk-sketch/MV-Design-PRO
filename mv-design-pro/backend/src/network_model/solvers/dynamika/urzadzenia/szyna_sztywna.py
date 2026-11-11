@@ -71,7 +71,7 @@ class SzynaSztywna:
             NastawaRegulacji(
                 wielkosc=wielkosc,
                 stan=None,
-                powod_pl="szyna sztywna jest warunkiem brzegowym sieci nadrzednej (SEM stała "
+                powod_pl="szyna sztywna jest warunkiem brzegowym sieci nadrzędnej (SEM stała "
                 "za impedancja Thevenina) — nie ma regulatora; przebieg napięcia, "
                 "częstotliwości i fazy sieci zadaje źródło testowe stanowiska badawczego",
                 zakres=None,

@@ -60,6 +60,23 @@ WARIANTY_WZBUDZENIA_ZLOZALNE: tuple[str, ...] = ("SEXS", "IEEE_ST1A")
 WARIANTY_TURBINY_ZLOZALNE: tuple[str, ...] = ("TGOV1",)
 #: Warianty stabilizatora, ktore kontrakt ENM parametryzuje w calosci.
 WARIANTY_STABILIZATORA_ZLOZALNE: tuple[str, ...] = ("PSS1A",)
+#: Wariant regulatora W TEKŚCIE odmowy (kod zostaje w polu ``wariant`` szczegółów): każdy
+#: wariant kontraktu ENM (``enm.dynamika_modele`` — wzbudnica, regulator obrotów,
+#: stabilizator); oznaczenia modeli wg IEEE Std 421.5 (wzbudnice, PSS1A) i biblioteki modeli
+#: dynamicznych WECC (TGOV1, HYGOV). Parytet przypina
+#: ``tests/network_model/dynamika/test_nazwy_wariantow_dynamiki.py``.
+NAZWY_WARIANTOW_REGULATOROW_PL: dict[str, str] = {
+    "SEXS": "SEXS (uproszczona wzbudnica statyczna)",
+    "IEEE_ST1A": "ST1A wg IEEE Std 421.5 (wzbudnica statyczna z prostownikiem sterowanym)",
+    "IEEE_AC1A": "AC1A wg IEEE Std 421.5 (wzbudnica wirująca prądu przemiennego)",
+    "TGOV1": "TGOV1 (turbina parowa, model uproszczony)",
+    "HYGOV": "HYGOV (turbina wodna)",
+    "PSS1A": "PSS1A wg IEEE Std 421.5 (stabilizator jednowejściowy)",
+}
+
+
+def _lista_wariantow(warianty: tuple[str, ...]) -> str:
+    return ", ".join(f"„{NAZWY_WARIANTOW_REGULATOROW_PL[w]}”" for w in warianty)
 
 
 def _sprawdz_wyprzedzenie(nazwa_bloku: str, t_wyprzedzenia_s: float, t_opoznienia_s: float) -> None:
@@ -73,9 +90,9 @@ def _sprawdz_wyprzedzenie(nazwa_bloku: str, t_wyprzedzenia_s: float, t_opoznieni
     if t_opoznienia_s <= 0.0 and t_wyprzedzenia_s > 0.0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"{nazwa_bloku}: czlon wyprzedzajacy T={t_wyprzedzenia_s} s bez czlonu "
-            "opozniajacego (T=0) jest rozniczkowaniem idealnym — transmitancja "
-            "niewlasciwa nie ma realizacji stanowej",
+            f"{nazwa_bloku}: człon wyprzedzający T={t_wyprzedzenia_s} s bez członu "
+            "opóźniającego (T = 0) jest różniczkowaniem idealnym — transmitancja "
+            "niewłaściwa nie ma realizacji stanowej",
             blok=nazwa_bloku,
             t_wyprzedzenia_s=t_wyprzedzenia_s,
             t_opoznienia_s=t_opoznienia_s,
@@ -182,13 +199,16 @@ def zbuduj_regulator_napiecia(
     if wariant not in WARIANTY_WZBUDZENIA_ZLOZALNE:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Wzbudnica {wariant!r} wymaga parametrow, ktorych kontrakt nie niesie "
-            "(wzbudnica wirujaca: Te, Ke, Se(Ve); sprzezenie stabilizujace: Kf, Tf; "
-            f"regulacja prostownika: Kc). Zlozalne warianty: {WARIANTY_WZBUDZENIA_ZLOZALNE}",
+            f"Wzbudnica {wariant!r} wymaga parametrów, których kontrakt nie niesie "
+            "(wzbudnica wirująca: Te, Ke, Se(Ve); sprzężenie stabilizujące: Kf, Tf; "
+            "regulacja prostownika: Kc). Warianty, które da się złożyć: "
+            f"{_lista_wariantow(WARIANTY_WZBUDZENIA_ZLOZALNE)}",
             wariant=wariant,
             zlozalne=WARIANTY_WZBUDZENIA_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"RegulatorNapiecia[{wariant}]", tc_s, tb_s)
+    _sprawdz_wyprzedzenie(
+        f"Regulator napięcia „{NAZWY_WARIANTOW_REGULATOROW_PL[wariant]}”", tc_s, tb_s
+    )
     return RegulatorNapieciaSEXS(
         wariant=wariant,
         ka=ka,
@@ -273,14 +293,16 @@ def zbuduj_regulator_obrotow(
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
             f"Regulator obrotów {wariant!r} wymaga parametrów, których kontrakt nie niesie "
-            "(turbina wodna: czas rozruchu wody, wzmocnienie turbiny, przepływ jałowy, "
-            "stałe czasowe i ograniczenie prędkości serwomotoru kierownicy, tłumienie "
-            "turbiny). Złożalne warianty: "
-            f"{WARIANTY_TURBINY_ZLOZALNE}",
+            "(turbina wodna: czas rozruchu wody Tw, wzmocnienie At, przepływ jałowy q_NL, "
+            "serwomotor kierownicy Tg/Tr/Tf, ograniczenie prędkości serwomotoru, tłumienie "
+            f"Dturb). Warianty, które da się złożyć: "
+            f"{_lista_wariantow(WARIANTY_TURBINY_ZLOZALNE)}",
             wariant=wariant,
             zlozalne=WARIANTY_TURBINY_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"RegulatorObrotow[{wariant}]", t2_s, t3_s)
+    _sprawdz_wyprzedzenie(
+        f"Regulator obrotów „{NAZWY_WARIANTOW_REGULATOROW_PL[wariant]}”", t2_s, t3_s
+    )
     return RegulatorObrotowTGOV1(
         wariant=wariant,
         r_pu=r_pu,
@@ -379,13 +401,14 @@ def zbuduj_stabilizator(
     if wariant not in WARIANTY_STABILIZATORA_ZLOZALNE:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Stabilizator {wariant!r} nie jest zlozalny z pol kontraktu. "
-            f"Zlozalne warianty: {WARIANTY_STABILIZATORA_ZLOZALNE}",
+            f"Stabilizator {wariant!r} nie daje się złożyć z pól kontraktu. "
+            f"Warianty, które da się złożyć: {_lista_wariantow(WARIANTY_STABILIZATORA_ZLOZALNE)}",
             wariant=wariant,
             zlozalne=WARIANTY_STABILIZATORA_ZLOZALNE,
         )
-    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] czlon 1", t1_s, t2_s)
-    _sprawdz_wyprzedzenie(f"Stabilizator[{wariant}] czlon 2", t3_s, t4_s)
+    nazwa = NAZWY_WARIANTOW_REGULATOROW_PL[wariant]
+    _sprawdz_wyprzedzenie(f"Stabilizator systemowy „{nazwa}”, człon 1", t1_s, t2_s)
+    _sprawdz_wyprzedzenie(f"Stabilizator systemowy „{nazwa}”, człon 2", t3_s, t4_s)
     return StabilizatorPSS1A(
         wariant=wariant,
         ks=ks,
@@ -400,6 +423,7 @@ def zbuduj_stabilizator(
 
 
 __all__ = [
+    "NAZWY_WARIANTOW_REGULATOROW_PL",
     "WARIANTY_STABILIZATORA_ZLOZALNE",
     "WARIANTY_TURBINY_ZLOZALNE",
     "WARIANTY_WZBUDZENIA_ZLOZALNE",

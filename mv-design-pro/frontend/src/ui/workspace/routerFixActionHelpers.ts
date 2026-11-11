@@ -5,6 +5,8 @@
  * Wszystkie pure, bez side-effects.
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl } from '../shared/nazwaObiektu';
+import type { RodzajObiektuNazwy } from '../shared/nazwaObiektu';
 import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 import type { ElementType } from '../types';
 import { isInternalIdentifier } from './routerDisplayHelpers';
@@ -30,23 +32,36 @@ export function inferElementTypeForFixAction(
   return 'Bus';
 }
 
+interface ObiektZNazwa {
+  readonly ref_id?: string | null;
+  readonly id?: string | null;
+  readonly name?: string | null;
+}
+
 export function resolveElementNameForFixAction(
   snapshot: EnergyNetworkModel | null,
   elementRef: string,
 ): string {
-  const candidates = [
-    ...(snapshot?.generators ?? []),
-    ...(snapshot?.substations ?? []),
-    ...(snapshot?.bays ?? []),
-    ...(snapshot?.branches ?? []),
-    ...(snapshot?.transformers ?? []),
-    ...(snapshot?.sources ?? []),
-    ...(snapshot?.loads ?? []),
-    ...(snapshot?.measurements ?? []),
-    ...(snapshot?.protection_assignments ?? []),
-    ...(snapshot?.buses ?? []),
+  // Kolejność kolekcji = kolejność przeszukiwania (pierwsze trafienie wygrywa). Obiekt bez nazwy
+  // dostaje opis rodzaju i numer w swojej kolekcji; referencja spoza modelu — „Element spoza
+  // modelu”, nigdy surowy identyfikator.
+  const kolekcje: ReadonlyArray<readonly [RodzajObiektuNazwy, ReadonlyArray<ObiektZNazwa>]> = [
+    ['generator', snapshot?.generators ?? []],
+    ['stacja', snapshot?.substations ?? []],
+    ['pole', snapshot?.bays ?? []],
+    ['odcinek', snapshot?.branches ?? []],
+    ['transformator', snapshot?.transformers ?? []],
+    ['zrodlo', snapshot?.sources ?? []],
+    ['odbior', snapshot?.loads ?? []],
+    ['przekladnik', snapshot?.measurements ?? []],
+    ['element', snapshot?.protection_assignments ?? []],
+    ['szyna', snapshot?.buses ?? []],
   ];
-  return candidates.find((item) => item.ref_id === elementRef || item.id === elementRef)?.name ?? elementRef;
+  for (const [rodzaj, kolekcja] of kolekcje) {
+    const obiekt = kolekcja.find((item) => item.ref_id === elementRef || item.id === elementRef);
+    if (obiekt) return nazwaObiektuPl(obiekt.name, rodzaj, miejsceWKolekcji(kolekcja, obiekt));
+  }
+  return nazwaObiektuPl(null, 'element', { spozaModelu: true });
 }
 
 export function fallbackElementLabelFromRef(elementRef: string): string {

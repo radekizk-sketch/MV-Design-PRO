@@ -137,3 +137,22 @@ export const POLA_KARTY_SSCI: Readonly<Record<PoleKartyPrzeksztaltnikaSsci, stri
   control_delay_ms: 'opóźnienie sterowania [ms]',
   filter_r_pu: 'rezystancja filtra wyjściowego [pu]',
 };
+
+/** Braki nazwane przez solver SSCI (`verdict.missing_data`) → opis dla projektanta.
+ *  Lustro backendu `analysis/ssci_stability/models.py::OPISY_BRAKOW_SSCI_PL` (+ status
+ *  „dane niekompletne” solvera, `SOLVER_INCOMPLETE_STATUS` z opisem `BRAK_TABLIC_SSCI_PL`);
+ *  parytet przypina `backend/tests/analysis/test_ssci_stability.py::
+ *  test_opisy_brakow_ssci_kompletne_i_w_lustrze`. */
+export const OPISY_BRAKOW_SSCI: Readonly<Record<string, string>> = {
+  converter: 'Przekształtnik w modelu sieci — model nie ma przekształtnika, którego dotyczy analiza.',
+  'converter.bus_ref': 'Szyna przyłączenia przekształtnika — przekształtnik wskazuje węzeł, którego nie ma w modelu sieci.',
+  current_loop_bandwidth_hz: 'Pole karty przekształtnika: pasmo pętli prądowej.',
+  pll_bandwidth_hz: 'Pole karty przekształtnika: pasmo pętli synchronizacji fazowej (PLL).',
+  filter_l_pu: 'Pole karty przekształtnika: indukcyjność filtra wyjściowego.',
+  'dane niekompletne': 'Tablice impedancji Z_grid(f), Z_conv(f) i L(f) — solver ich nie zwrócił (dane niekompletne).',
+};
+
+/** Opis braku SSCI — nigdy kod maszynowy (kod spoza słownika: zdanie uczciwe). */
+export function opisBrakuSsci(kod: string): string {
+  return OPISY_BRAKOW_SSCI[kod] ?? 'Brak danej spoza słownika aplikacji.';
+}

@@ -57,6 +57,7 @@ from network_model.solvers.short_circuit_contributions import (
     zaokraglij_cyfry_znaczace,
 )
 from network_model.solvers.short_circuit_core import (
+    NAZWY_RODZAJOW_ZWARCIA_PL,
     ShortCircuitPostProcessResult,
     ShortCircuitType,
     SkladowaNieokresowa,
@@ -1252,7 +1253,8 @@ class ShortCircuitIEC60909Solver:
             # Nieosiągalne: `compute_equivalent_impedance` wymaga Z_0 dla 1F i 2F+G, zanim
             # powstanie ślad. Jawny błąd programu zamiast cichego zera we wzorze śladu.
             raise ValueError(
-                f"wzór pętli zwarcia {short_circuit_type.value} wymaga impedancji zerowej"
+                f"Wzór pętli zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga "
+                "impedancji składowej zerowej Z0."
             )
         z0_val = z0
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:

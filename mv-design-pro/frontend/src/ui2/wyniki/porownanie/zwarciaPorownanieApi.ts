@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../shared/bladZapytania';
 /**
  * Klient porównania A/B wyników zwarciowych per punkt (karta KD-3, pozycja 11).
  *
@@ -117,7 +118,7 @@ export async function pobierzPorownanieZwarciowe(
     signal,
   });
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się porównać przebiegów zwarciowych (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się porównać przebiegów zwarciowych');
   }
   const dane: unknown = await odpowiedz.json();
   if (!maKsztaltPorownania(dane)) {

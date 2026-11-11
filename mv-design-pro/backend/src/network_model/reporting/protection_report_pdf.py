@@ -89,7 +89,10 @@ def export_protection_coordination_to_pdf(
         ImportError: If reportlab is not installed
     """
     if not _PDF_AVAILABLE:
-        raise ImportError("PDF export requires reportlab. Install with: pip install reportlab")
+        raise ImportError(
+            "Raport zabezpieczeń do PDF jest niedostępny — na serwerze obliczeń nie "
+            "zainstalowano biblioteki reportlab."
+        )
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

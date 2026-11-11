@@ -17,7 +17,10 @@ from analysis.protection_insight.models import (
     ProtectionSelectivityStatus,
 )
 from analysis.sensitivity.builder import SensitivityBuilder
-from analysis.sensitivity.models import SensitivityDecision
+from analysis.sensitivity.models import (
+    ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL,
+    SensitivityDecision,
+)
 from analysis.voltage_profile.models import (
     VoltageProfileContext,
     VoltageProfileRow,
@@ -223,3 +226,35 @@ def test_sensitivity_not_computed_propagation() -> None:
     entry = view.entries[0]
     assert entry.base_decision == SensitivityDecision.NOT_COMPUTED
     assert view.summary.not_computed_count == 1
+
+
+def test_etykiety_parametrow_kompletne_i_w_lustrze() -> None:
+    """Każdy parametr, który builder wrażliwości może zgłosić (stałe ``parameter_id=`` oraz
+    pierwsze pozycje mapowania reguł normatywnych), ma polską nazwę kryterium, a lustro frontu
+    (``KRYTERIA_PL``) niesie te same teksty — etykieta API nie jest angielska ani kodem."""
+    import ast
+
+    from tests.utils.lustro_ts import BACKEND_SRC, FRONT_SRC, slownik_ts
+
+    drzewo = ast.parse(
+        (BACKEND_SRC / "analysis" / "sensitivity" / "builder.py").read_text(encoding="utf-8")
+    )
+    parametry: set[str] = set()
+    for wezel in ast.walk(drzewo):
+        if (
+            isinstance(wezel, ast.keyword)
+            and wezel.arg == "parameter_id"
+            and isinstance(wezel.value, ast.Constant)
+        ):
+            parametry.add(wezel.value.value)
+        if (
+            isinstance(wezel, ast.Tuple)
+            and len(wezel.elts) == 3
+            and isinstance(wezel.elts[0], ast.Constant)
+            and isinstance(wezel.elts[2], ast.Constant)
+            and str(wezel.elts[2].value).startswith("P")
+        ):
+            parametry.add(wezel.elts[0].value)
+    assert parametry == set(ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL)
+    lustro = slownik_ts(FRONT_SRC / "ui2" / "wyniki" / "wrazliwosc" / "strings.ts", "KRYTERIA_PL")
+    assert lustro == ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL

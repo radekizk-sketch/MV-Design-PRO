@@ -28,6 +28,7 @@
  */
 
 import type { EnergyNetworkModel, GroundingConfig, ZespolUziemiajacy } from '../../../types/enm';
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import type {
   DoziemienieSieci,
   ExtendedTrace,
@@ -343,7 +344,7 @@ export function uziemieniePunktu(
   if (zespol) return wpisZespolu(zespol);
   const zrodlo = snapshot.sources.find((s) => s.bus_ref === szyna.ref_id && s.neutral_grounding);
   if (!zrodlo?.neutral_grounding) return null;
-  return wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding);
+  return wpisUziemienia(nazwaObiektuPl(zrodlo.name, 'zrodlo', miejsceWKolekcji(snapshot.sources, zrodlo)), T.uziemienieZrodlo, zrodlo.neutral_grounding);
 }
 
 /**
@@ -357,16 +358,16 @@ export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): Uziemienie
   const wpisy: UziemienieWpis[] = [];
   for (const zrodlo of snapshot.sources) {
     if (zrodlo.neutral_grounding) {
-      wpisy.push(wpisUziemienia(zrodlo.name || zrodlo.ref_id, T.uziemienieZrodlo, zrodlo.neutral_grounding));
+      wpisy.push(wpisUziemienia(nazwaObiektuPl(zrodlo.name, 'zrodlo', miejsceWKolekcji(snapshot.sources, zrodlo)), T.uziemienieZrodlo, zrodlo.neutral_grounding));
     }
   }
   for (const zespol of zespolySieci(snapshot)) wpisy.push(wpisZespolu(zespol));
   for (const trafo of snapshot.transformers) {
     if (trafo.hv_neutral) {
-      wpisy.push(wpisUziemienia(trafo.name || trafo.ref_id, T.uziemienieStronaGN, trafo.hv_neutral));
+      wpisy.push(wpisUziemienia(nazwaObiektuPl(trafo.name, 'transformator', miejsceWKolekcji(snapshot.transformers, trafo)), T.uziemienieStronaGN, trafo.hv_neutral));
     }
     if (trafo.lv_neutral) {
-      wpisy.push(wpisUziemienia(trafo.name || trafo.ref_id, T.uziemienieStronaDN, trafo.lv_neutral));
+      wpisy.push(wpisUziemienia(nazwaObiektuPl(trafo.name, 'transformator', miejsceWKolekcji(snapshot.transformers, trafo)), T.uziemienieStronaDN, trafo.lv_neutral));
     }
   }
   return wpisy;

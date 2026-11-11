@@ -119,7 +119,7 @@ def test_vdrop_pack_empty_segments_raises() -> None:
         source_bus_name="Szyny SN GPZ",
         target_bus_name="Szyny SN stacji odbiorczej",
     )
-    with pytest.raises(ValueError, match="at least one segment"):
+    with pytest.raises(ValueError, match="co najmniej jednego odcinka"):
         generate_vdrop_pack(bad_input)
 
 

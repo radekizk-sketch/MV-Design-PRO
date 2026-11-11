@@ -179,7 +179,7 @@ def compute_mcb_thermal_point(*, i_query_a: float, in_a: float) -> McbCurvePoint
     if in_a <= 0:
         raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
 
     prog_dolny = PROG_CIEPLNY_NIE_WYZWALA_X_IN * in_a
     prog_gorny = PROG_CIEPLNY_WYZWALA_X_IN * in_a
@@ -264,7 +264,7 @@ def compute_mcb_magnetic_point(
     if in_a <= 0:
         raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
     if curve_class not in PASMA_MAGNETYCZNE:
         raise OdmowaDanychError(
             f"Nieznana klasa wyzwolenia MCB '{curve_class}' — dozwolone: "
@@ -410,7 +410,7 @@ def compute_mccb_point(
             wymaga zwłoki — jest natychmiastowy z definicji).
     """
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
 
     if ir_a is None or tr_s is None:
         trace_brak: dict[str, Any] = {
@@ -680,7 +680,7 @@ def compute_fuse_gg_gate(*, i_query_a: float, in_a: float) -> FuseGgGateResult:
     if in_a <= 0:
         raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
-        raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
+        raise OdmowaDanychError(f"Badany prąd nie może być ujemny, otrzymano {i_query_a} A.")
 
     t_umowny = _czas_umowny_fuse_gg_s(in_a)
     inf_a = FUSE_GG_INF_MULTIPLIER * in_a

@@ -482,14 +482,14 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             if thermal.status == STATUS_THERMAL_FAIL:
                 wymagany = thermal.required_cross_section_mm2
                 uzupelnienie = (
-                    f" Wymagany przekroj co najmniej {wymagany:.1f} mm²." if wymagany else ""
+                    f" Wymagany przekrój co najmniej {wymagany:.1f} mm²." if wymagany else ""
                 )
                 rejected.append(
                     RejectedCandidate(
                         candidate.catalog_ref,
                         candidate.name,
                         "wytrzymalosc_zwarciowa_niewystarczajaca",
-                        f"Prad cieplny {data.ith_a:g} A przekracza dopuszczalny "
+                        f"Prąd cieplny {data.ith_a:g} A przekracza dopuszczalny "
                         f"{thermal.admissible_current_a:g} A przy czasie "
                         f"{data.fault_duration_s:g} s.{uzupelnienie}",
                     )

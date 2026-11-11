@@ -11,6 +11,8 @@ nie asercją "wszystko działa".
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from network_model.catalog.der_dynamic import (
     DEFAULT_BESS_GFL,
@@ -211,6 +213,26 @@ class TestResolverBrakBezJawnegoWyboru:
         assert r.source == "brak"
         assert r.profile is None
 
+    @pytest.mark.parametrize(
+        ("wywolanie", "oczekiwane"),
+        [
+            ({"der_kind": "PV"}, "„źródło fotowoltaiczne” (przekształtnik nadążny"),
+            (
+                {"der_kind": "BESS", "control_mode": "grid_forming"},
+                "„magazyn energii” (przekształtnik tworzący sieć",
+            ),
+            ({"der_kind": "FW", "converter_type": "DFIG"}, "„maszyna dwustronnie zasilana”"),
+            ({"der_kind": "FW", "converter_type": None}, "rodzaj maszyny nieokreślony"),
+        ],
+    )
+    def test_uzasadnienie_braku_nazywa_rodzaj_slowami(
+        self, wywolanie: dict[str, Any], oczekiwane: str
+    ) -> None:
+        r = resolve_der_dynamic_profile(**wywolanie)
+        assert oczekiwane in r.rationale_pl
+        for kod in ("PV", "BESS", "grid_following", "grid_forming", "DFIG", "profile_id"):
+            assert kod not in r.rationale_pl.replace("(grid-", ""), (kod, r.rationale_pl)
+
     def test_explicit_profile_id_wins(self) -> None:
         r = resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id="default_pv_gfm")
         assert r.profile_id == "default_pv_gfm"
@@ -376,3 +398,22 @@ class TestProfileDirectAccess:
     def test_get_unknown_profile_raises(self) -> None:
         with pytest.raises(KeyError):
             get_profile("unknown_profile_id")
+
+
+def test_nazwy_wyliczen_resolvera_kompletne() -> None:
+    """Zdanie uzasadnienia resolvera nazywa wartości wyliczeń słowami — słownik równy
+    ``Literal`` (węższy kończyłby się ``KeyError`` w uzasadnieniu)."""
+    from typing import get_args
+
+    from network_model.catalog.der_dynamic.models import (
+        NAZWY_PRZEKSZTALCEN_TURBINY_PL,
+        NAZWY_RODZAJOW_DER_PL,
+        NAZWY_TRYBOW_STEROWANIA_PL,
+        DerKind,
+        InverterControlMode,
+        WindConverterType,
+    )
+
+    assert set(NAZWY_RODZAJOW_DER_PL) == set(get_args(DerKind))
+    assert set(NAZWY_TRYBOW_STEROWANIA_PL) == set(get_args(InverterControlMode))
+    assert set(NAZWY_PRZEKSZTALCEN_TURBINY_PL) == set(get_args(WindConverterType))

@@ -92,3 +92,39 @@ export function getOperationSuccessMessage(opName: string): string | null {
   }
   return OPERATION_SUCCESS_MESSAGES[opName] ?? 'Operacja zakończona powodzeniem';
 }
+
+/** Typ zdarzenia domenowego: operacja utworzyła pole liniowe dla przyłączanego odcinka
+ *  (backend `enm/domain_operations.py::ZDARZENIE_POLE_UTWORZONE`). */
+export const ZDARZENIE_POLE_UTWORZONE = 'LINE_FIELD_CREATED';
+
+interface OdpowiedzZPolami {
+  readonly domain_events?: readonly { readonly event_type: string; readonly element_id: string | null }[];
+  readonly audit_trail?: readonly { readonly action: string; readonly element_id: string | null }[];
+}
+
+/**
+ * Zdania backendu o polach liniowych utworzonych przez operację (karta INSPEKTOR-POLA-DOMKNIECIE):
+ * odcinek wskazany szyną sekcji bez wolnego pola dostaje pole utworzone w tej samej operacji,
+ * a projektant musi to zobaczyć w potwierdzeniu. Treść pochodzi z `audit_trail[].action` wpisu
+ * o tym samym elemencie co zdarzenie `LINE_FIELD_CREATED` — front niczego nie składa sam.
+ */
+export function komunikatyPolUtworzonych(odpowiedz: OdpowiedzZPolami | null | undefined): string[] {
+  const pola = new Set(
+    (odpowiedz?.domain_events ?? [])
+      .filter((z) => z.event_type === ZDARZENIE_POLE_UTWORZONE && z.element_id)
+      .map((z) => z.element_id as string),
+  );
+  return (odpowiedz?.audit_trail ?? [])
+    .filter((wpis) => wpis.element_id !== null && pola.has(wpis.element_id) && wpis.action)
+    .map((wpis) => wpis.action);
+}
+
+/** Komunikat sukcesu operacji z dopisanymi zdaniami o utworzonych polach liniowych. */
+export function komunikatSukcesuZPolami(
+  komunikat: string | null,
+  odpowiedz: OdpowiedzZPolami | null | undefined,
+): string | null {
+  if (!komunikat) return komunikat;
+  const pola = komunikatyPolUtworzonych(odpowiedz);
+  return pola.length === 0 ? komunikat : [komunikat, ...pola].join(' ');
+}

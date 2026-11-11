@@ -157,7 +157,9 @@ def test_iloczyn_cech_podstawa_obszar_technologia_jakosc(
     assert ocena.kompletnosc_dowodu == ("PELNY" if pelny else "NIEPELNY")
     if jakosc != "DATASHEET":
         assert ocena.dowod.status_danych.stan == "UNVALIDATED_INPUT"
-        assert any("pmax_mw" in p for p in ocena.powody_niepelnosci)
+        # Powód niepełności nazywa wielkość słowami; klucz pola `pmax_mw` nie trafia do zdania.
+        assert any("moc znamionowa czynna typu katalogowego" in p for p in ocena.powody_niepelnosci)
+        assert not any("pmax_mw" in p for p in ocena.powody_niepelnosci)
     if _PODSTAWY[podstawa].status == "WSKAZANE":
         # Stan źródła w zdaniu nazwany po polsku; kod `WSKAZANE` wyłącznie w `podstawa.status`.
         assert any("stan źródła „wskazane”" in z for z in ocena.wyjasnienie.zastrzezenia)

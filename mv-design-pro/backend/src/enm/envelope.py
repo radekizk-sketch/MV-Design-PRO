@@ -173,7 +173,10 @@ def zbuduj_koperte(
     scenario_hash: str | None = None,
 ) -> RevisionEnvelope:
     if (scenario_ref is None) != (scenario_hash is None):
-        raise ValueError("scenario_ref i scenario_hash koperty podaje się razem albo wcale")
+        raise ValueError(
+            "Wskazanie scenariusza w kopercie rewizji i odcisk jego treści podaje się razem "
+            "albo wcale"
+        )
     return RevisionEnvelope(
         project_id=project_id,
         model_revision=model_revision,

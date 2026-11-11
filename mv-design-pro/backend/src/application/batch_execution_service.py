@@ -78,6 +78,7 @@ from domain.run_batch import (
     RunBatchStatus,
     compute_batch_input_hash,
     new_run_batch,
+    stan_serii_pl,
 )
 from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
@@ -122,7 +123,10 @@ class BatchNotPendingError(BatchExecutionError):
     """Seria przebiegów nie jest w stanie CREATED."""
 
     def __init__(self, batch_id: str, status: str) -> None:
-        super().__init__(f"Seria {batch_id} ma status {status} — wymagany CREATED")
+        super().__init__(
+            f"Seria {batch_id} jest w stanie „{stan_serii_pl(status)}” — uruchomić można "
+            f"wyłącznie serię w stanie „{stan_serii_pl(RunBatchStatus.CREATED)}”."
+        )
         self.batch_id = batch_id
         self.status = status
 
@@ -456,15 +460,15 @@ class BatchExecutionService:
                     return batch
             try:
                 zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
-            except Exception as exc:
+            except Exception:
                 # Błąd PROGRAMU (karta #151) nie jest awarią pozycji: seria nie może
                 # zostać w RUNNING, więc bieżąca i wszystkie niewykonane pozycje dostają
-                # FAILED z nazwą błędu wewnętrznego, seria dostaje status końcowy, a
+                # FAILED ze zdaniem o błędzie wewnętrznym, seria dostaje status końcowy, a
                 # wyjątek leci dalej (500 + pełny ślad w dzienniku).
                 logger.exception("Seria %s przerwana błędem wewnętrznym programu", batch_id)
                 komunikat = (
-                    f"Seria przerwana błędem wewnętrznym programu ({type(exc).__name__}) "
-                    "— szczegóły są w dzienniku serwera."
+                    "Seria przerwana błędem wewnętrznym programu — szczegóły są "
+                    "w dzienniku serwera."
                 )
                 for niewykonana in batch.sorted_items():
                     if niewykonana.position >= pozycja.position:

@@ -16,6 +16,7 @@
  * atomowa i kreator uczciwie raportuje krok, który zawiódł.
  */
 
+import { nazwaObiektuPl, pierwszaNazwa } from '../../../ui/shared/nazwaObiektu';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -23,7 +24,7 @@ import {
   fetchBayApparatusKinds,
   fetchBayProtectionCodes,
   fetchCompleteBayTemplates,
-  fetchConverterTypes,
+  fetchDerConverterTypes,
   fetchCtTypes,
   fetchFactoryConfigurations,
   fetchManufacturers,
@@ -35,7 +36,11 @@ import {
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import type { Manufacturer } from '../../../ui/catalog/manufacturer';
+import {
+  describeManufacturerStatusPl,
+  nazwaProducentaPl,
+  type Manufacturer,
+} from '../../../ui/catalog/manufacturer';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type {
   CTCatalogType,
@@ -340,7 +345,7 @@ export function KreatorStacjiSnNn() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
-    Promise.all([fetchTransformerTypes(), fetchConverterTypes()])
+    Promise.all([fetchTransformerTypes(), fetchDerConverterTypes()])
       .then(([t, c]) => {
         if (cancelled) return;
         setTypy(Array.isArray(t) ? t : []);
@@ -628,9 +633,10 @@ export function KreatorStacjiSnNn() {
     () => szablonyPerRola(szablonyWyboru, dane.station_type, dane.bay_template_refs),
     [dane.bay_template_refs, dane.station_type, szablonyWyboru],
   );
-  const selectedManufacturer = useMemo(
-    () => producenciDobrani.find((m) => m.manufacturer_ref === dane.manufacturer_ref) ?? null,
-    [dane.manufacturer_ref, producenciDobrani],
+  /** Nazwa producenta dla projektanta — kod `manufacturer_ref` nigdy nie trafia na ekran. */
+  const nazwaProducenta = useMemo(
+    () => nazwaProducentaPl(dane.manufacturer_ref, producenci),
+    [dane.manufacturer_ref, producenci],
   );
   const selectedFamily = useMemo(
     () => rodzinyDobrane.find((f) => f.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
@@ -684,8 +690,8 @@ export function KreatorStacjiSnNn() {
 
   /** Nagłówek rodziny — producent, klasy znamionowe, technologia, tor pracy. */
   const wierszeNaglowkaRodziny = useMemo(
-    () => naglowekRodziny(selectedFamily, selectedManufacturer?.name ?? dane.manufacturer_ref),
-    [dane.manufacturer_ref, selectedFamily, selectedManufacturer],
+    () => naglowekRodziny(selectedFamily, nazwaProducenta),
+    [nazwaProducenta, selectedFamily],
   );
 
   /**
@@ -1011,12 +1017,10 @@ export function KreatorStacjiSnNn() {
   const rozdzielnica = useMemo<WyborRozdzielnicy>(
     () => ({
       manufacturerRef: dane.manufacturer_ref,
-      manufacturerName: selectedManufacturer?.name ?? null,
       familyRef: dane.switchgear_family_ref,
-      familyName: selectedFamily?.family_name ?? null,
       snFields,
     }),
-    [dane.manufacturer_ref, dane.switchgear_family_ref, selectedFamily, selectedManufacturer, snFields],
+    [dane.manufacturer_ref, dane.switchgear_family_ref, snFields],
   );
 
   /**
@@ -1370,7 +1374,7 @@ export function KreatorStacjiSnNn() {
       stan: rozdzielnicaKompletna && aparaturaKompletna ? 'kompletne' : 'brak',
       wartosc:
         rozdzielnicaKompletna && aparaturaKompletna
-          ? `${snFields.length} pól · ${selectedManufacturer?.name ?? dane.manufacturer_ref}`
+          ? `${snFields.length} pól · ${nazwaProducenta}`
           : 'Do doboru',
     },
     // KOMPLETNOSC-POLA-TR + POLA-W-TORZE: stan pola transformatorowego W PANELU
@@ -1821,7 +1825,10 @@ export function KreatorStacjiSnNn() {
               etykieta={T.producent}
               wartosc={dane.manufacturer_ref || null}
               onZmiana={(v) => zmien('manufacturer_ref', v ?? '')}
-              opcje={producenciDobrani.map((m) => ({ id: m.manufacturer_ref, etykieta: m.name }))}
+              opcje={producenciDobrani.map((m) => ({
+                id: m.manufacturer_ref,
+                etykieta: `${m.name} · ${describeManufacturerStatusPl(m.status)}`,
+              }))}
               status={bladRozdzielnicy ? 'error' : 'ready'}
               placeholder={T.producentPlaceholder}
               pomoc={T.producentPomoc}
@@ -2168,7 +2175,7 @@ export function KreatorStacjiSnNn() {
               snVoltageKv={kontekst.snVoltageKv}
               szablonyPol={szablony}
               rodzina={selectedFamily}
-              producent={selectedManufacturer?.name ?? dane.manufacturer_ref}
+              producent={nazwaProducenta}
               statusKonfiguracji={statusKonfiguracji}
               komunikatStatusu={bladPodgladu}
               testid="mvd-kreator-stacja-podglad"
@@ -2244,7 +2251,7 @@ export function KreatorStacjiSnNn() {
                       onZmiana={(v) => zmienWyposazenie(pole.id, { relay_catalog_ref: v })}
                       opcje={przekazniki.map((t) => {
                         // Katalog MV podaje `name_pl`; biblioteka analityczna `name`.
-                        const nazwa = t.name_pl ?? t.name ?? t.id;
+                        const nazwa = nazwaObiektuPl(pierwszaNazwa(t.name_pl, t.name), 'pozycja_katalogu');
                         return {
                           id: t.id,
                           etykieta: t.vendor ? `${t.vendor} · ${nazwa}` : nazwa,
@@ -2688,7 +2695,7 @@ export function KreatorStacjiSnNn() {
               etykieta={T.podsumRozdzielnica}
               wartosc={
                 rozdzielnicaKompletna
-                  ? `${selectedManufacturer?.name ?? dane.manufacturer_ref} · ${snFields.length} pól`
+                  ? `${nazwaProducenta} · ${snFields.length} pól`
                   : 'Do doboru'
               }
             />

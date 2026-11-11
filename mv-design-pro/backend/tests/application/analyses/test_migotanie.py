@@ -382,7 +382,9 @@ def test_rejects_unfinished_run() -> None:
 
 
 def test_catalog_flicker_c_must_be_positive() -> None:
-    with pytest.raises(ValueError, match="flicker_c musi być > 0"):
+    with pytest.raises(
+        ValueError, match=r"Współczynnik emisji migotania c \(IEC 61400-21\) musi być > 0"
+    ):
         ConverterType(
             id="t1",
             name="t",

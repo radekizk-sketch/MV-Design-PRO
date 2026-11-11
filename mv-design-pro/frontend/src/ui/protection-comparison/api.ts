@@ -18,6 +18,7 @@ import type {
   ProtectionComparisonTrace,
   ProtectionRunItem,
 } from './types';
+import { bladOdpowiedzi, bladZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -48,9 +49,7 @@ export async function createProtectionComparison(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Błąd porównania: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd porównania');
   }
 
   return response.json();
@@ -70,9 +69,7 @@ export async function getProtectionComparisonResults(
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Błąd pobierania wyników: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd pobierania wyników');
   }
 
   return response.json();
@@ -92,9 +89,7 @@ export async function getProtectionComparisonTrace(
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Błąd pobierania śladu: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd pobierania śladu');
   }
 
   return response.json();
@@ -122,9 +117,7 @@ export async function fetchProtectionRuns(
     if (response.status === 404) {
       return [];
     }
-    throw new Error(
-      `Błąd pobierania listy runów zabezpieczeń: ${response.statusText}`
-    );
+    throw bladZapytania(response, 'Błąd pobierania listy przebiegów zabezpieczeń');
   }
 
   const data = await response.json();

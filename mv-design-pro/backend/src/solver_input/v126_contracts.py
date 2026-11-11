@@ -13,6 +13,7 @@ from enm.mapping import (
 )
 from enm.models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
+    RODZAJE_GALEZI_LACZNIKA,
     Cable,
     EnergyNetworkModel,
     OverheadLine,
@@ -1801,7 +1802,7 @@ def build_v126_input_from_enm(
                     is_open=is_open,
                 )
             )
-        elif branch.type in {"switch", "breaker", "bus_coupler", "disconnector"}:
+        elif branch.type in RODZAJE_GALEZI_LACZNIKA:
             r_ohm, x_ohm = _impedancja_skupiona_aparatu_ohm(branch)
             branches.append(
                 V126BranchInput(

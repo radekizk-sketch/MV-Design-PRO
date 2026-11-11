@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
 /**
  * reportExportApi - klient frontendowy eksportu raportów.
  *
@@ -138,7 +139,7 @@ async function fetchAndDownload(
   }
 
   if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
+    let detail = komunikatZapytania(response);
     try {
       const data = await response.json();
       if (data?.detail) detail = String(data.detail);
@@ -218,7 +219,7 @@ export async function pobierzDostepnoscEksportuWywodu(
     { method: 'GET', headers: { Accept: 'application/json' }, signal },
   );
   if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
+    let detail = komunikatZapytania(response);
     try {
       const data = await response.json();
       if (typeof data?.detail === 'string' && data.detail.trim()) detail = data.detail;

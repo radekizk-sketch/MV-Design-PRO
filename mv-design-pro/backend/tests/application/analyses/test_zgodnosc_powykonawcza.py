@@ -390,14 +390,14 @@ def test_przebieg_niezakonczony_blad() -> None:
 
 
 def test_brak_tolerancji_napiecia_blad() -> None:
-    with pytest.raises(ValueError, match="tolerancji napięcia"):
+    with pytest.raises(ValueError, match="tolerancji porównania napięcia"):
         build_zgodnosc_powykonawcza_view(
             _standardowy_run(), [_pomiar("bus_a", "U", 15.0, "kV")], {}
         )
 
 
 def test_brak_tolerancji_mocy_blad() -> None:
-    with pytest.raises(ValueError, match="tolerancji mocy"):
+    with pytest.raises(ValueError, match="tolerancji porównania mocy"):
         build_zgodnosc_powykonawcza_view(
             _standardowy_run(), [_pomiar("line_1", "P", 0.8, "MW")], {}
         )

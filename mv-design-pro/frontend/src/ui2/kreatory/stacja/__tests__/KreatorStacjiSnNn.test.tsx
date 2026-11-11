@@ -235,7 +235,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
         tap_step_percent: 2.5,
       },
     ]),
-  fetchConverterTypes: () =>
+  fetchDerConverterTypes: () =>
     Promise.resolve([
       { id: 'pv-800-069', name: 'PV 800 0,69kV', kind: 'PV', un_kv: 0.69, sn_mva: 0.9, pmax_mw: 0.8 },
       { id: 'pv-500-04', name: 'PV 500 0,4kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.55, pmax_mw: 0.5 },
@@ -609,6 +609,20 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
   });
 
   afterEach(() => cleanup());
+
+  it('producent: lista podaje nazwę i status z katalogu; nagłówek i podsumowanie nazwę, nigdy kod', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    const producent = screen.getByTestId('mvd-kreator-stacja-producent') as HTMLSelectElement;
+    expect(producent.querySelector('option[value="ZPUE_WLOSZCZOWA"]')?.textContent).toBe(
+      'ZPUE Włoszczowa · katalog zweryfikowany',
+    );
+    const tekst = document.body.textContent ?? '';
+    expect(tekst).toContain('ZPUE Włoszczowa');
+    expect(tekst).not.toContain('ZPUE_WLOSZCZOWA');
+  });
 
   it('świadomy podział: wybór typu → zapis woła insert_station_on_segment_sn i wiąże ze schematem', async () => {
     executeDomainOperationMock.mockResolvedValue({

@@ -6,7 +6,6 @@ export {
   useCanEdit,
   useIsMutationBlocked,
   useModeLabel,
-  useResultStatusLabel,
   useMultiSelection,
   useBlockedActionMessage,
 } from './store';

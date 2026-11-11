@@ -22,19 +22,8 @@ from typing import Any
 
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.slownik_komunikatow import lista_pl
+from network_model.solvers.dynamika.urzadzenia.fabryka import NAZWY_RODZIN_PL
 from network_model.solvers.dynamika.wynik import KODY_ZALOZEN_RDZENIA
-
-#: Rodziny urządzeń składanych przez rdzeń (`fabryka.RODZINY_OBSLUGIWANE`) słowami
-#: projektanta — zbiór RÓWNY rejestrowi rdzenia (test w obie strony: każda pozycja rekordu
-#: `rodziny_urzadzen` ma nazwę, a nazwa rodziny, której rdzeń nie składa, byłaby fantomem).
-NAZWY_RODZIN_PL: dict[str, str] = {
-    "synchroniczna": "maszyna synchroniczna z regulatorami",
-    "przeksztaltnikowa_gfl": "przekształtnik nadążny (grid-following)",
-    "przeksztaltnikowa_gfm": "przekształtnik tworzący sieć (grid-forming)",
-    "magazyn": "magazyn energii z przekształtnikiem",
-    "wiatr_typ_3": "turbina wiatrowa typu 3 (maszyna dwustronnie zasilana)",
-    "wiatr_typ_4": "turbina wiatrowa typu 4 (pełny przekształtnik)",
-}
 
 Rekord = Mapping[str, Any]
 Nazwy = Mapping[str, str]
@@ -214,4 +203,4 @@ def zdania_zalozen_rdzenia(rekordy: Sequence[Rekord], migawka: Mapping[str, Any]
     return [ZDANIA_ZALOZEN[str(rekord["kod"])](rekord, nazwy) for rekord in rekordy]
 
 
-__all__ = ["NAZWY_RODZIN_PL", "ZDANIA_ZALOZEN", "zdania_zalozen_rdzenia"]
+__all__ = ["ZDANIA_ZALOZEN", "zdania_zalozen_rdzenia"]

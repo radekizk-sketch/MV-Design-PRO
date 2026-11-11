@@ -134,15 +134,17 @@ def _build_zero_sequence_impedance(
     if data.r0_ohm is not None or data.x0_ohm is not None:
         if data.r0_ohm is None or data.r0_ohm < 0:
             raise OdmowaDanychError(
-                "r0_ohm must be non-negative when zero-sequence impedance is set"
+                "Impedancja składowej zerowej wymaga podanej, nieujemnej rezystancji R0."
             )
         if data.x0_ohm is None or data.x0_ohm <= 0:
-            raise OdmowaDanychError("x0_ohm must be positive when zero-sequence impedance is set")
+            raise OdmowaDanychError(
+                "Impedancja składowej zerowej wymaga podanej, dodatniej reaktancji X0."
+            )
         return complex(data.r0_ohm, data.x0_ohm)
 
     if data.z0_z1_ratio is not None:
         if data.z0_z1_ratio <= 0:
-            raise OdmowaDanychError("z0_z1_ratio must be positive")
+            raise OdmowaDanychError("Stosunek Z0/Z1 musi być dodatni.")
         return z1_ohm * data.z0_z1_ratio
 
     return None

@@ -126,8 +126,8 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
     has_x = request.upstream_x_ohm is not None
     if has_r != has_x:
         raise ValueError(
-            "upstream_r_ohm i upstream_x_ohm MUSZĄ być oba None (no upstream) "
-            "lub oba ustawione na float. Brak konsystencji w danych."
+            "Impedancja sieci zasilającej pętli zwarcia wymaga podania razem rezystancji R "
+            "i reaktancji X albo żadnej z nich — podano tylko jedną składową."
         )
     if request.parametry_robocze_maszyn and not has_r:
         raise ValueError(
@@ -199,8 +199,9 @@ def transformer_lv_impedance_ohm(
     """
     if sn_mva <= 0 or ulv_kv <= 0 or uk_percent <= 0:
         raise ValueError(
-            "Moc znamionowa, napięcie strony nN i napięcie zwarcia muszą być dodatnie do "
-            "wyznaczenia impedancji transformatora."
+            "Moc znamionowa S_n, napięcie strony dolnego napięcia i napięcie zwarcia u_k "
+            "transformatora muszą być dodatnie do wyznaczenia jego impedancji "
+            f"(otrzymano {sn_mva:g} MVA, {ulv_kv:g} kV, {uk_percent:g} %)."
         )
     if pk_kw < 0:
         raise OdmowaDanychError(

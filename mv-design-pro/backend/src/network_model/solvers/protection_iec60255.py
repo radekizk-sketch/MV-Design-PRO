@@ -211,7 +211,9 @@ def compute_idmt_generic(
         ValueError: ``is_pickup_a <= 0``.
     """
     if is_pickup_a <= 0:
-        raise ValueError(f"Pickup current must be positive, got {is_pickup_a}")
+        raise ValueError(
+            f"Prąd rozruchowy zabezpieczenia musi być dodatni, podano {is_pickup_a} A."
+        )
 
     m = i_fault_a / is_pickup_a
     will_trip = m > 1.0
@@ -279,7 +281,7 @@ def compute_ieee_c37112_generic(
         ValueError: ``is_pickup_a <= 0``.
     """
     if is_pickup_a <= 0:
-        raise ValueError("Pickup current must be positive")
+        raise ValueError("Prąd rozruchowy zabezpieczenia musi być dodatni.")
 
     m = i_fault_a / is_pickup_a
     will_trip = m > 1.0
@@ -343,11 +345,13 @@ def compute_curve_trip_time(
         CurveTripTimeResult with full WHITE BOX trace
     """
     if is_pickup_a <= 0:
-        raise ValueError(f"Pickup current must be positive, got {is_pickup_a}")
+        raise ValueError(
+            f"Prąd rozruchowy zabezpieczenia musi być dodatni, podano {is_pickup_a} A."
+        )
     if tms <= 0:
-        raise ValueError(f"TMS must be positive, got {tms}")
+        raise ValueError(f"Mnożnik czasowy TMS musi być dodatni, podano {tms}.")
     if i_fault_a < 0:
-        raise ValueError(f"Fault current cannot be negative, got {i_fault_a}")
+        raise ValueError(f"Prąd zwarciowy nie może być ujemny, podano {i_fault_a} A.")
 
     M = i_fault_a / is_pickup_a
     will_trip = M > 1.0

@@ -219,7 +219,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl=(
             "Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny "
-            "głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym"
+            "głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym; "
+            "odcinek bez wolnego pola dostaje nowe pole liniowe utworzone w tej operacji"
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("element_ref",),
@@ -2213,6 +2214,21 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
     ),
+    # INSPEKTOR-POLA-DOMKNIECIE: odcinek SN na szynie sekcji stacji bez pola liniowego — brak
+    # aparatu i zabezpieczenia w torze odcinka (`enm/zajetosc_pol.py::odcinki_bez_pola`,
+    # walidator W049). Ostrzeżenie: aparat pola ma impedancję zerową, więc rozpływ i zwarcia są
+    # policzone poprawnie; akcja naprawcza tworzy pole liniowe i przepina na nie odcinek.
+    "station.segment_without_field": ReadinessCodeSpec(
+        code="station.segment_without_field",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Odcinek SN jest przyłączony do szyny sekcji stacji bez pola liniowego — w jego "
+            "torze nie ma aparatu łączeniowego ani zabezpieczenia pola"
+        ),
+        fix_navigation={"panel": "sld", "modal": "przepnij_element_na_pole"},
+    ),
     # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji niezgodna z rodzajem wyprowadzonym
     # z topologii (`enm/rodzaj_stacji.py`, walidator W043, SLD_CAD_SPEC_V3 §19.3).
     "station.kind_mismatch": ReadinessCodeSpec(
@@ -2444,8 +2460,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
-            "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
+            "Brak bloku parametrów dynamicznych źródła — obliczenia czasowe nie mogą "
+            "zbudować modelu dynamicznego"
         ),
         fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
     ),

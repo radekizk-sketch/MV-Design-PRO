@@ -43,6 +43,27 @@ export const RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA: Readonly<Record<string, strin
   FUSE: 'ROZLACZNIK_BEZPIECZNIKOWY',
   RECLOSER: 'REKLOZER',
 };
+/** Rodzaj rekordu łącznika katalogu (`SwitchEquipmentType.equipment_kind`). */
+export type RodzajLacznikaKatalogu =
+  | 'CIRCUIT_BREAKER'
+  | 'LOAD_SWITCH'
+  | 'DISCONNECTOR'
+  | 'EARTH_SWITCH'
+  | 'FUSE'
+  | 'RECLOSER';
+/**
+ * Nazwa rodzaju łącznika katalogu dla projektanta (karta szczegółów przeglądarki typów) —
+ * te same klucze co `RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA` i te same nazwy co backendowy
+ * `NAZWY_RODZAJOW_APARATU_PL` (`network_model/catalog/rodzaje_aparatury.py`) — test przypina oba.
+ */
+export const NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL: Readonly<Record<RodzajLacznikaKatalogu, string>> = {
+  CIRCUIT_BREAKER: 'wyłącznik',
+  LOAD_SWITCH: 'rozłącznik',
+  DISCONNECTOR: 'odłącznik',
+  EARTH_SWITCH: 'uziemnik',
+  FUSE: 'bezpiecznik',
+  RECLOSER: 'reklozer',
+};
 const POLE_LACZNIKA_Z_POLA_APARATU_SN: Readonly<
   Partial<Record<WielkoscZwarciowaAparatuSn, WielkoscZwarciowaLacznika>>
 > = {

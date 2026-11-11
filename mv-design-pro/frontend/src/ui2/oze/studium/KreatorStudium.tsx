@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './studium.css';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
+import { etykietaZapasowaRefu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
 import {
   DokumentStudiumBrakiError,
@@ -328,7 +329,7 @@ export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStud
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);
   const nazwaWezla = useMemo(() => {
     const mapa = new Map(opcjeWezlow.map((o) => [o.ref_id, o.name]));
-    return (busRef: string): string => mapa.get(busRef) ?? busRef;
+    return (busRef: string): string => mapa.get(busRef) || etykietaZapasowaRefu(busRef);
   }, [opcjeWezlow]);
   const napiecieWezla = useMemo(() => {
     const mapa = new Map(opcjeWezlow.map((o) => [o.ref_id, o.voltage_kv]));

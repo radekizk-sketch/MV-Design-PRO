@@ -19,6 +19,7 @@
  *   nigdy zgadywanie.
  */
 
+import { nazwaObiektuPl, nazwaZRodzajemPl } from '../../../ui/shared/nazwaObiektu';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
 import type { NazwaObiektu, WierszZalozenia } from '../wzorzec';
 import type {
@@ -226,9 +227,9 @@ export function naWierszeSzynNiesymetrycznych(
   wyniki: WynikiRozplywuNiesymetrycznego,
 ): WierszSzynyNiesymetrycznej[] {
   const maxBus = wyniki.summary?.max_voltage_unbalance_bus_id ?? null;
-  return wyniki.buses.map((szyna: SzynaNiesymetryczna) => ({
+  return wyniki.buses.map((szyna: SzynaNiesymetryczna, indeks) => ({
     id: szyna.bus_id,
-    nazwa: szyna.name || szyna.element_id,
+    nazwa: nazwaObiektuPl(szyna.name, 'szyna', { numer: indeks + 1, liczba: wyniki.buses.length }),
     unKv: fmtLubKreska(szyna.un_kv, 3),
     fazy:
       szyna.solved && szyna.faza_a && szyna.faza_b && szyna.faza_c
@@ -267,9 +268,9 @@ function mwNaKw(mw: number): number {
 export function naWierszeGaleziNiesymetrycznych(
   wyniki: WynikiRozplywuNiesymetrycznego,
 ): WierszGaleziNiesymetrycznej[] {
-  return wyniki.branches.map((galaz: GalazNiesymetryczna) => ({
+  return wyniki.branches.map((galaz: GalazNiesymetryczna, indeks) => ({
     id: galaz.branch_id,
-    nazwa: galaz.name || galaz.element_id,
+    nazwa: nazwaZRodzajemPl(galaz.name, 'Gałąź', { numer: indeks + 1, liczba: wyniki.branches.length }),
     rodzaj: galaz.element_type,
     iA: fmtLubKreska(galaz.faza_a.i_a, 1),
     iB: fmtLubKreska(galaz.faza_b.i_a, 1),
@@ -312,7 +313,11 @@ export function naPodsumowanieNiesymetrii(
     },
     {
       etykieta: T.rnMaxVufSzyna,
-      wartosc: szynaMax ? szynaMax.name || szynaMax.element_id : s.max_voltage_unbalance_bus_id ?? T.kreska,
+      wartosc: szynaMax
+        ? nazwaObiektuPl(szynaMax.name, 'szyna', { numer: wyniki.buses.indexOf(szynaMax) + 1, liczba: wyniki.buses.length })
+        : s.max_voltage_unbalance_bus_id
+          ? nazwaObiektuPl(null, 'szyna', { spozaModelu: true })
+          : T.kreska,
     },
     { etykieta: T.rnSzynyRozwiazane, wartosc: `${s.solved_bus_count} / ${s.bus_count}` },
     ...pozycjePrzewoduN(wyniki),

@@ -575,9 +575,8 @@ def build_energization_view(
                         code="NN-AUD-06",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            "Sekcje zasilane z niezależnych systemów SN ("
-                            + ", ".join(sorted(upstream_system_ids))
-                            + ") są spięte po stronie nN — praca równoległa "
+                            f"Sekcje zasilane z {len(upstream_system_ids)} niezależnych "
+                            "systemów SN są spięte po stronie nN — praca równoległa "
                             "niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia "
                             "(otwarcie sprzęgła albo automatyka SZR)."
                         ),
@@ -591,10 +590,10 @@ def build_energization_view(
                         code="NN-AUD-06",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            "Źródło w trybie tworzenia napięcia ("
+                            "Źródła tworzące napięcie bez trybu podwójnego (źródła: "
                             + ", ".join(pure_forming_ders)
-                            + ") pracuje równolegle z siecią bez trybu podwójnego — "
-                            "konflikt regulacji napięcia i częstotliwości."
+                            + ") pracują równolegle z siecią — konflikt regulacji napięcia "
+                            "i częstotliwości."
                         ),
                         element_refs=tuple(pure_forming_ders),
                     )
@@ -643,8 +642,8 @@ def build_energization_view(
                         message_pl=(
                             "Zdolność pracy wyspowej źródła ("
                             + ", ".join(unknown_ders)
-                            + ") nie jest zadeklarowana (meta.island_capability / "
-                            "control_mode) — stan zasilania wyspy NIEZNANY."
+                            + ") nie jest zadeklarowana ani w danych źródła, ani przez tryb "
+                            "regulacji — stan zasilania wyspy NIEZNANY."
                         ),
                         element_refs=tuple(unknown_ders),
                     )
@@ -728,7 +727,7 @@ def build_energization_view(
                 status="brak_ukladu",
                 status_pl=(
                     f"Element {neutral_source} wnoszący odniesienie N/PE nie deklaruje "
-                    "układu uziemienia sieci nN (lv_earthing_system) — odniesienie N/PE "
+                    "układu uziemienia sieci nN — odniesienie N/PE "
                     "nieokreślone."
                 ),
                 swz_evaluable=False,

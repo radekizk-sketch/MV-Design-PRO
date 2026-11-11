@@ -58,7 +58,14 @@ vi.mock('../networkBuildStore', () => ({
     selector({ openOperationForm, openRouteSurface }),
 }));
 
+// Inspektor czyta selekcję przez indeks pakietu, panel z kanwy (karta techniczna, kontekst
+// aparatu) — wprost ze sklepu; obie ścieżki widzą TĘ SAMĄ selekcję.
 vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
+    selector({ selectedElements: mockSelectedElements }),
+}));
+
+vi.mock('../../selection/store', () => ({
   useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
     selector({ selectedElements: mockSelectedElements }),
 }));
@@ -104,12 +111,18 @@ describe('InspectorEngineeringView - backendowe gałęzie aparatów SN', () => {
     }];
   });
 
+  // Selekcja gałęzi wyłącznika spoza kanwy (drzewo, wyszukiwarka): temat kotwicy `galaz`
+  // ma kategorię menu aparatu, więc karta techniczna też musi być kartą aparatu (łącznika
+  // toru), nie „Odcinkiem kablowym" z trasą i katalogiem kabla. Do tej poprawki test
+  // sprawdzał niewidoczne sekcje widoku — panel czytał selekcję z niezamockowanego sklepu —
+  // i nie widział, że karta pokazywała wyłącznik jako odcinek.
   it('pokazuje wyłącznik pola SN jako aparat, bez inspektora odcinka', () => {
     render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Katalog aparatu')).toBeInTheDocument();
-    expect(screen.getByText('Rodzaj aparatu')).toBeInTheDocument();
-    expect(screen.getByText('Wyłącznik')).toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'lacznik');
+    expect(screen.getByTestId('inspektor-karta-wartosc-rodzaj')).toHaveTextContent('Wyłącznik');
+    expect(screen.queryByTestId('inspektor-karta-pole-dlugosc')).not.toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-element-rodzaj')).not.toHaveTextContent(/Odcinek/);
     expect(screen.queryByTestId('sld-segment-inspector')).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../shared/bladZapytania';
 /*
  * Dostawca PAKIETU DOWODOWEGO przebiegu (karta PACK-DOWODY).
  *
@@ -68,7 +69,7 @@ async function odczytajBlad(response: Response): Promise<string> {
   } catch {
     // Odpowiedź bywa zwykłym tekstem albo pustym ciałem.
   }
-  return `HTTP ${response.status}`;
+  return komunikatZapytania(response);
 }
 
 export function adresDostepnosci(runId: string): string {

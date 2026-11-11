@@ -1291,7 +1291,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "a4b730a20839dc66b14f9c0ad9172efedfff4fdf0b31ab9d29ad209714e5cde6",
+  "projection_hash": "24d8b392d3854a0e0506f3aec07af026f01022335328b9985640412a31df8022",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2943,7 +2943,7 @@
       "missing_data": [],
       "model_hash": "98b22042e024ea687672bad47a639bf5ddcad83f8f7d211d5f7dd94b82f037ff",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "e83857122e3ed3db1a81804b99a9d7e4381aea4f11556b5b11911ff4147fc632",
       "rx_ratio": 0.2,
       "scenario_id": "MAX",
@@ -2981,7 +2981,7 @@
       "missing_data": [],
       "model_hash": "98b22042e024ea687672bad47a639bf5ddcad83f8f7d211d5f7dd94b82f037ff",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "e83857122e3ed3db1a81804b99a9d7e4381aea4f11556b5b11911ff4147fc632",
       "rx_ratio": 0.2,
       "scenario_id": "MAX",
@@ -3017,7 +3017,7 @@
         "TA",
         "TB"
       ],
-      "message_pl": "Transformatory TA, TB mają wspólne zasilanie SN (system sn) — jedno źródło, nie dwa niezależne.",
+      "message_pl": "Transformatory „TA”, „TB” mają wspólne zasilanie SN (szyny SN tych transformatorów łączą się bez przejścia przez sieć nN) — jedno źródło, nie dwa niezależne.",
       "severity": "INFO"
     }
   ]

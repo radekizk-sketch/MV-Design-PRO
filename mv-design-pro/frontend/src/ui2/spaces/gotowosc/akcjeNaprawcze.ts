@@ -177,6 +177,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'station.required_field_missing': formularz('add_sn_bay'),
   'station.line_field_multiple_segments': formularz('przepnij_element_na_pole'),
   'station.element_bypasses_field': formularz('przepnij_element_na_pole'),
+  'station.segment_without_field': formularz('przepnij_element_na_pole'),
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),

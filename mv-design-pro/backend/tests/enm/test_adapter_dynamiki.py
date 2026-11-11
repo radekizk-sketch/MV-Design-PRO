@@ -1521,13 +1521,13 @@ class TestOdmowyOpcjiBiegu:
         """
         scenariusz = copy.deepcopy(SCENARIUSZ)
         scenariusz["zdarzenia"][1]["t_s"] = scenariusz["horyzont_s"] + 0.5
-        with pytest.raises(ValueError, match="wykracza poza horyzont"):
+        with pytest.raises(ValueError, match="wykracza poza „Horyzont symulacji”"):
             zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
         # Druga postać tego samego warunku: zdjęcie zwarcia poza horyzontem
         # (scenariusz spójny wewnętrznie, ale wykraczający poza okno biegu).
         zdjecie_poza = copy.deepcopy(SCENARIUSZ)
         zdjecie_poza["zdarzenia"][0]["t_usuniecia_s"] = zdjecie_poza["horyzont_s"] + 0.5
-        with pytest.raises(ValueError, match="poza horyzont"):
+        with pytest.raises(ValueError, match="poza „Horyzont symulacji”"):
             zloz(snapshot_g16, opcje(dynamika=zdjecie_poza), punkt_g16)
 
     def test_zwarcie_niesymetryczne_odmawia_rdzen(

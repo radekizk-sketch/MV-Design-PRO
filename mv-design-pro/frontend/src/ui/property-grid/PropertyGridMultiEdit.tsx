@@ -224,16 +224,9 @@ export function PropertyGridMultiEdit({
   }, []);
 
   // Get mode label
-  const getModeLabel = () => {
-    switch (mode) {
-      case 'MODEL_EDIT':
-        return 'Edycja';
-      case 'RESULT_VIEW':
-        return 'Wyniki';
-      default:
-        return mode;
-    }
-  };
+  // Ta sama reguła co `normalizeOperatingMode`: każdy tryb poza widokiem wyników jest edycją
+  // modelu — kod trybu nie trafia na ekran.
+  const getModeLabel = () => (mode === 'RESULT_VIEW' ? 'Wyniki' : 'Edycja');
 
   // Reset draft when elements change
   useEffect(() => {

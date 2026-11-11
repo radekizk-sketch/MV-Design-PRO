@@ -23,6 +23,7 @@
  *    (`zdejmijDoWejscia`) — kamera, poziom szczegółu i zaznaczenie jak przed
  *    dwuklikiem. Escape bez zmian (zdejmuje zaznaczenie, nie widok).
  */
+import { nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
@@ -50,6 +51,7 @@ import {
   type WynikZakresu,
   type ZakresKadru,
 } from './zakresKadru';
+import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
 
 /** Dostępność celu menu „Dopasuj do…" dla bieżącego zaznaczenia. */
 export type DostepnoscCelu =
@@ -82,7 +84,7 @@ const NIE_NARYSOWANY = 'Zakres nie jest narysowany na schemacie na żadnym pozio
  * tego samego wyniku (kontrakt werdyktu wyjaśnialnego).
  */
 export function opisToru(tor: TorElementuOdpowiedz): KomunikatKadru {
-  const nazwaElementu = tor.element.nazwa || tor.element.ref_id;
+  const nazwaElementu = nazwaObiektuPl(tor.element.nazwa, 'element');
   const szczegoly: string[] = [];
   const warunkowe = tor.drogi.filter((droga) => !droga.pewna);
   for (const droga of warunkowe) {
@@ -275,7 +277,7 @@ export function useKadrowanieWidoku(opcje: {
           if (numer !== zapytanieToru.current) return;
           const tekst =
             blad instanceof BladTopologiiZasilenia
-              ? `Nie udało się pobrać toru zasilania (HTTP ${blad.status}).`
+              ? komunikatZapytania(blad, 'Nie udało się pobrać toru zasilania')
               : 'Nie udało się pobrać toru zasilania — brak połączenia z serwerem obliczeń.';
           const szczegol =
             blad instanceof BladTopologiiZasilenia && typeof blad.szczegoly === 'object' && blad.szczegoly !== null

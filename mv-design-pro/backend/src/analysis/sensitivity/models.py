@@ -10,6 +10,19 @@ from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
 
+#: Parametr wrażliwości ogólnej (``SensitivityEntry.parameter_id``) → nazwa kryterium dla
+#: projektanta (``parameter_label``). Lustro frontu: ``ui2/wyniki/wrazliwosc/strings.ts::
+#: KRYTERIA_PL`` (parytet: ``tests/analysis/test_sensitivity.py::
+#: test_etykiety_parametrow_kompletne_i_w_lustrze``).
+ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL: dict[str, str] = {
+    "voltage_limit": "Odchyłka napięcia węzła",
+    "load_q": "Obciążenie mocą bierną",
+    "load_p": "Obciążenie mocą czynną",
+    "short_circuit_level": "Poziom mocy zwarciowej",
+    "protection_margin": "Marginesy nastaw zabezpieczeń",
+    "protection_curve_margin": "Marginesy krzywych zabezpieczeń",
+}
+
 
 class SensitivityDecision(StrEnum):
     PASS = "PASS"

@@ -95,19 +95,19 @@ class FastDecoupledOptions(PowerFlowOptions):
         """Validate FDLF-specific parameters."""
         if self.angle_damping <= 0:
             raise ValueError(
-                f"Współczynnik tłumienia kąta (angle_damping) musi być dodatni, "
+                f"Współczynnik tłumienia kąta musi być dodatni, "
                 f"otrzymano: {self.angle_damping}. "
                 f"Wartość 1.0 oznacza brak tłumienia."
             )
         if self.voltage_damping <= 0:
             raise ValueError(
-                f"Współczynnik tłumienia napięcia (voltage_damping) musi być dodatni, "
+                f"Współczynnik tłumienia napięcia musi być dodatni, "
                 f"otrzymano: {self.voltage_damping}. "
                 f"Wartość 1.0 oznacza brak tłumienia."
             )
         if self.rebuild_matrices_every < 0:
             raise ValueError(
-                f"Parametr rebuild_matrices_every musi być nieujemny, "
+                f"Liczba iteracji między przebudowami macierzy B′ i B″ musi być nieujemna, "
                 f"otrzymano: {self.rebuild_matrices_every}. "
                 f"Wartość 0 oznacza brak przebudowy macierzy."
             )
@@ -189,7 +189,10 @@ class PowerFlowFastDecoupledSolver:
         slack_island_nodes, not_solved_nodes = build_slack_island(graph, pf_input.slack.node_id)
 
         if not slack_island_nodes:
-            raise ValueError("Slack island could not be determined.")
+            raise ValueError(
+                "Węzła bilansującego nie ma w sieci obliczeniowej — nie można wyznaczyć wyspy "
+                "zasilanej z sieci zasilającej."
+            )
 
         # Build tap ratios map
         tap_ratios = {spec.branch_id: spec.tap_ratio for spec in pf_input.taps}

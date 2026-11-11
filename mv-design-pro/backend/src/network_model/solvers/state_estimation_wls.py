@@ -74,6 +74,18 @@ class MeasurementType(StrEnum):
     Q_FLOW = "Q_FLOW"  # Q_ij — przepływ mocy biernej w gałęzi (od i do j) [pu]
 
 
+#: Rodzaj pomiaru W TEKŚCIE odmowy (kod zostaje w polu ``meas_type``) — stała rdzenia:
+#: rdzeń nie importuje warstw wyższych ani pakietu ``pochodne`` (decyzja B-01 architekta
+#: 2026-10-29); komplet przypina ``tests/test_state_estimation_wls.py``.
+NAZWY_RODZAJOW_POMIARU_PL: dict[MeasurementType, str] = {
+    MeasurementType.V_MAGNITUDE: "modułu napięcia węzła",
+    MeasurementType.P_INJECTION: "iniekcji mocy czynnej w węźle",
+    MeasurementType.Q_INJECTION: "iniekcji mocy biernej w węźle",
+    MeasurementType.P_FLOW: "przepływu mocy czynnej w gałęzi",
+    MeasurementType.Q_FLOW: "przepływu mocy biernej w gałęzi",
+}
+
+
 @dataclass(frozen=True)
 class Measurement:
     """Pojedynczy pomiar telemetryczny (warstwa wejścia, NIEzależna od solvera).
@@ -98,12 +110,18 @@ class Measurement:
 
     def __post_init__(self) -> None:
         if self.sigma <= 0.0:
-            raise ValueError("Measurement.sigma musi być > 0 (W = 1/sigma^2).")
+            raise ValueError("Odchylenie standardowe pomiaru σ musi być dodatnie (waga W = 1/σ²).")
         is_flow = self.meas_type in (MeasurementType.P_FLOW, MeasurementType.Q_FLOW)
         if is_flow and self.bus_j is None:
-            raise ValueError(f"Pomiar przepływu {self.meas_type} wymaga węzła końcowego gałęzi.")
+            raise ValueError(
+                f"Pomiar {NAZWY_RODZAJOW_POMIARU_PL[self.meas_type]} wymaga węzła końcowego "
+                "gałęzi j."
+            )
         if not is_flow and self.bus_j is not None:
-            raise ValueError(f"Pomiar {self.meas_type} nie może mieć węzła końcowego gałęzi.")
+            raise ValueError(
+                f"Pomiar {NAZWY_RODZAJOW_POMIARU_PL[self.meas_type]} nie może wskazywać węzła "
+                "końcowego gałęzi j."
+            )
 
 
 @dataclass(frozen=True)
@@ -114,7 +132,7 @@ class MeasurementSet:
 
     def __post_init__(self) -> None:
         if not self.measurements:
-            raise ValueError("MeasurementSet nie może być pusty.")
+            raise ValueError("Zbiór pomiarów estymacji stanu nie może być pusty.")
 
     @property
     def m(self) -> int:
@@ -626,10 +644,12 @@ def estimate_wls(
     """
     ybus = np.asarray(ybus_pu, dtype=complex)
     if ybus.ndim != 2 or ybus.shape[0] != ybus.shape[1]:
-        raise ValueError("ybus_pu musi być kwadratową macierzą n×n.")
+        raise ValueError("Macierz admitancyjna węzłowa Y [pu] musi być kwadratowa (n×n).")
     n_buses = ybus.shape[0]
     if not (0 <= slack_index < n_buses):
-        raise ValueError(f"slack_index {slack_index} poza zakresem [0, {n_buses}).")
+        raise ValueError(
+            f"Indeks węzła bilansującego {slack_index} leży poza zakresem [0, {n_buses})."
+        )
 
     layout = _StateLayout.build(n_buses, slack_index)
     n_states = layout.n_states

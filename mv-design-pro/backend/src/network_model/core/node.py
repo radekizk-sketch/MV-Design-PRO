@@ -118,35 +118,31 @@ class Node:
         if self.node_type == NodeType.SLACK:
             if self.voltage_magnitude is None:
                 raise OdmowaDanychError(
-                    f"Węzeł SLACK '{self.name}' wymaga zdefiniowanej "
-                    f"amplitudy napięcia (voltage_magnitude)."
+                    f"Węzeł SLACK '{self.name}' wymaga zdefiniowanej " "amplitudy napięcia."
                 )
             if self.voltage_angle is None:
                 raise OdmowaDanychError(
-                    f"Węzeł SLACK '{self.name}' wymaga zdefiniowanego "
-                    f"kąta napięcia (voltage_angle)."
+                    f"Węzeł SLACK '{self.name}' wymaga zdefiniowanego " "kąta napięcia."
                 )
 
         elif self.node_type == NodeType.PQ:
             if self.active_power is None:
                 raise OdmowaDanychError(
-                    f"Węzeł PQ '{self.name}' wymaga zdefiniowanej " f"mocy czynnej (active_power)."
+                    f"Węzeł PQ '{self.name}' wymaga zdefiniowanej " "mocy czynnej."
                 )
             if self.reactive_power is None:
                 raise OdmowaDanychError(
-                    f"Węzeł PQ '{self.name}' wymaga zdefiniowanej "
-                    f"mocy biernej (reactive_power)."
+                    f"Węzeł PQ '{self.name}' wymaga zdefiniowanej " "mocy biernej."
                 )
 
         elif self.node_type == NodeType.PV:
             if self.active_power is None:
                 raise OdmowaDanychError(
-                    f"Węzeł PV '{self.name}' wymaga zdefiniowanej " f"mocy czynnej (active_power)."
+                    f"Węzeł PV '{self.name}' wymaga zdefiniowanej " "mocy czynnej."
                 )
             if self.voltage_magnitude is None:
                 raise OdmowaDanychError(
-                    f"Węzeł PV '{self.name}' wymaga zdefiniowanej "
-                    f"amplitudy napięcia (voltage_magnitude)."
+                    f"Węzeł PV '{self.name}' wymaga zdefiniowanej " "amplitudy napięcia."
                 )
 
     def validate(self) -> bool:

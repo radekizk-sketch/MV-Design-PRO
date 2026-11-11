@@ -118,12 +118,19 @@ def compute_fault_loop_endpoint(
         if request.network_type not in net_type_map:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Nieznany typ sieci: '{request.network_type}'. Dozwolone: {list(net_type_map.keys())}",
+                detail=(
+                    f"Nieznany układ sieci „{request.network_type}” — dozwolone oznaczenia "
+                    f"układu wg PN-HD 60364-1 §312.2: {', '.join(net_type_map)}."
+                ),
             )
         if request.protection_arrangement not in pa_map:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Nieznany typ ochrony: '{request.protection_arrangement}'. Dozwolone: {list(pa_map.keys())}",
+                detail=(
+                    "Nieznany sposób ochrony przed dotykiem pośrednim "
+                    f"„{request.protection_arrangement}” — dozwolone wartości: "
+                    f"{', '.join(pa_map)}."
+                ),
             )
 
         tolerancja = rozstrzygnij_tolerancje_nn((request.lv_voltage_tolerance,))

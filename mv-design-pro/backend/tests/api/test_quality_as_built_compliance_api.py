@@ -171,7 +171,7 @@ def test_brak_tolerancji_422(app_client) -> None:
         },
     )
     assert resp.status_code == 422
-    assert "tolerancji napięcia" in resp.json()["detail"]
+    assert "tolerancji porównania napięcia" in resp.json()["detail"]
 
 
 def test_blad_csv_numer_wiersza_422(app_client) -> None:

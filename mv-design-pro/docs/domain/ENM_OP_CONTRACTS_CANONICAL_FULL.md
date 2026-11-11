@@ -144,7 +144,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `insert_station_on_segment_sn` | Wstawienie stacji na istniejącym segmencie SN | `segment_id` (albo `segment_ref`) | `catalog_binding`, `construction_type`, `designation`, `dry_run`, `field_apparatus_catalog_ref`, `insert_at`, `name`, `name_pl`, `nn_block`, `nn_earthing`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `transformer` | tak | `enm/domain_operations.py::insert_station_on_segment_sn` |
 | `insert_zksn_on_segment_sn` | Wstawienie złącza kablowego SN (ZK-SN) na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `catalog_namespace`, `catalog_ref`, `catalog_version`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_zksn_on_segment_sn` |
 | `open_switch` | Otwarcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::open_switch` |
-| `przepnij_element_na_pole` | Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym | `element_ref` | `field_ref` | nie | `enm/domain_operations.py::przepnij_element_na_pole` |
+| `przepnij_element_na_pole` | Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym; odcinek bez wolnego pola dostaje nowe pole liniowe utworzone w tej operacji | `element_ref` | `field_ref` | nie | `enm/domain_operations.py::przepnij_element_na_pole` |
 | `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola albo usunięcie wyposażenia | `bay_ref`, `mode` | `bay_template_ref`, `devices` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
 | `set_normal_open_point` | Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni punkt podziału tego samego pierścienia zostaje zamknięty | `switch_ref` | `close_ref` | nie | `enm/operacje_lacznikow.py::set_normal_open_point` |
 | `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `catalog_binding`, `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
@@ -729,7 +729,7 @@ Odpowiedź: HTTP 200; elementy utworzone 9, zmienione 0, usunięte 0; zdarzenia:
 }
 ```
 
-Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `RING_CONNECTED`; zaznaczenie: `seg/9c1dd85a3c18d05e971892efd13851c0/ring_closure`.
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `LINE_FIELD_CREATED`, `RING_CONNECTED`; zaznaczenie: `seg/9c1dd85a3c18d05e971892efd13851c0/ring_closure`.
 
 #### 13. `set_normal_open_point` — rozłącznik R1 punktem normalnie otwartym pierścienia
 
@@ -1825,7 +1825,7 @@ Typ spoza rejestru jest błędem kontraktu (`backend/tests/enm/test_rejestr_zdar
 skanuje wszystkie emisje w handlerach).
 
 <!-- GENEROWANE:zdarzenia-domenowe:POCZATEK -->
-Rejestr `DOMAIN_EVENT_TYPES` liczy **68** typów:
+Rejestr `DOMAIN_EVENT_TYPES` liczy **69** typów:
 
 - `AUX_LOAD_CREATED`
 - `BAY_EQUIPMENT_SET`
@@ -1857,6 +1857,7 @@ Rejestr `DOMAIN_EVENT_TYPES` liczy **68** typów:
 - `GPZ_SECTION_ADDED`
 - `GPZ_SECTION_DELETED`
 - `GPZ_SECTION_UPDATED`
+- `LINE_FIELD_CREATED`
 - `LOAD_SN_CREATED`
 - `LOGICAL_VIEWS_UPDATED`
 - `MEASUREMENT_SECONDARY_CIRCUIT_SET`

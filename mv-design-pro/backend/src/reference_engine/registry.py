@@ -26,7 +26,7 @@ from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.switchgear import SWITCHGEAR_FAMILY_REGISTRY, SwitchgearFamily
 from network_model.odmowa_pakietu import brak_pakietu_osd
 
-from .models import ReferenceFieldProfile, ReferencePack
+from .models import NAZWY_RODZAJOW_PAKIETU_PL, ReferenceFieldProfile, ReferencePack
 
 _PACKS_DIR = Path(__file__).resolve().parent / "packs"
 
@@ -69,18 +69,21 @@ def _load_packs() -> dict[str, ReferencePack]:
         pack = ReferencePack.model_validate(data)
         if pack.pack_id != pack_file.parent.name:
             raise ValueError(
-                f"Pack id mismatch: katalog '{pack_file.parent.name}' "
-                f"niesie pack_id '{pack.pack_id}' — nazwy muszą być zgodne."
+                f"Niezgodny identyfikator pakietu referencyjnego: katalog "
+                f"„{pack_file.parent.name}” niesie identyfikator „{pack.pack_id}” — nazwy "
+                "muszą być zgodne."
             )
         if pack.pack_id in packs:
-            raise ValueError(f"Duplicate pack_id: {pack.pack_id}")
+            raise ValueError(f"Powtórzony identyfikator pakietu referencyjnego: {pack.pack_id}")
         packs[pack.pack_id] = pack
 
     # Spójność krzyżowa z katalogiem rodzin (jedno źródło danych rodziny).
     for pack in packs.values():
         if pack.kind == "manufacturer":
             if not pack.switchgear_family_ref:
-                raise ValueError(f"Pakiet producencki '{pack.pack_id}' bez switchgear_family_ref.")
+                raise ValueError(
+                    f"Pakiet producencki „{pack.pack_id}” nie wskazuje rodziny rozdzielnicy."
+                )
             if pack.switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
                 raise ValueError(
                     f"Pakiet '{pack.pack_id}' wskazuje nieistniejącą rodzinę "
@@ -88,11 +91,11 @@ def _load_packs() -> dict[str, ReferencePack]:
                 )
         elif pack.switchgear_family_ref is not None:
             raise ValueError(
-                f"Pakiet '{pack.pack_id}' (kind={pack.kind}) nie może wskazywać rodziny."
+                f"Pakiet '{pack.pack_id}' ({NAZWY_RODZAJOW_PAKIETU_PL[pack.kind]}) nie może wskazywać rodziny."
             )
         if pack.cell_configurations and pack.kind != "manufacturer":
             raise ValueError(
-                f"Pakiet '{pack.pack_id}' (kind={pack.kind}) nie może nieść "
+                f"Pakiet '{pack.pack_id}' ({NAZWY_RODZAJOW_PAKIETU_PL[pack.kind]}) nie może nieść "
                 "konfiguracji celek — to dane katalogu producenta."
             )
         for cell in pack.cell_configurations:
@@ -107,7 +110,7 @@ def _load_packs() -> dict[str, ReferencePack]:
     for pack in packs.values():
         if (pack.kind == "osd") != (operator_pakietu_osd(pack.pack_id) is not None):
             raise ValueError(
-                f"Pakiet '{pack.pack_id}' (kind={pack.kind}): identyfikator 'osd_<operator>' "
+                f"Pakiet '{pack.pack_id}' ({NAZWY_RODZAJOW_PAKIETU_PL[pack.kind]}): identyfikator 'osd_<operator>' "
                 "z operatorem listy produktu przysługuje wyłącznie pakietom OSD i każdy pakiet "
                 "OSD musi go nieść."
             )
@@ -117,12 +120,14 @@ def _load_packs() -> dict[str, ReferencePack]:
     if packs_with_profiles != [FIELD_PROFILE_PACK_ID]:
         raise ValueError(
             f"Profile pól może nieść wyłącznie pakiet '{FIELD_PROFILE_PACK_ID}' "
-            f"(znaleziono w: {packs_with_profiles})."
+            f"(znaleziono w pakietach: {', '.join(packs_with_profiles) or 'żadnym'})."
         )
     profiles = packs[FIELD_PROFILE_PACK_ID].field_profiles
     profile_ids = [p.profile_id for p in profiles]
     if len(profile_ids) != len(set(profile_ids)):
-        raise ValueError(f"Zduplikowane profile_id w pakiecie {FIELD_PROFILE_PACK_ID}.")
+        raise ValueError(
+            f"Powtórzony identyfikator profilu pola w pakiecie {FIELD_PROFILE_PACK_ID}."
+        )
     return packs
 
 
@@ -143,7 +148,9 @@ def get_reference_pack(pack_id: str) -> ReferencePack:
     """Pobiera pakiet po id. KeyError z listą dostępnych gdy brak."""
     if pack_id not in REFERENCE_PACK_REGISTRY:
         available = ", ".join(sorted(REFERENCE_PACK_REGISTRY.keys()))
-        raise BrakZasobuError(f"Unknown reference pack: {pack_id}. Available: {available}")
+        raise BrakZasobuError(
+            f"Nieznany pakiet referencyjny {pack_id}. Dostępne pakiety: {available}"
+        )
     return REFERENCE_PACK_REGISTRY[pack_id]
 
 

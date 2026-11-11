@@ -37,6 +37,11 @@ function zabezpieczenie(
   } as ProtectionAssignment;
 }
 
+/** Pole bez aparatów — powiązanie ze sterownikiem wyłącznie przez `protection_ref`. */
+function poleZRef(protectionRef: string | null): Bay {
+  return { ref_id: `pole-${protectionRef}`, protection_ref: protectionRef, equipment_refs: [], primary_devices: [] } as unknown as Bay;
+}
+
 describe('przekaznikiStacji', () => {
   it('pole → zabezpieczenie po protection_ref; kolejność pól; ref nierozwiązywalny i brak ref pominięte', () => {
     const wiersze = przekaznikiStacji(
@@ -46,10 +51,10 @@ describe('przekaznikiStacji', () => {
         zabezpieczenie('pz-obce', 'distance', []),
       ],
       [
-        { oznaczenie: 'Pole 1', protectionRef: 'pz-1' },
-        { oznaczenie: 'Pole 2', protectionRef: null },
-        { oznaczenie: 'Pole 3', protectionRef: 'pz-nie-ma' },
-        { oznaczenie: 'Pole 4', protectionRef: 'pz-2' },
+        { oznaczenie: 'Pole 1', pole: poleZRef('pz-1') },
+        { oznaczenie: 'Pole 2', pole: poleZRef(null) },
+        { oznaczenie: 'Pole 3', pole: poleZRef('pz-nie-ma') },
+        { oznaczenie: 'Pole 4', pole: poleZRef('pz-2') },
       ],
     );
     expect(wiersze).toEqual([
@@ -76,7 +81,7 @@ describe('przekaznikiStacji', () => {
     'rodzaj %s ma polską etykietę ze wspólnej mapy',
     (rodzaj) => {
       const [wiersz] = przekaznikiStacji([zabezpieczenie('pz', rodzaj, [])], [
-        { oznaczenie: 'P', protectionRef: 'pz' },
+        { oznaczenie: 'P', pole: poleZRef('pz') },
       ]);
       expect(wiersz.typePl).toBe(ETYKIETA_RODZAJU_ZABEZPIECZENIA[rodzaj]);
       expect(wiersz.typePl).not.toBe(rodzaj);
@@ -86,7 +91,7 @@ describe('przekaznikiStacji', () => {
   it('kody kierunkowe i częstotliwościowe zachowują sufiks normy', () => {
     const [wiersz] = przekaznikiStacji(
       [zabezpieczenie('pz', 'directional_overcurrent', ['directional_67N', 'rocof_81R', 'underfrequency_81U'])],
-      [{ oznaczenie: 'P', protectionRef: 'pz' }],
+      [{ oznaczenie: 'P', pole: poleZRef('pz') }],
     );
     expect(wiersz.functionsPl).toEqual(['67N', '81R', '81U']);
   });
@@ -221,9 +226,9 @@ describe('stronaNnStacji', () => {
     ]);
   });
 
-  it('odbiory po ref_id; punkt przyłączenia to nazwa szyny, a szyna spoza listy — jej ref (jawnie)', () => {
+  it('odbiory po ref_id; punkt przyłączenia to nazwa szyny, a szyna spoza listy — „spoza modelu” (jawnie, bez refu)', () => {
     expect(odbioryNnZGrafu(graf())).toEqual([
-      { loadId: 'odb-1', name: 'Hala', attachmentPointPl: 'nn-a-k', pMw: 0.2, qMvar: 0.05 },
+      { loadId: 'odb-1', name: 'Hala', attachmentPointPl: 'Szyna spoza modelu', pMw: 0.2, qMvar: 0.05 },
       { loadId: 'odb-2', name: 'Biuro', attachmentPointPl: 'Podrozdzielnica R1', pMw: 0.01, qMvar: 0.002 },
     ]);
   });

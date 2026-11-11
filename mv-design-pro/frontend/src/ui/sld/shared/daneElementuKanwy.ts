@@ -16,6 +16,7 @@
  * Moduł nie czyta geometrii rysunku (kamera, układ, trafienia) i nie liczy fizyki: wartości
  * wynikowe pochodzą z backendu, tu wyłącznie ich zapis polski.
  */
+import { miejsceWKolekcji, nazwaObiektuPl, nazwaZRodzajemPl } from '../../shared/nazwaObiektu';
 import type {
   Bay,
   BayControlMode,
@@ -24,7 +25,6 @@ import type {
   EnergyNetworkModel,
   Substation,
 } from '../../../types/enm';
-import type { SelectedElement } from '../../types';
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../../shared/transformatoryStacji';
 import { getMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
@@ -37,8 +37,9 @@ import {
 } from '../v2/model/stanAparatowPola';
 import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../shared/polaStacji';
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
-import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import type { PreviewElementKind } from '../v3/compose/preview';
+import { jestRodzajemGaleziAparatu } from '../../../types/rodzajeGalezi';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 /**
  * Rodzaj obiektu, dla którego inspektor elementu (prawy panel, `PanelElementuKanwy`)
@@ -58,6 +59,21 @@ export type RodzajElementuKanwy =
   | 'grid_source'
   | 'bus'
   | null;
+
+/** Rodzaj elementu kanwy po polsku — opis elementu bez nazwy („Pole bez nazwy”), nigdy
+ *  ostatni człon referencji modelu. */
+const RODZAJ_ELEMENTU_KANWY_PL: Readonly<Record<NonNullable<RodzajElementuKanwy>, string>> = {
+  station: 'Stacja',
+  bay: 'Pole',
+  apparatus: 'Aparat',
+  transformer: 'Transformator',
+  der: 'Źródło wytwórcze',
+  cable_run: 'Ciąg',
+  node: 'Węzeł',
+  generator: 'Źródło wytwórcze',
+  grid_source: 'Sieć zasilająca',
+  bus: 'Szyna',
+};
 
 export interface DaneElementuKanwy {
   /** Element kind — determines which tab set to show. */
@@ -162,7 +178,7 @@ export function buildLiveMetrics(
     const m = getMetric(payload, ref, code);
     // Wielkość bez wartości liczbowej nie dostaje wiersza (uczciwy brak, nie „—").
     if (m && typeof m.value === 'number' && Number.isFinite(m.value)) {
-      metryki.push({ code, label: ETYKIETA_METRYKI_PL[code] ?? code, value: formatScalar(m) });
+      metryki.push({ code, label: etykietaZeSlownika(ETYKIETA_METRYKI_PL, code), value: formatScalar(m) });
     }
   }
   return metryki.length > 0 ? metryki : undefined;
@@ -197,8 +213,7 @@ export function buildDaneStacji(
     label: stationLabelOverride
       ?? stacjaSld?.name
       ?? stacjaSld?.stationCode
-      ?? stationId.split('/').pop()
-      ?? stationId,
+      ?? nazwaObiektuPl(null, 'stacja', miejsceWKolekcji(snapshot?.substations, stationId)),
     stationCode: stacjaSld?.stationCode ?? null,
     liveMetrics: buildLiveMetrics(overlayPayload, 'station', stationId),
   };
@@ -222,122 +237,16 @@ function rekordStanuAparatu(bay: Bay, deviceRef: string): BaySwitchState | null 
   return bay.runtime_state?.primary_device_states?.[deviceRef] ?? null;
 }
 
-const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
-  'switch-disconnector': 'Rozłącznik',
-  fuse: 'Bezpiecznik',
-  'earthing-switch': 'Uziemnik',
-  'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator',
-  breaker: 'Wyłącznik',
-  disconnector: 'Odłącznik',
-  vt: 'Przekładnik napięciowy',
-};
-
-/** `id` w postaci `${stationRef}/internal-bay/...`, `${stationRef}/nn/...`,
- *  `${stationRef}/pv/...`, `${stationRef}/transformer/...` — konwencja
- *  `StationInternalView` (K30). */
-export function stationRefFromInternalElement(id: string): string | null {
-  for (const marker of ['/internal-bay/', '/nn/', '/pv/', '/transformer/']) {
-    const markerIndex = id.indexOf(marker);
-    if (markerIndex > 0) return id.slice(0, markerIndex);
-  }
-  return null;
-}
-
-export function stationDisplayNameForRef(snapshot: EnergyNetworkModel | null, stationRef: string): string {
-  const station = findSubstationByRef(snapshot, stationRef);
-  return station && snapshot
-    ? stationPublicIdentity(snapshot, station).displayName
-    : 'stacja SN/nN';
-}
-
 export function stationRefForTransformerSelection(
   snapshot: EnergyNetworkModel | null,
   transformerRef: string,
 ): string | null {
   // SZYNY-STACJI-LUSTRO (commit 2): stacja transformatora z JEDNEJ reguły „transformatory
   // stacji” (`stationRefOfTransformer`, odwrotność `selectStationDistributionTransformers`).
-  // Dawny skrót „ref wewnętrznego widoku stacji” (`stationRefFromInternalElement`) dopasowywał
-  // także realne refy modelu — `gpz/<id>/transformer/001/wn_sn` dawał „stację” `gpz/<id>`.
+  // Dawny skrót po znacznikach skasowanego widoku wewnętrznego stacji (`/transformer/`…)
+  // dopasowywał także realne refy modelu — `gpz/<id>/transformer/001/wn_sn` dawał „stację”
+  // `gpz/<id>`; skasowany razem z tą konwencją identyfikatorów.
   return stationRefOfTransformer(snapshot, transformerRef);
-}
-
-export function describeStationInternalElement(
-  snapshot: EnergyNetworkModel | null,
-  id: string,
-): SelectedElement | null {
-  const stationRef = stationRefFromInternalElement(id);
-  if (!stationRef) return null;
-  const stationName = stationDisplayNameForRef(snapshot, stationRef);
-
-  if (id.includes('/internal-bay/')) {
-    const bayPath = id.slice(id.indexOf('/internal-bay/') + '/internal-bay/'.length);
-    const [bayKey, deviceKey] = bayPath.split('/');
-    const roleKey = bayKey?.split('-')[0] ?? '';
-    // Etykieta roli z kanonu słownictwa ról pól (karta #141); rola spoza kanonu — „Pole SN”.
-    const bayLabel = fieldRoleLabelPl(roleKey);
-    const deviceLabel = deviceKey ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? 'Aparat pola SN' : null;
-    return {
-      id,
-      type: deviceLabel ? 'Switch' : 'BaySN',
-      name: deviceLabel
-        ? `${deviceLabel} - ${bayLabel}, ${stationName}`
-        : `${bayLabel} - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/nn/')) {
-    return {
-      id,
-      type: 'SwitchNN',
-      name: `Wyłącznik nN - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/nn-pcc')) {
-    return {
-      id,
-      type: 'ConnectionPoint',
-      name: `Punkt przyłączenia PV po stronie nN - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/nn-breaker/')) {
-    return {
-      id,
-      type: 'SwitchNN',
-      name: `Wyłącznik nN PV - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/protection/')) {
-    return {
-      id,
-      type: 'ProtectionNN',
-      name: `Zabezpieczenie PV - ${stationName}`,
-    };
-  }
-
-  if (id.includes('/pv/inverter/')) {
-    return {
-      id,
-      type: 'PVInverter',
-      name: `Falownik PV - ${stationName}`,
-      semanticHash: `source:${id}`,
-      semanticElementKind: 'SOURCE',
-      semanticEngineeringRole: 'PV_INVERTER',
-    };
-  }
-
-  if (id.includes('/transformer/')) {
-    return {
-      id,
-      type: 'TransformerBranch',
-      name: `Transformator - ${stationName}`,
-    };
-  }
-
-  return null;
 }
 
 /** `kind` z `onSelectElement` → kind gałęzi panelu elementu. `null` = brak
@@ -471,8 +380,7 @@ export function buildDaneSzkicuDer(
     elementId: stationId,
     label: stationForDrop?.stationCode
       ?? stationForDrop?.name
-      ?? stationId.split('/').pop()
-      ?? stationId,
+      ?? nazwaObiektuPl(null, 'stacja', miejsceWKolekcji(snapshot?.substations, stationId)),
     stationCode: stationForDrop?.stationCode ?? null,
     nnSpec: { busVoltageKv: lvBus?.voltage_kv ?? tr?.ulv_kv ?? null },
   };
@@ -517,39 +425,32 @@ export function buildDaneElementuStacji(
   if (!rodzaj) return null;
 
   const stacjaSld = sldData.stations.find((s) => s.id === id);
-  const internalStationRef = stationRefFromInternalElement(id);
-  const stationForInternalElement = internalStationRef
-    ? sldData.stations.find((s) => s.id === internalStationRef)
-    : undefined;
   const transformerStationRef = rodzaj === 'transformer'
     ? stationRefForTransformerSelection(snapshot, id)
     : null;
   const stationForTransformer = transformerStationRef
     ? sldData.stations.find((s) => s.id === transformerStationRef)
     : undefined;
-  // Kod stacji z relacji elementu (stacja kliknięta, stacja elementu wewnętrznego, stacja
-  // transformatora). Brak relacji ⇒ `null` — dawne `sldData.stations[0]` przypisywało
+  // Kod stacji z relacji elementu (stacja kliknięta, stacja transformatora). Brak relacji ⇒ `null` — dawne `sldData.stations[0]` przypisywało
   // elementowi bez stacji kod PIERWSZEJ stacji rysunku (fałszywy kontekst w inspektorze).
   const stationContext = kind === 'station'
     ? stacjaSld
-    : stationForInternalElement ?? stationForTransformer;
-  const internalElementDescription = describeStationInternalElement(snapshot, id);
+    : stationForTransformer;
   // Gałąź 'station' ma KOMPLETNY obiekt z budowniczego stacji — użyty wprost.
   const daneStacjiBudowniczego = rodzaj === 'station'
     ? buildDaneStacji(snapshot, sldData, overlayPayload, id)
     : null;
   // Etykieta transformatora: nazwa rekordu modelu (bezpośredniego albo pierwszego
-  // transformatora dystrybucyjnego stacji), potem opis elementu wewnętrznego, potem rodzaj
-  // bez klasy napięciowej (karta ETYKIETY-TR).
+  // transformatora dystrybucyjnego stacji), potem rodzaj bez klasy napięciowej (karta ETYKIETY-TR).
   let transformerLabelOverride: string | null = null;
   if (rodzaj === 'transformer' && snapshot) {
     const directTransformer = (snapshot.transformers ?? []).find(
       (item) => item.ref_id === id || item.id === id,
     );
-    const stationRef = transformerStationRef ?? internalStationRef;
+    const stationRef = transformerStationRef;
     const transformerStation = stationRef ? findSubstationByRef(snapshot, stationRef) : null;
     const tr = directTransformer ?? selectStationDistributionTransformers(snapshot, transformerStation)[0] ?? null;
-    transformerLabelOverride = tr?.name ?? internalElementDescription?.name ?? 'Transformator';
+    transformerLabelOverride = tr?.name ?? 'Transformator';
   }
   // Karta #135 (e)1: identyfikacja pola i aparatu z MODELU — rekordy `bays` (karta W5-B: jedyny
   // nośnik pól SN, nN i ZKSN; kolejność zapisu). Pole trafione:
@@ -670,10 +571,8 @@ export function buildDaneElementuStacji(
           ?? (rodzaj === 'station'
             ? stacjaSld?.name ?? stacjaSld?.stationCode
             : stacjaSld?.stationCode ?? stacjaSld?.name)
-          ?? internalElementDescription?.name
           ?? nazwaElementuZModelu(snapshot, id)
-          ?? id.split('/').pop()
-          ?? id,
+          ?? nazwaZRodzajemPl(null, rodzaj ? RODZAJ_ELEMENTU_KANWY_PL[rodzaj] : ''),
         stationCode: stationContext?.stationCode ?? null,
         liveMetrics: buildLiveMetrics(overlayPayload, rodzaj, id),
         apparatusState,
@@ -835,6 +734,18 @@ export function buildDaneElementuKanwy(
     const punkt = (snapshot?.branch_points ?? []).find((bp) => bp.ref_id === id || bp.id === id);
     if (!punkt) return null;
     return buildDaneWezlaSn(snapshot, overlayPayload, punkt.branch_point_type, id);
+  }
+  if (elementKind === 'segment') {
+    // Gałąź ŁĄCZNIKA albo bezpiecznika (`breaker`, `switch`, `fuse`…) nie jest odcinkiem SN:
+    // to aparat toru. Predykat z JEDNEGO źródła rodzajów gałęzi (`types/rodzajeGalezi.ts`) —
+    // ten sam podział, którym menu kanwy daje takiej gałęzi kategorię aparatu
+    // (`menuKindGalezi`). Do tej poprawki selekcja wyłącznika z drzewa albo wyszukiwarki
+    // (temat kotwicy `galaz` → `segment`) dawała kartę „Odcinek kablowy" z trasą i katalogiem
+    // kabla dla wyłącznika.
+    const galaz = (snapshot?.branches ?? []).find((b) => b.ref_id === id || b.id === id);
+    if (galaz && jestRodzajemGaleziAparatu(galaz.type)) {
+      return buildDaneElementuKanwy(snapshot, sldData, overlayPayload, 'apparatus', galaz.ref_id, undefined);
+    }
   }
   if (elementKind === 'der') return buildDaneObiektuModelu(snapshot, overlayPayload, 'generator', id);
   if (elementKind === 'source') return buildDaneObiektuModelu(snapshot, overlayPayload, 'grid_source', id);

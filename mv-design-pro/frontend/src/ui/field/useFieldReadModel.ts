@@ -5,6 +5,7 @@ import type {
   BayCanonicalModel,
   BayProjectResults,
 } from '../../types/enm';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 export interface FieldReadModelStatus {
   data_source: 'ENM_FIELD_READ_MODEL';
@@ -97,7 +98,7 @@ function normalizeFieldReadModelResponse(
 async function fetchFieldReadModel(caseId: string): Promise<FieldReadModelResponse> {
   const response = await fetch(`/api/cases/${caseId}/enm/field-view`);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać widoku pola: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się pobrać widoku pola');
   }
   return normalizeFieldReadModelResponse(
     (await response.json()) as Partial<FieldReadModelResponse>,

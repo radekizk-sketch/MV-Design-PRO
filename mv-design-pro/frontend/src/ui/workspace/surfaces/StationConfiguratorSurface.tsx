@@ -76,6 +76,7 @@ import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn, toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
+import { przypisanieZabezpieczeniaPola } from '../../shared/zabezpieczeniePola';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -202,8 +203,9 @@ function compareTransformerCatalogTypes(
       if (leftGap !== rightGap) return leftGap - rightGap;
     }
 
-    const leftVectorMatch = expectedVector && left.vector_group.toUpperCase() === expectedVector;
-    const rightVectorMatch = expectedVector && right.vector_group.toUpperCase() === expectedVector;
+    // Grupa połączeń bywa nieznana (`null` z katalogu) — taki typ po prostu nie pasuje.
+    const leftVectorMatch = expectedVector && left.vector_group?.toUpperCase() === expectedVector;
+    const rightVectorMatch = expectedVector && right.vector_group?.toUpperCase() === expectedVector;
     if (leftVectorMatch !== rightVectorMatch) return leftVectorMatch ? -1 : 1;
 
     const leftLosses = (left.pk_kw ?? 0) + (left.p0_kw ?? 0);
@@ -464,7 +466,7 @@ function deriveStationBayRows(
       bayRole: bay.bay_role ?? null,
       attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
       hasEquipment,
-      hasProtection: Boolean(bay.protection_ref),
+      hasProtection: przypisanieZabezpieczeniaPola(snapshot, bay) !== null,
       // Pomiar pola z modelu: przekładnik (`Measurement.bay_ref`) wskazuje to pole.
       hasMeasurements: pomiaryPol.has(bay.ref_id),
       // Pole bez aparatu pola w modelu nie jest kompletne (dawniej stała „kompletne").
@@ -729,12 +731,12 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       ),
     [snapshot?.measurements, polaSnStacji],
   );
-  // Przekaźniki pól SN wprost z modelu (`Bay.protection_ref` → `ProtectionAssignment`).
+  // Przekaźniki pól SN wprost z modelu — predykat `przypisanieZabezpieczeniaPola`.
   const stationRelays = useMemo(
     () =>
       przekaznikiStacji(
         snapshot?.protection_assignments ?? [],
-        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, protectionRef: bay.protection_ref })),
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, pole: bay })),
       ),
     [snapshot?.protection_assignments, polaSnStacji],
   );

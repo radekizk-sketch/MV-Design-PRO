@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../shared/bladZapytania';
 /*
  * Klient API okna „Estymacja stanu (WLS)" (ui2/wyniki/estymacja). Typy TS
  * odwzorowują 1:1 kształt żądania i odpowiedzi końcówek, wyznaczony z kodu
@@ -208,7 +209,7 @@ export interface WidokEstymacji {
 async function getJsonZDetalem<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    let komunikat = `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`;
+    let komunikat = komunikatZapytania(response);
     try {
       const tresc = (await response.json()) as { detail?: unknown };
       if (typeof tresc?.detail === 'string' && tresc.detail.trim()) komunikat = tresc.detail;
@@ -227,7 +228,7 @@ async function postJsonZDetalem<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    let komunikat = `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`;
+    let komunikat = komunikatZapytania(response);
     try {
       const tresc = (await response.json()) as { detail?: unknown };
       if (typeof tresc?.detail === 'string' && tresc.detail.trim()) komunikat = tresc.detail;

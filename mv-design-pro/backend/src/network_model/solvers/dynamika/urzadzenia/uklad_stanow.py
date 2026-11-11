@@ -35,9 +35,9 @@ class UkladStanow:
 
     def __post_init__(self) -> None:
         if len(set(self.nazwy)) != len(self.nazwy):
-            raise AssertionError(f"Uklad stanow ma powtorzone nazwy: {self.nazwy}")
+            raise AssertionError(f"Układ stanów ma powtórzone nazwy: {self.nazwy}")
         if not self.nazwy:
-            raise AssertionError("Urzadzenie bez ani jednego stanu nie ma dynamiki")
+            raise AssertionError("Urządzenie bez ani jednego stanu nie ma dynamiki")
 
     @property
     def wymiar(self) -> int:
@@ -47,8 +47,8 @@ class UkladStanow:
         """Indeks stanu o zadanej nazwie; nazwa spoza ukladu jest bledem programu."""
         if nazwa not in self.nazwy:
             raise AssertionError(
-                f"Stan {nazwa!r} nie nalezy do ukladu {self.nazwy} — czytanie stanu, "
-                "ktorego konfiguracja urzadzenia nie utworzyla"
+                f"Stan {nazwa!r} nie należy do układu {self.nazwy} — czytanie stanu, "
+                "którego konfiguracja urządzenia nie utworzyła"
             )
         return self.nazwy.index(nazwa)
 
@@ -60,13 +60,13 @@ class UkladStanow:
         brakujace = [nazwa for nazwa in self.nazwy if nazwa not in wartosci]
         if brakujace:
             raise AssertionError(
-                f"Inicjalizacja nie podala stanow {brakujace} ukladu {self.nazwy} — "
-                "stan bez wartosci poczatkowej nie ma rownowagi"
+                f"Inicjalizacja nie podała stanów {brakujace} układu {self.nazwy} — "
+                "stan bez wartości początkowej nie ma równowagi"
             )
         nadmiarowe = [nazwa for nazwa in wartosci if nazwa not in self.nazwy]
         if nadmiarowe:
             raise AssertionError(
-                f"Inicjalizacja podala stany {nadmiarowe} spoza ukladu {self.nazwy}"
+                f"Inicjalizacja podała stany {nadmiarowe} spoza układu {self.nazwy}"
             )
         return np.array([wartosci[nazwa] for nazwa in self.nazwy], dtype=float)
 
@@ -75,12 +75,12 @@ class UkladStanow:
         brakujace = [nazwa for nazwa in self.nazwy if nazwa not in pochodne]
         if brakujace:
             raise AssertionError(
-                f"Rownania nie podaly pochodnych stanow {brakujace} — stan bez rownania "
+                f"Równania nie podaly pochodnych stanów {brakujace} — stan bez równania "
                 "ruchu nie jest stanem, tylko polem"
             )
         nadmiarowe = [nazwa for nazwa in pochodne if nazwa not in self.nazwy]
         if nadmiarowe:
-            raise AssertionError(f"Rownania podaly pochodne {nadmiarowe} spoza ukladu")
+            raise AssertionError(f"Równania podaly pochodne {nadmiarowe} spoza układu")
         return [pochodne[nazwa] for nazwa in self.nazwy]
 
     # -- zaszczepienie pochodnych ----------------------------------------

@@ -8,7 +8,6 @@
  * szynie poza pasmem nN (`polaSnStacji`, lustro backendu `enm.pola.pola_sn_stacji`).
  */
 import type { Bay, Substation } from '../../types/enm';
-import type { FieldReadModelItem } from '../field/useFieldReadModel';
 import { polaSnStacji, type ModelPol } from '../shared/polaStacji';
 
 /** Pola SN stacji w kolejności zapisu (`[]` bez stacji). */
@@ -26,21 +25,4 @@ export function stationSnFieldCount(
   station: Pick<Substation, 'ref_id'> | null | undefined,
 ): number {
   return stationSnBays(snapshot, station).length;
-}
-
-/** Wiersze read-modelu pola (backend `field_read_model`) należące do stacji. */
-export function stationReadModelSnFields(
-  items: readonly FieldReadModelItem[],
-  stationId: string | null | undefined,
-  stationRef: string | null | undefined,
-): FieldReadModelItem[] {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    const itemStationRef = item.canonical_model.base_model.substation_ref;
-    if (!itemStationRef || (itemStationRef !== stationId && itemStationRef !== stationRef)) return false;
-    const key = item.bay_ref;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 }

@@ -23,8 +23,8 @@
  *     • backend: backend/src/api/catalog.py:243  list_switch_equipment_types()
  *     • typ:     ui/catalog/types.ts:85  interface SwitchEquipmentType
  *   Kategoria FALOWNIK (OZE):
- *     • klient:  ui/catalog/api.ts:255  fetchConverterTypes() → GET pv-inverter-types + bess-inverter-types + wind-inverter-types
- *     • backend: backend/src/api/catalog.py:291/297/319  list_pv/bess/wind_inverter_types()
+ *     • klient:  ui/catalog/api.ts  fetchDerConverterTypes() → GET /api/catalog/converter-types
+ *     • backend: backend/src/api/catalog.py  list_converter_types()
  *     • typ:     ui/catalog/types.ts:98  interface ConverterType
  *
  * Kategorie zgodne z semantyką kontraktów:
@@ -34,7 +34,7 @@
 
 import {
   fetchCableTypes,
-  fetchConverterTypes,
+  fetchDerConverterTypes,
   fetchCtTypes,
   fetchLineTypes,
   fetchLvApparatusTypes,
@@ -112,7 +112,7 @@ export const KATEGORIE: readonly MetadanaKategorii[] = [
   {
     id: 'FALOWNIK',
     poleParametrow: ['sn_mva', 'un_kv', 'pmax_mw', 'cosphi_min', 'cosphi_max', 'e_kwh'],
-    pobierz: () => fetchConverterTypes() as unknown as Promise<KatalogPozycja[]>,
+    pobierz: () => fetchDerConverterTypes() as unknown as Promise<KatalogPozycja[]>,
   },
   // --- L-16: cztery przestrzenie obecne w API katalogu, brakujące w ui2 ---
   //   Kategoria CT (przekładniki prądowe):

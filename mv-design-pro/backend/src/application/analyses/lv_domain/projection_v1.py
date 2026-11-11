@@ -41,13 +41,13 @@ from application.analyses.fault_loop.service import (
     station_transformers,
 )
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
-from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from application.analyses.swz.service import build_swz_view
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.result_freshness import evaluate_result_freshness
 from application.result_mapping.canonical_run_to_resultset_v1 import (
     build_resultset_v1_from_canonical_run,
 )
+from domain.opis_przebiegu import stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.models import EnergyNetworkModel

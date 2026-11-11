@@ -66,8 +66,9 @@ def _check_transformer_no_load_params(
                 code="transformer.no_load_params_missing",
                 severity=SolverInputIssueSeverity.WARNING,
                 message=(
-                    f"Transformer '{branch.id}' has no i0_percent/p0_kw — "
-                    "magnetizing branch is not represented in the load-flow input"
+                    f"Transformator „{branch.id}” nie ma prądu stanu jałowego i0 ani strat "
+                    "jałowych P0 — gałąź magnesująca nie jest odwzorowana w wejściu rozpływu "
+                    "mocy"
                 ),
                 element_ref=branch.id,
                 field_path=f"transformers[ref_id={branch.id}].i0_percent",
@@ -90,7 +91,7 @@ def _check_common_blockers(
             SolverInputIssue(
                 code="E-D01",
                 severity=SolverInputIssueSeverity.BLOCKER,
-                message="No SLACK (grid supply) node in network",
+                message="Sieć nie ma węzła bilansującego (zasilania z sieci nadrzędnej)",
             )
         )
 
@@ -105,8 +106,8 @@ def _check_common_blockers(
                             code="SI-001",
                             severity=SolverInputIssueSeverity.BLOCKER,
                             message=(
-                                f"Branch '{branch.id}' has no catalog_ref, "
-                                f"no impedance_override, and zero impedance"
+                                f"Gałąź „{branch.id}” nie wskazuje typu katalogowego ani "
+                                "nadpisania impedancji i ma zerową impedancję"
                             ),
                             element_ref=branch.id,
                             field_path=f"branches[ref_id={branch.id}].type_ref",
@@ -118,8 +119,8 @@ def _check_common_blockers(
                             code="SI-002",
                             severity=SolverInputIssueSeverity.WARNING,
                             message=(
-                                f"Branch '{branch.id}' uses instance parameters "
-                                f"without catalog_ref (not catalog-first)"
+                                f"Gałąź „{branch.id}” używa parametrów wpisanych w elemencie "
+                                "bez typu katalogowego"
                             ),
                             element_ref=branch.id,
                             field_path=f"branches[ref_id={branch.id}].type_ref",
@@ -139,8 +140,8 @@ def _check_common_blockers(
                             code="SI-003",
                             severity=SolverInputIssueSeverity.BLOCKER,
                             message=(
-                                f"Branch '{branch.id}' catalog_ref "
-                                f"'{branch.type_ref}' not found in catalog"
+                                f"Gałąź „{branch.id}” wskazuje typ katalogowy "
+                                f"„{branch.type_ref}”, którego nie ma w katalogu"
                             ),
                             element_ref=branch.id,
                             field_path=f"branches[ref_id={branch.id}].type_ref",
@@ -155,8 +156,9 @@ def _check_common_blockers(
                             code="SI-004",
                             severity=SolverInputIssueSeverity.BLOCKER,
                             message=(
-                                f"Transformer '{branch.id}' has no catalog_ref "
-                                f"and invalid nameplate parameters"
+                                f"Transformator „{branch.id}” nie wskazuje typu katalogowego "
+                                "i ma niepoprawne dane znamionowe (moc S_n albo napięcie "
+                                "zwarcia u_k niedodatnie)"
                             ),
                             element_ref=branch.id,
                             field_path=f"transformers[ref_id={branch.id}].type_ref",
@@ -168,8 +170,8 @@ def _check_common_blockers(
                             code="SI-005",
                             severity=SolverInputIssueSeverity.WARNING,
                             message=(
-                                f"Transformer '{branch.id}' uses instance "
-                                f"parameters without catalog_ref"
+                                f"Transformator „{branch.id}” używa danych znamionowych "
+                                "wpisanych w elemencie bez typu katalogowego"
                             ),
                             element_ref=branch.id,
                             field_path=f"transformers[ref_id={branch.id}].type_ref",
@@ -183,8 +185,8 @@ def _check_common_blockers(
                             code="SI-006",
                             severity=SolverInputIssueSeverity.BLOCKER,
                             message=(
-                                f"Transformer '{branch.id}' catalog_ref "
-                                f"'{branch.type_ref}' not found in catalog"
+                                f"Transformator „{branch.id}” wskazuje typ katalogowy "
+                                f"„{branch.type_ref}”, którego nie ma w katalogu"
                             ),
                             element_ref=branch.id,
                             field_path=f"transformers[ref_id={branch.id}].type_ref",
@@ -204,7 +206,7 @@ def _check_common_blockers(
             SolverInputIssue(
                 code="SI-007",
                 severity=SolverInputIssueSeverity.WARNING,
-                message="Network graph is not fully connected (islands detected)",
+                message="Sieć nie jest spójna — wykryto wyspy niepołączone z resztą sieci",
             )
         )
 
@@ -237,9 +239,9 @@ def check_eligibility(
                         code="transformer.vector_group_missing",
                         severity=SolverInputIssueSeverity.BLOCKER,
                         message=(
-                            f"Transformer '{branch.id}' has no vector_group — "
-                            "1-phase (earth fault) short circuit cannot determine "
-                            "zero-sequence behaviour"
+                            f"Transformator „{branch.id}” nie ma grupy połączeń — zwarcie "
+                            "jednofazowe doziemne nie może wyznaczyć zachowania składowej "
+                            "zerowej"
                         ),
                         element_ref=branch.id,
                         field_path=f"transformers[ref_id={branch.id}].vector_group",
@@ -279,9 +281,9 @@ def check_eligibility(
                     code="SI-100",
                     severity=SolverInputIssueSeverity.BLOCKER,
                     message=(
-                        "Protection analysis requires at least one BREAKER or "
-                        "RECLOSER apparatus in the network (no protectable "
-                        "switching device found)"
+                        "Analiza zabezpieczeń wymaga w sieci co najmniej jednego "
+                        "wyłącznika albo reklozera — nie znaleziono aparatu łączeniowego, "
+                        "który zabezpieczenie mogłoby wyłączać"
                     ),
                 )
             )

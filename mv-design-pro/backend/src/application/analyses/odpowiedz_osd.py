@@ -57,7 +57,7 @@ import math
 from typing import Any
 
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
@@ -135,7 +135,7 @@ def _resolve_setpoint(
     if command == "ograniczenie_p":
         if p_limit_pct is None or p_limit_pct <= 0.0:
             raise OdmowaDanychError(
-                "Polecenie ograniczenia mocy wymaga dodatniego p_limit_pct [%]."
+                "Polecenie ograniczenia mocy wymaga dodatniego limitu mocy czynnej [%]."
             )
         p_after = p_base_mw * (p_limit_pct / 100.0)
         return p_after, q_base_mvar, {"p_limit_pct": _round6(p_limit_pct)}
@@ -164,13 +164,13 @@ def _resolve_setpoint(
 
     # lfsm_o / lfsm_u
     if frequency_hz is None or frequency_hz <= 0.0:
-        raise OdmowaDanychError("Polecenie LFSM wymaga dodatniej częstotliwości frequency_hz [Hz].")
+        raise OdmowaDanychError("Polecenie LFSM wymaga dodatniej częstotliwości sieci f [Hz].")
     if droop_pct is None or droop_pct <= 0.0:
-        raise OdmowaDanychError("Polecenie LFSM wymaga dodatniego statyzmu droop_pct [%].")
+        raise OdmowaDanychError("Polecenie LFSM wymaga dodatniego statyzmu [%].")
     if deadband_hz < 0.0:
-        raise OdmowaDanychError("Strefa martwa LFSM deadband_hz nie może być ujemna [Hz].")
+        raise OdmowaDanychError("Strefa martwa LFSM nie może być ujemna [Hz].")
     if f0_hz <= 0.0:
-        raise OdmowaDanychError("Częstotliwość odniesienia f0_hz musi być dodatnia [Hz].")
+        raise OdmowaDanychError("Częstotliwość odniesienia f₀ musi być dodatnia [Hz].")
     control = InverterControl(
         lfsm_droop_pct=droop_pct,
         lfsm_deadband_hz=deadband_hz,

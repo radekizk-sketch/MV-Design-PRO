@@ -118,6 +118,7 @@ import {
 } from './wartosciRoboczeMaszyny';
 import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
+import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 
 interface WierszParametru {
   klucz: string;
@@ -198,7 +199,7 @@ function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAp
   const jednostka = T.aparatJednostki[parametr];
   if (zrodlo.rodzaj === 'karta') return `${T.aparatZKarty} ${liczbaPl(zrodlo.wartosc)} ${jednostka}.`;
   if (zrodlo.rodzaj === 'propozycja') {
-    const rodzaj = T.aparatRodzajZrodla[zrodlo.rodzajZrodla] ?? zrodlo.rodzajZrodla;
+    const rodzaj = etykietaZeSlownika(T.aparatRodzajZrodla, zrodlo.rodzajZrodla);
     return `${T.aparatPropozycja} ${liczbaPl(zrodlo.wartosc)} ${jednostka} (${rodzaj}).`;
   }
   return `${T.aparatBrak}.`;
@@ -228,7 +229,7 @@ function podpowiedzMaszyny(
   if (zrodlo.rodzaj === 'wyznaczenie') {
     return `${T.maszynaWyznaczenie} ${zrodlo.opis}.`;
   }
-  const rodzaj = T.aparatRodzajZrodla[zrodlo.rodzajZrodla] ?? zrodlo.rodzajZrodla;
+  const rodzaj = etykietaZeSlownika(T.aparatRodzajZrodla, zrodlo.rodzajZrodla);
   if (zrodlo.rodzaj === 'propozycja_elementu') {
     return `${T.maszynaPropozycja} (${rodzaj}): ${zrodlo.regula}.`;
   }

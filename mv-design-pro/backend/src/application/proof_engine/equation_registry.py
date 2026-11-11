@@ -2506,19 +2506,19 @@ EQ_QU_005 = EquationDefinition(
         SymbolDefinition(
             symbol="\\Delta U_X",
             unit="%",
-            description_pl="Składowa bierna spadku napięcia (EQ_VDROP_004)",
+            description_pl="Składowa bierna spadku napięcia",
             mapping_key="delta_u_x_percent",
         ),
         SymbolDefinition(
             symbol="\\Delta U",
             unit="%",
-            description_pl="Spadek napięcia na odcinku (EQ_VDROP_005)",
+            description_pl="Spadek napięcia na odcinku",
             mapping_key="delta_u_percent",
         ),
         SymbolDefinition(
             symbol="U",
             unit="kV",
-            description_pl="Napięcie w punkcie (EQ_VDROP_007)",
+            description_pl="Napięcie w punkcie",
             mapping_key="u_kv",
         ),
     ),
@@ -3992,7 +3992,10 @@ class EquationRegistry:
         elif fault_type == "SC2FZ":
             kolejnosc = SC2FZ_STEP_ORDER.copy()
         else:
-            raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+            raise ValueError(
+                "Nieobsługiwany rodzaj zwarcia niesymetrycznego w kolejności kroków dowodu — "
+                "obsługiwane: zwarcie jednofazowe z ziemią, zwarcie dwufazowe, zwarcie dwufazowe z ziemią."
+            )
         if not impedancja_przejscia:
             return kolejnosc
         return [SC1_ZAMIANA_KROKOW_IMPEDANCJA.get(eq_id, eq_id) for eq_id in kolejnosc]
@@ -4014,32 +4017,46 @@ class EquationRegistry:
         """
         for eq_id in FROZEN_IDS["sc3f_equations"]:
             if eq_id not in SC3F_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z SC3F!")
+                raise ValueError(
+                    f"Zamrożone równanie {eq_id} usunięte z rejestru równań zwarcia trójfazowego."
+                )
 
         for eq_id in FROZEN_IDS["vdrop_equations"]:
             if eq_id not in VDROP_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z VDROP!")
+                raise ValueError(
+                    f"Zamrożone równanie {eq_id} usunięte z rejestru równań spadku napięcia."
+                )
 
         for eq_id in FROZEN_IDS["lf_equations"]:
             if eq_id not in LF_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z P32!")
+                raise ValueError(
+                    f"Zamrożone równanie {eq_id} usunięte z rejestru równań rozpływu mocy i spadku napięcia."
+                )
 
         for eq_id in FROZEN_IDS["sc1_equations"]:
             if eq_id not in SC1_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z SC1!")
+                raise ValueError(
+                    f"Zamrożone równanie {eq_id} usunięte z rejestru równań zwarcia jednofazowego."
+                )
 
         for eq_id in FROZEN_IDS["lc_equations"]:
             if eq_id not in LC_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z P15!")
+                raise ValueError(
+                    f"Zamrożone równanie {eq_id} usunięte z rejestru równań prądów obciążenia i przeciążeń."
+                )
 
         for eq_id in FROZEN_IDS["le_equations"]:
             if eq_id not in LE_EQUATIONS:
-                raise ValueError(f"Frozen equation ID {eq_id} usunięty z P17!")
+                raise ValueError(
+                    f"Zamrożone równanie {eq_id} usunięte z rejestru równań strat i profilu energii."
+                )
 
         current_keys = cls.get_all_mapping_keys()
         for key in FROZEN_IDS["mapping_keys"]:
             if key not in current_keys:
-                raise ValueError(f"Frozen mapping key {key} usunięty!")
+                raise ValueError(
+                    f"Zamrożony klucz mapowania wielkości {key} usunięty z rejestru równań."
+                )
 
         return True
 

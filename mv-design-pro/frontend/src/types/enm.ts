@@ -5,6 +5,13 @@
  * Discriminated union on Branch.type.
  */
 
+import {
+  jestRodzajemGaleziAparatu,
+  jestRodzajemGaleziLacznika,
+  type RodzajGalezi,
+  type RodzajGaleziBezpiecznika,
+  type RodzajGaleziLacznika,
+} from './rodzajeGalezi';
 import type {
   RolaUziemnika,
   TolerancjaNapieciaNn,
@@ -370,7 +377,7 @@ export interface CableJoint {
 }
 
 export interface SwitchBranch extends BranchBase {
-  type: 'switch' | 'breaker' | 'bus_coupler' | 'disconnector';
+  type: RodzajGaleziLacznika;
   r_ohm?: number | null;
   x_ohm?: number | null;
   /**
@@ -382,7 +389,7 @@ export interface SwitchBranch extends BranchBase {
 }
 
 export interface FuseBranch extends BranchBase {
-  type: 'fuse';
+  type: RodzajGaleziBezpiecznika;
   rated_current_a?: number | null;
   rated_voltage_kv?: number | null;
 }
@@ -1270,7 +1277,7 @@ import type {
   FixActionSurfaceDescriptor,
   WizardSurfaceStepId,
 } from './fixActionSurface';
-import type { SemanticIssue } from './domainOps';
+import type { AuditEntry, SemanticIssue } from './domainOps';
 
 // ---------------------------------------------------------------------------
 // Bay canonical model V10 (read-model contract)
@@ -2475,7 +2482,7 @@ export interface DomainOpResponseV1 {
   fix_actions: FixAction[];
   changes: ChangesInfo;
   selection_hint: SelectionHint | null;
-  audit_trail: unknown[];
+  audit_trail: AuditEntry[];
   domain_events: DomainEvent[];
   materialized_params: MaterializedParams;
   layout: LayoutInfo;
@@ -2496,7 +2503,8 @@ export interface DanaPrzyjetaWyposazenia {
   nazwa_pl: string;
   wartosc: unknown;
   powod_pl: string;
-  jakosc: string;
+  /** `werdykt.kontrakt.DanaPrzyjeta.jakosc` — `FieldQuality | None`. */
+  jakosc: FieldQuality | null;
 }
 
 /** Wynik `set_bay_equipment` (klucz `wyposazenie_pola` odpowiedzi operacji). */
@@ -2519,8 +2527,24 @@ export function isCable(b: Branch): b is Cable {
   return b.type === 'cable';
 }
 
+/**
+ * Zgodność rodzajów mapy klas (`types/rodzajeGalezi.ts`) z unią `Branch` w obie strony —
+ * rodzaj gałęzi bez wpisu w mapie albo wpis mapy bez interfejsu gałęzi to błąd kompilacji
+ * (typ `never` nie przyjmuje `true`).
+ */
+export const RODZAJE_GALEZI_ZGODNE_Z_UNIA: [RodzajGalezi] extends [Branch['type']]
+  ? [Branch['type']] extends [RodzajGalezi]
+    ? true
+    : never
+  : never = true;
+
 export function isSwitchBranch(b: Branch): b is SwitchBranch {
-  return ['switch', 'breaker', 'bus_coupler', 'disconnector'].includes(b.type);
+  return jestRodzajemGaleziLacznika(b.type);
+}
+
+/** Gałąź aparatu łączeniowego: łącznik albo bezpiecznik. */
+export function isApparatusBranch(b: Branch): b is SwitchBranch | FuseBranch {
+  return jestRodzajemGaleziAparatu(b.type);
 }
 
 export function isFuseBranch(b: Branch): b is FuseBranch {

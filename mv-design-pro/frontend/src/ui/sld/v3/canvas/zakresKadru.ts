@@ -30,13 +30,16 @@
  * Moduł jest CZYSTY (zero DOM, zero Reacta, zero fizyki) i deterministyczny:
  * listy refów są unikalne i posortowane.
  */
+import { nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
+import { jestRodzajemGaleziAparatu } from '../../../../types/rodzajeGalezi';
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
 import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { sheetSizeFor } from '../sheet/outline';
 import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '../../shared/stationBusResolution';
 import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObiektu';
 import type { TuszEtykietKadru } from './camera';
 import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
@@ -144,8 +147,6 @@ interface IndeksModelu {
 
 const INDEKSY_MODELU = new WeakMap<EnergyNetworkModel, IndeksModelu>();
 
-const RODZAJE_LACZNIKA: ReadonlySet<string> = new Set(['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse']);
-
 function dopisz<K, V>(mapa: Map<K, V[]>, klucz: K, wartosc: V): void {
   const lista = mapa.get(klucz);
   if (lista) lista.push(wartosc);
@@ -193,7 +194,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
       const wpis = { stacja: st, sekcja };
       sekcjeGpz.set(sekcja.section_id, wpis);
       sekcjaSzynyGpz.set(sekcja.bus_ref, wpis);
-      nazwy.set(sekcja.section_id, sekcja.name ?? sekcja.section_id);
+      nazwy.set(sekcja.section_id, nazwaObiektuPl(sekcja.name, 'sekcja', { rodzic: st.name ?? '' }));
     }
   }
   const stacjaTransformatora = new Map<string, string>();
@@ -239,7 +240,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
   const stacjaLacznika = new Map<string, string>();
   for (const br of snapshot.branches ?? []) {
     nazwy.set(br.ref_id, br.name);
-    if (!RODZAJE_LACZNIKA.has(br.type)) continue;
+    if (!jestRodzajemGaleziAparatu(br.type)) continue;
     const z = stacjaSzyny.get(br.from_bus_ref);
     const doS = stacjaSzyny.get(br.to_bus_ref);
     if (z && z === doS) {
@@ -281,8 +282,10 @@ function unikalnePosortowane(refy: Iterable<string>): string[] {
   return [...new Set(refy)].sort();
 }
 
+/** Nazwa celu ścieżki kadru; obiekt bez nazwy w modelu dostaje polską etykietę rodzaju z
+ *  referencji (`etykietaZapasowaRefu`, ten sam most co ekrany wyników), nie identyfikator. */
 function nazwa(ix: IndeksModelu, ref: string): string {
-  return ix.nazwy.get(ref) ?? ref;
+  return ix.nazwy.get(ref) || etykietaZapasowaRefu(ref);
 }
 
 // ---------------------------------------------------------------------------
@@ -757,7 +760,7 @@ export function zakresToru(snapshot: EnergyNetworkModel, tor: TorElementuOdpowie
   }
   return zakres('tor', refy, 0, [
     POZIOM_SIECI,
-    { cel: 'tor', kontekst: [tor.element.ref_id], etykieta: `Tor zasilania: ${tor.element.nazwa || tor.element.ref_id}` },
+    { cel: 'tor', kontekst: [tor.element.ref_id], etykieta: `Tor zasilania: ${nazwaObiektuPl(tor.element.nazwa, 'element')}` },
   ]);
 }
 

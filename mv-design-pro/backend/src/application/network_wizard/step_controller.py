@@ -171,7 +171,10 @@ def _preconditions_k5(enm: dict[str, Any]) -> list[WizardIssue]:
             WizardIssue(
                 code="PRE_K5_FEW_BUSES",
                 severity=IssueSeverity.IMPORTANT,
-                message_pl="Transformatory wymagają min. 2 szyn (HV + LV)",
+                message_pl=(
+                    "Transformatory wymagają co najmniej 2 szyn (strony górnego i dolnego "
+                    "napięcia)"
+                ),
                 wizard_step_hint="K3",
             )
         )

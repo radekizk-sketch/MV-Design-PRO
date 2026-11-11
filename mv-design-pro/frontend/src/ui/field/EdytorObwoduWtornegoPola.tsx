@@ -8,6 +8,7 @@
  * tylko usunięciem i ponownym utworzeniem przekładnika. Model edytora: `obwodWtornyPola.ts`.
  * Odmowę operacji pokazuje zdaniem z backendu; ZERO fizyki w UI.
  */
+import { jestNazwa, miejsceWKolekcji, nazwaZRodzajemPl } from '../shared/nazwaObiektu';
 import { useState } from 'react';
 
 import type { DomainOpResponseV1, EnergyNetworkModel, Measurement } from '../../types/enm';
@@ -133,11 +134,12 @@ export function EdytorObwoduWtornegoPola({
         {przekladniki.map((m) => {
           const otwarty = edytowany === m.ref_id && formularz !== null;
           const bledy = otwarty ? walidujObwod(formularz) : [];
+          const rodzajPl = m.measurement_type === 'CT' ? 'Przekładnik prądowy' : 'Przekładnik napięciowy';
           return (
             <li key={m.ref_id} data-testid={`obwod-wtorny-${m.ref_id}`} className="rounded border border-scada-border/60 p-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium text-scada-text">
-                  {m.measurement_type === 'CT' ? 'Przekładnik prądowy' : 'Przekładnik napięciowy'} {m.name || m.ref_id}
+                  {jestNazwa(m.name) ? `${rodzajPl} ${m.name.trim()}` : nazwaZRodzajemPl(null, rodzajPl, miejsceWKolekcji(przekladniki, m))}
                 </span>
                 {!otwarty ? (
                   <button

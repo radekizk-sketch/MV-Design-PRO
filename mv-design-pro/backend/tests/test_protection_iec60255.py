@@ -562,7 +562,7 @@ class TestEdgeCases:
 
     def test_zero_pickup_raises(self) -> None:
         """Zero pickup current should raise ValueError."""
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError, match="Prąd rozruchowy zabezpieczenia musi być dodatni"):
             compute_curve_trip_time(
                 curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=100.0,
@@ -572,7 +572,7 @@ class TestEdgeCases:
 
     def test_negative_pickup_raises(self) -> None:
         """Negative pickup current should raise ValueError."""
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError, match="Prąd rozruchowy zabezpieczenia musi być dodatni"):
             compute_curve_trip_time(
                 curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=100.0,
@@ -582,7 +582,7 @@ class TestEdgeCases:
 
     def test_zero_tms_raises(self) -> None:
         """Zero TMS should raise ValueError."""
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError, match="Mnożnik czasowy TMS musi być dodatni"):
             compute_curve_trip_time(
                 curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=100.0,
@@ -592,7 +592,7 @@ class TestEdgeCases:
 
     def test_negative_fault_current_raises(self) -> None:
         """Negative fault current should raise ValueError."""
-        with pytest.raises(ValueError, match="negative"):
+        with pytest.raises(ValueError, match="Prąd zwarciowy nie może być ujemny"):
             compute_curve_trip_time(
                 curve_type=IEC60255CurveType.STANDARD_INVERSE,
                 i_fault_a=-100.0,

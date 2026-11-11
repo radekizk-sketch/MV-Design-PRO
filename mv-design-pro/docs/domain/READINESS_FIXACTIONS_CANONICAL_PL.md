@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -169,6 +169,7 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `station.kind_mismatch` | STATIONS | 3 | WARNING | Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii (liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii | panel: `inspector`, modal: `update_element_parameters` |
 | `station.line_field_multiple_segments` | STATIONS | 3 | BLOCKER | Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek | panel: `inspector`, tab: `pola` |
 | `station.required_field_missing` | STATIONS | 3 | BLOCKER | Stacja nie ma wymaganego pola SN | panel: `inspector`, tab: `pola` |
+| `station.segment_without_field` | STATIONS | 3 | WARNING | Odcinek SN jest przyłączony do szyny sekcji stacji bez pola liniowego — w jego torze nie ma aparatu łączeniowego ani zabezpieczenia pola | panel: `sld`, modal: `przepnij_element_na_pole` |
 | `transformer.bay_missing` | STATIONS | 3 | WARNING | Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola transformatorowego po stronie SN | panel: `inspector`, tab: `pola` |
 | `station.nn_outgoing_min_1` | STATIONS | 4 | WARNING | Stacja powinna mieć co najmniej 1 odpływ nN | panel: `inspector`, tab: `nn`, modal: `add_nn_outgoing` |
 | `oze.bess_no_transformer` | GENERATORS | 1 | BLOCKER | Źródło BESS nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora) | panel: `inspector`, tab: `transformator`, modal: `MODAL_WSTAW_STACJE_SN_NN_WARIANT_2` |
@@ -182,7 +183,7 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `converter.setpoint_above_rating` | GENERATORS | 2 | BLOCKER | Moc zadana źródła przekształtnikowego przekracza moc znamionową instalacji (moc czynna jednostki z karty · liczba jednostek) | panel: `inspector`, tab: `parametry`, focus: `p_mw` |
 | `converter.transformer_capacity_exceeded` | GENERATORS | 2 | BLOCKER | Moc wymagana źródła przekształtnikowego — większa z wartości: moc znamionowa jednostki razy liczba jednostek albo moc czynna podzielona przez współczynnik mocy, pomnożona przez współczynnik jednoczesności — przekracza moc transformatora zasilającego pomnożoną przez jego przeciążalność | panel: `inspector`, tab: `katalog` |
 | `der.dynamic_profile_missing` | GENERATORS | 2 | BLOCKER | Rodzaj źródła DER nie ma mapowania na profil dynamiczny, albo profil nie został wskazany jawnie — FRT/LVRT/HVRT nie może zbudować modelu tego generatora | panel: `inspector`, tab: `parametry`, focus: `gen_type` |
-| `der.dynamika_missing` | GENERATORS | 2 | BLOCKER | Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego | panel: `analizy`, tab: `dynamika`, focus: `dynamic_model_ref` |
+| `der.dynamika_missing` | GENERATORS | 2 | BLOCKER | Brak bloku parametrów dynamicznych źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego | panel: `analizy`, tab: `dynamika`, focus: `dynamic_model_ref` |
 | `der.inverter_certificate_unlinked` | GENERATORS | 2 | WARNING | Przetwornica źródła DER nie ma powiązanego certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD | panel: `inspector`, tab: `katalog` |
 | `generator.converter_card_missing` | GENERATORS | 2 | BLOCKER | Przekształtnik (PV/BESS/wiatrowy) nie ma karty katalogowej albo karta nie niesie mocy znamionowej — analizy V12.6 (jakość energii, SSCI) nie mogą go uwzględnić | panel: `inspector`, tab: `katalog` |
 | `generator.q_missing` | GENERATORS | 2 | BLOCKER | Moc bierna generatora (Q) nie jest znana ani wyprowadzalna z karty katalogowej — rozpływ mocy nie może przyjąć jej za zero | panel: `inspector`, tab: `parametry`, focus: `q_mvar` |
@@ -246,20 +247,20 @@ Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 65 |
+| WARNING | 66 |
 | INFO | 9 |
-| **Razem** | **182** |
+| **Razem** | **183** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 20 |
 | TOPOLOGY | 7 |
 | CATALOGS | 55 |
-| STATIONS | 31 |
+| STATIONS | 32 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |
-| **Razem** | **182** |
+| **Razem** | **183** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

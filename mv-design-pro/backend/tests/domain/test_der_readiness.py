@@ -283,3 +283,29 @@ class TestMapowanieZGeneratora:
         assert jawny.bus_przylaczenia_ref == "szyna-jawna"
         domyslny = wejscie_z_generatora({"ref_id": "g", "bus_ref": "bus-1"})
         assert domyslny.bus_przylaczenia_ref == "bus-1"
+
+
+def test_strony_i_rodzaje_der_maja_polskie_nazwy() -> None:
+    """Każda strona przyłączenia i każdy rodzaj DER ma nazwę słowną; zdanie blokady
+    anti-islanding niesie nazwy, nigdy kod strony ani kod rodzaju (iloczyn strona × rodzaj
+    objęty regułą)."""
+    from typing import get_args
+
+    from domain.der_readiness import NAZWY_STRONY_PRZYLACZENIA_PL, RodzajDer, StronaPrzylaczenia
+    from enm.slownik_komunikatow import NAZWY_TECHNOLOGII_ZRODLA_PL
+
+    assert set(NAZWY_STRONY_PRZYLACZENIA_PL) == set(get_args(StronaPrzylaczenia))
+    assert set(get_args(RodzajDer)) <= set(NAZWY_TECHNOLOGII_ZRODLA_PL)
+    for strona in ("nN", "at_zksn", "at_branch_pole", "at_cable_joint"):
+        for rodzaj in ("PV", "FW"):
+            wejscie = we(der_kind=rodzaj, connection_side=strona, protection_catalog_ref=None)
+            komunikat = next(
+                b.message_pl
+                for os in osie_gotowosci_der(wejscie)
+                for b in os.blockers
+                if b.code == "der.anti_islanding.required"
+            )
+            assert NAZWY_TECHNOLOGII_ZRODLA_PL[rodzaj] in komunikat
+            assert NAZWY_STRONY_PRZYLACZENIA_PL[strona] in komunikat
+            assert "at_" not in komunikat and "dedicated_" not in komunikat, komunikat
+            assert f"DER {rodzaj}" not in komunikat, komunikat

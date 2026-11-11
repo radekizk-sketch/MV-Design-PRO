@@ -13,6 +13,7 @@
  * (kategoria wg stałej kolejności, w kategorii porządek migawki).
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../ui/shared/nazwaObiektu';
 import type { EnergyNetworkModel } from '../../types/enm';
 import type { ElementType } from '../../ui/types';
 import { formatGeneratorTypeShortLabelPl } from '../../ui/shared/generatorTypeLabels';
@@ -36,10 +37,6 @@ export const KATEGORIE_OBIEKTOW = {
   szyny: 'Szyny',
 } as const;
 
-function nazwaLubRef(nazwa: string | null | undefined, ref: string): string {
-  return nazwa && nazwa.trim() ? nazwa : ref;
-}
-
 export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): ObiektModelu[] {
   if (!model) return [];
   const wynik: ObiektModelu[] = [];
@@ -47,7 +44,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
   for (const zrodlo of model.sources ?? []) {
     wynik.push({
       id: zrodlo.ref_id,
-      nazwa: nazwaLubRef(zrodlo.name, zrodlo.ref_id),
+      nazwa: nazwaObiektuPl(zrodlo.name, 'zrodlo', miejsceWKolekcji(model.sources, zrodlo)),
       kategoria: KATEGORIE_OBIEKTOW.zrodla,
       typ: 'Source',
     });
@@ -59,7 +56,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
     stacjePoRef.set(stacja.ref_id, stacja);
     wynik.push({
       id: stacja.id,
-      nazwa: nazwaLubRef(stacja.name, stacja.id),
+      nazwa: nazwaObiektuPl(stacja.name, 'stacja', miejsceWKolekcji(model.substations, stacja)),
       kategoria: KATEGORIE_OBIEKTOW.stacje,
       slowaKluczowe: podpisStacjiPl(model, stacja),
       typ: 'Station',
@@ -69,7 +66,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
   for (const tr of model.transformers ?? []) {
     wynik.push({
       id: tr.ref_id,
-      nazwa: nazwaLubRef(tr.name, tr.ref_id),
+      nazwa: nazwaObiektuPl(tr.name, 'transformator', miejsceWKolekcji(model.transformers, tr)),
       kategoria: KATEGORIE_OBIEKTOW.transformatory,
       typ: 'TransformerBranch',
     });
@@ -78,7 +75,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
   for (const odcinek of model.branches ?? []) {
     wynik.push({
       id: odcinek.ref_id,
-      nazwa: nazwaLubRef(odcinek.name, odcinek.ref_id),
+      nazwa: nazwaObiektuPl(odcinek.name, 'odcinek', miejsceWKolekcji(model.branches, odcinek)),
       kategoria: KATEGORIE_OBIEKTOW.odcinki,
       slowaKluczowe: odcinek.type,
       typ: 'LineBranch',
@@ -91,7 +88,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
     const tozsamosc = stacja ? stationPublicIdentity(model, stacja) : null;
     wynik.push({
       id: generator.ref_id,
-      nazwa: nazwaLubRef(generator.name, generator.ref_id),
+      nazwa: nazwaObiektuPl(generator.name, 'generator', miejsceWKolekcji(model.generators, generator)),
       kategoria: KATEGORIE_OBIEKTOW.generatory,
       slowaKluczowe: [rodzaj, tozsamosc?.code, tozsamosc?.displayName].filter(Boolean).join(' '),
       typ: 'Generator',
@@ -101,7 +98,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
   for (const odbior of model.loads ?? []) {
     wynik.push({
       id: odbior.ref_id,
-      nazwa: nazwaLubRef(odbior.name, odbior.ref_id),
+      nazwa: nazwaObiektuPl(odbior.name, 'odbior', miejsceWKolekcji(model.loads, odbior)),
       kategoria: KATEGORIE_OBIEKTOW.odbiory,
       typ: 'Load',
     });
@@ -111,7 +108,7 @@ export function obiektyModeluDoIndeksu(model: EnergyNetworkModel | null): Obiekt
     const id = szyna.ref_id || szyna.id;
     wynik.push({
       id,
-      nazwa: nazwaLubRef(szyna.name, id),
+      nazwa: nazwaObiektuPl(szyna.name, 'szyna', miejsceWKolekcji(model.buses, szyna)),
       kategoria: KATEGORIE_OBIEKTOW.szyny,
       typ: 'Bus',
     });

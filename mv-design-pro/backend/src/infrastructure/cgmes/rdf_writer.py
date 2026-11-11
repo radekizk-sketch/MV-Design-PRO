@@ -42,7 +42,7 @@ def _qname(name: str) -> str:
         return local
     prefix = _URI_TO_PREFIX.get(uri)
     if prefix is None:
-        raise ValueError(f"Unknown namespace URI (no fixed prefix): {uri}")
+        raise ValueError(f"Przestrzeń nazw spoza zapisu CGMES (brak ustalonego prefiksu): {uri}")
     return f"{prefix}:{local}"
 
 

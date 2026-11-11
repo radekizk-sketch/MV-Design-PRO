@@ -17,6 +17,7 @@ import type {
   EligibilityAnalysisType,
 } from '../types';
 import { normalizeAnalysisEligibilityResponse } from '../shared/fixActionSurfaceNormalizer';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 // =============================================================================
 // API Client
@@ -27,7 +28,7 @@ async function fetchAnalysisEligibility(
 ): Promise<AnalysisEligibilityMatrixResponse> {
   const response = await fetch(`/api/cases/${caseId}/analysis-eligibility`);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać macierzy eligibility: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się pobrać macierzy dopuszczalności analiz');
   }
   return normalizeAnalysisEligibilityResponse(await response.json());
 }

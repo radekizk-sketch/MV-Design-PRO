@@ -118,7 +118,7 @@ DEFAULT_PV_GFM = InverterDynamicProfile(
 
 DEFAULT_BESS_GFL = InverterDynamicProfile(
     profile_id="default_bess_gfl",
-    profile_name_pl="Typowy BESS grid-following (PCS standardowy)",
+    profile_name_pl="Typowy BESS grid-following (standardowy układ przekształtnikowy)",
     der_kind="BESS",
     control_mode="grid_following",
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_FALOWNIK),
@@ -149,7 +149,7 @@ DEFAULT_BESS_GFL = InverterDynamicProfile(
 
 DEFAULT_BESS_GFM = InverterDynamicProfile(
     profile_id="default_bess_gfm",
-    profile_name_pl="Typowy BESS grid-forming (PCS, inercja wirtualna)",
+    profile_name_pl="Typowy BESS grid-forming (układ przekształtnikowy z inercją wirtualną)",
     der_kind="BESS",
     control_mode="grid_forming",
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_FALOWNIK),

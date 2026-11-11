@@ -27,6 +27,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 
 from analysis.reactive_adequacy.models import (
+    BRAKI_DANYCH_Q_PL,
     DEFAULT_SATURATION_TOL_MVAR,
     DEFAULT_U_MAX_PU,
     DEFAULT_U_MIN_PU,
@@ -82,9 +83,11 @@ class ReactiveAdequacyBuilder:
         default_u_max_pu: float = DEFAULT_U_MAX_PU,
     ) -> None:
         if saturation_tol_mvar < 0.0:
-            raise ValueError("saturation_tol_mvar nie może być ujemny")
+            raise ValueError("Tolerancja nasycenia mocy biernej [Mvar] nie może być ujemna")
         if default_u_min_pu >= default_u_max_pu:
-            raise ValueError("default_u_min_pu musi być mniejszy niż default_u_max_pu")
+            raise ValueError(
+                "Domyślna dolna granica napięcia [p.u.] musi być mniejsza niż domyślna górna"
+            )
         self.saturation_tol_mvar = float(saturation_tol_mvar)
         self.default_u_min_pu = float(default_u_min_pu)
         self.default_u_max_pu = float(default_u_max_pu)
@@ -218,7 +221,7 @@ class ReactiveAdequacyBuilder:
         if missing:
             why = (
                 "Dane niekompletne — brak: "
-                + ", ".join(missing)
+                + ", ".join(BRAKI_DANYCH_Q_PL[kod] for kod in missing)
                 + ". Ocena rezerwy biernej wymaga aktualnej mocy biernej (z wyniku "
                 "rozpływu mocy) oraz minimalnej i maksymalnej mocy biernej regulatora źródła."
             )
@@ -527,7 +530,7 @@ class ReactiveAdequacyBuilder:
         if top_missing:
             why = (
                 "Werdykt niemożliwy — dane niekompletne: "
-                + ", ".join(top_missing)
+                + ", ".join(BRAKI_DANYCH_Q_PL[kod] for kod in top_missing)
                 + ". Ocena adekwatności mocy biernej wymaga zbieżnego wyniku "
                 "power-flow (napięcia |V|) oraz co najmniej jednego regulowalnego "
                 "źródła z granicami Q."

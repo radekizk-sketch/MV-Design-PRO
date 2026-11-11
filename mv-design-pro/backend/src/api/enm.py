@@ -75,6 +75,7 @@ from application.topologia_zasilenia import (
     zbuduj_tor_elementu,
 )
 from domain.canonical_operations import resolve_operation_name
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
     build_short_circuit_results,
@@ -90,7 +91,7 @@ from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
 from enm.severity import empty_severity_counts
-from enm.slownik_komunikatow import NAZWY_KOLEKCJI_PL, opis_elementu
+from enm.slownik_komunikatow import NAZWY_KOLEKCJI_PL, nazwa_pola, opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, ZrodloZmiany, blokada_twin
 from enm.store import checkout as _checkout_rewizji
 from enm.store import get_enm as _get_enm
@@ -544,31 +545,32 @@ def _resolve_run_for_sheet(
     zależnych od biegu w trzecim stanie „brak danych")."""
     if run_id is None:
         return None
+    bieg = nazwa_pola(param_name)
     try:
         parsed = UUID(run_id)
     except ValueError as exc:
         raise HTTPException(
-            status_code=422, detail=f"{param_name} musi być poprawnym UUID."
+            status_code=422, detail=f"{bieg}: identyfikator nie jest poprawnym UUID."
         ) from exc
     run = _get_canonical_run(parsed)
     if run is None:
-        raise HTTPException(status_code=404, detail=f"Bieg {run_id} ({param_name}) nie istnieje.")
+        raise HTTPException(status_code=404, detail=f"{bieg} nie istnieje.")
     if run.case_id != case_id:
         raise HTTPException(
             status_code=422,
-            detail=f"Bieg {run_id} ({param_name}) należy do innego przypadku obliczeniowego.",
+            detail=f"{bieg} należy do innego przypadku obliczeniowego.",
         )
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=409,
-            detail=f"Bieg {run_id} ({param_name}) nie jest zakończony (status={run.status}).",
+            detail=f"{bieg} nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}).",
         )
     if run.analysis_type != expected_analysis_type:
         raise HTTPException(
             status_code=422,
             detail=(
-                f"Bieg {run_id} ({param_name}) ma rodzaj analizy '{run.analysis_type}', "
-                f"oczekiwano '{expected_analysis_type}'."
+                f"{bieg} jest przebiegiem rodzaju „{rodzaj_przebiegu_pl(run.analysis_type)}”, "
+                f"oczekiwano „{rodzaj_przebiegu_pl(expected_analysis_type)}”."
             ),
         )
     return run
@@ -653,7 +655,10 @@ def post_wytrzymalosc_aparatury(
         expected_analysis_type="short_circuit_sn",
     )
     if run is None:  # parametr wymagany — rozwiązanie zwraca None tylko dla pominiętego
-        raise HTTPException(status_code=422, detail="short_circuit_run_id jest wymagany.")
+        raise HTTPException(
+            status_code=422,
+            detail="Wskaż zakończony bieg zwarciowy — ocena wytrzymałości aparatów go wymaga.",
+        )
     scenariusz = scenariusz_biegu_zwarciowego(run)
     if scenariusz != "MAX":
         # Wytrzymałość aparatu sprawdza się przy prądzie MAKSYMALNYM (c_max, IEC 60909-0);

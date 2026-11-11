@@ -11,6 +11,7 @@
  * bilans P/Q per rozdzielnica). Kolejność deterministyczna: rozdzielnica główna przed
  * podrozdzielnicami, w obrębie rodzaju po `order` backendu; odbiory po `ref_id`.
  */
+import { nazwaPoReferencjiPl } from '../../shared/nazwaObiektu';
 import type { LvDomainGraphView, LvFeederKind } from '../../sld/v3/lv-domain/types';
 import type { LoadRow } from './cards/StationConfigLoadsCard';
 import type { NnSwitchgearRow } from './cards/StationConfigNnSwitchgearCard';
@@ -46,7 +47,7 @@ export function rozdzielniceNnZGrafu(graf: LvDomainGraphView): readonly NnSwitch
       const szyna = szyny.get(sekcja.bus_ref);
       return {
         sectionId: sekcja.section_id,
-        designation: szyna?.name ?? sekcja.bus_ref,
+        designation: nazwaPoReferencjiPl(graf.buses, sekcja.bus_ref, 'szyna'),
         nnVoltageKv: szyna?.voltage_kv ?? null,
         tier: sekcja.tier,
         incomersCount: sekcja.incomer_refs.length,
@@ -61,13 +62,12 @@ export function rozdzielniceNnZGrafu(graf: LvDomainGraphView): readonly NnSwitch
 
 export function odbioryNnZGrafu(graf: LvDomainGraphView): readonly LoadRow[] {
   if (graf.status !== 'OK') return [];
-  const szyny = new Map(graf.buses.map((b) => [b.ref_id, b] as const));
   return [...graf.loads]
     .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0))
     .map((odbior): LoadRow => ({
       loadId: odbior.ref_id,
       name: odbior.name,
-      attachmentPointPl: szyny.get(odbior.bus_ref)?.name ?? odbior.bus_ref,
+      attachmentPointPl: nazwaPoReferencjiPl(graf.buses, odbior.bus_ref, 'szyna'),
       pMw: odbior.p_mw,
       qMvar: odbior.q_mvar,
     }));

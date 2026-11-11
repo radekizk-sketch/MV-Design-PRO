@@ -46,7 +46,7 @@ from typing import Any
 
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
@@ -343,7 +343,7 @@ def build_hosting_capacity_view(
         if not candidates:
             raise OdmowaDanychError(
                 "Brak węzłów-kandydatów: w modelu nie ma źródeł OZE (generatorów); "
-                "wskaż węzeł jawnie parametrem candidate_bus_refs."
+                "wskaż jawnie węzły-kandydatów analizy."
             )
     else:
         candidates = sorted(set(candidate_bus_refs))

@@ -23,6 +23,7 @@
  * podrobiony. Luka nazwana w meldunku karty P0.9.
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { OPCJE_UZIEMIENIA_EKRANU, type UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -56,6 +57,7 @@ import {
 } from '../rama';
 import { ODCINEK_NN_STRINGS as T } from './strings';
 import { SekcjaUlozeniaKablaNn, useUlozenieKablaNn } from './ulozenieKablaNn';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 interface Zbudowany {
   nazwa: string;
@@ -233,7 +235,7 @@ export function KreatorOdcinkaNn() {
   );
 
   const wierszeGotowosci: WierszGotowosci[] = [
-    { etykieta: T.wierszSzyna, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBus?.name ?? fromBusRef ?? '—' },
+    { etykieta: T.wierszSzyna, stan: fromBusRef ? 'kompletne' : 'brak', wartosc: fromBusRef ? nazwaObiektuPl(fromBus?.name, 'szyna', fromBus ? null : { spozaModelu: true }) : '—' },
     { etykieta: T.wierszKabel, stan: catalogRef ? 'kompletne' : 'brak', wartosc: wybranyKabel?.name ?? 'Do wyboru' },
     { etykieta: T.wierszDlugosc, stan: dlugoscM && dlugoscM > 0 ? 'kompletne' : 'brak', wartosc: dlugoscM ? `${dlugoscM} m` : 'Do wprowadzenia' },
   ];
@@ -330,7 +332,11 @@ export function KreatorOdcinkaNn() {
               <RzadWartosci etykieta={T.paramR} wartosc={fmt(wybranyKabel.r_ohm_per_km, 'Ω/km', 4)} />
               <RzadWartosci etykieta={T.paramX} wartosc={fmt(wybranyKabel.x_ohm_per_km, 'Ω/km', 4)} />
               <RzadWartosci etykieta={T.paramIzNominalne} wartosc={fmt(wybranyKabel.i_max_a, 'A', 0)} />
-              <RzadWartosci etykieta={T.paramMaterial} wartosc={wybranyKabel.conductor_material ?? '—'} />
+              <RzadWartosci etykieta={T.paramMaterial} wartosc={
+                  wybranyKabel.conductor_material
+                    ? nazwaWartosciKodowej('conductor_material', wybranyKabel.conductor_material)
+                    : '—'
+                } />
               <RzadWartosci etykieta={T.paramLiczbaZyl} wartosc={String(wybranyKabel.number_of_cores ?? '—')} />
             </KreatorSiatka>
           </>

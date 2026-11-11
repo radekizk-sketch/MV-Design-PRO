@@ -263,10 +263,12 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "Obciążalność długotrwała odcinka magistrali SN: prąd roboczy podany przez "
                 "projektanta porównany z obciążalnością z karty katalogowej typu kabla albo "
                 "przewodu w warunkach odniesienia producenta — fakt katalogowy porównany "
-                "z deklaracją, bez obliczenia cieplnego (application/analyses/"
-                "ocena_doboru_magistrali.py)."
+                "z deklaracją, bez obliczenia cieplnego."
             ),
-            audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
+            audit_ref=(
+                "karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4); "
+                "application/analyses/ocena_doboru_magistrali.py"
+            ),
         ),
         CapabilityEvidence(
             capability_id="nn.petla_zwarcia_tt_it",
@@ -277,13 +279,16 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "impedancji trasy, transformatora, sieci zasilającej i uziomów, napięcie "
                 "dotykowe z iloczynu rezystancji uziomu i prądu różnicowego, prąd pierwszego "
                 "zwarcia sieci IT z pojemności doziemnych odcinków, prąd drugiego zwarcia z "
-                "pętli dwóch faz (network_model/solvers/petla_zwarcia_tt_it.py) — obliczenie "
+                "pętli dwóch faz — obliczenie "
                 "jest wykonywane jawnie, ale nie ma wyroczni odniesienia (pomiar pętli, "
                 "przykład normy z kopią tekstu), więc wynik nie jest dowodem regulacyjnym; "
                 "limity napięcia dotykowego i warunki układu IT czekają na tekst normy od "
                 "właściciela."
             ),
-            audit_ref="karta W5-E-TTIT (decyzje OD-25, D-11, O-68)",
+            audit_ref=(
+                "karta W5-E-TTIT (decyzje OD-25, D-11, O-68); "
+                "network_model/solvers/petla_zwarcia_tt_it.py"
+            ),
         ),
         CapabilityEvidence(
             capability_id="magistrala_sn.spadek_napiecia",
@@ -297,7 +302,10 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "wynik nie jest dowodem regulacyjnym; rzeczywisty profil napięcia daje rozpływ "
                 "zapisanego modelu."
             ),
-            audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
+            audit_ref=(
+                "karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4); "
+                "network_model/solvers/cable_voltage_drop.py"
+            ),
         ),
         CapabilityEvidence(
             capability_id="zabezpieczenia.ocena_nadpradowa",
@@ -307,12 +315,11 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "Ocena zadziałania zabezpieczeń nadprądowych z modelu: prąd przekaźnika z "
                 "bilansu wkładów gałęziowych biegu zwarciowego IEC 60909 (wkłady źródeł "
                 "sumowane netto wg kierunku jako moduły, bez fazorów), czas z charakterystyki "
-                "normowej rdzenia IEC 60255 (application/analyses/protection/"
-                "ocena_nadpradowa.py). Sumowanie modułów wkładów kilku źródeł jest "
+                "normowej rdzenia IEC 60255. Sumowanie modułów wkładów kilku źródeł jest "
                 "przybliżeniem, którego zgodności z rozpływem fazorowym nie wykazano na sieci "
                 "referencyjnej — wynik nie jest dowodem regulacyjnym."
             ),
-            audit_ref="karta oceny zadziałania zabezpieczeń z modelu (2026-09)",
+            audit_ref=("karta oceny zadziałania zabezpieczeń z modelu (2026-09)"),
         ),
         CapabilityEvidence(
             capability_id="aparatura.wytrzymalosc_zwarciowa_pola",
@@ -322,13 +329,16 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "Wytrzymałość zwarciowa aparatury pola: prąd udarowy i prąd cieplny "
                 "zastępczy zwarcia trójfazowego w punkcie zabudowy pola z zapisanego biegu "
                 "IEC 60909 porównane ze znamionami pozycji katalogu, czas wyłączenia złożony "
-                "z członu nastawczego zabezpieczenia pola i czasu własnego wyłącznika "
-                "(application/analyses/wytrzymalosc_aparatury_pol.py). Pełny prąd punktu "
+                "z członu nastawczego zabezpieczenia pola i czasu własnego wyłącznika. Pełny "
+                "prąd punktu "
                 "zabudowy przyjęty jako prąd aparatu pola jest założeniem bez rozdziału na "
                 "gałęzie pola, a zgodności z pomiarem albo przykładem normy nie wykazano — "
                 "wynik nie jest dowodem regulacyjnym."
             ),
-            audit_ref="karta WYTRZYMALOSC-PRAD-POLA (2026-10)",
+            audit_ref=(
+                "karta WYTRZYMALOSC-PRAD-POLA (2026-10); "
+                "application/analyses/wytrzymalosc_aparatury_pol.py"
+            ),
         ),
         # Analizy specjalistyczne V12.6 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3): ocena
         # kryteriów rekordami werdyktu wyjaśnialnego (`application/analyses/v126_oceny.py`).

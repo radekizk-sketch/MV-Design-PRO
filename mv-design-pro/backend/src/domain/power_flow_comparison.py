@@ -27,6 +27,8 @@ from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import Any
 
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+
 # =============================================================================
 # ENUMS AND TYPES
 # =============================================================================
@@ -770,7 +772,7 @@ class PowerFlowRunNotFoundError(PowerFlowComparisonError):
 
     def __init__(self, run_id: str):
         self.run_id = run_id
-        super().__init__(f"Power flow run nie znaleziony: {run_id}")
+        super().__init__(f"Nie znaleziono biegu rozpływu mocy {run_id}.")
 
 
 class PowerFlowRunWrongTypeError(PowerFlowComparisonError):
@@ -784,7 +786,10 @@ class PowerFlowRunWrongTypeError(PowerFlowComparisonError):
     def __init__(self, run_id: str, analysis_type: str):
         self.run_id = run_id
         self.analysis_type = analysis_type
-        super().__init__(f"Bieg {run_id} nie jest biegiem rozpływu mocy (rodzaj: {analysis_type})")
+        super().__init__(
+            f"Bieg {run_id} nie jest biegiem rozpływu mocy "
+            f"(rodzaj: {rodzaj_przebiegu_pl(analysis_type)})."
+        )
 
 
 class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
@@ -793,7 +798,10 @@ class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
     def __init__(self, run_id: str, status: str):
         self.run_id = run_id
         self.status = status
-        super().__init__(f"Power flow run nie zakończony (status: {status}): {run_id}")
+        super().__init__(
+            f"Bieg rozpływu mocy {run_id} nie jest zakończony "
+            f"(stan: {stan_przebiegu_pl(status)})."
+        )
 
 
 class PowerFlowProjectMismatchError(PowerFlowComparisonError):
@@ -802,7 +810,10 @@ class PowerFlowProjectMismatchError(PowerFlowComparisonError):
     def __init__(self, run_a_project: str, run_b_project: str):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(f"Runs należą do różnych projektów: {run_a_project} vs {run_b_project}")
+        super().__init__(
+            f"Biegi należą do różnych projektów: projektu {run_a_project} "
+            f"i projektu {run_b_project}."
+        )
 
 
 class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
@@ -810,4 +821,4 @@ class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
 
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
-        super().__init__(f"Power flow comparison nie znalezione: {comparison_id}")
+        super().__init__(f"Nie znaleziono porównania rozpływów mocy {comparison_id}.")

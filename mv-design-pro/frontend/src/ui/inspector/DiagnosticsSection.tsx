@@ -25,6 +25,7 @@ import {
   SEVERITY_LABELS_PL,
   SANITY_CHECK_CODE_LABELS_PL,
 } from '../protection';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // =============================================================================
 // Types
@@ -148,7 +149,7 @@ interface DiagnosticResultCardProps {
 function DiagnosticResultCard({ result }: DiagnosticResultCardProps) {
   const colors = SEVERITY_COLORS[result.severity];
   const severityLabel = SEVERITY_LABELS_PL[result.severity];
-  const codeLabel = SANITY_CHECK_CODE_LABELS_PL[result.code] || result.code;
+  const codeLabel = etykietaZeSlownika(SANITY_CHECK_CODE_LABELS_PL, result.code);
 
   return (
     <div

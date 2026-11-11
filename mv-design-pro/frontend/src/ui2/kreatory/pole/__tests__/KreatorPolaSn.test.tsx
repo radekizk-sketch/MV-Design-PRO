@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPolaSn } from '../KreatorPolaSn';
 import { domainOpsEndpoint } from '../../../../ui/topology/domainApi';
+import { bayKindLabelPl } from '../../../../ui/catalog/BayTemplatePicker';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -105,6 +106,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
   fetchSwitchgearFamilies: () => fetchSwitchgearFamiliesMock(),
+  // Katalog producentów (`GET /api/catalog/manufacturers`) — źródło NAZW producentów.
+  fetchManufacturers: () =>
+    Promise.resolve([{ manufacturer_ref: 'ZPUE', name: 'ZPUE S.A. (Włoszczowa)', normalized_code: 'ZPUE', country: 'PL', status: 'verified', source_refs: ['kat'], notes_pl: null }]),
   fetchCompleteBayTemplates: (manufacturerRef?: string | null, bayKind?: string | null) =>
     fetchBayTemplatesMock(manufacturerRef, bayKind),
 }));
@@ -162,6 +166,8 @@ describe('KreatorPolaSn — realna ścieżka', () => {
         template_ref: 'tmpl-tr-1',
         manufacturer_ref: 'ZPUE',
         switchgear_family_ref: 'fam-1',
+        bay_kind: 'transformatorowe',
+        template_name_pl: null,
         notes_pl: 'Pole transformatorowe 630A',
       },
     ]);
@@ -178,6 +184,17 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     await waitFor(() =>
       expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor').querySelector('option[value="tmpl-tr-1"]')).not.toBeNull(),
     );
+    // Listy wyboru mówią nazwami katalogu: producent z katalogu producentów, pakiet pola
+    // z rodzaju pola i rodziny — nigdy kod producenta (`ZPUE`) ani referencja szablonu.
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('mvd-kreator-pole-rodzina').querySelector('option[value="fam-1"]')?.textContent,
+      ).toBe('Rotoblok SVS · ZPUE S.A. (Włoszczowa)'),
+    );
+    expect(
+      screen.getByTestId('mvd-kreator-pole-szablon-wybor').querySelector('option[value="tmpl-tr-1"]')?.textContent,
+    ).toBe(`${bayKindLabelPl('transformatorowe')} · Rotoblok SVS`);
+    expect(await screen.findByTestId('mvd-kreator-pole-naglowek-rodziny')).toHaveTextContent('ZPUE S.A. (Włoszczowa)');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-szablon-wybor'), 'tmpl-tr-1');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
@@ -303,6 +320,8 @@ describe('KreatorPolaSn — katalogowe pole rodziny (S3)', () => {
     template_ref: 'tmpl-tr-1',
     manufacturer_ref: 'ZPUE',
     switchgear_family_ref: 'fam-1',
+    bay_kind: 'transformatorowe',
+    template_name_pl: null,
     notes_pl: 'Pole transformatorowe 630A',
     device_instances: [
       {
@@ -377,9 +396,19 @@ describe('KreatorPolaSn — katalogowe pole rodziny (S3)', () => {
   });
 
   it('rodzina dostarczana blokami RMU jest nazwana wprost (bez blokowania operacji)', async () => {
+    // Szablon pojedynczego pola rodziny blokowej backend odrzuca twardym błędem — nie jest
+    // pozycją listy (zero fantomów); rodzina zostaje wybieralna z informacją.
+    fetchBayTemplatesMock.mockResolvedValue([
+      SZABLON_ZE_SKLADEM,
+      { ...SZABLON_ZE_SKLADEM, template_ref: 'tmpl-rmu-1', switchgear_family_ref: 'fam-rmu' },
+    ]);
     render(<KreatorPolaSn />);
     await pick();
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rodzina'), 'fam-rmu');
+    await waitFor(() => expect(fetchBayTemplatesMock).toHaveBeenCalled());
+    expect(
+      screen.queryByTestId('mvd-kreator-pole-szablon-wybor')?.querySelector('option[value="tmpl-rmu-1"]') ?? null,
+    ).toBeNull();
 
     expect(await screen.findByTestId('mvd-kreator-pole-rodzina-blokowa')).toHaveTextContent(
       /blok fabryczny/i,
@@ -401,7 +430,7 @@ describe('KreatorPolaSn — kontrola katalogowa przed zapisem', () => {
     resolved.bus = 'bus-1';
     fetchBayTemplatesMock.mockReset();
     fetchBayTemplatesMock.mockResolvedValue([
-      { template_ref: 'tmpl-tr-1', manufacturer_ref: 'ZPUE', switchgear_family_ref: 'fam-1', notes_pl: 'Pole transformatorowe' },
+      { template_ref: 'tmpl-tr-1', manufacturer_ref: 'ZPUE', switchgear_family_ref: 'fam-1', bay_kind: 'transformatorowe', template_name_pl: null, notes_pl: 'Pole transformatorowe' },
     ]);
   });
   afterEach(() => {

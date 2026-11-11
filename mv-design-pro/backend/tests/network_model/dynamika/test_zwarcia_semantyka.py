@@ -102,7 +102,7 @@ def test_zwarcie_galezi_poza_przedzialem_otwartym_odrzucone(polozenie: float) ->
 def test_kontrakt_danych_zwarcia_waliduje_pare_usuniecia(
     t_usuniecia: float | None, sposob: str | None
 ) -> None:
-    with pytest.raises(ValidationError, match="sposob_usuniecia"):
+    with pytest.raises(ValidationError, match="„Sposób usunięcia zwarcia”"):
         Zwarcie(
             t_s=0.1,
             bus_ref="b1",
@@ -127,7 +127,7 @@ def test_kontrakt_danych_zwarcia_w_linii_wymaga_dokladnie_jednego_miejsca() -> N
         )
     with pytest.raises(ValidationError, match="dokładnie jedno"):
         Zwarcie(t_s=0.1, typ="3F", r_f_ohm=0.0, x_f_ohm=0.5)
-    with pytest.raises(ValidationError, match="polozenie_wzgledne"):
+    with pytest.raises(ValidationError, match="„Położenie miejsca zwarcia x"):
         Zwarcie(t_s=0.1, element_ref="kab", typ="3F", r_f_ohm=0.0, x_f_ohm=0.5)
 
 

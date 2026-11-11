@@ -29,13 +29,12 @@ from typing import Any
 
 import pytest
 from application.protection_settings.zacisk_zabezpieczenia import (
-    RODZAJE_LACZNIKOW,
     zacisk_lacznika_w_szeregu,
     zaciski_galezi,
 )
 from enm.domain_operations_v2 import transformatory_sciezki_zasilania
 from enm.migrations.promocja_aparatow_nn import migruj
-from enm.models import EnergyNetworkModel
+from enm.models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel
 from enm.pola import pola_nn_stacji, pola_sn_stacji, zacisk_pola
 from enm.tor_pola import (
     KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
@@ -44,7 +43,12 @@ from enm.tor_pola import (
     szyny_stacji,
 )
 from enm.validator import ENMValidator
-from enm.zajetosc_pol import zajetosc_pola
+from enm.zajetosc_pol import (
+    KOD_KANONICZNY_ODCINEK_BEZ_POLA,
+    KOD_WALIDATORA_ODCINEK_BEZ_POLA,
+    odcinki_bez_pola,
+    zajetosc_pola,
+)
 
 from tests.golden.sld_substrate_power_flow import compute_substrate_power_flow
 from tests.reference_networks.sceny_zajetosci_pol import (
@@ -149,7 +153,7 @@ def _aparat_pola(enm: dict[str, Any], spec: dict[str, Any]) -> dict[str, Any]:
     aparaty = [
         b
         for b in enm["branches"]
-        if b.get("type") in RODZAJE_LACZNIKOW
+        if b.get("type") in RODZAJE_GALEZI_APARATU
         and {b["from_bus_ref"], b["to_bus_ref"]} == {szyna, zacisk}
     ]
     assert len(aparaty) == 1, (spec["ref_id"], aparaty)
@@ -177,7 +181,7 @@ def _szyna_glowna_niesie_tylko_aparaty(enm: dict[str, Any]) -> None:
         for szyna in szyny_z_polami:
             for b in enm["branches"]:
                 if szyna in (b["from_bus_ref"], b["to_bus_ref"]):
-                    assert b.get("type") in RODZAJE_LACZNIKOW, (stacja["name"], b["ref_id"])
+                    assert b.get("type") in RODZAJE_GALEZI_APARATU, (stacja["name"], b["ref_id"])
             for t in enm["transformers"]:
                 assert szyna not in (t["hv_bus_ref"], t["lv_bus_ref"]), (stacja["name"], t)
             for kolekcja in ("loads", "generators", "sources"):
@@ -399,7 +403,7 @@ def test_promocja_nn_wylacznik_glowny_w_torze_transformator_szyna_nn() -> None:
     # Szyna rozdzielnicy nN niesie wyłącznie aparaty pól.
     for b in model.branches:
         if wylacznik["bus_ref"] in (b.from_bus_ref, b.to_bus_ref):
-            assert b.type in RODZAJE_LACZNIKOW
+            assert b.type in RODZAJE_GALEZI_APARATU
     # Migracja jest idempotentna (drugi przebieg nic nie zmienia).
     assert migruj(model)[1] is False
 
@@ -517,17 +521,51 @@ def test_zajetosc_pola_wy_stacji_przelotowej_z_jednego_zrodla() -> None:
     assert nowy["from_bus_ref"] == zacisk_pola(_pole_sn(enm, stacja, "FEEDER"))
 
 
-def test_kontynuacja_ze_stacji_bez_wolnego_pola_to_nazwana_odmowa() -> None:
+def test_kontynuacja_ze_stacji_bez_wolnego_pola_tworzy_pole_jak_wzorzec() -> None:
+    """INSPEKTOR-POLA-DOMKNIECIE (decyzja architekta): ciąg wskazany szyną stacji, której pola
+    liniowe są zajęte, wychodzi z pola UTWORZONEGO w tej samej operacji — wyposażonego jak pole
+    wzorcowe sekcji (zacisk + aparat tej samej pozycji katalogu). Dawniej: odmowa
+    `field.line_field_occupied` (intencja testu — nigdy kabel z zajętego pola — zostaje)."""
     enm = _wciecie("A", ["IN", "OUT"])
-    przed = copy.deepcopy(enm)
+    stacja = _stacja(enm, "Stacja Lipowa")
+    wzorzec = _pole_sn(enm, stacja, "OUT")
     wynik = op(
         enm,
         "continue_trunk_segment_sn",
-        {"from_terminal_id": _stacja(enm, "Stacja Lipowa")["bus_refs"][0], "segment": odcinek(150)},
+        {"from_terminal_id": stacja["bus_refs"][0], "segment": odcinek(150)},
     )
-    assert wynik.get("snapshot") is None
-    assert wynik.get("error_code") == "field.line_field_occupied"
-    assert enm == przed
+    model = ok(wynik)
+    nowe = [
+        s
+        for s in _pola_sn(model, stacja)
+        if s["ref_id"] not in {p["ref_id"] for p in _pola_sn(enm, stacja)}
+    ]
+    assert len(nowe) == 1
+    pole_nowe = nowe[0]
+    # Stacja przelotowa (ma pole wyjściowe) dostaje pole ODGAŁĘŹNE.
+    assert pole_nowe["bay_role"] == "FEEDER"
+    zacisk = zacisk_pola(pole_nowe)
+    assert zacisk and zacisk != pole_nowe["bus_ref"]
+    nowy_odcinek = _odcinki(model)[-1]
+    assert nowy_odcinek["from_bus_ref"] == zacisk
+    assert nowy_odcinek["meta"]["origin_bay_ref"] == pole_nowe["ref_id"]
+    aparat = next(b for b in model["branches"] if b["ref_id"] in pole_nowe["equipment_refs"])
+    aparat_wzorca = next(b for b in model["branches"] if b["ref_id"] in wzorzec["equipment_refs"])
+    assert (aparat["type"], aparat["catalog_ref"]) == (
+        aparat_wzorca["type"],
+        aparat_wzorca["catalog_ref"],
+    )
+    assert {aparat["from_bus_ref"], aparat["to_bus_ref"]} == {pole_nowe["bus_ref"], zacisk}
+    # Komunikat operacji: pole utworzono (nazwa pola i stacji z modelu, bez identyfikatorów).
+    zdarzenia = [z for z in wynik["domain_events"] if z["event_type"] == "LINE_FIELD_CREATED"]
+    assert [z["element_id"] for z in zdarzenia] == [pole_nowe["ref_id"]]
+    zdanie = next(
+        a["action"] for a in wynik["audit_trail"] if a["element_id"] == pole_nowe["ref_id"]
+    )
+    assert "Utworzono nowe pole liniowe" in zdanie and "Stacja Lipowa" in zdanie
+    assert "/" not in zdanie
+    assert pole_nowe["ref_id"] in wynik["changes"]["created_element_ids"]
+    assert odcinki_bez_pola(model) == []
 
 
 def test_przynaleznosc_szyn_do_stacji_obejmuje_zaciski_pol() -> None:
@@ -690,15 +728,24 @@ def _model_zastany() -> tuple[dict[str, Any], dict[str, Any]]:
     return enm, stacja
 
 
-def test_walidator_w042_wskazuje_element_i_pole_z_akcja_naprawcza() -> None:
+def test_walidator_w042_i_w049_wskazuja_element_i_pole_z_akcja_naprawcza() -> None:
+    """N2 (transformator obok pola TR) → W042; N1 (koniec odcinka na szynie sekcji bez pola,
+    predykat `odcinki_bez_pola`) → W049 (INSPEKTOR-POLA-DOMKNIECIE). Oba z jednego źródła
+    `naruszenia_zasady_toru`, poziom IMPORTANT (impedancja aparatu pola zerowa — rozpływ
+    i zwarcia sieci są te same)."""
     enm, stacja = _model_zastany()
+    issues = ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues
     zgloszenia = [
         i
-        for i in ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues
-        if i.code == KOD_WALIDATORA_ELEMENT_OMIJA_POLE
+        for i in issues
+        if i.code in (KOD_WALIDATORA_ELEMENT_OMIJA_POLE, KOD_WALIDATORA_ODCINEK_BEZ_POLA)
     ]
-    elementy = sorted(i.element_refs[0].rsplit("/", 1)[-1] for i in zgloszenia)
-    assert elementy == ["segment_L", "segment_R", "transformer"]
+    elementy = sorted((i.code, i.element_refs[0].rsplit("/", 1)[-1]) for i in zgloszenia)
+    assert elementy == [
+        ("W042", "transformer"),
+        ("W049", "segment_L"),
+        ("W049", "segment_R"),
+    ]
     for zgloszenie in zgloszenia:
         assert zgloszenie.severity == "IMPORTANT"
         assert zgloszenie.fix_action is not None
@@ -712,10 +759,14 @@ def test_walidator_w042_wskazuje_element_i_pole_z_akcja_naprawcza() -> None:
             ]
         )
         assert "/" not in zgloszenie.message_pl.split("—")[0] or "„" in zgloszenie.message_pl
-    # Most gotowości: W042 == kanoniczny `station.element_bypasses_field`.
+    # Most gotowości: W042 == `station.element_bypasses_field`, W049 ==
+    # `station.segment_without_field` (oba zarejestrowane w kanonie READINESS_CODES).
+    from domain.canonical_operations import READINESS_CODES
     from domain.readiness_bridge import ODWZOROWANIE_WALIDATOR_NA_KANON
 
     assert ODWZOROWANIE_WALIDATOR_NA_KANON["W042"] == "station.element_bypasses_field"
+    assert ODWZOROWANIE_WALIDATOR_NA_KANON["W049"] == KOD_KANONICZNY_ODCINEK_BEZ_POLA
+    assert READINESS_CODES[KOD_KANONICZNY_ODCINEK_BEZ_POLA].level.value == "WARNING"
 
 
 def test_akcja_naprawcza_przepina_kazdy_element_i_zeruje_w042() -> None:
@@ -728,6 +779,8 @@ def test_akcja_naprawcza_przepina_kazdy_element_i_zeruje_w042() -> None:
     _szyna_glowna_niesie_tylko_aparaty(enm)
     kody = {i.code for i in ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues}
     assert KOD_WALIDATORA_ELEMENT_OMIJA_POLE not in kody
+    assert KOD_WALIDATORA_ODCINEK_BEZ_POLA not in kody
+    assert odcinki_bez_pola(enm) == []
 
 
 def test_akcja_naprawcza_odmowy_nazwane_bez_skutku() -> None:
@@ -749,7 +802,9 @@ def test_akcja_naprawcza_odmowy_nazwane_bez_skutku() -> None:
             "tor.element_not_bypassing_field",
         ),
         ({"element_ref": lewa, "field_ref": "pole-nieistniejace"}, "tor.field_not_found"),
-        ({"element_ref": lewa, "field_ref": pola["OUT"]}, "tor.field_role_mismatch"),
+        # Koniec dochodzący przechodzi przez pole liniowe (IN, a bez niego OUT/FEEDER — kabel
+        # zamykający pierścień); pole transformatorowe mu nie służy.
+        ({"element_ref": lewa, "field_ref": pola["TR"]}, "tor.field_role_mismatch"),
         ({"element_ref": transformator, "field_ref": pola["FEEDER"]}, "tor.field_role_mismatch"),
     ]
     for payload, kod in przypadki:
@@ -804,11 +859,29 @@ def test_determinizm_budowy_wg_zasady_toru() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_typy_lacznikow_wezla_rowne_topologii() -> None:
-    from enm.topology import TYPY_LACZNIKOW_ENM
-    from enm.tor_pola import TYPY_LACZNIKOW
+def test_rodzaje_aparatu_i_odcinka_dziela_unie_galezi_bez_reszty() -> None:
+    """Jedno źródło rodzajów aparatu (`enm.models.RODZAJE_GALEZI_APARATU`) i rodzaje odcinka
+    (linia, kabel) dzielą unię `Branch` bez reszty i bez części wspólnej; bezpiecznik jest
+    aparatem (scala szyny), sprzęgło też."""
+    from typing import get_args
 
-    assert TYPY_LACZNIKOW == TYPY_LACZNIKOW_ENM
+    from enm.models import (
+        RODZAJE_GALEZI_LACZNIKA,
+        Cable,
+        FuseBranch,
+        OverheadLine,
+        SwitchBranch,
+    )
+
+    def rodzaje(klasa: type) -> set[str]:
+        return set(get_args(klasa.model_fields["type"].annotation))
+
+    odcinki = rodzaje(OverheadLine) | rodzaje(Cable)
+    wszystkie = odcinki | rodzaje(SwitchBranch) | rodzaje(FuseBranch)
+    assert odcinki | RODZAJE_GALEZI_APARATU == wszystkie
+    assert not odcinki & RODZAJE_GALEZI_APARATU
+    assert set(RODZAJE_GALEZI_LACZNIKA) == rodzaje(SwitchBranch)
+    assert {"fuse", "bus_coupler"} <= RODZAJE_GALEZI_APARATU
 
 
 @pytest.mark.parametrize("stan", ["closed", "open"])

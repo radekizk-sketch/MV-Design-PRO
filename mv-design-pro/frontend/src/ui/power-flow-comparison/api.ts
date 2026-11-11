@@ -18,6 +18,7 @@ import type {
   PowerFlowComparisonTrace,
   PowerFlowRunItem,
 } from './types';
+import { bladOdpowiedzi, bladZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -48,9 +49,7 @@ export async function createPowerFlowComparison(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Blad porownania: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd porównania');
   }
 
   return response.json();
@@ -70,9 +69,7 @@ export async function getPowerFlowComparisonResults(
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Blad pobierania wynikow: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd pobierania wyników');
   }
 
   return response.json();
@@ -92,9 +89,7 @@ export async function getPowerFlowComparisonTrace(
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Blad pobierania sladu: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd pobierania śladu');
   }
 
   return response.json();
@@ -120,9 +115,7 @@ export async function fetchPowerFlowRuns(
     if (response.status === 404) {
       return [];
     }
-    throw new Error(
-      `Blad pobierania listy runow power flow: ${response.statusText}`
-    );
+    throw bladZapytania(response, 'Błąd pobierania listy przebiegów rozpływu mocy');
   }
 
   const data = await response.json();

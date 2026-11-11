@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.analyses.opis_przebiegu import stan_przebiegu_pl
+from domain.opis_przebiegu import stan_przebiegu_pl
 from domain.result_builder_v1 import build_resultset_v1
 from domain.result_contract_v1 import ResultSetV1
 from enm.canonical_analysis import CanonicalRun, build_execution_result_set

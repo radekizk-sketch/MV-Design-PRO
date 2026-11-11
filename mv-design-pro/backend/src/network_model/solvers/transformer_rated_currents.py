@@ -42,11 +42,11 @@ def compute_transformer_rated_currents(
     """
 
     if data.rated_power_kva <= 0:
-        raise OdmowaDanychError("Moc znamionowa musi byc dodatnia.")
+        raise OdmowaDanychError("Moc znamionowa musi być dodatnia.")
     if data.primary_voltage_kv <= 0:
-        raise OdmowaDanychError("Napiecie pierwotne musi byc dodatnie.")
+        raise OdmowaDanychError("Napięcie pierwotne musi być dodatnie.")
     if data.secondary_voltage_kv <= 0:
-        raise OdmowaDanychError("Napiecie wtorne musi byc dodatnie.")
+        raise OdmowaDanychError("Napięcie wtórne musi być dodatnie.")
 
     apparent_va = data.rated_power_kva * 1000.0
     primary_voltage_v = data.primary_voltage_kv * 1000.0

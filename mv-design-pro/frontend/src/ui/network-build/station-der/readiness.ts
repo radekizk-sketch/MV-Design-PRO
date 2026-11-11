@@ -16,6 +16,7 @@
 import { isCtClassValidForProtection, type CtClass } from './protection-catalogs';
 import {
   EMPTY_DER_READINESS,
+  NAZWA_RODZAJU_DER,
   type DerReadinessMatrix,
   type ReadinessAxisStatus,
   type StationDerConnection,
@@ -311,7 +312,7 @@ function buildBlockersForAxis(
       if (!der.catalogs.device_catalog_ref) {
         blockers.push({
           code: 'der.device_catalog.missing',
-          message_pl: 'Brak katalogu urządzenia (falownik / PCS / turbina).',
+          message_pl: 'Brak katalogu urządzenia (falownik, przekształtnik magazynu albo turbina).',
           object_ref: der.id,
           target_screen: derKindToScreen(der.der_kind),
           target_tab: 'inverters',
@@ -468,7 +469,8 @@ function buildBlockersForAxis(
         blockers.push({
           code: 'der.anti_islanding.required',
           message_pl:
-            `DER ${der.der_kind} przyłączony ${punktPrzylaczeniaOpisPl(der)} wymaga zabezpieczeń `
+            `Źródło ${NAZWA_RODZAJU_DER[der.der_kind]} przyłączone ${punktPrzylaczeniaOpisPl(der)} `
+            + `wymaga zabezpieczeń `
             + `anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). `
             + `Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.`,
           object_ref: der.id,

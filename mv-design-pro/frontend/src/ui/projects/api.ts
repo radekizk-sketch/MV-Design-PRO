@@ -1,3 +1,4 @@
+import { bladOdpowiedzi } from '../../ui2/shared/bladZapytania';
 /**
  * Projects API Client
  *
@@ -44,8 +45,7 @@ export interface UpdateProjectRequest {
  */
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Błąd HTTP: ${response.status}`);
+    throw await bladOdpowiedzi(response);
   }
   return response.json();
 }
@@ -99,7 +99,6 @@ export async function deleteProject(projectId: string): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Błąd HTTP: ${response.status}`);
+    throw await bladOdpowiedzi(response);
   }
 }

@@ -4,6 +4,7 @@ import type {
   AnalysisCompletenessStatus,
 } from '../shared/analysisCaseContext';
 import { ANALYSIS_COMPLETENESS_LABELS } from '../shared/analysisCaseContext';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export interface AnalysisInputMetadata {
   snapshot_hash?: string | null;
@@ -151,7 +152,7 @@ export function getCompletenessDisplayLabel(context?: AnalysisCaseContext | null
   }
 
   if (context.completeness) {
-    return ANALYSIS_COMPLETENESS_LABELS[context.completeness] ?? context.completeness;
+    return etykietaZeSlownika(ANALYSIS_COMPLETENESS_LABELS, context.completeness);
   }
 
   return getCompletenessLabel(context);

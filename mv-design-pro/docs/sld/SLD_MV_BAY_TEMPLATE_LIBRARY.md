@@ -64,7 +64,7 @@ Każdy szablon ma `source_status`:
 
 - `backend/tests/network_model/catalog/test_switchgear_manufacturer_registry.py` (29 testów)
 - `backend/tests/network_model/catalog/test_switchgear_extended_models.py` (11 testów)
-- `frontend/src/ui/catalog/__tests__/ManufacturerPicker.test.tsx` (7 testów)
-- `frontend/src/ui/catalog/__tests__/SwitchgearFamilyPicker.test.tsx` (5 testów)
-- `frontend/src/ui/catalog/__tests__/BayTemplatePicker.test.tsx` (8 testów)
-- `frontend/src/ui/catalog/__tests__/SwitchgearTemplateStepper.test.tsx` (6 testów)
+- `frontend/src/ui/catalog/__tests__/manufacturer.test.ts` — nazwa i status producenta (komponent `ManufacturerPicker` skasowany 2026-11-04: zero miejsc montażu)
+- `frontend/src/ui/catalog/__tests__/SwitchgearFamilyPicker.test.ts` — predykat budowy, powód blokady, nazwy konstrukcji (komponent listy rodzin skasowany 2026-11-04)
+- `frontend/src/ui/catalog/__tests__/BayTemplatePicker.test.tsx` — status źródła i nazwa pakietu pola (komponent skasowany 2026-11-04)
+- `SwitchgearTemplateStepper` nie istnieje (skasowany wcześniej, bez testu)

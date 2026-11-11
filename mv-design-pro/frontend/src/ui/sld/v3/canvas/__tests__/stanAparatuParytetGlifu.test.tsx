@@ -31,6 +31,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import type { BayDeviceState, EnergyNetworkModel } from '../../../../../types/enm';
+import { RODZAJE_GALEZI_LACZNIKA } from '../../../../../types/rodzajeGalezi';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
@@ -86,7 +87,8 @@ const SIECI: readonly (readonly [string, string])[] = [
   ['koordynacja', 'harness-fixtures/generated/koordynacja_scena_migawka.json'],
 ];
 
-const TYPY_LACZNIKOW = new Set(['breaker', 'disconnector', 'switch', 'bus_coupler']);
+/** Łączniki z położeniem roboczym (`SwitchBranch.type`) — jedno źródło `types/enm.ts`. */
+const TYPY_LACZNIKOW: ReadonlySet<string> = new Set(RODZAJE_GALEZI_LACZNIKA);
 
 /** Wariant „odwrócone": każda gałąź łączeniowa zmienia położenie (brak statusu → otwarta). */
 function odwroconeStatusy(enm: EnergyNetworkModel): EnergyNetworkModel {

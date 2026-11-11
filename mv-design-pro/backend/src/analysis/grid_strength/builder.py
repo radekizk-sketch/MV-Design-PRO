@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from analysis.grid_strength.models import (
+    BRAKI_DANYCH_SILY_PL,
     DEFAULT_VERY_WEAK_THRESHOLD,
     DEFAULT_WEAK_THRESHOLD,
     VERDICT_NO_DATA,
@@ -48,7 +49,9 @@ class GridStrengthBuilder:
         very_weak_threshold: float = DEFAULT_VERY_WEAK_THRESHOLD,
     ) -> None:
         if very_weak_threshold > weak_threshold:
-            raise ValueError("very_weak_threshold nie może być większy niż weak_threshold")
+            raise ValueError(
+                "Próg sieci bardzo słabej (SCR) nie może być większy niż próg sieci słabej"
+            )
         self.weak_threshold = float(weak_threshold)
         self.very_weak_threshold = float(very_weak_threshold)
 
@@ -98,7 +101,7 @@ class GridStrengthBuilder:
         if missing:
             why = (
                 "Dane niekompletne — brak: "
-                + ", ".join(missing)
+                + ", ".join(BRAKI_DANYCH_SILY_PL[kod] for kod in missing)
                 + ". SCR wymaga dodatniej mocy zwarciowej (z solvera "
                 "IEC 60909 w węźle) oraz mocy zainstalowanej źródeł."
             )

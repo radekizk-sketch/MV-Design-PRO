@@ -19,6 +19,7 @@ import {
   type NcRfgOperatorItem,
   type StationDerConnection,
 } from '../../station-der';
+import { nazwaZaczynaSieOpisem } from '../../../shared/opisBezPowtorzen';
 
 export type AddDerKindRequest = 'PV' | 'BESS' | 'FW';
 
@@ -199,14 +200,23 @@ export function StationConfigDerSourcesCard(
                   data-der-kind={der.der_kind}
                   className="border-t border-scada-border hover:bg-scada-hover-nav"
                 >
-                  <td className="px-2 py-1.5 font-medium text-scada-text">{der.name}</td>
-                  <td className="px-2 py-1.5">
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${KIND_BADGE_COLOR[der.der_kind]}`}
-                    >
-                      {KIND_LABEL_PL[der.der_kind]}
-                    </span>
-                  </td>
+                  {/* Nazwa zaczynająca się rodzajem („Farma wiatrowa 1”) niesie rodzaj — komórka
+                      nazwy obejmuje kolumnę „Rodzaj” (`opisBezPowtorzen`, ta sama reguła co tabele
+                      karty technicznej K6). */}
+                  {nazwaZaczynaSieOpisem(der.name, KIND_LABEL_PL[der.der_kind]) ? (
+                    <td colSpan={2} className="px-2 py-1.5 font-medium text-scada-text">{der.name}</td>
+                  ) : (
+                    <>
+                      <td className="px-2 py-1.5 font-medium text-scada-text">{der.name}</td>
+                      <td className="px-2 py-1.5">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${KIND_BADGE_COLOR[der.der_kind]}`}
+                        >
+                          {KIND_LABEL_PL[der.der_kind]}
+                        </span>
+                      </td>
+                    </>
+                  )}
                   <td className="px-2 py-1.5 text-scada-muted">{connectionSidePl}</td>
                   <td className="px-2 py-1.5 text-right text-scada-text">
                     {der.nominal_power_kw !== null ? der.nominal_power_kw.toFixed(0) : MISSING_DASH}

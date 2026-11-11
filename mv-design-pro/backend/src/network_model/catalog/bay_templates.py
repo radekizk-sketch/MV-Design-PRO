@@ -545,7 +545,9 @@ def get_bay_template(template_id: str) -> BayTemplate:
 
     if template_id not in BAY_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(BAY_TEMPLATE_REGISTRY.keys()))
-        raise BrakZasobuError(f"Unknown bay_template_id: {template_id}. Available: {available}")
+        raise BrakZasobuError(
+            f"Nieznany szablon pola {template_id!r}. Dostępne szablony: {available}"
+        )
     return BAY_TEMPLATE_REGISTRY[template_id]
 
 

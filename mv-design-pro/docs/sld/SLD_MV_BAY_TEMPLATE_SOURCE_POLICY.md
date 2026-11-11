@@ -71,5 +71,5 @@ Każda promocja statusu jest logowana:
 ## 6. Egzekwowanie
 
 - Backend: walidator ENM emituje `manufacturer.catalog_incomplete` gdy element używa `requires_catalog` template.
-- Frontend: `ManufacturerPicker` pokazuje badge `requires_catalog` z czerwonym wyróżnieniem.
+- Frontend: kreator stacji pokazuje status producenta przy jego nazwie (`describeManufacturerStatusPl`, m.in. „wymaga uzupełnienia katalogu”); rodzina spoza `STATUSY_DO_BUDOWANIA` jest nieaktywna z powodem (`powodBlokadyRodzinyPl`).
 - Raport: lineage zawiera `source_status` każdego elementu — czytelnik widzi co jest verified, a co fallback.

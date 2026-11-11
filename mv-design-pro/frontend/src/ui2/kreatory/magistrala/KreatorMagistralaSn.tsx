@@ -79,6 +79,7 @@ import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdy
 import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { MAGISTRALA_STRINGS as T } from './strings';
 import { StanSpadkuNapiecia } from './StanSpadkuNapiecia';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
@@ -513,6 +514,8 @@ export function KreatorMagistralaSn() {
   const jednTemp = (v: number | null): string => (typeof v === 'number' ? `${v} °C` : '—');
   const jednPrzekroj = (v: number | null): string => (typeof v === 'number' ? `${v} mm²` : '—');
   const tekst = (v: string | null): string => v ?? '—';
+  /** Pole kodowe karty (materiał, izolacja): nazwa z jednego słownika, nie kod. */
+  const kodowa = (pole: string, v: string | null): string => (v ? nazwaWartosciKodowej(pole, v) : '—');
   const paramReadout = params ? (
     <>
       <KreatorInfo>{T.paramSekcjaNormowa}</KreatorInfo>
@@ -521,7 +524,7 @@ export function KreatorMagistralaSn() {
         <RzadWartosci etykieta={T.paramR} wartosc={jednOhmKm(params.r_ohm_per_km)} />
         <RzadWartosci etykieta={T.paramX} wartosc={jednOhmKm(params.x_ohm_per_km)} />
         <RzadWartosci etykieta={T.paramIznam} wartosc={fmtA(params.rated_current_a)} />
-        <RzadWartosci etykieta={T.paramMaterial} wartosc={tekst(params.conductor_material)} />
+        <RzadWartosci etykieta={T.paramMaterial} wartosc={kodowa('conductor_material', params.conductor_material)} />
         <RzadWartosci etykieta={T.paramTempMax} wartosc={jednTemp(params.max_temperature_c)} />
         {dane.rodzaj === 'KABEL' ? (
           <>
@@ -529,7 +532,7 @@ export function KreatorMagistralaSn() {
               etykieta={T.paramC}
               wartosc={typeof params.c_nf_per_km === 'number' ? `${params.c_nf_per_km} nF/km` : '—'}
             />
-            <RzadWartosci etykieta={T.paramIzolacja} wartosc={tekst(params.insulation_type)} />
+            <RzadWartosci etykieta={T.paramIzolacja} wartosc={kodowa('insulation_type', params.insulation_type)} />
             <RzadWartosci etykieta={T.paramIthPowrot} wartosc={fmtA(params.return_conductor_ith_1s_a)} />
           </>
         ) : (

@@ -316,7 +316,10 @@ def przygotuj_dopisanie(
     opis zawsze pochodzi z kanonu (`opis_operacji`), nigdy z parametru.
     """
     if opis_pl is not None and operacja is not None:
-        raise ValueError("opis_pl wolno podać tylko dla zapisu bez operacji domenowej")
+        raise ValueError(
+            "Własny opis zmiany wolno podać tylko dla zapisu bez operacji domenowej (opis "
+            "operacji pochodzi z kanonu operacji)"
+        )
     dziennik = _wczytaj(case_id)
     for istniejacy in dziennik.wpisy:
         if istniejacy.rewizja == rewizja:

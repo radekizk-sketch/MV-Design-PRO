@@ -134,7 +134,7 @@ def _parse_proof_type(value: Any) -> ProofType:
     try:
         return ProofType(str(value))
     except ValueError as exc:
-        raise ValueError(f"Unsupported proof_type: {value}") from exc
+        raise ValueError(f"Nieobsługiwany rodzaj dowodu: {value}") from exc
 
 
 def _parse_datetime(value: Any) -> datetime:
@@ -177,5 +177,5 @@ def _require_uuid(value: Any) -> UUID:
     if isinstance(value, UUID):
         return value
     if value is None:
-        raise ValueError("UUID value is required")
+        raise ValueError("Brak identyfikatora UUID — odczyt dowodu wymaga identyfikatora.")
     return UUID(str(value))

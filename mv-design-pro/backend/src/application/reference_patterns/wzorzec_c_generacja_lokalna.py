@@ -288,7 +288,9 @@ class WzorzecCGeneracjaLokalna:
             input_data = fixture_to_input_c(fixture)
 
         if input_data is None:
-            raise ValueError("Musisz podać input_data lub fixture_file")
+            raise ValueError(
+                "Uruchomienie wzorca wymaga danych wejściowych albo pliku danych wzorca"
+            )
 
         trace_steps.append(
             build_trace_step(

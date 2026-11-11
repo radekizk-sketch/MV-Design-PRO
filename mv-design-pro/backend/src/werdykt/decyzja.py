@@ -26,6 +26,7 @@ from werdykt import etykiety, wyjasnienie
 from werdykt.kontrakt import (
     METODY_DOPUSZCZALNE_DLA_TWIERDZENIA,
     METODY_TYLKO_WYMAGANIA,
+    NAZWA_RELACJI_PL,
     RELACJE_LICZBOWE,
     Etykieta,
     KompletnoscDowodu,
@@ -152,7 +153,7 @@ def margines(
             powod_pl=wyjasnienie.powod_marginesu_logicznego(),
         )
     if limit is None:
-        raise ValueError(f"Margines relacji {relacja} wymaga limitu.")
+        raise ValueError(f"Margines relacji „{NAZWA_RELACJI_PL[relacja]}” wymaga limitu.")
     if limit.jednostka != wynik.jednostka:
         raise ValueError(
             f"Jednostka wyniku „{wynik.jednostka}” różni się od jednostki limitu "
@@ -161,7 +162,9 @@ def margines(
     x = wynik.wartosc
     if relacja in ("NIE_WIECEJ", "NIE_MNIEJ"):
         if limit.wartosc is None:
-            raise ValueError(f"Relacja {relacja} wymaga limitu w postaci wartości.")
+            raise ValueError(
+                f"Relacja „{NAZWA_RELACJI_PL[relacja]}” wymaga limitu w postaci wartości."
+            )
         granica = limit.wartosc.wartosc
         m = granica - x if relacja == "NIE_WIECEJ" else x - granica
     elif relacja == "PASMO":
@@ -328,7 +331,9 @@ def _krok_k_margines(w: _WejscieK) -> _WynikKroku:
             return _WynikKroku(status="SPELNIA")
         if stan == 0.0:
             return _WynikKroku(status="NIE_SPELNIA")
-        raise ValueError(f"Wynik kryterium logicznego musi mieć wartość 1.0 albo 0.0 ({stan}).")
+        raise ValueError(
+            f"Wynik kryterium logicznego musi mieć wartość 1.0 albo 0.0 (podano {stan:g})."
+        )
     m = _margines_liczbowy(w)
     if m is None:
         return _WynikKroku()
@@ -540,7 +545,9 @@ class _WejscieW:
     oceny: tuple[OcenaKryterium, ...]
     kompletnosc: KompletnoscDowodu
     pokrycie_programu: PokrycieProgramu
-    pokrycie_programu_pl: str
+    #: Opis pokrycia programu badań; ``None`` — wołający potrzebuje wyłącznie statusu
+    #: (``status_wymagania``), więc zdanie braku nie powstaje.
+    pokrycie_programu_pl: str | None
 
     @property
     def stosowalne(self) -> tuple[OcenaKryterium, ...]:
@@ -588,7 +595,11 @@ def _krok_w_pokrycie(w: _WejscieW) -> _WynikKroku:
     if w.pokrycie_programu == "CZESCIOWE":
         return _WynikKroku(
             status="BRAK_DOWODU",
-            braki=(wyjasnienie.brak_pokrycia_programu(w.pokrycie_programu_pl),),
+            braki=(
+                ()
+                if w.pokrycie_programu_pl is None
+                else (wyjasnienie.brak_pokrycia_programu(w.pokrycie_programu_pl),)
+            ),
         )
     return _WynikKroku()
 
@@ -687,7 +698,7 @@ def status_wymagania(
             oceny=tuple(oceny),
             kompletnosc=kompletnosc,
             pokrycie_programu=pokrycie_programu,
-            pokrycie_programu_pl="",
+            pokrycie_programu_pl=None,
         )
     )
     return status, list(naruszone), najblizej

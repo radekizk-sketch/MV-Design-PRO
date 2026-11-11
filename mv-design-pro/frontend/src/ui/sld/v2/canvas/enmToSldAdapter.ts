@@ -16,6 +16,7 @@
  *    których po kasacji rendererów v2 nikt nie czytał).
  */
 
+import { nazwaPoReferencjiPl } from '../../../shared/nazwaObiektu';
 import type {
   BayPrimaryDevice,
   BayPrimaryDeviceKind,
@@ -27,7 +28,6 @@ import type {
   BranchPointSN,
   Generator,
   Bay,
-  ProtectionAssignment,
   Measurement,
 } from '../../../../types/enm';
 import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
@@ -63,6 +63,7 @@ import {
 } from '../../../network-build/stationTransformerSelection';
 import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
 import { punktyPodzialu } from '../../../shared/stanLacznika';
+import { funkcjeWymaganePola, przypisanieZabezpieczeniaPola } from '../../../shared/zabezpieczeniePola';
 
 // =============================================================================
 // Cable/line run helpers
@@ -1895,15 +1896,14 @@ function buildExplicitStationMiniBays(
 }
 
 /** GEOMETRIA-STACJI (§0 pkt 5): nazwa celu odejścia pola — `Bay.outgoing_destination_ref`
- *  wskazuje stację docelową (`backend/src/enm/models.py`); nazwa stacji z modelu, a gdy
- *  model jej nie zna — sam ref (bez domysłu). Jedna funkcja dla stacji i GPZ. */
+ *  wskazuje stację docelową (`backend/src/enm/models.py`); nazwa stacji z modelu, stacja bez
+ *  nazwy — „Stacja bez nazwy (n z N)”, a gdy model jej nie zna — „Stacja spoza modelu” (bez
+ *  domysłu i bez surowej referencji na schemacie). Jedna funkcja dla stacji i GPZ. */
 export function nazwaCeluOdejscia(
   snapshot: Pick<EnergyNetworkModel, 'substations'>,
   ref: string,
 ): string {
-  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === ref || s.id === ref);
-  const nazwa = typeof stacja?.name === 'string' ? stacja.name.trim() : '';
-  return nazwa || ref;
+  return nazwaPoReferencjiPl(snapshot.substations, ref, 'stacja');
 }
 
 function buildDedicatedDerStationMiniBays(
@@ -2279,13 +2279,12 @@ export function resolveBayProtectionMarking(
   bay: Bay,
   snapshot: Pick<EnergyNetworkModel, 'protection_assignments'>,
 ): BayProtectionMarkingView | undefined {
-  const codes = bay.protection_codes ?? [];
+  // JEDNA funkcja odczytu zabezpieczenia pola (`ui/shared/zabezpieczeniePola`) — ta sama co karta
+  // pola K6 i inspektor: kody w okręgu = funkcje wymagane przez wzorzec pola, tor wyzwalania =
+  // sterownik przypisany (`Bay.protection_ref`).
+  const codes = funkcjeWymaganePola(bay);
   if (codes.length === 0) return undefined;
-  const assignment = bay.protection_ref
-    ? (snapshot.protection_assignments ?? []).find(
-        (pa: ProtectionAssignment) => pa.ref_id === bay.protection_ref || pa.id === bay.protection_ref,
-      )
-    : undefined;
+  const assignment = przypisanieZabezpieczeniaPola(snapshot, bay);
   return {
     codes,
     breakerRef: assignment?.breaker_ref,

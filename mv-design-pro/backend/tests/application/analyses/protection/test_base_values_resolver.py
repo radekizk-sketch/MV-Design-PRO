@@ -396,7 +396,9 @@ class TestComputedFromRequired:
 
     def test_computed_value_requires_computed_from(self) -> None:
         """ProtectionComputedValue wymaga computed_from."""
-        with pytest.raises(ValueError, match="computed_from"):
+        with pytest.raises(
+            ValueError, match="Wartość wyliczona musi wskazywać, z czego ją wyliczono"
+        ):
             ProtectionComputedValue(
                 value=100.0,
                 unit="A",
@@ -541,7 +543,7 @@ class TestModelInvariants:
 
     def test_setpoint_in_requires_multiplier(self) -> None:
         """Setpoint z basis=IN wymaga multiplier."""
-        with pytest.raises(ValueError, match="multiplier"):
+        with pytest.raises(ValueError, match="krotności wartości bazowej"):
             ProtectionSetpoint(
                 basis=ProtectionSetpointBasis.IN,
                 operator=ProtectionSetpointOperator.GT,
@@ -563,7 +565,7 @@ class TestModelInvariants:
 
     def test_setpoint_abs_requires_abs_value(self) -> None:
         """Setpoint z basis=ABS wymaga abs_value."""
-        with pytest.raises(ValueError, match="abs_value"):
+        with pytest.raises(ValueError, match="w wartościach bezwzględnych wymagana jest wartość"):
             ProtectionSetpoint(
                 basis=ProtectionSetpointBasis.ABS,
                 operator=ProtectionSetpointOperator.LT,

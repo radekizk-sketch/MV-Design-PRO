@@ -39,6 +39,7 @@
  * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY LOD: ten moduł NIE ZNA pojęcia LOD.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
  */
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import type { CadOrientation, CadSymbolId } from '../cad/cadSymbolRegistry';
 import { SYMBOL_ODBIORU, SYMBOL_TRANSFORMATORA, SYMBOL_ZABEZPIECZENIA, SYMBOL_ZACISKU, symbolPomiaru, symbolPunktuToru, symbolZrodlaDer, wpisAparatu } from './symbolRegistry';
 import type {
@@ -52,6 +53,11 @@ import type {
   UpstreamEquivalentSnapshot,
 } from './types';
 import { RASTER, TOKENY_GEOMETRII as T, doRastra, plFixed, plNumber } from './visualGrammar';
+import {
+  opisElementuModelu,
+  opisyBrakowDanychNn,
+  type NazwaElementuModelu,
+} from './opisyBrakowDanychNn';
 
 // ---------------------------------------------------------------------------
 // Typy sceny.
@@ -180,23 +186,30 @@ export function anchorIdentityLabel(
   snapshot: UpstreamEquivalentSnapshot | undefined,
   systemId: string | null,
   voltageKv: number,
+  nazwaElementu: NazwaElementuModelu,
 ): string {
-  const nazwy = snapshot?.upstream_source_names?.length
-    ? snapshot.upstream_source_names
-    : snapshot?.upstream_source_ids ?? [];
+  // Źródła systemu po nazwach z backendu; migawka bez nazw (pole opcjonalne kontraktu) —
+  // nazwy z modelu po identyfikatorach, nigdy same identyfikatory.
+  const nazwy =
+    snapshot?.upstream_source_names
+    ?? (snapshot?.upstream_source_ids ?? []).map((ref) => opisElementuModelu('źródło', ref, nazwaElementu));
   const zrodla = nazwy.length ? ` · ${nazwy.join(', ')}` : '';
-  const system = systemId && !nazwy.length ? ` · szyna SN ${systemId}` : '';
+  // Identyfikator systemu SN = najmniejszy `ref_id` szyny składowej (backend `energization`):
+  // w etykiecie nazwa tej szyny z modelu, nigdy identyfikator.
+  const system =
+    systemId && !nazwy.length ? ` · ${opisElementuModelu('szyna SN', systemId, nazwaElementu)}` : '';
   return `SN ${plNumber(voltageKv)} kV${zrodla}${system}`;
 }
 
 /** Parametry strony SN (równoważnik Thevenina) — jawnie „strona SN", żeby
  *  Ik″ SN nie dało się pomylić z Ik″ na szynie nN (§3). */
-export function anchorDetailLabel(rownowaznik: UpstreamEquivalentSnapshot | undefined): string | null {
+export function anchorDetailLabel(
+  rownowaznik: UpstreamEquivalentSnapshot | undefined,
+  nazwaElementu: NazwaElementuModelu,
+): string | null {
   if (!rownowaznik) return null;
   if (rownowaznik.status !== 'OK') {
-    const powod = rownowaznik.missing_data.length
-      ? rownowaznik.missing_data.map((kod) => OPIS_BRAKU_ROWNOWAZNIKA_PL[kod] ?? kod).join('; ')
-      : 'brak danych';
+    const powod = opisyBrakowDanychNn(rownowaznik.missing_data, nazwaElementu) ?? 'brak danych';
     return `$S_{k}''$/$I_{k}''$ SN: brak danych — ${powod}`;
   }
   const sk = rownowaznik.sk_mva != null ? `$S_{k}''$ SN = ${plFixed(rownowaznik.sk_mva, 1)} MVA` : '$S_{k}\'\'$ SN = —';
@@ -272,18 +285,6 @@ const LABEL_RESERVE_RIGHT = 112;
 const LABEL_RESERVE_TOP = 40;
 const LABEL_RESERVE_BOTTOM = 48;
 
-/** Kody `missing_data` równoważnika SN → opis po polsku (kod zostaje w
- *  danych; etykieta nie pokazuje angielskiego identyfikatora technicznego). */
-const OPIS_BRAKU_ROWNOWAZNIKA_PL: Readonly<Record<string, string>> = {
-  upstream_network_topology_invalid:
-    'topologia sieci SN niepoprawna (źródło poza szyną modelu) — równoważnik nieobliczalny',
-  upstream_network_singular: 'sieć SN osobliwa — brak drogi do źródła',
-  upstream_hv_bus: 'szyna SN transformatora poza rozwiązywalną siecią',
-  route: 'brak trasy do źródła w aktualnej topologii',
-  transformer: 'brak transformatora',
-  vector_group: 'brak grupy połączeń transformatora',
-};
-
 interface Slot {
   readonly ref: string;
   readonly kind: 'incomer' | 'feeder' | 'load' | 'boundary' | 'derDirect' | 'vt';
@@ -303,7 +304,8 @@ interface SectionPlan {
 
 export function composeLvDomainScene(
   view: LvDomainGraphView,
-  upstreamEquivalents: readonly UpstreamEquivalentSnapshot[] = [],
+  upstreamEquivalents: readonly UpstreamEquivalentSnapshot[],
+  nazwaElementu: NazwaElementuModelu,
 ): LvDomainScene {
   const nodes: LvDomainSceneNode[] = [];
   const edges: LvDomainSceneEdge[] = [];
@@ -525,7 +527,7 @@ export function composeLvDomainScene(
         ref: device.ref_id,
         x,
         y: yDevice,
-        label: branch?.name ?? device.ref_id,
+        label: nazwaObiektuPl(branch?.name, 'lacznik'),
         symbolId: wpis.symbolId,
         meta: {
           deviceType: device.device_type,
@@ -856,7 +858,7 @@ export function composeLvDomainScene(
           ref: trafo.lv_bus_ref,
           x,
           y: terminalY,
-          label: terminalBus?.name ?? trafo.lv_bus_ref,
+          label: nazwaObiektuPl(terminalBus?.name, 'szyna', miejsceWKolekcji(view.buses, trafo.lv_bus_ref)),
           symbolId: symbolPunktuToru(degreeOf(trafo.lv_bus_ref)),
           meta: { ...terminalMeta(terminalState), voltageKv: terminalBus?.voltage_kv, hopsFromRoot: terminalBus?.hops_from_root, degree: degreeOf(trafo.lv_bus_ref), transformerTerminal: transformerRef },
         });
@@ -936,7 +938,7 @@ export function composeLvDomainScene(
       ref: anchorRef,
       x: doRastra((left + right) / 2),
       y: anchorY,
-      label: anchorIdentityLabel(snapshot, systemId, first.uhv_kv),
+      label: anchorIdentityLabel(snapshot, systemId, first.uhv_kv, nazwaElementu),
       barLeft: left,
       barRight: right,
       meta: {
@@ -947,8 +949,8 @@ export function composeLvDomainScene(
         upstreamSourceIds: snapshot?.upstream_source_ids ?? [],
         equivalentId: snapshot?.equivalent_id ?? null,
         status: snapshot?.status ?? 'brak danych',
-        tozsamoscLabel: anchorIdentityLabel(snapshot, systemId, first.uhv_kv),
-        opisLabel: anchorDetailLabel(snapshot),
+        tozsamoscLabel: anchorIdentityLabel(snapshot, systemId, first.uhv_kv, nazwaElementu),
+        opisLabel: anchorDetailLabel(snapshot, nazwaElementu),
         labelMaxWidth,
         shared: members.length > 1,
         snapshot: snapshot as unknown as Record<string, unknown> | undefined,
@@ -991,7 +993,7 @@ export function composeLvDomainScene(
       ref: device.ref_id,
       x: mid,
       y,
-      label: branch?.name ?? device.ref_id,
+      label: nazwaObiektuPl(branch?.name, 'lacznik'),
       symbolId: wpis.symbolId ?? 'cad.lacznik',
       orientation: 'pozioma',
       meta: {

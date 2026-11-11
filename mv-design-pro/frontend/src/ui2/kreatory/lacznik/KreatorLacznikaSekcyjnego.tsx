@@ -6,6 +6,7 @@
  * operacja domenowa `insert_section_switch_sn`. ZERO fizyki w UI.
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
@@ -83,7 +84,10 @@ export function KreatorLacznikaSekcyjnego() {
   // Dotychczasowe punkty podziału — kandydaci `close_ref`, gdy nowy łącznik ma być otwarty.
   // Które z nich należą do pierścienia nowego łącznika, rozstrzyga backend.
   const opcjeZamkniecia = useMemo(
-    () => punktyPodzialu(snapshot).map((l) => ({ id: l.ref_id, etykieta: l.name || l.ref_id })),
+    () => punktyPodzialu(snapshot).map((l, indeks, wszystkie) => ({
+      id: l.ref_id,
+      etykieta: nazwaObiektuPl(l.name, 'punkt_podzialu', { numer: indeks + 1, liczba: wszystkie.length }),
+    })),
     [snapshot],
   );
 

@@ -44,7 +44,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       standard: 'IEC 61089',
       max_temperature_c: 70,
       voltage_rating_kv: 15,
-      conductor_material: 'ACSR',
+      conductor_material: 'AL_ST',
       cross_section_mm2: 240,
     },
     {
@@ -58,7 +58,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       standard: 'IEC 61089',
       max_temperature_c: 70,
       voltage_rating_kv: 15,
-      conductor_material: 'ACSR',
+      conductor_material: 'AL_ST',
       cross_section_mm2: 120,
     },
   ],
@@ -68,7 +68,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       name: 'AFL-6 240 mm² (243-AL1/39-ST1A)',
       oznaczenie: '243-AL1/39-ST1A',
       przeznaczenie: 'FAZOWY',
-      conductor_material: 'AL/ST',
+      conductor_material: 'AL_ST',
       cross_section_mm2: 243,
       przekroj_stali_mm2: 39.5,
       srednica_mm: 21.8,
@@ -105,7 +105,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       voltage_rating_kv: 15,
       insulation_type: 'XLPE',
       standard: 'IEC 60502',
-      conductor_material: 'Al',
+      conductor_material: 'AL',
       cross_section_mm2: 240,
       max_temperature_c: 90,
     },
@@ -420,6 +420,9 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   PTPIREE_CERTIFICATE: [],
 };
 
+/** Wiersze minimum źródła systemowego (S″k3 min, I″k3 min, R/X min) w kolejności karty. */
+const WIERSZE_MIN_ZRODLA = [0, 1, 2].map((i) => `type-library-zrodlo-min-${i}`);
+
 describe('TypeLibraryBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -515,11 +518,15 @@ describe('TypeLibraryBrowser', () => {
     expect(tekstZrodlowy(szczegolyZrodla)).toContain("Moc zwarciowa $S''_{k3}$ [MVA]350");
     expect(screen.getByText('350')).toBeInTheDocument();
     // CV-4.3 K7: trzy pola scenariusza MIN — „brak danych" gdy null (wzór K1,
-    // `renderLineParams`/`max_temperature_c`), NIE ukryte jak w panelu generycznym.
+    // `renderLineParams`/`max_temperature_c`), nie ukryte. Panel ogólny pokazuje też każde
+    // inne pole schematu bez wartości jako „brak danych” (zasada nr 4,
+    // `panelOgolnyKatalogu.test.tsx`), więc wiersz MIN sprawdzany jest osobno; etykiety
+    // z wzorem renderuje KaTeX — wiersz odnajdujemy po tekście źródłowym wzoru.
     expect(tekstZrodlowy(szczegolyZrodla)).toContain("Moc zwarciowa minimalna $S''_{k3,min}$");
     expect(tekstZrodlowy(szczegolyZrodla)).toContain("Prąd zwarciowy minimalny $I''_{k3,min}$");
-    expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
-    expect(screen.getAllByText('brak danych')).toHaveLength(3);
+    for (const testId of WIERSZE_MIN_ZRODLA) {
+      expect(screen.getByTestId(testId)).toHaveTextContent('brak danych');
+    }
   });
 
   it('aparatura łączeniowa: brak danej prądu zwarciowego to „brak danych”, nigdy „0 kA” (KAT-T-050)', async () => {
@@ -643,10 +650,11 @@ describe('TypeLibraryBrowser', () => {
     expect(tekstZrodlowy(screen.getByTestId('type-library-details-grid'))).toContain(
       "Moc zwarciowa minimalna $S''_{k3,min}$",
     );
-    expect(screen.getByText('210')).toBeInTheDocument();
-    expect(screen.getByText('8.1')).toBeInTheDocument();
-    expect(screen.getByText('0.22')).toBeInTheDocument();
-    expect(screen.queryByText('brak danych')).not.toBeInTheDocument();
+    const wartosci = ['210', '8.1', '0.22'];
+    WIERSZE_MIN_ZRODLA.forEach((testId, i) => {
+      expect(screen.getByTestId(testId)).toHaveTextContent(wartosci[i]);
+      expect(screen.getByTestId(testId)).not.toHaveTextContent('brak danych');
+    });
   });
 
   it('filters visible types by search query', async () => {

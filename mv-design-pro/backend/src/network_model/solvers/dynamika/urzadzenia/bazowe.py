@@ -63,9 +63,9 @@ def admitancja_wewnetrzna(ra_pu: float, x_prim_pu: float) -> complex:
     if impedancja == 0:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            "Zrodlo napieciowe o zerowej impedancji wewnetrznej nie ma skonczonej "
-            "admitancji — Ra i X' nie moga byc jednoczesnie zerowe. Wezel bylby wtedy "
-            "sztywno zwiazany z SEM, co jest innym modelem, a nie granicznym przypadkiem "
+            "Źródło napięciowe o zerowej impedancji wewnętrznej nie ma skończonej "
+            "admitancji — Ra i X' nie mogą być jednocześnie zerowe. Węzeł byłby wtedy "
+            "sztywno związany z SEM, co jest innym modelem, a nie granicznym przypadkiem "
             "tego.",
             ra_pu=ra_pu,
             x_prim_pu=x_prim_pu,
@@ -97,8 +97,8 @@ def modul_niezerowy(fazor: Zespolona, opis: str) -> Dual:
     if kwadrat_modulu.wartosc <= 0.0:
         raise OdmowaDynamiki(
             KOD_WARTOSC_NIESKONCZONA,
-            f"{opis}: modul zerowego fazora nie ma pochodnej — regulacja nie ma "
-            "okreslonego wejscia przy dokladnie zerowym napieciu",
+            f"{opis}: moduł zerowego fazora nie ma pochodnej — regulacja nie ma "
+            "określonego wejścia przy dokładnie zerowym napięciu",
             wielkosc=opis,
         )
     return pierwiastek(kwadrat_modulu)

@@ -48,7 +48,7 @@ import type {
   BayDeviceTemplateWire,
   CompleteMvBayTemplateSummary,
 } from '../../../ui/catalog/BayTemplatePicker';
-import { ETYKIETY_RODZAJU_APARATU } from './stacjaModel';
+import { RODZAJE_APARATU_SN } from '../../../ui/catalog/wartosciKodoweKarty';
 
 // ---------------------------------------------------------------------------
 // BOM POLA — postać kanoniczna
@@ -252,7 +252,7 @@ export const SYMBOL_RODZAJU_BOM: Readonly<Record<RodzajAparatuBom, SymbolId>> = 
  * `device_kind` katalogu APARAT_SN → symbol kanoniczny biblioteki v3.
  *
  * Tablica jest ZAMKNIĘTA względem słownika rodzajów aparatu kreatora
- * (`ETYKIETY_RODZAJU_APARATU` w `stacjaModel.ts`) — pilnuje tego test
+ * (`RODZAJE_APARATU_SN` w `ui/catalog/wartosciKodoweKarty.ts`) — pilnuje tego test
  * kontraktowy: każdy rodzaj, który kreator umie NAZWAĆ w pickerze, musi mieć
  * symbol, inaczej projektant zobaczyłby pusty tor dla aparatu, który wybrał.
  * Rodzaj spoza słownika (nowa pozycja katalogu bez etykiety) daje `null` = tor
@@ -273,7 +273,7 @@ export function symbolRodzajuAparatu(deviceKind: string | null | undefined): Sym
 }
 
 /** Rodzaje aparatu, które kreator umie nazwać — wejście testu kompletności. */
-export const RODZAJE_APARATU_KREATORA: readonly string[] = Object.keys(ETYKIETY_RODZAJU_APARATU);
+export const RODZAJE_APARATU_KREATORA: readonly string[] = RODZAJE_APARATU_SN;
 
 // ---------------------------------------------------------------------------
 // Budowa BOM pola

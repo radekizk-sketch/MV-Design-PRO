@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
@@ -84,14 +84,19 @@ const snapshot = {
       connection_variant: 'nn_side',
       materialized_params: {
         station_transformer_ref: 'tr-st-001',
-        // Karta FAB-J: katalog falowników PV (PV_INVERTER_CATALOG) usunięty z
-        // frontu (FAB-I) — etykieta/producent/moc/napięcie są dziś TYLKO tym, co
-        // backend zmaterializował przy tworzeniu generatora, nie drugą lokalną
-        // kopią katalogu, więc fikstura musi je nieść wprost.
-        catalog_label: 'Huawei SUN2000-185KTL (185 kW · 0,4 kV)',
-        manufacturer: 'Huawei',
-        nominal_power_kw: 185,
-        nominal_voltage_kv: 0.4,
+        // Kształt tabliczki toru stacyjnego (`_materialize_nn_source` +
+        // `_build_converter_materialized_params`): nazwa i producent typu NIE są w tabliczce —
+        // karta bierze je z katalogu przekształtników po `catalog_ref`. Zamiar ochrony
+        // backend zapisuje i w tabliczce, i w `meta`.
+        catalog_item_id: 'pv_inv_huawei_185',
+        un_kv: 0.4,
+        protection_intent: {
+          breaker_role: 'wyłącznik nN źródła PV',
+          device_catalog_ref: 'EM_ETANGO_400_V0',
+          device_label: 'Elektrometal e2TANGO-400',
+          protected_object: 'falownik PV i kabel nN do PCC',
+          analysis_scope: 'nadprądowe, ziemnozwarciowe i koordynacja z wyłącznikiem głównym nN',
+        },
         // Karta FAB-L: `dynamic_model_ref` jest dziś JEDYNYM sposobem powiązania
         // modelu dynamicznego (auto-selekcja „po rodzaju urządzenia" zniesiona —
         // `DER_DYNAMIC_MODEL_CATALOG`/`getDynamicModelForDevice` skasowane) —
@@ -146,7 +151,14 @@ vi.mock('../networkBuildStore', () => ({
     selector({ openOperationForm, openRouteSurface }),
 }));
 
+// Inspektor czyta selekcję przez indeks pakietu, panel z kanwy (karta techniczna, kontekst
+// aparatu) — wprost ze sklepu; obie ścieżki widzą TĘ SAMĄ selekcję.
 vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
+    selector({ selectedElements: mockSelectedElements }),
+}));
+
+vi.mock('../../selection/store', () => ({
   useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
     selector({ selectedElements: mockSelectedElements }),
 }));
@@ -181,70 +193,70 @@ vi.mock('../../app-state', () => ({
     selector({ activeMode: 'MODEL_EDIT', activeCaseId: 'case-1' }),
 }));
 
-// Karta FAB-J: profil NC RfG (`useNcRfgOperatorCatalog`) czyta katalog operatorów
-// z backendu przez React Query — mockujemy hook SYNCHRONICZNIE (spójnie z
-// pozostałymi zależnościami tego pliku powyżej), zamiast podstawiać `fetch` i
-// czekać na rozstrzygnięcie zapytania asynchronicznie w każdym teście z osobna.
-// `getNcRfgOperator` zostaje prawdziwą implementacją (`importOriginal`).
-//
-// Karta FAB-L: `useDerDynamicProfiles` (profile modelu dynamicznego,
-// `GET /api/catalog/der-dynamic-profiles`) mockowany tym samym wzorcem —
-// `getDerDynamicProfile`/`formatDerDynamicProfileLabelPl` zostają prawdziwą
-// implementacją (`importOriginal`), więc test ćwiczy REALNE formatowanie
-// etykiety, nie zaszyty literał. Fikstura 1:1 z realnym profilem backendu
-// `default_pv_gfl` (`network_model/catalog/der_dynamic/defaults.py`).
+// Katalogi karty technicznej (`inspektor-elementu/katalogiKarty.ts`) — pobrania zastąpione
+// odpowiedziami w kształcie kontraktu backendu: przekształtnik po `catalog_ref` (nazwa,
+// producent), profil operatora NC RfG (zakres Q, cos φ, obwiednie LVRT/HVRT), charakterystyka
+// P(f) i profil modelu dynamicznego 1:1 z realnym `default_pv_gfl`
+// (`network_model/catalog/der_dynamic/defaults.py`). Formatowanie etykiet zostaje prawdziwe.
+vi.mock('../../catalog/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../catalog/api')>()),
+  fetchMvApparatusTypes: () => Promise.resolve([]),
+  fetchTransformerTypes: () => Promise.resolve([]),
+  fetchDerConverterTypes: () =>
+    Promise.resolve([{ id: 'pv_inv_huawei_185', name: 'SUN2000-185KTL', manufacturer: 'Huawei', kind: 'PV' }]),
+  fetchSourceSystemTypes: () => Promise.resolve([]),
+  fetchSwitchgearFamilies: () => Promise.resolve([]),
+  fetchCompleteBayTemplates: () => Promise.resolve([]),
+}));
+
+vi.mock('../station-der/audit2-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../station-der/audit2-api')>()),
+  fetchAudit2CatalogSnapshot: () =>
+    Promise.resolve({ pf_curves: [{ id: 'pf_pse_2024', label_pl: 'Charakterystyka P(f) PSE 2024' }] }),
+}));
+
 vi.mock('../station-der/derRemoteCatalogs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../station-der/derRemoteCatalogs')>();
   return {
     ...actual,
-    useNcRfgOperatorCatalog: () => ({
-      data: [{
-        operator_id: 'pse',
-        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
-        last_revision: '2024-Q4',
-        reactive_power: {
-          q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [],
-        },
-        ride_through: {
-          lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
-          hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
-        },
-      }],
-      status: 'success',
-      isLoading: false,
-      error: null,
-    }),
-    useDerDynamicProfiles: () => ({
-      data: [{
-        profile_id: 'default_pv_gfl',
-        profile_name_pl: 'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B)',
-        der_kind: 'PV',
-        control_mode: 'grid_following',
-        tp_s: 0.05,
-        tq_s: 0.05,
-        p_f_droop_pu: 0.04,
-        p_f_dead_band_hz: 0.2,
-        q_u_droop_pu: 0.1,
-        q_u_dead_band_pu: 0.02,
-        i_max_pu: 1.2,
-        v_min_continuous_pu: 0.85,
-        v_max_continuous_pu: 1.1,
-        frt_response_time_ms: 60.0,
-        iq_max_during_fault_pu: 1.0,
-        iq_priority_during_fault: true,
-        p_recovery_rate_pu_per_s: 0.8,
-        p_recovery_delay_ms: 100.0,
-        virtual_inertia_h_s: null,
-        proweniencja: {
-          zrodlo: 'profil_typowy_normy',
-          odniesienie: 'IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21',
-          data: null,
-        },
-      }],
-      status: 'success',
-      isLoading: false,
-      error: null,
-    }),
+    fetchNcRfgOperators: () => Promise.resolve([{
+      operator_id: 'pse',
+      operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
+      last_revision: '2024-Q4',
+      reactive_power: {
+        q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [],
+      },
+      ride_through: {
+        lvrt: [{ time_s: 0, voltage_pu: 0.05 }, { time_s: 0.15, voltage_pu: 0.05 }],
+        hvrt: [{ time_s: 0, voltage_pu: 1.3 }],
+      },
+    }]),
+    fetchDerDynamicProfiles: () => Promise.resolve([{
+      profile_id: 'default_pv_gfl',
+      profile_name_pl: 'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B)',
+      der_kind: 'PV',
+      control_mode: 'grid_following',
+      tp_s: 0.05,
+      tq_s: 0.05,
+      p_f_droop_pu: 0.04,
+      p_f_dead_band_hz: 0.2,
+      q_u_droop_pu: 0.1,
+      q_u_dead_band_pu: 0.02,
+      i_max_pu: 1.2,
+      v_min_continuous_pu: 0.85,
+      v_max_continuous_pu: 1.1,
+      frt_response_time_ms: 60.0,
+      iq_max_during_fault_pu: 1.0,
+      iq_priority_during_fault: true,
+      p_recovery_rate_pu_per_s: 0.8,
+      p_recovery_delay_ms: 100.0,
+      virtual_inertia_h_s: null,
+      proweniencja: {
+        zrodlo: 'profil_typowy_normy',
+        odniesienie: 'IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21',
+        data: null,
+      },
+    }]),
   };
 });
 
@@ -264,39 +276,44 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     }];
   });
 
-  it('pokazuje kartę projektową bez surowych identyfikatorów i z zabezpieczeniem nN', () => {
-    render(<InspectorEngineeringView />);
+  // Źródło z wpisem w modelu ma kartę techniczną panelu z kanwy (K6, `kartaZrodla`) — ona
+  // jest JEDYNYM opisem danych obiektu w inspektorze. Dane dawnych sekcji widoku (typ
+  // i producent przekształtnika, zgodność NC RfG, obwiednie FRT, model dynamiczny, zamiar
+  // zabezpieczenia) są wierszami tej karty — z pól modelu i katalogów, bez identyfikatorów.
+  it('pokazuje kartę źródła z typem przekształtnika, zgodnością NC RfG/FRT i zabezpieczeniem — bez surowych identyfikatorów', async () => {
+    const { container } = render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Falownik PV w stacji')).toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'zrodlo');
+    expect(screen.getByTestId('inspektor-karta-wartosc-nazwa')).toHaveTextContent('Falownik PV 0.5 MW / 0.4 kV nN');
+    expect(screen.getByTestId('inspektor-karta-wartosc-stacja')).toHaveTextContent('Stacja PV ST-001');
+    expect(screen.getByTestId('inspektor-karta-wartosc-moc')).toHaveTextContent('0,5 MW');
+    // Katalogi przychodzą asynchronicznie — wiersze z katalogu po odpowiedzi.
+    expect(await screen.findByText('SUN2000-185KTL')).toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-karta-wartosc-producent')).toHaveTextContent('Huawei');
+    expect(screen.getByTestId('inspektor-karta-wartosc-profil_ncrfg')).toHaveTextContent('PSE — Polskie Sieci Elektroenergetyczne');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zakres_q')).toHaveTextContent('od -33 % do 33 % Pₙ');
+    expect(screen.getByTestId('inspektor-karta-wartosc-cos_phi_min')).toHaveTextContent('0,95');
+    expect(screen.getByTestId('inspektor-karta-wartosc-krzywa_pf')).toHaveTextContent('Charakterystyka P(f) PSE 2024');
+    expect(screen.getByTestId('inspektor-karta-wartosc-lvrt')).toHaveTextContent('liczba punktów obwiedni: 2');
+    expect(screen.getByTestId('inspektor-karta-wartosc-hvrt')).toHaveTextContent('liczba punktów obwiedni: 1');
+    expect(screen.getByTestId('inspektor-karta-wartosc-model_dynamiczny')).toHaveTextContent('Domyślny PV grid-following');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zab_urzadzenie')).toHaveTextContent('Elektrometal e2TANGO-400');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zab_wylacznik')).toHaveTextContent('wyłącznik nN źródła PV');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zab_obiekt')).toHaveTextContent('falownik PV i kabel nN do PCC');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zab_zakres')).toHaveTextContent('koordynacja z wyłącznikiem głównym nN');
     expect(screen.getByText('Konfiguracja falownika PV')).toBeInTheDocument();
     expect(screen.getByTestId('open-pv-inverter-config')).toBeInTheDocument();
-    expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
-    expect(screen.getByText('Huawei SUN2000-185KTL (185 kW · 0,4 kV)')).toBeInTheDocument();
-    expect(screen.getByText('Huawei')).toBeInTheDocument();
-    expect(screen.getByText('NC RfG i regulacja')).toBeInTheDocument();
-    expect(screen.getByText('PSE — Polskie Sieci Elektroenergetyczne')).toBeInTheDocument();
-    expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
-    // Karta FAB-L: etykieta modelu dynamicznego jest dziś REALNYM formatowaniem
-    // (`formatDerDynamicProfileLabelPl`) profilu backendu `default_pv_gfl`, nie
-    // zaszytym literałem starego katalogu frontu (usunięty razem z auto-selekcją
-    // „po rodzaju urządzenia"). Karta W6-1: etykieta niesie proweniencję jawnie.
-    expect(
-      screen.getByText(
-        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, czas odpowiedzi 0.05 s)'
-          + ' [profil typowy normy: IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21]',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Obliczenia i uzasadnienie')).toBeInTheDocument();
-    expect(screen.getAllByText('Falownik PV 0.5 MW / 0.4 kV nN').length).toBeGreaterThan(0);
-    expect(screen.getByText('Stacja PV ST-001')).toBeInTheDocument();
-    expect(screen.getByText('TR 15/0,4 kV 630 kVA Dyn11 · 15/0.4 kV · 0.63 MVA Dyn11')).toBeInTheDocument();
-    expect(screen.getByText('Elektrometal e2TANGO-400')).toBeInTheDocument();
-    expect(screen.getByText('wyłącznik nN źródła PV')).toBeInTheDocument();
-    expect(screen.getByText('falownik PV i kabel nN do PCC')).toBeInTheDocument();
-    expect(screen.getByText('nadprądowe, ziemnozwarciowe i koordynacja z wyłącznikiem głównym nN')).toBeInTheDocument();
-    expect(screen.queryByText('pv-1')).not.toBeInTheDocument();
-    expect(screen.queryByText('conv-pv-nn-0p5mw-0p4kv')).not.toBeInTheDocument();
+    const tekst = container.textContent ?? '';
+    for (const kod of ['pv-1', 'pv_inv_huawei_185', 'pse', 'pf_pse_2024', 'default_pv_gfl', 'EM_ETANGO_400_V0']) {
+      expect(within(screen.getByTestId('inspektor-karta')).queryByText(kod)).not.toBeInTheDocument();
+    }
+    expect(tekst).not.toContain('pv_inv_huawei_185');
+    expect(tekst).not.toContain('pf_pse_2024');
+    expect(tekst).not.toContain('default_pv_gfl');
     expect(screen.queryByText(/Hash semantyczny/i)).not.toBeInTheDocument();
+    // Dawne sekcje widoku (druga ścieżka tych samych danych) nie wracają.
+    expect(screen.queryByText('NC RfG i regulacja')).not.toBeInTheDocument();
+    expect(screen.queryByText('Falownik z katalogu')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('open-pv-inverter-config'));
     expect(openRouteSurface).toHaveBeenCalledWith(
@@ -309,26 +326,28 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     );
   });
 
-  it('również zwykłe kliknięcie generatora otwiera tę samą kartę projektową', () => {
+  it('również zwykłe kliknięcie generatora otwiera tę samą kartę źródła', () => {
     mockSelectedElements = [{
       id: 'pv-1',
       type: 'PVInverter',
       name: 'Falownik PV 0.5 MW / 0.4 kV nN',
     }];
 
-    render(<InspectorEngineeringView />);
+    const { container } = render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Elektrometal e2TANGO-400')).toBeInTheDocument();
-    expect(screen.getByText('wyłącznik nN źródła PV')).toBeInTheDocument();
-    // 2026-07-17: podtytuł nagłówka = rola układu + REALNY wariant
-    // przyłączenia z ENM (fixture: connection_variant='nn_side' →
-    // „Po stronie nN stacji"), nie dawny hardkod „PV za transformatorem
-    // SN/nN" (kłamał dla ról nie-PV i wariantów innych niż blokowy).
-    expect(screen.getAllByText('Po stronie nN stacji', { exact: false }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'zrodlo');
+    expect(screen.getByTestId('inspektor-karta-wartosc-nazwa')).toHaveTextContent('Falownik PV 0.5 MW / 0.4 kV nN');
+    // Wariant przyłączenia z ENM (fixture: connection_variant='nn_side'), nie hardkod.
+    expect(screen.getByTestId('inspektor-karta-wartosc-wariant')).toHaveTextContent('po stronie nN stacji');
+    expect(screen.getByTestId('open-pv-inverter-config')).toBeInTheDocument();
     expect(screen.queryByText('pv-1')).not.toBeInTheDocument();
-    expect(screen.queryByText('conv-pv-nn-0p5mw-0p4kv')).not.toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain('conv-pv-nn-0p5mw-0p4kv');
   });
-  it('dla klikalnego symbolu falownika bez wpisu ENM pokazuje pelny zakres karty bez falszywych wynikow', () => {
+  // Wskazanie falownika bez wpisu w modelu (identyfikator spoza `generators`): dawniej widok
+  // dopasowywał generator po podciągach identyfikatora albo rysował szablon sekcji
+  // „do konfiguracji" dla obiektu, którego nie ma. Teraz: brak karty, brak sekcji, brak
+  // operacji źródła — uczciwy stan pusty, żadnego cudzego generatora.
+  it('wskazanie falownika bez wpisu ENM: bez atrapy sekcji, bez cudzego generatora i bez operacji źródła', () => {
     const originalGenerators = snapshot.generators;
     snapshot.generators = [];
     mockSelectedElements = [{
@@ -340,18 +359,28 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
       semanticEngineeringRole: 'PV_INVERTER',
     }];
 
+    try {
+      render(<InspectorEngineeringView />);
+
+      expect(screen.queryByTestId('inspektor-karta')).not.toBeInTheDocument();
+      expect(screen.queryByText('Falownik z katalogu')).not.toBeInTheDocument();
+      expect(screen.queryByText('NC RfG i regulacja')).not.toBeInTheDocument();
+      expect(screen.queryByText('do konfiguracji')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('open-pv-inverter-config')).not.toBeInTheDocument();
+      expect(screen.getByText('Zaznacz element na SLD')).toBeInTheDocument();
+    } finally {
+      snapshot.generators = originalGenerators;
+    }
+  });
+
+  it('wskazanie spoza modelu z identyfikatorem zawierającym ref stacji NIE dostaje generatora tej stacji', () => {
+    mockSelectedElements = [{
+      id: 'stn/st-001/nn_source/pv_inverter',
+      type: 'PVInverter',
+      name: 'Falownik PV',
+    }];
     render(<InspectorEngineeringView />);
-
-    expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
-    expect(screen.getByText(/Punkt.*tor mocy/)).toBeInTheDocument();
-    expect(screen.getByText('NC RfG i regulacja')).toBeInTheDocument();
-    expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
-    expect(screen.getByText('Obliczenia i uzasadnienie')).toBeInTheDocument();
-    expect(screen.getByText('Zabezpieczenia falownika i strony nN')).toBeInTheDocument();
-    expect(screen.getAllByText('do konfiguracji').length).toBeGreaterThan(4);
-    expect(document.body.textContent).not.toMatch(/(?:brak danych|do konfiguracji)(?:kW|kV|pu|MW|Mvar|A|kA)/);
-    expect(screen.queryByText('0.00')).not.toBeInTheDocument();
-
-    snapshot.generators = originalGenerators;
+    expect(screen.queryByTestId('open-pv-inverter-config')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('inspektor-karta')).not.toBeInTheDocument();
   });
 });

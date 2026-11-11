@@ -24,7 +24,6 @@ from domain.results import (
     NumericDelta,
     PowerFlowComparison,
     ProjectMismatchError,
-    ResultNotFoundError,
     RunComparisonResult,
     RunNotFoundError,
     RunResultState,
@@ -625,13 +624,17 @@ class TestComparisonExceptions:
         assert str(proj_b) in str(err)
 
     def test_analysis_type_mismatch_error(self):
-        """AnalysisTypeMismatchError should contain both types."""
-        err = AnalysisTypeMismatchError("short_circuit", "power_flow")
+        """AnalysisTypeMismatchError niesie oba rodzaje: kody w polach maszynowych, nazwy
+        rodzajów w zdaniu (porównanie dotyczy przebiegów kanonicznych — rodzaje z
+        ``RODZAJE_PRZEBIEGU_PL``)."""
+        err = AnalysisTypeMismatchError("short_circuit_sn", "PF")
 
-        assert err.type_a == "short_circuit"
-        assert err.type_b == "power_flow"
-        assert "short_circuit" in str(err)
-        assert "power_flow" in str(err)
+        assert err.type_a == "short_circuit_sn"
+        assert err.type_b == "PF"
+        assert "obliczenie zwarciowe" in str(err)
+        assert "rozpływ mocy" in str(err)
+        assert "short_circuit_sn" not in str(err)
+        assert "PF" not in str(err)
 
     def test_run_not_found_error(self):
         """RunNotFoundError should contain run ID."""
@@ -640,14 +643,6 @@ class TestComparisonExceptions:
 
         assert err.run_id == run_id
         assert str(run_id) in str(err)
-
-    def test_result_not_found_error(self):
-        """ResultNotFoundError should contain run ID and result type."""
-        run_id = uuid4()
-        err = ResultNotFoundError(run_id, "short_circuit")
-
-        assert err.run_id == run_id
-        assert err.result_type == "short_circuit"
 
 
 class TestDeterminismRequirements:

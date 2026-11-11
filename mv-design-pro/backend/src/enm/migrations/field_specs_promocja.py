@@ -262,7 +262,7 @@ def _liczba_odgalezien_zksn(punkt: Mapping[str, Any], dawne_pola: list[Any] | No
             return liczba
     raise BladMigracjiPol(
         f"punkt rozgałęzienia ZKSN {punkt.get('ref_id')!r}: nieznana liczba portów odgałęzień "
-        "(brak dawnych pól, portów BRANCH i branch_ports_count)"
+        "(brak dawnych pól, portów odgałęzień i zapisanej liczby portów odgałęzień)"
     )
 
 
@@ -348,8 +348,9 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
     for rekord in nowe_rekordy:
         if rekord["ref_id"] in znane_ref:
             raise BladMigracjiPol(
-                f"pole {rekord['ref_id']!r}: wpis stacji i rekord `bays` o tym samym "
-                "identyfikatorze bez `bay_ref` — migracja nie zgaduje, który jest prawdą"
+                f"pole {rekord['ref_id']!r}: dawny wpis pola w stacji i rekord kolekcji pól "
+                "o tym samym identyfikatorze, bez wskazania, że opisują to samo pole — "
+                "migracja nie zgaduje, który jest prawdą"
             )
         znane_ref.add(rekord["ref_id"])
     bays = pozostale + nowe_rekordy

@@ -28,9 +28,8 @@ from werdykt import (
     blok_wymagania,
     decyzja,
 )
-from werdykt.kontrakt import KOLEJNOSC_METOD
+from werdykt.kontrakt import KOLEJNOSC_METOD, NAZWA_STANU_ZRODLA_PL
 from werdykt.proweniencja import POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA, ClaimKind, EvidenceTier
-from werdykt.wyjasnienie import NAZWA_STANU_ZRODLA_PL
 
 from tests.werdykt import fabryki as f
 
@@ -89,7 +88,7 @@ def test_iloczyn_cech_sposob_stan_reguly_skladowe(
     oceny = [] if skladowa is None else [skladowa]
     podstawa = None if stan is None else f.podstawa_reguly_sposobu(stan)
     if sposob == "BRAK_METODY" and podstawa is not None:
-        with pytest.raises(ValidationError, match="BRAK_METODY nie ma reguły"):
+        with pytest.raises(ValidationError, match="„brak metody” nie ma reguły"):
             f.wymaganie(oceny, sposob=sposob, podstawa_sposobu=podstawa)
         return
     rekord = f.wymaganie(oceny, sposob=sposob, podstawa_sposobu=podstawa)

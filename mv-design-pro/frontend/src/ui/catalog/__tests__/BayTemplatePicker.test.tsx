@@ -1,176 +1,102 @@
-import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+/**
+ * Nazwy prezentacyjne szablonu pola SN (`BayTemplatePicker.tsx`): status źródła i nazwa
+ * pakietu pola. Iloczyn: status źródła (każdy z unii `BayTemplateSourceStatus`) × etykieta,
+ * oraz {nazwa katalogowa, rodzina znana, rodzina spoza katalogu, brak rodziny} × rodzaj pola
+ * (każdy `BayKind`) × nazwa pakietu — nigdy referencja szablonu.
+ */
+import { describe, expect, it } from 'vitest';
 
 import {
-  BayTemplatePicker,
-  type CompleteMvBayTemplateSummary,
+  bayKindLabelPl,
+  RODZAJ_POLA_SPOZA_SLOWNIKA_PL,
+  SZABLON_SPOZA_KATALOGU_PL,
+  nazwaSzablonuPoReferencjiPl,
+  etykietaStatusuZrodlaSzablonuPl,
+  nazwaSzablonuPolaPl,
+  type BayKind,
+  type BayTemplateSourceStatus,
 } from '../BayTemplatePicker';
 
-function makeTemplate(
-  overrides: Partial<CompleteMvBayTemplateSummary> = {},
-): CompleteMvBayTemplateSummary {
-  return {
-    template_ref: 'CANONICAL_FALLBACK__LINE_OUT',
-    // Kompozycja aparatów pola — pole WYMAGANE kontraktu
-    // (`base_template.devices`); fikstura odwzorowuje układ kanoniczny pola
-    // liniowego wyjściowego z `catalog/bay_templates.py`.
-    base_template: {
-      template_id: 'bay_template_line_out',
-      name: 'Pole liniowe wyjściowe',
-      bay_role: 'OUT',
-      devices: [
-        { kind: 'DS_BUS', designation_q: 'Q1', position: 0, placement: 'UPSTREAM' },
-        { kind: 'CB', designation_q: 'Q0', position: 1, placement: 'MIDSTREAM' },
-        { kind: 'ES', designation_q: 'Q9', position: 4, placement: 'GROUND_BRANCH' },
-        { kind: 'CABLE_HEAD', designation_q: 'GK', position: 5, placement: 'DOWNSTREAM' },
-      ],
-    },
-    manufacturer_ref: null,
-    switchgear_family_ref: null,
-    bay_kind: 'liniowe_odplywowe',
-    bay_role: 'OUT',
-    source_status: 'canonical_fallback',
-    source_refs: [],
-    version: '1.0',
-    hash: '0'.repeat(64),
-    notes_pl: null,
-    ...overrides,
-  };
-}
+const STATUSY = {
+  official_catalog: true,
+  repo_verified: true,
+  user_defined: true,
+  canonical_fallback: true,
+  requires_catalog: true,
+  incomplete_requires_review: true,
+} as const satisfies Record<BayTemplateSourceStatus, true>;
 
-const CANONICAL_FALLBACK_TEN: CompleteMvBayTemplateSummary[] = [
-  makeTemplate({
-    template_ref: 'CANONICAL_FALLBACK__LINE_IN',
-    bay_kind: 'liniowe_doplywowe',
-    bay_role: 'IN',
-  }),
-  makeTemplate({
-    template_ref: 'CANONICAL_FALLBACK__LINE_OUT',
-    bay_kind: 'liniowe_odplywowe',
-    bay_role: 'OUT',
-  }),
-  makeTemplate({
-    template_ref: 'CANONICAL_FALLBACK__TRANSFORMER',
-    bay_kind: 'transformatorowe',
-    bay_role: 'TR',
-  }),
-];
+const RODZAJE = {
+  liniowe_doplywowe: true,
+  liniowe_odplywowe: true,
+  transformatorowe: true,
+  pomiarowe: true,
+  sprzeglowe_podluzne: true,
+  sprzeglowe_poprzeczne: true,
+  sekcyjne: true,
+  potrzeb_wlasnych: true,
+  odgromnikowe: true,
+  pv: true,
+  bess: true,
+  fw: true,
+  rezerwowe: true,
+  kablowe: true,
+  napowietrzne: true,
+  nop_lacznikowe: true,
+  bateria_kondensatorow: true,
+} as const satisfies Record<BayKind, true>;
 
-describe('BayTemplatePicker', () => {
-  it('renderuje listę szablonów z badge source_status', () => {
-    const { container } = render(
-      <BayTemplatePicker templates={CANONICAL_FALLBACK_TEN} onSelect={() => {}} />,
+const RODZINY = new Map([['ABB__UNIGEAR_ZS1', 'UniGear ZS1']]);
+
+describe('status źródła szablonu pola', () => {
+  it.each(Object.keys(STATUSY) as BayTemplateSourceStatus[])('%s ma polską nazwę, nie kod', (status) => {
+    const etykieta = etykietaStatusuZrodlaSzablonuPl(status);
+    expect(etykieta).not.toBe('Nieznany status źródła');
+    expect(etykieta).not.toContain(status);
+  });
+
+  it('status spoza unii (dane spoza kontraktu) mówi to wprost', () => {
+    expect(etykietaStatusuZrodlaSzablonuPl('nowy_status' as BayTemplateSourceStatus)).toBe('Nieznany status źródła');
+  });
+});
+
+describe('nazwa pakietu pola', () => {
+  it.each(Object.keys(RODZAJE) as BayKind[])('%s: nazwa katalogowa, rodzina znana, spoza katalogu, brak rodziny', (bay_kind) => {
+    const rodzaj = bayKindLabelPl(bay_kind);
+    expect(rodzaj).not.toMatch(/_/);
+    expect(nazwaSzablonuPolaPl({ template_name_pl: 'Pole 630 A', bay_kind, switchgear_family_ref: 'ABB__UNIGEAR_ZS1' }, RODZINY)).toBe('Pole 630 A');
+    expect(nazwaSzablonuPolaPl({ template_name_pl: '  ', bay_kind, switchgear_family_ref: 'ABB__UNIGEAR_ZS1' }, RODZINY)).toBe(`${rodzaj} · UniGear ZS1`);
+    expect(nazwaSzablonuPolaPl({ template_name_pl: null, bay_kind, switchgear_family_ref: 'NIEZNANA' }, RODZINY)).toBe(
+      `${rodzaj} · rodzina rozdzielnicy spoza katalogu rodzin`,
     );
-    expect(container.querySelector('[data-testid="bay-template-picker"]')).not.toBeNull();
+    expect(nazwaSzablonuPolaPl({ template_name_pl: undefined, bay_kind, switchgear_family_ref: null }, RODZINY)).toBe(
+      `${rodzaj} · szablon kanoniczny ogólny`,
+    );
+  });
+});
+
+
+describe('wartości spoza słownika i referencje spoza katalogu', () => {
+  it('rodzaj pola spoza słownika ma opis jawny (nie kod, nie wyjątek)', () => {
+    expect(bayKindLabelPl('NOWY_RODZAJ' as BayKind)).toBe(RODZAJ_POLA_SPOZA_SLOWNIKA_PL);
+    expect(bayKindLabelPl('toString' as BayKind)).toBe(RODZAJ_POLA_SPOZA_SLOWNIKA_PL);
     expect(
-      container.querySelector('[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__LINE_IN"]'),
-    ).not.toBeNull();
+      nazwaSzablonuPolaPl({ template_name_pl: null, bay_kind: 'NOWY_RODZAJ' as BayKind, switchgear_family_ref: null }, new Map()),
+    ).toBe(`${RODZAJ_POLA_SPOZA_SLOWNIKA_PL} · szablon kanoniczny ogólny`);
   });
 
-  it('canonical_fallback szablon ma badge "Szablon kanoniczny ogólny (fallback)"', () => {
-    const { container } = render(
-      <BayTemplatePicker templates={CANONICAL_FALLBACK_TEN} onSelect={() => {}} />,
-    );
-    const badge = container.querySelector(
-      '[data-testid="bay-template-picker-badge-CANONICAL_FALLBACK__LINE_OUT"]',
-    );
-    expect(badge?.textContent).toContain('Szablon kanoniczny ogólny');
+  it('status źródła o nazwie klucza prototypu nie przecieka jako funkcja', () => {
+    expect(etykietaStatusuZrodlaSzablonuPl('toString' as BayTemplateSourceStatus)).toBe('Nieznany status źródła');
   });
 
-  it('official_catalog szablon ma badge "Oficjalny katalog producenta"', () => {
-    const templates = [
-      makeTemplate({
-        template_ref: 'ZPUE__ROTOBLOK__LINE_OUT',
-        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-        source_status: 'official_catalog',
-        source_refs: ['catalog:zpue_rotoblok_2026.pdf'],
-      }),
-    ];
-    const { container } = render(<BayTemplatePicker templates={templates} onSelect={() => {}} />);
-    const badge = container.querySelector(
-      '[data-testid="bay-template-picker-badge-ZPUE__ROTOBLOK__LINE_OUT"]',
+  it('szablon wskazany referencją: nazwa z katalogu albo opis jawny', () => {
+    const szablony = [
+      { template_ref: 'ABB__SAFERING__LINE_OUT', template_name_pl: null, bay_kind: 'liniowe_odplywowe', switchgear_family_ref: 'ABB__SAFERING' },
+    ] as never;
+    const nazwy = new Map([['ABB__SAFERING', 'SafeRing']]);
+    expect(nazwaSzablonuPoReferencjiPl('ABB__SAFERING__LINE_OUT', szablony, nazwy)).toBe(
+      `${bayKindLabelPl('liniowe_odplywowe')} · SafeRing`,
     );
-    expect(badge?.textContent).toContain('Oficjalny katalog producenta');
-  });
-
-  it('bayKindFilter zawęża listę', () => {
-    const { container } = render(
-      <BayTemplatePicker
-        templates={CANONICAL_FALLBACK_TEN}
-        bayKindFilter="transformatorowe"
-        onSelect={() => {}}
-      />,
-    );
-    expect(
-      container.querySelector('[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__TRANSFORMER"]'),
-    ).not.toBeNull();
-    expect(
-      container.querySelector('[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__LINE_IN"]'),
-    ).toBeNull();
-  });
-
-  it('empty state — pokazuje komunikat gdy filtr nie pasuje', () => {
-    const { container } = render(
-      <BayTemplatePicker
-        templates={CANONICAL_FALLBACK_TEN}
-        bayKindFilter="pv"
-        onSelect={() => {}}
-      />,
-    );
-    expect(container.querySelector('[data-testid="bay-template-picker-empty"]')).not.toBeNull();
-  });
-
-  it('onSelect wywoływany z template_ref', () => {
-    const onSelect = vi.fn();
-    const { container } = render(
-      <BayTemplatePicker templates={CANONICAL_FALLBACK_TEN} onSelect={onSelect} />,
-    );
-    const btn = container.querySelector(
-      '[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__TRANSFORMER"]',
-    ) as HTMLButtonElement;
-    fireEvent.click(btn);
-    expect(onSelect).toHaveBeenCalledWith('CANONICAL_FALLBACK__TRANSFORMER');
-  });
-
-  it('opcja nazywa rodzaj i rolę pola słowami kanonu, bez kodu roli (karta #141)', () => {
-    const { container } = render(
-      <BayTemplatePicker templates={CANONICAL_FALLBACK_TEN} onSelect={() => {}} />,
-    );
-    const tekst = container.querySelector(
-      '[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__LINE_OUT"]',
-    )?.textContent ?? '';
-    expect(tekst).toContain('Pole liniowe wyjściowe');
-    expect(tekst).toContain('Rola pola: pole liniowe wyjściowe');
-    expect(tekst).not.toMatch(/\bOUT\b/);
-  });
-
-  it('selectedRef oznacza wybrany szablon', () => {
-    const { container } = render(
-      <BayTemplatePicker
-        templates={CANONICAL_FALLBACK_TEN}
-        selectedRef="CANONICAL_FALLBACK__LINE_OUT"
-        onSelect={() => {}}
-      />,
-    );
-    expect(
-      container
-        .querySelector('[data-testid="bay-template-picker-option-CANONICAL_FALLBACK__LINE_OUT"]')
-        ?.getAttribute('data-selected'),
-    ).toBe('true');
-  });
-
-  it('manufacturer_ref widoczny w opcji gdy ustawiony', () => {
-    const templates = [
-      makeTemplate({
-        template_ref: 'ZPUE__BAY1',
-        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
-        source_status: 'canonical_fallback',
-      }),
-    ];
-    const { container } = render(<BayTemplatePicker templates={templates} onSelect={() => {}} />);
-    const option = container.querySelector(
-      '[data-testid="bay-template-picker-option-ZPUE__BAY1"]',
-    );
-    expect(option?.textContent).toContain('ZPUE_WLOSZCZOWA');
+    expect(nazwaSzablonuPoReferencjiPl('ZPUE__X__LINE_OUT', szablony, nazwy)).toBe(SZABLON_SPOZA_KATALOGU_PL);
   });
 });

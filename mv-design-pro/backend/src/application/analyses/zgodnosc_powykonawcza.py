@@ -44,9 +44,9 @@ import io
 import json
 from typing import Any
 
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi
 from domain.canonical_operations import READINESS_CODES
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     CanonicalRun,
     build_branch_results,
@@ -186,7 +186,8 @@ def _normalize_measurements(pomiary: list[dict[str, Any]]) -> list[dict[str, Any
         jednostka = str(raw.get("jednostka") or "").strip()
         if not element_ref:
             raise OdmowaDanychError(
-                f"Pomiar w wierszu {etykieta}: brak identyfikatora elementu (element_ref)."
+                f"Pomiar w wierszu {etykieta}: pusta kolumna identyfikatora elementu "
+                "„element_ref”."
             )
         if wielkosc not in _WIELKOSCI:
             raise OdmowaDanychError(
@@ -515,13 +516,15 @@ def build_zgodnosc_powykonawcza_view(
     obecne = {p["wielkosc"] for p in znormalizowane}
     if "U" in obecne and napiecie_pct is None:
         raise OdmowaDanychError(
-            "Brak jawnej tolerancji napięcia (tolerancje.napiecie_pct). Nie przyjęto "
+            "Brak jawnej tolerancji porównania napięcia (dopuszczalna różnica pomiaru i "
+            "obliczenia w %). Nie przyjęto "
             "wartości domyślnej — brak udokumentowanego źródła normatywnego; podaj "
             "tolerancję jawnie."
         )
     if (obecne & {"P", "Q"}) and moc_pct is None:
         raise OdmowaDanychError(
-            "Brak jawnej tolerancji mocy (tolerancje.moc_pct). Nie przyjęto wartości "
+            "Brak jawnej tolerancji porównania mocy (dopuszczalna różnica pomiaru i "
+            "obliczenia w %). Nie przyjęto wartości "
             "domyślnej — brak udokumentowanego źródła normatywnego; podaj tolerancję "
             "jawnie."
         )

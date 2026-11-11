@@ -15,6 +15,7 @@
  * nie fizyka. Identyfikatory (bus_ref, input_hash) wyłącznie w trybie eksperckim.
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { useEffect, useMemo, useState } from 'react';
 import './obszar.css';
 import type { GenLimits } from '../../../types/enm';
@@ -319,7 +320,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
             >
               {generatory.map((g) => (
                 <option key={g.ref_id} value={g.ref_id}>
-                  {g.name || g.ref_id}
+                  {nazwaObiektuPl(g.name, 'generator', miejsceWKolekcji(generatory, g))}
                 </option>
               ))}
             </select>

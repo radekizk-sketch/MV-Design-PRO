@@ -17,6 +17,7 @@ import type {
   ReadinessSeverity,
 } from '../types';
 import { normalizeEngineeringReadinessResponse } from '../shared/fixActionSurfaceNormalizer';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 // =============================================================================
 // API Client
@@ -27,7 +28,7 @@ async function fetchEngineeringReadiness(
 ): Promise<EngineeringReadinessResponse> {
   const response = await fetch(`/api/cases/${caseId}/engineering-readiness`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch engineering readiness: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się pobrać gotowości inżynierskiej');
   }
   return normalizeEngineeringReadinessResponse(await response.json());
 }

@@ -9,6 +9,7 @@
  * modułowego (`TAP_CHANGER_CATALOG` usunięty z `catalogs.ts`).
  */
 
+import { nazwaObiektuPl } from '../../../shared/nazwaObiektu';
 import {
   getTapChanger,
   klasaTransformatoraPrzelacznika,
@@ -27,8 +28,10 @@ export interface StationTransformerCatalogOption {
   readonly voltageLvKv: number;
   readonly ukPercent: number;
   readonly pkKw: number;
-  readonly p0Kw: number;
-  readonly vectorGroup: string;
+  /** `null` = straty jałowe nieznane w katalogu. */
+  readonly p0Kw: number | null;
+  /** `null` = grupa połączeń nieznana w katalogu. */
+  readonly vectorGroup: string | null;
   readonly adequatePower: boolean;
   readonly recommended: boolean;
 }
@@ -98,7 +101,7 @@ function selectTapChangersForTransformerByVoltage(
 
 function optionLabel(option: StationTransformerCatalogOption): string {
   const kva = Math.round(option.ratedPowerMva * 1000).toLocaleString('pl-PL');
-  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup}, $u_{k}$ ${option.ukPercent}%`;
+  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup ?? 'grupa połączeń: brak danych'}, uk ${option.ukPercent}%`;
 }
 
 export function StationConfigTransformerCard(
@@ -196,7 +199,7 @@ export function StationConfigTransformerCard(
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
                     {tr.catalogRef ? (
                       <span className="rounded border border-status-ok/40 bg-emerald-950/30 px-2 py-1 text-status-ok">
-                        katalog: {selectedCatalog?.name ?? tr.catalogRef}
+                        katalog: {nazwaObiektuPl(selectedCatalog?.name, 'pozycja_katalogu', selectedCatalog ? null : { spozaKatalogu: true })}
                       </span>
                     ) : recommendedCatalog ? (
                       <button

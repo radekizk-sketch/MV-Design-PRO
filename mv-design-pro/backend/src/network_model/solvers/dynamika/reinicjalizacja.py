@@ -128,7 +128,7 @@ def reinicjalizuj(
         # bledem niz ten, ktory mial byc zameldowany. Klucze zewnetrzne wygrywaja,
         # bo opisuja miejsce w cyklu biegu, a nie miejsce w algebrze.
         szczegoly = dict(odmowa.szczegoly)
-        szczegoly.update({"t_s": t_s, "przyczyna": odmowa.kod})
+        szczegoly.update({"t_s": t_s, "kod_przyczyny": odmowa.kod})
         raise OdmowaDynamiki(
             KOD_REINICJALIZACJA_NIEZBIEZNA,
             f"Re-inicjalizacja algebry po zdarzeniu w t={t_s} s nie zbiegla: {odmowa}",

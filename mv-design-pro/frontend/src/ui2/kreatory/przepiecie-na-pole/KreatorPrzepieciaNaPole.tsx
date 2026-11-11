@@ -61,9 +61,11 @@ export function elementNaSzynieStacji(
   for (const stacja of snapshot.substations ?? []) {
     const szyna = konce.find((k) => (stacja.bus_refs ?? []).includes(k));
     if (!szyna) continue;
-    // Karta W5-B: pola SN stacji z rekordów `bays` na szynie elementu, z własnym zaciskiem.
+    // Karta W5-B: pola SN stacji z rekordów `bays` na szynie elementu. Transformator przechodzi
+    // przez zacisk pola TR; odcinek także przez pole bez własnego zacisku (rozdzielnica bez
+    // aparatury pól) — model przyłącza go wtedy wskazaniem pola w odcinku.
     const pola: OpcjaWyboru[] = polaSnStacji(snapshot, stacja.ref_id)
-      .filter((pole) => pole.bus_ref === szyna && wlasnyZaciskPola(pole) !== null)
+      .filter((pole) => pole.bus_ref === szyna && (galaz !== undefined || wlasnyZaciskPola(pole) !== null))
       .map((pole) => ({ id: pole.ref_id, etykieta: napis(pole.name) || pole.ref_id }));
     const szynaModel = (snapshot.buses ?? []).find((b) => b.ref_id === szyna);
     return {
@@ -93,7 +95,8 @@ export function KreatorPrzepieciaNaPole() {
   );
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
 
-  const opcjePol: OpcjaWyboru[] = [{ id: '', etykieta: T.poleAuto }, ...(opis?.pola ?? [])];
+  const etykietaAuto = opis?.rodzaj === 'branch' ? T.poleAutoOdcinek : T.poleAuto;
+  const opcjePol: OpcjaWyboru[] = [{ id: '', etykieta: etykietaAuto }, ...(opis?.pola ?? [])];
   const kompletne = opis !== null;
 
   const onZapisz = useCallback(async () => {
@@ -133,7 +136,7 @@ export function KreatorPrzepieciaNaPole() {
     {
       etykieta: T.wierszPole,
       stan: 'kompletne',
-      wartosc: opcjePol.find((o) => o.id === poleRef)?.etykieta ?? T.poleAuto,
+      wartosc: opcjePol.find((o) => o.id === poleRef)?.etykieta ?? etykietaAuto,
     },
   ];
 

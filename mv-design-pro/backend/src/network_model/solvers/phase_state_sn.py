@@ -244,20 +244,20 @@ def _compute_unbalance_percent(values: tuple[float, ...]) -> float:
 
 
 def _validate_input(data: PhaseStateSNInput) -> None:
-    _validate_phase_values("source_voltage_kv", data.source_voltage_kv, minimum=0.0)
-    _validate_phase_values("load_current_a", data.load_current_a, minimum=0.0)
-    _validate_phase_values("branch_resistance_ohm", data.branch_resistance_ohm, minimum=0.0)
-    _validate_phase_values("fault_current_a", data.fault_current_a, minimum=0.0)
+    _validate_phase_values("Napięcie źródła [kV]", data.source_voltage_kv, minimum=0.0)
+    _validate_phase_values("Prąd obciążenia [A]", data.load_current_a, minimum=0.0)
+    _validate_phase_values("Rezystancja gałęzi [Ω]", data.branch_resistance_ohm, minimum=0.0)
+    _validate_phase_values("Prąd zwarciowy [A]", data.fault_current_a, minimum=0.0)
 
     if not math.isfinite(data.unbalance_alert_percent):
-        raise ValueError("unbalance_alert_percent must be finite")
+        raise ValueError("Próg alarmu niesymetrii [%] musi być liczbą skończoną.")
     if data.unbalance_alert_percent < 0.0:
-        raise ValueError("unbalance_alert_percent must be >= 0")
+        raise ValueError("Próg alarmu niesymetrii [%] nie może być ujemny.")
 
 
 def _validate_phase_values(name: str, values: PhaseValues, minimum: float) -> None:
     for phase, value in zip(PHASE_ORDER, values.as_tuple(), strict=True):
         if not math.isfinite(value):
-            raise ValueError(f"{name}.{phase} must be finite")
+            raise ValueError(f"{name}, faza {phase}: wartość musi być liczbą skończoną.")
         if value < minimum:
-            raise ValueError(f"{name}.{phase} must be >= {minimum}")
+            raise ValueError(f"{name}, faza {phase}: wartość nie może być mniejsza niż {minimum}")

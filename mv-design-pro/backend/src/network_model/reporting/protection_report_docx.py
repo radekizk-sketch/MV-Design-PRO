@@ -88,7 +88,10 @@ def export_protection_coordination_to_docx(
         ImportError: If python-docx is not installed
     """
     if not _DOCX_AVAILABLE:
-        raise ImportError("DOCX export requires python-docx. Install with: pip install python-docx")
+        raise ImportError(
+            "Raport zabezpieczeń do DOCX jest niedostępny — na serwerze obliczeń nie "
+            "zainstalowano biblioteki python-docx."
+        )
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -707,7 +707,11 @@ class TestLocalGenerationDiagnostic:
         result = ProtectionSettingsEngine.calculate(inp)
         assert result.local_generation.aktywna is True
         assert result.local_generation.ryzyko_blokady_zsz is None
-        assert any("NIEDOSTĘPNE" in n for n in result.local_generation.uwagi_pl)
+        # Zdanie dla projektanta: stan słowem i nazwa wielkości, bez klucza pola progu.
+        assert any("Ryzyko blokady ZSZ niedostępne" in n for n in result.local_generation.uwagi_pl)
+        assert not any(
+            "lokalna_generacja_prog_udzialu_zsz" in n for n in result.local_generation.uwagi_pl
+        )
 
     def test_active_with_threshold_risk_triggered(self):
         """Contribution ratio >= named threshold => risk True."""

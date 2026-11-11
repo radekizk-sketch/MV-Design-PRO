@@ -33,6 +33,8 @@ from enum import StrEnum
 from typing import Any, Literal, get_args
 from uuid import UUID, uuid4
 
+from domain.opis_przebiegu import stan_przebiegu_pl
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -145,7 +147,8 @@ def stan_biegu(wartosc: str) -> StanBiegu:
         if wartosc == stan:
             return stan
     raise ValueError(
-        f"Nieznany stan biegu {wartosc!r} — dozwolone: {', '.join(get_args(StanBiegu))}."
+        f"Zapisany stan biegu {wartosc!r} nie należy do słownika stanów — dozwolone stany: "
+        f"{', '.join(stan_przebiegu_pl(stan) for stan in get_args(StanBiegu))}."
     )
 
 

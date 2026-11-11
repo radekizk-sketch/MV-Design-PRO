@@ -50,7 +50,8 @@ const MIGAWKA = {
 
 const OBIEKTY: ReadonlyArray<[string, SldElementKindForMenu, string]> = [
   ['pole', 'bay', 'pole-1'],
-  ['aparat pola', 'apparatus', 'pole-1#cb'],
+  // Aparat pola w postaci emitowanej przez kanwę v3 (`${bayRef}#${SymbolId}`).
+  ['aparat pola', 'apparatus', 'pole-1#breaker'],
   ['łącznik na trasie', 'apparatus', 'q1'],
 ];
 

@@ -1,3 +1,4 @@
+import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
@@ -37,15 +38,16 @@ import type {
   TypeCategory,
   VTCatalogType,
 } from './types';
+import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
+import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 
 export class CatalogApiError extends Error {
   constructor(
     public readonly status: number,
-    public readonly statusText: string,
     public readonly detail: string | null,
     public readonly endpoint: string,
   ) {
-    super(`${status} ${statusText}: ${detail ?? 'No detail'}`);
+    super(detail ?? komunikatZapytania({ status }, 'Zapytanie do katalogu typów nie powiodło się'));
     this.name = 'CatalogApiError';
   }
 }
@@ -58,13 +60,10 @@ export function getCatalogErrorMessage(error: unknown): string {
     if (error.detail) {
       return error.detail;
     }
-    return `Błąd API katalogów (${error.status}).`;
+    return error.message;
   }
   if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) {
     return error.message;
-  }
-  if (error instanceof Error && error.message.includes('500 Internal Server Error: No detail')) {
-    return BACKEND_UNAVAILABLE_MESSAGE;
   }
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -115,7 +114,7 @@ async function handleResponse<T>(response: Response, endpoint: string): Promise<
     } catch {
       detail = null;
     }
-    throw new CatalogApiError(response.status, response.statusText, detail, endpoint);
+    throw new CatalogApiError(response.status, detail, endpoint);
   }
 
   if (response.status === 204) {
@@ -440,120 +439,23 @@ export async function fetchBessInverterTypes(): Promise<BESSInverterCatalogType[
   return fetchCatalogJson<BESSInverterCatalogType[]>('/api/catalog/bess-inverter-types');
 }
 
-export async function fetchWindInverterTypes(): Promise<ConverterType[]> {
-  return fetchCatalogJson<ConverterType[]>('/api/catalog/wind-inverter-types');
-}
-
+/**
+ * Przekształtniki katalogu (PV, magazyn energii, wiatr) w kształcie `ConverterType` —
+ * `GET /api/catalog/converter-types` (opcjonalnie zawężone rodzajem).
+ *
+ * JEDNA ŚCIEŻKA: backend serwuje wszystkie przekształtniki znormalizowane (przestrzeń
+ * `CONVERTER`; pozycje `ZRODLO_NN_PV`/`ZRODLO_NN_BESS` są jej projekcjami). Dawne
+ * `fetchConverterTypes` składało tę samą listę we froncie z trzech końcówek i liczyło
+ * `sn_mva`/`pmax_mw` z kVA/kW oraz napięcie z łańcucha pól, których serwer nie wysyła
+ * (`u_n_kv`, `voltage_kv`, `voltage_lv_kv`). Pomiar 2026-10-30: 142 pozycje PV i magazynów
+ * z tej drogi = rekordy `/converter-types` co do pola — druga, ręcznie utrzymywana kopia tej
+ * samej projekcji, która już raz gubiła `k_sc` i dwanaście pól kontraktu.
+ */
 export async function fetchDerConverterTypes(
   kind?: ConverterType['kind'],
 ): Promise<ConverterType[]> {
   const query = kind ? `?kind=${encodeURIComponent(kind)}` : '';
   return fetchCatalogJson<ConverterType[]>(`/api/catalog/converter-types${query}`);
-}
-
-function resolveConverterVoltageKv(
-  item: Pick<PVInverterCatalogType | BESSInverterCatalogType, 'un_kv' | 'u_n_kv' | 'voltage_kv' | 'voltage_lv_kv'>,
-): number | null {
-  const voltage =
-    item.un_kv ?? item.u_n_kv ?? item.voltage_lv_kv ?? item.voltage_kv;
-  return typeof voltage === 'number' && Number.isFinite(voltage) && voltage > 0
-    ? voltage
-    : null;
-}
-
-/**
- * Znormalizowana lista przekształtników (PV + BESS + wiatr) dla pickerów kreatorów.
- *
- * MAPOWANIE MUSI BYĆ PEŁNE (karta KATALOG-NIEZMIENNIKI §5 p.2). Karta S-2 wykryła,
- * że to mapowanie po cichu gubiło `k_sc` — pole, bez którego wynik zwarciowy opiera
- * się na domyślce i przestaje być miarodajny dla doboru. Naprawa INSTANCJI (dopisanie
- * jednego pola) zostawiłaby KLASĘ defektu: pomiar 2026-09-17 pokazał jeszcze dwanaście
- * pól kontraktu gubionych tą samą drogą (`control_mode`, `grid_code`,
- * `dynamic_profile_id`, pięć pól PTPiREE i trzy pola statusu katalogu).
- *
- * Od teraz KAŻDE pole zadeklarowane w typie `ConverterType`, które rekord backendu
- * potrafi podać, musi być tu przypisane — pilnuje tego
- * `scripts/katalog_parytet_pol_guard.py` (pola świadomie nienoszone mają w guardzie
- * nazwany powód, nie milczenie).
- */
-export async function fetchConverterTypes(): Promise<ConverterType[]> {
-  const [pvTypes, bessTypes, windTypes] = await Promise.all([
-    fetchPvInverterTypes(),
-    fetchBessInverterTypes(),
-    fetchWindInverterTypes(),
-  ]);
-
-  const pvConverters: ConverterType[] = pvTypes.flatMap((item) => {
-    const voltageKv = resolveConverterVoltageKv(item);
-    if (voltageKv === null) return [];
-    return [{
-      id: item.id,
-      name: item.name,
-      manufacturer: item.manufacturer,
-      kind: 'PV',
-      un_kv: voltageKv,
-      sn_mva: item.s_n_kva / 1000,
-      pmax_mw: item.p_max_kw / 1000,
-      cosphi_min: item.cos_phi_min,
-      cosphi_max: item.cos_phi_max,
-      k_sc: item.k_sc ?? null,
-      control_mode: item.control_mode ?? null,
-      grid_code: item.grid_code ?? null,
-      dynamic_profile_id: item.dynamic_profile_id ?? null,
-      // Certyfikat PTPiREE — z rekordu katalogowego (backend annotate_with_ptpiree_status)
-      // → materialized_params + ocena zgodności NC RfG. Bez tego link certyfikatu ginął.
-      ptpiree_status: item.ptpiree_status,
-      ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
-      ptpiree_document_number: item.ptpiree_document_number ?? null,
-      ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
-      ptpiree_wos_version: item.ptpiree_wos_version ?? null,
-      ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
-      ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
-      ptpiree_source_url: item.ptpiree_source_url ?? null,
-      ptpiree_publication_date: item.ptpiree_publication_date ?? null,
-      verification_status: item.verification_status ?? null,
-      source_reference: item.source_reference ?? null,
-      catalog_status: item.catalog_status ?? null,
-    }];
-  });
-  const bessConverters: ConverterType[] = bessTypes.flatMap((item) => {
-    const voltageKv = resolveConverterVoltageKv(item);
-    if (voltageKv === null) return [];
-    return [{
-      id: item.id,
-      name: item.name,
-      manufacturer: item.manufacturer,
-      kind: 'BESS',
-      un_kv: voltageKv,
-      sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
-      pmax_mw: item.p_discharge_kw / 1000,
-      e_kwh: item.e_kwh,
-      k_sc: item.k_sc ?? null,
-      dynamic_profile_id: item.dynamic_profile_id ?? null,
-      ptpiree_status: item.ptpiree_status,
-      ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
-      ptpiree_document_number: item.ptpiree_document_number ?? null,
-      ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
-      ptpiree_wos_version: item.ptpiree_wos_version ?? null,
-      ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
-      ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
-      ptpiree_source_url: item.ptpiree_source_url ?? null,
-      ptpiree_publication_date: item.ptpiree_publication_date ?? null,
-      verification_status: item.verification_status ?? null,
-      source_reference: item.source_reference ?? null,
-      catalog_status: item.catalog_status ?? null,
-    }];
-  });
-
-  const windConverters = windTypes.filter(
-    (item) =>
-      item.kind === 'WIND'
-      && typeof item.un_kv === 'number'
-      && Number.isFinite(item.un_kv)
-      && item.un_kv > 0,
-  );
-
-  return [...pvConverters, ...bessConverters, ...windConverters];
 }
 
 export async function fetchSourceSystemTypes(): Promise<SourceSystemCatalogType[]> {
@@ -640,7 +542,7 @@ export async function fetchProtectionDeviceTypes(): Promise<ProtectionDeviceType
           : undefined;
     return {
       id: String(item.id ?? ''),
-      name: String(item.name_pl ?? item.name ?? params.name_pl ?? params.name ?? item.id ?? ''),
+      name: nazwaObiektuPl(pierwszaNazwa(item.name_pl, item.name, params.name_pl, params.name), 'pozycja_katalogu'),
       manufacturer: vendor,
       vendor,
       model:
@@ -815,8 +717,14 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
     case 'ZKSN':
       types = await fetchBranchPointTypes('ZKSN');
       break;
-    default:
-      throw new Error(`Unknown category: ${category}`);
+    default: {
+      // Wyczerpanie unii `TypeCategory` sprawdza kompilator — nowa kategoria bez gałęzi
+      // pobierania to błąd kompilacji, nie komunikat dla projektanta.
+      const nieobslugiwana: never = category;
+      throw new Error(
+        `Przeglądarka typów nie obsługuje kategorii katalogu „${ETYKIETY_KATEGORII_TYPOW[nieobslugiwana as TypeCategory] ?? 'spoza słownika'}”.`,
+      );
+    }
   }
 
   return sortCatalogItems(types);

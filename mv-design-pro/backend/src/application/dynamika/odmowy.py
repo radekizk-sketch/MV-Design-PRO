@@ -16,7 +16,7 @@ razem z zamianą, bo nazwa ma własny cudzysłów.
 KLUCZE KODU. Komunikat rdzenia cytuje w odwrotnych apostrofach klucz pola kontraktu
 (nastawa solvera, pole zdarzenia) albo wartość wyliczeniową (sposób usunięcia zwarcia). Te
 same klucze projektant widzi w interfejsie jako ETYKIETY z opisu kontraktu scenariusza
-(`opis_scenariusza.ETYKIETY_POL`, `ETYKIETY_RODZAJOW`, `ETYKIETY_WARTOSCI`) — tu klucz zamienia się na tę samą
+(`enm.scenariusze.ETYKIETY_POL`, `ETYKIETY_RODZAJOW`, `ETYKIETY_WARTOSCI`) — tu klucz zamienia się na tę samą
 etykietę (jedno źródło etykiet). Każdy klucz cytowany w komunikatach odmów rdzenia ma etykietę
 — przypina to test skanujący wszystkie miejsca odmów rdzenia.
 """
@@ -27,23 +27,60 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from application.dynamika.opis_scenariusza import (
-    ETYKIETY_POL,
-    ETYKIETY_RODZAJOW,
-    ETYKIETY_WARTOSCI,
-)
 from application.dynamika.opis_wyniku import OPISY_STANOW_PL, komunikat_z_nazwami
 from enm.nazwy_elementow import zbuduj_indeks_nazw
+from enm.scenariusze import ETYKIETY_POL, ETYKIETY_RODZAJOW, ETYKIETY_WARTOSCI
 
 #: Adres stanu po zamianie elementu na nazwę: `„Nazwa”.stan` (stan = identyfikator kodu).
 _ADRES_STANU = re.compile(r"(„[^”]*”)\.([A-Za-z_][A-Za-z0-9_]*)")
 #: Klucz kodu cytowany w komunikacie rdzenia: `klucz`.
 _KLUCZ_KODU = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 
+#: Rodzaje obiektów rdzenia dynamiki, które odmowa rdzenia cytuje NAZWĄ KLASY w apostrofach
+#: odwróconych (`type(x).__name__`): urządzenia (klasa wyjaśnia, dlaczego stan nie jest
+#: przypisywalny albo komenda nieobsługiwana), zdarzenia harmonogramu (akcja dozoru, tryb
+#: stanowiska) i segmenty profilu źródła testowego. Projektant widzi rodzaj obiektu słowami —
+#: nazwa klasy jest identyfikatorem kodu. Kompletność wobec rodzin klas rdzenia przypina
+#: `tests/enm/test_klucze_pol_w_komunikatach_src.py` (każda klasa każdej rodziny ma wpis,
+#: każdy wpis jest klasą rdzenia).
+NAZWY_KLAS_DYNAMIKI_PL: dict[str, str] = {
+    # urządzenia
+    "MaszynaKlasyczna": "maszyna synchroniczna — model klasyczny (SEM za reaktancją przejściową)",
+    "MaszynaSynchroniczna": "maszyna synchroniczna — model szczegółowy 6. rzędu",
+    "PrzeksztaltnikGFL": "przekształtnik nadążający za siecią (GFL)",
+    "PrzeksztaltnikGFM": "przekształtnik tworzący sieć (GFM)",
+    "Magazyn": "magazyn energii",
+    "TurbinaWiatrowa": "turbina wiatrowa",
+    "SzynaSztywna": "ekwiwalent sieci nadrzędnej (stała SEM za impedancją)",
+    "ZrodloTestowe": "źródło testowe (profil napięcia, częstotliwości i fazy)",
+    "UrzadzenieOdlaczone": "urządzenie odłączone od sieci",
+    "UrzadzenieCzesciowe": "agregat pracujący częścią jednostek",
+    # zdarzenia harmonogramu
+    "ZwarcieWezla": "zwarcie w węźle",
+    "ZwarcieGalezi": "zwarcie w linii lub kablu",
+    "ZmianaGalezi": "otwarcie lub zamknięcie gałęzi",
+    "ZmianaOdsprzegu": "wyłączenie lub załączenie odsprzęgu",
+    "ZmianaOdbioru": "odłączenie lub załączenie odbioru",
+    "OdlaczenieZrodla": "odłączenie źródła",
+    "UtrataCzesciowaZrodla": "częściowa utrata jednostek źródła",
+    "SkokObciazenia": "skokowa zmiana mocy odbioru",
+    "PrzypisanieStanu": "przypisanie wartości stanu urządzenia",
+    "KomendaRegulacji": "zmiana nastawy regulatora źródła",
+    # segmenty profilu źródła testowego
+    "SkokNapiecia": "skok amplitudy napięcia",
+    "RampaNapiecia": "rampa amplitudy napięcia",
+    "SkokCzestotliwosci": "skok częstotliwości",
+    "RampaCzestotliwosci": "rampa częstotliwości",
+    "SkokFazy": "skok fazy",
+}
+
 
 def etykieta_klucza(klucz: str) -> str | None:
-    """Etykieta pola albo wartości wyliczeniowej kontraktu scenariusza; `None` — brak etykiety
-    (klucz spoza kontraktu scenariusza; test pilnuje, że rdzeń takich nie cytuje)."""
+    """Etykieta pola albo wartości wyliczeniowej kontraktu scenariusza albo rodzaju obiektu
+    rdzenia (nazwa klasy); `None` — brak etykiety (klucz spoza kontraktu scenariusza; test
+    pilnuje, że rdzeń takich nie cytuje)."""
+    if klucz in NAZWY_KLAS_DYNAMIKI_PL:
+        return NAZWY_KLAS_DYNAMIKI_PL[klucz]
     if klucz in ETYKIETY_POL:
         return ETYKIETY_POL[klucz]
     if klucz in ETYKIETY_RODZAJOW:
@@ -80,4 +117,4 @@ def komunikat_dla_projektanta(tekst: str, migawka: Mapping[str, Any]) -> str:
     return _KLUCZ_KODU.sub(_klucz, tekst)
 
 
-__all__ = ["etykieta_klucza", "komunikat_dla_projektanta"]
+__all__ = ["NAZWY_KLAS_DYNAMIKI_PL", "etykieta_klucza", "komunikat_dla_projektanta"]

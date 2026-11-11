@@ -15,9 +15,15 @@ REACTIVE_CHARACTERS: tuple[str, ...] = ("inductive", "capacitive")
 def validate_flow_flags(flow_direction: str, reactive_character: str) -> None:
     """Sprawdz kierunek mocy czynnej i charakter mocy biernej (ValueError przy bledzie)."""
     if flow_direction not in FLOW_DIRECTIONS:
-        raise OdmowaDanychError("flow_direction musi byc 'load' albo 'generation'.")
+        raise OdmowaDanychError(
+            "Kierunek przepływu mocy czynnej musi być: odbiór albo generacja "
+            f"(otrzymano {flow_direction!r})."
+        )
     if reactive_character not in REACTIVE_CHARACTERS:
-        raise OdmowaDanychError("reactive_character musi byc 'inductive' albo 'capacitive'.")
+        raise OdmowaDanychError(
+            "Charakter mocy biernej musi być: indukcyjny albo pojemnościowy "
+            f"(otrzymano {reactive_character!r})."
+        )
 
 
 @dataclass(frozen=True)
@@ -116,15 +122,15 @@ def compute_cable_voltage_drop(data: CableVoltageDropInput) -> CableVoltageDropR
     """
 
     if data.current_a <= 0:
-        raise OdmowaDanychError("Prad obciazenia musi byc dodatni.")
+        raise OdmowaDanychError("Prąd obciążenia musi być dodatni.")
     if data.length_km <= 0:
-        raise OdmowaDanychError("Dlugosc odcinka musi byc dodatnia.")
+        raise OdmowaDanychError("Długość odcinka musi być dodatnia.")
     if data.line_voltage_v <= 0:
-        raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
+        raise OdmowaDanychError("Napięcie linii musi być dodatnie.")
     if data.r_ohm_per_km < 0:
-        raise OdmowaDanychError("Rezystancja jednostkowa nie moze byc ujemna.")
+        raise OdmowaDanychError("Rezystancja jednostkowa nie może być ujemna.")
     if data.x_ohm_per_km < 0:
-        raise OdmowaDanychError("Reaktancja jednostkowa nie moze byc ujemna.")
+        raise OdmowaDanychError("Reaktancja jednostkowa nie może być ujemna.")
     if not 0.0 < data.cos_phi <= 1.0:
         raise OdmowaDanychError("Współczynnik mocy musi leżeć w zakresie (0, 1].")
     validate_flow_flags(data.flow_direction, data.reactive_character)
@@ -160,9 +166,9 @@ def compute_cable_rated_current(data: CableRatedCurrentInput) -> CableRatedCurre
     """Oblicz prad znamionowy z mocy przylaczeniowej dla ukladu 3-fazowego."""
 
     if data.active_power_kw <= 0:
-        raise OdmowaDanychError("Moc czynna musi byc dodatnia.")
+        raise OdmowaDanychError("Moc czynna musi być dodatnia.")
     if data.line_voltage_v <= 0:
-        raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
+        raise OdmowaDanychError("Napięcie linii musi być dodatnie.")
     if not 0.0 < data.cos_phi <= 1.0:
         raise OdmowaDanychError("Współczynnik mocy musi leżeć w zakresie (0, 1].")
 

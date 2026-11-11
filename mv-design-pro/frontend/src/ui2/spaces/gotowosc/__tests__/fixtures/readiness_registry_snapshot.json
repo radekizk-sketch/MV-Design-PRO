@@ -1314,6 +1314,14 @@
     },
     {
       "area": "STATIONS",
+      "code": "station.segment_without_field",
+      "fix_navigation": {
+        "modal": "przepnij_element_na_pole",
+        "panel": "sld"
+      }
+    },
+    {
+      "area": "STATIONS",
       "code": "station.type_invalid",
       "fix_navigation": {
         "panel": "inspector",
@@ -1556,7 +1564,7 @@
       }
     }
   ],
-  "count": 182,
+  "count": 183,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1719,6 +1727,7 @@
     "W046": "station.bkr_unbalance_ct_missing",
     "W047": "station.bkr_discharge_vt_missing",
     "W048": "station.bkr_transformer_trip_incomplete",
+    "W049": "station.segment_without_field",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

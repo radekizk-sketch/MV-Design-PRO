@@ -11,6 +11,7 @@
  * NIE udaje pozycji.
  */
 
+import { nazwaObiektuPl } from '../../ui/shared/nazwaObiektu';
 import type { PortKind } from '../../ui/sld/v2/core/ports';
 import { BAY_ROLE_TO_PORT_KIND } from '../../ui/sld/v2/core/ports';
 import {
@@ -424,7 +425,7 @@ function buildStationGeometry(rawStation: RawStation): NodeGeometry {
     lod: 'L0',
     ports: stationPorts,
     children: fieldNodes.length > 0 ? fieldNodes : undefined,
-    label: station?.name ?? rawStation.ref,
+    label: nazwaObiektuPl(station?.name, 'stacja'),
     nodeKind: station?.stationType ?? 'station',
   };
 }

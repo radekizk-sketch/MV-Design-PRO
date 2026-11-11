@@ -17,9 +17,8 @@ import random
 import networkx as nx
 import pytest
 from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
-from enm.models import EnergyNetworkModel
+from enm.models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel
 from enm.topology import (
-    TYPY_LACZNIKOW_ENM,
     TYPY_MASZYN_ASYNCHRONICZNYCH,
     TYPY_MASZYN_SYNCHRONICZNYCH,
     TopologyView,
@@ -188,7 +187,7 @@ def test_derive_wyspy_wezly_topologiczne_sekcje_i_zrodla() -> None:
     assert widok.wyspa_szyny("B3") is zasilana and widok.wyspa_szyny("BX") is None
 
 
-@pytest.mark.parametrize("typ", sorted(TYPY_LACZNIKOW_ENM))
+@pytest.mark.parametrize("typ", sorted(RODZAJE_GALEZI_APARATU))
 def test_derive_kazdy_typ_lacznika_zamkniety_scala_a_otwarty_dzieli(typ: str) -> None:
     def model(status: str) -> dict:
         return {

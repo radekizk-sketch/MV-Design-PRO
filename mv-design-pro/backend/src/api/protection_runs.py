@@ -41,6 +41,7 @@ from application.result_freshness import (
     swiezosc_biegu_kanonicznego,
 )
 from domain.execution import StanBiegu
+from domain.opis_przebiegu import stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
@@ -160,7 +161,7 @@ def _require_run(run_id: UUID) -> CanonicalRun:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection analysis run '{run_id}' not found",
+            detail=f"Nie znaleziono biegu analizy zabezpieczeń '{run_id}'.",
         )
     return run
 
@@ -170,7 +171,7 @@ def _require_protection_run(run_id: UUID) -> CanonicalRun:
     if run.analysis_type != "protection_sn":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Protection analysis run '{run_id}' not found",
+            detail=f"Nie znaleziono biegu analizy zabezpieczeń '{run_id}'.",
         )
     return run
 
@@ -352,7 +353,7 @@ def get_protection_run_results(
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Przebieg nie jest zakończony (status: {run.status})",
+            detail=f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}).",
         )
 
     result = (run.raw_result or {}).get("protection_result")
@@ -428,7 +429,7 @@ def get_protection_run_trace(run_id: UUID) -> dict[str, Any]:
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Przebieg nie jest zakończony (status: {run.status})",
+            detail=f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}).",
         )
 
     trace = (run.raw_result or {}).get("protection_trace")

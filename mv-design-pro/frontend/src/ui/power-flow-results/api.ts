@@ -26,6 +26,7 @@ import type {
   PowerFlowInterpretation,
 } from './types';
 import { mergeAnalysisCaseContexts } from '../results-inspector/analysisCaseContextView';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -73,7 +74,7 @@ export async function fetchPowerFlowRuns(
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Blad pobierania listy rozpywow: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania listy rozpływów');
   }
   return response.json();
 }
@@ -84,7 +85,7 @@ export async function fetchPowerFlowRuns(
 export async function fetchPowerFlowRunHeader(runId: string): Promise<PowerFlowRunHeader> {
   const response = await fetch(`${API_BASE}/power-flow-runs/${runId}`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania metadanych run: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania metadanych przebiegu');
   }
   return normalizePowerFlowRunHeader(await response.json());
 }
@@ -97,7 +98,7 @@ export async function fetchPowerFlowRunHeader(runId: string): Promise<PowerFlowR
 export async function fetchPowerFlowResults(runId: string): Promise<PowerFlowResultV1> {
   const response = await fetch(`${API_BASE}/power-flow-runs/${runId}/results`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania wynikow rozpywu: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania wyników rozpływu');
   }
   return response.json();
 }
@@ -110,7 +111,7 @@ export async function fetchPowerFlowResults(runId: string): Promise<PowerFlowRes
 export async function fetchPowerFlowTrace(runId: string): Promise<PowerFlowTrace> {
   const response = await fetch(`${API_BASE}/power-flow-runs/${runId}/trace`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania sladu obliczen: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania śladu obliczeń');
   }
   return response.json();
 }
@@ -125,7 +126,7 @@ export async function fetchPowerFlowTrace(runId: string): Promise<PowerFlowTrace
 export async function fetchPowerFlowInterpretation(runId: string): Promise<PowerFlowInterpretation> {
   const response = await fetch(`${API_BASE}/power-flow-runs/${runId}/interpretation`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania interpretacji: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania interpretacji');
   }
   return response.json();
 }

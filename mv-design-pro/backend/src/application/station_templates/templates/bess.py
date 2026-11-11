@@ -95,7 +95,7 @@ BESS_TEMPLATES = (
         "Mały magazyn 500 kW/1 MWh do peak shaving zakładu.",
         bess_count=1,
         bess_p_mw_each=0.5,
-        use_case="Peak shaving zakładu przemysłowego, redukcja mocy szczytowej.",
+        use_case="Obniżanie szczytów poboru zakładu przemysłowego, redukcja mocy szczytowej.",
     ),
     _bess(
         "tpl_bess_1mw_2mwh",
@@ -111,7 +111,7 @@ BESS_TEMPLATES = (
         "BESS 2 MW/4 MWh do stabilizacji napięcia + Q services.",
         bess_count=1,
         bess_p_mw_each=2.0,
-        use_case="Voltage support, regulacja Q dla OSD.",
+        use_case="Wsparcie napięcia, regulacja Q dla OSD.",
     ),
     _bess(
         "tpl_bess_5mw_10mwh_fcr_n",

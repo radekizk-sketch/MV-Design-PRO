@@ -105,7 +105,10 @@ def test_proof_pack_api_returns_zip(tmp_path):
         f"/api/proof/{data['project_id']}/{data['case_id']}/{data['run_id']}/pack"
     )
     assert response.status_code == 410
-    assert "StudyCase" in response.json()["detail"]
+    # Odmowa wskazuje następcę słowami projektanta (nie nazwą klasy kodu „StudyCase”).
+    detail = response.json()["detail"]
+    assert "dowodu dla przypadku obliczeniowego" in detail
+    assert "StudyCase" not in detail
 
 
 def test_proof_pack_api_404_when_missing(tmp_path):

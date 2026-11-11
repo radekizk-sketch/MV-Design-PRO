@@ -120,6 +120,15 @@ export type EvidenceTier =
 /** Lustro `werdykt.proweniencja.FieldQuality` — jakość wartości wejściowej. */
 export type FieldQuality = 'DATASHEET' | 'ESTIMATED' | 'SYSTEM_DEFAULT';
 
+/** Nazwa polska jakości danej — lustro `werdykt.proweniencja.FieldQuality.label_pl`
+ *  (parytet: wyrocznia `pola_kart_katalogu.json`, test `ui/catalog/__tests__/
+ *  polaKartyKatalogu.test.ts`). Jedno źródło dla karty werdyktu i karty katalogu. */
+export const NAZWA_JAKOSCI_DANEJ_PL: Readonly<Record<FieldQuality, string>> = {
+  DATASHEET: 'karta techniczna',
+  ESTIMATED: 'oszacowane',
+  SYSTEM_DEFAULT: 'domyślne techniczne',
+};
+
 /**
  * Lustro `werdykt.proweniencja.ClaimKind` — rodzaj twierdzenia wspieranego wynikiem
  * (`STATIC_CALCULATION` — twierdzenie z obliczenia statycznego, karta A2).

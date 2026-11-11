@@ -2726,11 +2726,13 @@ _TABLICA_UZYCIA_POL: dict[tuple[str, str], tuple[bool, bool]] = {
 
 
 def _kody_gotowosci(raport) -> set[str]:
-    """Kody z powodow gotowosci (`... (kod 'x')`) — ta sama forma, ktora czyta projektant."""
+    """Kody z powodow gotowosci (`... (kod gotowości: x)`) — ta sama forma, ktora czyta projektant."""
     import re
 
     return {
-        kod for powod in raport.missing_fields_pl for kod in re.findall(r"\(kod '([^']+)'\)", powod)
+        kod
+        for powod in raport.missing_fields_pl
+        for kod in re.findall(r"\(kod gotowości: ([\w.\-]+)\)", powod)
     }
 
 

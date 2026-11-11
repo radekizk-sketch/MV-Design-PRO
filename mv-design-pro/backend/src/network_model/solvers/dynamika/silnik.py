@@ -1588,6 +1588,7 @@ class SilnikDynamiki:
                 zaciski: tuple[str, ...] = (wpis.ref,)
                 odizolowane = wpis.ref in beznapieciowe
                 miejsce: dict[str, object] = {"wezel": wpis.ref}
+                opis_miejsca = f"w węźle {wpis.ref}"
             else:
                 galaz = galezie[wpis.ref]
                 zaciski = (galaz.wezel_od, galaz.wezel_do)
@@ -1595,6 +1596,9 @@ class SilnikDynamiki:
                     wezel in beznapieciowe for wezel in zaciski
                 )
                 miejsce = {"galaz": wpis.ref, "polozenie_wzgledne": wpis.polozenie_wzgledne}
+                opis_miejsca = (
+                    f"na gałęzi {wpis.ref} (położenie względne {wpis.polozenie_wzgledne:g})"
+                )
             if odizolowane:
                 continue
             zasilany = next(wezel for wezel in zaciski if wezel not in beznapieciowe)
@@ -1612,9 +1616,10 @@ class SilnikDynamiki:
             )
             raise OdmowaDynamiki(
                 KOD_ZWARCIE_NIEODIZOLOWANE,
-                f"Usunięcie zwarcia {miejsce} w t = {t_s} s zadeklarowane jako `izolacja`, ale "
-                f"w stanie po zdarzeniach tej chwili miejsce zwarcia nadal leży w wyspie "
-                f"zasilanej {wyspa} przez {wnoszace}. Żaden aparat nie przerwał prądu zwarcia: "
+                f"Usunięcie zwarcia {opis_miejsca} w t = {t_s} s zadeklarowane jako `izolacja`, "
+                "ale w stanie po zdarzeniach tej chwili miejsce zwarcia nadal leży w wyspie "
+                f"węzłów {', '.join(wyspa)} zasilanej przez urządzenia {', '.join(wnoszace)}. "
+                "Żaden aparat nie przerwał prądu zwarcia: "
                 "dodaj otwarcie gałęzi odcinających miejsce zwarcia w tej chwili albo "
                 "zadeklaruj usunięcie `samoczynne` (idealizacja zwarcia przemijającego).",
                 t_s=t_s,
@@ -1688,8 +1693,8 @@ class SilnikDynamiki:
         if tolerancja is None:
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"Harmonogram niesie {len(dozory)} dozorow (zdarzeń warunkowych), a nastawy "
-                "nie podaja tolerancji lokalizacji zdarzeń — chwila przekroczenia nie miałaby "
+                f"Harmonogram niesie {len(dozory)} dozorów (zdarzeń warunkowych), a nastawy "
+                "nie podają tolerancji lokalizacji zdarzeń — chwila przekroczenia nie miałaby "
                 "zadeklarowanej dokładności",
                 pole="tolerancja_lokalizacji_zdarzen_s",
                 dozory=tuple(dozor.ident for dozor in dozory),
@@ -2793,7 +2798,7 @@ def jednostka_stanu(nazwa: str) -> str:
     if nazwa.endswith("_s"):
         return "s"
     raise AssertionError(
-        f"Stan {nazwa!r} nie niesie jednostki w nazwie — kontrakt nazw stanow wymaga "
+        f"Stan {nazwa!r} nie niesie jednostki w nazwie — kontrakt nazw stanów wymaga "
         "sufiksu jednostki (_rad, _pu, _pu_na_s, _s)."
     )
 

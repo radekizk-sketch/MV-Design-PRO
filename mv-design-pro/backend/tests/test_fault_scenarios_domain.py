@@ -99,7 +99,7 @@ class TestFaultScenarioDomain:
 
     def test_validate_empty_element_ref_fails(self):
         """Empty element_ref raises validation error."""
-        with pytest.raises(FaultScenarioValidationError, match="element_ref"):
+        with pytest.raises(FaultScenarioValidationError, match="musi wskazywać miejsce zwarcia"):
             new_fault_scenario(
                 study_case_id=FIXED_CASE_ID,
                 name="Scenariusz",
@@ -162,7 +162,9 @@ class TestFaultScenarioDomain:
 
     def test_branch_requires_position(self):
         """BRANCH location requires position in (0,1)."""
-        with pytest.raises(FaultScenarioValidationError, match="pozycji"):
+        with pytest.raises(
+            FaultScenarioValidationError, match="Zwarcie na gałęzi wymaga położenia miejsca zwarcia"
+        ):
             new_fault_scenario(
                 study_case_id=FIXED_CASE_ID,
                 name="Branch test",
@@ -175,7 +177,9 @@ class TestFaultScenarioDomain:
 
     def test_bus_no_position(self):
         """BUS location must not have position."""
-        with pytest.raises(FaultScenarioValidationError, match="pozycji"):
+        with pytest.raises(
+            FaultScenarioValidationError, match="Zwarcie na szynie nie ma położenia na gałęzi"
+        ):
             new_fault_scenario(
                 study_case_id=FIXED_CASE_ID,
                 name="Bus test",

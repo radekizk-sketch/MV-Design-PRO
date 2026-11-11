@@ -79,8 +79,8 @@ def _apply_quality_defaults(record: dict[str, Any]) -> None:
     params = record.setdefault("params", {})
     if not params.get("source_reference"):
         raise ValueError(
-            f"catalog.source_missing: pozycja '{record.get('id')}' nie ma źródła danych "
-            "(source_reference)"
+            f"Pozycja katalogu przekształtników SN „{record.get('id')}” nie ma wskazanego "
+            "źródła danych"
         )
     params.setdefault("verification_status", _DEFAULT_VERIFICATION_STATUS)
     params.setdefault("catalog_status", _DEFAULT_CATALOG_STATUS)

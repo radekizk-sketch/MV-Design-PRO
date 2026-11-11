@@ -21,6 +21,7 @@ import type {
 import type { ResultStatus as _ResultStatus } from '../types';
 import { ETYKIETA_PL_PUNKTU_NEUTRALNEGO } from '../../types/uziemienie';
 import type { DanaPrzyjeta } from '../../ui2/wyniki/wzorzec/werdykt';
+import { UKLAD_POLACZEN_BATERII_PL } from '../catalog/wartosciKodoweKarty';
 
 // =============================================================================
 // Run Header
@@ -1020,12 +1021,8 @@ export const TRACE_VALUE_CODES: Readonly<Record<string, Readonly<Record<string, 
   hv_neutral: ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
   lv_neutral: ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
   // `network_model/core/bateria_kondensatorow.py::NAZWY_UKLADOW_POLACZEN_BATERII_PL`.
-  uklad_polaczen: {
-    PODWOJNA_GWIAZDA_IZOLOWANA: 'podwójna gwiazda z izolowanymi punktami gwiazd',
-    GWIAZDA_IZOLOWANA: 'gwiazda z izolowanym punktem gwiazdy',
-    GWIAZDA_UZIEMIONA: 'gwiazda z uziemionym punktem gwiazdy',
-    TROJKAT: 'trójkąt',
-  },
+  // Jeden słownik frontu (`ui/catalog/wartosciKodoweKarty.ts`, test równości z backendem).
+  uklad_polaczen: UKLAD_POLACZEN_BATERII_PL,
 };
 
 /**

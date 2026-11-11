@@ -27,6 +27,7 @@
  */
 
 import type { RawOverlayElement } from './rawResultOverlayStore';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 /** Wpis legendy nakładki — treść POLSKA, autorytatywna po stronie backendu. */
 export interface WpisLegendyRoznic {
@@ -95,7 +96,7 @@ export async function pobierzNakladkeRoznic(
     signal,
   });
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się pobrać różnic dla schematu (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się pobrać różnic dla schematu');
   }
   const dane: unknown = await odpowiedz.json();
   if (!maKsztaltNakladki(dane)) {

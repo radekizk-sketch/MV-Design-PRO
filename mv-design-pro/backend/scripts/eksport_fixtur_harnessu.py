@@ -45,15 +45,18 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 from unittest.mock import patch
 from uuid import NAMESPACE_URL, UUID, uuid5
+
+from fastapi import Response
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
 
 from api.analysis_runs import _catalog_completed_snapshot  # noqa: E402
+from api.audit2_catalogs import list_tap_changers  # noqa: E402
 from api.canonical_run_views import (  # noqa: E402
     build_branch_results_response,
     build_bus_results_response,
@@ -67,6 +70,31 @@ from api.canonical_run_views import (  # noqa: E402
     build_short_circuit_rozplyw_response,
     get_power_flow_result,
     get_power_flow_trace,
+)
+from api.catalog import (  # noqa: E402
+    list_arc_suppression_coil_types,
+    list_bess_inverter_types,
+    list_branch_point_types,
+    list_cable_types,
+    list_converter_types,
+    list_ct_types,
+    list_earthing_transformer_types,
+    list_line_types,
+    list_load_types,
+    list_lv_apparatus_types,
+    list_lv_cable_types,
+    list_lv_rcd_types,
+    list_mv_apparatus_types,
+    list_neutral_earthing_resistor_types,
+    list_overhead_conductor_types,
+    list_ptpiree_generator_certificates,
+    list_pv_inverter_types,
+    list_shunt_capacitor_types,
+    list_source_system_types,
+    list_surge_arrester_types,
+    list_switch_equipment_types,
+    list_transformer_types,
+    list_vt_types,
 )
 from api.generators import (  # noqa: E402
     get_der_instrument_transformers,
@@ -202,10 +230,14 @@ from enm.hash import compute_enm_hash  # noqa: E402
 from enm.klucz_twin import klucz_twin_projektu  # noqa: E402
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id  # noqa: E402
 from enm.models import (  # noqa: E402
+    RODZAJE_GALEZI_APARATU,
+    RODZAJE_GALEZI_LACZNIKA,
+    Cable,
     ConnectionConditions,
     EnergyNetworkModel,
     ENMHeader,
     Generator,
+    OverheadLine,
     TapChanger,
 )
 from enm.pola import ref_pola_wytworcy  # noqa: E402
@@ -216,6 +248,7 @@ from enm.scenariusze import (  # noqa: E402
     usun_wszystkie_scenariusze,
     zapisz_scenariusz,
 )
+from enm.slownik_komunikatow import NAZWY_RODZAJOW_GALEZI_PL  # noqa: E402
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from enm.tor_pola import szyny_stacji  # noqa: E402
 from infrastructure.persistence.db import (  # noqa: E402
@@ -226,6 +259,7 @@ from infrastructure.persistence.db import (  # noqa: E402
 from infrastructure.persistence.unit_of_work import build_uow_factory  # noqa: E402
 from network_model.catalog.repository import get_default_mv_catalog  # noqa: E402
 from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
+    NAZWY_RODZAJOW_APARATU_PL,
     RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA,
     RODZAJE_APARATURY_LACZENIOWEJ,
     WIELKOSCI_ZWARCIOWE_APARATU_SN,
@@ -233,12 +267,17 @@ from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
     wielkosc_zwarciowa_lacznika_dotyczy,
 )
+from network_model.catalog.types import CatalogStatus, SynchronousGeneratorType  # noqa: E402
+from network_model.core.bateria_kondensatorow import (  # noqa: E402
+    NAZWY_UKLADOW_POLACZEN_BATERII_PL,
+)
 from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
     compute_cable_rated_current,
 )
 from network_model.solvers.ncrfg_ptpiree.contracts import NcRfgPtpireeRunRequest  # noqa: E402
 from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
+from werdykt.proweniencja import FieldQuality  # noqa: E402
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
 from tests.ci.tolerancja_fikstur import (  # noqa: E402
@@ -1138,7 +1177,219 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
             }
             for rodzaj in sorted(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.values())
         },
+        # Nazwa rodzaju łącznika dla projektanta — wyrocznia słownika frontu
+        # `NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL` (karta szczegółów przeglądarki typów).
+        "nazwy_lacznika": {
+            rodzaj: NAZWY_RODZAJOW_APARATU_PL[rodzaj]
+            for rodzaj in sorted(RODZAJE_APARATURY_LACZENIOWEJ)
+        },
+        # Rodzaje gałęzi modelu (`Branch.type`) — wyrocznia list `types/rodzajeGalezi.ts`
+        # (`RODZAJE_GALEZI`, `RODZAJE_GALEZI_LACZNIKA`, `RODZAJE_GALEZI_APARATU`) i słownika
+        # nazw `ui/shared/rodzajGalezi.ts` (`RODZAJ_GALEZI_PL`).
+        "rodzaje_galezi": {
+            "odcinek": sorted(
+                {
+                    *get_args(OverheadLine.model_fields["type"].annotation),
+                    *get_args(Cable.model_fields["type"].annotation),
+                }
+            ),
+            "lacznik": sorted(RODZAJE_GALEZI_LACZNIKA),
+            "aparat": sorted(RODZAJE_GALEZI_APARATU),
+        },
+        "nazwy_galezi": dict(sorted(NAZWY_RODZAJOW_GALEZI_PL.items())),
     }
+
+
+#: Typy pozycji spoza panelu ogólnego, których wartości kodowe projektant widzi: karta
+#: z budowniczym wierszy (linia, kabel, transformator, łącznik) i przekształtnik w kreatorach
+#: OZE. Przełącznik zaczepów jest poza zbiorem: kreator pokazuje jego `label_pl`, a kody
+#: (`oltc`, `hv`) przepisuje na pola modelu, nigdy na ekran; generator synchroniczny nie ma
+#: pozycji (kształt mierzony z `to_dict` pozycji pomiarowej).
+_TYPY_Z_WARTOSCIAMI_KODOWYMI = (
+    "LINE",
+    "CABLE",
+    "TRANSFORMER",
+    "SWITCH_EQUIPMENT",
+    "PRZEKSZTALTNIK_DER",
+)
+_WARTOSC_KODOWA = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+#: Poddrzewa z własnym słownikiem prezentacji: jakość danej pola (`NAZWA_JAKOSCI_DANEJ_PL`) i
+#: propozycje wartości roboczych (sekcja karty z `nazwa_pl` rejestru backendu).
+_PODDRZEWA_Z_WLASNA_PREZENTACJA = frozenset({"card_field_status", "wartosci_robocze"})
+
+
+def _pole_referencji(klucz: str) -> bool:
+    """Tożsamość i odwołanie do innego rekordu — nie wartość kodowa do nazwania."""
+    return klucz in {"id", "name"} or klucz.endswith(("_id", "_ref", "_key"))
+
+
+def wartosci_kodowe_kart(grupy_rekordow: Iterable[list[dict[str, Any]]]) -> dict[str, list[str]]:
+    """Pola kart katalogu, których KAŻDA wartość ma postać kodu (`[A-Za-z][A-Za-z0-9_]*`):
+    pole → posortowane wartości, także wewnątrz wartości złożonych (`params`, listy portów).
+
+    Wyrocznia słownika nazw wartości kodowych frontu (`ui/catalog/wartosciKodoweKarty.ts`):
+    karta pokazuje projektantowi nazwę, nie kod. Pole z choć jedną wartością tekstową (opis,
+    numer dokumentu, model) nie jest kodowe; pole referencji (`id`, `*_id`, `*_ref`, `*_key`)
+    wskazuje inny rekord i nie jest nazywane słownikiem."""
+    wartosci: dict[str, set[str]] = {}
+    tekstowe: set[str] = set()
+
+    def zbierz(klucz: str, wartosc: Any) -> None:
+        if klucz in _PODDRZEWA_Z_WLASNA_PREZENTACJA or _pole_referencji(klucz):
+            return
+        if isinstance(wartosc, dict):
+            for k, v in wartosc.items():
+                zbierz(k, v)
+        elif isinstance(wartosc, list):
+            for v in wartosc:
+                zbierz(klucz, v)
+        elif isinstance(wartosc, str):
+            if _WARTOSC_KODOWA.fullmatch(wartosc):
+                wartosci.setdefault(klucz, set()).add(wartosc)
+            else:
+                tekstowe.add(klucz)
+
+    for rekordy in grupy_rekordow:
+        for rekord in rekordy:
+            for klucz, wartosc in rekord.items():
+                zbierz(klucz, wartosc)
+    return {k: sorted(v) for k, v in sorted(wartosci.items()) if k not in tekstowe}
+
+
+def pola_kart_katalogu() -> dict[str, Any]:
+    """Klucze pozycji katalogu, które serwer wysyła dla kategorii przeglądarki typów — POMIAR
+    odpowiedzi TYCH SAMYCH funkcji, które obsługują `GET /api/catalog/...` (`api/catalog.py`):
+    suma kluczy wszystkich pozycji kategorii (pozycja może pominąć klucz opcjonalny).
+
+    Wyrocznia schematu panelu ogólnego karty katalogu (`ui/catalog/polaKartyKatalogu.ts`,
+    test `ui/catalog/__tests__/polaKartyKatalogu.test.ts`): panel pokazuje KAŻDE pole
+    schematu — wartość albo „brak danych” — zamiast ukrywać pola `null` i pola pominięte.
+    Kategorie złożone przeglądarki: przekładniki = CT ∪ VT, przekształtniki = PV ∪ BESS
+    (`fetchTypesByCategory`, `ui/catalog/api.ts`).
+    """
+
+    def klucze(rekordy: list[dict[str, Any]]) -> list[str]:
+        return sorted(set().union(*(set(r) for r in rekordy)))
+
+    def klucze_wartosci_zlozonych(wartosc: Any) -> set[str]:
+        if isinstance(wartosc, dict):
+            return set(wartosc).union(*(klucze_wartosci_zlozonych(v) for v in wartosc.values()))
+        if isinstance(wartosc, list):
+            return set().union(*(klucze_wartosci_zlozonych(v) for v in wartosc))
+        return set()
+
+    ct = list_ct_types()
+    vt = list_vt_types()
+    pv = list_pv_inverter_types()
+    bess = list_bess_inverter_types()
+    rekordy_kategorii: dict[str, list[dict[str, Any]]] = {
+        "HV_OVERHEAD_CONDUCTOR": list_overhead_conductor_types()["przewody"],
+        "MV_APPARATUS": list_mv_apparatus_types(),
+        "LV_APPARATUS": list_lv_apparatus_types(),
+        "LV_RCD": list_lv_rcd_types(),
+        "LV_CABLE": list_lv_cable_types(),
+        "LOAD": list_load_types(),
+        "CT": ct,
+        "VT": vt,
+        "MEASUREMENT_TRANSFORMER": ct + vt,
+        "PV_INVERTER": pv,
+        "BESS_INVERTER": bess,
+        "CONVERTER": pv + bess,
+        "SYSTEM_SOURCE": list_source_system_types(),
+        "SURGE_ARRESTER": list_surge_arrester_types(),
+        "SHUNT_CAPACITOR": list_shunt_capacitor_types(),
+        "EARTHING_TRANSFORMER": list_earthing_transformer_types(),
+        "ARC_SUPPRESSION_COIL": list_arc_suppression_coil_types(),
+        "NEUTRAL_EARTHING_RESISTOR": list_neutral_earthing_resistor_types(),
+        "PTPIREE_CERTIFICATE": list_ptpiree_generator_certificates(Response()),
+        "BRANCH_POLE": list_branch_point_types("BRANCH_POLE"),
+        "ZKSN": list_branch_point_types("ZKSN"),
+    }
+    # Klucze wewnątrz wartości złożonych (słownik, lista słowników) — panel pokazuje je jako
+    # „Etykieta: wartość”; `wartosci_robocze` ma własną sekcję karty (V12K-351).
+    zagniezdzone = set().union(
+        *(
+            klucze_wartosci_zlozonych(v)
+            for rekordy in rekordy_kategorii.values()
+            for rekord in rekordy
+            for k, v in rekord.items()
+            if k != "wartosci_robocze"
+        )
+    )
+    # Kategorie przeglądarki z dedykowanym budowniczym wierszy (`wierszeKartyKatalogu.ts`) i typy
+    # pozycji katalogu czytane poza przeglądarką (kreatory) — lustro typów `ui/catalog/types.ts`.
+    # Generator synchroniczny: katalog nie ma dziś żadnej pozycji, więc kształt serializacji mierzy
+    # `to_dict` pozycji z każdym polem opcjonalnym podanym (nota weryfikacji obecna).
+    rekordy_typow: dict[str, list[dict[str, Any]]] = {
+        "LINE": list_line_types(),
+        "CABLE": list_cable_types(),
+        "TRANSFORMER": list_transformer_types(),
+        "SWITCH_EQUIPMENT": list_switch_equipment_types(),
+        "PRZEKSZTALTNIK_DER": list_converter_types(None),
+        "GENERATOR_SN": [
+            SynchronousGeneratorType(
+                id="pomiar", name="pomiar", manufacturer="pomiar", verification_note="pomiar"
+            ).to_dict()
+        ],
+        "PRZELACZNIK_ZACZEPOW": list_tap_changers(),
+    }
+    punkty = rekordy_kategorii["BRANCH_POLE"] + rekordy_kategorii["ZKSN"]
+    parametry_punktow = [r["params"] for r in punkty]
+    return {
+        "zrodlo": "api/catalog.py (funkcje obsługi GET /api/catalog/...)",
+        "kategorie": {kat: klucze(rekordy) for kat, rekordy in rekordy_kategorii.items()},
+        "typy_pozycji": {typ: klucze(rekordy) for typ, rekordy in rekordy_typow.items()},
+        # Parametry punktu rozgałęzienia (słup rozgałęźny, ZKSN) — serwer wysyła je w `params`.
+        "parametry_punktu_rozgalezienia": {
+            "params": klucze(parametry_punktow),
+            "route_ports": klucze([p for x in parametry_punktow for p in x["route_ports"]]),
+            "apparatus_specs": klucze(
+                [a for x in parametry_punktow for a in x.get("apparatus_specs", [])]
+            ),
+        },
+        # Krzywe zabezpieczeń (`GET /api/catalog/protection/curves` przy pustej bazie biblioteki —
+        # ta sama lista katalogu domyślnego): przeglądarka biblioteki zabezpieczeń pokazuje rodzaj
+        # krzywej (`curve_kind`) tym samym słownikiem wartości kodowych.
+        "wartosci_kodowe": wartosci_kodowe_kart(
+            [
+                *rekordy_kategorii.values(),
+                *(rekordy_typow[k] for k in _TYPY_Z_WARTOSCIAMI_KODOWYMI),
+                [c.to_dict() for c in get_default_mv_catalog().list_protection_curves()],
+            ]
+        ),
+        "klucze_wartosci_zlozonych": sorted(zagniezdzone),
+        # Jakość danej w `card_field_status` (`quality`) = `werdykt.proweniencja.FieldQuality`;
+        # panel pokazuje nazwę polską z tej samej enumeracji.
+        "nazwy_jakosci_danej": {q.value: q.label_pl for q in FieldQuality},
+        # Słowniki nazw wartości kodowych, których źródłem jest backend — wyrocznia odbić
+        # frontu w `ui/catalog/wartosciKodoweKarty.ts`: rodzaj aparatu SN (projekcja łączników),
+        # układ połączeń baterii kondensatorów i pełna dziedzina statusu katalogu.
+        "nazwy_z_backendu": {
+            "device_kind": {
+                rodzaj: NAZWY_RODZAJOW_APARATU_PL[rodzaj]
+                for rodzaj in sorted(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.values())
+            },
+            "uklad_polaczen": dict(sorted(NAZWY_UKLADOW_POLACZEN_BATERII_PL.items())),
+            "catalog_status": sorted(s.value for s in CatalogStatus),
+            # Izolacja kabla w MODELU (`Cable.insulation`) — dziedzina szersza niż katalog
+            # (izolacja papierowa kabli istniejących); karta elementu nazywa ją tym samym
+            # słownikiem co kartę katalogu (`insulation_type`).
+            "insulation": sorted(
+                str(v)
+                for arg in get_args(Cable.model_fields["insulation"].annotation)
+                for v in get_args(arg)
+            ),
+        },
+    }
+
+
+def katalog_punktow_rozgalezienia() -> list[dict[str, Any]]:
+    """Odpowiedź `GET /api/catalog/branch-point-types` (bez zawężenia) — TA SAMA funkcja,
+    którą woła końcówka. Kreatory słupa rozgałęźnego i ZKSN (`ui2/kreatory/slup-odgalezny`,
+    `ui2/kreatory/zksn`) testują się na rekordach serwera `{id, name, params}`, nie na
+    zmyślonym kształcie płaskim (pola punktu „na wierzchu” — kształt, którego serwer nie
+    wysyła; kreatory czytały je i pokazywały „undefined”)."""
+    return list_branch_point_types(None)
 
 
 def katalog_analiz_v126() -> dict[str, Any]:
@@ -5140,6 +5391,55 @@ def _scena_punktu_startu(rodzaj: str, stan: str) -> dict[str, Any]:
     )
 
 
+def glowice_kablowe_pol_gpz() -> dict[str, Any]:
+    """Pola liniowe GPZ WYPOSAŻONE z szablonu pola odpływowego — scena głowicy kablowej.
+
+    Głowica kablowa jest rekordem aparatu pola (`Bay.primary_devices`, rodzaj `CABLE_HEAD`):
+    GPZ zbudowany operacją `add_grid_source_sn` ma pola z samym łącznikiem, więc kanwa nie
+    rysuje na nich głowicy. Projektant wyposaża pole operacją `set_bay_equipment` (tryb
+    `szablon`, szablon pola odpływowego) — dopiero wtedy na kanwie pojawia się symbol
+    `cableHead`, z którego menu wyprowadza ciąg główny. Scena: `stacja_na_odcinku ×
+    wolne_kilka` (jedno pole GPZ zajęte odcinkiem, jedno wolne) + wyposażenie obu pól
+    liniowych GPZ tą samą operacją, którą woła kreator wyposażenia pola."""
+    from enm.domain_operations import execute_domain_operation
+    from enm.zajetosc_pol import zajetosc_pol
+
+    from tests.reference_networks.sceny_zajetosci_pol import ok, zbuduj_scene
+
+    enm = zbuduj_scene("stacja_na_odcinku", "wolne_kilka").enm
+    pola_gpz = sorted(
+        str(b["ref_id"])
+        for b in enm["bays"]
+        if str(b["ref_id"]).startswith("gpz/") and b.get("bay_role") == "OUT"
+    )
+    for bay_ref in pola_gpz:
+        enm = ok(
+            execute_domain_operation(
+                enm_dict=enm,
+                op_name="set_bay_equipment",
+                payload={
+                    "bay_ref": bay_ref,
+                    "mode": "szablon",
+                    "bay_template_ref": "bay_template_line_out",
+                },
+            )
+        )
+    zajetosc = zajetosc_pol(enm)
+    model = EnergyNetworkModel.model_validate(enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {
+            "pole_wolne": next(r for r in pola_gpz if not zajetosc[r].odcinki_fizyczne),
+            "pole_zajete": next(r for r in pola_gpz if zajetosc[r].odcinki_fizyczne),
+            "snapshot": odpowiedz["snapshot"],
+            "logical_views": odpowiedz["logical_views"],
+        }
+    )
+
+
 def ciag_w_budowie_etapy() -> dict[str, Any]:
     """Karta PARTIA-6-FRONT: etapy CIĄGU W BUDOWIE (`tests/reference_networks/
     scena_ciagu_w_budowie.py`) — GPZ i 0…15 stacji budowanych ogniwo po ogniwie operacjami,
@@ -5345,6 +5645,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
     },
     **{nazwa: _fabryka_widokow_fikstury(nazwa) for nazwa in _FIKSTURY_ENM_FRONTU},
     "ciag_w_budowie_etapy": ciag_w_budowie_etapy,
+    "glowice_kablowe_pol_gpz": glowice_kablowe_pol_gpz,
     **{
         f"geometria_stacji_{wariant}": _fabryka_sceny_geometrii_stacji(wariant)
         for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")
@@ -5385,6 +5686,8 @@ FIXTURY: dict[str, Any] = {
     "katalog_analiz_v126": katalog_analiz_v126,
     "kody_metryk_wynikow": kody_metryk_wynikow,
     "rodzaje_wielkosci_zwarciowych_aparatury": rodzaje_wielkosci_zwarciowych_aparatury,
+    "pola_kart_katalogu": pola_kart_katalogu,
+    "katalog_punktow_rozgalezienia": katalog_punktow_rozgalezienia,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

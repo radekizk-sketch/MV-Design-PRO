@@ -36,7 +36,10 @@ def test_bess_modes_proof_passes_with_compatible_pcs():
         generated_at_iso="2026-04-01T00:00:00Z",
     )
     assert proof.pass_status is True
-    assert "OK" in proof.summary_pl
+    assert proof.summary_pl == (
+        "Źródło Magazyn energii 001: wybrane tryby pracy (2) są zgodne ze zdolnościami "
+        "przekształtnika."
+    )
 
 
 def test_bess_modes_proof_fails_when_pcs_lacks_4q():
@@ -51,9 +54,15 @@ def test_bess_modes_proof_fails_when_pcs_lacks_4q():
         generated_at_iso="2026-04-01T00:00:00Z",
     )
     assert proof.pass_status is False
-    assert "4-quadrant" in proof.summary_pl or any(
-        "4-quadrant" in i for i in proof.details["issues"]
+    # Intencja bez zmian: niezgodność trybu FCR-N z przekształtnikiem bez pracy
+    # czterokwadrantowej jest nazwana — po polsku, bez akronimów PCS/DER.
+    assert proof.summary_pl == (
+        "Źródło Magazyn energii 002: tryby pracy magazynu energii niezgodne ze zdolnościami "
+        "przekształtnika (liczba niezgodności: 1)."
     )
+    assert len(proof.details["issues"]) == 1
+    assert "wymaga przekształtnika czterokwadrantowego" in proof.details["issues"][0]
+    assert "PCS" not in proof.details["issues"][0] and "DER" not in proof.details["issues"][0]
 
 
 def test_dowod_nie_zarzuca_juz_braku_trybu_wymaganego_przez_norme():

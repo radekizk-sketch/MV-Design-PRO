@@ -20,6 +20,7 @@
  * BOX z jądra — rozwijany, nie liczony tutaj.
  */
 
+import { nazwaObiektuPl } from '../../shared/nazwaObiektu';
 import { useEffect, useState } from 'react';
 
 import { MathInline } from '../../proof/MathRenderer';
@@ -30,6 +31,7 @@ import {
   pobierzRejestrGotowosci,
   type WpisRejestruGotowosci,
 } from '../../../ui2/kryteria';
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
 
 export type WerdyktKryterium = 'spelnione' | 'niespelnione' | 'informacja' | 'brak_danych';
 
@@ -98,7 +100,7 @@ export async function fetchDoborPrzekladnikow(
     + `${encodeURIComponent(generatorRef)}/instrument-transformers`;
   const response = await fetch(endpoint);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać doboru przekładników (${response.status}).`);
+    throw bladZapytania(response, 'Nie udało się pobrać doboru przekładników');
   }
   const payload: unknown = await response.json();
   if (!maObowiazkowyKsztalt(payload)) {
@@ -224,7 +226,7 @@ function Gniazdo({
     <article className="space-y-2" data-testid={`dobor-${prefiks}`}>
       <div>
         <h4 className="text-sm text-scada-text">{tytul}</h4>
-        <p className="text-xs text-scada-muted">{gniazdo.nazwa ?? gniazdo.catalog_ref}</p>
+        <p className="text-xs text-scada-muted">{nazwaObiektuPl(gniazdo.nazwa, 'pozycja_katalogu')}</p>
         <p
           className={gniazdo.wynik.dobor_potwierdzony ? 'text-xs text-scada-muted' : 'text-xs text-scada-grounded'}
           data-testid={`dobor-${prefiks}-podsumowanie`}

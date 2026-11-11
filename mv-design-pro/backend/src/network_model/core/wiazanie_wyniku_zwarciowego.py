@@ -180,12 +180,12 @@ class WiazanieWynikuZwarciowego:
         puste = [
             nazwa
             for nazwa, wartosc in (
-                ("run_id", self.run_id),
-                ("snapshot_id", self.snapshot_id),
-                ("punkt_zwarcia", self.punkt_zwarcia),
-                ("odcisk_wejscia", self.odcisk_wejscia),
-                ("odcisk_wyniku", self.odcisk_wyniku),
-                ("odcisk_implementacji", self.odcisk_implementacji),
+                ("identyfikator biegu", self.run_id),
+                ("identyfikator migawki modelu", self.snapshot_id),
+                ("punkt zwarcia", self.punkt_zwarcia),
+                ("odcisk wejścia", self.odcisk_wejscia),
+                ("odcisk wyniku", self.odcisk_wyniku),
+                ("odcisk implementacji", self.odcisk_implementacji),
             )
             if not str(wartosc).strip()
         ]

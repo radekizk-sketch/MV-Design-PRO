@@ -32,6 +32,8 @@
  * duplikacji reguły porównania rewizji).
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
+import type { MiejsceObiektu } from '../../../ui/shared/nazwaObiektu';
 import type { EnergyNetworkModel, Transformer } from '../../../types/enm';
 import type {
   OltcControlTrace,
@@ -209,7 +211,10 @@ export interface WierszZaczepowModelu {
 }
 
 /** Projekcja transformatora snapshotu na wiersz założeń zaczepów (uczciwe kreski). */
-export function naWierszZaczepowModelu(trafo: Transformer): WierszZaczepowModelu {
+export function naWierszZaczepowModelu(
+  trafo: Transformer,
+  miejsce: MiejsceObiektu | null = null,
+): WierszZaczepowModelu {
   const tc = trafo.tap_changer ?? null;
   const pozycja = tc ? tc.current_position : trafo.tap_position ?? null;
   const min = tc ? tc.min_position : trafo.tap_min ?? null;
@@ -217,7 +222,7 @@ export function naWierszZaczepowModelu(trafo: Transformer): WierszZaczepowModelu
   const krok = tc ? tc.step_percent : trafo.tap_step_percent ?? null;
   return {
     ref: trafo.ref_id,
-    nazwa: trafo.name || trafo.ref_id,
+    nazwa: nazwaObiektuPl(trafo.name, 'transformator', miejsce),
     regulacja: tc ? etykietaZeSlownika(RODZAJ_REGULACJI_PL, tc.regulation_type) : T.kreska,
     tryb: tc ? etykietaZeSlownika(TRYB_STEROWANIA_PL, tc.control_mode) : T.kreska,
     pozycja: pozycja != null ? String(pozycja) : T.kreska,
@@ -233,7 +238,9 @@ export function naWierszeZaczepowModelu(
   // Kolejność deterministyczna po ref_id (jak mapowanie backendu, `enm/mapping.py:508`).
   return [...snapshot.transformers]
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
-    .map(naWierszZaczepowModelu);
+    .map((trafo, indeks, wszystkie) =>
+      naWierszZaczepowModelu(trafo, { numer: indeks + 1, liczba: wszystkie.length }),
+    );
 }
 
 // ---------------------------------------------------------------------------

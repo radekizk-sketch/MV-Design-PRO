@@ -151,9 +151,13 @@ def _cosphi_p_ratio(c: InverterControl, p_frac: float) -> float:
 def validate_inverter_control(c: InverterControl) -> None:
     """Reject malformed control (no guessing — Rule: physics rejects bad input)."""
     if c.f0_hz <= 0.0:
-        raise OdmowaDanychError(f"inverter f0_hz must be > 0, got {c.f0_hz}")
+        raise OdmowaDanychError(
+            f"Częstotliwość odniesienia falownika f₀ musi być > 0 Hz, otrzymano {c.f0_hz}."
+        )
     if c.lfsm_droop_pct < 0.0:
-        raise OdmowaDanychError(f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}")
+        raise OdmowaDanychError(
+            f"Statyzm LFSM falownika nie może być ujemny, otrzymano {c.lfsm_droop_pct} %."
+        )
     if c.mode is InverterMode.Q_U:
         if c.qu_deadband_low_pu > c.qu_deadband_high_pu:
             raise OdmowaDanychError(
@@ -226,9 +230,9 @@ def source_injection_pu(
     if p_own is None and q_own is None:
         if declares_zip_split(spec) or getattr(spec, "zip_coeffs", None) is not None:
             raise ValueError(
-                f"inverter control on bus {getattr(spec, 'node_id', '?')} without "
-                "inverter_p_mw: the bus also carries a load model, so its power is "
-                "not the source's power and cannot be used as the shaping input"
+                f"Sterowanie falownika w węźle {getattr(spec, 'node_id', '?')} nie ma "
+                "własnej mocy czynnej źródła: w węźle jest też model odbioru, więc moc "
+                "węzła nie jest mocą źródła i nie może kształtować jego charakterystyki."
             )
         return float(p_spec[idx]), float(q_spec[idx])
     return (
@@ -311,9 +315,9 @@ def apply_inverter_setpoint(
         if idx in zip_table:
             if zip_const is None or not declares_zip_split(spec):
                 raise ValueError(
-                    f"bus {spec.node_id} is in the ZIP recompute set and carries an "
-                    "inverter control, but declares no load/generation split: the "
-                    "load polynomial would scale the source injection"
+                    f"Węzeł {spec.node_id} należy do zbioru przeliczenia odbioru ZIP i niesie "
+                    "regulację falownika, ale nie deklaruje podziału na odbiór i generację: "
+                    "wielomian odbioru skalowałby wstrzyknięcie źródła"
                 )
             target_p, target_q = zip_const
         else:
@@ -354,8 +358,10 @@ def inverter_q_seed(
     missing = sorted(idx for idx in inv_table if idx not in records)
     if missing:
         raise ValueError(
-            f"Q(U) inverter buses {missing} have no shaping record: the volt-var "
-            "recompute set and the shaping set have drifted apart"
+            "Węzły falowników z charakterystyką Q(U) o indeksach "
+            f"{', '.join(f'{i:d}' for i in missing)} nie mają rekordu "
+            "kształtowania mocy biernej: zbiór węzłów przeliczanych charakterystyką Q(U) "
+            "i zbiór rekordów kształtowania rozeszły się"
         )
     return {idx: records[idx].q_source_pu for idx in inv_table}
 

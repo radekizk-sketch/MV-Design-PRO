@@ -98,5 +98,7 @@ def test_phase_state_sn_solver_rejects_negative_branch_resistance() -> None:
         branch_resistance_ohm=PhaseValues(0.1, -0.1, 0.1),
     )
 
-    with pytest.raises(ValueError, match="branch_resistance_ohm.B must be >= 0.0"):
+    with pytest.raises(
+        ValueError, match=r"Rezystancja gałęzi \[Ω\], faza B: wartość nie może być mniejsza niż 0.0"
+    ):
         PhaseStateSNSolver.solve(data)

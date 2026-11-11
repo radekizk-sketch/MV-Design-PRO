@@ -89,15 +89,15 @@ afterEach(() => {
   useAppStateStore.setState({ activeCaseId: null, activeCaseResultStatus: 'NONE', activeMode: 'MODEL_EDIT' });
 });
 
-function kliknij(przypadek: Przypadek): HTMLElement {
-  useSnapshotStore.setState({ snapshot: SIEC });
+function kliknij(przypadek: Przypadek, siec: EnergyNetworkModel = SIEC): HTMLElement {
+  useSnapshotStore.setState({ snapshot: siec });
   const { container } = render(
     <>
       <SldCanvasV3Workspace width={1322} height={696} lodOverride={przypadek.lod === 0 ? undefined : przypadek.lod} />
       <InspektorKanwyTestowy />
     </>,
   );
-  const scena = buildSceneV3(SIEC, przypadek.lod);
+  const scena = buildSceneV3(siec, przypadek.lod);
   const i = scena.symbols.findIndex(przypadek.predykat);
   expect(i, 'symbol w scenie').toBeGreaterThanOrEqual(0);
   const testId = scena.symbols[i].meta?.testId ?? `sld-v3-symbol-${i}`;
@@ -162,5 +162,37 @@ describe('inspektor — karta pola bez rekordu aparatury', () => {
     kliknij(pole);
     expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'pole');
     expect(screen.getByTestId('inspektor-karta-tabela-aparaty-pusta')).toHaveTextContent('Pole nie ma aparatów w modelu.');
+  });
+});
+
+// Decyzja architekta pkt 3: jedno źródło zabezpieczenia pola. Pole z funkcjami wymaganymi przez
+// wzorzec i bez sterownika — jedno zdanie z akcją „dodaj zabezpieczenie”, która otwiera kreator
+// `add_relay` przypięty do pola (`bay_ref`). Ścieżka natywna: klik w symbol na kanwie.
+describe('inspektor — karta pola: zabezpieczenie z jednego źródła', () => {
+  it('pole z funkcjami wzorca bez sterownika: zdanie braku i „dodaj zabezpieczenie” → add_relay z bay_ref', () => {
+    const pole = PRZYPADKI.find((p) => p.nazwa === 'pole')!;
+    // Pole klikanego symbolu dostaje w modelu funkcje wymagane przez wzorzec (dane modelu, nie
+    // stan sklepu); sterownika nie ma — `protection_ref` pusty, brak rekordów zabezpieczeń.
+    const symbol = buildSceneV3(SIEC, pole.lod).symbols.find(pole.predykat)!;
+    const siec: EnergyNetworkModel = {
+      ...SIEC,
+      bays: (SIEC.bays ?? []).map((b) =>
+        b.ref_id === symbol.meta?.ownerRef ? { ...b, protection_codes: ['51', '50', '51N', '67N'], protection_ref: null } : b,
+      ),
+      protection_assignments: [],
+    };
+    kliknij(pole, siec);
+    const wiersz = screen.getByTestId('inspektor-karta-pole-zabezpieczenie');
+    expect(wiersz).toHaveAttribute('data-brak', 'true');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zabezpieczenie')).toHaveTextContent(
+      'Brak sterownika — wzorzec pola wymaga funkcji 51, 50, 51N, 67N',
+    );
+    expect(screen.queryByTestId('inspektor-karta-pole-funkcje_zabezpieczen')).toBeNull();
+    expect(screen.getByTestId('inspektor-karta').textContent ?? '').not.toMatch(/brak danych/u);
+    fireEvent.click(screen.getByTestId('inspektor-karta-akcja-zabezpieczenie'));
+    expect(otworzOperacje).toHaveBeenCalledTimes(1);
+    const [operacja, kontekst] = otworzOperacje.mock.calls[0];
+    expect(operacja).toBe('add_relay');
+    expect(kontekst).toEqual({ bay_ref: symbol.meta?.ownerRef });
   });
 });

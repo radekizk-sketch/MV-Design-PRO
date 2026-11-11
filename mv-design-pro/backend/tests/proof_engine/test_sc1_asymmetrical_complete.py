@@ -692,3 +692,34 @@ class TestEquationRegistryIntegration:
     def test_id_stability_passes(self):
         """validate_id_stability still passes with new equations."""
         assert EquationRegistry.validate_id_stability() is True
+
+
+def test_postaci_kanoniczne_zwarc_niesymetrycznych_zamkniete() -> None:
+    """Gałęzie ``AssertionError`` (błąd programu) toru SC1 są nieosiągalne: każda postać
+    kanoniczna z normalizacji ma rodzaj rdzenia i gałąź prądów składowych; rodzaj spoza
+    słownika kończy się zdaniem z cytatem odrzuconego rodzaju."""
+    import ast
+    from pathlib import Path
+
+    import pytest
+    from network_model.solvers import short_circuit_asymmetrical_quantities as modul
+
+    kanoniczne = set(modul._FAULT_TYPE_MAPPING.values())
+    assert kanoniczne == set(modul._RODZAJ_RDZENIA)
+    drzewo = ast.parse(Path(modul.__file__).read_text(encoding="utf-8"))
+    funkcja = next(
+        w
+        for w in ast.walk(drzewo)
+        if isinstance(w, ast.FunctionDef) and w.name == "_compute_sequence_currents"
+    )
+    galezie = {
+        p.comparators[0].value
+        for p in ast.walk(funkcja)
+        if isinstance(p, ast.Compare)
+        and ast.unparse(p.left) == "fault_type"
+        and isinstance(p.comparators[0], ast.Constant)
+    }
+    assert galezie == kanoniczne
+    with pytest.raises(ValueError, match="spoza toru dowodowego") as blad:
+        modul.normalize_sc1_fault_type("SC3F")
+    assert "'SC3F'" in str(blad.value)

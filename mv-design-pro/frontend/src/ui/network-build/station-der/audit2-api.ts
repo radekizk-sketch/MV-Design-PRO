@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
 /**
  * API client dla katalogow audytu 2 (Phase 2 backend integration).
  *
@@ -175,7 +176,7 @@ const BASE = '/api/v1/catalog/audit2';
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }
@@ -187,7 +188,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }
@@ -337,7 +338,7 @@ export async function getStationAudit2Config(
   );
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`GET station config failed: ${res.status} ${res.statusText}`);
+    throw bladZapytania(res, 'Nie udało się pobrać konfiguracji stacji');
   }
   return res.json() as Promise<StationAudit2ConfigResponse>;
 }
@@ -356,7 +357,7 @@ export async function putStationAudit2Config(args: {
     },
   );
   if (!res.ok) {
-    throw new Error(`PUT station config failed: ${res.status} ${res.statusText}`);
+    throw bladZapytania(res, 'Nie udało się zapisać konfiguracji stacji');
   }
   return res.json() as Promise<StationAudit2ConfigResponse>;
 }
@@ -442,7 +443,7 @@ export async function deleteStationAudit2Config(args: {
     { method: 'DELETE' },
   );
   if (res.status !== 204 && res.status !== 404) {
-    throw new Error(`DELETE station config failed: ${res.status} ${res.statusText}`);
+    throw bladZapytania(res, 'Nie udało się usunąć konfiguracji stacji');
   }
 }
 

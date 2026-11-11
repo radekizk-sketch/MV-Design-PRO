@@ -69,11 +69,11 @@ describe('obiektyModeluDoIndeksu — kategorie, nazwy, determinizm', () => {
     });
   });
 
-  it('nazwa pusta, z samych spacji albo brak → identyfikator (nigdy pusty wiersz)', () => {
+  it('nazwa pusta, z samych spacji albo brak → opis rodzaju z numerem (nigdy pusty wiersz ani identyfikator)', () => {
     const nazwy = Object.fromEntries(obiektyModeluDoIndeksu(model()).map((o) => [o.id, o.nazwa]));
-    expect(nazwy['LIN-1']).toBe('LIN-1');
-    expect(nazwy['BUS-2']).toBe('BUS-2');
-    expect(nazwy['LD-1']).toBe('LD-1');
+    expect(nazwy['LIN-1']).toBe('Odcinek bez nazwy (1 z 1)');
+    expect(nazwy['BUS-2']).toBe('Szyna bez nazwy (2 z 2)');
+    expect(nazwy['LD-1']).toBe('Odbiór bez nazwy (1 z 1)');
     expect(nazwy['ST-1']).toBe('Stacja Lipowa');
   });
 

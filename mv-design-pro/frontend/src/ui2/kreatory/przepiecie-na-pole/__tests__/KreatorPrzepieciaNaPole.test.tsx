@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPrzepieciaNaPole, elementNaSzynieStacji } from '../KreatorPrzepieciaNaPole';
 import type { EnergyNetworkModel } from '../../../../types/enm';
+import { PRZEPIECIE_NA_POLE_STRINGS as T } from '../strings';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -73,15 +74,21 @@ vi.mock('../../../../ui/selection', () => ({
 }));
 
 describe('elementNaSzynieStacji — dane stacji, bez reguł toru w UI', () => {
-  it('odcinek: stacja, szyna i WYŁĄCZNIE pola z własnym zaciskiem na tej szynie', () => {
+  // INSPEKTOR-POLA-DOMKNIECIE: odcinek przechodzi także przez pole bez własnego zacisku
+  // (rozdzielnica bez aparatury pól — backend wiąże go wtedy wskazaniem pola w odcinku),
+  // transformator wyłącznie przez zacisk pola. Iloczyn: {odcinek, transformator} × {pole
+  // z zaciskiem, pole bez zacisku}.
+  it('odcinek: stacja, szyna i pola tej szyny — z własnym zaciskiem i bez zacisku', () => {
     const opis = elementNaSzynieStacji(SNAPSHOT, 'kabel-L');
     expect(opis?.stacjaNazwa).toBe('Stacja Lipowa');
     expect(opis?.szynaNazwa).toBe('Szyna SN stacji Lipowa');
-    expect(opis?.pola.map((p) => p.id)).toEqual(['f-in', 'f-tr']);
+    expect(opis?.pola.map((p) => p.id)).toEqual(['f-in', 'f-tr', 'f-stare']);
   });
 
-  it('transformator: strona górna na szynie stacji', () => {
-    expect(elementNaSzynieStacji(SNAPSHOT, 'tr-1')?.rodzaj).toBe('transformer');
+  it('transformator: strona górna na szynie stacji, WYŁĄCZNIE pola z własnym zaciskiem', () => {
+    const opis = elementNaSzynieStacji(SNAPSHOT, 'tr-1');
+    expect(opis?.rodzaj).toBe('transformer');
+    expect(opis?.pola.map((p) => p.id)).toEqual(['f-in', 'f-tr']);
   });
 
   it('element spoza stacji albo spoza modelu → brak', () => {
@@ -126,6 +133,18 @@ describe('KreatorPrzepieciaNaPole — realna ścieżka', () => {
         element_ref: 'kabel-L',
       }),
     );
+  });
+
+  // Opcja „bez wskazania” mówi prawdę o skutku: dla odcinka model utworzy pole liniowe,
+  // gdy wolnego brak; dla transformatora wskazuje wolne pole właściwej roli.
+  it.each([
+    ['kabel-L', T.poleAutoOdcinek],
+    ['tr-1', T.poleAuto],
+  ] as const)('element %s → etykieta opcji bez wskazania pola', (elementRef, etykieta) => {
+    context = { element_ref: elementRef };
+    render(<KreatorPrzepieciaNaPole />);
+    const opcja = screen.getByTestId('mvd-kreator-przepiecie-pole').querySelector('option[value=""]');
+    expect(opcja?.textContent).toBe(etykieta);
   });
 
   it('odmowa modelu (np. pole innej roli) zostaje w kreatorze jako błąd, bez zamknięcia', async () => {

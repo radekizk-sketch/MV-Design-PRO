@@ -1316,7 +1316,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "06178d27c8648a28adf8cbac0f6f10472f8dd41caae535c9ecef6db0f9149df7",
+  "projection_hash": "0c5035fc1214cf9655dd91cb1145ddb03a483c0dc888d1a2b68af2e894daf87c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2968,7 +2968,7 @@
       "missing_data": [],
       "model_hash": "487e6664340af56311be80dcfcdc0037d6917142a704b6422a92aca973d8f831",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "e83857122e3ed3db1a81804b99a9d7e4381aea4f11556b5b11911ff4147fc632",
       "rx_ratio": 0.2,
       "scenario_id": "MAX",
@@ -2989,7 +2989,7 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": "Źródło 'src2' wskazuje nieistniejącą szynę 'sn2' — walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu.",
+      "z0_missing_reason_pl": "Źródło „GPZ Południe” wskazuje szynę o identyfikatorze sn2, której nie ma w modelu — assembler nie pomija elementów po cichu, bo bieg liczyłby sieć inną niż zapisana.",
       "z0_ohm": null,
       "z1_ohm": {
         "r": 0.1,
@@ -3006,7 +3006,7 @@
       "missing_data": [],
       "model_hash": "487e6664340af56311be80dcfcdc0037d6917142a704b6422a92aca973d8f831",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "e83857122e3ed3db1a81804b99a9d7e4381aea4f11556b5b11911ff4147fc632",
       "rx_ratio": 0.2,
       "scenario_id": "MAX",
@@ -3027,7 +3027,7 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": "Źródło 'src' wskazuje nieistniejącą szynę 'sn' — walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu.",
+      "z0_missing_reason_pl": "Źródło „GPZ Północ” wskazuje szynę o identyfikatorze sn, której nie ma w modelu — assembler nie pomija elementów po cichu, bo bieg liczyłby sieć inną niż zapisana.",
       "z0_ohm": null,
       "z1_ohm": {
         "r": 0.12,

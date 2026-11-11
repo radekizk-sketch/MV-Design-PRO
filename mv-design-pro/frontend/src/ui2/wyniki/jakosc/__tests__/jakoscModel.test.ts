@@ -218,6 +218,7 @@ describe('K3/C1 — dowodRef adapterów migotania i Arc Flash', () => {
       provenance_caveat_pl: null,
       why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.',
       missing_data: [],
+      missing_data_pl: [],
       white_box: [],
     };
     const [w] = naWierszeArcFlash([wynik], NAZWA);
@@ -288,6 +289,7 @@ describe('Karta #144 — wiersz nazywa węzeł nazwą z modelu, identyfikator ty
       provenance_caveat_pl: null,
       why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.',
       missing_data: [],
+      missing_data_pl: [],
       white_box: [],
     };
     const [wiersz] = naWierszeArcFlash([wynik], NAZWA);

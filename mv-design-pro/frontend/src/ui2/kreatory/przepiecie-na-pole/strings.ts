@@ -22,10 +22,15 @@ export const PRZEPIECIE_NA_POLE_STRINGS = {
   poleTytul: 'Pole docelowe',
   pole: 'Pole docelowe',
   poleAuto: 'Pole wskazane przez kontrolę modelu (wolne pole właściwej roli)',
+  poleAutoOdcinek:
+    'Pole wskazane przez kontrolę modelu — wolne pole liniowe, a gdy go nie ma, nowe pole '
+    + 'liniowe utworzone w tej operacji',
   polePomoc:
     'Połówka odcinka od strony zasilania przechodzi przez pole liniowe wejściowe, dalsza — przez '
     + 'pole liniowe wyjściowe albo odgałęźne, transformator — przez pole transformatorowe. Rolę i zajętość '
-    + 'pola sprawdza model; niewłaściwe pole kończy się nazwaną odmową bez zmiany modelu.',
+    + 'pola sprawdza model; niewłaściwe pole kończy się nazwaną odmową bez zmiany modelu. Odcinek, dla '
+    + 'którego rozdzielnica nie ma wolnego pola liniowego, dostaje nowe pole wyposażone jak pole '
+    + 'wzorcowe sekcji.',
 
   kontrolaTytul: 'Kontrola przepięcia',
   wierszElement: 'Element',

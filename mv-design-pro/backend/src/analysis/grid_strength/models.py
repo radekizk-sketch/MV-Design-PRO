@@ -37,6 +37,15 @@ VERDICT_WEAK = "słaba"
 VERDICT_VERY_WEAK = "bardzo słaba"
 VERDICT_NO_DATA = "brak danych"
 
+#: Braki danych węzła (``BusStrengthEntry.missing_data``) → nazwa wielkości dla projektanta.
+#: Lustro frontu: ``frontend/src/ui2/oze/pulpit/strings.ts`` (``BRAKI_DANYCH_SILY``); komplet
+#: wobec bramki wejść i parytet przypina ``tests/analysis/test_grid_strength.py::
+#: test_braki_danych_sily_kompletne_i_w_lustrze``.
+BRAKI_DANYCH_SILY_PL: dict[str, str] = {
+    "s_sc_mva": "moc zwarciowa w węźle (z biegu zwarciowego)",
+    "s_installed_mva": "moc zainstalowana źródeł przyłączonych do węzła",
+}
+
 
 @dataclass(frozen=True)
 class GridStrengthContext:

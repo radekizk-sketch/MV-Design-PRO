@@ -1,10 +1,35 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
-import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
+import { useKontekstElementuKanwy } from '../../sld/shared/kontekstElementuKanwy';
+import { ROLA_SYMBOLU_PL } from '../../sld/shared/identyfikatorAparatu';
+import { symbolIdForPrimaryDeviceKind } from '../../sld/v3/compose/apparatusSequence';
+import type { SymbolId } from '../../sld/v3/symbols/defs';
+import type { BayPrimaryDeviceKind } from '../../../types/enm';
+
+/** Rejestr ZAMKNIĘTY rodzajów rekordu aparatu pola — nowy rodzaj bez wpisu nie skompiluje się. */
+const RODZAJE_REKORDU = {
+  CB: true,
+  LOAD_SWITCH: true,
+  DS: true,
+  ES: true,
+  CT: true,
+  VT: true,
+  CABLE_HEAD: true,
+  TRANSFORMER_DEVICE: true,
+  FUSE: true,
+  GENERATOR_PV: true,
+  GENERATOR_BESS: true,
+  GENERATOR_FW: true,
+  PCS: true,
+  BATTERY: true,
+  SURGE_ARRESTER: true,
+  UNBALANCE_CT: true,
+  PHASE_TO_PHASE_VT: true,
+} as const satisfies Record<BayPrimaryDeviceKind, true>;
 
 /** Karta FAB-J: patrz komentarz w `InspectorEngineeringView.test.tsx`. */
 function render(ui: ReactElement) {
@@ -16,7 +41,9 @@ function render(ui: ReactElement) {
 
 const openOperationForm = vi.fn();
 
-const snapshot = {
+// `let`: każdy przypadek iloczynu dostaje NOWĄ migawkę (migawki są niemutowalne — indeksy
+// modelu są pamiętane po tożsamości obiektu, jak w aplikacji).
+let snapshot = {
   buses: [
     {
       ref_id: 'bus-sn-1',
@@ -60,6 +87,7 @@ const snapshot = {
       substation_ref: 'gpz-1',
       bus_ref: 'bus-sn-1',
       equipment_refs: [],
+      primary_devices: [] as Array<Record<string, unknown>>,
     },
   ],
   generators: [],
@@ -79,7 +107,14 @@ vi.mock('../networkBuildStore', () => ({
     selector({ openOperationForm }),
 }));
 
+// Inspektor czyta selekcję przez indeks pakietu, panel z kanwy (karta techniczna, kontekst
+// aparatu) — wprost ze sklepu; obie ścieżki widzą TĘ SAMĄ selekcję.
 vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
+    selector({ selectedElements: mockSelectedElements }),
+}));
+
+vi.mock('../../selection/store', () => ({
   useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
     selector({ selectedElements: mockSelectedElements }),
 }));
@@ -117,63 +152,93 @@ describe('InspectorEngineeringView - aparaty pola SN', () => {
   beforeEach(() => {
     openOperationForm.mockReset();
     mockReadinessIssues = [];
+    useKontekstElementuKanwy.getState().wyczysc();
   });
 
-  it('pokazuje właściwości klikniętego wyłącznika SN w prawym panelu', () => {
-    mockSelectedElements = [{
-      id: 'bay_ref_1#breaker',
-      type: 'Switch',
-      name: 'Wyłącznik SN - Pole liniowe 1',
-    }];
+  /** Kontekst kliknięcia kanwy dla aparatu pola — DOKŁADNIE to, co zapisuje
+   *  `SldCanvasV3Workspace.handleElementClick` po natywnym kliknięciu symbolu: selekcja i ref
+   *  = ref POLA (`ownerRef` symbolu), `deviceRef` = rekord aparatu z meta symbolu (scena
+   *  rysuje aparat pola WYŁĄCZNIE z rekordu — sonda `bayEquipmentGaps`), temat menu z
+   *  `SymbolId`. Ścieżkę natywną kliku ćwiczy `punktStartuCiagu.test.tsx`. */
+  function kliknijAparat(symbolAparatu: SymbolId, deviceRef: string | undefined): void {
+    mockSelectedElements = [{ id: 'bay_ref_1', type: 'Switch', name: 'bay_ref_1' }];
+    useKontekstElementuKanwy.getState().ustawKontekst({
+      selekcjaId: 'bay_ref_1',
+      elementKind: 'apparatus',
+      ref: 'bay_ref_1',
+      deviceRef,
+      temat: { menuKind: 'apparatus', modelRef: 'bay_ref_1', kotwica: 'pole', symbolAparatu },
+      tylkoOdczyt: false,
+    });
+  }
 
-    render(<InspectorEngineeringView />);
+  function wyposazPole(kind: BayPrimaryDeviceKind): string {
+    const deviceRef = `dev-${kind}`;
+    snapshot = {
+      ...snapshot,
+      bays: [
+        {
+          ...snapshot.bays[0],
+          primary_devices: [
+            { device_ref: deviceRef, kind, symbol_ref: kind, placement: 'MIDSTREAM', is_controllable: false },
+          ],
+        },
+      ],
+    };
+    return deviceRef;
+  }
 
-    expect(screen.getByText('Parametry aparatu')).toBeInTheDocument();
-    expect(screen.getByText('Wyłącznik SN')).toBeInTheDocument();
-    expect(screen.getByText('Łączenie robocze i zwarciowe pola')).toBeInTheDocument();
-    expect(screen.getByText('Pole liniowe 1')).toBeInTheDocument();
-    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
+  // Iloczyn: KAŻDY rodzaj rekordu aparatu pola rysowany na kanwie (rejestr zamknięty
+  // `RODZAJE_REKORDU`, symbol z `symbolIdForPrimaryDeviceKind`) × klik z `deviceRef` sceny →
+  // karta aparatu z rolą z jednego słownika symboli, pole powiązane z modelu, zero surowego
+  // kodu rodzaju i zero dawnej drugiej ścieżki („Parametry aparatu").
+  it.each(Object.keys(RODZAJE_REKORDU) as BayPrimaryDeviceKind[])('rekord %s kliknięty na kanwie: karta aparatu', (kind) => {
+    const symbol = symbolIdForPrimaryDeviceKind(kind);
+    if (symbol === null || symbol === 'transformer2W') {
+      // Rekord bez symbolu w torze pola (źródła DER, przekładnik niezrównoważenia baterii)
+      // nie jest klikalny jako aparat, a symbol transformatora scena klasyfikuje jako
+      // transformator (`classifySymbolElementKind`, karta transformatora) — tych przypadków
+      // iloczynu nie ma w ścieżce kliku aparatu. Lista jest ZAMKNIĘTA: nowy rodzaj bez
+      // symbolu aparatu musi tu trafić jawnie.
+      expect(['GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'UNBALANCE_CT', 'TRANSFORMER_DEVICE']).toContain(kind);
+      return;
+    }
+    kliknijAparat(symbol, wyposazPole(kind));
+    const { container } = render(<InspectorEngineeringView />);
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'aparat');
+    expect(screen.getByTestId('inspektor-karta-wartosc-rola')).toHaveTextContent(ROLA_SYMBOLU_PL[symbol]);
+    expect(screen.getByTestId('inspektor-karta-wartosc-pole')).toHaveTextContent('Pole liniowe 1');
+    expect(screen.queryByText('Parametry aparatu')).not.toBeInTheDocument();
+    expect(container.textContent ?? '').not.toContain(`#${symbol}`);
+    expect(container.textContent ?? '').not.toContain(`dev-${kind}`);
   });
 
-  it('udostępnia wyprowadzenie ciągu wyłącznie z głowicy odpływowej pola SN', () => {
-    mockSelectedElements = [{
-      id: 'bay_ref_1#cable_head',
-      type: 'Switch',
-      name: 'Głowica kablowa / port odpływowy - Pole liniowe 1',
-    }];
-
+  // Symbole stosu pola bez rekordu aparatu (sylwetka braku danych, zakończenie rezerwy) —
+  // klik bez `deviceRef` pokazuje kartę POLA, nie aparat z domysłu.
+  it.each(['bayNoEquipment', 'bayReserve'] as const)('symbol %s bez rekordu: karta pola', (symbol) => {
+    kliknijAparat(symbol, undefined);
     render(<InspectorEngineeringView />);
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'pole');
+    expect(screen.queryByText('Parametry aparatu')).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByText('Wyprowadzenie sieci SN')).toBeInTheDocument();
-    expect(screen.getByText('Wyprowadź ciąg główny z głowicy')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Wyprowadź ciąg główny z głowicy'));
-
-    expect(openOperationForm).toHaveBeenCalledWith(
-      'continue_trunk_segment_sn',
-      expect.objectContaining({
-        field_ref: 'bay_ref_1',
-        bay_ref: 'bay_ref_1',
-        terminal_name: expect.stringContaining('Głowica kablowa'),
-      }),
+  it('głowica kablowa: jedna pozycja „Wyprowadź ciąg główny z głowicy" — z paska działań, nie z karty', () => {
+    kliknijAparat('cableHead', wyposazPole('CABLE_HEAD'));
+    render(<InspectorEngineeringView />);
+    expect(screen.getByTestId('inspektor-karta-wartosc-rola')).toHaveTextContent(
+      /jawny punkt wyprowadzenia ciągu głównego SN/,
     );
+    expect(screen.getAllByRole('button', { name: /Wyprowadź ciąg główny z głowicy/ })).toHaveLength(1);
   });
 
-  it('pokazuje kartę techniczną aparatu z wewnętrznego SLD stacji bez surowych referencji', () => {
-    mockSelectedElements = [{
-      id: 'stn/teststation/station/internal-bay/tr-3/fuse',
-      type: 'Switch',
-      name: 'Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa',
-    }];
-
-    render(<InspectorEngineeringView />);
-
-    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa').length).toBeGreaterThan(0);
-    expect(screen.getByText('Miejsce w układzie')).toBeInTheDocument();
-    expect(screen.getByText('Rozdzielnia SN')).toBeInTheDocument();
-    // Karta #141: pole wewnętrznego układu stacji nazwane rolą z kanonu słownictwa ról pól.
-    expect(screen.getByText(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE)).toBeInTheDocument();
-    expect(screen.queryByText(/internal-bay/)).not.toBeInTheDocument();
+  it('id selekcji z dawnym kodem (`#cable_head`) albo ścieżką widoku wewnętrznego stacji nie daje karty aparatu', () => {
+    for (const id of ['bay_ref_1#cable_head', 'stn/teststation/station/internal-bay/tr-3/fuse']) {
+      useKontekstElementuKanwy.getState().wyczysc();
+      mockSelectedElements = [{ id, type: 'Switch', name: 'Aparat' }];
+      const { unmount } = render(<InspectorEngineeringView />);
+      expect(screen.queryByText('Parametry aparatu')).not.toBeInTheDocument();
+      expect(screen.queryByText('Miejsce w układzie')).not.toBeInTheDocument();
+      unmount();
+    }
   });
 });

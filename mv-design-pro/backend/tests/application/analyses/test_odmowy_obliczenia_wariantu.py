@@ -142,7 +142,7 @@ def _sprawdz_reakcje_nazwana(miejsce: str, wynik: Any) -> None:
     elif miejsce == "dobor_kompensacji":
         assert wynik["converged"] is False and wynik["cosfi_punktu"] is None
     elif miejsce == "kontyngencje_n1":
-        assert "przerwany błędem solvera" in wynik["przypadek_bazowy"]["powod_pl"]
+        assert "przerwany odmową obliczenia" in wynik["przypadek_bazowy"]["powod_pl"]
         assert "wstrzyknięty wyjątek" in wynik["przypadek_bazowy"]["powod_pl"]
     else:
         raise AssertionError(miejsce)
@@ -327,7 +327,9 @@ def test_bieg_persystowany_obcy_wyjatek_failed_i_wybuch(
     typ: type[Exception], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Bieg nie zostaje w RUNNING (atomowe przejęcie zablokowałoby ponowienie), dostaje
-    FAILED z NAZWĄ błędu wewnętrznego (bez treści wyjątku), a wyjątek leci dalej."""
+    FAILED ze zdaniem o błędzie wewnętrznym — bez treści i bez nazwy klasy wyjątku
+    (identyfikator kodu nie jest zdaniem dla projektanta; nazwę i ślad niesie dziennik
+    serwera) — a wyjątek leci dalej."""
     set_enm("c-odmowy", build_golden_enm())
     run = create_run(case_id="c-odmowy", klucz_twin="c-odmowy", analysis_type="PF")
     monkeypatch.setattr(canonical_analysis, "_wykonaj_analize_biegu", _rzucajacy(typ))
@@ -336,5 +338,6 @@ def test_bieg_persystowany_obcy_wyjatek_failed_i_wybuch(
     zapisany = get_run(run.id)
     assert zapisany is not None and zapisany.status == "FAILED"
     assert zapisany.error_message is not None
-    assert typ.__name__ in zapisany.error_message
+    assert zapisany.error_message.startswith("Błąd wewnętrzny programu — bieg przerwany")
+    assert typ.__name__ not in zapisany.error_message
     assert "wstrzyknięty wyjątek" not in zapisany.error_message

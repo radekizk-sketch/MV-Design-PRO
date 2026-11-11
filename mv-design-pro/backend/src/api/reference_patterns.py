@@ -219,12 +219,15 @@ def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
             # For now, we require a fixture base — override functionality can be added later
             raise HTTPException(
                 status_code=400,
-                detail="Uruchomienie z input_override wymaga bazowego fixture_file",
+                detail=(
+                    "Uruchomienie z nadpisanymi danymi wejściowymi wymaga bazowego pliku danych "
+                    "wzorca"
+                ),
             )
         else:
             raise HTTPException(
                 status_code=400,
-                detail="Wymagany fixture_file lub input_override",
+                detail="Uruchomienie wzorca wymaga pliku danych wzorca albo nadpisanych danych",
             )
 
         return result_to_response(result, run_id)

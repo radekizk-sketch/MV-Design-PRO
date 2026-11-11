@@ -1552,7 +1552,7 @@ function composeRowStation(
   if (composition.missingData.includes('station.der.unattached')) {
     const derIds = (measureInput.derSources ?? []).map((d) => d.id).join(', ') || 'brak id';
     stopNotes.push(
-      `Stacja „${measureInput.id}": DER przyłączone (nn_side) bez pola transformatorowego w danych — ` +
+      `Stacja „${measureInput.id}": źródła DER przyłączone po stronie nN bez pola transformatorowego w danych — ` +
         `brak punktu przyłączenia geometrycznego (spec §14.1), źródło pominięte na scenie: ${derIds}.`,
     );
   }

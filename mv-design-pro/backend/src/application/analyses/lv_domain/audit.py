@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.nazwy_elementow import nazwa_elementu
 from enm.severity import SEVERITY_BLOCKER, SEVERITY_IMPORTANT, SEVERITY_INFO
 
 from .energization import ValidationMessage
@@ -214,18 +215,21 @@ def audit_lv_domain_graph(graph: dict[str, Any]) -> list[ValidationMessage]:
     # NN-AUD-10: wspólne zasilanie SN kilku transformatorów (informacja dla
     # renderera: jedna kotwica, nie dwa niezależne systemy).
     by_system: dict[str, list[str]] = {}
+    nazwa_trafo = {t["ref_id"]: nazwa_elementu(t, "transformers") for t in transformers}
     for trafo in transformers:
         system_id = trafo.get("upstream_system_id")
         if system_id:
             by_system.setdefault(str(system_id), []).append(trafo["ref_id"])
-    for system_id, refs in sorted(by_system.items()):
+    for _, refs in sorted(by_system.items()):
         if len(refs) > 1:
             messages.append(
                 _msg(
                     "NN-AUD-10",
                     SEVERITY_INFO,
-                    f"Transformatory {', '.join(sorted(refs))} mają wspólne zasilanie SN "
-                    f"(system {system_id}) — jedno źródło, nie dwa niezależne.",
+                    "Transformatory "
+                    + ", ".join(f"„{nazwa_trafo[ref]}”" for ref in sorted(refs))
+                    + " mają wspólne zasilanie SN (szyny SN tych transformatorów łączą się "
+                    "bez przejścia przez sieć nN) — jedno źródło, nie dwa niezależne.",
                     sorted(refs),
                 )
             )

@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../../shared/bladZapytania';
 /*
  * Klient archiwum projektu (ZIP) dla przestrzeni „Projekt".
  *
@@ -74,7 +75,7 @@ async function bladOdpowiedzi(response: Response, domyslny: string): Promise<Err
   } catch {
     // Odpowiedź bez treści JSON — zostaje komunikat domyślny z kodem stanu.
   }
-  return new Error(`${domyslny} (${response.status})`);
+  return bladZapytania(response, domyslny);
 }
 
 export interface OpcjeEksportu {

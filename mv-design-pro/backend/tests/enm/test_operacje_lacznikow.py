@@ -30,14 +30,14 @@ from enm import store
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash, compute_input_hash, compute_switching_snapshot_hash
-from enm.models import EnergyNetworkModel
+from enm.models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel
 from enm.scenariusze import (
     OperatingScenario,
     RodzajScenariusza,
     ScenariuszNieprzystajeError,
     apply_scenario,
 )
-from enm.topology import TYPY_LACZNIKOW_ENM, poprzednie_punkty_podzialu, punkty_podzialu
+from enm.topology import poprzednie_punkty_podzialu, punkty_podzialu
 
 from tests.enm.siec_lacznikowa import (
     KABEL,
@@ -65,7 +65,7 @@ def _stany(enm: dict[str, Any]) -> Stany:
     return {
         g["ref_id"]: (g.get("status"), g.get("normal_state"))
         for g in enm["branches"]
-        if g.get("type") in TYPY_LACZNIKOW_ENM
+        if g.get("type") in RODZAJE_GALEZI_APARATU
     }
 
 

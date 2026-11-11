@@ -43,7 +43,11 @@ from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.maszyny_robocze import parametry_robocze_impedancji_maszyn
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
-from enm.slownik_komunikatow import etykieta_parametru, opis_obiektu
+from enm.slownik_komunikatow import (
+    etykieta_parametru,
+    opis_elementu_z_oznaczeniem,
+    opis_obiektu,
+)
 from enm.tolerancja_nn import wyspy_wezlow_nn
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
@@ -447,6 +451,70 @@ def opis_braku_transformatora(kod: str) -> str:
     """
     opis = OPISY_BRAKOW_PREDYKATU_PL.get(kod)
     return opis if opis is not None else etykieta_parametru(kod)
+
+
+#: Kody strukturalne listy braków analiz obwodu nN (pętla zwarcia, SWZ, karta obwodu, domena
+#: nN, dowód obwodu) → opis dla projektanta. Kody pól transformatora i predykatów opisuje
+#: ``opis_braku_transformatora``. Lustro frontu: ``frontend/src/ui/sld/v3/lv-domain/
+#: opisyBrakowDanychNn.ts`` (parytet kluczy przypina
+#: ``tests/application/analyses/test_opisy_brakow_danych_nn.py``).
+OPISY_BRAKOW_DANYCH_NN_PL: dict[str, str] = {
+    "station": "brak stacji w modelu sieci",
+    "transformer": "brak transformatora stacji",
+    "transformer_not_in_station": "wskazany transformator nie należy do stacji",
+    "route": "brak trasy do źródła w aktualnej topologii",
+    BRAK_UKLADU_NN: "brak układu uziemienia sieci nN transformatora",
+    "upstream_network_topology_invalid": (
+        "topologia sieci SN niepoprawna (źródło poza szyną modelu) — równoważnik nieobliczalny"
+    ),
+    "upstream_network_singular": "sieć SN osobliwa — brak drogi do źródła",
+    "upstream_hv_bus": "szyna SN transformatora poza rozwiązywalną siecią",
+    "upstream_network_source": "brak źródła zasilania sieci SN",
+    "lv_bus": "stacja bez szyny w paśmie nN",
+    "lv_bus_ref": "transformator bez szyny strony nN",
+    "worst_point_bus_ref": "brak policzalnego najgorszego punktu odpływu",
+    "breaker": "brak wyłącznika obwodu",
+    "breaker_catalog_binding": "wyłącznik obwodu bez powiązania z katalogiem aparatów",
+    "lv_neutral.r_ohm": "brak rezystancji uziemienia roboczego R_B punktu neutralnego",
+    "earth_electrode_r_ohm": "brak rezystancji uziomu ochronnego R_A",
+    "rcd": "brak wyłącznika różnicowoprądowego obwodu",
+    "b0_siemens_per_km": "brak pojemności doziemnej (susceptancji zerowej b_0) odcinka",
+    "header.defaults.frequency_hz": "brak częstotliwości znamionowej sieci w nagłówku modelu",
+}
+
+#: Opis kodu spoza słownika — uczciwe zdanie zamiast kodu maszynowego.
+BRAK_SPOZA_SLOWNIKA_NN_PL = "brak danej spoza słownika aplikacji"
+
+
+def _miejsce_braku_nn(enm: object, przedrostek: str) -> str:
+    """Miejsce braku z przedrostka pozycji listy braków domeny nN: ``swz`` (ocena SWZ
+    odpływu), ``upstream:<transformator>`` (równoważnik sieci SN po stronie SN
+    transformatora — `lv_domain/projection_v1.py`), ``<element>`` (wskazany element).
+    Element nazywa nazwa albo oznaczenie z modelu ``enm`` — identyfikatora nie ma w treści."""
+    if przedrostek == "swz":
+        return "ocena samoczynnego wyłączenia zasilania"
+    rownowaznik, _, transformator = przedrostek.partition(":")
+    if rownowaznik == "upstream" and transformator:
+        return opis_elementu_z_oznaczeniem(
+            enm, transformator, "równoważnik sieci SN transformatora"
+        )
+    return opis_elementu_z_oznaczeniem(enm, przedrostek, "element")
+
+
+def opis_braku_danych_nn(enm: object, kod: str) -> str:
+    """Opis pozycji listy braków analiz obwodu nN — nigdy klucz maszynowy ani identyfikator.
+    Pozycja ``<przedrostek>:<kod>`` (brak dotyczący wskazanego elementu, oceny SWZ albo
+    równoważnika SN transformatora) dopisuje miejsce braku nazwane z modelu ``enm``
+    (``_miejsce_braku_nn``). Lustro frontu: ``opisBrakuDanychNn``."""
+    przedrostek, _, wlasciwy = kod.rpartition(":")
+    opis = OPISY_BRAKOW_DANYCH_NN_PL.get(wlasciwy)
+    if opis is None and (
+        wlasciwy in OPISY_BRAKOW_PREDYKATU_PL or wlasciwy in POLA_BRAKOW_TRANSFORMATORA
+    ):
+        opis = opis_braku_transformatora(wlasciwy)
+    if opis is None:
+        opis = BRAK_SPOZA_SLOWNIKA_NN_PL
+    return f"{opis} ({_miejsce_braku_nn(enm, przedrostek)})" if przedrostek else opis
 
 
 def impedancja_transformatora_dla_ukladu(

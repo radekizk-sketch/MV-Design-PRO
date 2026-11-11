@@ -99,6 +99,20 @@ describe('templateOptionLabel', () => {
   });
 });
 
+/**
+ * Opis statusu źródła w opcji szablonu: status spoza unii kontraktu (w tym klucz prototypu)
+ * dostaje opis jawny — nigdy `undefined` ani kod. Parytet nazwy szczegółowej i grupy po całej
+ * unii: `ui/catalog/__tests__/statusZrodlaSzablonu.test.ts`.
+ */
+describe('templateOptionLabel — status spoza słownika', () => {
+  it.each(['catalog_solution', 'toString'])('%s — opis jawny', (status) => {
+    expect(
+      templateOptionLabel({ template_ref: 't', bay_kind: 'pomiarowe', source_status: status } as never),
+    ).toBe('Pole pomiarowe · status źródła spoza słownika aplikacji');
+    expect(isCompleteSourceStatus(status as never)).toBe(false);
+  });
+});
+
 describe('orderManufacturers', () => {
   it('ZPUE pierwsze, ABB ostatnie w preset', () => {
     const list = [

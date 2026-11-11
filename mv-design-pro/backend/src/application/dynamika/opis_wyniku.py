@@ -25,10 +25,10 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from application.contracts.resultset_dynamic_v2 import TrybScenariusza
-from application.dynamika.opis_scenariusza import ETYKIETY_WARTOSCI
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from enm.dynamika_z_katalogu import stan_dynamiki_generatorow, stan_dynamiki_odbiorow
 from enm.nazwy_elementow import nazwa_elementu
+from enm.scenariusze import ETYKIETY_WARTOSCI
 from network_model.solvers.dynamika.zdarzenia import PRZYCZYNA_HARMONOGRAM
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (

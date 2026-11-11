@@ -2125,12 +2125,28 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (tekstowe reguly wyprowadzen weryfikatora) oraz pola `V`, `W`, `m`, `ohm`, `s` dawnego
     # wymiaru jednostki `UnitDimension` weryfikatora. Zadne z nich nie jest dana wejsciowa
     # solvera. PASS niezmieniony (zero podstawien).
-    # Scalenie kart PRZERWA-ZEROWA i ZU w drzewie integracji 2026-11: 4504 -> 4505 — POMIAR
-    # guardem na drzewie scalonym (karta ZU sama: 4504). +1: `brak_wyniku_zerowego`
-    # (`SCAsymmetricalPackInput`, karta PRZERWA-ZEROWA) — przyczyna braku wyniku zerowego punktu
-    # (para z `z0_ohm`, jedno źródło), nie liczba podstawiona za nieobecna dana. PASS
-    # niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4505." in wyjscie, wyjscie
+    # Karta kanalow tekstu dla projektanta (2026-10-30): 4395 -> 4393 — POMIAR `contract_fields()`
+    # na HEAD karty `21a236756` (`git archive`, z `domain/field_device.py` w zrodlach: 4395, pin
+    # zgodny) i na drzewie karty (4393). Roznica zbiorow -4, +2: `fix_code`, `fix_message_pl`,
+    # `generator_id`, `has_blocking_transformer` znikaja razem z `domain/field_device.py`
+    # (skasowany: zero konsumentow produkcyjnych, wpis zdjety z `CONTRACT_SOURCES`);
+    # `kombinacja_wniosek_pl`, `goly_aparat_wniosek_pl` (`ZdolnoscWylaczaniaDwaZdania` pakietu
+    # dowodu obwodu nN — wniosek zdania slowami zamiast kodu statusu). PASS niezmieniony.
+    # Commit 4 karty komunikatow (2026-10-30): 4393 -> 4388 — POMIAR `contract_fields()` na
+    # bazie commitu 4 `1e535d489` (`git archive`: 4393, pin zgodny) i na drzewie karty (4388).
+    # Roznica zbiorow -5, +0: `snapshot_fingerprint`, `sld_ready`, `load_flow_ready`,
+    # `short_circuit_ready`, `protection_ready` — pola `ReadinessProfileV1` skasowanego razem
+    # z bramkami `require_*` i `build_readiness_profile` (druga bramka gotowosci bez konsumenta
+    # produkcyjnego; jedyny walidator: ENM + CalculationReadiness, ADR-025). Pozostale pola
+    # profilu (`snapshot_id`, `issues`, `content_hash`) zyja w innych kontraktach — nazwy w
+    # zbiorze bez zmian. Plik `domain/readiness.py` zostaje (typy kwestii gotowosci) — liczba
+    # plikow bez zmian. PASS niezmieniony.
+    # INSPEKTOR-POLA-DOMKNIECIE punkt 2 (2026-11-05): 4388 -> 4391 — POMIAR `contract_fields()`
+    # na HEAD karty `0b8a59b38` (`git archive`: 4388, pin zgodny) i na drzewie karty (4391).
+    # Roznica zbiorow +3, -0: `koniec` (`enm.zajetosc_pol.OdcinekBezPola` — koniec odcinka bez
+    # pola), `punkt` i `nowe_elementy` (`_PrzylaczeniePrzezPole` w `enm/domain_operations.py` —
+    # punkt przylaczenia i elementy pola utworzonego w operacji). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4504." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2461,6 +2477,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/proof_engine/zapis_jednostek.py` — zapis jednostki wartosci dowodu
         # w LaTeX dla eksportu). POMIAR guardem na `c20ea5104` (605) i na drzewie karty (606);
         # dlug i wykluczenia BEZ ZMIAN.
+        # Karta klasy surowych kluczy pol (2026-10-29): 599 -> 600 (+1 `api/parsowanie_uuid.py` —
+        # piec kopii `_parse_uuid` zlaczonych w jedno); dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        # Karta kanalow tekstu dla projektanta (2026-10-30): 600 -> 599 (-1: opis rodzaju i stanu
+        # przebiegu przeniesiony z `application/analyses/opis_przebiegu.py` do `domain/` —
+        # poza korzeniami skanu, bo czyta go takze warstwa domeny). POMIAR guardem.
         "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
@@ -2890,6 +2911,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `ncrfg_compliance/wzory_sladu.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Nastepca (2026-11-04): application 255 -> 256 (+1 `proof_engine/zapis_jednostek.py`);
         # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Karta kanalow tekstu dla projektanta (2026-10-30): application 255 -> 254 (-1
+        # `analyses/opis_przebiegu.py` przeniesiony do `domain/`); dlug i wykluczenia BEZ ZMIAN.
         "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
@@ -2908,7 +2931,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (`scenariusze_laczeniowe.py`) + 1 programu (`odmowa_http.py`) = 65. POMIAR guardem.
         # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 65 − 1 (`switchgear_config.py`)
         # = 64. POMIAR guardem na drzewie scalonym.
-        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Karta klasy surowych kluczy pol (2026-10-29): 64 -> 65 (+1 `api/parsowanie_uuid.py`);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  api: pliki_skanowane=65, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

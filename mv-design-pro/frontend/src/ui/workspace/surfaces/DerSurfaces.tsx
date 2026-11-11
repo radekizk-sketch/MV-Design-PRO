@@ -7,11 +7,13 @@
  * jako podstawowej treści UI.
  */
 
+import { miejsceWKolekcji, nazwaObiektuPl, nazwaPoReferencjiPl } from '../../shared/nazwaObiektu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import { fetchCtTypes, fetchDerConverterTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
 import type { ConverterType, CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../catalog/types';
+import { nazwaWartosciKodowej } from '../../catalog/wartosciKodoweKarty';
 import { useAppStateStore } from '../../app-state';
 import {
   DerConfigurator,
@@ -328,7 +330,7 @@ function buildDerFromGenerator(
     project_id: 'snapshot',
     station_id: stationRef,
     der_kind: fallbackKind,
-    name: generator.name || generator.ref_id,
+    name: nazwaObiektuPl(generator.name, 'generator', miejsceWKolekcji(snapshot?.generators, generator)),
     connection_side: connectionSide,
     bus_przylaczenia_ref: busPrzylaczeniaRef,
     bay_ref: stringFromRecord(materialized, ['bay_ref']) ?? stringFromRecord(meta, ['bay_ref']),
@@ -645,23 +647,6 @@ function PtpireeCertificateRowFromRegistry({ certificateRef }: { readonly certif
   );
 }
 
-/**
- * Wiersz pola: etykieta NAD wartością na wąskim ekranie, obok wartości od `sm` w górę
- * (karta E21-5, audyt E-21 pkt P12). Sztywna kolumna 170 px na telefonie zostawiała
- * wartościom kilkadziesiąt pikseli i wypychała treść poza ekran — układ tabelaryczny
- * wraca dopiero tam, gdzie jest na niego miejsce. Treść, kolejność i etykiety bez zmian.
- */
-const RODZAJ_GENERATORA_PL: Record<NonNullable<ConverterType['generator_machine_type']>, string> = {
-  PMSG: 'synchroniczny z magnesami trwałymi (PMSG)',
-  SCIG: 'asynchroniczny klatkowy (SCIG)',
-  DFIG: 'asynchroniczny dwustronnie zasilany (DFIG)',
-};
-
-const TOPOLOGIA_PRZEKSZTALTNIKA_PL: Record<NonNullable<ConverterType['converter_topology']>, string> = {
-  FULL_CONVERTER: 'pełnej mocy (generator odsprzężony od sieci)',
-  DFIG_ROTOR_CONVERTER: 'w obwodzie wirnika (DFIG)',
-};
-
 /** Brak pola w karcie turbiny = dokument producenta tej wartości nie podaje (nigdy domyślka). */
 const BRAK_W_KARCIE_TURBINY_PL = 'karta producenta nie podaje';
 
@@ -681,7 +666,7 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
   const topologia = turbina.converter_topology;
   return (
     <>
-      <FieldRow label="Generator" value={rodzaj ? RODZAJ_GENERATORA_PL[rodzaj] : BRAK_W_KARCIE_TURBINY_PL} />
+      <FieldRow label="Generator" value={rodzaj ? nazwaWartosciKodowej('generator_machine_type', rodzaj) : BRAK_W_KARCIE_TURBINY_PL} />
       <FieldRow label="Napięcie stojana generatora" value={wartoscToruPl(turbina.generator_stator_voltage_kv, 'kV')} />
       <FieldRow
         label="Częstotliwość stojana (maks.)"
@@ -689,7 +674,7 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
       />
       <FieldRow label="Moc generatora" value={wartoscToruPl(turbina.generator_rated_power_mw, 'MW')} />
       <FieldRow label="Moc turbiny" value={`${turbina.pmax_mw} MW`} />
-      <FieldRow label="Przekształtnik" value={topologia ? TOPOLOGIA_PRZEKSZTALTNIKA_PL[topologia] : BRAK_W_KARCIE_TURBINY_PL} />
+      <FieldRow label="Przekształtnik" value={topologia ? nazwaWartosciKodowej('converter_topology', topologia) : BRAK_W_KARCIE_TURBINY_PL} />
       <FieldRow
         label="Przekształtnik — strona maszynowa"
         value={wartoscToruPl(turbina.converter_machine_side_voltage_kv, 'kV')}
@@ -698,6 +683,12 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
   );
 }
 
+/**
+ * Wiersz pola: etykieta NAD wartością na wąskim ekranie, obok wartości od `sm` w górę
+ * (karta E21-5, audyt E-21 pkt P12). Sztywna kolumna 170 px na telefonie zostawiała
+ * wartościom kilkadziesiąt pikseli i wypychała treść poza ekran — układ tabelaryczny
+ * wraca dopiero tam, gdzie jest na niego miejsce. Treść, kolejność i etykiety bez zmian.
+ */
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
     <div className="grid grid-cols-1 gap-0.5 border-b border-scada-border/60 py-1.5 last:border-b-0 sm:grid-cols-[170px_1fr] sm:gap-3">
@@ -1235,7 +1226,7 @@ function DerSurfaceShell({
   const torWytworcy = useMemo(() => {
     if (!der) return [];
     const nazwaSzyny = (ref: string | null): string | null =>
-      ref ? snapshot?.buses?.find((bus) => bus.ref_id === ref)?.name ?? ref : null;
+      ref ? nazwaPoReferencjiPl(snapshot?.buses, ref, 'szyna') : null;
     const stacja = snapshot?.substations?.find(
       (item) => item.ref_id === der.station_id || item.id === der.station_id,
     );
@@ -1243,12 +1234,9 @@ function DerSurfaceShell({
       stacja: der.station_id ? publicStationName(snapshot ?? null, stacja ?? null, der.station_id) : null,
       szynaNn: nazwaSzyny(der.lv_busbar_ref),
       transformator: der.transformer_ref
-        ? snapshot?.transformers?.find((tr) => tr.ref_id === der.transformer_ref)?.name
-          ?? der.transformer_ref
+        ? nazwaPoReferencjiPl(snapshot?.transformers, der.transformer_ref, 'transformator')
         : null,
-      poleSn: der.bay_ref
-        ? snapshot?.bays?.find((bay) => bay.ref_id === der.bay_ref)?.name ?? der.bay_ref
-        : null,
+      poleSn: der.bay_ref ? nazwaPoReferencjiPl(snapshot?.bays, der.bay_ref, 'pole') : null,
       pcc: nazwaSzyny(der.bus_przylaczenia_ref),
     });
   }, [der, snapshot]);

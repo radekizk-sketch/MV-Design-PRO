@@ -33,7 +33,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'start_branch_segment_sn',
   'insert_section_switch_sn',
   'connect_secondary_ring_sn',
-  // POLA-W-TORZE: akcja naprawcza kontroli W042 — element z szyny głównej stacji na zacisk pola.
+  // POLA-W-TORZE: akcja naprawcza kontroli W042 (transformator) i W049 (odcinek bez pola
+  // liniowego — operacja tworzy pole, gdy wolnego brak): element z szyny głównej na zacisk pola.
   'przepnij_element_na_pole',
   'set_normal_open_point',
   // W5-C: bieżące położenie łącznika w modelu bazowym (pozycja normalna bez zmian) —
@@ -98,7 +99,7 @@ export const CANONICAL_OPERATION_NAMES = [
   // generatora) idzie przez domain-ops z panelu „Karty widmowe" — końcówka wiązań wytwórcy
   // (`/generators/{ref}/bindings`) tego klucza nie niesie.
   'set_der_catalog_bindings',
-  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
+  // CRUD sekcji szyn GPZ — edytor `ui/network-build/cards/GpzSectionsEditor.tsx`
   'add_gpz_section',
   'update_gpz_section',
   'delete_gpz_section',
@@ -513,7 +514,7 @@ export interface AddConverterSourcePayload {
 export type NNConnectionType = 'JEDNOFAZOWY' | 'TROJFAZOWY';
 
 // =============================================================================
-// Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
+// CRUD sekcji szyn GPZ — edytor `ui/network-build/cards/GpzSectionsEditor.tsx`
 // =============================================================================
 
 export type GpzSectionSide = 'lv' | 'hv';

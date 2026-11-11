@@ -29,10 +29,9 @@ from werdykt import (
 from werdykt import dokument as modul_dokumentu
 from werdykt import kontrakt as modul_kontraktu
 from werdykt.etykiety import SLOWNIK_ETYKIET
+from werdykt.kontrakt import NAZWA_STANU_ZRODLA_PL, nazwa_kompletnosci
 from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 from werdykt.wyjasnienie import (
-    NAZWA_STANU_ZRODLA_PL,
-    nazwa_kompletnosci,
     nazwa_skladowej,
     nazwa_stanu_danych,
     nazwa_statusu_modelu,

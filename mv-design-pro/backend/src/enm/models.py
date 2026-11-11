@@ -31,9 +31,20 @@ from pydantic import BaseModel, Field, StrictBool, StrictInt, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
+from .katalog_projektu import NAZWY_RODZAJOW_TYPOW_PROJEKTU_PL
 from .nastawy_modulu import NastawyZabezpieczenModulu
 from .rola_pola_sn import RolaKanonicznaPolaSn, RolaPolaModelu
-from .stan_normalny import migruj_punkty_podzialu_slownika
+from .slownik_komunikatow import (
+    NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
+    nazwa_pola,
+    opis_obiektu,
+    pole,
+)
+from .stan_normalny import (
+    RODZAJE_GALEZI_LACZNIKA,
+    RodzajGaleziLacznika,
+    migruj_punkty_podzialu_slownika,
+)
 from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
@@ -455,7 +466,7 @@ class SwitchBranch(BranchBase):
     bazowy zostaje bez zmian.
     """
 
-    type: Literal["switch", "breaker", "bus_coupler", "disconnector"]
+    type: RodzajGaleziLacznika
     r_ohm: float | None = None
     x_ohm: float | None = None
     normal_state: Literal["closed", "open"] | None = None
@@ -465,6 +476,15 @@ class FuseBranch(BranchBase):
     type: Literal["fuse"] = "fuse"
     rated_current_a: float | None = None
     rated_voltage_kv: float | None = None
+
+
+#: Rodzaje gałęzi łącznika (``SwitchBranch.type``) — ``RODZAJE_GALEZI_LACZNIKA`` z
+#: ``enm.stan_normalny`` (jedyna definicja, typ pola ``RodzajGaleziLacznika``).
+#: Rodzaje gałęzi aparatu łączeniowego: łączniki i bezpiecznik (``FuseBranch.type``) —
+#: zamknięty aparat SCALA szyny w jeden węzeł elektryczny, linia i kabel są impedancją.
+RODZAJE_GALEZI_APARATU: frozenset[str] = frozenset(
+    (*RODZAJE_GALEZI_LACZNIKA, *get_args(FuseBranch.model_fields["type"].annotation))
+)
 
 
 Branch = Annotated[
@@ -1003,42 +1023,41 @@ class Generator(ENMElement):
         if variant is None or variant == "SOURCE_CONNECTION_STATION":
             return self
 
+        # Wariant dawnego zapisu nazywany jak wariant kreatora o tym samym znaczeniu
+        # (te same pary co aliasy operacji `add_pv_inverter_nn`/`add_bess_inverter_nn`).
+        zrodlo = opis_obiektu(self, "Źródło")
+        sposob = nazwa_pola("connection_variant")
+        przez_nn = f"„{NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL['nn_side']}”"
+        przez_blok = f"„{NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL['block_transformer']}”"
+        transformator = pole("blocking_transformer_ref")
         if variant == "LV_BEHIND_STATION_TRANSFORMER":
             if self.station_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': przyłączenie po stronie nN za transformatorem "
-                    f"stacji wymaga wskazania stacji SN/nN."
+                    f"{zrodlo}: {sposob} {przez_nn} (za transformatorem stacji) wymaga "
+                    "wskazania stacji SN/nN."
                 )
             if self.blocking_transformer_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': przyłączenie po stronie nN za transformatorem "
-                    f"stacji wymaga wskazania transformatora blokowego."
+                    f"{zrodlo}: {sposob} {przez_nn} (za transformatorem stacji) wymaga "
+                    f"pola {transformator}."
                 )
         elif variant == "DEDICATED_MV_CONNECTION":
             if self.station_ref is not None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': dedykowane przyłącze SN nie może mieć "
-                    f"wskazania stacji "
-                    f"(generator ma dedykowane przyłącze SN, nie idzie przez stację)."
+                    f"{zrodlo}: {sposob} {przez_blok} (dedykowane przyłącze SN) nie może "
+                    "wskazywać stacji — źródło ma własne przyłącze SN i nie idzie przez stację."
                 )
         elif variant == "nn_side":
             if self.station_ref is None:
-                raise ValueError(
-                    f"Generator '{self.ref_id}': przyłączenie po stronie nN "
-                    f"wymaga wskazania stacji SN/nN."
-                )
+                raise ValueError(f"{zrodlo}: {sposob} {przez_nn} wymaga wskazania stacji SN/nN.")
             if self.blocking_transformer_ref is not None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': przyłączenie po stronie nN "
-                    f"nie może mieć transformatora blokowego "
-                    f"(generator po stronie nN, transformator stacji wystarczy)."
+                    f"{zrodlo}: {sposob} {przez_nn} nie może mieć pola {transformator} — "
+                    "źródło jest po stronie nN, transformator stacji wystarcza."
                 )
         elif variant == "block_transformer":
             if self.blocking_transformer_ref is None:
-                raise ValueError(
-                    f"Generator '{self.ref_id}': przyłączenie przez transformator blokowy "
-                    f"wymaga wskazania transformatora blokowego."
-                )
+                raise ValueError(f"{zrodlo}: {sposob} {przez_blok} wymaga pola {transformator}.")
         return self
 
 
@@ -1079,6 +1098,15 @@ class ObwodWtorny(BaseModel):
     obciazenia_aparatow: list[ObciazenieAparatu] = Field(default_factory=list)
     #: Moc tracona na stykach i zaciskach [VA] — TYLKO gdy podana jawnie.
     moc_stykow_va: float | None = Field(default=None, ge=0)
+
+
+def _tylko_dla_rodzaju_przekladnika(przekladnik: object, klucz: str, rodzaj: str) -> str:
+    """Odmowa danej przypisanej do jednego rodzaju przekładnika (nazwa pola z mapy pól)."""
+    dotyczy = "przekładnika prądowego CT" if rodzaj == "CT" else "przekładnika napięciowego VT"
+    return (
+        f"{opis_obiektu(przekladnik, 'Przekładnik')}: pole {pole(klucz)} dotyczy wyłącznie "
+        f"{dotyczy}."
+    )
 
 
 class Measurement(ENMElement):
@@ -1143,13 +1171,9 @@ class Measurement(ENMElement):
         odpowiadającego `measurement_type` — zero niejednoznaczności (WHITE
         BOX, `domain_no_guessing_guard`)."""
         if self.ct_arrangement is not None and self.measurement_type != "CT":
-            raise ValueError(
-                f"Measurement '{self.ref_id}': ct_arrangement wymaga measurement_type='CT'."
-            )
+            raise ValueError(_tylko_dla_rodzaju_przekladnika(self, "ct_arrangement", "CT"))
         if self.vt_arrangement is not None and self.measurement_type != "VT":
-            raise ValueError(
-                f"Measurement '{self.ref_id}': vt_arrangement wymaga measurement_type='VT'."
-            )
+            raise ValueError(_tylko_dla_rodzaju_przekladnika(self, "vt_arrangement", "VT"))
         return self
 
     @model_validator(mode="after")
@@ -1160,19 +1184,11 @@ class Measurement(ENMElement):
         `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
         przez `Field(gt=0)`."""
         if self.ct_cores is not None and self.measurement_type != "CT":
-            raise ValueError(
-                f"Pomiar '{self.ref_id}': rdzenie przekładnika prądowego wymagają pomiaru typu CT."
-            )
+            raise ValueError(_tylko_dla_rodzaju_przekladnika(self, "ct_cores", "CT"))
         if self.vt_mounting is not None and self.measurement_type != "VT":
-            raise ValueError(
-                f"Pomiar '{self.ref_id}': sposób montażu przekładnika napięciowego wymaga pomiaru "
-                "typu VT."
-            )
+            raise ValueError(_tylko_dla_rodzaju_przekladnika(self, "vt_mounting", "VT"))
         if self.vt_uzwojenie is not None and self.measurement_type != "VT":
-            raise ValueError(
-                f"Pomiar '{self.ref_id}': uzwojenie przekładnika napięciowego wymaga pomiaru "
-                "typu VT."
-            )
+            raise ValueError(_tylko_dla_rodzaju_przekladnika(self, "vt_uzwojenie", "VT"))
         return self
 
 
@@ -1570,12 +1586,13 @@ class Bay(ENMElement):
         ma_punkt = isinstance(self.branch_point_ref, str) and bool(self.branch_point_ref.strip())
         if ma_stacje == ma_punkt:
             raise ValueError(
-                f"pole {self.ref_id!r} musi wskazywać dokładnie jednego właściciela: "
-                "substation_ref (pole stacji) albo branch_point_ref (pole ZKSN)"
+                f"{opis_obiektu(self, 'Pole')} musi należeć do dokładnie jednego właściciela: "
+                "stacji (pole stacji) albo punktu rozgałęzienia (pole ZKSN)"
             )
         if self.branch_point_port_id is not None and not ma_punkt:
             raise ValueError(
-                f"pole {self.ref_id!r}: branch_point_port_id dotyczy wyłącznie pola ZKSN"
+                f"{opis_obiektu(self, 'Pole')}: port punktu rozgałęzienia dotyczy wyłącznie "
+                "pola ZKSN"
             )
         return self
 
@@ -2130,10 +2147,15 @@ class KatalogProjektu(BaseModel):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():
-                    raise ValueError(f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji")
-                if rekord.id in widziane:
                     raise ValueError(
-                        f"katalog_projektu: identyfikator '{rekord.id}' powtarza się w sekcji"
+                        f"Katalog projektu, {NAZWY_RODZAJOW_TYPOW_PROJEKTU_PL[rodzaj]}: "
+                        "pozycja bez identyfikatora"
+                    )
+                if rekord.id in widziane:
+                    # Identyfikator pozycji katalogu projektu to oznaczenie z arkusza
+                    # projektanta (dana wejściowa), nie identyfikator nadany przez system.
+                    raise ValueError(
+                        f"Katalog projektu: identyfikator pozycji „{rekord.id}” powtarza się"
                     )
                 widziane.add(rekord.id)
             rekordy.sort(key=lambda r: r.id)

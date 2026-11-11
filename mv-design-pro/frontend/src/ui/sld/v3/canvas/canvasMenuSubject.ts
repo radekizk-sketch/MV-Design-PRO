@@ -83,6 +83,7 @@
  * renderu i uruchamialny w skrypcie odbioru `scripts/sld_v3_acceptance.mjs`.
  */
 import type { EnergyNetworkModel } from '../../../../types/enm';
+import type { ElementType } from '../../../types';
 import { polaSnStacji } from '../../../shared/polaStacji';
 import type { DerSourceKind } from '../compose/sourceKind';
 import type { PreviewElementKind } from '../compose/preview';
@@ -90,6 +91,8 @@ import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import { LABEL_OWNER_ELEMENT_KIND, type HitObjectClass } from './hitAreas';
 import type { OwnerKind } from '../layout/labels';
 import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
+import type { SymbolId } from '../symbols/defs';
+import { identyfikatorAparatu } from '../../shared/identyfikatorAparatu';
 
 /**
  * Rodzaj obiektu MODELU, do którego zakotwiczony jest trafiony rysunek.
@@ -247,6 +250,22 @@ export interface CanvasMenuSubject {
   readonly kotwica: MenuAnchorKind;
   /** Rodzina gałęzi (`Branch.type`) — tylko dla kotwicy `galaz`. */
   readonly rodzinaGalezi?: string;
+  /** Rodzaj trafionego APARATU pola (`SymbolId` symbolu sceny) — tylko dla kotwicy `pole`
+   *  trafionej symbolem. Razem z `modelRef` (ref pola) tworzy identyfikator aparatu
+   *  (`refOperacjiTematu`), którym menu, pasek inspektora i wykonawca rozstrzygają
+   *  operacje aparatu (np. wyprowadzenie ciągu głównego z głowicy kablowej). */
+  readonly symbolAparatu?: SymbolId;
+}
+
+/**
+ * Ref, który jedzie do wykonawcy akcji i do kontekstu dostępności: dla aparatu pola —
+ * identyfikator `${bayRef}#${SymbolId}` (`shared/identyfikatorAparatu.ts`), dla każdego
+ * innego tematu — ref modelu. Jedno miejsce dla menu kanwy i paska działań inspektora.
+ */
+export function refOperacjiTematu(temat: CanvasMenuSubject): string {
+  return temat.symbolAparatu === undefined
+    ? temat.modelRef
+    : identyfikatorAparatu(temat.modelRef, temat.symbolAparatu);
 }
 
 export type CanvasMenuSubjectResult =
@@ -262,6 +281,8 @@ export interface CanvasMenuSubjectInput {
   readonly derKind?: DerSourceKind;
   /** Kanoniczny `Bus.ref_id` podany wprost przez adapter (szyny GPZ). */
   readonly busRef?: string;
+  /** `SymbolId` trafionego symbolu sceny (`undefined` dla odcinków i napisów). */
+  readonly symbolId?: SymbolId;
 }
 
 // ---------------------------------------------------------------------------
@@ -583,6 +604,51 @@ export function resolveCanvasMenuSubject(
       modelRef: znaleziona.modelRef,
       kotwica: znaleziona.kotwica,
       ...(znaleziona.rodzinaGalezi === undefined ? {} : { rodzinaGalezi: znaleziona.rodzinaGalezi }),
+      // Aparat pola: symbol trafiony WPROST na polu-kotwicy. Napis albo odcinek pola nie
+      // niesie rodzaju aparatu — temat zostaje tematem pola (bez domysłu rodzaju).
+      ...(znaleziona.kotwica === 'pole' && input.symbolId !== undefined
+        ? { symbolAparatu: input.symbolId }
+        : {}),
     },
   };
+}
+
+/**
+ * F8b-1 B: `PreviewElementKind` → `ElementType` v2 (literały zweryfikowane
+ * względem `v2/canvas/SldWorkspaceContainer.tsx`: 'Station' (linia ~1732),
+ * 'TransformerBranch' (~1797/1804), 'Bus' (~1818), 'LineBranch' (~1269/1789),
+ * 'Switch' (mapa `apparatusKind`→{type:'Switch',...} dla breaker/disconnect_
+ * bus/switch_disconnector/earthing_switch/fuse — większość bucketu 'apparatus';
+ * CT/VT/cableHead w v2 mapują na 'Measurement'/'PortBranch', ale `elementKind`
+ * v3 jest jedną, zamkniętą kategorią 'apparatus' — 'Switch' jest reprezentacją
+ * większościową, udokumentowane uproszczenie, NIE regresja: v3 dziś dawał
+ * 'DescriptiveElement' dla WSZYSTKICH). DER generic → 'Generator' (patrz
+ * nagłówek pliku). F9.4 (runda korekcyjna po recenzji Opusa, F-3): `'source'`
+ * (sieć zewnętrzna, glif `gridSource`, `compose/gpz.ts` — ODRĘBNA kategoria
+ * od `'der'` od F9.4, patrz `compose/preview.tsx` `PreviewElementKind`
+ * docstring) → `'Source'` (literał v2 ISTNIEJE, `ui/types.ts`: „A: GPZ /
+ * Źródło SN") — BRAKOWAŁO tej gałęzi (spadała na `default`/`DescriptiveElement`,
+ * klik w symbol sieci zewnętrznej nie selekcjonował poprawnego typu).
+ * `undefined` dla nierozpoznanej kategorii → wołający spada na
+ * `DescriptiveElement`.
+ */
+export function elementTypeForKind(kind: PreviewElementKind | undefined): ElementType | undefined {
+  switch (kind) {
+    case 'station':
+      return 'Station';
+    case 'transformer':
+      return 'TransformerBranch';
+    case 'der':
+      return 'Generator';
+    case 'source':
+      return 'Source';
+    case 'bus':
+      return 'Bus';
+    case 'segment':
+      return 'LineBranch';
+    case 'apparatus':
+      return 'Switch';
+    default:
+      return undefined;
+  }
 }

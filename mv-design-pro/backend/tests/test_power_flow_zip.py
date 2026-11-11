@@ -653,7 +653,7 @@ def test_effective_spec_refuses_a_constant_part_it_cannot_restore() -> None:
     p_spec = np.array([-0.3])
     q_spec = np.array([-0.1])
     zip_const = (np.array([0.27]), np.array([0.0]))
-    with pytest.raises(ValueError, match="lost the constant part"):
+    with pytest.raises(ValueError, match="zgubił składową stałomocową"):
         zip_effective_spec(p_spec, q_spec, np.array([1.0 + 0j]), {}, zip_const)
-    with pytest.raises(ValueError, match="lost the constant part"):
+    with pytest.raises(ValueError, match="zgubił składową stałomocową"):
         zip_effective_spec(p_spec, q_spec, np.array([1.0 + 0j]), {1: CONST_Z}, zip_const)

@@ -11,6 +11,7 @@ YAML nie są edytowane), złożonej tą samą funkcją co profil produkcyjny.
 from __future__ import annotations
 
 import math
+import re
 import shutil
 from collections.abc import Callable, Iterator
 from datetime import date, datetime
@@ -670,12 +671,18 @@ class TestKlasyfikacja:
         assert "nie jest modułem" not in powod
         assert powod.strip()
 
-    @pytest.mark.parametrize("nazwa", ["p_max_kw", "napiecie_kv"])
+    @pytest.mark.parametrize(
+        ("nazwa", "nazwa_pl"),
+        [("p_max_kw", "moc maksymalna P_max [kW]"), ("napiecie_kv", "napięcie przyłączenia [kV]")],
+    )
     @pytest.mark.parametrize("wartosc", [math.nan, math.inf, -1.0])
-    def test_wejscie_nieskonczone_albo_ujemne_odrzucone(self, nazwa: str, wartosc: float) -> None:
+    def test_wejscie_nieskonczone_albo_ujemne_odrzucone(
+        self, nazwa: str, nazwa_pl: str, wartosc: float
+    ) -> None:
         argumenty = {"p_max_kw": 5.0, "napiecie_kv": 0.4, nazwa: wartosc}
-        with pytest.raises(ValueError, match=nazwa):
+        with pytest.raises(ValueError, match=re.escape(nazwa_pl)) as blad:
             klasyfikacja_modulu(**argumenty)
+        assert nazwa not in str(blad.value)  # komunikat nazywa wielkość, nie klucz
 
     def test_prog_minimalny_to_prog_klasyfikacji(self) -> None:
         assert prog_minimalny_modulu_kw() == klasyfikacja_modulu(1.0, 0.4).prog_min_kw
@@ -1277,7 +1284,7 @@ class TestProgramBadan:
 
     def test_brak_sekcji_programu_odrzucony(self, katalog: Path) -> None:
         _edytuj(katalog / "warstwy" / "procedura_ptpiree.yaml", lambda d: d.pop("program_badan"))
-        with pytest.raises(ValueError, match="program_badan"):
+        with pytest.raises(ValueError, match="brak sekcji programu badań"):
             _zloz(katalog)
 
 

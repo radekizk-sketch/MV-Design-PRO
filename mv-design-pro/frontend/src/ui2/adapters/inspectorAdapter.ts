@@ -25,6 +25,7 @@
  * własną prezentację (SLD, panel stanu pola) — dublowanie jej tutaj byłoby drugim
  * źródłem prawdy dla tego samego stanu.
  */
+import { nazwaZRodzajemPl } from '../../ui/shared/nazwaObiektu';
 import { useMemo } from 'react';
 
 import type {
@@ -51,6 +52,8 @@ import type {
   Transformer,
   ZespolUziemiajacy,
 } from '../../types/enm';
+import { RODZAJE_GALEZI } from '../../types/rodzajeGalezi';
+import { RODZAJ_GALEZI_PL } from '../../ui/shared/rodzajGalezi';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
@@ -68,11 +71,13 @@ import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
 import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../ui/shared/etykietyZabezpieczen';
+import { tekstZabezpieczeniaPola, zabezpieczeniePola } from '../../ui/shared/zabezpieczeniePola';
 import {
   etykietaPozycjiNormalnej,
   opisLacznikowPortow,
   pozycjaNormalna,
 } from '../../ui/shared/stanLacznika';
+import { etykietaZeSlownika } from '../wyniki/wzorzec/slownikWyliczen';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -111,28 +116,6 @@ export const KOLEKCJE_ELEMENTOW: readonly (keyof EnergyNetworkModel)[] = KOLEKCJ
   (k) => k.klucz,
 );
 
-/** Rodzaje gałęzi (`Branch.type`) — DRUGI poziom dyskryminacji „odcinka" (7 wartości, ZAMKNIĘTA lista). */
-export const TYPY_GALEZI = [
-  'line_overhead',
-  'cable',
-  'switch',
-  'breaker',
-  'bus_coupler',
-  'disconnector',
-  'fuse',
-] as const;
-export type TypGalezi = (typeof TYPY_GALEZI)[number];
-
-const ETYKIETA_TYPU_GALEZI: Readonly<Record<TypGalezi, string>> = {
-  line_overhead: 'Linia napowietrzna',
-  cable: 'Kabel',
-  switch: 'Łącznik',
-  breaker: 'Wyłącznik',
-  bus_coupler: 'Sprzęgło szyn',
-  disconnector: 'Odłącznik',
-  fuse: 'Bezpiecznik',
-};
-
 interface Znaleziony {
   element: ENMElement;
   typ: string;
@@ -148,12 +131,11 @@ function znajdzElement(model: EnergyNetworkModel, id: string): Znaleziony | null
       if (el && (el.id === id || el.ref_id === id)) {
         if (kolekcja.klucz === 'branches') {
           const galaz = el as unknown as { type?: string };
-          const typGalezi = galaz.type as TypGalezi | undefined;
-          const typEtykieta =
-            typGalezi && typGalezi in ETYKIETA_TYPU_GALEZI
-              ? ETYKIETA_TYPU_GALEZI[typGalezi]
-              : kolekcja.typEtykieta;
-          return { element: el, typ: typGalezi ?? kolekcja.typ, typEtykieta };
+          // Rodzaj gałęzi (`Branch.type`) — drugi poziom dyskryminacji „odcinka”; lista
+          // i nazwy z jednego źródła (`types/rodzajeGalezi.ts`, `ui/shared/rodzajGalezi.ts`).
+          const typGalezi = RODZAJE_GALEZI.find((rodzaj) => rodzaj === galaz.type);
+          const typEtykieta = typGalezi ? RODZAJ_GALEZI_PL[typGalezi] : kolekcja.typEtykieta;
+          return { element: el, typ: galaz.type ?? kolekcja.typ, typEtykieta };
         }
         return { element: el, typ: kolekcja.typ, typEtykieta: kolekcja.typEtykieta };
       }
@@ -200,7 +182,7 @@ function wlasciwosciGaleziWspolne(el: { from_bus_ref: string; to_bus_ref: string
   return bezNulli([
     wr('Szyna początkowa', el.from_bus_ref),
     wr('Szyna końcowa', el.to_bus_ref),
-    wr('Stan', ETYKIETA_STANU_LACZNIKA[el.status] ?? el.status),
+    wr('Stan', etykietaZeSlownika(ETYKIETA_STANU_LACZNIKA, el.status)),
   ]);
 }
 
@@ -225,7 +207,9 @@ const SKLADOWE_DANYCH_LINII_PL: Readonly<Record<string, string>> = {
 function wlasciwosciParametrowZGeometrii(el: OverheadLine): (WierszWlasciwosci | null)[] {
   const p = el.parametry_z_geometrii;
   if (!p) return [];
-  const robocze = (p.wartosci_robocze ?? []).map((k) => SKLADOWE_DANYCH_LINII_PL[k] ?? k);
+  const robocze = (p.wartosci_robocze ?? []).map((k) =>
+    etykietaZeSlownika(SKLADOWE_DANYCH_LINII_PL, k),
+  );
   return [
     wr('Parametry linii', `z geometrii słupa i przewodu z katalogu (${p.metoda} ${p.wersja_metody})`),
     wr(
@@ -376,7 +360,7 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
   return bezNulli([
     wr('Moc znamionowa', el.rated_mvar, 'Mvar'),
     wr('Napięcie znamionowe', el.rated_kv, 'kV'),
-    w('Stan', el.status ? (ETYKIETA_STANU_LACZNIKA[el.status] ?? el.status) : null),
+    w('Stan', el.status ? (etykietaZeSlownika(ETYKIETA_STANU_LACZNIKA, el.status)) : null),
   ]);
 }
 
@@ -431,7 +415,11 @@ function wlasciwosciStacji(el: Substation, model: EnergyNetworkModel): WierszWla
   ]);
 }
 
-function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
+function wlasciwosciPola(el: Bay, model: EnergyNetworkModel): WierszWlasciwosci[] {
+  // JEDNA funkcja odczytu zabezpieczenia pola (`ui/shared/zabezpieczeniePola`) — ta sama co karta
+  // pola K6: sterownik przypisany albo brak sterownika z funkcjami wymaganymi przez wzorzec.
+  const zabezpieczenie = zabezpieczeniePola(model, el);
+  const wymagane = zabezpieczenie.rodzaj === 'sterownik' ? zabezpieczenie.wymagane : [];
   return bezNulli([
     // Nazwa roli z kanonu słownictwa ról pól (karta #141), nigdy surowy kod roli.
     wr('Rola pola', fieldRoleLabelPl(el.bay_role)),
@@ -439,10 +427,8 @@ function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
     w('Numer pola', el.bay_number ?? null),
     w('Nazwa odpływu', el.feeder_short_name ?? null),
     w('Kierunek (stacja docelowa)', el.outgoing_destination_ref ?? null),
-    w(
-      'Funkcje zabezpieczeniowe',
-      el.protection_codes && el.protection_codes.length > 0 ? el.protection_codes.join(', ') : null,
-    ),
+    w('Zabezpieczenie', tekstZabezpieczeniaPola(zabezpieczenie)),
+    w('Wymagane przez wzorzec pola', wymagane.length > 0 ? wymagane.join(', ') : null),
   ]);
 }
 
@@ -455,7 +441,7 @@ const ETYKIETA_TYPU_WEZLA: Readonly<Record<string, string>> = {
 
 function wlasciwosciWezla(el: Junction): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj węzła', ETYKIETA_TYPU_WEZLA[el.junction_type] ?? el.junction_type),
+    wr('Rodzaj węzła', etykietaZeSlownika(ETYKIETA_TYPU_WEZLA, el.junction_type)),
     wr('Liczba dołączonych gałęzi', el.connected_branch_refs.length),
   ]);
 }
@@ -472,7 +458,7 @@ function wlasciwosciPunktuRozgalezienia(
   return bezNulli([
     wr(
       'Rodzaj punktu',
-      ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA[el.branch_point_type] ?? el.branch_point_type,
+      etykietaZeSlownika(ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA, el.branch_point_type),
     ),
     wr('Szyna', el.bus_ref),
     // W5-C: stan łączników portów z ICH gałęzi — nigdy z kopii przy punkcie.
@@ -489,7 +475,7 @@ const ETYKIETA_TYPU_MAGISTRALI: Readonly<Record<string, string>> = {
 
 function wlasciwosciMagistrali(el: Corridor): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj magistrali', ETYKIETA_TYPU_MAGISTRALI[el.corridor_type] ?? el.corridor_type),
+    wr('Rodzaj magistrali', etykietaZeSlownika(ETYKIETA_TYPU_MAGISTRALI, el.corridor_type)),
     wr('Liczba segmentów', el.ordered_segment_refs.length),
     w('Liczba stacji na trasie', el.station_refs && el.station_refs.length > 0 ? el.station_refs.length : null),
   ]);
@@ -506,7 +492,7 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
     wr('Rodzaj przekładnika', el.measurement_type === 'CT' ? 'Prądowy (CT)' : 'Napięciowy (VT)'),
     wr('Szyna', el.bus_ref),
     wr('Układ połączenia', el.connection),
-    wr('Przeznaczenie', ETYKIETA_PRZEZNACZENIA_POMIARU[el.purpose] ?? el.purpose),
+    wr('Przeznaczenie', etykietaZeSlownika(ETYKIETA_PRZEZNACZENIA_POMIARU, el.purpose)),
     w('Układ CT', el.ct_arrangement ?? null),
     w('Liczba rdzeni CT', el.ct_cores ?? null),
     w('Układ VT', el.vt_arrangement ?? null),
@@ -516,7 +502,7 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
 
 function wlasciwosciZabezpieczenia(el: ProtectionAssignment): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj zabezpieczenia', ETYKIETA_RODZAJU_ZABEZPIECZENIA[el.device_type] ?? el.device_type),
+    wr('Rodzaj zabezpieczenia', etykietaZeSlownika(ETYKIETA_RODZAJU_ZABEZPIECZENIA, el.device_type)),
     wr('Wyłącznik', el.breaker_ref),
     wr('Aktywne', el.is_enabled ? 'Tak' : 'Nie'),
     wr('Liczba nastaw', el.settings.length),
@@ -532,7 +518,7 @@ const ETYKIETA_RODZAJU_CIAGU: Readonly<Record<string, string>> = {
 
 function wlasciwosciCiaguLiniowego(el: LineRunV1): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj ciągu', ETYKIETA_RODZAJU_CIAGU[el.run_kind] ?? el.run_kind),
+    wr('Rodzaj ciągu', etykietaZeSlownika(ETYKIETA_RODZAJU_CIAGU, el.run_kind)),
     wr('Pole startowe', el.starting_bay_ref),
     wr('Liczba segmentów', el.segments.length),
     wr('Liczba stacji na trasie', el.stations.length),
@@ -548,7 +534,7 @@ const ETYKIETA_LOKALIZACJI_WEZLA: Readonly<Record<string, string>> = {
 
 function wlasciwosciWezlaPrzylaczenia(el: ConnectionNode): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Lokalizacja', ETYKIETA_LOKALIZACJI_WEZLA[el.location] ?? el.location),
+    wr('Lokalizacja', etykietaZeSlownika(ETYKIETA_LOKALIZACJI_WEZLA, el.location)),
     wr('Napięcie', el.voltage_kv, 'kV'),
     wr('Element nadrzędny', el.parent_ref),
   ]);
@@ -593,7 +579,7 @@ function wlasciwosciKatalogoweWgTypu(
     case 'stacja':
       return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':
-      return wlasciwosciPola(element as unknown as Bay);
+      return wlasciwosciPola(element as unknown as Bay, model);
     case 'wezel':
       return wlasciwosciWezla(element as unknown as Junction);
     case 'punkt_rozgalezienia':
@@ -637,13 +623,13 @@ export function mapowanieObiektuInspektora(
     id: element.id,
     typ,
     typEtykieta,
-    nazwa: element.name || element.ref_id,
+    nazwa: nazwaZRodzajemPl(element.name, typEtykieta),
     wlasciwosci: [
       {
         id: 'podstawowe',
         tytul: 'Podstawowe',
         wiersze: [
-          { etykieta: 'Nazwa', wartosc: { wartosc: element.name || element.ref_id } },
+          { etykieta: 'Nazwa', wartosc: { wartosc: nazwaZRodzajemPl(element.name, typEtykieta) } },
           { etykieta: 'Typ elementu', wartosc: { wartosc: typEtykieta } },
         ],
       },

@@ -12,6 +12,7 @@
  */
 
 import type { RunComparisonResult, RunHistoryItem } from './types';
+import { bladOdpowiedzi, bladZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -42,9 +43,7 @@ export async function compareRuns(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMessage = errorData.detail || response.statusText;
-    throw new Error(`Błąd porównania runów: ${errorMessage}`);
+    throw await bladOdpowiedzi(response, 'Błąd porównania przebiegów');
   }
 
   return response.json();
@@ -63,7 +62,7 @@ export async function fetchRunHistory(projectId: string): Promise<RunHistoryItem
   const response = await fetch(`${API_BASE}/projects/${projectId}/runs`);
 
   if (!response.ok) {
-    throw new Error(`Błąd pobierania historii runów: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania historii przebiegów');
   }
 
   const data = await response.json();
@@ -88,7 +87,7 @@ export async function fetchCaseRunHistory(caseId: string): Promise<RunHistoryIte
   const response = await fetch(`${API_BASE}/study-cases/${caseId}/runs`);
 
   if (!response.ok) {
-    throw new Error(`Błąd pobierania historii runów dla przypadku: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania historii przebiegów dla przypadku');
   }
 
   const data = await response.json();

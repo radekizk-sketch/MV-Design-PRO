@@ -28,6 +28,7 @@ import {
 import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
+import { wariantPrzylaczeniaPl } from '../network-build/der-configurator/wariantPrzylaczeniaPl';
 import { stationSnBays } from '../network-build/stationSnFields';
 import { rolaKanonicznaPola } from '../shared/polaStacji';
 import { opisLacznikowPortow } from '../shared/stanLacznika';
@@ -49,6 +50,8 @@ import {
 } from '../sld/v2/station-rozdzielnia/contract';
 import type { SelectedElement } from '../types';
 import type { TechCardKind, TechCardSubject } from './types';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
+import { REGULACJA_OPCJE } from '../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 
 type SnapshotLike = EnergyNetworkModel | null | undefined;
 
@@ -506,18 +509,13 @@ function buildBranchPointSubject(
   };
 }
 
-/** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — duplikat
- *  świadomy wobec `ui/sld/shared/daneElementuKanwy.ts::CONTROL_MODE_LABEL_PL` (ten sam
- *  wzorzec co `derKindPublicName`/tamta mapa: moduł prezentacji nie importuje z innego
- *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
- *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */
-const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
-  STALY_COS_PHI: 'Stały współczynnik mocy $\\cos\\varphi$',
-  Q_OD_U: 'Regulacja Q(U)',
-  P_OD_U: 'Regulacja P(U)',
-  REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
-  WYLACZONE: 'Bez regulacji',
-};
+/** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — JEDEN słownik
+ *  nastawy modelu (`ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`, ten sam, którym
+ *  kreator źródła OZE i karta techniczna kanwy nazywają tryb). Dawna kopia tej tabeli miała
+ *  inne nazwy niż kreator („Regulacja Q(U)” zamiast „Regulacja Q(U) — napięciowo-jałowa”). */
+const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = Object.fromEntries(
+  REGULACJA_OPCJE.map((o) => [o.value, o.label]),
+);
 
 /** Karta CV-4.1b (A3-04): pola regulacji Q wynikające z `control_mode` — generyczne dla
  *  WSZYSTKICH trybów (nie tylko REGULACJA_NAPIECIA), żeby karta techniczna nie miała tej
@@ -527,7 +525,7 @@ function regulacjaQFields(generator: Generator): CardField[] {
   const meta = (generator.meta ?? {}) as Record<string, unknown>;
   const controlMode = typeof meta.control_mode === 'string' ? meta.control_mode : null;
   if (!controlMode) return [];
-  const label = DER_CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode;
+  const label = etykietaZeSlownika(DER_CONTROL_MODE_LABEL_PL, controlMode);
   const fields: CardField[] = [{ key: 'tryb_regulacji_q', label: 'Tryb regulacji Q', value: label }];
   if (controlMode === 'STALY_COS_PHI' && typeof meta.cos_phi === 'number') {
     fields.push({ key: 'cos_phi_nastawa', label: 'Nastawa $\\cos\\varphi$', value: meta.cos_phi });
@@ -572,7 +570,7 @@ function buildDerSubject(
         {
           key: 'wariant',
           label: 'Wariant przyłączenia',
-          value: connectionVariantLabel(generator.connection_variant ?? null),
+          value: wariantPrzylaczeniaPl(generator.connection_variant) ?? 'Do konfiguracji',
         },
         {
           key: 'modul_nc_rfg',
@@ -688,19 +686,6 @@ function derTypeLabel(genType: Generator['gen_type'] | null | undefined): string
   }
 }
 
-function connectionVariantLabel(variant: string | null): string {
-  switch (variant) {
-    case 'nn_side':
-    case 'block_transformer':
-      return 'Po stronie nN stacji (przez TR SN/nN)';
-    case 'DEDICATED_MV_CONNECTION':
-      return 'Dedykowane pole SN i transformator przyłączeniowy';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'Osobna stacja przyłączeniowa źródła';
-    default:
-      return 'Do konfiguracji';
-  }
-}
 
 function diagnosticsForRef(
   ref: string,

@@ -39,6 +39,7 @@ from analysis.arc_flash.models import (
     INCIDENT_ENERGY_TIME_FACTOR,
     JOULE_PER_CAL_CM2,
     MM_PER_INCH,
+    NAZWY_WEJSC_ARC_FLASH_PL,
     PPE_CATEGORY_INCOMPLETE,
     PRODUCTION_NFPA_70E_PPE_TABLE,
     VALIDITY_IBF_MAX_KA_HV,
@@ -281,7 +282,9 @@ class ArcFlashBuilder:
 
         # Tablica niewypełniona dla tej konfiguracji ⇒ "dane niekompletne — tablice".
         if not table.is_complete_for(cfg, enc_type):
-            return self._incomplete_table_result(item, table.missing_for(cfg, enc_type))
+            return self._incomplete_table_result(
+                item, table.missing_for(cfg, enc_type), table.missing_for_pl(cfg, enc_type)
+            )
 
         arc_time_ms = s_na_ms(arc_time)  # równanie energii IEEE używa t w ms
         steps: list[WhiteBoxStep] = []
@@ -306,10 +309,10 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
-                    f"napięcie {_round(voltage)} kV [{cfg.value}]; kotwy: "
-                    + ", ".join(f"{k} = {_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
-                    + f"; współczynnik zmienności VarCf {_round(var_cf)}"
+                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
+                    f"[{cfg.nazwa_pl}]; kotwy: "
+                    + ", ".join(f"{k}={_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
+                    + f"; VarCf={_round(var_cf)}"
                 ),
                 result_pl=(
                     f"prąd łuku {_round(i_arc)} kA, prąd łuku minimalny {_round(i_arc_min)} kA "
@@ -337,8 +340,8 @@ class ArcFlashBuilder:
                     r"(CF=1 \text{ w otwartym powietrzu; } CF=1/x \text{ obudowa płytka})"
                 ),
                 substitution_pl=(
-                    f"konfiguracja {cfg.value} "
-                    f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
+                    f"konfiguracja {cfg.nazwa_pl}, "
+                    f"{enc_type.nazwa_pl if cfg.is_boxed else 'otwarte powietrze'}"
                 ),
                 result_pl=f"CF = {_round(cf)}",
                 unit_check_pl=(
@@ -447,10 +450,10 @@ class ArcFlashBuilder:
         )
 
         why = (
-            f"Arc Flash (konfiguracja {cfg.value}, IEEE 1584-2018): prąd łuku "
-            f"{_round(i_arc, 2)} kA (minimalny {_round(i_arc_min, 2)} kA), energia "
-            f"incydentu {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
-            f"granica łuku {_round(afb, 1)} mm, kategoria ŚOI {ppe}. "
+            f"Arc Flash (konfiguracja {cfg.nazwa_pl}, IEEE 1584-2018): prąd łuku "
+            f"I_arc ≈ {_round(i_arc, 2)} kA (I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia "
+            f"incydentu E ≈ {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
+            f"granica łuku AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. "
             f"{ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )
 
@@ -481,6 +484,7 @@ class ArcFlashBuilder:
             ppe_table_provenance=ppe_prov,
             why_pl=why,
             missing_data=(),
+            missing_data_pl=(),
             white_box=tuple(steps),
         )
 
@@ -516,7 +520,9 @@ class ArcFlashBuilder:
         table = self._table
 
         if not table.is_complete_for(cfg, enc_type):
-            return self._incomplete_table_result(item, table.missing_for(cfg, enc_type))
+            return self._incomplete_table_result(
+                item, table.missing_for(cfg, enc_type), table.missing_for_pl(cfg, enc_type)
+            )
 
         arc_time_ms = s_na_ms(arc_time)
         steps: list[WhiteBoxStep] = []
@@ -539,10 +545,9 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
-                    f"napięcie {_round(voltage)} kV [{cfg.value}, ścieżka nN — napięcie do 600 V, "
-                    f"BEZ interpolacji kotew]; prąd łuku kotwy 600 V (Eq.1) {_round(i_arc_600)} kA; "
-                    f"współczynnik zmienności VarCf {_round(var_cf)}"
+                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
+                    f"[{cfg.nazwa_pl}, ścieżka nN — U<=600 V, BEZ interpolacji kotew]; "
+                    f"I_arc,600(Eq.1)={_round(i_arc_600)} kA; VarCf={_round(var_cf)}"
                 ),
                 result_pl=(
                     f"prąd łuku {_round(i_arc)} kA (Eq.25, skorygowany do napięcia "
@@ -570,8 +575,8 @@ class ArcFlashBuilder:
                     r"(CF=1 \text{ w otwartym powietrzu; } CF=1/x \text{ obudowa płytka})"
                 ),
                 substitution_pl=(
-                    f"konfiguracja {cfg.value} "
-                    f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
+                    f"konfiguracja {cfg.nazwa_pl}, "
+                    f"{enc_type.nazwa_pl if cfg.is_boxed else 'otwarte powietrze'}"
                 ),
                 result_pl=f"CF = {_round(cf)}",
                 unit_check_pl=(
@@ -676,10 +681,10 @@ class ArcFlashBuilder:
         )
 
         why = (
-            f"Arc Flash nN (konfiguracja {cfg.value}, IEEE 1584-2018, napięcie do 600 V — "
-            f"Eq.25): prąd łuku kotwy 600 V (Eq.1) {_round(i_arc_600, 2)} kA skorygowany do "
-            f"napięcia {_round(voltage, 2)} kV ⇒ prąd łuku {_round(i_arc, 2)} kA "
-            f"(minimalny {_round(i_arc_min, 2)} kA), energia incydentu "
+            f"Arc Flash nN (konfiguracja {cfg.nazwa_pl}, IEEE 1584-2018, U<=600 V — Eq.25): "
+            f"prąd łuku I_arc,600 (Eq.1) ≈ {_round(i_arc_600, 2)} kA skorygowany do U="
+            f"{_round(voltage, 2)} kV ⇒ I_arc ≈ {_round(i_arc, 2)} kA "
+            f"(I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia incydentu E ≈ "
             f"{_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, granica łuku "
             f"{_round(afb, 1)} mm, kategoria ŚOI {ppe}. {ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )
@@ -711,6 +716,7 @@ class ArcFlashBuilder:
             ppe_table_provenance=ppe_prov,
             why_pl=why,
             missing_data=(),
+            missing_data_pl=(),
             white_box=tuple(steps),
         )
 
@@ -845,6 +851,7 @@ class ArcFlashBuilder:
             ppe_table_provenance=ppe_prov,
             why_pl=why,
             missing_data=(),
+            missing_data_pl=(),
             white_box=tuple(steps),
         )
 
@@ -853,7 +860,7 @@ class ArcFlashBuilder:
     def _incomplete_input_result(self, item: ArcFlashInput, missing: list[str]) -> ArcFlashResult:
         why = (
             "Dane niekompletne — brak: "
-            + ", ".join(missing)
+            + ", ".join(NAZWY_WEJSC_ARC_FLASH_PL[kod] for kod in missing)
             + ". Model Arc Flash wymaga prądu zwarcia bolted (z solvera "
             "IEC 60909), napięcia, czasu łuku (z koordynacji zabezpieczeń — "
             "to samo źródło co napięcie dotykowe i uziemienie), odstępu elektrod oraz "
@@ -864,16 +871,17 @@ class ArcFlashBuilder:
             status=ArcFlashStatus.INCOMPLETE_INPUT,
             why=why,
             missing=tuple(missing),
+            missing_data_pl=tuple(NAZWY_WEJSC_ARC_FLASH_PL[kod] for kod in missing),
             table_marker=None,
         )
 
     def _incomplete_table_result(
-        self, item: ArcFlashInput, missing_entries: tuple[str, ...]
+        self, item: ArcFlashInput, missing_entries: tuple[str, ...], opisy: tuple[str, ...]
     ) -> ArcFlashResult:
         why = (
-            f"{ARC_FLASH_TABLE_INCOMPLETE_STATUS}. Brakujące wpisy tablicy "
-            f"(konfiguracja {item.electrode_config.value}): "
-            + ", ".join(missing_entries)
+            f"{ARC_FLASH_TABLE_INCOMPLETE_STATUS}. Brakujące wpisy tablicy IEEE 1584-2018 "
+            f"(konfiguracja {item.electrode_config.nazwa_pl}): "
+            + "; ".join(opisy)
             + f". {ARC_FLASH_COEFF_MISSING_MARKER}. Równania modelu są gotowe — "
             "po wstawieniu kompletu współczynników IEEE 1584-2018 ten sam przepływ "
             "policzy wynik. Współczynniki NIE są zmyślane."
@@ -883,6 +891,7 @@ class ArcFlashBuilder:
             status=ArcFlashStatus.INCOMPLETE_TABLE,
             why=why,
             missing=missing_entries,
+            missing_data_pl=opisy,
             table_marker=ARC_FLASH_COEFF_MISSING_MARKER,
         )
 
@@ -893,6 +902,7 @@ class ArcFlashBuilder:
         status: ArcFlashStatus,
         why: str,
         missing: tuple[str, ...],
+        missing_data_pl: tuple[str, ...],
         table_marker: str | None,
     ) -> ArcFlashResult:
         return ArcFlashResult(
@@ -922,6 +932,7 @@ class ArcFlashBuilder:
             ppe_table_provenance=None,
             why_pl=why,
             missing_data=missing,
+            missing_data_pl=missing_data_pl,
             white_box=(),
         )
 

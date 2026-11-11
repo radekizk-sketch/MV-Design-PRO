@@ -11,8 +11,10 @@
  * (`BayProtectionControlUnit`/`SpzState`) — bez pól cykli i stopni, których model nie ma.
  */
 
+import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import type { FieldReadModelItem } from '../../../ui/field/useFieldReadModel';
 import type { BayProtectionControlUnit, SpzState } from '../../../types/enm';
+import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 
 /** Wiersz sekcji ZABEZPIECZENIA — pole z (ewentualnym) przypisaniem zabezpieczeń. */
 export interface WierszZabezpieczenia {
@@ -81,7 +83,7 @@ export function buildWierszeZabezpieczen(
   fields: readonly FieldReadModelItem[],
 ): WierszZabezpieczenia[] {
   return fields
-    .map((item): WierszZabezpieczenia => {
+    .map((item, indeks, wszystkie): WierszZabezpieczenia => {
       const config = protectionConfig(item);
       const funkcje = config
         ? config.functions
@@ -91,7 +93,7 @@ export function buildWierszeZabezpieczen(
       const base = item.canonical_model.base_model;
       return {
         bayRef: item.bay_ref,
-        bayName: item.bay_name || item.bay_ref,
+        bayName: nazwaObiektuPl(item.bay_name, 'pole', { numer: indeks + 1, liczba: wszystkie.length }),
         urzadzenie: config?.model ?? null,
         funkcje,
         maZabezpieczenie: config !== null,
@@ -107,7 +109,7 @@ function buildCechy(features: Record<string, boolean>): CechaAutomatyki[] {
     .sort((a, b) => a.localeCompare(b))
     .map((klucz) => ({
       klucz,
-      etykieta: ETYKIETY_CECH[klucz] ?? klucz,
+      etykieta: etykietaZeSlownika(ETYKIETY_CECH, klucz),
       aktywna: features[klucz] === true,
     }));
 }
@@ -129,14 +131,14 @@ function buildSpz(spz: SpzState | null | undefined): SpzWidok | null {
 /** Wiersze sekcji AUTOMATYKA (tylko pola ze sterownikiem `BayProtectionControlUnit`). */
 export function buildSterowniki(fields: readonly FieldReadModelItem[]): Sterownik[] {
   return fields
-    .map((item): Sterownik | null => {
+    .map((item, indeks, wszystkie): Sterownik | null => {
       const config = protectionConfig(item);
       if (!config) {
         return null;
       }
       return {
         bayRef: item.bay_ref,
-        bayName: item.bay_name || item.bay_ref,
+        bayName: nazwaObiektuPl(item.bay_name, 'pole', { numer: indeks + 1, liczba: wszystkie.length }),
         unitRef: config.unit_ref,
         urzadzenie: config.model ?? null,
         cechy: buildCechy(config.automation_features ?? {}),

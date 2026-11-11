@@ -162,16 +162,9 @@ export function PropertyGrid({
   );
 
   // Get mode label for header
-  const getModeLabel = () => {
-    switch (mode) {
-      case 'MODEL_EDIT':
-        return 'Edycja';
-      case 'RESULT_VIEW':
-        return 'Wyniki';
-      default:
-        return mode;
-    }
-  };
+  // Ta sama reguła co `normalizeOperatingMode`: każdy tryb poza widokiem wyników jest edycją
+  // modelu — kod trybu nie trafia na ekran.
+  const getModeLabel = () => (mode === 'RESULT_VIEW' ? 'Wyniki' : 'Edycja');
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">

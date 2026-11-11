@@ -520,7 +520,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/eligibility_models.py",
     "domain/execution.py",
     "domain/fault_scenario.py",
-    "domain/field_device.py",
     "domain/geometry_overrides.py",
     "domain/incremental_archive.py",
     "domain/models.py",

@@ -42,6 +42,8 @@ import type { FaultScenario, ShortCircuitConfig } from '../../../../ui/fault-sce
 import { SCENARIUSZE_STRINGS as T } from './strings';
 import { uruchomScenariuszZwarciowy } from '../uruchomObliczenie';
 import { useZadanieCzasuTb } from './zadanieCzasuTb';
+import { etykietaZeSlownika } from '../../../wyniki/wzorzec/slownikWyliczen';
+import { useNazwaObiektu } from '../../../wyniki/wzorzec/useNazwaObiektu';
 
 /**
  * Konfiguracja scenariusza z nowym t_b (karta TB-WARTOSC-ROBOCZA) — pozostałe pola bez
@@ -100,6 +102,8 @@ const PUSTY_FORMULARZ: FormularzScenariusza = {
 
 export function PanelScenariuszy() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  // Miejsce zwarcia nazywa most nazw wyników (to samo źródło co schemat), nie identyfikator.
+  const nazwaObiektu = useNazwaObiektu();
   const scenarios = useFaultScenariosStore((s) => s.scenarios);
   const isLoading = useFaultScenariosStore((s) => s.isLoading);
   const error = useFaultScenariosStore((s) => s.error);
@@ -456,9 +460,9 @@ export function PanelScenariuszy() {
             {scenarios.map((s) => (
               <tr key={s.scenario_id} data-testid={`mvd-scenariusze-wiersz-${s.scenario_id}`}>
                 <td>{s.name}</td>
-                <td>{FAULT_TYPE_LABELS[s.fault_type] ?? s.fault_type}</td>
+                <td>{etykietaZeSlownika(FAULT_TYPE_LABELS, s.fault_type)}</td>
                 <td className="mvd-num">
-                  {`${LOCATION_TYPE_LABELS[s.location.location_type] ?? s.location.location_type}: ${s.location.element_ref}`}
+                  {`${etykietaZeSlownika(LOCATION_TYPE_LABELS, s.location.location_type)}: ${nazwaObiektu(s.location.element_ref)}`}
                 </td>
                 <td data-testid={`mvd-scenariusze-c-${s.scenario_id}`}>{opisCScenariusza(s.config)}</td>
                 <td data-testid={`mvd-scenariusze-tb-${s.scenario_id}`}>

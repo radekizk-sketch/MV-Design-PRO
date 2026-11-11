@@ -1,3 +1,4 @@
+import { bladOdpowiedzi } from '../../../ui2/shared/bladZapytania';
 /**
  * Station Templates API client — K30-16 frontend integration.
  *
@@ -9,8 +10,7 @@ const API_BASE = '/api/station-templates';
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Błąd HTTP: ${response.status}`);
+    throw await bladOdpowiedzi(response);
   }
   return response.json() as Promise<T>;
 }

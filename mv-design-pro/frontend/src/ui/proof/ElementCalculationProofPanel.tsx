@@ -1,3 +1,4 @@
+import { nazwaObiektuPl } from '../shared/nazwaObiektu';
 import { useEffect, useMemo, useState } from 'react';
 
 import {
@@ -15,6 +16,7 @@ import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { formatWStanie, useDostepnoscEksportuWywodu } from '../results/useDostepnoscEksportuWywodu';
 import { MathInline, MathRenderer } from './MathRenderer';
 import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface ProofSelectedElement {
   id: string;
@@ -154,7 +156,7 @@ export function resolveShortCircuitRowsForElement(
 }
 
 function traceLabel(key: string): string {
-  return TRACE_VALUE_LABELS[key] ?? key
+  return etykietaZeSlownika(TRACE_VALUE_LABELS, key)
     .replace(/_/g, ' ')
     .replace(/\bohm\b/gi, 'Ω')
     .replace(/\bka\b/gi, 'kA')
@@ -556,7 +558,7 @@ export function ElementCalculationProofPanel({
             Wywód obliczeń
           </div>
           <h4 className="text-sm font-semibold text-[color:var(--mvd-ink)]">
-            {selectedElement ? selectedElement.name || selectedElement.id : 'Wybierz obiekt na SLD'}
+            {selectedElement ? nazwaObiektuPl(selectedElement.name, 'element') : 'Wybierz obiekt na SLD'}
           </h4>
         </div>
         {runId && eksportLatex.dostepny && (

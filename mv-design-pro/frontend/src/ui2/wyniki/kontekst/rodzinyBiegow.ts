@@ -7,6 +7,7 @@
  */
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Rodziny analiz
@@ -57,7 +58,7 @@ export function rodzinaAnalizy(typ: string): RodzinaAnalizy | null {
 
 /** Etykieta PL rodzaju biegu (słownik rejestru; rodzaj spoza słownika — jego kod). */
 export function etykietaRodzajuBiegu(typ: string): string {
-  return (ANALYSIS_TYPE_LABELS as Readonly<Record<string, string>>)[typ] ?? typ;
+  return etykietaZeSlownika(ANALYSIS_TYPE_LABELS, typ);
 }
 
 // ---------------------------------------------------------------------------

@@ -16,6 +16,8 @@
  */
 
 import { useEffect, useState } from 'react';
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export interface FunkcjaWymagana {
   readonly kod: string;
@@ -62,7 +64,7 @@ export async function fetchDoborFunkcji(
     + `${encodeURIComponent(generatorRef)}/protection-functions`;
   const response = await fetch(endpoint);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać doboru funkcji zabezpieczeniowych (${response.status}).`);
+    throw bladZapytania(response, 'Nie udało się pobrać doboru funkcji zabezpieczeniowych');
   }
   const payload: unknown = await response.json();
   if (!maObowiazkowyKsztalt(payload)) {
@@ -121,9 +123,9 @@ function torPomiaruPl(fakty: DoborFunkcji['fakty']): string {
   return [
     fakty.neutral_grounding_mode === null
       ? 'punkt neutralny nieokreślony w modelu'
-      : (uziemienie[fakty.neutral_grounding_mode] ?? fakty.neutral_grounding_mode),
-    prad[fakty.zero_sequence_current_source] ?? fakty.zero_sequence_current_source,
-    napiecie[fakty.zero_sequence_voltage_source] ?? fakty.zero_sequence_voltage_source,
+      : etykietaZeSlownika(uziemienie, fakty.neutral_grounding_mode),
+    etykietaZeSlownika(prad, fakty.zero_sequence_current_source),
+    etykietaZeSlownika(napiecie, fakty.zero_sequence_voltage_source),
   ].join(' · ');
 }
 

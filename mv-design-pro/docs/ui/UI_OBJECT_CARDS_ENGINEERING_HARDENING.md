@@ -6,6 +6,7 @@
 | Zakres          | 10 kart obiektow w `ui/network-build/cards/`                                 |
 | Cel             | Dokumentacja sekcji, dodanych sekcji inzynierskich i stanu po hardeningu      |
 | Status dokumentu| **ZAMKNIETY**                                                                |
+| Stan 2026-11-04 | Karty skasowane (zero konsumentów produkcyjnych); zostaje `cards/ObjectCard.tsx` (karta techniczna `ui/tech-card`). Dane obiektu pokazuje karta techniczna K6 w inspektorze, karta stacji GPZ pokazuje zwartą tabelę „Sekcje szyn” (jedna sekcja = jeden wiersz, odczyt z modelu) i przycisk „Konfiguruj GPZ”; jedynym edytorem sekcji jest konfigurator GPZ (`ui/workspace/surfaces/GpzConfiguratorSurface.tsx`, karta „Sekcje SN”) z edytorem `cards/GpzSectionsEditor.tsx`, który zostaje |
 
 ---
 

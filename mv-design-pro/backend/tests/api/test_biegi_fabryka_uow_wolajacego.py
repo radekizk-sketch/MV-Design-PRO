@@ -93,7 +93,7 @@ def test_bieg_zabezpieczen_bez_fabryki_odmawia_jawnie_zamiast_czytac_inna_baze(
     wynik = execute_run(UUID(run_id))
 
     assert wynik.status == "FAILED"
-    assert "nie dostał fabryki UnitOfWork" in (wynik.error_message or "")
+    assert "nie dostał fabryki jednostki pracy bazy danych" in (wynik.error_message or "")
     zapisany = get_run(UUID(run_id))
     assert zapisany is not None and zapisany.status == "FAILED"
 

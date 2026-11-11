@@ -1,9 +1,9 @@
+import { nazwaPoReferencjiPl } from '../shared/nazwaObiektu';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import type { FieldReadModelItem } from './useFieldReadModel';
 
 type LegacyBay = EnergyNetworkModel['bays'][number];
-type LegacyBus = EnergyNetworkModel['buses'][number];
 type LegacyStation = EnergyNetworkModel['substations'][number];
 
 export interface FieldReadModelSummary {
@@ -62,17 +62,6 @@ function findStation(
   return snapshot.substations.find(
     (station) => station.ref_id === stationRef || station.id === stationRef,
   ) ?? null;
-}
-
-function findBus(
-  snapshot: EnergyNetworkModel | null,
-  busRef: string | null | undefined,
-): LegacyBus | null {
-  if (!snapshot || !busRef) {
-    return null;
-  }
-
-  return snapshot.buses.find((bus) => bus.ref_id === busRef || bus.id === busRef) ?? null;
 }
 
 function resolveFieldBusRef(
@@ -147,7 +136,6 @@ export function buildFieldReadModelSummaries(
       const legacyBay = findLegacyBay(snapshot, item.bay_ref, item.bay_id);
       const station = findStation(snapshot, baseModel.substation_ref);
       const busRef = resolveFieldBusRef(item, station, legacyBay?.bus_ref ?? null);
-      const bus = findBus(snapshot, busRef);
 
       return {
         ref_id: item.bay_ref,
@@ -156,9 +144,9 @@ export function buildFieldReadModelSummaries(
         bay_role: baseModel.bay_role,
         bay_role_label: fieldRoleLabelPl(baseModel.bay_role),
         station_ref: baseModel.substation_ref ?? null,
-        station_name: station?.name ?? baseModel.substation_ref ?? 'Stacja nieprzypisana',
+        station_name: nazwaPoReferencjiPl(snapshot?.substations, baseModel.substation_ref, 'stacja', 'Stacja nieprzypisana'),
         bus_ref: busRef,
-        bus_name: bus?.name ?? busRef ?? 'Szyna nieprzypisana',
+        bus_name: nazwaPoReferencjiPl(snapshot?.buses, busRef, 'szyna', 'Szyna nieprzypisana'),
         gpz_section_id: baseModel.gpz_section_id ?? null,
         linked_refs: linkedRefsForFieldItem(item),
         fieldItem: item,

@@ -29,8 +29,8 @@ from analysis.arc_flash import (
     ElectrodeConfig,
     EnclosureType,
 )
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from network_model.catalog.wartosci_robocze import (

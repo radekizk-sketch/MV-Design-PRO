@@ -187,15 +187,16 @@ describe('ProtectionLibraryBrowser', () => {
 
     const sepamEntry = await screen.findByText(/sepam 20/i);
     expect(sepamEntry).toBeInTheDocument();
-    expect(screen.getByText(/dane analityczne - wymagaja weryfikacji/i)).toBeInTheDocument();
+    expect(screen.getByText(/dane analityczne — wymagają weryfikacji/i)).toBeInTheDocument();
 
     await user.click(sepamEntry);
 
     await waitFor(() => {
       expect(screen.getByText(/rekord analityczny/i)).toBeInTheDocument();
       expect(screen.getByText('Status weryfikacji:')).toBeInTheDocument();
-      expect(screen.getByText('NIEZWERYFIKOWANY')).toBeInTheDocument();
-      expect(screen.getByText('Zrodlo danych:')).toBeInTheDocument();
+      expect(screen.getByText('Niezweryfikowany')).toBeInTheDocument();
+      expect(screen.queryByText('NIEZWERYFIKOWANY')).not.toBeInTheDocument();
+      expect(screen.getByText('Źródło danych:')).toBeInTheDocument();
       expect(screen.getByText(/devices_v0\.json/i)).toBeInTheDocument();
     });
   });
@@ -301,7 +302,9 @@ describe('ProtectionLibraryBrowser', () => {
       expect(screen.getByText('Standard:')).toBeInTheDocument();
       expect(screen.getByText('IEC')).toBeInTheDocument();
       expect(screen.getByText('Typ krzywej:')).toBeInTheDocument();
-      expect(screen.getByText('inverse')).toBeInTheDocument();
+      // Rodzaj krzywej nazwą z jednego słownika wartości kodowych, nie kodem serwera.
+      expect(screen.getByText('normalna odwrotna (SI)')).toBeInTheDocument();
+      expect(screen.queryByText('inverse')).not.toBeInTheDocument();
     });
   });
 

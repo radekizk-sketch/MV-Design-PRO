@@ -54,6 +54,7 @@ import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, toSamoNapiecieZnamionowe, wPasmieNn } from '../../model/pasmaNapieciowe';
 import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+import { nazwaWartosciKodowej } from '../../../ui/catalog/wartosciKodoweKarty';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
@@ -998,19 +999,10 @@ export function aparatyDlaPola(
     .sort((a, b) => a.u_n_kv - b.u_n_kv || a.i_n_a - b.i_n_a || a.id.localeCompare(b.id));
 }
 
-/** Etykiety PL rodzajów aparatu (`device_kind` katalogu APARAT_SN) — bez kodenames. */
-export const ETYKIETY_RODZAJU_APARATU: Readonly<Record<string, string>> = {
-  WYLACZNIK: 'wyłącznik',
-  ROZLACZNIK: 'rozłącznik',
-  ROZLACZNIK_BEZPIECZNIKOWY: 'rozłącznik bezpiecznikowy',
-  ODLACZNIK: 'odłącznik',
-  REKLOZER: 'reklozer',
-  UZIEMNIK: 'uziemnik',
-};
-
-/** Nazwa rodzaju aparatu po polsku (nieznany rodzaj = jego kod z katalogu). */
+/** Nazwa rodzaju aparatu po polsku — jeden słownik wartości kodowych kart katalogu
+ *  (`ui/catalog/wartosciKodoweKarty.ts`); rodzaj spoza słownika — jawne zdanie, nie kod. */
 export function etykietaRodzajuAparatu(deviceKind: string): string {
-  return ETYKIETY_RODZAJU_APARATU[deviceKind] ?? deviceKind;
+  return nazwaWartosciKodowej('device_kind', deviceKind);
 }
 
 /**
@@ -1046,12 +1038,13 @@ export function producenciUzywalni(
 // ukrywać rodziny bez potwierdzonej karty katalogowej. Dwie ścieżki tej samej
 // decyzji („które rodziny widać") nie mogą współistnieć, więc stara odchodzi.
 
-/** Wybór rozdzielnicy przekazywany do payloadu (referencje + nazwy + pola). */
+/**
+ * Wybór rozdzielnicy przekazywany do payloadu (referencje + pola). Nazwy producenta i rodziny
+ * nie należą do payloadu — ekran bierze je z katalogu (`nazwaProducentaPl`, `family_name`).
+ */
 export interface WyborRozdzielnicy {
   manufacturerRef: string;
-  manufacturerName: string | null;
   familyRef: string | null;
-  familyName: string | null;
   snFields: readonly StationSnFieldTemplate[];
 }
 

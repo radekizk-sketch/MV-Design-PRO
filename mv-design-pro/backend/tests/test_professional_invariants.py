@@ -283,7 +283,11 @@ def test_no_any_in_domain_types():
     # 31 (ponad dawny próg 30), trzy parametry `domain_operations.py` zawężone do `object`
     # (`_pozycja_normalna_portu`, `dodaj`, `_opt_str`) → 28. Pomiar 2026-10-28 po scaleniu
     # gałęzi UI/UX z programem (karta LINIA-110 zeszła do 29 po swojej stronie): 27.
-    max_allowed = 27
+    # Pomiar 2026-10-29: ślad sieci zerowej (01f80af8d) dołożył `z0_bus: Any` w
+    # `assembler.zloz_wejscie_zwarcia` (28); obie adnotacje `z0_bus` w `enm/assembler.py`
+    # (pole wejścia zwarciowego i zmienna lokalna) zawężone do `np.ndarray | None` — typu,
+    # który przyjmuje solver IEC 60909 → 26.
+    max_allowed = 26
     if len(violations) > max_allowed:
         violation_text = "\n".join(violations[:20])
         pytest.fail(

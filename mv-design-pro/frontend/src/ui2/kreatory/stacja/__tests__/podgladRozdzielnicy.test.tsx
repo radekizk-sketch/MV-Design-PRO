@@ -42,6 +42,7 @@ import {
   RODZINA_UNIGEAR,
   SZABLON_SAFERING_LINE_IN,
   SZABLON_SAFERING_LINE_OUT,
+  SZABLON_SAFERING_LINE_OUT_PRODUCENCKI,
   SZABLON_SAFERING_TRANSFORMER,
   SZABLON_UNIGEAR_COUPLER,
   SZABLON_UNIGEAR_LINE_OUT,
@@ -332,6 +333,11 @@ describe('SLD-GEN-POLA — nagłówek pakietu rozdzielnicy', () => {
       producent: 'ABB',
     });
     expect(podglad.naglowek.producent).toBe('ABB');
+    // Bez nazwy producenta nagłówek pokazuje brak, nie kod `manufacturer_ref` rodziny.
+    expect(
+      zbudujPodglad({ snFields, aparaty: KATALOG, transformatory: TRAFO, transformatorRef: null, snVoltageKv: 15, szablonyPol: BLOK_RMU_K_K_T, rodzina: RODZINA_SAFERING })
+        .naglowek.producent,
+    ).toBeNull();
     expect(podglad.naglowek.rodzina).toBe('SafeRing');
     expect(podglad.naglowek.konstrukcja).toBe('RMU');
     // Nagłówek rysunku nazywa wielkość, którą deklaruje karta rodziny —
@@ -454,18 +460,24 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
   });
 
   it('opis pola niesie RODZINĘ i KOD KATALOGOWY pola, gdy pakiet jest dobrany', () => {
+    // Intencja bez zmian: rysunek identyfikuje pakiet rodziną i kodem katalogowym
+    // producenta. Dawna asercja oczekiwała referencji szablonu (`ABB__SAFERING__LINE_OUT`)
+    // — to był kod katalogu aplikacji wpisany w miejsce brakującego kodu producenta,
+    // nie kod z karty. Kod producenta niesie szablon `template_code` (tu „SAFERING-C");
+    // szablon bez kodu nazywa się nazwą pakietu (test „pakiet katalogowy pola bez referencji").
     const { container } = render(
       <PodgladRozdzielnicySn
-        snFields={[pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT.template_ref)]}
+        snFields={[pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, SZABLON_SAFERING_LINE_OUT_PRODUCENCKI.template_ref)]}
         aparaty={KATALOG}
         snVoltageKv={15}
-        szablonyPol={[SZABLON_SAFERING_LINE_OUT]}
+        szablonyPol={[SZABLON_SAFERING_LINE_OUT_PRODUCENCKI]}
         rodzina={RODZINA_SAFERING}
       />,
     );
     const tekst = tekstRysunku(container);
     expect(tekst).toContain('SafeRing');
-    expect(tekst).toContain('ABB__SAFERING__LINE_OUT');
+    expect(tekst).toContain('SAFERING-C');
+    expect(tekst).not.toContain(SZABLON_SAFERING_LINE_OUT_PRODUCENCKI.template_ref);
   });
 
   it('zmiana pozycji katalogowej zmienia etykietę (etykieta nie jest zaszyta)', () => {
@@ -1010,5 +1022,37 @@ describe('GEOMETRIA-STACJI — aparaty podglądu kreatora to propozycja szablonu
     const { container } = render(<PodgladRozdzielnicySn snFields={[]} snVoltageKv={15} />);
     expect(container.querySelectorAll('[data-symbol-pola]').length).toBe(0);
     expect(container.querySelector('[data-testid="mvd-podglad-propozycja"]')).toBeNull();
+  });
+});
+
+
+/**
+ * Pakiet katalogowy pola na rysunku: iloczyn {kod katalogowy pola: jest, brak (dziś każdy
+ * z 85 szablonów rodzin)} × {rodzina: wybrana, nieznana kreatorowi}. Rysunek nazywa pakiet
+ * nazwą (kod producenta, gdy jest; nazwa pakietu z rodzaju pola i rodziny, gdy go nie ma) —
+ * referencja szablonu i referencja rodziny nigdy nie trafiają na rysunek.
+ */
+describe('podgląd rozdzielnicy — pakiet katalogowy pola bez referencji', () => {
+  const przypadki = [
+    ['kod jest × rodzina wybrana', SZABLON_SAFERING_LINE_OUT_PRODUCENCKI, RODZINA_SAFERING, ['SAFERING-C', 'SafeRing']],
+    ['kod jest × rodzina nieznana', SZABLON_SAFERING_LINE_OUT_PRODUCENCKI, null, ['SAFERING-C', 'spoza katalogu rodzin']],
+    ['brak kodu × rodzina wybrana', SZABLON_SAFERING_LINE_OUT, RODZINA_SAFERING, ['SafeRing']],
+    ['brak kodu × rodzina nieznana', SZABLON_SAFERING_LINE_OUT, null, ['spoza katalogu rodzin']],
+  ] as const;
+  it.each(przypadki)('%s', (_opis, szablon, rodzina, oczekiwane) => {
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_OUT', 'ap-ROZLACZNIK', undefined, szablon.template_ref)]}
+        aparaty={KATALOG}
+        snVoltageKv={15}
+        szablonyPol={[szablon]}
+        rodzina={rodzina}
+      />,
+    );
+    const tekst = tekstRysunku(container);
+    for (const fraza of oczekiwane) expect(tekst).toContain(fraza);
+    expect(tekst).not.toContain(szablon.template_ref);
+    expect(tekst).not.toContain('ABB__SAFERING');
+    expect(tekst).not.toMatch(/__/);
   });
 });

@@ -74,7 +74,7 @@ def sprawdz_zakresy_waznosci(
         indeks = int(indeks)
         wartosc = float(wartosci[indeks])
         granica = float(dolne[indeks]) if ponizej[indeks] else float(gorne[indeks])
-        strona = "dolna" if ponizej[indeks] else "gorna"
+        strona = "dolna" if ponizej[indeks] else "górna"
         opisy.append(
             f"{adresy[indeks]}[{indeks}]={wartosc} "
             f"(granica {strona} {granica}, przekroczenie {abs(wartosc - granica)})"

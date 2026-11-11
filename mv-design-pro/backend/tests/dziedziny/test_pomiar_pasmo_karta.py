@@ -151,3 +151,11 @@ def test_materializacja_odrzuca_kolizje_identyfikatorow_modeli_i_pustke() -> Non
         materializuj_modele_widmowe(())
     with pytest.raises(ValidationError):
         ModeleWidmoweElementu(modele=(), zrodla=())
+
+
+def test_kazde_pole_kompletu_pomiaru_ma_nazwe() -> None:
+    """Odmowa widma zmierzonego nazywa brakujące pola pomiaru słowami — każdy klucz, który
+    może zwrócić ``braki_kompletu``, ma nazwę w ``NAZWY_POL_POMIARU_PL``."""
+    from dziedziny.pomiar import NAZWY_POL_POMIARU_PL, POLE_SUPRAHARMONICZNE
+
+    assert set(NAZWY_POL_POMIARU_PL) == {*KOMPLET_POMIARU, POLE_SUPRAHARMONICZNE}

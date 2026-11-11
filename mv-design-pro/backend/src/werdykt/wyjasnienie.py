@@ -26,6 +26,10 @@ from werdykt.kontrakt import (
     METODY_PRZYDATNE_DLA_TWIERDZENIA,
     METODY_PRZYDATNE_ZAWSZE,
     METODY_TYLKO_WYMAGANIA,
+    NAZWA_METODY_PL,
+    NAZWA_RELACJI_PL,
+    NAZWA_RODZAJU_PODSTAWY_PL,
+    NAZWA_STANU_ZRODLA_PL,
     POZIOMY_BEZ_WALIDACJI,
     TWIERDZENIA_Z_OBLICZENIEM,
     DanaPrzyjeta,
@@ -41,9 +45,7 @@ from werdykt.kontrakt import (
     PoziomRekordu,
     Przedmiot,
     Relacja,
-    RodzajPodstawy,
     RodzajSkali,
-    StanZrodla,
     StatusDowodu,
     StatusWerdyktu,
     Stosowalnosc,
@@ -61,14 +63,6 @@ from werdykt.proweniencja import ClaimKind, EvidenceTier
 # ``dana.jakosc``, ``podstawa.status``) — zdania ``*_pl``, ``czego_brakuje`` i ``zastrzezenia``
 # niosą tylko nazwy (strażnik ``werdykt_wyjasnialny_guard``, sprawdzenie ``5_kod_w_tekscie``).
 
-#: Stan źródła podstawy W TEKŚCIE — lustro karty werdyktu (`NAZWA_STANU_ZRODLA_PL` w
-#: ``KartaWerdyktu.tsx``); kod zostaje w polu ``podstawa.status``. Blok dokumentu formalnego
-#: (``werdykt.dokument``) czyta tę samą mapę.
-NAZWA_STANU_ZRODLA_PL: dict[StanZrodla, str] = {
-    "ZWERYFIKOWANE": "zweryfikowane",
-    "WSKAZANE": "wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)",
-    "NIEUSTALONE": "nieustalone",
-}
 #: Stan źródła wymagany dla dowodu pełnego — w tekście powodów niepełności.
 _STAN_WYMAGANY_PL = "zweryfikowane albo wskazane"
 _SIMULACJA_ZWALIDOWANA = EvidenceTier.VALIDATED_SIMULATION.label_pl
@@ -77,18 +71,6 @@ _MODEL_ZWALIDOWANY_PL = (
     "model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany"
 )
 
-#: Nazwy metod dowodu w tekście.
-NAZWA_METODY_PL: dict[MetodaDowodu, str] = {
-    "CERTYFIKAT": "certyfikat urządzenia",
-    "RAPORT_Z_TESTU": "raport z testu",
-    "SYMULACJA": "symulacja",
-    "OBLICZENIE": "obliczenie",
-    "DEKLARACJA": "deklaracja",
-    "POMIAR": "pomiar",
-    "OCENA_OPERATORA": "ocena operatora",
-    "DOWOD_LACZONY": "dowód łączony",
-    "BRAK_METODY": "brak metody",
-}
 #: Nazwy rodzajów twierdzenia (dopełniacz: „dla twierdzenia …").
 NAZWA_TWIERDZENIA_PL: dict[ClaimKind, str] = {
     ClaimKind.DYNAMIC_PERFORMANCE: "twierdzenia o zachowaniu dynamicznym",
@@ -100,19 +82,6 @@ NAZWA_TWIERDZENIA_DOPELNIACZ_PL: dict[ClaimKind, str] = {
     ClaimKind.DYNAMIC_PERFORMANCE: "zachowania dynamicznego",
     ClaimKind.DECLARED_CONFIGURATION: "konfiguracji zadeklarowanej",
     ClaimKind.STATIC_CALCULATION: "wielkości z obliczenia statycznego",
-}
-#: Nazwy rodzajów podstawy.
-NAZWA_RODZAJU_PODSTAWY_PL: dict[RodzajPodstawy, str] = {
-    "ROZPORZADZENIE_UE": "rozporządzenie UE",
-    "NORMA": "norma",
-    "PRAWO_KRAJOWE": "prawo krajowe",
-    "WOS": "wymogi ogólnego stosowania (WOS)",
-    "PROCEDURA_PTPIREE": "procedura PTPiREE",
-    "WIPWC": "WiPWC",
-    "OSD": "wymagania operatora systemu dystrybucyjnego",
-    "KATALOG_PRODUCENTA": "katalog producenta",
-    "ZALOZENIE_PROJEKTOWE": "założenie projektowe",
-    "NIEUSTALONA": "warstwa o nieustalonym pochodzeniu",
 }
 #: Nazwy rodzaju skali marginesu względnego (dopełniacz).
 NAZWA_SKALI_PL: dict[RodzajSkali, str] = {
@@ -246,15 +215,6 @@ def metody_przydatne_pl(rodzaj_twierdzenia: ClaimKind, poziom: PoziomRekordu) ->
     return _albo(czesci)
 
 
-def nazwa_kompletnosci(kompletnosc: str) -> str:
-    """Kompletność dowodu w tekście (kod zostaje w polu ``kompletnosc_dowodu``)."""
-    if kompletnosc == "PELNY":
-        return "pełny"
-    if kompletnosc == "NIEPELNY":
-        return "niepełny"
-    return "nie dotyczy"
-
-
 def nazwa_statusu_modelu(status: str) -> str:
     """Status walidacji modelu urządzenia w tekście (kod zostaje w ``dowod.status_modelu``)."""
     if status == "UNVALIDATED_MODEL":
@@ -314,7 +274,7 @@ def _opis_limitu(relacja: Relacja, limit: LimitKryterium, chwila_s: float | None
         wartosc = Wielkosc(wartosc=limit.wartosc_obwiedni(chwila_s), jednostka=limit.jednostka)
         opis = f"obwiedni {rodzaj} {format_wielkosc(wartosc)} w chwili t = {_sekundy(chwila_s)}"
     else:
-        raise ValueError(f"Postać limitu nie pasuje do relacji {relacja}.")
+        raise ValueError(f"Postać limitu nie pasuje do relacji „{NAZWA_RELACJI_PL[relacja]}”.")
     return f"{opis} wg {odnosnik_podstawy(limit.podstawa)}"
 
 

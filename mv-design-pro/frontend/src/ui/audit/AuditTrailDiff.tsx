@@ -8,6 +8,7 @@
  */
 
 import type { OperationHistoryEntry } from './elementHistory';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export interface DiffEntry {
   key: string;
@@ -55,7 +56,7 @@ export function computeDiff(
     const changed = JSON.stringify(beforeVal) !== JSON.stringify(afterVal);
     entries.push({
       key,
-      label: FIELD_LABELS[key] ?? key,
+      label: etykietaZeSlownika(FIELD_LABELS, key),
       before: beforeVal,
       after: afterVal,
       changed,

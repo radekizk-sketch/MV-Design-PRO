@@ -13,6 +13,10 @@ from typing import get_args
 
 import pytest
 from dziedziny.jakosc_energii import (
+    ETYKIETA_PODMIOTU,
+    ETYKIETA_PUNKTU_POMIARU,
+    ETYKIETA_RODZAJU_OCENY,
+    ETYKIETA_RODZAJU_WYMAGANIA,
     AgregacjaWymagania,
     ParametrMetody,
     PodmiotWymagania,
@@ -121,6 +125,29 @@ def test_iloczyn_cech_stosowalnosci_z_wyrocznia() -> None:
         assert wynik.podstawa is not None
     assert przypadki == 1620
     assert not rozbieznosci, f"{len(rozbieznosci)} rozbieżności:\n" + "\n".join(rozbieznosci[:20])
+
+
+def test_powod_niestosowalnosci_nazywa_wartosci_slowami_bez_kodow() -> None:
+    """Ten sam iloczyn 1620 przypadków: słowniki etykiet są kompletne wobec wyliczeń, a powód
+    niestosowalności nie niesie żadnej wartości wyliczenia (kodu) — wyłącznie jej etykietę."""
+    assert set(ETYKIETA_RODZAJU_WYMAGANIA) == set(RODZAJE)
+    assert set(ETYKIETA_RODZAJU_OCENY) == set(OCENY)
+    assert set(ETYKIETA_PUNKTU_POMIARU) == set(PUNKTY)
+    assert set(ETYKIETA_PODMIOTU) == set(PODMIOTY)
+    kody = {*RODZAJE, *OCENY, *PUNKTY, *PODMIOTY}
+    for rodzaj, poziom_wpisu, poziom, punkt, podmiot, ocena in itertools.product(
+        RODZAJE, POZIOMY, POZIOMY, PUNKTY, PODMIOTY, OCENY
+    ):
+        wynik = stosowalnosc_wymagania_jakosci(
+            wpis(rodzaj, poziom_wpisu),
+            PrzedmiotOceny(
+                poziom_napiecia=poziom, punkt=punkt, podmiot=podmiot, rodzaj_oceny=ocena
+            ),
+        )
+        if wynik.dotyczy:
+            continue
+        obecne = sorted(k for k in kody if k in wynik.powod_pl)
+        assert not obecne, (rodzaj, punkt, podmiot, ocena, obecne, wynik.powod_pl)
 
 
 # --- Trzy rodziny zakazu przenoszenia (osobno, z nazwą w komunikacie) -------------------

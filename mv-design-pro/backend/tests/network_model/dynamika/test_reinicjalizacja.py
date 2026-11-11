@@ -173,7 +173,7 @@ def test_niezbiezna_reinicjalizacja_konczy_sie_wlasnym_kodem() -> None:
             t_s=0.4,
         )
     assert blad.value.kod == KOD_REINICJALIZACJA_NIEZBIEZNA
-    assert blad.value.szczegoly["przyczyna"] == "dynamika.algebra_niezbiezna"
+    assert blad.value.szczegoly["kod_przyczyny"] == "dynamika.algebra_niezbiezna"
     assert blad.value.szczegoly["t_s"] == 0.4
 
 

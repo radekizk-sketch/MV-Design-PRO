@@ -241,13 +241,13 @@ describe('EkranOdbioru — serializacja i raport', () => {
   it('błąd 422 z backendu → jawny stan błędu z komunikatem PL (detail)', async () => {
     ustawPrzebieg();
     post.mockRejectedValue(
-      new Error('Brak jawnej tolerancji napięcia (tolerancje.napiecie_pct).'),
+      new Error('Brak jawnej tolerancji porównania napięcia (dopuszczalna różnica pomiaru i obliczenia w %).'),
     );
     render(<EkranOdbioru szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     expect(await screen.findByTestId('mvd-odbior-blad')).toHaveTextContent(
-      'Brak jawnej tolerancji napięcia',
+      'Brak jawnej tolerancji porównania napięcia',
     );
   });
 });

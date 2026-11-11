@@ -96,6 +96,11 @@
 
 ### 2.7 Readiness Layer (Frontend: `readinessProfile.ts`)
 
+> Stan 2026-10-30: plik `readinessProfile.ts` nie istnieje w repozytorium, a backendowy profil
+> `ReadinessProfileV1` z bramkami `require_*` skasowano (jeden walidator: ENM +
+> `CalculationReadiness`, ADR-025). Zostały typy rekordu braku `ReadinessIssueV1` /
+> `ReadinessPriority` w `mv-design-pro/backend/src/domain/readiness.py`.
+
 | Pole | Opis | Status |
 |------|------|--------|
 | `ReadinessIssueV1.elementId` | Poprawne | OK |

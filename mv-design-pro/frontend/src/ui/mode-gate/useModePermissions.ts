@@ -13,6 +13,7 @@ import { useCallback, useMemo } from 'react';
 import { useActiveMode, useAppStateStore } from '../app-state';
 import { normalizeOperatingMode, type RuntimeOperatingMode } from '../operatingMode';
 import type { OperatingMode } from '../types';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export type AppAction =
   | 'model.add_element'
@@ -248,5 +249,5 @@ export function useWorkModeLabel(): string {
     TA: 'Audyt',
     TN: 'Operator nocny',
   };
-  return LABELS[workMode] ?? workMode;
+  return etykietaZeSlownika(LABELS, workMode);
 }

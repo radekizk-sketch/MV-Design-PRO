@@ -28,6 +28,8 @@
  */
 
 import { getRun, waitForRunTerminalState } from '../../../ui/study-cases/api';
+import { bladOdpowiedzi } from '../../shared/bladZapytania';
+import { etykietaStanuPrzebiegu } from './strings';
 
 // ---------------------------------------------------------------------------
 // Rodzaj analizy — kody kontraktu backendu (`V126AnalysisType`)
@@ -256,26 +258,10 @@ export interface OdpowiedzKatalogu {
 // Pobieranie (GET) / tworzenie (POST) — z odczytem pola `detail` (PL)
 // ---------------------------------------------------------------------------
 
-function komunikatZeStatusu(url: string, status: number, statusText: string): string {
-  return `Zapytanie ${url} nie powiodło się: ${status} ${statusText}`;
-}
-
-async function odczytajDetal(response: Response, domyslny: string): Promise<string> {
-  try {
-    const tresc = (await response.json()) as { detail?: unknown };
-    if (typeof tresc?.detail === 'string' && tresc.detail.trim()) return tresc.detail;
-  } catch {
-    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
-  }
-  return domyslny;
-}
-
 async function getJsonZDetalem<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      await odczytajDetal(response, komunikatZeStatusu(url, response.status, response.statusText)),
-    );
+    throw await bladOdpowiedzi(response);
   }
   return response.json() as Promise<T>;
 }
@@ -287,9 +273,7 @@ async function postJsonZDetalem<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(
-      await odczytajDetal(response, komunikatZeStatusu(url, response.status, response.statusText)),
-    );
+    throw await bladOdpowiedzi(response);
   }
   return response.json() as Promise<T>;
 }
@@ -322,7 +306,7 @@ export async function utworzPrzebieg(
   );
   const koniec = await waitForRunTerminalState(await getRun(zlecony.run_id));
   if (koniec.status !== 'DONE') {
-    throw new Error(koniec.error_message ?? `Bieg V12.6 zakończył się stanem ${koniec.status}.`);
+    throw new Error(koniec.error_message ?? `Bieg analizy zakończył się stanem „${etykietaStanuPrzebiegu(koniec.status)}”.`);
   }
   const wynik = await getJsonZDetalem<{ result?: { deterministic_hash?: string } }>(
     zlecony.result_url,

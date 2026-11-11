@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import type { BatchJob, ExecutionRun } from '../../../../../ui/study-cases/types';
 import type { FaultScenario } from '../../../../../ui/fault-scenarios/types';
 import { mapujScenariusze, mapujSerie } from '../adapters/serieAdapter';
+import { nazwaObiektuZMigawki } from '../../../../wyniki/wzorzec/useNazwaObiektu';
 
 function seria(id: string, nadpisz: Partial<BatchJob> = {}): BatchJob {
   return {
@@ -93,11 +94,30 @@ describe('mapujSerie — projekcja serii na wiersze PL', () => {
 });
 
 describe('mapujScenariusze — pozycje wyboru serii', () => {
-  it('mapuje nazwę, etykietę rodzaju i miejsce z kontraktu scenariusza', () => {
-    const [pozycja] = mapujScenariusze([scenariusz('s1', 'Zwarcie w GPZ')]);
+  it('mapuje nazwę, etykietę rodzaju i miejsce (przez most nazw) z kontraktu scenariusza', () => {
+    const wolania: string[] = [];
+    const nazwa = (ref: string) => {
+      wolania.push(ref);
+      return `nazwa obiektu ${ref.length}`;
+    };
+    const [pozycja] = mapujScenariusze([scenariusz('s1', 'Zwarcie w GPZ')], nazwa);
     expect(pozycja.id).toBe('s1');
     expect(pozycja.nazwa).toBe('Zwarcie w GPZ');
-    expect(pozycja.miejsce).toBe('bus-7');
+    expect(wolania).toEqual(['bus-7']);
+    expect(pozycja.miejsce).toBe('nazwa obiektu 5');
     expect(pozycja.rodzajEtykieta.length).toBeGreaterThan(0);
+  });
+
+  it('miejsce: nazwa z migawki modelu; obiekt spoza migawki — etykieta rodzaju bez odcisku', () => {
+    const migawka = { buses: [{ id: 'bus-7', ref_id: 'bus-7', name: 'Szyna SN stacji S7' }] } as never;
+    const nazwa = (ref: string) => nazwaObiektuZMigawki(migawka, ref);
+    const sc = scenariusz('s2', 'Zwarcie na szynie stacji');
+    const [zModelu, spozaModelu] = mapujScenariusze(
+      [sc, { ...sc, scenario_id: 's3', location: { ...sc.location, element_ref: 'stn/0123456789abcdef/sn_bus' } }],
+      nazwa,
+    );
+    expect(zModelu.miejsce).toBe('Szyna SN stacji S7');
+    expect(spozaModelu.miejsce).not.toContain('0123456789abcdef');
+    expect(spozaModelu.miejsce).not.toContain('stn/');
   });
 });

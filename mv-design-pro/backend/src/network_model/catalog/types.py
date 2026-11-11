@@ -34,6 +34,7 @@ from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.catalog.rodzaje_aparatury import (
+    NAZWY_RODZAJOW_APARATU_PL,
     WIELKOSCI_ZWARCIOWE_APARATU_SN,
     WIELKOSCI_ZWARCIOWE_LACZNIKA,
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
@@ -479,8 +480,8 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 #: zadeklarowano" od „zadeklarowano fałsz"; kwalifikują wyłącznie charakterystyki
 #: Q(U)/LFSM, których nie deklaruje żadna pozycja katalogu. `qmin_mvar`/`qmax_mvar`
 #: (PV) i `control_mode`/`grid_code`/`cosphi_*` (BESS) — kontrakty projekcji opisują
-#: zdolność bierną inaczej (`scripts/katalog_parytet_pol_guard.py::NIENOSZONE`), a ich
-#: przeniesienie zmieniłoby tabliczkę 66 generatorów PV i 56 BESS (decyzja poza tą listą).
+#: zdolność bierną inaczej (PV przez cos φ, BESS bez granic biernych), a ich przeniesienie
+#: zmieniłoby tabliczkę 66 generatorów PV i 56 BESS (decyzja poza tą listą).
 POLA_KARTY_PROJEKCJI: tuple[str, ...] = (
     # fundamental
     "cosphi",
@@ -586,20 +587,20 @@ def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
     if obiekt.flicker_c is not None and obiekt.flicker_c <= 0:
         odmowa_twarda(
             "KAT-T-011",
-            "Współczynnik emisji migotania flicker_c musi być > 0, "
-            f"otrzymano flicker_c={obiekt.flicker_c} ({kontekst}).",
+            "Współczynnik emisji migotania c (IEC 61400-21) musi być > 0, "
+            f"otrzymano {obiekt.flicker_c} ({kontekst}).",
         )
     _validate_katalogowy_k_sc(obiekt.k_sc, kontekst=kontekst)
     if obiekt.droop_p_f_percent is not None and obiekt.droop_p_f_percent <= 0:
         odmowa_twarda(
             "KAT-T-012",
-            "Statyzm P/f przekształtnika grid-forming (droop_p_f_percent) musi być > 0, "
+            "Statyzm P/f przekształtnika grid-forming [%] musi być > 0, "
             f"otrzymano {obiekt.droop_p_f_percent} ({kontekst}).",
         )
     if obiekt.droop_q_u_percent is not None and obiekt.droop_q_u_percent <= 0:
         odmowa_twarda(
             "KAT-T-013",
-            "Statyzm Q/U przekształtnika grid-forming (droop_q_u_percent) musi być > 0, "
+            "Statyzm Q/U przekształtnika grid-forming [%] musi być > 0, "
             f"otrzymano {obiekt.droop_q_u_percent} ({kontekst}).",
         )
 
@@ -680,7 +681,8 @@ def _waliduj_tor_maszyny(obiekt: Any) -> None:
         odmowa_twarda(
             "KAT-T-042",
             f"Pola toru maszyny ({', '.join(sorted(obecne))}) dotyczą wyłącznie turbin "
-            f"wiatrowych, a pozycja '{obiekt.id}' jest rodzaju {obiekt.kind.value}.",
+            f"wiatrowych, a pozycja '{obiekt.id}' to "
+            f"{NAZWY_RODZAJOW_PRZEKSZTALTNIKA_PL[obiekt.kind]}.",
         )
     for nazwa in _POLA_LICZBOWE_TORU_MASZYNY:
         wartosc = obecne.get(nazwa)
@@ -843,7 +845,7 @@ def _validate_float_range(field_name: str, value: tuple[float, float] | None) ->
     if lo > hi:
         odmowa_twarda(
             "KAT-T-010",
-            f"Zakres nastawialności {field_name} wymaga min <= max, "
+            f"Zakres nastawialności {field_name} wymaga min ≤ max, "
             f"otrzymano min={lo} > max={hi}.",
         )
 
@@ -1211,32 +1213,31 @@ class OverheadConductorType:
         if self.przeznaczenie not in PRZEZNACZENIA_PRZEWODU:
             odmowa_twarda(
                 "KAT-T-048",
-                f"{self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
+                f"Przewód {self.id}: przeznaczenie przewodu {self.przeznaczenie!r} spoza słownika "
                 f"{', '.join(PRZEZNACZENIA_PRZEWODU)}.",
             )
-        dodatnie = {
-            "cross_section_mm2": self.cross_section_mm2,
-            "srednica_mm": self.srednica_mm,
-            "srednica_drutu_al_mm": self.srednica_drutu_al_mm,
-            "r20_dc_ohm_per_km": self.r20_dc_ohm_per_km,
-            "alfa_1_per_k": self.alfa_1_per_k,
-            "max_temperature_c": self.max_temperature_c,
-        }
-        for nazwa, wartosc in dodatnie.items():
+        for opis, wartosc in (
+            ("przekrój części przewodzącej [mm²]", self.cross_section_mm2),
+            ("średnica przewodu [mm]", self.srednica_mm),
+            ("średnica drutu aluminiowego [mm]", self.srednica_drutu_al_mm),
+            ("rezystancja R20 prądu stałego [Ω/km]", self.r20_dc_ohm_per_km),
+            ("temperaturowy współczynnik rezystancji α [1/K]", self.alfa_1_per_k),
+            ("dopuszczalna temperatura pracy [°C]", self.max_temperature_c),
+        ):
             if not (math.isfinite(wartosc) and wartosc > 0):
                 odmowa_twarda(
                     "KAT-T-048",
-                    f"{self.id}: {nazwa} musi być dodatnie i skończone (jest {wartosc}).",
+                    f"Przewód {self.id}: {opis} musi być dodatnia i skończona (jest {wartosc}).",
                 )
         if self.gmr_mm is not None and not (0 < self.gmr_mm < self.srednica_mm / 2.0):
             odmowa_twarda(
                 "KAT-T-048",
-                f"{self.id}: GMR {self.gmr_mm} mm musi leżeć w (0; promień przewodu).",
+                f"Przewód {self.id}: GMR {self.gmr_mm} mm musi leżeć w (0; promień przewodu).",
             )
         if not self.warstwy_al or any(w <= 0 for w in self.warstwy_al):
             odmowa_twarda(
                 "KAT-T-049",
-                f"{self.id}: budowa przewodu wymaga co najmniej jednej warstwy drutów Al.",
+                f"Przewód {self.id}: budowa przewodu wymaga co najmniej jednej warstwy drutów Al.",
             )
         srednica_budowy = self.srednica_rdzenia_mm + 2.0 * len(self.warstwy_al) * (
             self.srednica_drutu_al_mm
@@ -1244,7 +1245,7 @@ class OverheadConductorType:
         if abs(srednica_budowy / self.srednica_mm - 1.0) > TOLERANCJA_SREDNICY_Z_BUDOWY:
             odmowa_twarda(
                 "KAT-T-049",
-                f"{self.id}: średnica z budowy {srednica_budowy:.2f} mm (rdzeń "
+                f"Przewód {self.id}: średnica z budowy {srednica_budowy:.2f} mm (rdzeń "
                 f"{self.srednica_rdzenia_mm} mm + {len(self.warstwy_al)} warstw drutów "
                 f"{self.srednica_drutu_al_mm} mm) nie zgadza się ze średnicą przewodu "
                 f"{self.srednica_mm} mm.",
@@ -1299,7 +1300,7 @@ class OverheadConductorType:
         if not isinstance(warstwy, list | tuple):
             odmowa_twarda(
                 "KAT-T-049",
-                f"{data.get('id')}: brak budowy przewodu (lista `warstwy_al`).",
+                f"{data.get('id')}: brak budowy przewodu (lista warstw drutów aluminiowych).",
             )
 
         def opcjonalny(klucz: str) -> float | None:
@@ -1758,16 +1759,15 @@ def _sprawdz_wielkosci_zwarciowe(
         if not dotyczy(rodzaj, pole):
             odmowa_twarda(
                 "KAT-T-050",
-                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — tej wielkości "
-                "rodzaj aparatu z definicji normy nie ma; „nie dotyczy” zapisuje się jako "
-                "None, rozstrzyga rodzaj.",
+                f"Aparat '{item_id}' ({NAZWY_RODZAJOW_APARATU_PL[rodzaj]}) ma "
+                f"{pole}={wartosc!r} kA — tej wielkości rodzaj aparatu z definicji normy nie "
+                "ma; „nie dotyczy” zapisuje się jako None, rozstrzyga rodzaj.",
             )
         if not math.isfinite(wartosc) or wartosc <= 0:
             odmowa_twarda(
                 "KAT-T-050",
-                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — prąd zwarciowy "
-                "aparatu jest dodatni; brak danej z karty zapisuje się jako None, nigdy "
-                "jako 0.",
+                f"Aparat '{item_id}' ma {pole}={wartosc!r} kA — prąd zwarciowy aparatu jest "
+                "dodatni; brak danej z karty zapisuje się jako None, nigdy jako 0.",
             )
 
 
@@ -1894,6 +1894,14 @@ class ConverterKind(Enum):
     PV = "PV"
     WIND = "WIND"
     BESS = "BESS"
+
+
+#: Rodzaj przekształtnika W TEKŚCIE odmowy rekordu katalogu (kod zostaje w polu ``kind``).
+NAZWY_RODZAJOW_PRZEKSZTALTNIKA_PL: dict[ConverterKind, str] = {
+    ConverterKind.PV: "falownik fotowoltaiczny",
+    ConverterKind.WIND: "przekształtnik turbiny wiatrowej",
+    ConverterKind.BESS: "przekształtnik magazynu energii",
+}
 
 
 @dataclass(frozen=True)
@@ -2260,12 +2268,14 @@ class BESSBatteryType:
         if self.capacity_kwh <= 0:
             odmowa_twarda(
                 "KAT-T-018",
-                f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).",
+                f"Magazyn energii {self.id}: pojemność magazynu energii musi być > 0 kWh "
+                f"(jest {self.capacity_kwh}).",
             )
         if self.nominal_voltage_dc_v <= 0:
             odmowa_twarda(
                 "KAT-T-019",
-                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v}).",
+                f"Magazyn energii {self.id}: napięcie znamionowe DC musi być > 0 V "
+                f"(jest {self.nominal_voltage_dc_v}).",
             )
         if self.c_rate <= 0:
             odmowa_twarda(
@@ -3765,11 +3775,11 @@ class LVApparatusType:
 
     def __post_init__(self) -> None:
         """Validate optional additive nastawialnosc ranges (P0.2)."""
-        _validate_float_range("ir_range", self.ir_range)
-        _validate_float_range("isd_range", self.isd_range)
-        _validate_float_range("ii_range", self.ii_range)
-        _validate_float_range("tr_range", self.tr_range)
-        _validate_float_range("tsd_range", self.tsd_range)
+        _validate_float_range("nastawy długozwłocznej I_r", self.ir_range)
+        _validate_float_range("nastawy krótkozwłocznej I_sd", self.isd_range)
+        _validate_float_range("nastawy bezzwłocznej I_i", self.ii_range)
+        _validate_float_range("zwłoki długozwłocznej t_r", self.tr_range)
+        _validate_float_range("zwłoki krótkozwłocznej t_sd", self.tsd_range)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3987,9 +3997,9 @@ class LVFuseLinkType:
             odmowa_twarda(
                 "KAT-T-022",
                 f"Wkładka topikowa '{self.id}' bez znamionowej zdolności wyłączania "
-                f"(breaking_capacity_ka={self.breaking_capacity_ka!r}) — IEC 60269-1 "
-                "wymaga tej wartości dla każdej wkładki; uzupełnij z karty "
-                "katalogowej/normy z proweniencją (wzorzec G-D2).",
+                f"I_cn (otrzymano {self.breaking_capacity_ka!r} kA) — IEC 60269-1 "
+                "wymaga tej wartości dla każdej wkładki; uzupełnij ją z karty "
+                "katalogowej albo z normy, podając źródło.",
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -4104,18 +4114,18 @@ class LVRcdType:
         if self.rcd_type not in RODZAJE_PRADU_ROZNICOWEGO_RCD:
             odmowa_twarda(
                 "KAT-T-045",
-                f"RCD '{self.id}': rodzaj prądu różnicowego {self.rcd_type!r} spoza słownika "
-                f"{RODZAJE_PRADU_ROZNICOWEGO_RCD}.",
+                f"RCD „{self.id}”: rodzaj prądu różnicowego „{self.rcd_type}” spoza oznaczeń "
+                f"typów IEC 60755 ({', '.join(RODZAJE_PRADU_ROZNICOWEGO_RCD)}).",
             )
         for nazwa, wartosc in (
-            ("in_a", self.in_a),
-            ("i_delta_n_a", self.i_delta_n_a),
-            ("t_a_s", self.t_a_s),
+            ("prąd znamionowy I_n [A]", self.in_a),
+            ("znamionowy prąd różnicowy I_Δn [A]", self.i_delta_n_a),
+            ("czas zadziałania t_a [s]", self.t_a_s),
         ):
             if wartosc <= 0:
                 odmowa_twarda(
                     "KAT-T-046",
-                    f"RCD '{self.id}': pole {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
+                    f"RCD '{self.id}': {nazwa} musi być > 0 (otrzymano {wartosc!r}) — "
                     "bez niego werdykt SWZ TT nie ma z czego liczyć.",
                 )
         if self.selective and self.t_nieczuly_min_s is None:

@@ -31,6 +31,7 @@ import type {
   WartoscZdarzenia,
   WynikDynamiki,
 } from './model';
+import { komunikatZapytania } from '../../shared/bladZapytania';
 
 const API = '/api';
 
@@ -56,13 +57,13 @@ async function odczytaj<T>(odpowiedz: Response): Promise<T> {
           typeof b === 'object' && b !== null && 'pole' in b && 'komunikat' in b,
       );
       throw new BladApiDynamiki(
-        bledy.map((b) => b.komunikat).join('; ') || `HTTP ${odpowiedz.status}`,
+        bledy.map((b) => b.komunikat).join('; ') || komunikatZapytania(odpowiedz),
         odpowiedz.status,
         bledy,
       );
     }
     throw new BladApiDynamiki(
-      typeof detail === 'string' ? detail : `HTTP ${odpowiedz.status}`,
+      typeof detail === 'string' ? detail : komunikatZapytania(odpowiedz),
       odpowiedz.status,
     );
   }

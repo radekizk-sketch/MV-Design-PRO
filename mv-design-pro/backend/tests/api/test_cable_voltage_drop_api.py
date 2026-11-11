@@ -167,4 +167,7 @@ def test_nieznany_kierunek_jest_odrzucany(app_client) -> None:
     )
 
     assert response.status_code == 422
-    assert "flow_direction" in response.json()["detail"]
+    # Odmowa nazywa wielkość słowami (karta klasy surowych kluczy), nie kluczem pola.
+    detail = response.json()["detail"]
+    assert "Kierunek przepływu mocy czynnej" in detail, detail
+    assert "flow_direction" not in detail, detail

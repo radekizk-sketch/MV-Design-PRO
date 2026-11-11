@@ -331,7 +331,7 @@ def test_bus_with_load_model_and_control_but_no_source_power_is_refused() -> Non
     ):
         spec = PQSpec(node_id="B", p_mw=1.0, q_mvar=1.5, inverter_control=control, **kwargs)
         for solve in solvers:
-            with pytest.raises(ValueError, match="also carries a load model"):
+            with pytest.raises(ValueError, match="w węźle jest też model odbioru"):
                 solve(spec)
     # A declared split without a polynomial is caught one step earlier, by the
     # split's own fuse (defect A1) — also explicit, never a silent loss.
@@ -357,7 +357,7 @@ def test_zip_recompute_bus_without_split_is_refused_not_scaled() -> None:
         inverter_p_mw=2.0,  # source power known, but no split declared
         inverter_q_mvar=0.0,
     )
-    with pytest.raises(ValueError, match="declares no load/generation split"):
+    with pytest.raises(ValueError, match="nie deklaruje podziału na odbiór i generację"):
         solve_power_flow_physics(_inp(spec))
 
 
@@ -381,7 +381,7 @@ def test_volt_var_seed_refuses_a_recompute_bus_without_a_shaping_record() -> Non
         )
     }
     assert inverter_q_seed({0: control}, shaping) == {0: 0.05}
-    with pytest.raises(ValueError, match="have no shaping record"):
+    with pytest.raises(ValueError, match="nie mają rekordu"):
         inverter_q_seed({0: control, 1: control}, shaping)
 
 

@@ -197,3 +197,24 @@ class TestValidation:
         assert v.entries == ()
         assert v.summary.total_buses == 0
         assert v.summary.wscr is None
+
+
+def test_braki_danych_sily_kompletne_i_w_lustrze() -> None:
+    """Każdy kod braku, który bramka wejść może zgłosić, ma nazwę wielkości; lustro frontu
+    (pulpit OZE) niesie te same teksty, a zdanie wyniku nie zawiera kodów pól."""
+    from analysis.grid_strength.models import BRAKI_DANYCH_SILY_PL
+
+    from tests.utils.lustro_ts import FRONT_SRC, kody_brakow_modulu, slownik_ts
+
+    assert set(BRAKI_DANYCH_SILY_PL) == kody_brakow_modulu("analysis/grid_strength/builder.py")
+    lustro = slownik_ts(FRONT_SRC / "ui2" / "oze" / "pulpit" / "strings.ts", "BRAKI_DANYCH_SILY")
+    assert lustro == BRAKI_DANYCH_SILY_PL
+    wpis = (
+        GridStrengthBuilder()
+        .build(
+            [BusStrengthInput(bus_ref="B1", nominal_kv=15.0, s_sc_mva=None, s_installed_mva=None)]
+        )
+        .entries[0]
+    )
+    for kod, nazwa in BRAKI_DANYCH_SILY_PL.items():
+        assert nazwa in wpis.why_pl and kod not in wpis.why_pl, kod

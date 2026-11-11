@@ -30,6 +30,7 @@ import {
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../types/enm';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 import { useKontekstWynikuStore } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 
 // =============================================================================
@@ -448,39 +449,6 @@ export function useActiveModeLabel(): string {
 }
 
 /**
- * Hook: Get case kind label in Polish.
- */
-export function useCaseKindLabel(): string | null {
-  const kind = useAppStateStore((state) => state.activeCaseKind);
-  if (!kind) return null;
-  switch (kind) {
-    case 'ShortCircuitCase':
-      return 'Zakres zwarciowy';
-    case 'PowerFlowCase':
-      return 'Zakres obliczeń rozpływu mocy';
-    default:
-      return kind;
-  }
-}
-
-/**
- * Hook: Get result status label in Polish.
- */
-export function useResultStatusLabel(): string {
-  const status = useAppStateStore((state) => state.activeCaseResultStatus);
-  switch (status) {
-    case 'NONE':
-      return 'Wyniki do obliczenia';
-    case 'FRESH':
-      return 'Wyniki aktualne';
-    case 'OUTDATED':
-      return 'Wyniki nieaktualne';
-    default:
-      return status;
-  }
-}
-
-/**
  * Hook: Check if there's an active case.
  */
 export function useHasActiveCase(): boolean {
@@ -557,21 +525,23 @@ export function useActiveAnalysisType(): AnalysisType {
 }
 
 /**
+ * Słownik etykiet rodzaju aktywnej analizy. Wartość pochodzi także z pamięci trwałej
+ * przeglądarki (`persist`), więc kod spoza unii jest możliwy w czasie działania — idzie przez
+ * `etykietaZeSlownika` (uczciwe zdanie zamiast kodu na ekranie).
+ */
+export const ANALYSIS_TYPE_LABELS_PL: Readonly<Record<NonNullable<AnalysisType>, string>> = {
+  SHORT_CIRCUIT: 'Analiza zwarciowa',
+  LOAD_FLOW: 'Rozpływ mocy',
+  PROTECTION: 'Koordynacja zabezpieczeń',
+};
+
+/**
  * Hook: Get active analysis type label in Polish.
  * CANONICAL: PROOF_UI_ARCHITECTURE.md § 7.6 — Polish terminology in UI
  */
 export function useActiveAnalysisTypeLabel(): string | null {
   const analysisType = useAppStateStore((state) => state.activeAnalysisType);
   if (!analysisType) return null;
-  switch (analysisType) {
-    case 'SHORT_CIRCUIT':
-      return 'Analiza zwarciowa';
-    case 'LOAD_FLOW':
-      return 'Rozpływ mocy';
-    case 'PROTECTION':
-      return 'Koordynacja zabezpieczeń';
-    default:
-      return analysisType;
-  }
+  return etykietaZeSlownika(ANALYSIS_TYPE_LABELS_PL, analysisType);
 }
 

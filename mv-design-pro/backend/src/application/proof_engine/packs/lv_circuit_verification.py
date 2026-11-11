@@ -109,6 +109,15 @@ KIND_MCB = "MCB"
 KIND_FUSE_SWITCH = "FUSE_SWITCH"
 KIND_MCCB = "MCCB"
 _KINDY_DOZWOLONE = (KIND_MCB, KIND_FUSE_SWITCH, KIND_MCCB)
+#: Rodzaj urządzenia chroniącego obwód po polsku — w zdaniach dowodu stoi nazwa rodzaju, nie
+#: kod przestrzeni katalogu (kompletność wobec ``_KINDY_DOZWOLONE`` przypina
+#: ``tests/proof_engine/test_lv_circuit_verification_pack.py::
+#: test_rodzaje_i_statusy_maja_polskie_nazwy``).
+NAZWY_RODZAJU_URZADZENIA_NN_PL: dict[str, str] = {
+    KIND_MCB: "wyłącznik nadprądowy instalacyjny (MCB)",
+    KIND_FUSE_SWITCH: "rozłącznik bezpiecznikowy",
+    KIND_MCCB: "wyłącznik kompaktowy (MCCB)",
+}
 
 
 @dataclass(frozen=True)
@@ -179,12 +188,15 @@ class UrzadzenieOchronneNn:
     def __post_init__(self) -> None:
         if self.kind not in _KINDY_DOZWOLONE:
             raise OdmowaDanychError(
-                f"Nieznany rodzaj urządzenia '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
+                "Nieznany rodzaj urządzenia — dozwolone: wyłącznik nadprądowy MCB, "
+                "rozłącznik bezpiecznikowy z wkładką albo wyłącznik kompaktowy MCCB."
             )
         if self.in_a <= 0:
             raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {self.in_a} A.")
         if self.kind == KIND_MCB and not self.klasa_mcb:
-            raise OdmowaDanychError("Urządzenie MCB wymaga klasa_mcb (B/C/D).")
+            raise OdmowaDanychError(
+                "Urządzenie MCB wymaga charakterystyki wyzwalania (klasa B, C albo D)."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -363,6 +375,10 @@ class ZdolnoscWylaczaniaDwaZdania:
     zdanie_goly_aparat_pl: str
     goly_aparat_status: str
     goly_aparat_wartosc_ka: float | None
+    #: Wniosek zdania słowami (wynik kroku dowodu, wartość wejścia bez liczby) — składany w tej
+    #: samej gałęzi co status i zdanie, nigdy z kodu statusu.
+    kombinacja_wniosek_pl: str
+    goly_aparat_wniosek_pl: str
 
     @property
     def kombinacja_spelnia(self) -> bool | None:
@@ -387,11 +403,12 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     # --- zdanie kombinacji ---
     if urzadzenie.kind != KIND_FUSE_SWITCH:
         zdanie_kombinacja = (
-            f"Nie dotyczy — urządzenie {urzadzenie.kind} nie jest kombinacją "
-            "rozłącznik+wkładka, nie ma prądu warunkowego kombinacji do oceny."
+            f"Nie dotyczy — {NAZWY_RODZAJU_URZADZENIA_NN_PL[urzadzenie.kind]} nie jest "
+            "kombinacją rozłącznik+wkładka, nie ma prądu warunkowego kombinacji do oceny."
         )
         kombinacja_status = STATUS_NIE_DOTYCZY
         kombinacja_wartosc: float | None = None
+        kombinacja_wniosek = "nie dotyczy — aparat nie jest kombinacją rozłącznik+wkładka"
     elif urzadzenie.conditional_sc_current_ka is None:
         zdanie_kombinacja = (
             "Nierozstrzygalne — obwód bez wkładki zainstalowanej (albo katalog nie "
@@ -400,6 +417,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         )
         kombinacja_status = STATUS_NIEROZSTRZYGALNE
         kombinacja_wartosc = None
+        kombinacja_wniosek = "nierozstrzygalne — brak prądu warunkowego kombinacji Icond"
     elif ik_max_ka is None:
         zdanie_kombinacja = (
             "Nierozstrzygalne — prąd warunkowy kombinacji "
@@ -409,16 +427,21 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         )
         kombinacja_status = STATUS_NIEROZSTRZYGALNE
         kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
+        kombinacja_wniosek = "nierozstrzygalne — brak Ik″max w punkcie zabudowy"
     else:
         kombinacja_spelnia_bool = urzadzenie.conditional_sc_current_ka >= ik_max_ka
         kombinacja_status = STATUS_SPELNIA if kombinacja_spelnia_bool else STATUS_NIE_SPELNIA
         kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
+        kombinacja_wniosek = (
+            "zdolność wyłączania kombinacji wystarczająca"
+            if kombinacja_spelnia_bool
+            else "zdolność wyłączania kombinacji niewystarczająca"
+        )
         zdanie_kombinacja = (
             "Kombinacja rozłącznik+wkładka: prąd warunkowy "
             f"{urzadzenie.conditional_sc_current_ka:g} kA "
-            f"{'nie mniejszy od' if kombinacja_spelnia_bool else 'mniejszy od'} największego "
-            f"początkowego prądu zwarciowego {ik_max_ka:g} kA w punkcie "
-            f"zabudowy — {kombinacja_status} (IEC 60947, prąd warunkowy kombinacji)."
+            f"{'>=' if kombinacja_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
+            f"zabudowy — {kombinacja_wniosek} (IEC 60947, prąd warunkowy kombinacji)."
         )
 
     # --- zdanie gołego aparatu ---
@@ -431,14 +454,16 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         )
         goly_status = STATUS_NIE_DOTYCZY
         goly_wartosc: float | None = None
+        goly_wniosek = "nie dotyczy — rozłącznik bezpiecznikowy nie ma własnej zdolności"
     elif urzadzenie.wlasna_zdolnosc_ka is None:
         zdanie_goly = (
             f"Nierozstrzygalne — katalog nie niesie własnej zdolności wyłączania "
-            f"({'Icn' if urzadzenie.kind == KIND_MCB else 'Icu'}) dla tego aparatu "
-            f"{urzadzenie.kind} (zero fabrykacji)."
+            f"({'Icn' if urzadzenie.kind == KIND_MCB else 'Icu'}) dla aparatu „"
+            f"{NAZWY_RODZAJU_URZADZENIA_NN_PL[urzadzenie.kind]}” (zero fabrykacji)."
         )
         goly_status = STATUS_NIEROZSTRZYGALNE
         goly_wartosc = None
+        goly_wniosek = "nierozstrzygalne — katalog nie niesie własnej zdolności wyłączania"
     elif ik_max_ka is None:
         etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
         zdanie_goly = (
@@ -449,17 +474,23 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         )
         goly_status = STATUS_NIEROZSTRZYGALNE
         goly_wartosc = urzadzenie.wlasna_zdolnosc_ka
+        goly_wniosek = "nierozstrzygalne — brak Ik″max w punkcie zabudowy"
     else:
         etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
         goly_spelnia_bool = urzadzenie.wlasna_zdolnosc_ka >= ik_max_ka
         goly_status = STATUS_SPELNIA if goly_spelnia_bool else STATUS_NIE_SPELNIA
         goly_wartosc = urzadzenie.wlasna_zdolnosc_ka
+        goly_wniosek = (
+            "własna zdolność wyłączania wystarczająca"
+            if goly_spelnia_bool
+            else "własna zdolność wyłączania niewystarczająca"
+        )
         zdanie_goly = (
-            f"Goły aparat ({urzadzenie.kind}): własna zdolność {etykieta}="
+            f"Goły aparat ({NAZWY_RODZAJU_URZADZENIA_NN_PL[urzadzenie.kind]}): własna zdolność "
+            f"{etykieta}="
             f"{urzadzenie.wlasna_zdolnosc_ka:g} kA "
-            f"{'nie mniejsza od' if goly_spelnia_bool else 'mniejsza od'} największego "
-            f"początkowego prądu zwarciowego {ik_max_ka:g} kA w punkcie "
-            f"zabudowy — {goly_status}."
+            f"{'>=' if goly_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
+            f"zabudowy — {goly_wniosek}."
         )
 
     return ZdolnoscWylaczaniaDwaZdania(
@@ -469,6 +500,8 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         zdanie_goly_aparat_pl=zdanie_goly,
         goly_aparat_status=goly_status,
         goly_aparat_wartosc_ka=goly_wartosc,
+        kombinacja_wniosek_pl=kombinacja_wniosek,
+        goly_aparat_wniosek_pl=goly_wniosek,
     )
 
 
@@ -1024,18 +1057,18 @@ class LVCircuitVerificationProofPack:
                 title_pl=f"Warunek prądu zadziałania zabezpieczenia ({i2_zrodlo})",
                 equation=eq5,
                 input_values=(
-                    _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
+                    _pv("I_2", i2_a if i2_a is not None else STATUS_NIEROZSTRZYGALNE, "A", "i2_a"),
                     _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
                 ),
                 substitution_latex=(
                     f"$$I_2 = {i2_a:.2f}\\;\\mathrm{{A}} \\le 1{{,}}45 \\cdot {iz_prime_a:.2f} "
                     f"= {limit_a:.2f}\\;\\mathrm{{A}}$$"
                     if i2_a is not None
-                    else r"$$I_2 \text{ — NIEROZSTRZYGALNE (brak normatywnego mnożnika MCCB)}$$"
+                    else r"$$I_2 \text{ — nierozstrzygalne (brak normatywnego mnożnika MCCB)}$$"
                 ),
                 result=_pv(
                     "I_2",
-                    i2_a if i2_a is not None else "NIEROZSTRZYGALNE",
+                    i2_a if i2_a is not None else STATUS_NIEROZSTRZYGALNE,
                     "A",
                     "i2_a",
                 ),
@@ -1085,7 +1118,7 @@ class LVCircuitVerificationProofPack:
                         (
                             zdolnosc.kombinacja_wartosc_ka
                             if zdolnosc.kombinacja_wartosc_ka is not None
-                            else "NIE_DOTYCZY"
+                            else zdolnosc.kombinacja_wniosek_pl
                         ),
                         "kA",
                         "conditional_sc_current_ka",
@@ -1095,7 +1128,7 @@ class LVCircuitVerificationProofPack:
                         (
                             zdolnosc.goly_aparat_wartosc_ka
                             if zdolnosc.goly_aparat_wartosc_ka is not None
-                            else "NIE_DOTYCZY"
+                            else zdolnosc.goly_aparat_wniosek_pl
                         ),
                         "kA",
                         "icu_or_icn_ka",
@@ -1115,7 +1148,10 @@ class LVCircuitVerificationProofPack:
                 ),
                 result=_pv(
                     "\\text{werdykt}",
-                    f"kombinacja={zdolnosc.kombinacja_status}; goły_aparat={zdolnosc.goly_aparat_status}",
+                    (
+                        f"kombinacja: {zdolnosc.kombinacja_wniosek_pl}; goły aparat: "
+                        f"{zdolnosc.goly_aparat_wniosek_pl}"
+                    ),
                     "—",
                     "zdolnosc_wylaczania_werdykt",
                 ),
@@ -1244,8 +1280,7 @@ class LVCircuitVerificationProofPack:
             if data.swz_tt_it is None:
                 raise OdmowaDanychError(
                     "Pakiet dowodowy obwodu nN w układzie TT/IT wymaga rekordu werdyktu "
-                    "wyjaśnialnego SWZ TT/IT (pole swz_tt_it) — bez niego krok 10 nie ma "
-                    "czego cytować."
+                    "wyjaśnialnego SWZ TT/IT — bez niego krok 10 nie ma czego cytować."
                 )
             steps.extend(_kroki_tt_it(data, fl))
         else:
@@ -1286,7 +1321,7 @@ class LVCircuitVerificationProofPack:
             "ib_a": _pv("I_b", ib_a, "A", "ib_a"),
             "iz_prime_a": _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
             "in_a": _pv("I_n", in_a, "A", "in_a"),
-            "i2_a": _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
+            "i2_a": _pv("I_2", i2_a if i2_a is not None else STATUS_NIEROZSTRZYGALNE, "A", "i2_a"),
             "zdanie_kombinacja_pl": _pv(
                 "\\text{kombinacja}", zdolnosc.zdanie_kombinacja_pl, "—", "zdanie_kombinacja_pl"
             ),

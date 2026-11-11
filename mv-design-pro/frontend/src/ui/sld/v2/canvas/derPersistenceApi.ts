@@ -3,6 +3,7 @@ import type {
   DomainOpResponseV1,
   NastawyZabezpieczenModulu,
 } from '../../../../types/enm';
+import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
 
 export type DerKind = 'PV' | 'BESS' | 'FW';
 /**
@@ -87,7 +88,7 @@ function sanitizeDerApiMessage(message: string, status: number): string {
     return 'Aktywny zakres obliczeń nie jest powiązany z wybranym projektem. Wybierz właściwy projekt albo zakres obliczeń.';
   }
 
-  return withoutEndpoint || `Nie udało się zapisać konfiguracji DER. Kod odpowiedzi: ${status}.`;
+  return withoutEndpoint || komunikatZapytania({ status }, 'Nie udało się zapisać konfiguracji źródła OZE');
 }
 
 function extractApiError(detail: unknown, status: number): { message: string; code: string | null } {
@@ -97,7 +98,7 @@ function extractApiError(detail: unknown, status: number): { message: string; co
     ?? readString(payload?.message)
     ?? readString(payload?.error)
     ?? readString(root)
-    ?? `Błąd API ${status}`;
+    ?? komunikatZapytania({ status }, 'Nie udało się zapisać konfiguracji źródła OZE');
   const code = readString(payload?.code) ?? readString(payload?.error_code);
   return {
     code,
@@ -118,7 +119,7 @@ export async function postDerGeneratorConfig(
   });
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => response.statusText);
+    const detail = await response.json().catch(() => null);
     const extracted = extractApiError(detail, response.status);
     throw new DerPersistenceApiError(
       response.status,
@@ -178,7 +179,7 @@ export async function patchDerCatalogBindings(
   });
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => response.statusText);
+    const detail = await response.json().catch(() => null);
     const extracted = extractApiError(detail, response.status);
     throw new DerPersistenceApiError(
       response.status,
@@ -211,7 +212,7 @@ export async function probaZapisuDer(
     signal: options.signal,
   });
   if (response.ok) return { stan: 'przyjeta' };
-  const detail = await response.json().catch(() => response.statusText);
+  const detail = await response.json().catch(() => null);
   const extracted = extractApiError(detail, response.status);
   if (response.status === 422) {
     return { stan: 'odmowa', kod: extracted.code, komunikat: extracted.message };

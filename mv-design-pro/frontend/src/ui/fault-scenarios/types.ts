@@ -1,3 +1,5 @@
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
+
 /**
  * Fault Scenarios Types — PR-24 + PR-25 (v2)
  *
@@ -186,13 +188,13 @@ export interface ScenarioSldOverlay {
 }
 
 export function getFaultTypeLabel(type: FaultTypeValue): string {
-  return FAULT_TYPE_LABELS[type] ?? type;
+  return etykietaZeSlownika(FAULT_TYPE_LABELS, type);
 }
 
 export function getFaultModeLabel(mode: FaultModeValue): string {
-  return FAULT_MODE_LABELS[mode] ?? mode;
+  return etykietaZeSlownika(FAULT_MODE_LABELS, mode);
 }
 
 export function getLocationTypeLabel(type: LocationType): string {
-  return LOCATION_TYPE_LABELS[type] ?? type;
+  return etykietaZeSlownika(LOCATION_TYPE_LABELS, type);
 }

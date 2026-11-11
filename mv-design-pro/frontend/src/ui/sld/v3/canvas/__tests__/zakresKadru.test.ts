@@ -64,6 +64,28 @@ function zawiera(zewn: BoundingBox, wewn: BoundingBox): boolean {
 }
 const posortowaneUnikalne = (l: readonly string[]) => expect([...new Set(l)].sort()).toEqual(l);
 
+describe('ścieżka kontekstu: obiekt bez nazwy w modelu nie pokazuje identyfikatora', () => {
+  // Klasa „nazwa po identyfikatorze z zapasem = identyfikator” (2026-11): `ix.nazwy.get(ref) ?? ref`
+  // wypisywał referencję z odciskiem (`stn/<odcisk>/…`) w ścieżce kadru. Teraz polska etykieta
+  // rodzaju z referencji (`etykietaZapasowaRefu`). Iloczyn: stacja zwykła × GPZ × nazwa pusta.
+  it.each([
+    ['stacja zwykła', stacjeRysunku.find((r) => enm.substations.find((s) => s.ref_id === r)!.station_type !== 'gpz')!],
+    ['GPZ', stacjeRysunku.find((r) => enm.substations.find((s) => s.ref_id === r)!.station_type === 'gpz')!],
+  ])('%s z pustą nazwą', (_opis, ref) => {
+    const bezNazwy: EnergyNetworkModel = {
+      ...enm,
+      substations: enm.substations.map((s) => (s.ref_id === ref ? { ...s, name: '' } : s)),
+    };
+    const z = dostepny(zakresCelu('stacja', bezNazwy, [ref], sceny[2]));
+    const etykieta = z.sciezka[z.sciezka.length - 1]!.etykieta;
+    expect(etykieta).not.toBe('');
+    expect(etykieta).not.toBe(ref);
+    for (const segment of ref.split('/').filter((x) => /^[0-9a-f]{8,}$/i.test(x))) {
+      expect(etykieta).not.toContain(segment);
+    }
+  });
+});
+
 describe('zakres celu „Stacja" — każda stacja rysunku (zwykła i GPZ)', () => {
   it.each(stacjeRysunku.map((ref) => [enm.substations.find((s) => s.ref_id === ref)!.name, ref]))(
     '%s: wnętrze od L1, sąsiedzi = wszystkie inne stacje, ścieżka Sieć › stacja, prostokąt na L1 i L2',

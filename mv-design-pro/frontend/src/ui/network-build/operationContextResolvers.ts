@@ -1,3 +1,5 @@
+import { jestNazwa, miejsceWKolekcji, nazwaObiektuPl } from '../shared/nazwaObiektu';
+import type { RodzajObiektuNazwy } from '../shared/nazwaObiektu';
 import type { ElementType } from '../types';
 import type { Bay, BranchPointSN, EnergyNetworkModel, LogicalViewsV1, TerminalRef } from '../../types/enm';
 import { powyzejPasmaNn, wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
@@ -376,17 +378,20 @@ function lineFieldRoleRank(role: unknown): number {
   return 9;
 }
 
+/**
+ * Etykieta obiektu kontekstu operacji: nazwa z modelu; obiekt bez nazwy → opis rodzaju z numerem
+ * w kolekcji modelu; referencja bez obiektu w kolekcji → „spoza modelu”; brak nazwy i referencji →
+ * `FALLBACK_LABEL`. Nigdy surowy identyfikator (reguła `ui/shared/nazwaObiektu`).
+ */
 function formatElementContextLabel(
   name: string | null | undefined,
   refId: string | null | undefined,
+  rodzaj: RodzajObiektuNazwy,
+  kolekcja: ReadonlyArray<{ readonly ref_id?: string | null; readonly id?: string | null }> | null | undefined,
 ): string {
-  if (typeof name === 'string' && name.trim()) {
-    return name.trim();
-  }
-  if (typeof refId === 'string' && refId.trim()) {
-    return refId.trim();
-  }
-  return FALLBACK_LABEL;
+  const ref = typeof refId === 'string' ? refId.trim() : '';
+  if (!jestNazwa(name) && ref === '') return FALLBACK_LABEL;
+  return nazwaObiektuPl(name, rodzaj, ref === '' ? null : miejsceWKolekcji(kolekcja, ref) ?? { spozaModelu: true });
 }
 
 function resolveTransformerContextForStation(
@@ -397,7 +402,7 @@ function resolveTransformerContextForStation(
   preferredLvBusRef?: string | null,
 ): TransformerOperationContext {
   const station = findStation(snapshot, stationRef);
-  const stationName = formatElementContextLabel(station?.name, stationRef);
+  const stationName = formatElementContextLabel(station?.name, stationRef, 'stacja', snapshot?.substations);
 
   if (!station) {
     return {
@@ -457,9 +462,9 @@ function resolveTransformerContextForStation(
     stationRef: station.ref_id,
     stationName,
     hvBusRef: hvBus?.ref_id ?? null,
-    hvBusName: formatElementContextLabel(hvBus?.name, hvBus?.ref_id ?? null),
+    hvBusName: formatElementContextLabel(hvBus?.name, hvBus?.ref_id ?? null, 'szyna', snapshot?.buses),
     lvBusRef: lvBus?.ref_id ?? null,
-    lvBusName: formatElementContextLabel(lvBus?.name, lvBus?.ref_id ?? null),
+    lvBusName: formatElementContextLabel(lvBus?.name, lvBus?.ref_id ?? null, 'szyna', snapshot?.buses),
     isAllowed,
     blockReason: isAllowed ? null : TRANSFORMER_BUSES_MISSING_LABEL,
   };
@@ -692,7 +697,7 @@ export function resolveBranchSourceContext(
     return {
       fromRef,
       sourceType: STATION_SOURCE_TYPE_LABEL,
-      sourceName: station.name ?? elementRef,
+      sourceName: formatElementContextLabel(station.name, station.ref_id, 'stacja', snapshot?.substations),
       sourceBusRef: feederBay?.bus_ref ?? '',
       voltageLabel: sourceBus ? `${sourceBus.voltage_kv} kV` : FALLBACK_LABEL,
       portLabel: portId,
@@ -704,7 +709,7 @@ export function resolveBranchSourceContext(
     return {
       fromRef,
       sourceType: SN_BUS_SOURCE_TYPE_LABEL,
-      sourceName: bus.name ?? elementRef,
+      sourceName: formatElementContextLabel(bus.name, bus.ref_id, 'szyna', snapshot?.buses),
       sourceBusRef: bus.ref_id ?? bus.id ?? elementRef,
       voltageLabel: `${bus.voltage_kv} kV`,
       portLabel: portId,
@@ -1088,7 +1093,7 @@ export function resolveContinueTrunkOperationContext(
       terminalBusRef,
       stationRef: networkContext.stationRef,
       busRef: terminalBusRef || networkContext.busRef,
-      terminalName: terminalBus?.name ?? terminalBusRef ?? FALLBACK_LABEL,
+      terminalName: formatElementContextLabel(terminalBus?.name, terminalBusRef, 'szyna', snapshot?.buses),
       terminalVoltageLabel: terminalBus ? `${terminalBus.voltage_kv} kV` : FALLBACK_LABEL,
       isFirstTrunkSegment: false,
       existingSegmentCount: segmentRefs.length,
@@ -1122,7 +1127,7 @@ export function resolveContinueTrunkOperationContext(
   const station = elementType === 'Station' ? findStation(snapshot, networkContext.stationRef) : null;
   const stationContinuationName =
     station
-      ? `${formatElementContextLabel(station.name, station.ref_id)} - port wyjściowy SN`
+      ? `${formatElementContextLabel(station.name, station.ref_id, 'stacja', snapshot?.substations)} - port wyjściowy SN`
       : '';
 
   return {
@@ -1130,7 +1135,8 @@ export function resolveContinueTrunkOperationContext(
     terminalPortId: station ? 'station_out' : selection.terminalPortId,
     stationRef: networkContext.stationRef,
     busRef: networkContext.busRef,
-    terminalName: stationContinuationName || terminalBus?.name || selection.terminalId,
+    terminalName: stationContinuationName
+      || formatElementContextLabel(terminalBus?.name, selection.terminalBusRef || selection.terminalId, 'szyna', snapshot?.buses),
     terminalVoltageLabel: terminalBus ? `${terminalBus.voltage_kv} kV` : FALLBACK_LABEL,
     isFirstTrunkSegment: selection.trunkId.length === 0,
     existingSegmentCount: corridor?.ordered_segment_refs.length ?? 0,
@@ -1173,7 +1179,7 @@ export function resolveContinueTrunkContextFromOperation(
     terminalId,
     terminalPortId,
     terminalBusRef,
-    terminalName: terminalName || terminalBus?.name || terminalId || FALLBACK_LABEL,
+    terminalName: terminalName || formatElementContextLabel(terminalBus?.name, terminalBusRef || terminalId, 'szyna', snapshot?.buses),
     terminalVoltageLabel: terminalVoltageLabel || (terminalBus ? `${terminalBus.voltage_kv} kV` : FALLBACK_LABEL),
     isFirstTrunkSegment: isFirstTrunkSegment ?? trunkId.length === 0,
     existingSegmentCount: existingSegmentCount ?? 0,

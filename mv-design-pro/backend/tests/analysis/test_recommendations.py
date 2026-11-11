@@ -47,7 +47,7 @@ def _sensitivity_view() -> SensitivityView:
     )
     entry_alt = SensitivityEntry(
         parameter_id="voltage_limit",
-        parameter_label="Voltage limits",
+        parameter_label="Odchyłka napięcia węzła",
         target_id="BUS-1",
         source="P21",
         base_margin=-2.0,

@@ -11,20 +11,12 @@ import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useSelectionStore } from '../../selection';
+import { isApparatusBranch } from '../../../types/enm';
+import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function switchTypeLabel(kind: string | null | undefined): string {
-  switch (kind) {
-    case 'BREAKER': return 'Wyłącznik';
-    case 'DISCONNECTOR': return 'Rozłącznik';
-    case 'LOAD_SWITCH': return 'Rozłącznik obciążeniowy';
-    case 'FUSE': return 'Bezpiecznik';
-    default: return kind ?? '—';
-  }
-}
 
 function switchStateLabel(state: string | null | undefined): string {
   switch (state) {
@@ -51,17 +43,15 @@ export function SwitchReview({ className }: SwitchReviewProps) {
   const rows = useMemo(() => {
     if (!snapshot) return [];
 
-    // Switches: type is 'switch'|'breaker'|'bus_coupler'|'disconnector'|'fuse'
-    const switchTypes = ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'] as const;
+    // Łączniki i bezpieczniki: rodzaje z jednego źródła (`types/enm.ts`), nazwa rodzaju
+    // z jednego słownika gałęzi (`ui/shared/rodzajGalezi.ts`).
     return (snapshot.branches ?? [])
-      .filter((b) =>
-        (switchTypes as readonly string[]).includes(b.type),
-      )
+      .filter(isApparatusBranch)
       .map((b) => ({
         id: b.ref_id,
         name: b.name,
-        switchType: b.type === 'fuse' ? 'FUSE' : b.type.toUpperCase(),
-        state: b.status ?? 'closed',
+        rodzaj: RODZAJ_GALEZI_PL[b.type],
+        state: b.status,
         isNOP: false,
         catalogRef: b.catalog_ref ?? null,
         fromBus: b.from_bus_ref,
@@ -123,7 +113,7 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                   className="cursor-pointer border-b border-gray-50 hover:bg-blue-50 transition-colors"
                 >
                   <td className="px-3 py-1.5 font-medium text-gray-800">{row.name}</td>
-                  <td className="px-3 py-1.5 text-gray-500">{switchTypeLabel(row.switchType)}</td>
+                  <td className="px-3 py-1.5 text-gray-500">{row.rodzaj}</td>
                   <td className="px-3 py-1.5">
                     <span
                       className={clsx(

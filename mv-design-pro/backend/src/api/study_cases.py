@@ -20,9 +20,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
-from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from api.parsowanie_uuid import parsuj_uuid
 from application.result_freshness import FreshnessReason, ResultFreshness
 from application.study_case import (
     StudyCaseNotFoundError,
@@ -153,17 +153,6 @@ def _build_service(uow_factory: Any) -> StudyCaseService:
     return StudyCaseService(uow_factory)
 
 
-def _parse_uuid(value: str, field_name: str = "id") -> UUID:
-    """Parse and validate a UUID string."""
-    try:
-        return UUID(value)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi być poprawnym UUID",
-        ) from exc
-
-
 def _z_statusem(dane: dict[str, Any], uow_factory: Any) -> dict[str, Any]:
     """Doklej status wynikow do serializacji przypadku — JEDYNE miejsce w API,
     ktore go orzeka (ta sama funkcja dla pojedynczego przypadku, listy, klonu i
@@ -186,7 +175,7 @@ def create_study_case(
 
     POST /api/study-cases
     """
-    project_id = _parse_uuid(request.project_id, "project_id")
+    project_id = parsuj_uuid(request.project_id, "project_id")
     service = _build_service(uow_factory)
 
     case = service.create_case(
@@ -210,7 +199,7 @@ def get_study_case(
 
     GET /api/study-cases/{case_id}
     """
-    parsed_id = _parse_uuid(case_id, "case_id")
+    parsed_id = parsuj_uuid(case_id, "case_id")
     service = _build_service(uow_factory)
 
     try:
@@ -233,7 +222,7 @@ def list_study_cases(
 
     GET /api/study-cases/project/{project_id}
     """
-    parsed_id = _parse_uuid(project_id, "project_id")
+    parsed_id = parsuj_uuid(project_id, "project_id")
     service = _build_service(uow_factory)
 
     cases = service.list_cases(parsed_id)
@@ -251,7 +240,7 @@ def update_study_case(
 
     PATCH /api/study-cases/{case_id}
     """
-    parsed_id = _parse_uuid(case_id, "case_id")
+    parsed_id = parsuj_uuid(case_id, "case_id")
     service = _build_service(uow_factory)
 
     try:
@@ -279,7 +268,7 @@ def delete_study_case(
 
     DELETE /api/study-cases/{case_id}
     """
-    parsed_id = _parse_uuid(case_id, "case_id")
+    parsed_id = parsuj_uuid(case_id, "case_id")
     service = _build_service(uow_factory)
 
     if not service.delete_case(parsed_id):
@@ -311,7 +300,7 @@ def clone_study_case(
 
     POST /api/study-cases/{case_id}/clone
     """
-    parsed_id = _parse_uuid(case_id, "case_id")
+    parsed_id = parsuj_uuid(case_id, "case_id")
     service = _build_service(uow_factory)
 
     new_name = request.new_name if request else None
@@ -341,7 +330,7 @@ def get_active_case(
 
     GET /api/study-cases/project/{project_id}/active
     """
-    parsed_id = _parse_uuid(project_id, "project_id")
+    parsed_id = parsuj_uuid(project_id, "project_id")
     service = _build_service(uow_factory)
 
     case = service.get_active_case(parsed_id)
@@ -360,8 +349,8 @@ def set_active_case(
 
     POST /api/study-cases/activate
     """
-    project_id = _parse_uuid(request.project_id, "project_id")
-    case_id = _parse_uuid(request.case_id, "case_id")
+    project_id = parsuj_uuid(request.project_id, "project_id")
+    case_id = parsuj_uuid(request.case_id, "case_id")
     service = _build_service(uow_factory)
 
     try:
@@ -391,8 +380,8 @@ def compare_study_cases(
 
     POST /api/study-cases/compare
     """
-    case_a_id = _parse_uuid(request.case_a_id, "case_a_id")
-    case_b_id = _parse_uuid(request.case_b_id, "case_b_id")
+    case_a_id = parsuj_uuid(request.case_a_id, "case_a_id")
+    case_b_id = parsuj_uuid(request.case_b_id, "case_b_id")
     service = _build_service(uow_factory)
 
     try:
@@ -426,7 +415,7 @@ def can_calculate_case(
 
     GET /api/study-cases/{case_id}/can-calculate
     """
-    parsed_id = _parse_uuid(case_id, "case_id")
+    parsed_id = parsuj_uuid(case_id, "case_id")
     service = _build_service(uow_factory)
 
     can_calc, error = service.can_calculate(parsed_id)
@@ -446,7 +435,7 @@ def count_cases(
 
     GET /api/study-cases/project/{project_id}/count
     """
-    parsed_id = _parse_uuid(project_id, "project_id")
+    parsed_id = parsuj_uuid(project_id, "project_id")
     service = _build_service(uow_factory)
 
     count = service.count_cases(parsed_id)

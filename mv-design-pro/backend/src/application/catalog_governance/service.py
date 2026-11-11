@@ -252,8 +252,9 @@ class CatalogGovernanceService:
             report.conflicts.extend(validation_errors)
             report.success = False
             raise OdmowaDanychError(
-                f"Validation failed: {len(validation_errors)} template(s) have missing references. "
-                "Import blocked."
+                f"Import biblioteki zabezpieczeń zablokowany: szablony nastaw "
+                f"({len(validation_errors)}) wskazują typy urządzeń albo krzywe spoza "
+                "importowanej biblioteki."
             )
 
         with self.uow_factory() as uow:
@@ -437,8 +438,8 @@ class CatalogGovernanceService:
             if not report.success:
                 uow.rollback()
                 raise OdmowaDanychError(
-                    f"Import failed: {len(report.conflicts)} conflict(s) detected. "
-                    "See report for details."
+                    f"Import biblioteki zabezpieczeń odrzucony: konflikty z biblioteką projektu "
+                    f"({len(report.conflicts)}) — szczegóły w raporcie importu."
                 )
 
             uow.commit()

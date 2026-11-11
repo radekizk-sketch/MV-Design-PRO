@@ -85,7 +85,7 @@ class TestBuildFaultLoopInput:
             upstream_r_ohm=0.001,
             upstream_x_ohm=None,
         )
-        with pytest.raises(ValueError, match=r"MUSZĄ być oba None"):
+        with pytest.raises(ValueError, match="razem rezystancji R i reaktancji X"):
             build_fault_loop_input(bad)
 
     def test_partial_upstream_rejected_x_only(self) -> None:
@@ -104,7 +104,7 @@ class TestBuildFaultLoopInput:
             upstream_r_ohm=None,
             upstream_x_ohm=0.010,
         )
-        with pytest.raises(ValueError, match=r"MUSZĄ być oba None"):
+        with pytest.raises(ValueError, match="razem rezystancji R i reaktancji X"):
             build_fault_loop_input(bad)
 
     def test_polish_labels_default(self) -> None:

@@ -48,9 +48,12 @@ import {
   CONSTRUCTION_LABELS_PL,
   type SwitchgearFamily,
 } from '../../../ui/catalog/SwitchgearFamilyPicker';
-import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import {
-  SOURCE_STATUS_LABEL_PL,
+  grupaZrodlaSzablonuPl,
+  nazwaSzablonuPolaPl,
+  type CompleteMvBayTemplateSummary,
+} from '../../../ui/catalog/BayTemplatePicker';
+import {
   type SnFieldRole,
   type StationSnFieldTemplate,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
@@ -455,19 +458,22 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
         : [];
     // Pakiet katalogowy pola: rodzina + KOD KATALOGOWY pola (to on identyfikuje
     // jednostkę funkcjonalną w ofercie producenta) + status pakietu — ten sam
-    // słownik statusów, co w pickerze szablonu pola (jedno źródło nazw).
+    // słownik statusów, co w pickerze szablonu pola (jedno źródło nazw). Szablon bez
+    // kodu katalogowego (dziś każdy z 85 szablonów rodzin) nazywa się nazwą pakietu
+    // (`nazwaSzablonuPolaPl`: rodzaj pola · rodzina) — referencja szablonu
+    // (`ABB__SAFERING__LINE_OUT`) ani referencja rodziny nie trafiają na rysunek.
+    const nazwyRodzin = new Map(rodzina ? [[rodzina.switchgear_family_ref, rodzina.family_name]] : []);
     const opisPakietu = szablon
       ? zawinCzesci(
-          [
-            rodzina?.family_name ?? szablon.switchgear_family_ref ?? '',
-            szablon.template_code ?? szablon.template_ref,
-          ],
+          szablon.template_code
+            ? [nazwyRodzin.get(szablon.switchgear_family_ref ?? '') ?? nazwaSzablonuPolaPl(szablon, nazwyRodzin), szablon.template_code]
+            : [nazwaSzablonuPolaPl(szablon, nazwyRodzin)],
           FONT_APARATU,
           MAKS_TEKST,
         )
       : [];
     const status = pole.bay_template_ref
-      ? SOURCE_STATUS_LABEL_PL[pole.source_status]
+      ? grupaZrodlaSzablonuPl(pole.source_status)
       : T.podgladBrakSzablonu;
     const wierszeOpisu = [...opisAparatu, ...opisTransformatora, ...opisPakietu, status];
     return {
@@ -563,7 +569,7 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     opisyY,
     sloty,
     naglowek: {
-      producent: producent ?? rodzina?.manufacturer_ref ?? null,
+      producent: producent ?? null,
       rodzina: rodzina?.family_name ?? null,
       konstrukcja: rodzina ? CONSTRUCTION_LABELS_PL[rodzina.construction_type] : null,
       // JEDNO źródło opisu napięć rodziny (nazywa obie wielkości karty),

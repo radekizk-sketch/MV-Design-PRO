@@ -75,6 +75,17 @@ NAZWY_TOROW_KONFIGURACJI_PL: dict[str, str] = {
     "BLOK_RMU": "Tor blokowy (RMU) — blok fabryczny",
 }
 
+#: Stan źródła danych rodziny → nazwa w treści noty dla projektanta. Nota rodziny
+#: (``SwitchgearFamily.notes_pl``) nazywa stan źródła tym słowem („Stan źródła: …”), kod
+#: statusu zostaje w polu ``status`` (test noty w ``test_switchgear_families.py``).
+ETYKIETA_STATUSU_RODZINY_PL: dict[str, str] = {
+    "verified": "zweryfikowana w oficjalnym katalogu producenta",
+    "repo_verified": "weryfikacja na danych publicznych",
+    "user_defined": "definicja użytkownika",
+    "requires_catalog": "wymaga katalogu producenta",
+    "deprecated": "rodzina wycofana z oferty producenta",
+}
+
 #: Status rodziny, który wyklucza budowanie konfiguracji → powód dla projektanta (karta
 #: #142). Słowa = przeglądarka rodzin frontu
 #: (``ui/catalog/SwitchgearFamilyPicker.tsx::POWOD_BLOKADY_PL``); kod statusu zostaje w danych.

@@ -15839,6 +15839,128 @@
         }
       }
     },
+    "src/harness-fixtures/generated/glowice_kablowe_pol_gpz.json": {
+      "/snapshot": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001": false,
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002": false,
+            "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker": true,
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/000": false,
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/001": false,
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/002": false,
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/003": false,
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/004": false
+          },
+          "stacja_pola": {
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker": "stn/298177b52cf4013c836740b86946c50f/station",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/000": "stn/298177b52cf4013c836740b86946c50f/station",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/001": "stn/298177b52cf4013c836740b86946c50f/station",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/002": "stn/298177b52cf4013c836740b86946c50f/station",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/003": "stn/298177b52cf4013c836740b86946c50f/station",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field/004": "stn/298177b52cf4013c836740b86946c50f/station"
+          },
+          "stacje": {
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+                "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002"
+              ]
+            },
+            "stn/298177b52cf4013c836740b86946c50f/station": {
+              "nn": [
+                "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker"
+              ],
+              "sn": [
+                "stn/298177b52cf4013c836740b86946c50f/sn_field/000",
+                "stn/298177b52cf4013c836740b86946c50f/sn_field/001",
+                "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
+                "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
+                "stn/298177b52cf4013c836740b86946c50f/sn_field/004"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn": [
+              "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
+              "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002"
+            ],
+            "stn/298177b52cf4013c836740b86946c50f/nn_bus": [
+              "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker"
+            ],
+            "stn/298177b52cf4013c836740b86946c50f/sn_bus": [
+              "stn/298177b52cf4013c836740b86946c50f/sn_field/001",
+              "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
+              "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
+              "stn/298177b52cf4013c836740b86946c50f/sn_field/000",
+              "stn/298177b52cf4013c836740b86946c50f/sn_field/004"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
+          "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker": "stn/298177b52cf4013c836740b86946c50f/nn_bus",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/000": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/001": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/002": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/003": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/004": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004"
+        },
+        "szyny": {
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": [
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn"
+          ],
+          "stn/298177b52cf4013c836740b86946c50f/station": [
+            "stn/298177b52cf4013c836740b86946c50f/nn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": {
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+            "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn"
+          },
+          "stn/298177b52cf4013c836740b86946c50f/station": {
+            "stn/298177b52cf4013c836740b86946c50f/nn_bus": "stn/298177b52cf4013c836740b86946c50f/nn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_bus": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003": "stn/298177b52cf4013c836740b86946c50f/sn_bus",
+            "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004": "stn/298177b52cf4013c836740b86946c50f/sn_bus"
+          }
+        },
+        "transformatory": {
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation": [],
+          "stn/298177b52cf4013c836740b86946c50f/station": [
+            "stn/298177b52cf4013c836740b86946c50f/transformer"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+          "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
+          "stn/298177b52cf4013c836740b86946c50f/nn_main_breaker": null,
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/000": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/001": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/002": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/003": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
+          "stn/298177b52cf4013c836740b86946c50f/sn_field/004": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004"
+        }
+      }
+    },
     "src/harness-fixtures/generated/koordynacja_scena_migawka.json": {
       "": {
         "pola": {

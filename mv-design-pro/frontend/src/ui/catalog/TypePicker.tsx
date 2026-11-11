@@ -4,11 +4,8 @@ import type { CatalogListItem } from './api';
 import { fetchTypesByCategory, getCatalogErrorMessage } from './api';
 import type { TypeCategory } from './types';
 import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
-import {
-  pradAparatuSnKatalogu,
-  pradKaLubBrakDanych,
-  pradLacznikaKatalogu,
-} from './pradZwarciowyKatalogu';
+import { skrotParametrowTypu } from './skrotTypuKatalogu';
+import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 
 interface TypePickerProps {
   category: TypeCategory;
@@ -16,74 +13,6 @@ interface TypePickerProps {
   onSelectType: (typeId: string, typeName: string) => void;
   onClose: () => void;
   isOpen: boolean;
-}
-
-const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
-  LINE: 'Linie napowietrzne SN',
-  HV_OVERHEAD_CONDUCTOR: 'Przewody linii napowietrznych 110 kV',
-  CABLE: 'Kable SN',
-  TRANSFORMER: 'Transformatory SN/nN',
-  SWITCH_EQUIPMENT: 'Aparatura łączeniowa SN',
-  MV_APPARATUS: 'Aparatura łączeniowa SN',
-  LV_APPARATUS: 'Aparatura łączeniowa nN',
-  LV_RCD: 'Wyłączniki różnicowoprądowe nN',
-  LV_CABLE: 'Kable nN',
-  LOAD: 'Obciążenia',
-  CT: 'Przekładniki prądowe',
-  VT: 'Przekładniki napięciowe',
-  MEASUREMENT_TRANSFORMER: 'Przekładniki pomiarowe',
-  PV_INVERTER: 'Falowniki PV',
-  BESS_INVERTER: 'Falowniki BESS',
-  PROTECTION_DEVICE: 'Zabezpieczenia',
-  SYSTEM_SOURCE: 'Zasilanie systemowe SN',
-  CONVERTER: 'Konwertery',
-  BRANCH_POLE: 'Słupy rozgałęźne SN',
-  ZKSN: 'ZKSN',
-};
-
-function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
-  const record = type as unknown as Record<string, unknown>;
-
-  switch (category) {
-    case 'LINE':
-    case 'CABLE':
-      return `R=${record.r_ohm_per_km ?? '-'} Ohm/km, X=${record.x_ohm_per_km ?? '-'} Ohm/km, I=${record.rated_current_a ?? '-'} A`;
-    case 'HV_OVERHEAD_CONDUCTOR':
-      return `${record.oznaczenie ?? '-'}, ${record.przeznaczenie === 'ODGROMOWY' ? 'odgromowy' : 'fazowy'}, R20=${record.r20_dc_ohm_per_km ?? '-'} Ohm/km, d=${record.srednica_mm ?? '-'} mm`;
-    case 'TRANSFORMER':
-      return `${record.rated_power_mva ?? '-'} MVA, ${record.voltage_hv_kv ?? '-'} / ${record.voltage_lv_kv ?? '-'} kV, $u_{k}$=${record.uk_percent ?? '-'}%`;
-    case 'SWITCH_EQUIPMENT':
-      return `${record.un_kv ?? '-'} kV, ${record.in_a ?? '-'} A, $I_{k}$ ${pradLacznikaKatalogu(record, 'ik_ka')}`;
-    case 'MV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, $I_{k}$ ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
-    case 'LV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, $I_{k}$ ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
-    case 'LV_RCD':
-      return `$I_{\\Delta n}$=${record.i_delta_n_a ?? '-'} A, typ ${record.rcd_type ?? '-'}, $I_{n}$=${record.in_a ?? '-'} A, $t_{a}$=${record.t_a_s ?? '-'} s`;
-    case 'LV_CABLE':
-      return `${record.u_n_kv ?? '-'} kV, ${record.cross_section_mm2 ?? '-'} mm2, ${record.i_max_a ?? '-'} A`;
-    case 'LOAD':
-      return `P=${record.p_kw ?? '-'} kW, $\\cos\\varphi$=${record.cos_phi ?? '-'}, model=${record.model ?? '-'}`;
-    case 'CT':
-      return `${record.ratio_primary_a ?? '-'} / ${record.ratio_secondary_a ?? '-'} A, klasa=${record.accuracy_class ?? '-'}`;
-    case 'VT':
-      return `${record.ratio_primary_v ?? '-'} / ${record.ratio_secondary_v ?? '-'} V, klasa=${record.accuracy_class ?? '-'}`;
-    case 'PV_INVERTER':
-      return `${record.s_n_kva ?? '-'} kVA, $P_{\\max}$=${record.p_max_kw ?? '-'} kW`;
-    case 'BESS_INVERTER':
-      return `P=${record.p_discharge_kw ?? '-'} kW, E=${record.e_kwh ?? '-'} kWh`;
-    case 'PROTECTION_DEVICE':
-      return `${record.vendor ?? record.manufacturer ?? '-'}, ${record.series ?? '-'}, $I_{n}$=${record.rated_current_a ?? '-'} A`;
-    case 'SYSTEM_SOURCE':
-      return `${record.voltage_rating_kv ?? '-'} kV, $S_{k3}''$=${record.sk3_mva ?? '-'} MVA, R/X=${record.rx_ratio ?? '-'}`;
-    case 'BRANCH_POLE':
-    case 'ZKSN':
-      return `${record.switch_device_kind ?? '-'}, ${record.switch_rated_current_a ?? '-'} A, porty odgałęzienia=${record.branch_ports_count ?? '-'}`;
-    case 'MEASUREMENT_TRANSFORMER':
-    case 'CONVERTER':
-    default:
-      return '-';
-  }
 }
 
 export function TypePicker({
@@ -156,7 +85,7 @@ export function TypePicker({
         <div className="border-b border-scada-border px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-scada-text">
-              Wybierz typ: {CATEGORY_LABELS[category] ?? category}
+              Katalog: {ETYKIETY_KATEGORII_TYPOW[category]}
             </h2>
             <button
               onClick={onClose}
@@ -247,7 +176,7 @@ export function TypePicker({
                       </td>
                       <td className="px-4 py-3 text-sm text-scada-text">{manufacturer}</td>
                       <td className="px-4 py-3 text-sm text-scada-muted">
-                        <TekstZWzorami tekst={getTypeParams(type, category)} />
+                        <TekstZWzorami tekst={skrotParametrowTypu(type, category)} />
                       </td>
                     </tr>
                   );

@@ -206,7 +206,10 @@ app.include_router(karty_widmowe_router)
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint."""
-    return {"message": "MV-DESIGN PRO API", "version": "4.0.0"}
+    return {
+        "message": "Interfejs programistyczny systemu MV-DESIGN PRO jest dostępny.",
+        "version": "4.0.0",
+    }
 
 
 @app.get("/health")

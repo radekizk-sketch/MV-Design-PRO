@@ -153,7 +153,7 @@ from typing import Any
 from analysis.energy_validation.models import EnergyValidationConfig
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
@@ -542,7 +542,7 @@ def _kontyngencja(
     try:
         wykonaj_bieg_w_pamieci(bieg, graf=graf_wariantu, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = STATUS, nie wyjątek
-        blad = f"{type(exc).__name__}: {exc}"
+        blad = str(exc)
 
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
@@ -555,7 +555,7 @@ def _kontyngencja(
     if zbiegl:
         powod = "Bieg rozpływu zbieżny — skutki policzone."
     elif blad is not None:
-        powod = f"Bieg rozpływu przerwany błędem solvera: {blad}"
+        powod = f"Bieg rozpływu przerwany odmową obliczenia: {blad}"
     else:
         powod = (
             "Bieg rozpływu nie osiągnął zbieżności — przeciążeń i odchyleń "
@@ -621,7 +621,7 @@ def _przypadek_bazowy(
     try:
         wykonaj_bieg_w_pamieci(bieg, graf=graf_bazowy, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyżej: stan bazowy to WYNIK, nie wyjątek
-        blad = f"{type(exc).__name__}: {exc}"
+        blad = str(exc)
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
     skutki = (
@@ -635,7 +635,7 @@ def _przypadek_bazowy(
             "Bieg rozpływu zbieżny — stan bazowy policzony."
             if zbiegl
             else (
-                f"Bieg rozpływu stanu bazowego przerwany błędem solvera: {blad}"
+                f"Bieg rozpływu stanu bazowego przerwany odmową obliczenia: {blad}"
                 if blad is not None
                 else "Bieg rozpływu stanu bazowego nie osiągnął zbieżności."
             )
@@ -670,7 +670,7 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
                 "Gałąź: obciążalność długotrwała (prąd znamionowy odcinka) z danych "
                 "elementu w modelu sieci. Transformator: moc znamionowa jednostki. "
                 "Brak wartości = kryterium pominięte jawnie (pozycja na liście "
-                "kryteria_pominiete), nigdy wartość zastępcza."
+                "kryteriów pominiętych), nigdy wartość zastępcza."
             ),
         },
         "napiecie": {
@@ -707,7 +707,7 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
             "definicja_pl": (
                 "Dotkliwość = krotka liczników (odbiory bez zasilania, przeciążenia, "
                 "naruszenia napięciowe). Ranking sortuje tę krotkę malejąco w podanej "
-                "kolejności kategorii, przy remisie rosnąco po element_ref. Bez wag, "
+                "kolejności kategorii, przy remisie rosnąco po identyfikatorze elementu. Bez wag, "
                 "bez liczby złożonej."
             ),
             "kolejnosc_kategorii": [

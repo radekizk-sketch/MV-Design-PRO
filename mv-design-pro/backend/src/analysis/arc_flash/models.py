@@ -210,12 +210,36 @@ class ElectrodeConfig(StrEnum):
         """True dla konfiguracji w obudowie (wymaga korekcji rozmiaru obudowy)."""
         return self in (ElectrodeConfig.VCB, ElectrodeConfig.VCBB, ElectrodeConfig.HCB)
 
+    @property
+    def nazwa_pl(self) -> str:
+        """Oznaczenie IEEE 1584-2018 (§4.2) z opisem układu elektrod po polsku."""
+        return _NAZWY_KONFIGURACJI_ELEKTROD_PL[self]
+
 
 class EnclosureType(StrEnum):
     """Typ obudowy dla korekcji rozmiaru (IEEE 1584-2018, Tab. 7)."""
 
     TYPICAL = "Typical"  # obudowa typowa
     SHALLOW = "Shallow"  # obudowa płytka (CF = 1/x)
+
+    @property
+    def nazwa_pl(self) -> str:
+        """Rodzaj obudowy po polsku (IEEE 1584-2018 §4.8, tab. 7)."""
+        return _NAZWY_OBUDOWY_PL[self]
+
+
+_NAZWY_KONFIGURACJI_ELEKTROD_PL: dict[ElectrodeConfig, str] = {
+    ElectrodeConfig.VCB: "VCB (elektrody pionowe w obudowie)",
+    ElectrodeConfig.VCBB: "VCBB (elektrody pionowe zakończone barierą izolacyjną w obudowie)",
+    ElectrodeConfig.HCB: "HCB (elektrody poziome w obudowie)",
+    ElectrodeConfig.VOA: "VOA (elektrody pionowe w otwartym powietrzu)",
+    ElectrodeConfig.HOA: "HOA (elektrody poziome w otwartym powietrzu)",
+}
+
+_NAZWY_OBUDOWY_PL: dict[EnclosureType, str] = {
+    EnclosureType.TYPICAL: "obudowa typowa",
+    EnclosureType.SHALLOW: "obudowa płytka",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -516,17 +540,47 @@ class ArcFlashCoefficientTable:
         self, cfg: ElectrodeConfig, enclosure_type: EnclosureType = EnclosureType.TYPICAL
     ) -> tuple[str, ...]:
         """Lista brakujących wpisów tablicy dla konfiguracji (audyt White Box)."""
-        missing: list[str] = []
+        return tuple(kod for kod, _ in self._braki_tablicy(cfg, enclosure_type))
+
+    def missing_for_pl(
+        self, cfg: ElectrodeConfig, enclosure_type: EnclosureType = EnclosureType.TYPICAL
+    ) -> tuple[str, ...]:
+        """Te same braki co :meth:`missing_for`, nazwane dla projektanta: wielkość, kotwa
+        napięcia i tablica IEEE 1584-2018 — zamiast adresu wpisu pliku danych."""
+        return tuple(opis for _, opis in self._braki_tablicy(cfg, enclosure_type))
+
+    def _braki_tablicy(
+        self, cfg: ElectrodeConfig, enclosure_type: EnclosureType
+    ) -> list[tuple[str, str]]:
+        """Jedno źródło braków tablicy: para (adres wpisu pliku danych, opis po polsku)."""
+        braki: list[tuple[str, str]] = []
         for anchor in VoltageAnchor:
             if not self.arc_entry(cfg, anchor).is_present:
-                missing.append(f"I_arc[{cfg.value},{anchor.name}]")
+                braki.append(
+                    (
+                        f"I_arc[{cfg.value},{anchor.name}]",
+                        f"współczynniki prądu łuku dla kotwy {anchor.voc_v} V (tab. 1)",
+                    )
+                )
             if not self.energy_entry(cfg, anchor).is_present:
-                missing.append(f"E[{cfg.value},{anchor.name}]")
+                braki.append(
+                    (
+                        f"E[{cfg.value},{anchor.name}]",
+                        f"współczynniki energii incydentu dla kotwy {anchor.voc_v} V "
+                        "(tab. 3/4/5)",
+                    )
+                )
         if not self.variation_entry(cfg).is_present:
-            missing.append(f"var_cf[{cfg.value}]")
+            braki.append((f"var_cf[{cfg.value}]", "współczynniki zmienności prądu łuku (tab. 2)"))
         if cfg.is_boxed and not self.enclosure_entry(enclosure_type, cfg).is_present:
-            missing.append(f"CF[{enclosure_type.value},{cfg.value}]")
-        return tuple(missing)
+            braki.append(
+                (
+                    f"CF[{enclosure_type.value},{cfg.value}]",
+                    f"współczynniki korekcji rozmiaru obudowy — {enclosure_type.nazwa_pl} "
+                    "(tab. 7)",
+                )
+            )
+        return braki
 
     def to_dict(self) -> dict[str, Any]:
         def _ckey(cfg: ElectrodeConfig, anchor: VoltageAnchor) -> str:
@@ -683,6 +737,20 @@ class ArcFlashContext:
         }
 
 
+#: Wejścia modelu IEEE 1584-2018 (§4.2–§4.9) zgłaszane w ``missing_data`` przy danych
+#: niekompletnych → nazwa wielkości dla projektanta. Lustro frontu:
+#: ``frontend/src/ui2/wyniki/jakosc/strings.ts`` (``NAZWY_WEJSC_ARC_FLASH``); komplet wobec
+#: ``ArcFlashBuilder._missing_inputs`` i parytet przypina
+#: ``tests/analysis/test_arc_flash_nazwy_wejsc.py``.
+NAZWY_WEJSC_ARC_FLASH_PL: dict[str, str] = {
+    "i_bf_ka": "prąd zwarcia metalicznego I_bf (z obliczeń zwarciowych IEC 60909)",
+    "voltage_kv": "napięcie systemu U_oc",
+    "arc_time_s": "czas trwania łuku T (czas wyłączenia z koordynacji zabezpieczeń)",
+    "conductor_gap_mm": "odstęp elektrod G",
+    "working_distance_mm": "odległość robocza D",
+}
+
+
 @dataclass(frozen=True)
 class ArcFlashInput:
     """Wejście Arc Flash dla JEDNEGO punktu (szyny/rozdzielnicy).
@@ -775,6 +843,9 @@ class ArcFlashResult:
     # --- audyt / komunikaty ---
     why_pl: str
     missing_data: tuple[str, ...]
+    #: Te same braki co ``missing_data``, nazwane dla projektanta (wielkość, kotwa napięcia,
+    #: tablica IEEE 1584-2018) — jedno źródło z ``why_pl``, ekran nie tłumaczy kodów.
+    missing_data_pl: tuple[str, ...]
     white_box: tuple[WhiteBoxStep, ...]
 
 

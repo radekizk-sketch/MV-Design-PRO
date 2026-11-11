@@ -250,11 +250,13 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
       // kompozytowe refy etykiet tym samym tematem co menu.
       klasa: 'aparat',
       // GEOMETRIA-STACJI (§0 pkt 4): fikstura niesie rekordy aparatów pól, więc aparat
-      // stosu ma ref rekordu (`deviceRef`) i roli agregatu nie potrzebuje — rola
-      // (`rolaSymboluLacznika`) zostaje wyłącznie dla symbolu bez refu aparatu. Symbol bez refu aparatu to po karcie wyłącznie sylwetka braku danych — bez stanu.
+      // stosu ma ref rekordu (`deviceRef`); symbol bez refu aparatu to wyłącznie sylwetka
+      // braku danych wyposażenia — bez stanu.
       deviceRef: aparat.meta!.deviceRef,
       lvPortalStationRef: undefined,
-      rolaLacznika: undefined,
+      // Rodzaj aparatu = `SymbolId` trafionego symbolu (jedna tożsamość aparatu pola
+      // `${bayRef}#${SymbolId}`, `shared/identyfikatorAparatu.ts`).
+      symbolId: aparat.symbolId,
     });
     expect(aparat.meta!.deviceRef, 'aparat z rekordu modelu niesie ref rekordu').toBeTruthy();
   });

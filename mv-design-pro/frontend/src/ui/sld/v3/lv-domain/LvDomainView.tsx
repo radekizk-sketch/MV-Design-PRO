@@ -23,6 +23,7 @@
  * WYBÓR (§37/§38): klik w element podświetla PEŁNY tor zasilania z
  * `graph.supply_paths` backendu — zero BFS po stronie klienta.
  */
+import { nazwaObiektuPl, pierwszaNazwa } from '../../../shared/nazwaObiektu';
 import { useMemo, useState, type CSSProperties } from 'react';
 
 import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
@@ -93,6 +94,9 @@ import type {
   LvEnergizationState,
 } from './types';
 import type { TrafienieNn } from './operacjeNn';
+import { nazwaElementuWidokuNn, opisyBrakowDanychNn } from './opisyBrakowDanychNn';
+import { nazwaElementuMigawki, useSnapshotStore } from '../../../topology/snapshotStore';
+import { etykietaZapasowaRefu } from '../../../../ui2/wyniki/wzorzec/useNazwaObiektu';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
 const HEADER_ALLOWANCE_PX = 96;
@@ -337,7 +341,7 @@ function etykietaZdolnosci(capability: unknown): string {
  *  „niedopuszczalna" z domysłu). */
 function etykietaWyspy(island: LvDomainIsland, nameByRef: ReadonlyMap<string, string>): readonly string[] | null {
   if (!island.is_islanded) return null;
-  const nazwy = island.energizing_source_ids.map((ref) => nameByRef.get(ref) ?? ref);
+  const nazwy = island.energizing_source_ids.map((ref) => nameByRef.get(ref) || etykietaZapasowaRefu(ref));
   const zrodla = nazwy.length ? ` z: ${nazwy.join(', ')}` : '';
   const npe = island.neutral_reference.status === 'ustalone'
     ? `N/PE: ${island.neutral_reference.system ?? '—'} (${nameByRef.get(island.neutral_reference.source_ref ?? '') ?? island.neutral_reference.source_ref ?? '—'})`
@@ -420,7 +424,17 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const [warningsOpen, setWarningsOpen] = useState<boolean>(false);
 
   const paleta = useMemo(() => (mono ? paletaMono() : paletaNnDlaMotywu(theme)), [theme, mono]);
-  const scene = useMemo(() => composeLvDomainScene(view, projection.upstream_equivalents), [view, projection.upstream_equivalents]);
+  // Nazwy elementów w opisach braków i kotwicy SN: z widoku domeny nN, a dla elementów spoza niej
+  // (szyna systemu SN, transformator SN/nN) — z migawki modelu; identyfikator nie jest pokazywany.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const nazwaElementu = useMemo(
+    () => nazwaElementuWidokuNn(view, (ref) => nazwaElementuMigawki(snapshot, ref)),
+    [view, snapshot],
+  );
+  const scene = useMemo(
+    () => composeLvDomainScene(view, projection.upstream_equivalents, nazwaElementu),
+    [view, projection.upstream_equivalents, nazwaElementu],
+  );
   const domainDescriptor = useMemo(() => domainDescriptorLabel(view), [view]);
   const swzFeeders = useMemo(
     () => projection.swz_snapshot.transformers.flatMap((t) => t.feeders.map((feeder) => ({ transformerRef: t.transformer_ref, feeder }))),
@@ -511,7 +525,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   if (view.status !== 'OK') {
     return (
       <div data-testid="lv-domain-view-root" data-status="brak-danych" style={{ background: paleta.tlo, color: paleta.kreskaBazowa, padding: 24, fontFamily: 'monospace' }}>
-        Domena nN stacji „{projection.station_ref}" — brak danych ({(view.missing_data ?? []).join(', ') || 'nieznany powód'}).
+        {view.station_name ? `Domena nN stacji „${view.station_name}” — brak danych` : 'Domena nN — brak danych'}
+        {`: ${(view.reason_pl ?? opisyBrakowDanychNn(view.missing_data, nazwaElementu) ?? 'brak opisu przyczyny w odpowiedzi').replace(/\.$/, '')}.`}
       </div>
     );
   }
@@ -584,7 +599,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       <style>{'@media print { [data-testid="lv-domain-toolbar"], [data-testid="lv-domain-feeder-panel"], [data-testid="lv-domain-warnings-panel"] { display: none !important; } }'}</style>
       <header data-testid="lv-domain-toolbar" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>{view.station_name ?? view.station_ref} · nN</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{nazwaObiektuPl(view.station_name, 'stacja')} · nN</div>
           <div data-testid="lv-domain-descriptor" style={{ fontSize: 11, color: paleta.kreskaWygaszona }}>{domainDescriptor}</div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
@@ -931,7 +946,7 @@ function BusBarNode({ node, ctx, activeOverlay, resultOverlayPayload, voltagePro
   const labelPx = isMain ? SLD_LABEL.PRIMARY : SLD_LABEL.SECONDARY + 1;
   const labelX = typeof node.meta?.labelX === 'number' ? node.meta.labelX : left;
   const stanLinia = stanLabel
-    ? `${stanLabel}${energization === 'MULTISOURCE' && supplyRefs.length ? ` (${supplyRefs.map((ref) => ctx.nameByRef.get(ref) ?? ref).join(', ')})` : ''}`
+    ? `${stanLabel}${energization === 'MULTISOURCE' && supplyRefs.length ? ` (${supplyRefs.map((ref) => ctx.nameByRef.get(ref) || etykietaZapasowaRefu(ref)).join(', ')})` : ''}`
     : null;
   // Nazwa sekcji zawijana do długości kreski (§30; wąski ekran §43): długa
   // nazwa rozdzielnicy nie wychodzi poza kreskę ani poza kadr.
@@ -1094,7 +1109,7 @@ function ElementNode({ node, ctx, activeOverlay, resultOverlayPayload, swzEntry,
       {node.kind === 'apparatus' ? (
         <title>{tekstBezWzorow(`${node.label} · ${String(node.meta?.nazwaPl ?? '')} · ${stanSlowny((node.meta?.deviceState as LvDeviceState | undefined) ?? 'UNKNOWN')}`)}</title>
       ) : node.kind === 'load' || node.kind === 'generator' || node.kind === 'transformer' ? (
-        <title>{tekstBezWzorow(node.kind === 'transformer' ? `${String(node.meta?.name ?? node.ref)} · ${node.label}` : node.label)}</title>
+        <title>{tekstBezWzorow(node.kind === 'transformer' ? `${nazwaObiektuPl(pierwszaNazwa(node.meta?.name), 'transformator')} · ${node.label}` : node.label)}</title>
       ) : null}
       <ScaledGlyph node={node} ctx={ctx} />
       <NodeLabel node={node} ctx={ctx} />

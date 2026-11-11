@@ -106,7 +106,7 @@ class MaszynaKlasyczna:
             NastawaRegulacji(
                 wielkosc="p",
                 stan="p_mechaniczna_pu",
-                powod_pl="moc mechaniczna napedu (moc w szczelinie; moc zacisków mniejsza o "
+                powod_pl="moc mechaniczna napędu (moc w szczelinie; moc zacisków mniejsza o "
                 "straty w uzwojeniu stojana)",
                 zakres=None,
                 mnoznik=1.0,
@@ -115,7 +115,7 @@ class MaszynaKlasyczna:
                 wielkosc="q",
                 stan=None,
                 powod_pl="model klasyczny nie ma regulatora mocy biernej — moc bierna wynika "
-                "z SEM stalej za reaktancja przejściowa",
+                "z SEM stałej za reaktancja przejściowa",
                 zakres=None,
                 mnoznik=1.0,
             ),

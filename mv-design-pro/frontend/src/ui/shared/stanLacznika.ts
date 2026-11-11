@@ -14,16 +14,17 @@
  * łącznika z innego miejsca niż gałąź łącznika.
  */
 import type { Branch, EnergyNetworkModel, FuseBranch, SwitchBranch } from '../../types/enm';
-import { isFuseBranch, isSwitchBranch } from '../../types/enm';
+import { isApparatusBranch, isSwitchBranch } from '../../types/enm';
+import { rozbierzIdentyfikatorAparatu } from '../sld/shared/identyfikatorAparatu';
 
 export type PolozenieLacznika = 'closed' | 'open';
 
-/** Łącznik z położeniem otwarty/zamknięty (także bezpiecznik) — `TYPY_LACZNIKOW_ENM`. */
+/** Łącznik z położeniem otwarty/zamknięty (także bezpiecznik) — `RODZAJE_GALEZI_APARATU`. */
 export function czyLacznik(galaz: Branch | null | undefined): galaz is SwitchBranch | FuseBranch {
-  return galaz != null && (isSwitchBranch(galaz) || isFuseBranch(galaz));
+  return galaz != null && isApparatusBranch(galaz);
 }
 
-/** Łącznik z POZYCJĄ NORMALNĄ (bez bezpiecznika) — `TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM`. */
+/** Łącznik z POZYCJĄ NORMALNĄ (bez bezpiecznika) — `RODZAJE_GALEZI_LACZNIKA`. */
 export function czyLacznikZPozycjaNormalna(
   galaz: Branch | null | undefined,
 ): galaz is SwitchBranch {
@@ -132,7 +133,8 @@ export type LacznikTematu =
 /**
  * Łącznik, którego dotyczy akcja stanu (otwórz / zamknij / punkt podziału) dla obiektu
  * rysunku: gałąź łącznikowa wprost albo JEDYNY łącznik pola (`Bay.equipment_refs`;
- * aparat z kompozytem `⟨pole⟩#⟨rodzaj⟩` wskazuje pole). Pole z kilkoma łącznikami nie
+ * aparat pola `${bayRef}#${SymbolId}` wskazuje pole — rozbiór jednym parserem
+ * `rozbierzIdentyfikatorAparatu`). Pole z kilkoma łącznikami nie
  * daje wyboru za projektanta — powód nazywa łączniki do wskazania.
  */
 export function lacznikTematu(
@@ -153,8 +155,7 @@ export function lacznikTematu(
             'Element nie jest łącznikiem — stan otwarty albo zamknięty mają wyłącznie łączniki i bezpieczniki.',
         };
   }
-  const znacznik = ref.lastIndexOf('#');
-  const refPola = znacznik > 0 ? ref.slice(0, znacznik) : ref;
+  const refPola = rozbierzIdentyfikatorAparatu(ref)?.bayRef ?? ref;
   const pole = (snapshot.bays ?? []).find((b) => b.ref_id === refPola || b.id === refPola) ?? null;
   if (!pole) {
     return { lacznik: null, powodPl: 'Wskazany obiekt nie jest łącznikiem modelu sieci.' };

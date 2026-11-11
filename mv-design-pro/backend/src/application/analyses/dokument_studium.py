@@ -46,13 +46,13 @@ from typing import Any
 
 from application.analyses.hosting_capacity import build_hosting_capacity_view
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.pq_area import build_pq_area_view
 from application.analyses.pq_coverage import build_pq_coverage_view
 from application.analyses.sekcja_zgodnosci_ncrfg import wiersze_dowodu
 from application.ncrfg_compliance import NcRfgCertyfikatOdrzucony
 from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType

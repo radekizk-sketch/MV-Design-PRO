@@ -39,20 +39,19 @@ Reguły migracji (bez domysłu):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal, get_args
 
-from .slownik_komunikatow import opis_obiektu
+from .slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
 
-#: Typy gałęzi łącznikowych ENM niosące POZYCJĘ NORMALNĄ (`SwitchBranch.type`).
-#: JEDYNA definicja — `enm.models` i operacje łączników importują ją stąd. Bezpiecznik
-#: (`FuseBranch`) jest łącznikiem dla topologii (ma `status`), ale nie jest punktem
-#: podziału sieci i nie ma pozycji normalnej z projektu.
-TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM: tuple[str, ...] = (
-    "switch",
-    "breaker",
-    "bus_coupler",
-    "disconnector",
-)
+#: Rodzaje gałęzi łącznika ENM — typ pola `SwitchBranch.type` (`enm.models`) i lista
+#: niosąca POZYCJĘ NORMALNĄ. JEDYNA definicja w backendzie: model bierze stąd typ pola,
+#: operacje łączników, topologia i walidator — listę (`enm.models` re-eksportuje ją obok
+#: `RODZAJE_GALEZI_APARATU`). Front dostaje ją przez wyrocznię harnessu
+#: `rodzaje_wielkosci_zwarciowych_aparatury.json` (`rodzaje_galezi`, test parytetu
+#: `types/rodzajeGalezi.ts`). Bezpiecznik (`FuseBranch`) jest aparatem dla topologii (ma `status`),
+#: ale nie jest punktem podziału sieci i nie ma pozycji normalnej z projektu.
+RodzajGaleziLacznika = Literal["switch", "breaker", "bus_coupler", "disconnector"]
+RODZAJE_GALEZI_LACZNIKA: tuple[str, ...] = get_args(RodzajGaleziLacznika)
 
 
 @dataclass(frozen=True)
@@ -83,22 +82,6 @@ class RaportMigracjiPunktowPodzialu:
 
 #: Położenie łącznika w opisie dziennika (wartość ``status`` / ``normal_state``).
 _POZYCJA_PL: dict[str, str] = {"open": "otwarty", "closed": "zamknięty"}
-
-#: Rodzaj gałęzi w opisie dziennika (``Branch.type`` → słowo rodzaju, małą literą,
-#: bo opis stoi w środku zdania). Typ spoza listy → „gałąź".
-_RODZAJ_GALEZI_PL: dict[str, str] = {
-    "switch": "łącznik",
-    "breaker": "wyłącznik",
-    "disconnector": "odłącznik",
-    "bus_coupler": "sprzęgło",
-    "fuse": "bezpiecznik",
-    "cable": "kabel",
-    "line_overhead": "linia napowietrzna",
-}
-
-
-def _rodzaj_galezi(typ: object) -> str:
-    return _RODZAJ_GALEZI_PL.get(str(typ), "gałąź")
 
 
 def _lista(data: dict[str, Any], klucz: str) -> list[Any]:
@@ -154,13 +137,13 @@ def migruj_punkty_podzialu_slownika(
             utracone.append(f"{nazwa}: wskazany łącznik punktu podziału nie istnieje w modelu")
             continue
         typ = galaz.get("type")
-        if typ not in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM:
+        if typ not in RODZAJE_GALEZI_LACZNIKA:
             utracone.append(
-                f"{nazwa}: wskazany punkt podziału ({opis_obiektu(galaz, _rodzaj_galezi(typ))}) "
+                f"{nazwa}: wskazany punkt podziału ({opis_obiektu(galaz, nazwa_rodzaju_galezi(typ))}) "
                 "nie jest łącznikiem z pozycją normalną"
             )
             continue
-        lacznik = opis_obiektu(galaz, _rodzaj_galezi(typ))
+        lacznik = opis_obiektu(galaz, nazwa_rodzaju_galezi(typ))
         stan = galaz.get("normal_state")
         if stan is None:
             galaz["normal_state"] = "open"

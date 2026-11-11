@@ -17,6 +17,7 @@ import copy
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_sn_stacji
+from enm.zajetosc_pol import zajetosc_pola
 
 CATALOG_LINE_35 = "line-base-al-st-35"
 CATALOG_LINE_70 = "line-base-al-st-70"
@@ -371,7 +372,10 @@ class TestE2E2BranchFromStation:
         )
         assert odgalezienie["from_bus_ref"] == pole_odg["terminal_bus_ref"]
 
-        # Dwa WOLNE pola odgałęźne na szynie — bez jawnego portu odmowa (niejednoznaczność).
+        # Dwa WOLNE pola odgałęźne na szynie — bez jawnego portu odgałęzienie wychodzi z
+        # PIERWSZEGO wolnego pola liniowego szyny (kolejność danych), tak jak ciąg wskazany
+        # szyną stacji (decyzja architekta, karta INSPEKTOR-POLA-DOMKNIECIE: szyna sekcji bez
+        # wskazania pola = pole liniowe tej szyny; dawniej odmowa „niejednoznaczny port").
         s2 = op(
             _empty_enm(),
             "add_grid_source_sn",
@@ -402,9 +406,21 @@ class TestE2E2BranchFromStation:
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
             },
         )
-        assert result.get("snapshot") is None
-        assert result.get("error_code") == "branch_connection.source_not_branch_capable"
+        assert result.get("snapshot") is not None, result.get("error")
         assert s2 == baseline
+        stacja_b = s2["substations"][-1]
+        wolne = [
+            p
+            for p in pola_sn_stacji(s2, stacja_b["ref_id"])
+            if p["bay_role"] in ("OUT", "FEEDER") and not zajetosc_pola(s2, p["ref_id"]).zajete
+        ]
+        assert len(wolne) == 2
+        odgalezienie = next(
+            b for b in result["snapshot"]["branches"] if "branch_segment" in b["ref_id"]
+        )
+        assert odgalezienie["from_bus_ref"] == wolne[0]["terminal_bus_ref"]
+        assert odgalezienie["meta"]["origin_bay_ref"] == wolne[0]["ref_id"]
+        assert not [z for z in result["domain_events"] if z["event_type"] == "LINE_FIELD_CREATED"]
 
     def test_branch_from_station_ref_is_rejected(self) -> None:
         """Odgałęzienie nie może startować z abstrakcyjnej stacji."""

@@ -679,3 +679,15 @@ def test_serializer_niesie_wzor_weryfikacji_jednostek() -> None:
         slownik = white_box_to_dict(krok)
         assert slownik["unit_check_latex"] == krok.unit_check_latex
         assert slownik["unit_check_pl"] == krok.unit_check_pl
+
+
+def test_braki_danych_q_kompletne_i_w_lustrze() -> None:
+    """Każdy kod braku, który bramki wejść oceny mogą zgłosić, ma nazwę wielkości; lustro
+    frontu (pulpit OZE) niesie te same teksty."""
+    from analysis.reactive_adequacy.models import BRAKI_DANYCH_Q_PL
+
+    from tests.utils.lustro_ts import FRONT_SRC, kody_brakow_modulu, slownik_ts
+
+    assert set(BRAKI_DANYCH_Q_PL) == kody_brakow_modulu("analysis/reactive_adequacy/builder.py")
+    lustro = slownik_ts(FRONT_SRC / "ui2" / "oze" / "pulpit" / "strings.ts", "BRAKI_DANYCH_Q")
+    assert lustro == BRAKI_DANYCH_Q_PL

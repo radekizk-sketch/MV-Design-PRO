@@ -44,6 +44,14 @@ export type SnConnectionPointKind = 'station_bus' | 'branch_pole' | 'zksn' | 'ju
 /** Rodzaj DER (zunifikowany dla 3 specjalizacji). */
 export type DerKindUnified = 'PV' | 'BESS' | 'FW';
 
+/** Rodzaj DER słowami w komunikatach — lustro backendu
+ *  `enm/slownik_komunikatow.py::NAZWY_TECHNOLOGII_ZRODLA_PL` (kod rodzaju nie trafia do zdania). */
+export const NAZWA_RODZAJU_DER: Readonly<Record<DerKindUnified, string>> = {
+  PV: 'Fotowoltaika (PV)',
+  BESS: 'Magazyn energii (BESS)',
+  FW: 'Elektrownia wiatrowa (FW)',
+};
+
 /** Status kompletności konfiguracji DER. */
 export type DerCompleteness =
   | 'complete'

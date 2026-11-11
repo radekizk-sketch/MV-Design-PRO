@@ -22,7 +22,7 @@ import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFir
 import { useActiveOperationForm, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { AddNNRcdPayload } from '../../../types/domainOps';
-import { ETYKIETY_WERYFIKACJI } from '../../spaces/model/katalog/strings';
+import { nazwaWartosciKodowej, zWielkiejLitery } from '../../../ui/catalog/wartosciKodoweKarty';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -239,7 +239,7 @@ export function KreatorRcdNn() {
               <RzadWartosci etykieta={T.paramIn} wartosc={fmt(wybranyTyp.in_a, 'A', 0)} testid="mvd-kreator-rcd-nn-param-in" />
               <RzadWartosci etykieta={T.paramUn} wartosc={fmt(wybranyTyp.u_n_kv, 'kV', 2)} testid="mvd-kreator-rcd-nn-param-un" />
             </KreatorSiatka>
-            <RzadWartosci etykieta={T.paramZrodlo} wartosc={`${ETYKIETY_WERYFIKACJI[wybranyTyp.verification_status] ?? wybranyTyp.verification_status} · ${wybranyTyp.source_reference}`} testid="mvd-kreator-rcd-nn-param-zrodlo" />
+            <RzadWartosci etykieta={T.paramZrodlo} wartosc={`${zWielkiejLitery(nazwaWartosciKodowej('verification_status', wybranyTyp.verification_status))} · ${wybranyTyp.source_reference}`} testid="mvd-kreator-rcd-nn-param-zrodlo" />
           </div>
         ) : null}
       </KreatorSekcja>

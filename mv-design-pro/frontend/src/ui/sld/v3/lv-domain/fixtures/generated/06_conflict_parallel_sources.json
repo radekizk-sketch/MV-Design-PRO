@@ -666,7 +666,7 @@
               "TA",
               "TB"
             ],
-            "message_pl": "Sekcje zasilane z niezależnych systemów SN (sn, sn2) są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
+            "message_pl": "Sekcje zasilane z 2 niezależnych systemów SN są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
             "severity": "BLOCKER"
           }
         ],
@@ -1489,7 +1489,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "ab38bb16541b4e0b0e74ecb346d7fe35f8d381bd23b7f3aecbc50a928235bce5",
+  "projection_hash": "1d64e0c021d6a894923a0af25c10585be9848ac143336230072e57952df3bd8c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -3141,7 +3141,7 @@
       "missing_data": [],
       "model_hash": "4b4537fe7bed1ebce92a5cfde6cdc6fb91f297c58f8432283417e315ad55d249",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "d8b328dea019e2a1b0908e164e12219215dd0c7386846cd0d4a1925f12d825b6",
       "rx_ratio": 0.200732457,
       "scenario_id": "MAX",
@@ -3179,7 +3179,7 @@
       "missing_data": [],
       "model_hash": "4b4537fe7bed1ebce92a5cfde6cdc6fb91f297c58f8432283417e315ad55d249",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "d8b328dea019e2a1b0908e164e12219215dd0c7386846cd0d4a1925f12d825b6",
       "rx_ratio": 0.20088099,
       "scenario_id": "MAX",
@@ -3215,7 +3215,7 @@
         "TA",
         "TB"
       ],
-      "message_pl": "Sekcje zasilane z niezależnych systemów SN (sn, sn2) są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
+      "message_pl": "Sekcje zasilane z 2 niezależnych systemów SN są spięte po stronie nN — praca równoległa niezsynchronizowanych źródeł. Wymaga rozstrzygnięcia (otwarcie sprzęgła albo automatyka SZR).",
       "severity": "BLOCKER"
     },
     {

@@ -49,6 +49,24 @@ class OverrideOperationV1(StrEnum):
     MOVE_LABEL = "MOVE_LABEL"
 
 
+#: Zakres nadpisania W TEKŚCIE komunikatu (kod zostaje w polu ``scope`` nadpisania) —
+#: komplet przypina ``tests/domain/test_geometry_overrides_nazwy.py``.
+NAZWY_ZAKRESOW_NADPISANIA_PL: dict[OverrideScopeV1, str] = {
+    OverrideScopeV1.NODE: "węzeł",
+    OverrideScopeV1.BLOCK: "blok",
+    OverrideScopeV1.FIELD: "pole",
+    OverrideScopeV1.LABEL: "etykieta",
+    OverrideScopeV1.EDGE_CHANNEL: "kanał połączeń",
+}
+
+#: Operacja geometryczna W TEKŚCIE komunikatu (kod zostaje w polu ``operation``).
+NAZWY_OPERACJI_NADPISANIA_PL: dict[OverrideOperationV1, str] = {
+    OverrideOperationV1.MOVE_DELTA: "przesunięcie",
+    OverrideOperationV1.REORDER_FIELD: "zmiana kolejności pól",
+    OverrideOperationV1.MOVE_LABEL: "przesunięcie etykiety",
+}
+
+
 # =============================================================================
 # OVERRIDE ITEM
 # =============================================================================
@@ -213,7 +231,10 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message=f"Element '{item.element_id}' nie istnieje (NODE scope)",
+                        message=(
+                            f"Element '{item.element_id}' nie istnieje "
+                            "(zakres nadpisania: węzeł)"
+                        ),
                     )
                 )
                 continue
@@ -223,7 +244,9 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message=f"Blok '{item.element_id}' nie istnieje (BLOCK scope)",
+                        message=(
+                            f"Blok '{item.element_id}' nie istnieje " "(zakres nadpisania: blok)"
+                        ),
                     )
                 )
                 continue
@@ -233,7 +256,10 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message=f"Element '{item.element_id}' nie istnieje (LABEL scope)",
+                        message=(
+                            f"Element '{item.element_id}' nie istnieje "
+                            "(zakres nadpisania: etykieta)"
+                        ),
                     )
                 )
                 continue
@@ -246,8 +272,9 @@ def validate_overrides(
                     element_id=item.element_id,
                     code="geometry.override_forbidden_for_station_type",
                     message=(
-                        f"Operacja {item.operation.value} niedozwolona "
-                        f"dla scope {item.scope.value}"
+                        "Operacja "
+                        f"„{NAZWY_OPERACJI_NADPISANIA_PL[item.operation]}” niedozwolona "
+                        f"dla zakresu „{NAZWY_ZAKRESOW_NADPISANIA_PL[item.scope]}”"
                     ),
                 )
             )
@@ -260,7 +287,7 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message="MOVE_DELTA: payload musi mieć dx/dy",
+                        message="Przesunięcie elementu wymaga przesunięcia w osi X i w osi Y",
                     )
                 )
         elif item.operation == OverrideOperationV1.MOVE_LABEL:
@@ -269,7 +296,9 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_invalid_element",
-                        message="MOVE_LABEL: payload musi mieć anchorX/anchorY",
+                        message=(
+                            "Przesunięcie etykiety wymaga punktu zaczepienia w osi X i w osi Y"
+                        ),
                     )
                 )
         elif item.operation == OverrideOperationV1.REORDER_FIELD:
@@ -278,7 +307,7 @@ def validate_overrides(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,
                         code="geometry.override_forbidden_for_station_type",
-                        message="REORDER_FIELD: payload musi mieć fieldOrder",
+                        message="Zmiana kolejności pól wymaga nowej kolejności pól",
                     )
                 )
 

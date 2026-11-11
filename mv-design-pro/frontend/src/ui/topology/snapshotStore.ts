@@ -36,7 +36,7 @@ import { publicBusName } from '../shared/enmVisibility';
 import { identyfikatorGrafu } from './identyfikatorGrafu';
 import { executeDomainOp } from './domainApi';
 import { notify } from '../notifications/store';
-import { getOperationSuccessMessage } from './operationSuccessMessages';
+import { getOperationSuccessMessage, komunikatSukcesuZPolami } from './operationSuccessMessages';
 
 // ---------------------------------------------------------------------------
 // State
@@ -210,6 +210,30 @@ export function selectElementName(
   elementRef: string | null,
 ): string | null {
   return resolveElementName(snapshot, elementRef);
+}
+
+/**
+ * Nazwa elementu migawki do zdania dla projektanta (lista braków danych, etykiety kotwic):
+ * nazwa nadana, a gdy jej brak — oznaczenie stacji (`designation`); `null` — element jest
+ * w migawce bez nazwy i oznaczenia; `undefined` — elementu nie ma w migawce (albo migawki
+ * nie ma). Rozróżnia oba braki, żeby zdanie nie nazwało elementu spoza modelu „bez nazwy”.
+ */
+export function nazwaElementuMigawki(
+  snapshot: EnergyNetworkModel | null,
+  ref: string,
+): string | null | undefined {
+  if (!snapshot) return undefined;
+  const indeks = indeksNazw(snapshot);
+  if (!indeks.has(ref)) return undefined;
+  const nazwa = (indeks.get(ref) ?? '').trim();
+  if (nazwa) return nazwa;
+  // Bez nazwy — oznaczenie elementu (stacja: `designation`), jak backendowe
+  // `fault_loop.service._nazwa_lub_oznaczenie`; brak obu → `null` („bez nazwy”).
+  const element = kandydaciIndeksu(snapshot).find(
+    (item) => item.ref_id === ref || item.id === ref || (item.ref_id && identyfikatorGrafu(item.ref_id) === ref),
+  ) as { designation?: string | null } | undefined;
+  const oznaczenie = (element?.designation ?? '').trim();
+  return oznaczenie || null;
 }
 
 /** Elementy migawki rozpoznawane po identyfikatorze — jedna lista dla indeksu nazw i refów. */
@@ -458,7 +482,12 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       // Centralny toast sukcesu — jeden punkt dla WSZYSTKICH operacji domenowych
       // (kryt. #2: każda akcja ma feedback sukcesu). Operacje ciche (refresh/undo)
       // pomijane przez getOperationSuccessMessage.
-      const successMessage = opcje?.komunikatSukcesuPl ?? getOperationSuccessMessage(opName);
+      // Pole liniowe utworzone przez operację (karta INSPEKTOR-POLA-DOMKNIECIE) — zdanie backendu
+      // dopisane do potwierdzenia, także przy komunikacie wołającego.
+      const successMessage = komunikatSukcesuZPolami(
+        opcje?.komunikatSukcesuPl ?? getOperationSuccessMessage(opName),
+        response,
+      );
       if (successMessage) {
         notify(successMessage, 'success');
       }

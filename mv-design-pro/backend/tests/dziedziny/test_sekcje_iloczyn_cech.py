@@ -71,9 +71,12 @@ def _wejscie(
         else (
             SkladnikSekcji(
                 nazwa="dane",
+                etykieta_pl="dane",
                 wymagany=True,
                 rodzaj_danych="POLA",
-                pola=(PoleSekcji(nazwa="pole_x", obecne=True, jakosc=jakosc),),
+                pola=(
+                    PoleSekcji(nazwa="pole_x", etykieta_pl="pole_x", obecne=True, jakosc=jakosc),
+                ),
             ),
         )
     )
@@ -203,9 +206,14 @@ def test_dowod_niepokrywajacy_dziedziny_sekcji_jest_pomijany() -> None:
         skladniki=(
             SkladnikSekcji(
                 nazwa="impedancja",
+                etykieta_pl="impedancja",
                 wymagany=True,
                 rodzaj_danych="POLA",
-                pola=(PoleSekcji(nazwa="x", obecne=True, jakosc=FieldQuality.DATASHEET),),
+                pola=(
+                    PoleSekcji(
+                        nazwa="x", etykieta_pl="x", obecne=True, jakosc=FieldQuality.DATASHEET
+                    ),
+                ),
             ),
         ),
         dowody=(f.dowod("CERTYFIKAT_MODELU", ("RMS_DYNAMICS",)),),
@@ -220,7 +228,7 @@ def test_dowod_niepokrywajacy_dziedziny_sekcji_jest_pomijany() -> None:
 
 
 def _pole(nazwa: str, obecne: bool = True, jakosc: FieldQuality | None = FieldQuality.DATASHEET):
-    return PoleSekcji(nazwa=nazwa, obecne=obecne, jakosc=jakosc)
+    return PoleSekcji(nazwa=nazwa, etykieta_pl=nazwa, obecne=obecne, jakosc=jakosc)
 
 
 def test_brak_pola_wymaganego_daje_unknown_z_nazwanymi_brakami() -> None:
@@ -230,6 +238,7 @@ def test_brak_pola_wymaganego_daje_unknown_z_nazwanymi_brakami() -> None:
             skladniki=(
                 SkladnikSekcji(
                     nazwa="udzial_zwarciowy",
+                    etykieta_pl="udzial_zwarciowy",
                     wymagany=True,
                     rodzaj_danych="POLA",
                     pola=(_pole("k_sc", obecne=False, jakosc=None),),
@@ -243,25 +252,28 @@ def test_brak_pola_wymaganego_daje_unknown_z_nazwanymi_brakami() -> None:
     assert status_modelu_z_sekcji(ocena) == BrakModelu(
         sekcja="short_circuit",
         powod_pl=ocena.powod_pl,
-        czego_brakuje_pl="model sekcji short_circuit",
+        czego_brakuje_pl="model urządzenia (sekcja zwarciowa)",
     )
 
 
 def test_skladnik_opcjonalny_bez_danych_nie_obniza_statusu_a_z_danymi_obniza() -> None:
     wymagany = SkladnikSekcji(
         nazwa="znamionowe",
+        etykieta_pl="znamionowe",
         wymagany=True,
         rodzaj_danych="POLA",
         pola=(_pole("sn_mva"), _pole("un_kv")),
     )
     opcjonalny_pusty = SkladnikSekcji(
         nazwa="migotanie",
+        etykieta_pl="migotanie",
         wymagany=False,
         rodzaj_danych="POLA",
         pola=(_pole("flicker_c", obecne=False, jakosc=None),),
     )
     opcjonalny_szacowany = SkladnikSekcji(
         nazwa="migotanie",
+        etykieta_pl="migotanie",
         wymagany=False,
         rodzaj_danych="POLA",
         pola=(_pole("flicker_c", jakosc=FieldQuality.ESTIMATED),),
@@ -311,7 +323,11 @@ def test_skladnik_czesciowo_obecny_wymagany_nieznany_opcjonalny_na_polach_obecny
                 sekcja="fundamental",
                 skladniki=(
                     SkladnikSekcji(
-                        nazwa="s", wymagany=wymagany, rodzaj_danych="POLA", pola=stany[stan]
+                        nazwa="s",
+                        etykieta_pl="s",
+                        wymagany=wymagany,
+                        rodzaj_danych="POLA",
+                        pola=stany[stan],
                     ),
                 ),
                 dowody=(f.dowod("RAPORT_BADAN", ("POWER_FLOW",)),),
@@ -339,7 +355,12 @@ def test_skladnik_widmowy_bez_karty_jest_nieznany() -> None:
         WejscieStatusuSekcji(
             sekcja="harmonic",
             skladniki=(
-                SkladnikSekcji(nazwa="emisja", wymagany=True, rodzaj_danych="MODELE_WIDMOWE"),
+                SkladnikSekcji(
+                    nazwa="emisja",
+                    etykieta_pl="emisja",
+                    wymagany=True,
+                    rodzaj_danych="MODELE_WIDMOWE",
+                ),
             ),
             status_weryfikacji_rekordu="REFERENCYJNY",
         )
@@ -356,6 +377,7 @@ def test_widmo_zmierzone_z_kompletem_i_podstawa_daje_measured_w_domenie() -> Non
             skladniki=(
                 SkladnikSekcji(
                     nazwa="emisja",
+                    etykieta_pl="emisja",
                     wymagany=True,
                     rodzaj_danych="MODELE_WIDMOWE",
                     modele=(zmierzony,),
@@ -384,6 +406,7 @@ def test_widmo_zmierzone_z_podstawa_nieustalona_nie_jest_measured() -> None:
             skladniki=(
                 SkladnikSekcji(
                     nazwa="emisja",
+                    etykieta_pl="emisja",
                     wymagany=True,
                     rodzaj_danych="MODELE_WIDMOWE",
                     modele=(zmierzony,),
@@ -404,6 +427,7 @@ def test_widmo_producenta_bez_parametrow_pomiaru_ma_sufit_i_zastrzezenie() -> No
             skladniki=(
                 SkladnikSekcji(
                     nazwa="emisja",
+                    etykieta_pl="emisja",
                     wymagany=True,
                     rodzaj_danych="MODELE_WIDMOWE",
                     modele=(f.model(),),
@@ -420,10 +444,15 @@ def test_widmo_producenta_bez_parametrow_pomiaru_ma_sufit_i_zastrzezenie() -> No
 
 def test_harmonic_to_najslabszy_z_emisji_i_impedancji() -> None:
     emisja = SkladnikSekcji(
-        nazwa="emisja", wymagany=True, rodzaj_danych="MODELE_WIDMOWE", modele=(f.model_zmierzony(),)
+        nazwa="emisja",
+        etykieta_pl="emisja",
+        wymagany=True,
+        rodzaj_danych="MODELE_WIDMOWE",
+        modele=(f.model_zmierzony(),),
     )
     impedancja = SkladnikSekcji(
         nazwa="impedancja_wewnetrzna",
+        etykieta_pl="impedancja_wewnetrzna",
         wymagany=True,
         rodzaj_danych="MODELE_WIDMOWE",
         modele=(f.model_parametryczny(FieldQuality.ESTIMATED),),
@@ -477,7 +506,13 @@ def test_sekcja_dowodowa_nie_przyjmuje_skladnikow() -> None:
         WejscieStatusuSekcji(
             sekcja="certification",
             skladniki=(
-                SkladnikSekcji(nazwa="x", wymagany=True, rodzaj_danych="POLA", pola=(_pole("a"),)),
+                SkladnikSekcji(
+                    nazwa="x",
+                    etykieta_pl="x",
+                    wymagany=True,
+                    rodzaj_danych="POLA",
+                    pola=(_pole("a"),),
+                ),
             ),
             status_weryfikacji_rekordu="ZWERYFIKOWANY",
         )

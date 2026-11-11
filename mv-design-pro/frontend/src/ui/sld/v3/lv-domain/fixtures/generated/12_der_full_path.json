@@ -1011,7 +1011,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "fb5a9a7de13cd87579d8d5fb4890fb36473f95a2928e2307655c533f3ef38903",
+  "projection_hash": "f778a4b7f653833c85e914ea79f97ff3ccc9c7a3b63db45b65c42481c988cebe",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -3222,7 +3222,7 @@
       "missing_data": [],
       "model_hash": "5908c8df696a438a8079d97d7c23ef14034e9b3cc8e4435fd1de7eed5f11ecdd",
       "model_revision": 1,
-      "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
+      "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
       "parametry_robocze_maszyn": [
         {

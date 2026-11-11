@@ -11,6 +11,8 @@
 
 import {
   bayKindLabelPl,
+  grupaZrodlaSzablonu,
+  grupaZrodlaSzablonuPl,
   type BayKind,
   type CompleteMvBayTemplateSummary,
 } from '../../catalog/BayTemplatePicker';
@@ -29,15 +31,6 @@ export const SWITCHGEAR_MANUFACTURER_ORDER = [
   'SIEMENS',
   'ABB',
 ];
-
-export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummary['source_status'], string>> = {
-  official_catalog: 'pakiet katalogowy',
-  repo_verified: 'pakiet katalogowy',
-  user_defined: 'pakiet użytkownika',
-  canonical_fallback: 'poza konfiguracją projektową',
-  requires_catalog: 'poza konfiguracją projektową',
-  incomplete_requires_review: 'poza konfiguracją projektową',
-};
 
 // Pure helpers - station
 export function stationRef(station: Substation): string {
@@ -67,12 +60,11 @@ export function sourceStatusRank(status: CompleteMvBayTemplateSummary['source_st
   }
 }
 
+/** Pakiet kompletny ⇔ grupa statusu źródła inna niż „poza konfiguracją projektową”
+ *  (jedno źródło podziału: `STATUS_ZRODLA` w `ui/catalog/BayTemplatePicker.tsx`). */
 export function isCompleteSourceStatus(status: CompleteMvBayTemplateSummary['source_status']): boolean {
-  return (
-    status === 'official_catalog'
-    || status === 'repo_verified'
-    || status === 'user_defined'
-  );
+  const grupa = grupaZrodlaSzablonu(status);
+  return grupa !== null && grupa !== 'POZA_KONFIGURACJA';
 }
 
 export function isCompleteBayTemplate(template: CompleteMvBayTemplateSummary): boolean {
@@ -93,7 +85,7 @@ export function compareBayTemplateOptions(
  */
 export function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
   const roleLabel = role ? FIELD_ROLE_LABEL_PL[role] : bayKindLabelPl(template.bay_kind);
-  return `${roleLabel} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+  return `${roleLabel} · ${grupaZrodlaSzablonuPl(template.source_status)}`;
 }
 
 // Pure helpers - manufacturers
@@ -256,12 +248,6 @@ export function switchgearStatusLabel(manufacturer: Manufacturer | null): string
   if (manufacturer.status === 'user_defined') return 'pakiet użytkownika';
   if (manufacturer.status === 'deprecated') return 'wycofany';
   return 'niedostępny w konfiguratorze';
-}
-
-export function stationNameFromData(data: { name: string; ref_id: string }): string | undefined {
-  const name = data.name.trim();
-  const refId = data.ref_id.trim();
-  return name || refId || undefined;
 }
 
 // SN field role → bay kind mapping (Sprint Etap 4 - czwarta fala)

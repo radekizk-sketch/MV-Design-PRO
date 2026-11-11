@@ -21,30 +21,44 @@ export interface Manufacturer {
   readonly notes_pl: string | null;
 }
 
+const NAZWA_STATUSU_PRODUCENTA_PL: Readonly<Record<ManufacturerStatus, string>> = {
+  verified: 'katalog zweryfikowany',
+  user_defined: 'definicja użytkownika',
+  requires_catalog: 'wymaga uzupełnienia katalogu',
+  deprecated: 'producent wycofany',
+};
+
 /**
- * Czy producent jest gotowy do użycia jako "oficjalny katalog" w UI.
- * Mirror backendowej `Manufacturer.is_verified()`.
+ * Status producenta po polsku (`Manufacturer.status` kontraktu) — status spoza unii daje
+ * opis jawny, nigdy kod ani `undefined`. Kreator stacji pokazuje go przy nazwie producenta
+ * (decyzja PLAN_DOKONCZENIA_100_2026-08-14, pkt 2: status producenta MA być widoczny).
  */
-export function isManufacturerVerified(m: Manufacturer): boolean {
-  return m.status === 'verified' && m.source_refs.length > 0;
+export function describeManufacturerStatusPl(status: string): string {
+  return Object.prototype.hasOwnProperty.call(NAZWA_STATUSU_PRODUCENTA_PL, status)
+    ? NAZWA_STATUSU_PRODUCENTA_PL[status as ManufacturerStatus]
+    : 'status producenta spoza słownika aplikacji';
 }
 
 /**
- * Czy producent jest zablokowany dla użycia bez ostrzeżenia (UI badge).
+ * Opis jawny producenta, którego referencji nie ma w katalogu producentów — referencja
+ * (`ZPUE_WLOSZCZOWA`, `SCHNEIDER_ELECTRIC`) jest kodem katalogu, nie nazwą dla projektanta.
  */
-export function isManufacturerBlockedForUse(m: Manufacturer): boolean {
-  return m.status === 'requires_catalog' || m.status === 'deprecated';
-}
+export const PRODUCENT_SPOZA_KATALOGU_PL = 'producent spoza katalogu producentów';
 
-export function describeManufacturerStatusPl(status: ManufacturerStatus): string {
-  switch (status) {
-    case 'verified':
-      return 'Katalog zweryfikowany';
-    case 'user_defined':
-      return 'Definicja użytkownika';
-    case 'requires_catalog':
-      return 'Wymaga uzupełnienia katalogu';
-    case 'deprecated':
-      return 'Producent wycofany';
-  }
+/**
+ * Nazwa producenta dla projektanta — JEDNO źródło dla kreatorów pola, źródła i stacji
+ * oraz nagłówka rozdzielnicy. Referencja z katalogu daje `Manufacturer.name`
+ * (`GET /api/catalog/manufacturers`), referencja spoza katalogu daje opis jawny, brak
+ * referencji daje `null` (wywołujący pokazuje swój stan braku). Kod referencji nigdy
+ * nie trafia na ekran.
+ */
+export function nazwaProducentaPl(
+  manufacturerRef: string | null | undefined,
+  producenci: readonly Manufacturer[],
+): string | null {
+  if (!manufacturerRef) return null;
+  return (
+    producenci.find((m) => m.manufacturer_ref === manufacturerRef)?.name
+    ?? PRODUCENT_SPOZA_KATALOGU_PL
+  );
 }

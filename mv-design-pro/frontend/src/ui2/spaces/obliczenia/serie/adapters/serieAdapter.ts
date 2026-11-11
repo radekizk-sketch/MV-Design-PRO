@@ -23,6 +23,8 @@ import type { FaultScenario } from '../../../../../ui/fault-scenarios/types';
 import { FAULT_TYPE_LABELS } from '../../../../../ui/fault-scenarios/types';
 import { etykietaAnalizy, formatCzas, formatOdcisk } from '../../przebiegi/strings';
 import { etykietaStatusuSerii } from '../strings';
+import { etykietaZeSlownika } from '../../../../wyniki/wzorzec/slownikWyliczen';
+import { useNazwaObiektu, type NazwaObiektu } from '../../../../wyniki/wzorzec/useNazwaObiektu';
 
 // ---------------------------------------------------------------------------
 // Modele widoku (projekcja read-only)
@@ -65,13 +67,18 @@ export interface SeriaWiersz {
 // Mapowania czyste (bez React)
 // ---------------------------------------------------------------------------
 
-/** Mapuje scenariusze store'u na pozycje wyboru serii (kolejność ze store'u). */
-export function mapujScenariusze(scenarios: FaultScenario[]): ScenariuszDoSerii[] {
+/** Mapuje scenariusze store'u na pozycje wyboru serii (kolejność ze store'u). Miejsce zwarcia
+ *  nazywa most nazw wyników (`useNazwaObiektu`, to samo źródło co schemat) — identyfikator
+ *  elementu modelu nie trafia na ekran. */
+export function mapujScenariusze(
+  scenarios: FaultScenario[],
+  nazwa: NazwaObiektu,
+): ScenariuszDoSerii[] {
   return scenarios.map((s) => ({
     id: s.scenario_id,
     nazwa: s.name,
-    rodzajEtykieta: FAULT_TYPE_LABELS[s.fault_type] ?? s.fault_type,
-    miejsce: s.location.element_ref,
+    rodzajEtykieta: etykietaZeSlownika(FAULT_TYPE_LABELS, s.fault_type),
+    miejsce: nazwa(s.location.element_ref),
   }));
 }
 
@@ -124,5 +131,6 @@ export function useWierszeSerii(): SeriaWiersz[] {
 /** Scenariusze aktywnego przypadku do zaznaczenia w nowej serii. */
 export function useScenariuszeDoSerii(): ScenariuszDoSerii[] {
   const scenarios = useFaultScenariosStore((s) => s.scenarios);
-  return mapujScenariusze(scenarios);
+  const nazwa = useNazwaObiektu();
+  return mapujScenariusze(scenarios, nazwa);
 }

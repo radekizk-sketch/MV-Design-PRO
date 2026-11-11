@@ -135,9 +135,9 @@ def rule_e_d04_transformer_missing_sides(graph: NetworkGraph) -> list[Diagnostic
         if branch.branch_type == BranchType.TRANSFORMER:
             missing_sides: list[str] = []
             if branch.from_node_id not in node_ids:
-                missing_sides.append("GN (from_node)")
+                missing_sides.append("węzeł strony GN")
             if branch.to_node_id not in node_ids:
-                missing_sides.append("DN (to_node)")
+                missing_sides.append("węzeł strony DN")
             if isinstance(branch, TransformerBranch):
                 if branch.voltage_hv_kv <= 0:
                     missing_sides.append("napięcie GN")

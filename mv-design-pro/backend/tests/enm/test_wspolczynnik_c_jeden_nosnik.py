@@ -176,7 +176,8 @@ def test_nadpisanie_bez_uzasadnienia_odmowa_w_biegu(scenariusz: str, lokalizacja
 def test_dawny_klucz_c_factor_jest_odmowa_bez_warstwy_zgodnosci() -> None:
     wynik = _bieg({"c_factor": 1.10})
     assert wynik.status == "FAILED"
-    assert "c_factor" in (wynik.error_message or "")
+    assert "Płaskie nadpisanie współczynnika napięciowego c" in (wynik.error_message or "")
+    assert "c_factor" not in (wynik.error_message or "")  # nazwa wielkości, nie klucz
     with pytest.raises(FaultScenarioValidationError):
         ShortCircuitConfig.from_dict({"scenariusz": "MAX", "c_factor": 1.10})
 

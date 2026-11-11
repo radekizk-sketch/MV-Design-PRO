@@ -23,6 +23,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
 
 // =============================================================================
 // Kontrakt API (lustro `backend/src/api/catalog.py` + `mv_ptpiree_catalog.py`)
@@ -98,9 +99,7 @@ export type StanRejestruPtpiree<T> =
 async function pobierzJson(url: string): Promise<unknown> {
   const odpowiedz = await fetch(url);
   if (!odpowiedz.ok) {
-    throw new Error(
-      `Rejestr PTPiREE niedostępny: ${url} → HTTP ${odpowiedz.status} ${odpowiedz.statusText}`.trim(),
-    );
+    throw bladZapytania(odpowiedz, 'Rejestr PTPiREE niedostępny');
   }
   return odpowiedz.json();
 }

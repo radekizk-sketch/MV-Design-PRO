@@ -6,6 +6,7 @@ import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
 import { poTekscieZWzorami } from '../../../test/tekstZWzorami';
+import { BRAK_DANYCH_PL } from '../../sld/shared/kartaTechnicznaElementu';
 
 /**
  * CV-4.3 K7 (karta K7-FE): inspektor pokazuje dane scenariusza MIN (Sk3/Ik3/R-X)
@@ -59,7 +60,14 @@ vi.mock('../networkBuildStore', () => ({
     selector({ openOperationForm }),
 }));
 
+// Inspektor czyta selekcję przez indeks pakietu, panel z kanwy (karta techniczna, kontekst
+// aparatu) — wprost ze sklepu; obie ścieżki widzą TĘ SAMĄ selekcję.
 vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
+    selector({ selectedElements: mockSelectedElements }),
+}));
+
+vi.mock('../../selection/store', () => ({
   useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
     selector({ selectedElements: mockSelectedElements }),
 }));
@@ -96,16 +104,19 @@ describe('InspectorEngineeringView - dane scenariusza MIN źródła sieciowego (
     mockSelectedElements = [{ id: 'src-1', type: 'Source', name: 'GPZ Testowy' }];
   });
 
+  // Inspektor pokazuje dane źródła WYŁĄCZNIE kartą techniczną panelu z kanwy (K6 —
+  // `kartaTechnicznaElementu.ts`, `kartaSieci`); dawne sekcje widoku (`engineering-field-*`)
+  // nie renderują się, gdy obiekt ma kartę. Test do karty K6 sprawdzał je tylko dlatego, że
+  // panel czytał selekcję z niezamockowanego sklepu (dwie ścieżki selekcji w teście).
   it('pokazuje Sk3/Ik3/R-X scenariusza MIN obok wartości MAX', () => {
     render(<InspectorEngineeringView />);
 
-    expect(screen.getByText(poTekscieZWzorami("Moc zwarciowa $S_{k3}''$"))).toBeInTheDocument();
-    expect(screen.getByText(poTekscieZWzorami("Moc zwarciowa $S_{k3}''$ (MIN)"))).toBeInTheDocument();
-    expect(screen.getByText(poTekscieZWzorami("Prąd zwarciowy $I_{k3}''$ (MIN)"))).toBeInTheDocument();
-    expect(screen.getByText('Stosunek R/X (MIN)')).toBeInTheDocument();
-    expect(screen.getByTestId('engineering-field-sk3_min_mva')).toHaveTextContent('150');
-    expect(screen.getByTestId('engineering-field-ik3_min_ka')).toHaveTextContent('5,2');
-    expect(screen.getByTestId('engineering-field-rx_ratio_min')).toHaveTextContent('0,2');
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'siec_zasilajaca');
+    expect(screen.getByTestId('inspektor-karta-wartosc-sk_max')).toHaveTextContent('250 MVA');
+    expect(screen.getByTestId('inspektor-karta-wartosc-sk_min')).toHaveTextContent('150 MVA');
+    expect(screen.getByTestId('inspektor-karta-wartosc-ik_min')).toHaveTextContent('5,2 kA');
+    expect(screen.getByTestId('inspektor-karta-wartosc-rx_min')).toHaveTextContent('0,2');
+    expect(screen.queryByTestId('engineering-field-sk3_min_mva')).not.toBeInTheDocument();
   });
 
   it('źródło bez danych MIN pokazuje pola jako brak (uczciwy stan pusty, zero fabrykacji)', () => {
@@ -118,17 +129,16 @@ describe('InspectorEngineeringView - dane scenariusza MIN źródła sieciowego (
 
     render(<InspectorEngineeringView />);
 
-    expect(screen.getByText(poTekscieZWzorami("Moc zwarciowa $S_{k3}''$ (MIN)"))).toBeInTheDocument();
-    expect(screen.getByTestId('engineering-field-sk3_min_mva')).toHaveTextContent('nie podano');
-    expect(screen.getByTestId('engineering-field-ik3_min_ka')).toHaveTextContent('nie podano');
-    expect(screen.getByTestId('engineering-field-rx_ratio_min')).toHaveTextContent('nie podano');
+    for (const klucz of ['sk_min', 'ik_min', 'rx_min']) {
+      expect(screen.getByTestId(`inspektor-karta-pole-${klucz}`)).toHaveAttribute('data-brak', 'true');
+      expect(screen.getByTestId(`inspektor-karta-wartosc-${klucz}`)).toHaveTextContent(BRAK_DANYCH_PL);
+    }
   });
 });
 
 /**
  * CV-4.3 K7c: inspektor pokazuje napięcie zadane szyny bilansującej
- * (`Source.u_set_pu`) — ta sama ścieżka rendera co scenariusz MIN powyżej
- * (`buildSectionsForElement`, dispatch bez semantycznej roli GPZ).
+ * (`Source.u_set_pu`) w karcie technicznej sieci zasilającej (sekcja „Rozpływ mocy").
  */
 describe('InspectorEngineeringView - napięcie zadane szyny bilansującej (CV-4.3 K7c)', () => {
   beforeEach(() => {
@@ -149,26 +159,21 @@ describe('InspectorEngineeringView - napięcie zadane szyny bilansującej (CV-4.
     render(<InspectorEngineeringView />);
 
     expect(screen.getByText('Napięcie zadane szyny bilansującej')).toBeInTheDocument();
-    expect(screen.getByTestId('engineering-field-u_set_pu')).toHaveTextContent('1,06');
+    expect(screen.getByTestId('inspektor-karta-wartosc-u_set')).toHaveTextContent('1,06 p.u.');
   });
 
   it('źródło bez u_set_pu pokazuje pole jako brak (uczciwy stan pusty, zero fabrykacji)', () => {
     render(<InspectorEngineeringView />);
 
     expect(screen.getByText('Napięcie zadane szyny bilansującej')).toBeInTheDocument();
-    expect(screen.getByTestId('engineering-field-u_set_pu')).toHaveTextContent('nie podano');
+    expect(screen.getByTestId('inspektor-karta-pole-u_set')).toHaveAttribute('data-brak', 'true');
+    expect(screen.getByTestId('inspektor-karta-wartosc-u_set')).toHaveTextContent(BRAK_DANYCH_PL);
   });
 
-  // Iloczyn cech (KLASA NIE INSTANCJA): DWIE ścieżki rendera niosą tę samą
-  // sekcję „Parametry sieci" źródła — `buildSectionsForElement` (powyżej,
-  // element BEZ roli semantycznej GPZ) i `buildSemanticGpzSections`
-  // (`semanticElementKind: 'GPZ'`, ID zawiera `/substation`). Karta K7-FE
-  // dopisała MIN do obu miejsc, ale sprawdzała tylko ścieżkę pierwszą — ten
-  // test dowodzi DRUGIEJ, żeby regresja jednej z dwóch kopii była wykrywalna.
-  it('ścieżka semantyczna GPZ (buildSemanticGpzSections) TEŻ niesie u_set_pu i MIN', () => {
-    // `semanticElementKind: 'GPZ'` samo wystarcza do `isSemanticGpzSource` —
-    // `id: 'src-1'` dalej trafia `s.ref_id === selectedElement.id` w wyszukaniu
-    // źródła wewnątrz `buildSemanticGpzSections`, więc fixtura pozostaje prosta.
+  // Iloczyn cech (KLASA NIE INSTANCJA): selekcja źródła z rolą semantyczną GPZ
+  // (`semanticElementKind: 'GPZ'`) i bez niej — obie trafiają w TĘ SAMĄ kartę sieci
+  // zasilającej (jedna ścieżka danych źródła), z u_set_pu i MIN.
+  it('selekcja semantyczna GPZ pokazuje tę samą kartę sieci zasilającej z u_set_pu i MIN', () => {
     mockSelectedElements = [
       { id: 'src-1', type: 'Source', name: 'GPZ Testowy', semanticElementKind: 'GPZ' } as never,
     ];
@@ -180,8 +185,8 @@ describe('InspectorEngineeringView - napięcie zadane szyny bilansującej (CV-4.
 
     render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Napięcie zadane szyny bilansującej')).toBeInTheDocument();
-    expect(screen.getByTestId('engineering-field-u_set_pu')).toHaveTextContent('0,97');
-    expect(screen.getByTestId('engineering-field-sk3_min_mva')).toHaveTextContent('150');
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'siec_zasilajaca');
+    expect(screen.getByTestId('inspektor-karta-wartosc-u_set')).toHaveTextContent('0,97 p.u.');
+    expect(screen.getByTestId('inspektor-karta-wartosc-sk_min')).toHaveTextContent('150 MVA');
   });
 });

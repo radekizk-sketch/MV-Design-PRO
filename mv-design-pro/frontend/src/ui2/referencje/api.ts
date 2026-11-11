@@ -23,6 +23,7 @@ export { REFERENCE_PACK_KIND_LABELS_PL } from '../../ui/enm-inspector/types';
 export { fetchReferenceCompliance } from '../../ui/enm-inspector/api';
 
 import type { ReferencePackKind } from '../../ui/enm-inspector/types';
+import { bladZapytania } from '../shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -70,7 +71,7 @@ export async function fetchReferencePacks(
 ): Promise<ReferencePackSummary[]> {
   const response = await fetch(`${API_BASE}/reference/packs`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania pakietów referencyjnych: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania pakietów referencyjnych');
   }
   const packs = (await response.json()) as ReferencePackSummary[];
   return kind == null ? packs : packs.filter((p) => p.kind === kind);
@@ -80,7 +81,7 @@ export async function fetchReferencePacks(
 export async function fetchReferencePack(packId: string): Promise<ReferencePackFull> {
   const response = await fetch(`${API_BASE}/reference/packs/${packId}`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania pakietu referencyjnego: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania pakietu referencyjnego');
   }
   return (await response.json()) as ReferencePackFull;
 }

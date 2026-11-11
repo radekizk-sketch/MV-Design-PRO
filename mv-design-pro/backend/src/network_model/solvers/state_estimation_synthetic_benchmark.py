@@ -301,7 +301,9 @@ def inject_gross_error(
     """
     meas = list(benchmark.measurements.measurements)
     if not (0 <= measurement_index < len(meas)):
-        raise ValueError(f"measurement_index {measurement_index} poza zakresem.")
+        raise ValueError(
+            f"Numer pomiaru {measurement_index} poza zakresem pomiarów wzorca ({len(meas)})."
+        )
     bad = meas[measurement_index]
     meas[measurement_index] = Measurement(
         meas_type=bad.meas_type,

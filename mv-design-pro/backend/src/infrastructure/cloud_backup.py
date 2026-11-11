@@ -330,7 +330,9 @@ class LocalBackupProvider(CloudBackupProvider):
 
     def __init__(self, config: CloudBackupConfig) -> None:
         if config.backend != CloudBackendType.LOCAL:
-            raise CloudBackupConfigError("LocalBackupProvider wymaga backendu LOCAL.")
+            raise CloudBackupConfigError(
+                "Dostawca kopii zapasowej na dysku lokalnym wymaga konfiguracji magazynu lokalnego."
+            )
         self._config = config
         self._root = Path(config.bucket_name)
 
@@ -405,7 +407,7 @@ class LocalBackupProvider(CloudBackupProvider):
         key = self._find_key(backup_id, project_id)
         if key is None:
             raise CloudBackupNotFoundError(
-                f"Kopia zapasowa nie znaleziona: " f"project={project_id}, backup={backup_id}"
+                f"Nie znaleziono kopii zapasowej {backup_id} projektu {project_id}."
             )
         file_path = self._root / key
 
@@ -458,7 +460,7 @@ class LocalBackupProvider(CloudBackupProvider):
         key = self._find_key(backup_id, project_id)
         if key is None:
             raise CloudBackupNotFoundError(
-                f"Kopia zapasowa nie znaleziona: " f"project={project_id}, backup={backup_id}"
+                f"Nie znaleziono kopii zapasowej {backup_id} projektu {project_id}."
             )
         file_path = self._root / key
 
@@ -548,7 +550,9 @@ class S3BackupProvider(CloudBackupProvider):
         s3_client: Any | None = None,
     ) -> None:
         if config.backend != CloudBackendType.S3:
-            raise CloudBackupConfigError("S3BackupProvider wymaga backendu S3.")
+            raise CloudBackupConfigError(
+                "Dostawca kopii zapasowej w S3 wymaga konfiguracji magazynu S3."
+            )
         self._config = config
 
         if s3_client is not None:
@@ -653,7 +657,7 @@ class S3BackupProvider(CloudBackupProvider):
             data = response["Body"].read()
         except self._client.exceptions.NoSuchKey as exc:
             raise CloudBackupNotFoundError(
-                f"Kopia zapasowa nie znaleziona w S3: " f"project={project_id}, backup={backup_id}"
+                f"Nie znaleziono kopii zapasowej {backup_id} projektu {project_id} w S3."
             ) from exc
         except _bledy_sdk_s3() as exc:
             raise CloudBackupDownloadError(f"Błąd pobierania z S3: {exc}") from exc
@@ -863,8 +867,7 @@ class GCSBackupProvider(CloudBackupProvider):
         except _bledy_sdk_gcs() as exc:
             if _rodzaj_bledu_gcs(exc) == "brak":
                 raise CloudBackupNotFoundError(
-                    f"Kopia zapasowa nie znaleziona w GCS: "
-                    f"project={project_id}, backup={backup_id}"
+                    f"Nie znaleziono kopii zapasowej {backup_id} projektu {project_id} w GCS."
                 ) from exc
             raise CloudBackupDownloadError(f"Błąd pobierania z GCS: {exc}") from exc
 
@@ -923,8 +926,7 @@ class GCSBackupProvider(CloudBackupProvider):
         except _bledy_sdk_gcs() as exc:
             if _rodzaj_bledu_gcs(exc) == "brak":
                 raise CloudBackupNotFoundError(
-                    f"Kopia zapasowa nie znaleziona w GCS: "
-                    f"project={project_id}, backup={backup_id}"
+                    f"Nie znaleziono kopii zapasowej {backup_id} projektu {project_id} w GCS."
                 ) from exc
             raise CloudBackupUploadError(f"Błąd usuwania z GCS: {exc}") from exc
 

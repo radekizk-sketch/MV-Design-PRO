@@ -83,12 +83,12 @@ def test_etykiety_poziomow_roznia_sie_wylacznie_slowem_kryterium_wymaganie() -> 
 def test_spelnia_wymaga_okreslonej_kompletnosci(
     kompletnosc: KompletnoscDowodu | None, poziom: PoziomRekordu
 ) -> None:
-    with pytest.raises(ValueError, match="PELNY albo NIEPELNY"):
+    with pytest.raises(ValueError, match="kompletności dowodu „pełny” albo „niepełny”"):
         etykieta("SPELNIA", kompletnosc, poziom)
 
 
 def test_spelnia_z_dowodem_niepelnym_na_poziomie_w_jest_odrzucane() -> None:
-    with pytest.raises(ValueError, match="poziomie wymagania status SPELNIA wymaga dowodu"):
+    with pytest.raises(ValueError, match="poziomie wymagania status „spełnia” wymaga dowodu"):
         etykieta("SPELNIA", "NIEPELNY", "W")
 
 

@@ -158,8 +158,8 @@ describe('listNnLoadOptions / resolveNnLoadRef (kreator wyłącznika różnicowo
     expect(listNnLoadOptions(migawka)).toEqual([
       { ref_id: 'l-a1', name: 'Apteka', bus_ref: 'b2', bus_name: 'Szyna nN 2', rcd_name: null },
       { ref_id: 'l-a2', name: 'Apteka', bus_ref: 'b2', bus_name: 'Szyna nN 2', rcd_name: null },
-      // Gałąź RCD bez nazwy — etykieta z refu (nigdy pusty napis).
-      { ref_id: 'l-z', name: 'Zakład', bus_ref: 'b1', bus_name: 'Szyna nN 1', rcd_name: 'r' },
+      // Gałąź RCD bez nazwy — opis rodzaju (nigdy pusty napis ani referencja gałęzi).
+      { ref_id: 'l-z', name: 'Zakład', bus_ref: 'b1', bus_name: 'Szyna nN 1', rcd_name: 'Wyłącznik różnicowoprądowy bez nazwy' },
     ]);
     expect(listNnLoadOptions(null)).toEqual([]);
   });

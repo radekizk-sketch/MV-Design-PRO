@@ -57,7 +57,10 @@ _PLIKI_REJESTRU = {
 
 
 def _kody_emitowane() -> set[str]:
-    """Kody kanonu wystepujace jako literal w kodzie produkcyjnym (poza rejestrem)."""
+    """Kody kanonu wystepujace w kodzie produkcyjnym (poza rejestrem): jako literal albo jako
+    dopisek kodu po zdaniu `(kod gotowości: <kod>)` (kanon komunikatow 2026-10-29 — kod jest
+    dowodem audytowym wylacznie w dopisku po polskim zdaniu; strazniki
+    `tests/enm/test_klucze_pol_w_komunikatach_src.py::DOPISKI_KODU`)."""
     emitowane: set[str] = set()
     kody = set(READINESS_CODES)
     for plik in BACKEND_SRC.rglob("*.py"):
@@ -65,7 +68,7 @@ def _kody_emitowane() -> set[str]:
             continue
         tresc = plik.read_text(encoding="utf-8", errors="replace")
         for kod in kody:
-            if f'"{kod}"' in tresc or f"'{kod}'" in tresc:
+            if f'"{kod}"' in tresc or f"'{kod}'" in tresc or f"(kod gotowości: {kod})" in tresc:
                 emitowane.add(kod)
     # Kod osiagalny przez odwzorowanie z walidatora tez ma droge do uzytkownika.
     emitowane.update(ODWZOROWANIE_WALIDATOR_NA_KANON.values())

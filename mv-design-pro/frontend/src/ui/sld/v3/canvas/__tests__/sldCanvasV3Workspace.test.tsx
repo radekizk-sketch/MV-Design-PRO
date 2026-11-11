@@ -17,8 +17,8 @@ import {
   buildFaultFlowOverlayForSnapshot,
   buildFlowOverlayForSnapshot,
   SldCanvasV3Workspace,
-  elementTypeForKind,
 } from '../SldCanvasV3Workspace';
+import { elementTypeForKind } from '../canvasMenuSubject';
 import { buildSupplyPathHighlight, isElementEnergized } from '../../../v2/canvas/SupplyPathHighlighter';
 import {
   buildFaultFlowOverlayFromScene,

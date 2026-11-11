@@ -10,6 +10,7 @@ import type {
   ReferenceComplianceReport,
 } from './types';
 import type { EnergyNetworkModelV2Projection } from '../../types/enm';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -19,7 +20,7 @@ const API_BASE = '/api';
 export async function fetchDiagnostics(caseId: string): Promise<DiagnosticReport> {
   const response = await fetch(`${API_BASE}/cases/${caseId}/diagnostics`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania diagnostyki: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania diagnostyki');
   }
   return response.json();
 }
@@ -30,7 +31,7 @@ export async function fetchDiagnostics(caseId: string): Promise<DiagnosticReport
 export async function fetchPreflight(caseId: string): Promise<PreflightReport> {
   const response = await fetch(`${API_BASE}/cases/${caseId}/diagnostics/preflight`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania pre-flight: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania kontroli przed obliczeniami');
   }
   return response.json();
 }
@@ -43,7 +44,7 @@ export async function fetchEnmV2Projection(
 ): Promise<EnergyNetworkModelV2Projection> {
   const response = await fetch(`${API_BASE}/cases/${caseId}/enm/v2-projection`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania projekcji ENM v2: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania projekcji ENM v2');
   }
   return response.json();
 }
@@ -68,7 +69,7 @@ export async function fetchReferenceCompliance(
   const query = zawezenie ? `?packs=${encodeURIComponent(zawezenie.join(','))}` : '';
   const response = await fetch(`${API_BASE}/cases/${caseId}/reference/compliance${query}`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania zgodności referencyjnej: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania zgodności referencyjnej');
   }
   return response.json();
 }

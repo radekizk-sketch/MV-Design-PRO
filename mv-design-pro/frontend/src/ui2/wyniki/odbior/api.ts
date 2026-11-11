@@ -1,3 +1,4 @@
+import { bladZapytania, komunikatZapytania } from '../../shared/bladZapytania';
 /*
  * Klient API okna „Zgodność powykonawcza" (karta U4 P45 / scalenie #20). Typy TS
  * odwzorowują 1:1 kształt żądania i odpowiedzi końcówki:
@@ -121,7 +122,7 @@ async function postJsonZDetalem<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    let komunikat = `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`;
+    let komunikat = komunikatZapytania(response);
     try {
       const tresc = (await response.json()) as { detail?: unknown };
       if (typeof tresc?.detail === 'string' && tresc.detail.trim()) komunikat = tresc.detail;
@@ -150,7 +151,7 @@ export async function fetchZaciskiGalezi(runId: string): Promise<ZaciskiGaleziBi
   const url = `/api/analysis-runs/${encodeURIComponent(runId)}/zaciski-galezi`;
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<ZaciskiGaleziBiegu>;
 }

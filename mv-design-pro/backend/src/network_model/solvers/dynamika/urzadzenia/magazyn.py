@@ -196,8 +196,8 @@ class Magazyn:
     POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
         (
             "uklad",
-            "uklad stanow jest WYPROWADZONY z konfiguracji blokow urzadzenia; jego "
-            "nazwy wchodza do odcisku osobno jako `nazwy_stanow`",
+            "układ stanów jest WYPROWADZONY z konfiguracji bloków urządzenia; jego "
+            "nazwy wchodzą do odcisku osobno jako `nazwy_stanow`",
         ),
     )
 
@@ -302,7 +302,7 @@ class Magazyn:
         if not (self.zasobnik.soc_min <= self.zasobnik.soc_poczatkowy <= self.zasobnik.soc_max):
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
-                f"{self._opis}: poczatkowy stan naladowania "
+                f"{self._opis}: początkowy stan naładowania "
                 f"{self.zasobnik.soc_poczatkowy} poza zakresem "
                 f"[{self.zasobnik.soc_min}, {self.zasobnik.soc_max}]",
                 urzadzenie=self.ident,

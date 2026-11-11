@@ -37,7 +37,6 @@ export interface SldContextMenuRequest {
 
 /** Kontekst dostępności akcji. */
 export interface SldMenuContext {
-  readonly bayHasOutgoingRun?: boolean;
   /** S9-10 (predykaty parami, klasa S9-5): czy kreator odgałęzienia będzie
    *  miał PUNKT STARTU dla tego obiektu — liczone TYM SAMYM resolverem, który
    *  zasila formularz (`resolveBranchStartAvailability`,
@@ -48,7 +47,10 @@ export interface SldMenuContext {
    *  wołający jej nie zasilał). */
   readonly branchStartAvailable?: boolean;
   readonly hasResults?: boolean;
-  readonly apparatusKind?: string;
+  /** Trafiony aparat pola jest punktem wyprowadzenia ciągu głównego SN
+   *  (`shared/identyfikatorAparatu.ts::jestPunktemWyprowadzeniaCiagu`, ten sam predykat co
+   *  wykonawca akcji); brak klucza = nie jest punktem. */
+  readonly aparatWyprowadzaCiag?: boolean;
   /** K5-A: czy stacja ma szynę nN (warunek agregatu/UPS w menu stacji). */
   readonly stationHasNnBus?: boolean;
   /** Karta S9-5 → S95-START: dostępność punktu startu ciągu SN per pozycja kontynuacji

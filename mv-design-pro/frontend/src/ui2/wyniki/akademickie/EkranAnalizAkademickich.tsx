@@ -107,6 +107,7 @@ import {
   fmtWartosc,
   type IstotnoscStanu,
 } from './strings';
+import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Elementy wspólne
@@ -1181,7 +1182,7 @@ function PanelObiektow({
     if (granica < 0) return nazwaObiektu(surowa);
     const ref = surowa.slice(0, granica);
     const parametr = surowa.slice(granica + 1);
-    return `${nazwaObiektu(ref)} · ${NAZWY_PARAMETROW[parametr] ?? parametr}`;
+    return `${nazwaObiektu(ref)} · ${etykietaZeSlownika(NAZWY_PARAMETROW, parametr)}`;
   };
   const surowa = odczytaj(payload, tabela.sciezka);
   const wiersze = Array.isArray(surowa) ? surowa : [];
@@ -1280,7 +1281,7 @@ function PanelBrakow({ payload }: { payload: unknown }) {
           <p className="mvd-akad-opis">{S.brakiLista}</p>
           <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-braki-lista">
             {listaBrakow.map((pole) => (
-              <li key={pole}><TekstZWzorami tekst={NAZWY_BRAKUJACYCH_POL[pole] ?? pole} /></li>
+              <li key={pole}><TekstZWzorami tekst={etykietaZeSlownika(NAZWY_BRAKUJACYCH_POL, pole)} /></li>
             ))}
           </ul>
         </>

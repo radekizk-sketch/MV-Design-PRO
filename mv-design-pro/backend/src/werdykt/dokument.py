@@ -21,8 +21,13 @@ from pydantic import BaseModel, ConfigDict
 from werdykt.decyzja import przydatnosc_dowodu_wymagania
 from werdykt.kontrakt import (
     METODY_OBLICZENIOWE,
+    NAZWA_DZIEDZINY_PL,
+    NAZWA_METODY_PL,
+    NAZWA_RELACJI_PL,
+    NAZWA_RODZAJU_PODSTAWY_PL,
+    NAZWA_STANU_ZRODLA_PL,
     SUFIKS_STANU_KONCOWEGO,
-    DziedzinaFizyki,
+    KompletnoscDowodu,
     Kryterium,
     LimitKryterium,
     Margines,
@@ -37,14 +42,11 @@ from werdykt.kontrakt import (
     WynikKryterium,
     WynikWymagania,
     ZakresWaznosci,
+    nazwa_kompletnosci,
 )
 from werdykt.wyjasnienie import (
-    NAZWA_METODY_PL,
-    NAZWA_RODZAJU_PODSTAWY_PL,
-    NAZWA_STANU_ZRODLA_PL,
     format_liczba,
     format_wielkosc,
-    nazwa_kompletnosci,
     nazwa_pokrycia_programu,
     nazwa_skladowej,
     nazwa_stanu_danych,
@@ -94,27 +96,6 @@ POZYCJA_KRYTERIUM_SKLADOWE = "Kryterium składowe"
 POZYCJE_AUDYTOWE: tuple[str, ...] = (POZYCJA_ODNIESIENIE_DOWODU, POZYCJA_BIEG_SLADU)
 
 _SYMBOL_RELACJI: dict[Relacja, str] = {"NIE_WIECEJ": "≤", "NIE_MNIEJ": "≥"}
-#: Postać limitu wg relacji kryterium W TEKŚCIE bloku — lustro karty werdyktu
-#: (`NAZWA_RELACJI_PL` w ``KartaWerdyktu.tsx``: T13, ten sam tekst w interfejsie i dokumencie);
-#: kod relacji zostaje w polu ``kryterium.relacja``.
-_NAZWA_RELACJI_PL: dict[Relacja, str] = {
-    "NIE_WIECEJ": "górna granica",
-    "NIE_MNIEJ": "dolna granica",
-    "PASMO": "pasmo dopuszczalne",
-    "OBWIEDNIA_DOLNA": "obwiednia dolna",
-    "OBWIEDNIA_GORNA": "obwiednia górna",
-    "LOGICZNE": "kryterium logiczne",
-}
-#: Rodzaj analizy zakresu ważności W TEKŚCIE bloku — lustro karty werdyktu
-#: (`NAZWA_DZIEDZINY_PL`); kod zostaje w polu ``zakres_waznosci.rodzaj_analizy``.
-_NAZWA_DZIEDZINY_PL: dict[DziedzinaFizyki, str] = {
-    "POWER_FLOW": "rozpływ mocy",
-    "SHORT_CIRCUIT": "zwarcia",
-    "RMS_DYNAMICS": "dynamika RMS",
-    "SEQUENCE_DOMAIN": "składowe symetryczne",
-    "HARMONIC_FREQUENCY_DOMAIN": "harmoniczne (dziedzina częstotliwości)",
-    "SUPRAHARMONIC_FREQUENCY_DOMAIN": "supraharmoniczne (dziedzina częstotliwości)",
-}
 #: Rodzaj skali marginesu względnego (mianownik) — lustro karty werdyktu (`NAZWA_SKALI_PL`).
 _NAZWA_SKALI_PL: dict[str, str] = {
     "TOLERANCJA": "tolerancja z profilu",
@@ -276,7 +257,7 @@ def _zakres(zakres: ZakresWaznosci) -> str:
     for nazwa, wartosc in (
         (
             "rodzaj analizy",
-            None if zakres.rodzaj_analizy is None else _NAZWA_DZIEDZINY_PL[zakres.rodzaj_analizy],
+            None if zakres.rodzaj_analizy is None else NAZWA_DZIEDZINY_PL[zakres.rodzaj_analizy],
         ),
         ("technologia", zakres.technologia),
         ("model urządzenia", zakres.model_urzadzenia),
@@ -328,7 +309,7 @@ def _pozycje_wspolne(
 def _pozycje_dowodu(
     dowod: StatusDowodu,
     przydatnosc: bool,
-    kompletnosc: str,
+    kompletnosc: KompletnoscDowodu,
     powody: tuple[str, ...],
 ) -> list[PozycjaBloku]:
     pozycje = [
@@ -362,7 +343,7 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
         _pozycja(POZYCJA_STOSOWALNOSC, _stosowalnosc(rekord.stosowalnosc)),
         _pozycja(
             POZYCJA_KRYTERIUM,
-            f"{rekord.kryterium.opis_pl}; relacja: {_NAZWA_RELACJI_PL[relacja]}",
+            f"{rekord.kryterium.opis_pl}; relacja: {NAZWA_RELACJI_PL[relacja]}",
         ),
     ]
     if rekord.kryterium.warunek_latex.strip():

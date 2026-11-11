@@ -1,14 +1,14 @@
 // @vitest-environment node
 /**
  * Karta W5-B: pola SN stacji na kartach budowy sieci = rekordy `bays` stacji na szynie SN.
- * Iloczyn cech: {pole SN, pole nN, pole ZKSN, pole innej stacji} × {liczność, lista} oraz
- * read-model pola (projekcja backendu tych samych rekordów) bez dubli `bay_ref`.
+ * Iloczyn cech: {pole SN, pole nN, pole ZKSN, pole innej stacji} × {liczność, lista}.
+ * (Dawny filtr wierszy read-modelu pola stacji czytały wyłącznie skasowane sekcje GPZ
+ * inspektora — dane sieci zasilającej daje karta techniczna; filtr usunięty razem z nimi.)
  */
 import { describe, expect, it } from 'vitest';
 import type { Substation } from '../../../types/enm';
-import type { FieldReadModelItem } from '../../field/useFieldReadModel';
 import { pole } from '../../../test/pola';
-import { stationReadModelSnFields, stationSnBays, stationSnFieldCount } from '../stationSnFields';
+import { stationSnBays, stationSnFieldCount } from '../stationSnFields';
 
 const station = {
   id: 'st-1',
@@ -37,15 +37,6 @@ const snapshot = {
   ],
 };
 
-function readModelField(ref: string): FieldReadModelItem {
-  return {
-    bay_id: ref,
-    bay_ref: ref,
-    bay_name: ref,
-    canonical_model: { base_model: { substation_ref: station.ref_id, gpz_section_id: null } },
-  } as FieldReadModelItem;
-}
-
 describe('stationSnFields', () => {
   it('pola SN stacji: tylko rekordy tej stacji na szynie SN (bez pól nN, ZKSN i innej stacji)', () => {
     expect(stationSnBays(snapshot, station).map((b) => b.ref_id)).toEqual(['st-1/sn/in', 'st-1/sn/out', 'st-1/sn/tr']);
@@ -55,10 +46,5 @@ describe('stationSnFields', () => {
   it('brak stacji albo brak rekordów = zero pól (bez zapasu z innych danych)', () => {
     expect(stationSnBays(snapshot, null)).toEqual([]);
     expect(stationSnFieldCount({ bays: [] }, station)).toBe(0);
-  });
-
-  it('read-model pola stacji: wiersze tej stacji, każde pole raz', () => {
-    const fieldItems = [readModelField('f-1'), readModelField('f-2'), readModelField('f-1')];
-    expect(stationReadModelSnFields(fieldItems, station.id, station.ref_id).map((f) => f.bay_ref)).toEqual(['f-1', 'f-2']);
   });
 });

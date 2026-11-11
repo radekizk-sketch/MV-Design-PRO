@@ -21,7 +21,6 @@ import re
 import pytest
 from application.dynamika.odmowy import komunikat_dla_projektanta
 from application.dynamika.zalozenia import (
-    NAZWY_RODZIN_PL,
     ZDANIA_ZALOZEN,
     zdania_zalozen_rdzenia,
 )
@@ -38,7 +37,7 @@ from network_model.solvers.dynamika import (
 )
 from network_model.solvers.dynamika.odbiory import charakterystyka_z_wielomianu
 from network_model.solvers.dynamika.urzadzenia import zbuduj_szyne_sztywna
-from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
+from network_model.solvers.dynamika.urzadzenia.fabryka import NAZWY_RODZIN_PL, RODZINY_OBSLUGIWANE
 from network_model.solvers.dynamika.wynik import (
     KODY_ZALOZEN_RDZENIA,
     WielkoscZalozenia,

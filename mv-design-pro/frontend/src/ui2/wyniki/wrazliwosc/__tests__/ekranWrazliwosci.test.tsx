@@ -75,7 +75,7 @@ const ODPOWIEDZ: WrazliwoscResponse = {
     entries: [
       {
         parameter_id: 'voltage_limit',
-        parameter_label: 'Voltage limits',
+        parameter_label: 'Odchyłka napięcia węzła',
         target_id: 'wezel-a',
         // Surowy kod wewnetrzny kontraktu — wartosc syntetyczna, bo asercja
         // sprawdza KLASE: zaden surowy kod `source` nie jest renderowany

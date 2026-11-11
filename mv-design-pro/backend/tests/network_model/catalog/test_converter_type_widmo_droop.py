@@ -96,13 +96,13 @@ def test_pole_widma_skasowane_z_kontraktu_typu() -> None:
 
 @pytest.mark.parametrize("wartosc", [0.0, -1.0, -0.01])
 def test_droop_p_f_niedodatni_jest_odrzucony(wartosc: float) -> None:
-    with pytest.raises(ValueError, match="droop_p_f_percent"):
+    with pytest.raises(ValueError, match="Statyzm P/f przekształtnika"):
         _typ(droop_p_f_percent=wartosc)
 
 
 @pytest.mark.parametrize("wartosc", [0.0, -1.0, -0.01])
 def test_droop_q_u_niedodatni_jest_odrzucony(wartosc: float) -> None:
-    with pytest.raises(ValueError, match="droop_q_u_percent"):
+    with pytest.raises(ValueError, match="Statyzm Q/U przekształtnika"):
         _typ(droop_q_u_percent=wartosc)
 
 

@@ -29,6 +29,7 @@ from functools import partial
 from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
 
+import numpy as np
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
 from enm.bateria_kondensatorow import (
@@ -606,7 +607,7 @@ class WejscieZwarcia:
     enm: EnergyNetworkModel
     graph: NetworkGraph
     solve_graph: NetworkGraph
-    z0_bus: Any
+    z0_bus: np.ndarray | None
     short_circuit_type: ShortCircuitType
     scenario_c: Scenario
     #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): ręczne nadpisanie c z uzasadnieniem albo
@@ -733,8 +734,13 @@ def _wyspy_zasilone(snapshot: dict[str, Any], graph: NetworkGraph) -> list[tuple
     konflikty = [wyspa for wyspa in widok.wyspy if len(wyspa.zrodla_sieciowe) > 1]
     if konflikty:
         opis = "; ".join(
-            f"wyspa szyn [{', '.join(wyspa.szyny[:6])}{', …' if len(wyspa.szyny) > 6 else ''}]: "
-            f"źródła {', '.join(wyspa.zrodla_sieciowe)}"
+            "wyspa: "
+            + ", ".join(opis_elementu(snapshot, szyna, "szyna") for szyna in wyspa.szyny[:6])
+            + (", …" if len(wyspa.szyny) > 6 else "")
+            + " — źródła sieciowe: "
+            + ", ".join(
+                opis_elementu(snapshot, zrodlo, "źródło") for zrodlo in wyspa.zrodla_sieciowe
+            )
             for wyspa in konflikty
         )
         raise OdmowaWejsciaRozplywu(
@@ -942,8 +948,8 @@ def zloz_wejscie_rozplywu(
             # `Node.__post_init__` odmawia węzła PV bez nastawy, więc ta gałąź oznacza graf
             # zbudowany z pominięciem konstruktora — odmowa nazwana, nie `float(None)`.
             raise ValueError(
-                f"Węzeł PV '{node_id}' nie ma nastawy napięcia (voltage_magnitude) w grafie "
-                "podanym assemblerowi — niespójne wejście."
+                f"Węzeł PV „{node_id}” nie ma nastawy modułu napięcia w grafie sieci podanym "
+                "do złożenia wejścia — niespójne wejście."
             )
         pv_specs.append(
             PVSpec(
@@ -1119,9 +1125,10 @@ def zloz_wejscie_zwarcia(
     # warstwy zgodności. Nadpisanie wyłącznie ``nadpisanie_c`` {wartosc, uzasadnienie}.
     if "c_factor" in options:
         raise OdmowaDanychError(
-            "Opcja biegu `c_factor` została usunięta — współczynnik napięciowy c wynika ze "
-            "scenariusza (`scenario`: max/min, IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
-            "z uzasadnieniem (`nadpisanie_c`: `{wartosc, uzasadnienie}`)."
+            "Płaskie nadpisanie współczynnika napięciowego c dla wszystkich węzłów nie jest "
+            "przyjmowane — c wynika ze scenariusza zwarcia (maksymalny albo minimalny, "
+            "IEC 60909-0 tab. 1 dla każdego węzła) albo z nadpisania c podanego razem "
+            "z wartością i uzasadnieniem."
         )
     nadpisanie_c = nadpisanie_c_z_danych(options.get("nadpisanie_c"))
 
@@ -1191,7 +1198,7 @@ def zloz_wejscie_zwarcia(
     # sieci składowej zerowej (rozbicie po elementach, decyzja grupy połączeń transformatora,
     # droga zerowa baterii, bocznik zespołu) z TEJ SAMEJ macierzy Y0 co ``z0_bus``.
     stan_awsc = stan_awsc_z_danych(options.get(KLUCZ_OPCJI_STANU_AWSC))
-    z0_bus = None
+    z0_bus: np.ndarray | None = None
     brak_wyniku_zerowego: dict[str, BrakWynikuZerowego] = {}
     siec_zerowa_trace: tuple[dict[str, Any], ...] = ()
     sekcje_sn_wezlow: dict[str, Any] = {}
@@ -1231,7 +1238,7 @@ def zloz_wejscie_zwarcia(
         if location_type in ("BUS", "NODE"):
             if not element_ref:
                 raise OdmowaDanychError(
-                    "Lokalizacja zwarcia scenariusza nie wskazuje elementu (element_ref)"
+                    "Lokalizacja zwarcia scenariusza nie wskazuje elementu sieci"
                 )
             target_node_id = _graph_id_from_ref(element_ref)
             if target_node_id not in graph.nodes:
@@ -2182,8 +2189,8 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
                     magnesujaca_pominieta.append(trafo.ref_id)
             else:
                 raise ValueError(
-                    f"Gałąź IR '{branch_id}' typu {type(branch).__name__} nie ma "
-                    "reprezentacji w rozpływie niesymetrycznym"
+                    f"Gałąź '{branch_id}' nie jest linią, kablem ani transformatorem — "
+                    "rozpływ niesymetryczny nie ma dla niej reprezentacji"
                 )
         for switch_id in sorted(graph.switches):
             switch = graph.switches[switch_id]

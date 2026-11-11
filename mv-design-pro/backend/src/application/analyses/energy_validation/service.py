@@ -26,8 +26,8 @@ from analysis.energy_validation.models import (
     EnergyValidationConfig,
     EnergyValidationContext,
 )
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.nazwy import nazwa_nadana
