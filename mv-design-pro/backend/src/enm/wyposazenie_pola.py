@@ -741,7 +741,7 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     if rekord.get("bay_role") == "ZU" and szablon_po != rekord.get("bay_template_ref"):
         from network_model.catalog.bay_templates import WARIANT_SZABLONU_ZESPOLU
 
-        from .zespol_uziemiajacy import zmien_wariant_zespolu
+        from .domain_operations_v2 import zmien_wariant_zespolu
 
         wariant = WARIANT_SZABLONU_ZESPOLU.get(str(szablon_po))
         if wariant is not None:

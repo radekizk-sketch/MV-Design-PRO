@@ -67,7 +67,6 @@ from network_model.core.machine import (
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.uziemienie import (
-    ETYKIETA_PL_WARIANTU_UZIEMIENIA,
     TRYBY_IEC60909,
     StanAwsc,
     tryb_doziemienia_typu,
@@ -118,6 +117,7 @@ from .models import (
 )
 from .models import TapChanger as EnmTapChanger
 from .nazwy_elementow import nazwa_elementu
+from .punkt_neutralny_zespolu import WyposazeniePunktuNeutralnego
 from .skladowa_zerowa_galezi import skladowa_zerowa_galezi
 from .slownik_komunikatow import opis_elementu, opis_obiektu
 from .tolerancja_nn import WyspaNn, wyspy_wezlow_nn
@@ -604,6 +604,19 @@ def _rodzaj_bocznika_uzwojenia(konfiguracja: GroundingConfig | None) -> str:
     return _BOCZNIK_REZYSTANCYJNY if tryb in TRYBY_IEC60909 else _BOCZNIK_DLAWIK
 
 
+def _rodzaj_bocznika_zespolu(wyposazenie: WyposazeniePunktuNeutralnego, stan_awsc: StanAwsc) -> str:
+    """Rodzaj bocznika transformatora uziemiającego z wariantu jego punktu neutralnego w stanie
+    AWSC przypadku: rezystor, Z.14 (dławik ∥ rezystor) i uziemienie bezpośrednie — małą
+    impedancją (``TRYBY_IEC60909``); dławik — także z rezystorem wymuszającym AWSC w stanie
+    załączonym (Z.13) — nie: sieć skompensowana, prąd doziemny to prąd resztkowy, nie zwarciowy
+    (ten sam predykat co tryb doziemienia sieci)."""
+    return (
+        _BOCZNIK_REZYSTANCYJNY
+        if wyposazenie.tryb_doziemienia(stan_awsc) in TRYBY_IEC60909
+        else _BOCZNIK_DLAWIK
+    )
+
+
 def _assemble_zero_sequence_y0(
     enm: EnergyNetworkModel,
     graph: NetworkGraph,
@@ -614,12 +627,12 @@ def _assemble_zero_sequence_y0(
     """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
     Rozbicie po elementach (linie/kable, źródła, transformatory wg grupy
-    połączeń, zespoły uziemiające) — kolejność deterministyczna (sort po ref_id).
+    połączeń) — kolejność deterministyczna (sort po ref_id).
     Transformatory stampowane wg tablicy połączeń sekwencji zerowej (SM-3, V12K-181):
     grupa wektorowa + uziemienie punktów neutralnych decydują o ciągłości /
-    przerwie / boczniku do ziemi prądu zerowego. Zespoły uziemiające SN (karta
-    UX-04/POLE-ZU-SKLADOWA-ZEROWA) — bocznik Z_0,TU + 3·Z_N z ``enm.uziemienie_sekcji``
-    w stanie AWSC przypadku (``stan_awsc``). Pojemności doziemne B0 linii i kabli — PO złożeniu
+    przerwie / boczniku do ziemi prądu zerowego. Zespół uziemiający SN (karta
+    ZU-JEDEN-NOSNIK) jest transformatorem uziemiającym — bocznik Z_0,zyg + 3·Z_N tą samą
+    drogą, Z_N z gałęzi punktu neutralnego w stanie AWSC przypadku (``stan_awsc``). Pojemności doziemne B0 linii i kabli — PO złożeniu
     pozostałych boczników, pod warunkiem IEC 60909-0:2016 pkt 5.2 f) sieci zerowej (karta
     ZEROWA-POJEMNOSCI, ``_warunek_pojemnosci_zerowej``). Źródło w paśmie SN nie wnosi Z0 (uziemienie
     sieci SN opisuje wyłącznie zespół albo uzwojenie transformatora —
@@ -932,12 +945,18 @@ def _assemble_zero_sequence_y0(
             raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Transformator", trafo, brakujaca))
         if hv_id not in node_index or lv_id not in node_index:
             continue
-        model = build_transformer_zero_seq_model(trafo)
+        model = build_transformer_zero_seq_model(trafo, stan_awsc=stan_awsc)
         transformer_trace.extend(model.trace)
         if not trafo.vector_group:
             transformatory_bez_grupy.append((trafo.ref_id, trafo.hv_bus_ref, trafo.lv_bus_ref))
-        if model.z0_pu is None or model.z0_pu == 0:
+        if model.z0_pu is None:
             continue
+        if model.z0_pu == 0:
+            # Bocznik zerowy o zerowej impedancji (np. zygzak z R0 = X0 = 0 uziemiony wprost)
+            # zwarłby węzeł z ziemią w Y0 — odmowa nazwana, nie ciche pominięcie.
+            raise OdmowaDanychError(
+                _odmowa_zerowej_impedancji_z0(nazwa_elementu(trafo, "transformers"))
+            )
         y_pu = 1.0 / model.z0_pu
         if model.connection == ZeroSeqConnection.SERIES_THROUGH:
             hv_idx = node_index[hv_id]
@@ -951,6 +970,8 @@ def _assemble_zero_sequence_y0(
             y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
             boczniki.setdefault(node_index[hv_id], set()).add(
                 _rodzaj_bocznika_uzwojenia(trafo.hv_neutral)
+                if model.wyposazenie is None
+                else _rodzaj_bocznika_zespolu(model.wyposazenie, stan_awsc)
             )
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
@@ -958,61 +979,11 @@ def _assemble_zero_sequence_y0(
                 _rodzaj_bocznika_uzwojenia(trafo.lv_neutral)
             )
 
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające sieci SN — bocznik
-    # Z_0 = Z_0,TU + 3·Z_N (IEC 60909-0: impedancja punktu neutralnego wchodzi do obwodu
-    # zerowego jako 3·Z_N) z JEDYNEJ prawdy o uziemieniu sekcji (``uziemienie_sieci``).
-    # Ślad niesie OBA stany AWSC (Z.13: jX w spoczynku, R‖jX po załączeniu), Y0 — stan
-    # przypadku obliczeniowego.
+    # Uziemienie sieci SN (karta ZU-JEDEN-NOSNIK): zespół uziemiający jest transformatorem
+    # uziemiającym — jego bocznik Z_0,zyg + 3·Z_N (Z_N z gałęzi wyposażenia punktu
+    # neutralnego w stanie AWSC przypadku) wszedł wyżej tą samą tablicą połączeń co każdy
+    # transformator. Prawda o sekcjach SN — tryb sieci i przyczyny braku wyniku zerowego.
     sekcje_sn = uziemienie_sieci(enm)
-    for sekcja in sekcje_sn:
-        for punkt in sekcja.punkty:
-            if punkt.rodzaj != "zespol_uziemiajacy":
-                continue
-            zu_id = ref_to_node_id.get(punkt.bus_ref)
-            if zu_id is None or zu_id not in node_index:
-                continue
-            z0_zu_ohm = punkt.z0_bocznika_ohm(stan_awsc)
-            idx = node_index[zu_id]
-            z_base_zu = builder.get_zbase_ohm(zu_id)
-            z_n_spoczynek = punkt.z_n_ohm("spoczynek")
-            z_n_zalaczony = punkt.z_n_ohm("zalaczony")
-            tracer.add(
-                key=f"z0_zespol_uziemiajacy[{punkt.element_ref}]",
-                title=(
-                    f"Zespół uziemiający {punkt.nazwa_pl}: bocznik składowej zerowej "
-                    f"({ETYKIETA_PL_WARIANTU_UZIEMIENIA[punkt.wariant(stan_awsc)]})"
-                ),
-                formula_latex=r"Z_{0,ZU} = Z_{0,TU} + 3 Z_N;\quad Y_{0,ZU} = Z_{base}/Z_{0,ZU}",
-                inputs={
-                    "ref_id": punkt.element_ref,
-                    "stan_awsc": stan_awsc,
-                    "z0_tu_ohm": _z_sladu(punkt.z0_tu_ohm),
-                    "z_n_spoczynek_ohm": _z_sladu(z_n_spoczynek),
-                    "z_n_awsc_zalaczony_ohm": _z_sladu(z_n_zalaczony),
-                    "z_base_ohm": z_base_zu,
-                    "galezie": [g.to_dict() for g in punkt.galezie],
-                    "parametry": [p.to_dict() for p in punkt.parametry],
-                },
-                substitution=(
-                    f"impedancja zerowa transformatora uziemiającego {_opis_z(punkt.z0_tu_ohm)}; "
-                    f"impedancja punktu neutralnego w spoczynku {_opis_z(z_n_spoczynek)}, przy "
-                    f"załączonej AWSC {_opis_z(z_n_zalaczony)}; impedancja zerowa zespołu "
-                    f"uziemiającego ({stan_awsc}) {_opis_z(z0_zu_ohm)} (bocznik "
-                    f"{nazwa_szyny[punkt.bus_ref]})"
-                ),
-                result={"z0_ohm": _z_sladu(z0_zu_ohm), "wariant": punkt.wariant(stan_awsc)},
-                notes=punkt.odmowa_pl,
-            )
-            if z0_zu_ohm is None:
-                continue
-            if z0_zu_ohm == 0:
-                raise OdmowaDanychError(_odmowa_zerowej_impedancji_z0(punkt.nazwa_pl))
-            y0_bus[idx, idx] += 1.0 / (z0_zu_ohm / z_base_zu)
-            boczniki.setdefault(idx, set()).add(
-                _BOCZNIK_REZYSTANCYJNY
-                if punkt.bocznik_rezystancyjny(stan_awsc)
-                else _BOCZNIK_DLAWIK
-            )
 
     przyczyny, kotwice = _przyczyny_braku_zerowej(
         y0_bus=y0_bus,
@@ -1109,12 +1080,6 @@ def _assemble_zero_sequence_y0(
 def _z_sladu(z: complex | None) -> dict[str, float] | None:
     """Liczba zespolona w śladzie WHITE BOX (JSON) — ten sam kształt co ``z_q_ohm``."""
     return None if z is None else {"re": z.real, "im": z.imag}
-
-
-def _opis_z(z: complex | None) -> str:
-    if z is None:
-        return "brak drogi"
-    return f"{z.real:.6g} + j{z.imag:.6g} Ω"
 
 
 def _przyczyny_braku_zerowej(

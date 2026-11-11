@@ -207,11 +207,6 @@ def stan_awsc_z_danych(surowy: object) -> StanAwsc:
 #: w modelu — jego stan wybiera przypadek obliczeniowy (``StanAwsc``).
 StanLacznikaPunktuNeutralnego = Literal["zamkniety", "otwarty"]
 
-#: Grupa połączeń transformatora uziemiającego (Zeszyt 1 §16: „układ połączeń ZNyn 11").
-GrupaTransformatoraUziemiajacego = Literal["ZNyn11", "ZNyn5", "ZNy11", "ZNy5", "ZN"]
-
-GRUPY_TRANSFORMATORA_UZIEMIAJACEGO: tuple[str, ...] = get_args(GrupaTransformatoraUziemiajacego)
-
 #: Regulacja dławika gaszącego: płynna (nadążna, Zeszyt 1 §16 — 10–100 %) albo zaczepowa.
 RegulacjaDlawika = Literal["ciagla", "zaczepy"]
 

@@ -767,44 +767,42 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     # --- Kompensacja, ograniczniki, wiązania DER (V2) -----------------------
     PozycjaBramyApi("add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True),
     PozycjaBramyApi("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
-    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN ------------
+    # --- Karta ZU-JEDEN-NOSNIK: zespół uziemiający SN (transformator ZNyn11) ---
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].catalog_ref",
-        "TRANSFORMATOR_UZIEMIAJACY",
+        "zespoly_sekcji[].catalog_ref",
+        "TRAFO_SN_NN",
         True,
     ),
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].catalog_binding",
-        "TRANSFORMATOR_UZIEMIAJACY",
+        "zespoly_sekcji[].catalog_binding",
+        "TRAFO_SN_NN",
         True,
     ),
     PozycjaBramyApi(
-        "add_grid_source_sn", "zespoly_uziemiajace[].dlawik.catalog_ref", "DLAWIK_GASZACY", True
+        "add_grid_source_sn", "zespoly_sekcji[].dlawik.catalog_ref", "DLAWIK_GASZACY", True
     ),
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].dlawik.catalog_binding",
+        "zespoly_sekcji[].dlawik.catalog_binding",
         "DLAWIK_GASZACY",
         True,
     ),
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].rezystor.catalog_ref",
+        "zespoly_sekcji[].rezystor.catalog_ref",
         "REZYSTOR_UZIEMIAJACY",
         True,
     ),
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].rezystor.catalog_binding",
+        "zespoly_sekcji[].rezystor.catalog_binding",
         "REZYSTOR_UZIEMIAJACY",
         True,
     ),
-    PozycjaBramyApi(
-        "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
-    ),
-    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "catalog_binding", "TRAFO_SN_NN", True),
+    PozycjaBramyApi("add_zespol_uziemiajacy_sn", "catalog_ref", "TRAFO_SN_NN", True),
     PozycjaBramyApi("add_zespol_uziemiajacy_sn", "dlawik.catalog_binding", "DLAWIK_GASZACY", True),
     PozycjaBramyApi("add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True),
     PozycjaBramyApi(
@@ -1101,7 +1099,7 @@ def _referencje_dodatkowe(
         # z RODZAJU elementu (transformator uziemiający, dławik, rezystor), nie z wiązania.
         _dodaj(
             "Transformator uziemiający",
-            "TRANSFORMATOR_UZIEMIAJACY",
+            "TRAFO_SN_NN",
             _ref_z_wiazania(zespol.get("catalog_binding"))
             or zespol.get("catalog_item_id")
             or zespol.get("catalog_ref"),
@@ -1124,8 +1122,8 @@ def _referencje_dodatkowe(
 
     if operation == "add_zespol_uziemiajacy_sn":
         _dodaj_zespol(payload)
-    if operation == "add_grid_source_sn" and isinstance(payload.get("zespoly_uziemiajace"), list):
-        for zespol in payload["zespoly_uziemiajace"]:
+    if operation == "add_grid_source_sn" and isinstance(payload.get("zespoly_sekcji"), list):
+        for zespol in payload["zespoly_sekcji"]:
             if isinstance(zespol, dict):
                 _dodaj_zespol(zespol)
 

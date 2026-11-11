@@ -137,11 +137,10 @@ class CatalogNamespace(Enum):
     #: `network_model.solvers.parametry_linii_napowietrznej` z geometrii słupa (standard ENEA
     #: Operator linii 110 kV §7.1 lit. j: parametry wyznaczane obliczeniowo dla projektu).
     PRZEWOD_LINII_WN = "PRZEWOD_LINII_WN"
-    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy zespołu uziemiającego punktu neutralnego
-    #: sieci SN (ENEA Zeszyt 1 §16, rysunki Z.13/Z.14/Z.15) — transformator uziemiający ZN
-    #: z uzwojeniem potrzeb własnych, dławik gaszący z zakresem regulacji i rezystor
-    #: uziemiający. Trzy osobne kontrakty materializacji, bo każdy niesie inne parametry.
-    TRANSFORMATOR_UZIEMIAJACY = "TRANSFORMATOR_UZIEMIAJACY"
+    #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy punktu neutralnego zespołu uziemiającego
+    #: sieci SN (ENEA Zeszyt 1 §16, rysunki Z.13/Z.14/Z.15) — dławik gaszący z zakresem
+    #: regulacji i rezystor uziemiający. Transformator uziemiający ZNyn11 jest transformatorem
+    #: SN/nN (``TRAFO_SN_NN``, karta ZU-JEDEN-NOSNIK).
     DLAWIK_GASZACY = "DLAWIK_GASZACY"
     REZYSTOR_UZIEMIAJACY = "REZYSTOR_UZIEMIAJACY"
 
@@ -178,7 +177,6 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "GENERATOR_SN": "Typy generatorów synchronicznych SN",
     "KARTA_WIDMOWA": "Karty widmowe urządzeń",
     "PRZEWOD_LINII_WN": "Typy przewodów linii napowietrznych 110 kV",
-    "TRANSFORMATOR_UZIEMIAJACY": "Typy transformatorów uziemiających SN",
     "DLAWIK_GASZACY": "Typy dławików gaszących SN",
     "REZYSTOR_UZIEMIAJACY": "Typy rezystorów uziemiających SN",
     "mv_branch_points": "Typy punktów rozgałęzienia SN",
@@ -3276,82 +3274,9 @@ class ShuntCapacitorType:
 
 
 # =============================================================================
-# ZESPÓŁ UZIEMIAJĄCY SN — transformator uziemiający, dławik gaszący, rezystor
+# ZESPÓŁ UZIEMIAJĄCY SN — dławik gaszący, rezystor (transformator uziemiający: TRAFO_SN_NN)
 # (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, ENEA Zeszyt 1 §16)
 # =============================================================================
-
-
-@dataclass(frozen=True)
-class EarthingTransformerType:
-    """Typ transformatora uziemiającego (TRANSFORMATOR_UZIEMIAJACY).
-
-    Zeszyt 1 §16: układ połączeń ZNyn 11, regulacja beznapięciowa ±5 %, ONAN, uzwojenie
-    dolne 400 V, moc uzwojenia potrzeb własnych ≥ 100 kVA. ``r0_ohm``/``x0_ohm`` — impedancja
-    zerowa uzwojenia zygzak na fazę [Ω] (bocznik składowej zerowej przed 3·Z_N).
-    """
-
-    id: str
-    name: str
-    u_n_kv: float = 0.0
-    s_n_kva: float = 0.0
-    grupa_polaczen: str = "ZNyn11"
-    r0_ohm: float = 0.0
-    x0_ohm: float = 0.0
-    s_pw_kva: float | None = None
-    u_pw_kv: float | None = None
-    manufacturer: str | None = None
-    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog zespołów uziemiających MV-DESIGN-PRO"
-    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
-    contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: str | None = None
-    wartosci_robocze: tuple[tuple[str, str], ...] = ()
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "name": self.name,
-            "u_n_kv": self.u_n_kv,
-            "s_n_kva": self.s_n_kva,
-            "grupa_polaczen": self.grupa_polaczen,
-            "r0_ohm": self.r0_ohm,
-            "x0_ohm": self.x0_ohm,
-            "s_pw_kva": self.s_pw_kva,
-            "u_pw_kv": self.u_pw_kv,
-            "manufacturer": self.manufacturer,
-            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
-                dict(self.wartosci_robocze) if self.wartosci_robocze else None
-            ),
-            **_catalog_metadata_to_dict(
-                verification_status=self.verification_status,
-                source_reference=self.source_reference,
-                catalog_status=self.catalog_status,
-                contract_version=self.contract_version,
-                verification_note=self.verification_note,
-            ),
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EarthingTransformerType":
-        return cls(
-            id=str(data.get("id", str(uuid4()))),
-            name=str(data.get("name", "")),
-            u_n_kv=wymagany_float(data, "u_n_kv", context="EarthingTransformerType"),
-            s_n_kva=wymagany_float(data, "s_n_kva", context="EarthingTransformerType"),
-            grupa_polaczen=str(data.get("grupa_polaczen") or "ZNyn11"),
-            r0_ohm=wymagany_float(data, "r0_ohm", context="EarthingTransformerType"),
-            x0_ohm=wymagany_float(data, "x0_ohm", context="EarthingTransformerType"),
-            s_pw_kva=_opcjonalny_float(data, "s_pw_kva"),
-            u_pw_kv=_opcjonalny_float(data, "u_pw_kv"),
-            manufacturer=data.get("manufacturer"),
-            wartosci_robocze=wartosci_robocze_z_danych(data),
-            **_catalog_metadata_kwargs(
-                data,
-                default_source_reference="Katalog zespołów uziemiających MV-DESIGN-PRO",
-                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
-                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
-            ),
-        )
 
 
 @dataclass(frozen=True)
@@ -5407,29 +5332,6 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("rezystory_rozladowcze_wewnetrzne", "Wewnętrzne rezystory rozładowcze", ""),
         ),
         pola_opcjonalne=POLA_BATERII_KONDENSATOROW_TYPU,
-    ),
-    CatalogNamespace.TRANSFORMATOR_UZIEMIAJACY.value: MaterializationContract(
-        namespace=CatalogNamespace.TRANSFORMATOR_UZIEMIAJACY.value,
-        solver_fields=(
-            "u_n_kv",
-            "s_n_kva",
-            "grupa_polaczen",
-            "r0_ohm",
-            "x0_ohm",
-            "s_pw_kva",
-            "u_pw_kv",
-            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
-        ),
-        ui_fields=(
-            ("u_n_kv", "Napięcie znamionowe", "kV"),
-            ("s_n_kva", "Moc znamionowa", "kVA"),
-            ("grupa_polaczen", "Grupa połączeń", ""),
-            ("r0_ohm", "Rezystancja zerowa", "Ω"),
-            ("x0_ohm", "Reaktancja zerowa", "Ω"),
-            ("s_pw_kva", "Moc uzwojenia potrzeb własnych", "kVA"),
-            ("u_pw_kv", "Napięcie uzwojenia potrzeb własnych", "kV"),
-        ),
-        pola_opcjonalne=("s_pw_kva", "u_pw_kv", KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
     ),
     CatalogNamespace.DLAWIK_GASZACY.value: MaterializationContract(
         namespace=CatalogNamespace.DLAWIK_GASZACY.value,

@@ -44,12 +44,12 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.punkt_neutralny_zespolu import czesci_zespolu_bez_katalogu
 from enm.rodzaj_stacji import TYPY_STACJI_SN_NN
 from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.uziemienie_sekcji import (
-    czesci_zespolu_bez_katalogu,
     impedancja_zerowa_zrodla_dozwolona,
     uziemienie_sieci,
 )
@@ -574,7 +574,9 @@ class EligibilityService:
                 )
 
         poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").walidacja
-        for zu in sorted(enm.zespoly_uziemiajace, key=lambda z: z.ref_id):
+        # Karta ZU-JEDEN-NOSNIK: wyposażenie punktu neutralnego transformatora uziemiającego
+        # (dławik, rezystor) — ten sam predykat części co E009 walidatora.
+        for zu in sorted(enm.transformers, key=lambda t: t.ref_id):
             czesci = czesci_zespolu_bez_katalogu(zu, poziom_zespolu)
             if czesci:
                 blockers.append(
@@ -586,10 +588,11 @@ class EligibilityService:
                             f"({', '.join(czesci)}). Wybierz typy z katalogu."
                         ),
                         element_ref=zu.ref_id,
-                        element_type="zespol_uziemiajacy",
+                        element_type="transformer",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=zu.ref_id,
+                            modal_type="TransformerModal",
                             payload_hint={"required": "catalog_ref"},
                         ),
                     )
@@ -817,7 +820,7 @@ class EligibilityService:
                         "nieokreślony — " + " ".join(sekcja.odmowy)
                     ),
                     element_ref=ref,
-                    element_type="zespol_uziemiajacy" if ref is not None else None,
+                    element_type="transformer" if ref is not None else None,
                     fix_action=(
                         FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=ref)
                         if ref is not None

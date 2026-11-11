@@ -144,8 +144,8 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E-W5-02": "transformer.vector_group_invalid",
     # Uziemienie uzwojenia bez wyprowadzonego punktu neutralnego.
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
-    # D1 (karta POLA-GPZ-SZABLONY): dwa uziemione nosniki punktu neutralnego w jednej wyspie
-    # galwanicznej SN (`enm/nosniki_punktu_neutralnego.py`).
+    # D1 (karta POLA-GPZ-SZABLONY, ZU-JEDEN-NOSNIK): dwa uziemione nosniki punktu neutralnego
+    # w jednej galwanicznie polaczonej sieci SN (`enm.uziemienie_sekcji.nosniki_sieci`).
     "E-W5-04": "earthing.multiple_grounded_neutrals_in_island",
     # Uklad uziemienia ekranu kabla inny niz uklad odniesienia katalogowych r0/x0.
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
@@ -156,7 +156,6 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E-ZU-02": "earthing.zespol_neutral_undefined",
     "W-ZU-01": "earthing.zespol_spz_without_resistor",
     "W-ZU-02": "earthing.zespol_transformer_trip_missing",
-    "W-ZU-03": "earthing.zespol_auxiliary_load_missing",
     "W-ZU-04": "earthing.network_grounding_warning",
     "W-ZU-05": "earthing.zespol_direct_earthing",
     "W-ZU-06": "earthing.zespol_voltage_mismatch",

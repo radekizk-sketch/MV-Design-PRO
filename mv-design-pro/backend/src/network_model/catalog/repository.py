@@ -22,7 +22,6 @@ from .types import (
     ConverterKind,
     ConverterType,
     CTType,
-    EarthingTransformerType,
     LineType,
     LoadType,
     LVApparatusType,
@@ -323,7 +322,6 @@ class CatalogRepository:
     surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
     shunt_capacitor_types: dict[str, ShuntCapacitorType] = field(default_factory=dict)
     #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy zespołu uziemiającego SN.
-    earthing_transformer_types: dict[str, EarthingTransformerType] = field(default_factory=dict)
     arc_suppression_coil_types: dict[str, ArcSuppressionCoilType] = field(default_factory=dict)
     neutral_earthing_resistor_types: dict[str, NeutralEarthingResistorType] = field(
         default_factory=dict
@@ -370,7 +368,6 @@ class CatalogRepository:
         bess_battery_types: Iterable[dict] | None = None,
         surge_arrester_types: Iterable[dict] | None = None,
         shunt_capacitor_types: Iterable[dict] | None = None,
-        earthing_transformer_types: Iterable[dict] | None = None,
         arc_suppression_coil_types: Iterable[dict] | None = None,
         neutral_earthing_resistor_types: Iterable[dict] | None = None,
         synchronous_generator_types: Iterable[dict] | None = None,
@@ -604,12 +601,6 @@ class CatalogRepository:
                 str(item.id): item
                 for item in map(_build_shunt_capacitor_type, list(shunt_capacitor_types or []))
             },
-            earthing_transformer_types={
-                str(item.id): item
-                for item in map(
-                    _build_typ(EarthingTransformerType), list(earthing_transformer_types or [])
-                )
-            },
             arc_suppression_coil_types={
                 str(item.id): item
                 for item in map(
@@ -797,12 +788,6 @@ class CatalogRepository:
     def get_shunt_capacitor_type(self, type_id: str) -> ShuntCapacitorType | None:
         return self.shunt_capacitor_types.get(str(type_id))
 
-    def list_earthing_transformer_types(self) -> list[EarthingTransformerType]:
-        return self._sorted(self.earthing_transformer_types.values())
-
-    def get_earthing_transformer_type(self, type_id: str) -> EarthingTransformerType | None:
-        return self.earthing_transformer_types.get(str(type_id))
-
     def list_arc_suppression_coil_types(self) -> list[ArcSuppressionCoilType]:
         return self._sorted(self.arc_suppression_coil_types.values())
 
@@ -942,7 +927,6 @@ def get_default_mv_catalog() -> CatalogRepository:
     from .mv_transformer_catalog import get_all_transformer_types
     from .mv_zespol_uziemiajacy_catalog import (
         get_all_arc_suppression_coil_records,
-        get_all_earthing_transformer_records,
         get_all_neutral_earthing_resistor_records,
     )
 
@@ -972,7 +956,6 @@ def get_default_mv_catalog() -> CatalogRepository:
         surge_arrester_types=get_all_surge_arrester_types(),
         shunt_capacitor_types=get_all_shunt_capacitor_records()
         + get_all_benchmark_shunt_capacitor_records(),
-        earthing_transformer_types=get_all_earthing_transformer_records(),
         arc_suppression_coil_types=get_all_arc_suppression_coil_records(),
         neutral_earthing_resistor_types=get_all_neutral_earthing_resistor_records(),
         synchronous_generator_types=get_all_benchmark_synchronous_generator_records(),

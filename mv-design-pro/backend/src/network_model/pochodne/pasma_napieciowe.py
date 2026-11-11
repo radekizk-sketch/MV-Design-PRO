@@ -133,8 +133,8 @@ def powyzej_pasma_nn(voltage_kv: float | None) -> bool:
 def w_pasmie_sn(voltage_kv: float | None) -> bool:
     """Czy napięcie leży w paśmie SN (brak danej albo wartość niefizyczna ⇒ ``False``).
 
-    Czyta: wyspy galwaniczne SN nośników punktu neutralnego
-    (``enm.nosniki_punktu_neutralnego``, decyzja D1 karty POLA-GPZ-SZABLONY).
+    Czyta: predykat transformatora uziemiającego (``enm.punkt_neutralny_zespolu``,
+    uzwojenie górne w zygzak z punktem neutralnym w sieci SN — karta ZU-JEDEN-NOSNIK).
     """
     return pasmo_napieciowe(voltage_kv) == "SN"
 

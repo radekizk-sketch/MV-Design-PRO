@@ -61,7 +61,7 @@ from .models import EnergyNetworkModel
 from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol
 from .slownik_komunikatow import opis_nazwy
 from .tor_pola import szyny_stacji
-from .zespol_uziemiajacy import ROLA_POLA_ZESPOLU_UZIEMIAJACEGO, ZAPIS_ZESPOLU
+from .zespol_uziemiajacy import ROLA_POLA_ZESPOLU_UZIEMIAJACEGO
 
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
@@ -196,19 +196,19 @@ def pole_zespolu_transformatora(
     """Pole zespołu uziemiającego (rola ``ZU``), do którego należy transformator — JEDNO źródło
     odpowiedzi „transformator uziemiający ma swoje pole” (W041, marker rysunku, rysunek pola ZU).
 
-    Powiązanie z zapisu pary przeniesienia punktu neutralnego (``Transformer.meta`` pod kluczem
-    ``ZAPIS_ZESPOLU``, ``bay_ref`` — `enm.zespol_uziemiajacy`); pole musi ISTNIEĆ i mieć rolę
-    ``ZU``. Zapis wskazujący pole, którego nie ma, albo pole innej roli to transformator BEZ pola
-    (``None``) — wtedy działa zwykła reguła W041, nie cichy wyjątek. Lustro frontu:
+    Powiązanie z typowanego wyposażenia pola (``Bay.equipment_refs`` pola o roli ``ZU`` wskazuje
+    transformator — karta ZU-JEDEN-NOSNIK; zapis w ``meta`` skasowany). Transformator, którego nie
+    wskazuje żadne pole ZU, jest transformatorem BEZ pola (``None``) — wtedy działa zwykła reguła
+    W041, nie cichy wyjątek. Kolejność pól deterministyczna (``ref_id``). Lustro frontu:
     `frontend/src/ui/shared/transformatoryStacji.ts::poleZespoluTransformatora`."""
-    zapis = _pole(_pole(transformator, "meta", {}), ZAPIS_ZESPOLU, None)
-    bay_ref = _tekst(zapis, "bay_ref") if zapis is not None else ""
-    if not bay_ref:
+    refy = _refy(transformator)
+    if not refy:
         return None
-    for bay in _lista(enm, "bays"):
-        if bay_ref in _refy(bay):
-            rola = _tekst(bay, "bay_role").upper()
-            return bay if rola == ROLA_POLA_ZESPOLU_UZIEMIAJACEGO else None
+    for bay in sorted(_lista(enm, "bays"), key=_ref):
+        if _tekst(bay, "bay_role").upper() != ROLA_POLA_ZESPOLU_UZIEMIAJACEGO:
+            continue
+        if refy & set(_teksty(_lista(bay, "equipment_refs"))):
+            return bay
     return None
 
 

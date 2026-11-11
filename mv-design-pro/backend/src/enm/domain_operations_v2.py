@@ -150,7 +150,7 @@ from .katalog_projektu_karty import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
-from .models import RODZAJE_GALEZI_APARATU, TRYBY_PRACY_ZRODLA, liczba_torow
+from .models import RODZAJE_GALEZI_APARATU, TRYBY_PRACY_ZRODLA, Transformer, liczba_torow
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import (
     nazwa_elementu,
@@ -179,6 +179,7 @@ from .pole_katalogowe import (
     rozwiaz_plan_pola,
 )
 from .polozenie_aparatu_pola import set_bay_apparatus_position
+from .punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
 from .rola_pola_sn import (
     ROLE_POLA_MODELU,
     kanoniczna_rola_pola_sn,
@@ -219,9 +220,11 @@ from .wyposazenie_pola import set_bay_equipment
 from .zespol_uziemiajacy import (
     NAPIECIE_POTRZEB_WLASNYCH_KV,
     WariantZespolu,
+    ladunek_wariantu,
     przenies_uziemienie_na_zespol,
+    transformator_zespolu_pola,
     wariant_z_uziemienia_zrodla,
-    zmien_wariant_zespolu,
+    wariant_zespolu,
 )
 from .zrodlo_napiecia_zerowego import warunki_funkcji_eaz_pola
 
@@ -2816,6 +2819,7 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             new_enm,
             field_ref=field_ref,
             terminal_bus_ref=terminal_bus_ref,
+            bus_ref=bus_ref,
             station_ref=str(station["ref_id"]),
             seed=seed,
             wariant=wariant_zespolu,
@@ -3061,16 +3065,11 @@ def _wariant_pola_zespolu(
         return wariant, None  # type: ignore[return-value]
     if existing_field is not None:
         return None, None
-    wariant_zrodla = wariant_z_uziemienia_zrodla(enm, bus_ref)
-    if wariant_zrodla is None:
-        return None, _error_response(
-            "Pole zespołu uziemiającego wymaga wskazania wariantu — szablonu pola Z.13 (dławik "
-            "z automatyczną regulacją), Z.14 (dławik i rezystor równolegle) albo Z.15 (rezystor); "
-            "źródło sieci tej sekcji nie opisuje uziemienia przez dławik ani przez rezystor, "
-            "z którego wariant by wynikał.",
-            "sn.zespol_uziemiajacy_wariant",
-        )
-    return wariant_zrodla, None
+    # Bez szablonu wariant wynika z opisu punktu neutralnego źródła sekcji (para przeniesienia);
+    # bez takiego opisu pole ZU powstaje bez transformatora — zespół (transformator uziemiający
+    # z wyposażeniem punktu neutralnego, także uziemienie bezpośrednie bez szablonu) dodaje
+    # operacja `add_zespol_uziemiajacy_sn` na zacisku pola.
+    return wariant_z_uziemienia_zrodla(enm, bus_ref), None
 
 
 def _dodaj_transformator_zespolu(
@@ -3078,75 +3077,54 @@ def _dodaj_transformator_zespolu(
     *,
     field_ref: str,
     terminal_bus_ref: str,
+    bus_ref: str,
     station_ref: str,
     seed: str,
     wariant: WariantZespolu,
     field_name: str,
 ) -> tuple[list[str], dict[str, Any] | None]:
-    """Transformator uziemiający ZNyn11 pola ZU (zacisk SN = zacisk pola, strona 0,4 kV = nowa
-    szyna potrzeb własnych) z pozycji katalogu dla napięcia szyny i przeniesienie punktu
-    neutralnego wyspy na ten transformator — mutacja ``enm`` (kopii wołającego) w miejscu."""
-    napiecie_kv = _bus_voltage_kv(enm, terminal_bus_ref)
-    pozycja = transformator_uziemiajacy_dla_napiecia(float(napiecie_kv or 0.0))
+    """Zespół uziemiający pola ZU z szablonu wariantu (Z.13/Z.14/Z.15): transformator
+    uziemiający z pozycji katalogu dla napięcia szyny i wyposażenie punktu neutralnego wariantu
+    (pozycje typowe dławika/rezystora — ``ladunek_wariantu``) tym samym pisarzem co operacja
+    ``add_zespol_uziemiajacy_sn`` — mutacja ``enm`` (kopii wołającego) w miejscu."""
+    napiecie_kv = float(_bus_voltage_kv(enm, terminal_bus_ref) or 0.0)
+    pozycja = transformator_uziemiajacy_dla_napiecia(napiecie_kv)
     if pozycja is None:
         return [], _error_response(
             "Katalog transformatorów uziemiających ZNyn11 ma pozycje dla sieci 15 kV i 20 kV — "
-            f"szyna pola ma {liczba_pl(float(napiecie_kv or 0.0))} kV. Dodaj pozycję transformatora "
+            f"szyna pola ma {liczba_pl(napiecie_kv)} kV. Dodaj pozycję transformatora "
             "uziemiającego dla tego napięcia do katalogu.",
             "sn.zespol_uziemiajacy_napiecie",
         )
-    parametry, blad = _pozycja_katalogu(
-        namespace="TRAFO_SN_NN",
-        catalog_ref=str(pozycja["id"]),
-        opis_pl="Transformator uziemiający",
+    catalog_ref, binding, parametry, blad = _pozycja_transformatora_uziemiajacego(
+        {"catalog_ref": str(pozycja["id"])}, napiecie_kv
+    )
+    if blad is not None or catalog_ref is None:
+        return [], blad
+    ladunek, odmowa = ladunek_wariantu(wariant, napiecie_kv, None)
+    if odmowa is not None or ladunek is None:
+        return [], _error_response(str(odmowa), "sn.zespol_uziemiajacy_wariant")
+    konfiguracja, blad = _wyposazenie_z_ladunku(enm, ladunek, napiecie_kv)
+    if blad is not None or konfiguracja is None:
+        return [], blad
+    utworzone, blad = _zainstaluj_transformator_zespolu(
+        enm,
+        hv_bus_ref=terminal_bus_ref,
+        szyna_sekcji_ref=bus_ref,
+        field_ref=field_ref,
+        station_ref=station_ref,
+        prefiks="sn",
+        seed=seed,
+        catalog_ref=catalog_ref,
+        binding=binding,
+        parametry=parametry,
+        konfiguracja=konfiguracja,
+        nazwa=f"Transformator uziemiający — {field_name}",
     )
     if blad is not None:
         return [], blad
-    szyna_nn = _make_id("sn", seed, "zu_bus_nn")
-    transformator_ref = _make_id("sn", seed, "zu_transformer")
-    wynik = create_node(
-        enm,
-        {
-            "ref_id": szyna_nn,
-            "name": f"Szyna potrzeb własnych 0,4 kV — {field_name}",
-            "voltage_kv": NAPIECIE_POTRZEB_WLASNYCH_KV,
-            "tags": ["zespol_uziemiajacy"],
-            "meta": {"field_ref": field_ref, "station_ref": station_ref},
-        },
-    )
-    if not wynik.success:
-        return [], _error_response(
-            "Nie udało się utworzyć szyny potrzeb własnych zespołu uziemiającego.",
-            "sn.zespol_uziemiajacy_szyna",
-        )
-    if wynik.enm is not enm:
-        # `create_node` zwraca model z szyną — wołający trzyma referencję `enm` (kopię operacji).
-        nowy = dict(wynik.enm)
-        enm.clear()
-        enm.update(nowy)
-    transformator: dict[str, Any] = {
-        "ref_id": transformator_ref,
-        "name": f"Transformator uziemiający — {field_name}",
-        "hv_bus_ref": terminal_bus_ref,
-        "lv_bus_ref": szyna_nn,
-        "catalog_ref": pozycja["id"],
-        "overrides": [],
-        "tags": ["zespol_uziemiajacy"],
-        "meta": {"field_ref": field_ref, "station_ref": station_ref},
-    }
-    _apply_catalog_metadata(transformator, None, default_namespace="TRAFO_SN_NN")
-    _apply_materialized_transformer_fields(transformator, parametry)
-    enm.setdefault("transformers", []).append(transformator)
-    odmowa = przenies_uziemienie_na_zespol(
-        enm, transformator=transformator, bay_ref=field_ref, wariant=wariant
-    )
-    if odmowa is not None:
-        return [], _error_response(odmowa, "sn.zespol_uziemiajacy_przeniesienie")
-    rekord = pole_modelu(enm, field_ref) or {}
-    zmien_pole(
-        enm, field_ref, equipment_refs=[*(rekord.get("equipment_refs") or []), transformator_ref]
-    )
-    return [szyna_nn, transformator_ref], None
+    # Kolejność zdarzeń pola: szyna potrzeb własnych, potem transformator.
+    return [utworzone[1], utworzone[0]], None
 
 
 #: Rodzaj aparatu głównego pola (`BayPrimaryDevice.kind`) → wariant aparatu
@@ -7842,7 +7820,9 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
 #: Przestrzenie katalogu elementów zespołu uziemiającego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)
 #: — przesądzone rodzajem elementu, nie ładunkiem (ta sama zasada co bateria kondensatorów).
-PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO = "TRANSFORMATOR_UZIEMIAJACY"
+#: Transformator uziemiający jest transformatorem SN/nN (karta ZU-JEDEN-NOSNIK) — ta sama
+#: przestrzeń katalogu co transformatory rozdzielcze, pozycje z grupą ZNyn11.
+PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO = "TRAFO_SN_NN"
 PRZESTRZEN_DLAWIKA_GASZACEGO = "DLAWIK_GASZACY"
 PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO = "REZYSTOR_UZIEMIAJACY"
 
@@ -7914,31 +7894,356 @@ def _urzadzenie_punktu_neutralnego(
     }, None
 
 
+OPERACJA_ZESPOLU = "add_zespol_uziemiajacy_sn"
+
+
+def _wyposazenie_z_ladunku(
+    enm: dict[str, Any], payload: dict[str, Any], napiecie_kv: float
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Wyposażenie punktu neutralnego transformatora uziemiającego z ładunku (karta
+    ZU-JEDEN-NOSNIK): dławik / rezystor z pozycji katalogu (Catalog Binding Rule), nastawa
+    dławika, AWSC, deklaracja uziemienia bezpośredniego, SPZ, wyłączenie od transformatorów.
+
+    JEDEN pisarz dla operacji ``add_zespol_uziemiajacy_sn`` i dla szablonów pola ZU
+    (Z.13/Z.14/Z.15, ``ladunek_wariantu``). Typ punktu neutralnego wynika z gałęzi (dławik ⇒
+    dławik gaszący, sam rezystor ⇒ rezystor, deklaracja ⇒ bezpośrednio) — ten sam predykat
+    spójności co walidator (``blad_wyposazenia_punktu_neutralnego``). Zwraca
+    ``(konfiguracja hv_neutral, None)`` albo ``(None, odpowiedź_błędu)``."""
+    dlawik, blad = _urzadzenie_punktu_neutralnego(
+        payload.get("dlawik"),
+        sciezka_odlacznika="dlawik.stan_odlacznika",
+        przestrzen=PRZESTRZEN_DLAWIKA_GASZACEGO,
+        opis_pl="Dławik gaszący",
+        napiecie_kv=napiecie_kv,
+    )
+    if blad is not None:
+        return None, blad
+    rezystor, blad = _urzadzenie_punktu_neutralnego(
+        payload.get("rezystor"),
+        sciezka_odlacznika="rezystor.stan_odlacznika",
+        przestrzen=PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO,
+        opis_pl="Rezystor uziemiający",
+        napiecie_kv=napiecie_kv,
+    )
+    if blad is not None:
+        return None, blad
+
+    if dlawik is not None:
+        surowy = cast(dict[str, Any], payload["dlawik"])
+        nastawa = _liczba_dodatnia(surowy.get("i_nastawy_a"))
+        if nastawa == "niepoprawna":
+            return _error_response(
+                f"{pole('dlawik.i_nastawy_a', OPERACJA_ZESPOLU)}: oczekiwano prądu nastawy > 0 A.",
+                "zu.payload_invalid",
+            )
+        if nastawa is not None:
+            i_min = dlawik["materialized_params"].get("i_min_a")
+            i_max = dlawik["materialized_params"].get("i_max_a")
+            if (isinstance(i_min, int | float) and float(nastawa) < float(i_min)) or (
+                isinstance(i_max, int | float) and float(nastawa) > float(i_max)
+            ):
+                return _error_response(
+                    f"Nastawa dławika {float(nastawa):g} A leży poza zakresem regulacji typu "
+                    f"({float(i_min):g}–{float(i_max):g} A) — dobierz nastawę w zakresie albo "
+                    "inny typ dławika.",
+                    "zu.coil_setting_out_of_range",
+                )
+            dlawik["i_nastawy_a"] = float(nastawa)
+        awsc = surowy.get("awsc")
+        if awsc is not None:
+            if not isinstance(awsc, dict):
+                return _error_response(
+                    f"{pole('dlawik.awsc', OPERACJA_ZESPOLU)}: oczekiwano opisu rezystora AWSC.",
+                    "zu.payload_invalid",
+                )
+            rekord_awsc: dict[str, Any] = {}
+            for klucz_awsc, sciezka_awsc in (
+                ("i_wymuszany_a", "dlawik.awsc.i_wymuszany_a"),
+                ("czas_zalaczenia_s", "dlawik.awsc.czas_zalaczenia_s"),
+            ):
+                liczba = _liczba_dodatnia(awsc.get(klucz_awsc))
+                if liczba == "niepoprawna":
+                    return _error_response(
+                        f"{pole(sciezka_awsc, OPERACJA_ZESPOLU)}: oczekiwano liczby > 0.",
+                        "zu.payload_invalid",
+                    )
+                if liczba is not None:
+                    rekord_awsc[klucz_awsc] = liczba
+            zwloka = awsc.get("czas_zwloki_s")
+            if zwloka is not None:
+                if (
+                    isinstance(zwloka, bool)
+                    or not isinstance(zwloka, int | float)
+                    or not math.isfinite(float(zwloka))
+                    or float(zwloka) < 0
+                ):
+                    return _error_response(
+                        f"{pole('dlawik.awsc.czas_zwloki_s', OPERACJA_ZESPOLU)}: oczekiwano liczby ≥ 0.",
+                        "zu.payload_invalid",
+                    )
+                rekord_awsc["czas_zwloki_s"] = float(zwloka)
+            strona = awsc.get("strona")
+            if strona is not None:
+                if strona not in _STRONY_REZYSTORA_AWSC:
+                    return _error_response(
+                        f"{pole('dlawik.awsc.strona', OPERACJA_ZESPOLU)}: dozwolone „pierwotna” "
+                        "albo „wtórna”.",
+                        "zu.payload_invalid",
+                    )
+                rekord_awsc["strona"] = strona
+            dlawik["awsc"] = rekord_awsc
+
+    bezposrednie = payload.get("uziemienie_bezposrednie", False)
+    if not isinstance(bezposrednie, bool):
+        return _error_response(
+            f"{pole('uziemienie_bezposrednie', OPERACJA_ZESPOLU)}: oczekiwano wartości tak/nie.",
+            "zu.payload_invalid",
+        )
+    if bezposrednie and (dlawik is not None or rezystor is not None):
+        return _error_response(
+            "Uziemienie bezpośrednie punktu neutralnego wyklucza dławik i rezystor — punkt "
+            "połączony wprost z ziemią zwiera element w punkcie neutralnym.",
+            "zu.direct_with_element",
+        )
+    if not bezposrednie and dlawik is None and rezystor is None:
+        return _error_response(
+            "Zespół uziemiający wymaga elementu w punkcie neutralnym: dławika gaszącego "
+            "(Z.13), dławika i rezystora równolegle (Z.14), rezystora (Z.15) albo jawnej "
+            "deklaracji uziemienia bezpośredniego.",
+            "zu.neutral_element_missing",
+        )
+
+    spz = payload.get("spz", False)
+    if not isinstance(spz, bool):
+        return _error_response(
+            f"{pole('spz', OPERACJA_ZESPOLU)}: oczekiwano wartości tak/nie.",
+            "zu.payload_invalid",
+        )
+    trafo_refs_surowe = payload.get("wylaczenie_od_transformatorow_refs") or []
+    if not isinstance(trafo_refs_surowe, list) or not all(
+        isinstance(r, str) and r for r in trafo_refs_surowe
+    ):
+        return _error_response(
+            f"{pole('wylaczenie_od_transformatorow_refs', OPERACJA_ZESPOLU)}: oczekiwano listy "
+            "transformatorów.",
+            "zu.payload_invalid",
+        )
+    trafo_refs = sorted(set(trafo_refs_surowe))
+    znane_trafo = {t.get("ref_id") for t in enm.get("transformers", []) if isinstance(t, dict)}
+    nieznane = [r for r in trafo_refs if r not in znane_trafo]
+    if nieznane:
+        return _error_response(
+            "Wyłączenie zespołu wskazuje transformatory spoza modelu — wybierz transformatory "
+            "WN/SN stacji.",
+            "zu.transformer_not_found",
+        )
+    if dlawik is not None:
+        typ = "petersen_coil"
+    elif rezystor is not None:
+        typ = "resistor_grounded"
+    else:
+        typ = "directly_grounded"
+    return {
+        "type": typ,
+        "r_ohm": None,
+        "x_ohm": None,
+        "dlawik": dlawik,
+        "rezystor": rezystor,
+        "spz": spz,
+        "wylaczenie_od_transformatorow_refs": trafo_refs,
+    }, None
+
+
+def _pozycja_transformatora_uziemiajacego(
+    payload: dict[str, Any], napiecie_kv: float
+) -> tuple[str | None, dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
+    """(catalog_ref, binding, parametry, odpowiedź_błędu) transformatora uziemiającego z ładunku.
+
+    Pozycja z przestrzeni transformatorów SN/nN, której grupa połączeń ma uzwojenie górne
+    w zygzak z punktem neutralnym (``jest_transformatorem_uziemiajacym``) na napięcie sieci.
+    Brak wskazania — ``(None, None, {}, None)`` (wołający decyduje: nowy zespół odmawia,
+    istniejący zachowuje pozycję)."""
+    binding = _catalog_binding_from_payload(payload, PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO)
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return None, None, {}, None
+    parametry, blad = _pozycja_katalogu(
+        namespace=PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Transformator uziemiający",
+    )
+    if blad is not None:
+        return None, None, {}, blad
+    grupa = parametry.get("vector_group")
+    u_hv = parametry.get("voltage_hv_kv")
+    if not isinstance(grupa, str) or not grupa.upper().startswith("ZN"):
+        return (
+            None,
+            None,
+            {},
+            _error_response(
+                "Wskazany typ nie jest transformatorem uziemiającym — zespół uziemiający wymaga "
+                "transformatora z uzwojeniem górnym w zygzak z punktem neutralnym (ZNyn11).",
+                "zu.catalog_not_earthing_transformer",
+            ),
+        )
+    if isinstance(u_hv, int | float) and not to_samo_napiecie_znamionowe(float(u_hv), napiecie_kv):
+        return (
+            None,
+            None,
+            {},
+            _error_response(
+                f"Transformator uziemiający na napięcie {float(u_hv):g} kV nie pasuje do sieci "
+                f"{napiecie_kv:g} kV — dobierz typ na napięcie sieci.",
+                "zu.voltage_mismatch",
+            ),
+        )
+    return catalog_ref, binding, parametry, None
+
+
+def _zainstaluj_transformator_zespolu(
+    enm: dict[str, Any],
+    *,
+    hv_bus_ref: str,
+    szyna_sekcji_ref: str,
+    field_ref: str | None,
+    station_ref: str | None,
+    prefiks: str,
+    seed: str,
+    catalog_ref: str,
+    binding: dict[str, Any] | None,
+    parametry: dict[str, Any],
+    konfiguracja: dict[str, Any],
+    nazwa: str,
+) -> tuple[list[str], dict[str, Any] | None]:
+    """Transformator uziemiający ZNyn11 zespołu (zacisk SN = ``hv_bus_ref``, strona 0,4 kV =
+    nowa szyna potrzeb własnych) z wyposażeniem punktu neutralnego ``konfiguracja`` i para
+    przeniesienia opisu punktu neutralnego źródła sekcji — mutacja ``enm`` (kopii wołającego)
+    w miejscu. Pole ZU (``field_ref``) dostaje transformator w ``equipment_refs``."""
+    szyna_nn = _make_id(prefiks, seed, "zu_bus_nn")
+    transformator_ref = _make_id(prefiks, seed, "zu_transformer")
+    meta = {
+        k: v for k, v in (("field_ref", field_ref), ("station_ref", station_ref)) if v is not None
+    }
+    wynik = create_node(
+        enm,
+        {
+            "ref_id": szyna_nn,
+            "name": f"Szyna potrzeb własnych 0,4 kV — {nazwa}",
+            "voltage_kv": NAPIECIE_POTRZEB_WLASNYCH_KV,
+            "tags": ["zespol_uziemiajacy"],
+            "meta": dict(meta),
+        },
+    )
+    if not wynik.success:
+        return [], _error_response(
+            "Nie udało się utworzyć szyny potrzeb własnych zespołu uziemiającego.",
+            "sn.zespol_uziemiajacy_szyna",
+        )
+    if wynik.enm is not enm:
+        # `create_node` zwraca model z szyną — wołający trzyma referencję `enm` (kopię operacji).
+        nowy = dict(wynik.enm)
+        enm.clear()
+        enm.update(nowy)
+    transformator: dict[str, Any] = {
+        "ref_id": transformator_ref,
+        "name": nazwa,
+        "hv_bus_ref": hv_bus_ref,
+        "lv_bus_ref": szyna_nn,
+        "catalog_ref": catalog_ref,
+        "overrides": [],
+        "tags": ["zespol_uziemiajacy"],
+        "meta": {**meta, "catalog_binding": copy.deepcopy(binding) if binding else None},
+    }
+    _apply_catalog_metadata(transformator, None, default_namespace="TRAFO_SN_NN")
+    _apply_materialized_transformer_fields(transformator, parametry)
+    transformator["hv_neutral"] = copy.deepcopy(konfiguracja)
+    enm.setdefault("transformers", []).append(transformator)
+    przenies_uziemienie_na_zespol(
+        enm, transformator=transformator, szyna_sekcji_ref=szyna_sekcji_ref
+    )
+    if field_ref is not None:
+        rekord = pole_modelu(enm, field_ref) or {}
+        zmien_pole(
+            enm,
+            field_ref,
+            equipment_refs=[*(rekord.get("equipment_refs") or []), transformator_ref],
+        )
+    return [transformator_ref, szyna_nn], None
+
+
+def zmien_wariant_zespolu(enm: dict[str, Any], bay_ref: str, wariant: WariantZespolu) -> bool:
+    """Zmiana szablonu pola ZU na szablon innego wariantu (mutacja w miejscu, wołający pracuje
+    na kopii): wyposażenie punktu neutralnego transformatora pola dostaje gałęzie nowego
+    wariantu — urządzenia tego samego rodzaju przechodzą bez zmian (``ladunek_wariantu``), SPZ,
+    wyłączenie od transformatorów i zapis dawcy zostają. Zwraca, czy zmieniono."""
+    transformator = transformator_zespolu_pola(enm, bay_ref)
+    if transformator is None:
+        return False
+    poprzedni = (
+        transformator.get("hv_neutral") if isinstance(transformator.get("hv_neutral"), dict) else {}
+    )
+    if wariant_zespolu(poprzedni) == wariant:
+        return False
+    napiecie_kv = float(transformator.get("uhv_kv") or 0.0)
+    ladunek, odmowa = ladunek_wariantu(wariant, napiecie_kv, poprzedni)
+    if ladunek is None or odmowa is not None:
+        return False
+    cfg, blad = _wyposazenie_z_ladunku(
+        enm,
+        {
+            **ladunek,
+            "spz": bool(poprzedni.get("spz", False)),
+            "wylaczenie_od_transformatorow_refs": list(
+                poprzedni.get("wylaczenie_od_transformatorow_refs") or []
+            ),
+        },
+        napiecie_kv,
+    )
+    if cfg is None or blad is not None:
+        return False
+    if poprzedni.get("dawca") is not None:
+        cfg["dawca"] = copy.deepcopy(poprzedni["dawca"])
+    transformator["hv_neutral"] = cfg
+    return True
+
+
 def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj (albo przekonfiguruj) zespół uziemiający sieci SN — ENEA Z.13 / Z.14 / Z.15.
 
-    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający jest JEDYNYM nośnikiem uziemienia
-    punktu neutralnego sieci SN obok punktu neutralnego uzwojenia transformatora
-    (``enm.uziemienie_sekcji``). Element fizyczny stoi na końcu toru pola ZU: ``bay_ref``
-    wskazuje pole o roli ``ZU`` (``add_sn_bay``), a zespół przyłącza się do zacisku tego pola
-    — stan łącznika ZU wynika wtedy z aparatu pola (gałąź ``SwitchBranch``), nie z kopii.
-    Bez pola (``bus_ref``) zespół stoi wprost na szynie.
+    Karta ZU-JEDEN-NOSNIK: zespół uziemiający jest TRANSFORMATOREM uziemiającym ZNyn11
+    (``Transformer``: zacisk SN — zacisk pola ZU albo wskazana szyna SN, strona 0,4 kV —
+    szyna potrzeb własnych zespołu) z typowanym wyposażeniem punktu neutralnego w
+    ``hv_neutral`` (dławik gaszący z AWSC, rezystor, oba równolegle albo jawna deklaracja
+    uziemienia bezpośredniego; SPZ; wyłączenie od transformatorów). Odbiory potrzeb własnych
+    stoją na szynie 0,4 kV zespołu (moc płynie przez u_k transformatora).
 
     Katalog-first (Catalog Binding Rule): transformator uziemiający, dławik i rezystor wiążą
-    się z pozycjami trzech przestrzeni katalogu; ładunek nie niesie liczb urządzenia poza
-    nastawą dławika (stan dostrojenia) i prądem wymuszanym AWSC — te są daną projektu,
-    nie tabliczki. Brak nastawy = wartość robocza w funkcji pochodnej (zasada nr 4).
+    się z pozycjami katalogu; ładunek nie niesie liczb urządzenia poza nastawą dławika (stan
+    dostrojenia) i prądem wymuszanym AWSC — te są daną projektu, nie tabliczki. Brak nastawy =
+    wartość robocza wyprowadzana przy odczycie (zasada nr 4).
 
-    ``zespol_ref`` — przekonfigurowanie istniejącego zespołu tym samym pisarzem (identyfikator
-    bez zmian). Odmowy nazwane: brak elementu w punkcie neutralnym, uziemienie bezpośrednie
-    razem z dławikiem/rezystorem, napięcie typu inne niż sieci, szyna spoza pasma SN.
+    ``zespol_ref`` — przekonfigurowanie istniejącego transformatora uziemiającego tym samym
+    pisarzem (identyfikator bez zmian); pole ZU, które ma już transformator uziemiający, jest
+    przekonfigurowywane (jeden zespół w polu). Odmowy nazwane: brak elementu w punkcie
+    neutralnym, uziemienie bezpośrednie razem z dławikiem/rezystorem, napięcie typu inne niż
+    sieci, szyna spoza pasma SN.
     """
     dry_run = bool(payload.get("dry_run", False))
-    zespoly = [z for z in enm.get("zespoly_uziemiajace", []) if isinstance(z, dict)]
+    transformatory = [t for t in enm.get("transformers", []) if isinstance(t, dict)]
     zespol_ref = payload.get("zespol_ref")
     istniejacy: dict[str, Any] | None = None
     if zespol_ref is not None:
-        istniejacy = next((z for z in zespoly if z.get("ref_id") == zespol_ref), None)
+        istniejacy = next(
+            (
+                t
+                for t in transformatory
+                if t.get("ref_id") == zespol_ref
+                and jest_transformatorem_uziemiajacym(Transformer.model_validate(t))
+            ),
+            None,
+        )
         if istniejacy is None:
             return _error_response(
                 "Wskazany zespół uziemiający nie istnieje w modelu.", "zu.not_found"
@@ -7946,6 +8251,7 @@ def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     bay_ref = payload.get("bay_ref")
     bus_ref = payload.get("bus_ref")
+    szyna_sekcji = bus_ref
     if bay_ref is not None:
         pole_zu = pole_modelu(enm, bay_ref) if isinstance(bay_ref, str) else None
         if not isinstance(pole_zu, dict):
@@ -7969,6 +8275,11 @@ def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "zu.bay_bus_mismatch",
             )
         bus_ref = zacisk
+        szyna_sekcji = pole_zu.get("bus_ref") or zacisk
+        if istniejacy is None:
+            istniejacy = transformator_zespolu_pola(enm, bay_ref)
+    if istniejacy is not None:
+        bus_ref = istniejacy.get("hv_bus_ref")
     if not isinstance(bus_ref, str) or not bus_ref.strip():
         return _error_response(
             "Zespół uziemiający wymaga pola ZU albo szyny SN — wybierz je na schemacie.",
@@ -7988,215 +8299,76 @@ def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "zu.bus_not_sn",
         )
 
-    binding = _catalog_binding_from_payload(payload, PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO)
-    catalog_ref = _catalog_item_id(binding)
-    if not catalog_ref:
-        return _error_response(
-            "Wybierz typ transformatora uziemiającego w polu "
-            f"{pole('catalog_ref', 'add_zespol_uziemiajacy_sn')}.",
-            "zu.catalog_required",
-        )
-    parametry_tu, blad_tu = _pozycja_katalogu(
-        namespace=PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
-        catalog_ref=catalog_ref,
-        catalog_binding=binding,
-        opis_pl="Transformator uziemiający",
+    catalog_ref, binding, parametry_tu, blad_tu = _pozycja_transformatora_uziemiajacego(
+        payload, napiecie_kv
     )
     if blad_tu is not None:
         return blad_tu
-    u_tu = parametry_tu.get("u_n_kv")
-    if isinstance(u_tu, int | float) and not to_samo_napiecie_znamionowe(float(u_tu), napiecie_kv):
+    if catalog_ref is None and istniejacy is None:
         return _error_response(
-            f"Transformator uziemiający na napięcie {float(u_tu):g} kV nie pasuje do sieci "
-            f"{napiecie_kv:g} kV — dobierz typ na napięcie sieci.",
-            "zu.voltage_mismatch",
+            "Wybierz typ transformatora uziemiającego w polu "
+            f"{pole('catalog_ref', OPERACJA_ZESPOLU)}.",
+            "zu.catalog_required",
         )
 
-    dlawik, blad = _urzadzenie_punktu_neutralnego(
-        payload.get("dlawik"),
-        sciezka_odlacznika="dlawik.stan_odlacznika",
-        przestrzen=PRZESTRZEN_DLAWIKA_GASZACEGO,
-        opis_pl="Dławik gaszący",
-        napiecie_kv=napiecie_kv,
-    )
-    if blad is not None:
-        return blad
-    rezystor, blad = _urzadzenie_punktu_neutralnego(
-        payload.get("rezystor"),
-        sciezka_odlacznika="rezystor.stan_odlacznika",
-        przestrzen=PRZESTRZEN_REZYSTORA_UZIEMIAJACEGO,
-        opis_pl="Rezystor uziemiający",
-        napiecie_kv=napiecie_kv,
-    )
-    if blad is not None:
-        return blad
+    konfiguracja, blad = _wyposazenie_z_ladunku(enm, payload, napiecie_kv)
+    if blad is not None or konfiguracja is None:
+        return blad or _error_response("Niepoprawny opis zespołu.", "zu.payload_invalid")
 
-    if dlawik is not None:
-        surowy = cast(dict[str, Any], payload["dlawik"])
-        nastawa = _liczba_dodatnia(surowy.get("i_nastawy_a"))
-        if nastawa == "niepoprawna":
-            return _error_response(
-                f"{pole('dlawik.i_nastawy_a', 'add_zespol_uziemiajacy_sn')}: oczekiwano prądu nastawy > 0 A.",
-                "zu.payload_invalid",
-            )
-        if nastawa is not None:
-            i_min = dlawik["materialized_params"].get("i_min_a")
-            i_max = dlawik["materialized_params"].get("i_max_a")
-            if (isinstance(i_min, int | float) and float(nastawa) < float(i_min)) or (
-                isinstance(i_max, int | float) and float(nastawa) > float(i_max)
-            ):
-                return _error_response(
-                    f"Nastawa dławika {float(nastawa):g} A leży poza zakresem regulacji typu "
-                    f"({float(i_min):g}–{float(i_max):g} A) — dobierz nastawę w zakresie albo "
-                    "inny typ dławika.",
-                    "zu.coil_setting_out_of_range",
-                )
-            dlawik["i_nastawy_a"] = float(nastawa)
-        awsc = surowy.get("awsc")
-        if awsc is not None:
-            if not isinstance(awsc, dict):
-                return _error_response(
-                    f"{pole('dlawik.awsc', 'add_zespol_uziemiajacy_sn')}: oczekiwano opisu rezystora AWSC.",
-                    "zu.payload_invalid",
-                )
-            rekord_awsc: dict[str, Any] = {}
-            for klucz_awsc, sciezka_awsc in (
-                ("i_wymuszany_a", "dlawik.awsc.i_wymuszany_a"),
-                ("czas_zalaczenia_s", "dlawik.awsc.czas_zalaczenia_s"),
-            ):
-                liczba = _liczba_dodatnia(awsc.get(klucz_awsc))
-                if liczba == "niepoprawna":
-                    return _error_response(
-                        f"{pole(sciezka_awsc, 'add_zespol_uziemiajacy_sn')}: oczekiwano liczby > 0.",
-                        "zu.payload_invalid",
-                    )
-                if liczba is not None:
-                    rekord_awsc[klucz_awsc] = liczba
-            zwloka = awsc.get("czas_zwloki_s")
-            if zwloka is not None:
-                if (
-                    isinstance(zwloka, bool)
-                    or not isinstance(zwloka, int | float)
-                    or not math.isfinite(float(zwloka))
-                    or float(zwloka) < 0
-                ):
-                    return _error_response(
-                        f"{pole('dlawik.awsc.czas_zwloki_s', 'add_zespol_uziemiajacy_sn')}: oczekiwano liczby ≥ 0.",
-                        "zu.payload_invalid",
-                    )
-                rekord_awsc["czas_zwloki_s"] = float(zwloka)
-            strona = awsc.get("strona")
-            if strona is not None:
-                if strona not in _STRONY_REZYSTORA_AWSC:
-                    return _error_response(
-                        f"{pole('dlawik.awsc.strona', 'add_zespol_uziemiajacy_sn')}: dozwolone „pierwotna” "
-                        "albo „wtórna”.",
-                        "zu.payload_invalid",
-                    )
-                rekord_awsc["strona"] = strona
-            dlawik["awsc"] = rekord_awsc
-
-    bezposrednie = payload.get("uziemienie_bezposrednie", False)
-    if not isinstance(bezposrednie, bool):
-        return _error_response(
-            f"{pole('uziemienie_bezposrednie', 'add_zespol_uziemiajacy_sn')}: oczekiwano wartości tak/nie.",
-            "zu.payload_invalid",
-        )
-    if bezposrednie and (dlawik is not None or rezystor is not None):
-        return _error_response(
-            "Uziemienie bezpośrednie punktu neutralnego wyklucza dławik i rezystor — punkt "
-            "połączony wprost z ziemią zwiera element w punkcie neutralnym.",
-            "zu.direct_with_element",
-        )
-    if not bezposrednie and dlawik is None and rezystor is None:
-        return _error_response(
-            "Zespół uziemiający wymaga elementu w punkcie neutralnym: dławika gaszącego "
-            "(Z.13), dławika i rezystora równolegle (Z.14), rezystora (Z.15) albo jawnej "
-            "deklaracji uziemienia bezpośredniego.",
-            "zu.neutral_element_missing",
-        )
-
-    spz = payload.get("spz", False)
-    if not isinstance(spz, bool):
-        return _error_response(
-            f"{pole('spz', 'add_zespol_uziemiajacy_sn')}: oczekiwano wartości tak/nie.",
-            "zu.payload_invalid",
-        )
-    trafo_refs_surowe = payload.get("wylaczenie_od_transformatorow_refs") or []
-    if not isinstance(trafo_refs_surowe, list) or not all(
-        isinstance(r, str) and r for r in trafo_refs_surowe
-    ):
-        return _error_response(
-            f"{pole('wylaczenie_od_transformatorow_refs', 'add_zespol_uziemiajacy_sn')}: oczekiwano listy "
-            "transformatorów.",
-            "zu.payload_invalid",
-        )
-    trafo_refs = sorted(set(trafo_refs_surowe))
-    znane_trafo = {t.get("ref_id") for t in enm.get("transformers", []) if isinstance(t, dict)}
-    nieznane = [r for r in trafo_refs if r not in znane_trafo]
-    if nieznane:
-        return _error_response(
-            "Wyłączenie zespołu wskazuje transformatory spoza modelu — wybierz transformatory "
-            "WN/SN stacji.",
-            "zu.transformer_not_found",
-        )
-    odbior_pw_ref = payload.get("odbior_pw_ref")
-    if odbior_pw_ref is not None:
-        odbior = next(
-            (
-                o
-                for o in enm.get("loads", [])
-                if isinstance(o, dict) and o.get("ref_id") == odbior_pw_ref
-            ),
-            None,
-        )
-        if odbior is None:
-            return _error_response(
-                "Wskazany odbiór potrzeb własnych nie istnieje w modelu.", "zu.load_not_found"
-            )
-
+    new_enm = kopia_graniczna_enm(enm)
+    nazwa = nazwa_nadana(payload.get("name"))
     if istniejacy is not None:
         ref = str(istniejacy["ref_id"])
+        transformator = next(t for t in new_enm["transformers"] if t.get("ref_id") == ref)
+        poprzedni = (
+            transformator.get("hv_neutral")
+            if isinstance(transformator.get("hv_neutral"), dict)
+            else {}
+        )
+        if poprzedni.get("dawca") is not None:
+            konfiguracja["dawca"] = copy.deepcopy(poprzedni["dawca"])
+        transformator["hv_neutral"] = konfiguracja
+        if nazwa:
+            transformator["name"] = nazwa
+        if catalog_ref is not None and catalog_ref != transformator.get("catalog_ref"):
+            transformator["catalog_ref"] = catalog_ref
+            transformator.setdefault("meta", {})["catalog_binding"] = (
+                copy.deepcopy(binding) if binding else None
+            )
+            _apply_catalog_metadata(transformator, None, default_namespace="TRAFO_SN_NN")
+            _apply_materialized_transformer_fields(transformator, parametry_tu)
+        created: list[str] = []
     else:
         seed = _wolne_ziarno(
             enm,
             _compute_seed({"op": "zespol_uziemiajacy_sn", "bus": bus_ref, "cat": catalog_ref}),
-            lambda ziarno: [_make_id("zu", ziarno, "zespol")],
+            lambda ziarno: [_make_id("zu", ziarno, "zu_transformer")],
         )
-        ref = _make_id("zu", seed, "zespol")
-    rekord: dict[str, Any] = {
-        "ref_id": ref,
-        "name": nazwa_nadana(payload.get("name"))
-        or (nazwa_nadana(istniejacy.get("name")) if istniejacy else None)
-        or opis_bez_nazwy("zespoly_uziemiajace"),
-        "bus_ref": bus_ref,
-        "bay_ref": bay_ref if isinstance(bay_ref, str) else None,
-        "catalog_ref": catalog_ref,
-        "catalog_namespace": PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
-        "parameter_source": "CATALOG",
-        "materialized_params": copy.deepcopy(parametry_tu),
-        "odbior_pw_ref": odbior_pw_ref,
-        "dlawik": dlawik,
-        "rezystor": rezystor,
-        "uziemienie_bezposrednie": bezposrednie,
-        "spz": spz,
-        "wylaczenie_od_transformatorow_refs": trafo_refs,
-        "tags": [],
-        "meta": {"catalog_binding": copy.deepcopy(binding) if binding else None},
-    }
-    new_enm = kopia_graniczna_enm(enm)
-    lista = new_enm.setdefault("zespoly_uziemiajace", [])
-    if istniejacy is not None:
-        indeks = next(i for i, z in enumerate(lista) if z.get("ref_id") == ref)
-        lista[indeks] = rekord
-    else:
-        lista.append(rekord)
+        pole_rec = pole_modelu(enm, bay_ref) if isinstance(bay_ref, str) else None
+        created, blad = _zainstaluj_transformator_zespolu(
+            new_enm,
+            hv_bus_ref=bus_ref,
+            szyna_sekcji_ref=str(szyna_sekcji or bus_ref),
+            field_ref=bay_ref if isinstance(bay_ref, str) else None,
+            station_ref=(pole_rec or {}).get("station_ref") if pole_rec else None,
+            prefiks="zu",
+            seed=seed,
+            catalog_ref=str(catalog_ref),
+            binding=binding,
+            parametry=parametry_tu,
+            konfiguracja=konfiguracja,
+            nazwa=nazwa
+            or f"Transformator uziemiający — {nazwa_nadana((pole_rec or {}).get('name')) or opis_bez_nazwy('transformers')}",
+        )
+        if blad is not None:
+            return blad
+        ref = created[0]
     return _jako_proba(
         _response(
             new_enm,
-            created=[] if istniejacy is not None else [ref],
+            created=created,
             selection_id=ref,
-            selection_type="zespol_uziemiajacy",
+            selection_type="transformer",
             events=[
                 {
                     "event_seq": 1,
@@ -9369,12 +9541,16 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True
     ),
     PozycjaBramyKatalogowejV2("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy elementy zespołu uziemiającego.
+    # Karta ZU-JEDEN-NOSNIK: trzy elementy zespołu uziemiającego (transformator ZNyn11 z przestrzeni
+    # transformatorów SN/nN, dławik, rezystor).
     PozycjaBramyKatalogowejV2(
-        "add_zespol_uziemiajacy_sn", "catalog_binding", "TRANSFORMATOR_UZIEMIAJACY", True
+        "add_zespol_uziemiajacy_sn",
+        "catalog_binding",
+        PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        True,
     ),
     PozycjaBramyKatalogowejV2(
-        "add_zespol_uziemiajacy_sn", "catalog_ref", "TRANSFORMATOR_UZIEMIAJACY", True
+        "add_zespol_uziemiajacy_sn", "catalog_ref", PRZESTRZEN_TRANSFORMATORA_UZIEMIAJACEGO, True
     ),
     PozycjaBramyKatalogowejV2(
         "add_zespol_uziemiajacy_sn", "dlawik.catalog_ref", "DLAWIK_GASZACY", True

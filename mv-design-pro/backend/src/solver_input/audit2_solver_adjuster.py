@@ -39,10 +39,10 @@ from network_model.catalog.audit2_catalogs import (
 #     meldowal ja w sladzie jako „zastosowana". Zadna z tych liczb nie miala
 #     zrodla, a fizycznie stosunek Z0/Z1 zalezy od pojemnosci doziemnej sieci,
 #     nastrojenia dlawika albo rezystora RAZEM z impedancja petli — nie od nazwy
-#     wariantu. Impedancje kolejnosci zerowej niesie model: zespol uziemiajacy
-#     sekcji SN (`EnergyNetworkModel.zespoly_uziemiajace`, Z_0,TU + 3*Z_N — karta
-#     UX-04/POLE-ZU-SKLADOWA-ZEROWA, `enm.uziemienie_sekcji`), punkt neutralny uzwojen
-#     transformatorow i zrodlo poza pasmem SN (`Source.z0_z1_ratio` / `r0_ohm` /
+#     wariantu. Impedancje kolejnosci zerowej niesie model: punkt neutralny uzwojen
+#     transformatorow (w tym transformatora uziemiajacego ZNyn11 zespolu uziemiajacego,
+#     Z_0 zygzaka + 3*Z_N z wyposazenia `hv_neutral` — karta ZU-JEDEN-NOSNIK,
+#     `enm.punkt_neutralny_zespolu`) i zrodlo poza pasmem SN (`Source.z0_z1_ratio` / `r0_ohm` /
 #     `x0_ohm`), i to z nich liczy SC1F.
 
 

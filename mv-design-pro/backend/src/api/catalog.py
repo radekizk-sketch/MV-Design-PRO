@@ -392,9 +392,15 @@ def list_shunt_capacitor_types() -> list[dict[str, Any]]:
 
 @router.get("/earthing-transformer-types")
 def list_earthing_transformer_types() -> list[dict[str, Any]]:
-    """Transformatory uziemiające ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — katalog operacji
-    `add_zespol_uziemiajacy_sn` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA)."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_earthing_transformer_types()]
+    """Transformatory uziemiające ZNyn11 — pozycje katalogu transformatorów SN/nN
+    (``TRAFO_SN_NN``) z uzwojeniem górnym w zygzak z punktem neutralnym; katalog operacji
+    `add_zespol_uziemiajacy_sn` (karta ZU-JEDEN-NOSNIK: zespół uziemiający jest transformatorem,
+    jedna przestrzeń katalogu, ten sam rekord co lista `/transformer-types`)."""
+    return [
+        item.to_dict()
+        for item in get_default_mv_catalog().list_transformer_types()
+        if (item.vector_group or "").upper().startswith("ZN")
+    ]
 
 
 @router.get("/arc-suppression-coil-types")

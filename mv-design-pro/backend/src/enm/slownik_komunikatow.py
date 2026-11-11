@@ -524,7 +524,6 @@ NAZWY_KOLEKCJI_PL: dict[str, str] = {
     "loads": "odbiór",
     "generators": "wytwórca",
     "shunt_capacitors": "bateria kondensatorów",
-    "zespoly_uziemiajace": "zespół uziemiający",
     "substations": "stacja",
     "bays": "pole rozdzielnicy",
     "junctions": "węzeł rozgałęźny",

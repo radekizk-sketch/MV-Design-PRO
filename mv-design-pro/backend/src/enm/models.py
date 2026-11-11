@@ -37,7 +37,6 @@ from network_model.core.bateria_kondensatorow import (
     sprzecznosc_parametrow_baterii,
 )
 from network_model.core.uziemienie import (
-    GrupaTransformatoraUziemiajacego,
     RegulacjaDlawika,
     RolaUziemnika,
     StanLacznikaPunktuNeutralnego,
@@ -81,26 +80,122 @@ UkladSieciNn = Literal["TN-S", "TN-C-S", "TN-C", "TT", "IT"]
 UKLADY_SIECI_NN: tuple[str, ...] = get_args(UkladSieciNn)
 
 
+class RezystorWymuszajacyAwsc(BaseModel):
+    """Rezystor wymuszający składową czynną prądu doziemnego (AWSC, rysunek Z.13).
+
+    Zeszyt 1 §16: rezystor zabudowany po stronie wtórnej dławika (uzwojenie 500 V),
+    wymuszający po stronie pierwotnej prąd 20–40 A; strona pierwotna przy prądach > 40 A.
+    ``i_wymuszany_a`` = prąd czynny po stronie PIERWOTNEJ (ta wielkość wchodzi do Z_N
+    jako R_w = U_n/(√3·I_w) równolegle z X_L). Łącznik rezystora jest w stanie normalnym
+    otwarty (automatyka w spoczynku) — z natury urządzenia załączanego czasowo, więc model
+    nie niesie jego stanu: przypadek obliczeniowy wybiera stan ``stan_awsc`` scenariusza
+    zwarciowego (Case Immutability Rule; ``spoczynek`` albo ``zalaczony``). Czasy automatyki
+    są daną dla logiki łączeniowej i zabezpieczeń, nie dla fizyki Z_N.
+    """
+
+    i_wymuszany_a: Annotated[float, Field(gt=0)] | None = None
+    strona: StronaRezystoraAwsc | None = None
+    czas_zwloki_s: Annotated[float, Field(ge=0)] | None = None
+    czas_zalaczenia_s: Annotated[float, Field(gt=0)] | None = None
+
+
+class DlawikGaszacy(BaseModel):
+    """Dławik gaszący w punkcie neutralnym transformatora uziemiającego (Z.13, Z.14).
+
+    Zakres regulacji I_min–I_max (Zeszyt 1 §16: dobór na minimum 40–400 A, regulacja płynna
+    10–100 %), regulacja płynna albo zaczepowa, stan dostrojenia ``i_nastawy_a`` (prąd
+    indukcyjny nastawiony — wynik regulacji nadążnej albo położenie zaczepu). Brak nastawy
+    = wartość robocza ESTIMATED (środek zakresu), nigdy cicha domyślka. ``stan_odlacznika``
+    = odłącznik dławika (Zeszyt 1 §16: odłączenie dławika bez wyłączania transformatora
+    uziemiającego; Z.14: odłącznik każdej gałęzi).
+    """
+
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    materialized_params: dict | None = None
+    i_min_a: Annotated[float, Field(gt=0)] | None = None
+    i_max_a: Annotated[float, Field(gt=0)] | None = None
+    regulacja: RegulacjaDlawika | None = None
+    liczba_zaczepow: Annotated[int, Field(ge=2)] | None = None
+    i_nastawy_a: Annotated[float, Field(gt=0)] | None = None
+    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
+    awsc: RezystorWymuszajacyAwsc | None = None
+
+
+class RezystorUziemiajacy(BaseModel):
+    """Rezystor uziemiający punkt neutralny (Z.14 gałąź rezystora, Z.15).
+
+    ``r_ohm`` — rezystancja [Ω], ``i_n_a`` — prąd znamionowy [A], ``t_s`` — dopuszczalny
+    czas przepływu prądu znamionowego [s]. ``stan_odlacznika`` — odłącznik gałęzi rezystora.
+    """
+
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    materialized_params: dict | None = None
+    r_ohm: Annotated[float, Field(gt=0)] | None = None
+    i_n_a: Annotated[float, Field(gt=0)] | None = None
+    t_s: Annotated[float, Field(gt=0)] | None = None
+    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
+
+
+class DawcaPunktuNeutralnego(BaseModel):
+    """Źródło, którego opis punktu neutralnego przeniesiono na transformator uziemiający
+    (karta ZU-JEDEN-NOSNIK; para przenieś/oddaj, ``enm.zespol_uziemiajacy``).
+
+    Typowany zapis pary — JEDYNY warunek oddania: usunięcie transformatora uziemiającego
+    oddaje źródłu ``zrodlo_ref`` dokładnie ten opis i te dane składowej zerowej, które zeszły
+    z niego przy przeniesieniu (reguła KLASA §3, predykaty parami). Fizyka go nie czyta.
+    """
+
+    zrodlo_ref: str
+    neutral_grounding: GroundingConfig | None = None
+    r0_ohm: float | None = None
+    x0_ohm: float | None = None
+    z0_z1_ratio: float | None = None
+
+
 class GroundingConfig(BaseModel):
     """Sposób pracy punktu neutralnego — JEDYNY typ w systemie (W5-A §1 p. 1).
 
     Nośniki: ``Transformer.hv_neutral``/``lv_neutral`` (punkt gwiazdowy uzwojenia
     z wyprowadzonym neutralnym) i ``Source.neutral_grounding`` (punkt neutralny sieci
     110 kV albo nN za granicą modelu — karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3).
-    Punkt neutralny sieci SN opisuje zespół uziemiający (``ZespolUziemiajacy``) albo
-    uzwojenie transformatora — ``enm/uziemienie_sekcji.py``. Zero kopii: ``Bus.grounding``
-    i ``substation.meta["grounding"]`` skasowane z migracją przy wczytaniu.
+    Punkt neutralny sieci SN opisuje punkt neutralny uzwojenia transformatora — w tym
+    transformatora uziemiającego zespołu uziemiającego (karta ZU-JEDEN-NOSNIK) —
+    ``enm/uziemienie_sekcji.py``. Zero kopii: ``Bus.grounding`` i
+    ``substation.meta["grounding"]`` skasowane.
+
+    Wyposażenie punktu neutralnego transformatora uziemiającego (karta ZU-JEDEN-NOSNIK §0
+    pkt 2, ENEA Zeszyt 1 §16, rysunki Z.13/Z.14/Z.15) — WYŁĄCZNIE na ``hv_neutral``
+    transformatora uziemiającego (``enm.punkt_neutralny_zespolu.jest_transformatorem_uziemiajacym``):
+    ``dlawik`` (Z.13, z opcjonalnym rezystorem wymuszającym AWSC), ``rezystor`` (Z.15) albo
+    oba równolegle (Z.14, każda gałąź z własnym odłącznikiem). Z_N takiego punktu wynika
+    z gałęzi (``r_ohm``/``x_ohm`` puste — jedna droga opisu), typ punktu jest z nimi zgodny:
+    ``petersen_coil`` ⇔ dławik, ``resistor_grounded`` ⇔ sam rezystor, ``directly_grounded`` —
+    jawna deklaracja uziemienia bezpośredniego (z dławikiem/rezystorem: sprzeczność nazwana).
+    ``spz`` i ``wylaczenie_od_transformatorow_refs`` — automatyka zespołu (Zeszyt 1 §26.9.6,
+    IRiESD II.4.5.4.3.5); ``dawca`` — zapis pary przeniesienia punktu neutralnego źródła.
     """
 
     type: TypPunktuNeutralnego
     r_ohm: float | None = None
     x_ohm: float | None = None
-    #: Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd czynny wymuszenia automatyki AWSC (rezystor
-    #: wymuszający równoległy do dławika, strona pierwotna, A) — wyłącznie przy dławiku
-    #: (``petersen_coil``); predykat ``enm.uziemienie.blad_konfiguracji_uziemienia``. Rezystor
-    #: R_W = U_n/(√3·I_W) dołączany po zwłoce automatyki ZAWSC (nastawa funkcji w sterowniku).
-    #: ``None`` = punkt neutralny bez AWSC.
-    awsc_prad_wymuszenia_a: float | None = None
+    dlawik: DlawikGaszacy | None = None
+    rezystor: RezystorUziemiajacy | None = None
+    spz: bool = False
+    wylaczenie_od_transformatorow_refs: list[str] = []
+    dawca: DawcaPunktuNeutralnego | None = None
+
+    @property
+    def ma_wyposazenie_zespolu(self) -> bool:
+        """Czy konfiguracja niesie wyposażenie punktu neutralnego zespołu uziemiającego."""
+        return (
+            self.dlawik is not None
+            or self.rezystor is not None
+            or self.spz
+            or bool(self.wylaczenie_od_transformatorow_refs)
+            or self.dawca is not None
+        )
 
 
 #: Zbiór faz przyłączenia elementu (karta W5-D, decyzja F-1 `CANONICAL_TWIN_ARCHITECTURE.md`):
@@ -807,123 +902,6 @@ class ShuntCapacitor(ENMElement):
         if sprzecznosc is not None:
             raise ValueError(f"bateria {self.ref_id!r}: {sprzecznosc}")
         return self
-
-
-# ---------------------------------------------------------------------------
-# ZespolUziemiajacy (zespół uziemiający punktu neutralnego sieci SN — ENEA Z.13/Z.14/Z.15)
-# ---------------------------------------------------------------------------
-
-
-class RezystorWymuszajacyAwsc(BaseModel):
-    """Rezystor wymuszający składową czynną prądu doziemnego (AWSC, rysunek Z.13).
-
-    Zeszyt 1 §16: rezystor zabudowany po stronie wtórnej dławika (uzwojenie 500 V),
-    wymuszający po stronie pierwotnej prąd 20–40 A; strona pierwotna przy prądach > 40 A.
-    ``i_wymuszany_a`` = prąd czynny po stronie PIERWOTNEJ (ta wielkość wchodzi do Z_N
-    jako R_w = U_n/(√3·I_w) równolegle z X_L). Łącznik rezystora jest w stanie normalnym
-    otwarty (automatyka w spoczynku) — z natury urządzenia załączanego czasowo, więc model
-    nie niesie jego stanu: przypadek obliczeniowy wybiera stan ``stan_awsc`` scenariusza
-    zwarciowego (Case Immutability Rule; ``spoczynek`` albo ``zalaczony``). Czasy automatyki
-    są daną dla logiki łączeniowej i zabezpieczeń, nie dla fizyki Z_N.
-    """
-
-    i_wymuszany_a: Annotated[float, Field(gt=0)] | None = None
-    strona: StronaRezystoraAwsc | None = None
-    czas_zwloki_s: Annotated[float, Field(ge=0)] | None = None
-    czas_zalaczenia_s: Annotated[float, Field(gt=0)] | None = None
-
-
-class DlawikGaszacy(BaseModel):
-    """Dławik gaszący w punkcie neutralnym transformatora uziemiającego (Z.13, Z.14).
-
-    Zakres regulacji I_min–I_max (Zeszyt 1 §16: dobór na minimum 40–400 A, regulacja płynna
-    10–100 %), regulacja płynna albo zaczepowa, stan dostrojenia ``i_nastawy_a`` (prąd
-    indukcyjny nastawiony — wynik regulacji nadążnej albo położenie zaczepu). Brak nastawy
-    = wartość robocza ESTIMATED (środek zakresu), nigdy cicha domyślka. ``stan_odlacznika``
-    = odłącznik dławika (Zeszyt 1 §16: odłączenie dławika bez wyłączania transformatora
-    uziemiającego; Z.14: odłącznik każdej gałęzi).
-    """
-
-    catalog_ref: str | None = None
-    catalog_namespace: str | None = None
-    materialized_params: dict | None = None
-    i_min_a: Annotated[float, Field(gt=0)] | None = None
-    i_max_a: Annotated[float, Field(gt=0)] | None = None
-    regulacja: RegulacjaDlawika | None = None
-    liczba_zaczepow: Annotated[int, Field(ge=2)] | None = None
-    i_nastawy_a: Annotated[float, Field(gt=0)] | None = None
-    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
-    awsc: RezystorWymuszajacyAwsc | None = None
-
-
-class RezystorUziemiajacy(BaseModel):
-    """Rezystor uziemiający punkt neutralny (Z.14 gałąź rezystora, Z.15).
-
-    ``r_ohm`` — rezystancja [Ω], ``i_n_a`` — prąd znamionowy [A], ``t_s`` — dopuszczalny
-    czas przepływu prądu znamionowego [s]. ``stan_odlacznika`` — odłącznik gałęzi rezystora.
-    """
-
-    catalog_ref: str | None = None
-    catalog_namespace: str | None = None
-    materialized_params: dict | None = None
-    r_ohm: Annotated[float, Field(gt=0)] | None = None
-    i_n_a: Annotated[float, Field(gt=0)] | None = None
-    t_s: Annotated[float, Field(gt=0)] | None = None
-    stan_odlacznika: StanLacznikaPunktuNeutralnego = "zamkniety"
-
-
-class ZespolUziemiajacy(ENMElement):
-    """Zespół uziemiający sieci SN: transformator uziemiający ZN z elementami punktu
-    neutralnego (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA) — JEDYNY nośnik uziemienia punktu
-    neutralnego sieci SN obok punktu neutralnego uzwojenia transformatora.
-
-    Element fizyczny na końcu toru pola ZU (port ``transformator_uziemiajacy`` szablonu pola):
-    ``bus_ref`` — szyna SN, do której przyłączony jest transformator uziemiający (przez
-    wyłącznik pola ZU modelowany jak każdy łącznik gałęzią ``SwitchBranch`` — stan łącznika
-    ZU wynika z topologii, nie z kopii w tym rekordzie); ``bay_ref`` — pole ZU.
-
-    Transformator uziemiający (``catalog_ref`` w przestrzeni ``TRANSFORMATOR_UZIEMIAJACY``):
-    grupa ZNyn, S_n, U_n, impedancja zerowa Z_0,TU = R_0 + jX_0 [Ω/fazę] i uzwojenie potrzeb
-    własnych 400/230 V (drugi port: ``odbior_pw_ref`` wskazuje odbiór potrzeb własnych stacji
-    zasilany z tego uzwojenia — Zeszyt 1 §27.1, potrzeby własne GPZ nie mają osobnego pola).
-    W składowej zgodnej i przeciwnej zygzak nie wnosi impedancji (prąd magnesujący pomijalny);
-    w składowej zerowej zespół jest bocznikiem Z_0 = Z_0,TU + 3·Z_N.
-
-    Punkt neutralny: ``dlawik`` (Z.13, z opcjonalnym ``awsc``), ``rezystor`` (Z.15) albo oba
-    równolegle (Z.14, każda gałąź z własnym odłącznikiem). ``uziemienie_bezposrednie`` —
-    punkt neutralny transformatora uziemiającego połączony wprost z ziemią (Z_N = 0; poza
-    rozwiązaniami dopuszczonymi przez Zeszyt 1 §16, ale fizycznie możliwe) — jawna deklaracja,
-    nigdy wniosek z braku elementów: zespół bez dławika, bez rezystora i bez tej deklaracji
-    jest brakiem MODELU z nazwaną przyczyną, a deklaracja razem z dławikiem lub rezystorem —
-    sprzecznością nazwaną. Wariant i Z_N wyprowadza ``enm.uziemienie_sekcji`` — nigdy kopia
-    w modelu.
-
-    Automatyka (dane reguł walidatora, logika operacji łączeniowych należy do osobnej karty):
-    ``spz`` — SPZ transformatora uziemiającego (Zeszyt 1 §26.9.6: wyłącznie w sieci uziemionej
-    przez rezystor); ``wylaczenie_od_transformatorow_refs`` — transformatory 110 kV/SN, których
-    każde automatyczne wyłączenie pola SN wyłącza ten zespół (IRiESD II.4.5.4.3.5: obowiązkowe
-    przy rezystorze).
-    """
-
-    bus_ref: str
-    bay_ref: str | None = None
-    catalog_ref: str | None = None
-    catalog_namespace: str | None = None
-    parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
-    materialized_params: dict | None = None
-    grupa_polaczen: GrupaTransformatoraUziemiajacego | None = None
-    u_n_kv: Annotated[float, Field(gt=0)] | None = None
-    s_n_kva: Annotated[float, Field(gt=0)] | None = None
-    r0_ohm: Annotated[float, Field(ge=0)] | None = None
-    x0_ohm: Annotated[float, Field(ge=0)] | None = None
-    s_pw_kva: Annotated[float, Field(gt=0)] | None = None
-    u_pw_kv: Annotated[float, Field(gt=0)] | None = None
-    odbior_pw_ref: str | None = None
-    dlawik: DlawikGaszacy | None = None
-    rezystor: RezystorUziemiajacy | None = None
-    uziemienie_bezposrednie: bool = False
-    spz: bool = False
-    wylaczenie_od_transformatorow_refs: list[str] = []
 
 
 # ---------------------------------------------------------------------------
@@ -2474,9 +2452,6 @@ class EnergyNetworkModel(BaseModel):
     loads: list[Load] = []
     generators: list[Generator] = []
     shunt_capacitors: list[ShuntCapacitor] = []
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające SN (transformator ZN + dławik /
-    # rezystor / układ równoległy). Pusta lista poza odciskiem (`enm/hash.py`).
-    zespoly_uziemiajace: list[ZespolUziemiajacy] = []
     substations: list[Substation] = []
     bays: list[Bay] = []
     junctions: list[Junction] = []
@@ -2515,6 +2490,8 @@ class EnergyNetworkModel(BaseModel):
 # Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał
 # się do faktycznej klasy zdefiniowanej niżej w module (linia 929).
 Bay.model_rebuild()
+DawcaPunktuNeutralnego.model_rebuild()
+GroundingConfig.model_rebuild()
 
 
 # ---------------------------------------------------------------------------

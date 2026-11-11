@@ -4,18 +4,20 @@ modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, rozstrzygnięcie §0 pkt 1).
 Sposób uziemienia punktu neutralnego galwanicznie połączonej sieci SN (sekcja szyn GPZ razem
 z odpływami; dwie sekcje przy zamkniętym łączniku szyn są JEDNĄ siecią) wynika wyłącznie z:
 
-* zespołów uziemiających (``EnergyNetworkModel.zespoly_uziemiajace``) przyłączonych do szyn
-  tej sieci — transformator uziemiający ZN i elementy w jego punkcie neutralnym (dławik
-  gaszący, rezystor wymuszający AWSC, rezystor uziemiający; ENEA Zeszyt 1 §16, rysunki
-  Z.13/Z.14/Z.15). Stan wyłącznika pola ZU wynika z topologii (zespół za otwartym łącznikiem
-  nie leży w sieci), stan odłączników gałęzi punktu neutralnego — z rekordu urządzenia, stan
-  automatyki AWSC — z przypadku obliczeniowego (``stan_awsc``, Case Immutability Rule);
 * punktów neutralnych uzwojeń transformatorów, których zacisk leży w tej sieci i których
   model składowej zerowej (``enm.zero_sequence_transformer``, ten sam co w solverze) daje
-  drogę prądu zerowego po tej stronie.
+  drogę prądu zerowego po tej stronie — w tym transformatora uziemiającego zespołu
+  uziemiającego (karta ZU-JEDEN-NOSNIK: JEDYNY nośnik — transformator ZNyn11, którego
+  ``hv_neutral`` niesie wyposażenie punktu neutralnego: dławik gaszący z rezystorem
+  wymuszającym AWSC, rezystor uziemiający, oba równolegle; ENEA Zeszyt 1 §16, rysunki
+  Z.13/Z.14/Z.15; ``enm.punkt_neutralny_zespolu``). Stan wyłącznika pola ZU wynika
+  z topologii (zespół za otwartym łącznikiem nie leży w sieci), stan odłączników gałęzi
+  punktu neutralnego — z rekordu transformatora, stan automatyki AWSC — z przypadku
+  obliczeniowego (``stan_awsc``, Case Immutability Rule).
 
 Czytelnicy (jedna funkcja, wiele miejsc): walidator (reguły zespołu i E-W5-01), mapowanie
-składowej zerowej (bocznik Z_0,TU + 3·Z_N i klasyfikacja przyczyn braku wyniku), dowód
+składowej zerowej (klasyfikacja przyczyn braku wyniku; Z_0 zygzaka + 3·Z_N stampuje
+model transformatora — jedna droga), dowód
 przekładników napięciowych, ładunek DER, analizy V12.6, ``BayEarthFaultPath`` i SLD.
 
 Fizyka Z_N (X_L = U_f/I_L, R = U_f/I_R, Z_a‖Z_b, Z_0,TU + 3·Z_N, I_C = √3·U·B_0) mieszka
@@ -34,17 +36,10 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from network_model.catalog.governance import Poziom, brakuje_wymaganej_referencji
-from network_model.catalog.mv_zespol_uziemiajacy_catalog import (
-    get_all_earthing_transformer_records,
-    get_all_neutral_earthing_resistor_records,
-)
 from network_model.catalog.wartosci_robocze import (
     ETYKIETA_B0,
-    KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
     POLE_B0,
     dana_przyjeta_z0,
-    wartosc_projektanta,
 )
 from network_model.core.uziemienie import (
     ETYKIETA_PL_WARIANTU_UZIEMIENIA,
@@ -59,14 +54,10 @@ from network_model.core.uziemienie import (
 from network_model.core.ybus import S_BASE_MVA
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
-    impedancja_punktu_neutralnego_ohm,
     impedancja_rownolegla_ohm,
     impedancja_z_napiecia_i_mocy_ohm,
     impedancja_zerowa_zespolu_ohm,
-    prad_elementu_punktu_neutralnego_a,
     prad_pojemnosciowy_doziemienia_a,
-    reaktancja_dlawika_ohm,
-    rezystancja_z_pradu_ohm,
 )
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.doziemienie_sn import (
@@ -75,35 +66,35 @@ from network_model.solvers.doziemienie_sn import (
     WynikDoziemienia,
     oblicz_doziemienie,
 )
-from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
-from werdykt.proweniencja import FieldQuality
+from werdykt.kontrakt import DanaPrzyjeta
 
 from .bateria_kondensatorow import admitancja_zerowa_baterii_s
 from .models import (
     Cable,
-    DlawikGaszacy,
     EnergyNetworkModel,
     GroundingConfig,
     OverheadLine,
-    RezystorUziemiajacy,
     ShuntCapacitor,
     Transformer,
-    ZespolUziemiajacy,
 )
 from .nazwy_elementow import nazwa_elementu
+from .punkt_neutralny_zespolu import (
+    PROG_REZONANSU,
+    GalazPunktuNeutralnego,
+    ParametrPunktuNeutralnego,
+    RezystorPunktuNeutralnego,
+    _dana_przyjeta_parametru,
+    _rezystor_uzwojenia,
+    _zespolona,
+    jest_transformatorem_uziemiajacym,
+    parametry_z0_zygzaka,
+    wyposazenie_zespolu,
+)
 from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from .topology import derive
+from .uziemienie import uziemienie_grounded
 from .zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 
-#: Źródło wartości parametru urządzenia punktu neutralnego.
-#: ``MODEL`` — wartość projektanta w rekordzie elementu; ``KATALOG`` — dana pozycji katalogu
-#: (nieoznaczona jako robocza); ``KATALOG_ROBOCZA`` — pozycja typowa katalogu oznaczona
-#: w ``wartosci_robocze``; ``PROPOZYCJA`` — wartość robocza tego modułu (zasada nr 4);
-#: ``WYPROWADZONA`` — wynika z innej danej modelu (np. R z prądu znamionowego).
-ZrodloParametru = Literal["MODEL", "KATALOG", "KATALOG_ROBOCZA", "PROPOZYCJA", "WYPROWADZONA"]
-_ZRODLA_ROBOCZE: frozenset[str] = frozenset({"KATALOG_ROBOCZA", "PROPOZYCJA"})
-
-RodzajGalezi = Literal["dlawik", "rezystor", "rezystor_awsc", "bezposrednie"]
 RodzajPunktu = Literal["zespol_uziemiajacy", "uzwojenie_transformatora"]
 
 #: Przyczyny braku wyniku składowej zerowej — trzy nazwane (wiersz §C SKLADOWA-ZEROWA).
@@ -144,154 +135,6 @@ def impedancja_zerowa_zrodla_dozwolona(napiecie_kv: float) -> bool:
     return pasmo_napieciowe(napiecie_kv) != "SN"
 
 
-def czesci_zespolu_bez_katalogu(zu: ZespolUziemiajacy, poziom: Poziom) -> tuple[str, ...]:
-    """Części zespołu uziemiającego bez pozycji katalogu, której oś ``poziom`` wymaga
-    (``catalog.governance.wymagalnosc_katalogu("zespol_uziemiajacy")``).
-
-    JEDEN predykat dla walidatora (E009), gotowości zwarciowej i bram importu ZIP/CGMES
-    (Catalog Binding Rule): transformator uziemiający zawsze, dławik gaszący i rezystor —
-    gdy są w punkcie neutralnym. Zwraca polskie nazwy części w stałej kolejności.
-    """
-    czesci: list[str] = []
-    if brakuje_wymaganej_referencji(poziom, zu.catalog_ref):
-        czesci.append("transformator uziemiający")
-    if zu.dlawik is not None and brakuje_wymaganej_referencji(poziom, zu.dlawik.catalog_ref):
-        czesci.append("dławik gaszący")
-    if zu.rezystor is not None and brakuje_wymaganej_referencji(poziom, zu.rezystor.catalog_ref):
-        czesci.append("rezystor uziemiający")
-    return tuple(czesci)
-
-
-#: Zakres dławika przyjmowany, gdy ani rekord, ani katalog go nie podaje.
-PROPOZYCJA_ZAKRESU_DLAWIKA_A: tuple[float, float] = (40.0, 400.0)
-_PODSTAWA_ZAKRESU_DLAWIKA = (
-    "ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A (wartość robocza)"
-)
-#: Prąd czynny wymuszany przez AWSC po stronie pierwotnej — środek przedziału 20–40 A.
-PROPOZYCJA_PRADU_AWSC_A = 30.0
-_PODSTAWA_PRADU_AWSC = (
-    "ENEA Zeszyt 1 §16 s. 30: AWSC wymusza po stronie pierwotnej prądy 20–40 A; przyjęto "
-    "środek przedziału 30 A (wartość robocza)"
-)
-_PODSTAWA_NASTAWY_DLAWIKA = (
-    "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia "
-    "nastawą regulatora albo położeniem zaczepu"
-)
-#: Rozstrojenie, poniżej którego nastawa dławika jest uznana za pracę w punkcie
-#: rezonansowym (Zeszyt 1 §16 s. 30: „nie dopuszcza się pracy … w punkcie rezonansowym … IL
-#: = IC”). Próg 0,1 % jest założeniem jawnym: równość prądów z dokładnością zaokrąglenia
-#: nastawy.
-PROG_REZONANSU = 1e-3
-
-
-@dataclass(frozen=True)
-class ParametrPunktuNeutralnego:
-    """Jeden parametr urządzenia punktu neutralnego z pochodzeniem i podstawą."""
-
-    nazwa: str
-    etykieta_pl: str
-    wartosc: float
-    jednostka: str
-    zrodlo: ZrodloParametru
-    podstawa_pl: str
-
-    @property
-    def roboczy(self) -> bool:
-        return self.zrodlo in _ZRODLA_ROBOCZE
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "nazwa": self.nazwa,
-            "etykieta_pl": self.etykieta_pl,
-            "wartosc": self.wartosc,
-            "jednostka": self.jednostka,
-            "zrodlo": self.zrodlo,
-            "podstawa_pl": self.podstawa_pl,
-        }
-
-
-def _zespolona(z: complex | None) -> dict[str, float] | None:
-    return None if z is None else {"r_ohm": z.real, "x_ohm": z.imag}
-
-
-@dataclass(frozen=True)
-class GalazPunktuNeutralnego:
-    """Gałąź punktu neutralnego zespołu (dławik, rezystor, rezystor AWSC, połączenie wprost).
-
-    ``z_ohm`` — impedancja gałęzi [Ω] (bez mnożnika 3 obwodu zerowego); ``w_ruchu`` — gałąź
-    przewodzi w danym stanie: odłącznik zamknięty (AWSC: wyłącznie w stanie załączonym).
-    """
-
-    rodzaj: RodzajGalezi
-    z_ohm: complex
-    prad_a: float | None
-    odlacznik_zamkniety: bool
-    tylko_awsc_zalaczony: bool = False
-    #: Parametry, z których wynika ``z_ohm`` (dławik: nastawa, a zakres tylko wtedy, gdy
-    #: nastawa jest jego środkiem; rezystor: R; AWSC: prąd wymuszany) — podstawa danych
-    #: przyjętych WYNIKU z tą gałęzią (``PunktUziemienia.dane_przyjete_bocznika``).
-    parametry_z: tuple[ParametrPunktuNeutralnego, ...] = ()
-
-    def w_ruchu(self, stan_awsc: StanAwsc) -> bool:
-        if not self.odlacznik_zamkniety:
-            return False
-        return not self.tylko_awsc_zalaczony or stan_awsc == "zalaczony"
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "rodzaj": self.rodzaj,
-            "z_ohm": _zespolona(self.z_ohm),
-            "prad_a": self.prad_a,
-            "odlacznik_zamkniety": self.odlacznik_zamkniety,
-            "tylko_awsc_zalaczony": self.tylko_awsc_zalaczony,
-        }
-
-
-def _dana_przyjeta_parametru(p: ParametrPunktuNeutralnego, nazwa_punktu: str) -> DanaPrzyjeta:
-    """Dana przyjęta ``ESTIMATED`` z parametru roboczego urządzenia punktu neutralnego."""
-    return DanaPrzyjeta(
-        nazwa_pl=f"{p.etykieta_pl} ({nazwa_punktu})",
-        wartosc=Wielkosc(wartosc=p.wartosc, jednostka=p.jednostka),
-        powod_pl=(
-            f"{p.podstawa_pl}. Zmień wartość: {p.etykieta_pl} w parametrach zespołu "
-            "uziemiającego (dane producenta albo nastawa)."
-        ),
-        jakosc=FieldQuality.ESTIMATED,
-    )
-
-
-@dataclass(frozen=True)
-class RezystorPunktuNeutralnego:
-    """Rezystor w punkcie neutralnym sieci SN — dane do sprawdzenia rezystora (projekt
-    uziemienia V12.6): R, prąd znamionowy I_n i dopuszczalny czas jego przepływu t_n.
-
-    R i I_n to TE SAME rozstrzygnięcia co gałąź bocznika składowej zerowej (``_galaz_rezystora``
-    — jedno miejsce pierwszeństwa projekt > katalog > wartość robocza); t_n wchodzi wyłącznie
-    do sprawdzenia cieplnego rezystora, więc nie należy do danych przyjętych zwarcia.
-    """
-
-    element_ref: str
-    nazwa_pl: str
-    r: ParametrPunktuNeutralnego
-    i_n: ParametrPunktuNeutralnego
-    t_n: ParametrPunktuNeutralnego
-    #: Impedancja zerowa w szeregu z rezystorem [Ω/fazę] (droga prądu rezystora przy
-    #: doziemieniu: Z_0/3 + R — sprawdzenie cieplne rezystora wg IEC 60909-0 i prąd
-    #: doziemienia ``doziemienie_sn``): transformator uziemiający zespołu Z_0,TU albo — dla
-    #: rezystora w punkcie neutralnym uzwojenia transformatora sieci — impedancja zerowa
-    #: transformatora Z_T0 (ten sam model co stempel mapowania, ``z0_uzwojenia_ohm``).
-    z0_tu_ohm: complex | None = None
-    #: Parametry Z_0,TU (R0, X0) zespołu — dane przyjęte sprawdzenia cieplnego, gdy robocze.
-    parametry_tu: tuple[ParametrPunktuNeutralnego, ...] = ()
-
-    def dane_przyjete(self) -> tuple[DanaPrzyjeta, ...]:
-        return tuple(
-            _dana_przyjeta_parametru(p, self.nazwa_pl)
-            for p in (self.r, self.i_n, self.t_n, *self.parametry_tu)
-            if p.roboczy
-        )
-
-
 @dataclass(frozen=True)
 class PunktUziemienia:
     """Punkt uziemienia sieci SN: zespół uziemiający albo punkt neutralny uzwojenia TR."""
@@ -326,6 +169,9 @@ class PunktUziemienia:
     z_n_uzwojenia_ohm: complex | None = None
     z0_uzwojenia_ohm: complex | None = None
     droga_szeregowa: bool = False
+    #: Sposób uziemienia zadeklarowany konfiguracją (``GroundingConfig``) — zespół zawsze;
+    #: uzwojenie wyłącznie z litery grupy (bez konfiguracji) — ``False`` (bloker E-W5-04).
+    jawny: bool = True
 
     def rezystor_w_ruchu(self, stan_awsc: StanAwsc) -> RezystorPunktuNeutralnego | None:
         """Rezystor punktu, gdy przewodzi w stanie ``stan_awsc`` (odłącznik gałęzi zamknięty)."""
@@ -687,349 +533,33 @@ class UziemienieSekcji:
         }
 
 
-# ---------------------------------------------------------------------------
-# Rozstrzygnięcie parametrów (projekt > katalog > wartość robocza)
-# ---------------------------------------------------------------------------
-
-
-def _rozstrzygnij(
-    nazwa: str,
-    etykieta_pl: str,
-    jednostka: str,
-    wartosc_elementu: float | None,
-    params: Mapping[str, Any] | None,
-    *,
-    nazwa_w_katalogu: str | None = None,
-    propozycja: tuple[float, str] | None = None,
-) -> ParametrPunktuNeutralnego | None:
-    """Jedno miejsce pierwszeństwa: wartość projektanta > katalog > wartość robocza.
-
-    Wartość elementu równa katalogowej jest wartością katalogu (z jej założeniem) — ten sam
-    predykat ``wartosc_projektanta`` co uzupełnienie katalogu i dane przyjęte gałęzi.
-    """
-    klucz = nazwa_w_katalogu or nazwa
-    params = params or {}
-    katalogowa = params.get(klucz)
-    katalogowa = float(katalogowa) if isinstance(katalogowa, int | float) else None
-    if wartosc_elementu is not None and (
-        katalogowa is None or wartosc_projektanta(wartosc_elementu, katalogowa)
-    ):
-        return ParametrPunktuNeutralnego(
-            nazwa, etykieta_pl, float(wartosc_elementu), jednostka, "MODEL", "wartość projektanta"
-        )
-    if katalogowa is not None:
-        robocze = params.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
-        zalozenie = robocze.get(klucz) if isinstance(robocze, Mapping) else None
-        if isinstance(zalozenie, str):
-            return ParametrPunktuNeutralnego(
-                nazwa, etykieta_pl, katalogowa, jednostka, "KATALOG_ROBOCZA", zalozenie
-            )
-        return ParametrPunktuNeutralnego(
-            nazwa, etykieta_pl, katalogowa, jednostka, "KATALOG", "dana pozycji katalogu"
-        )
-    if propozycja is not None:
-        return ParametrPunktuNeutralnego(
-            nazwa, etykieta_pl, propozycja[0], jednostka, "PROPOZYCJA", propozycja[1]
-        )
-    return None
-
-
-def _najblizsza_pozycja(rekordy: list[dict], u_kv: float) -> dict:
-    return min(rekordy, key=lambda r: (abs(float(r["params"]["u_n_kv"]) - u_kv), r["id"]))
-
-
-def _propozycja_z0_tu(u_kv: float) -> tuple[tuple[float, str], tuple[float, str]]:
-    pozycja = _najblizsza_pozycja(get_all_earthing_transformer_records(), u_kv)
-    p = pozycja["params"]
-    podstawa = (
-        f"pozycja typowa katalogu „{pozycja['name']}” (napięcie znamionowe {p['u_n_kv']:g} kV) — "
-        f"{p[KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU]['r0_ohm']}"
-    )
-    return (float(p["r0_ohm"]), podstawa), (float(p["x0_ohm"]), podstawa)
-
-
-def _propozycja_pradu_rezystora(u_kv: float) -> tuple[float, str]:
-    pozycja = _najblizsza_pozycja(get_all_neutral_earthing_resistor_records(), u_kv)
-    p = pozycja["params"]
-    return float(p["i_n_a"]), (
-        f"prąd znamionowy pozycji typowej katalogu „{pozycja['name']}” — "
-        f"{p[KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU]['i_n_a']}"
-    )
-
-
-def _propozycja_czasu_rezystora(u_kv: float) -> tuple[float, str]:
-    pozycja = _najblizsza_pozycja(get_all_neutral_earthing_resistor_records(), u_kv)
-    p = pozycja["params"]
-    return float(p["t_s"]), (
-        f"dopuszczalny czas przepływu prądu znamionowego pozycji typowej katalogu "
-        f"„{pozycja['name']}” — {p[KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU]['t_s']}"
-    )
-
-
-_ETYKIETA_R = "Rezystancja rezystora uziemiającego"
-_ETYKIETA_I_N = "Prąd znamionowy rezystora uziemiającego"
-_ETYKIETA_T_N = "Dopuszczalny czas przepływu prądu znamionowego rezystora"
-
-
-def _zamkniety(stan: str) -> bool:
-    return stan == "zamkniety"
-
-
-def _galaz_dlawika(
-    dlawik: DlawikGaszacy, u_kv: float, parametry: list[ParametrPunktuNeutralnego]
-) -> tuple[GalazPunktuNeutralnego, ...]:
-    mp = dlawik.materialized_params
-    i_min = _rozstrzygnij(
-        "dlawik.i_min_a",
-        "Prąd minimalny zakresu dławika",
-        "A",
-        dlawik.i_min_a,
-        mp,
-        nazwa_w_katalogu="i_min_a",
-        propozycja=(PROPOZYCJA_ZAKRESU_DLAWIKA_A[0], _PODSTAWA_ZAKRESU_DLAWIKA),
-    )
-    i_max = _rozstrzygnij(
-        "dlawik.i_max_a",
-        "Prąd maksymalny zakresu dławika",
-        "A",
-        dlawik.i_max_a,
-        mp,
-        nazwa_w_katalogu="i_max_a",
-        propozycja=(PROPOZYCJA_ZAKRESU_DLAWIKA_A[1], _PODSTAWA_ZAKRESU_DLAWIKA),
-    )
-    assert i_min is not None and i_max is not None
-    if dlawik.i_nastawy_a is not None:
-        nastawa = ParametrPunktuNeutralnego(
-            "dlawik.i_nastawy_a",
-            "Prąd nastawy dławika",
-            float(dlawik.i_nastawy_a),
-            "A",
-            "MODEL",
-            "nastawa projektanta",
-        )
-    else:
-        robocza_zakresu = i_min.roboczy or i_max.roboczy
-        nastawa = ParametrPunktuNeutralnego(
-            "dlawik.i_nastawy_a",
-            "Prąd nastawy dławika",
-            (i_min.wartosc + i_max.wartosc) / 2.0,
-            "A",
-            "PROPOZYCJA",
-            _PODSTAWA_NASTAWY_DLAWIKA
-            + (" (zakres z wartości roboczej)" if robocza_zakresu else ""),
-        )
-    parametry.extend((i_min, i_max, nastawa))
-    galezie = [
-        GalazPunktuNeutralnego(
-            rodzaj="dlawik",
-            z_ohm=impedancja_punktu_neutralnego_ohm(
-                None, reaktancja_dlawika_ohm(u_kv, nastawa.wartosc)
-            ),
-            prad_a=nastawa.wartosc,
-            odlacznik_zamkniety=_zamkniety(dlawik.stan_odlacznika),
-            parametry_z=(nastawa,) if nastawa.zrodlo == "MODEL" else (i_min, i_max, nastawa),
-        )
-    ]
-    if dlawik.awsc is not None:
-        i_w = _rozstrzygnij(
-            "awsc.i_wymuszany_a",
-            "Prąd czynny wymuszany przez AWSC (strona pierwotna)",
-            "A",
-            dlawik.awsc.i_wymuszany_a,
-            None,
-            propozycja=(PROPOZYCJA_PRADU_AWSC_A, _PODSTAWA_PRADU_AWSC),
-        )
-        assert i_w is not None
-        parametry.append(i_w)
-        galezie.append(
-            GalazPunktuNeutralnego(
-                rodzaj="rezystor_awsc",
-                z_ohm=impedancja_punktu_neutralnego_ohm(
-                    rezystancja_z_pradu_ohm(u_kv, i_w.wartosc), None
-                ),
-                prad_a=i_w.wartosc,
-                # Rezystor AWSC jest przyłączony do uzwojenia wtórnego dławika — przewodzi
-                # tylko przez dławik, więc odłącznik dławika odłącza także jego.
-                odlacznik_zamkniety=_zamkniety(dlawik.stan_odlacznika),
-                tylko_awsc_zalaczony=True,
-                parametry_z=(i_w,),
-            )
-        )
-    return tuple(galezie)
-
-
-def _galaz_rezystora(
-    rezystor: RezystorUziemiajacy,
-    u_kv: float,
-    parametry: list[ParametrPunktuNeutralnego],
-    element_ref: str,
-    nazwa_pl: str,
-) -> tuple[GalazPunktuNeutralnego, RezystorPunktuNeutralnego]:
-    mp = rezystor.materialized_params
-    r = _rozstrzygnij(
-        "rezystor.r_ohm", _ETYKIETA_R, "Ω", rezystor.r_ohm, mp, nazwa_w_katalogu="r_ohm"
-    )
-    i_n = _rozstrzygnij(
-        "rezystor.i_n_a", _ETYKIETA_I_N, "A", rezystor.i_n_a, mp, nazwa_w_katalogu="i_n_a"
-    )
-    if r is None:
-        if i_n is None:
-            prad, podstawa = _propozycja_pradu_rezystora(u_kv)
-            i_n = ParametrPunktuNeutralnego(
-                "rezystor.i_n_a", _ETYKIETA_I_N, prad, "A", "PROPOZYCJA", podstawa
-            )
-        r = ParametrPunktuNeutralnego(
-            "rezystor.r_ohm",
-            _ETYKIETA_R,
-            rezystancja_z_pradu_ohm(u_kv, i_n.wartosc),
-            "Ω",
-            "PROPOZYCJA" if i_n.roboczy else "WYPROWADZONA",
-            f"Rezystancja z napięcia fazowego i prądu znamionowego {i_n.wartosc:g} A ({i_n.podstawa_pl})",
-        )
-    parametry.append(r)
-    if i_n is not None:
-        parametry.append(i_n)
-    z = impedancja_punktu_neutralnego_ohm(r.wartosc, None)
-    galaz = GalazPunktuNeutralnego(
-        rodzaj="rezystor",
-        z_ohm=z,
-        prad_a=prad_elementu_punktu_neutralnego_a(u_kv, z),
-        odlacznik_zamkniety=_zamkniety(rezystor.stan_odlacznika),
-        parametry_z=(r,),
-    )
-    t_n = _rozstrzygnij(
-        "rezystor.t_s",
-        _ETYKIETA_T_N,
-        "s",
-        rezystor.t_s,
-        mp,
-        nazwa_w_katalogu="t_s",
-        propozycja=_propozycja_czasu_rezystora(u_kv),
-    )
-    assert t_n is not None
-    return galaz, RezystorPunktuNeutralnego(
-        element_ref=element_ref,
-        nazwa_pl=nazwa_pl,
-        r=r,
-        i_n=i_n if i_n is not None else _prad_z_rezystancji(u_kv, r),
-        t_n=t_n,
-    )
-
-
-def _prad_z_rezystancji(u_kv: float, r: ParametrPunktuNeutralnego) -> ParametrPunktuNeutralnego:
-    """I_n = U_n/(√3·R) — prąd rezystora przy pełnym U_f, gdy model podaje tylko R."""
-    return ParametrPunktuNeutralnego(
-        "rezystor.i_n_a",
-        _ETYKIETA_I_N,
-        prad_elementu_punktu_neutralnego_a(u_kv, complex(r.wartosc, 0.0)),
-        "A",
-        "PROPOZYCJA" if r.roboczy else "WYPROWADZONA",
-        f"Prąd znamionowy z napięcia fazowego i rezystancji {r.wartosc:g} Ω ({r.podstawa_pl})",
-    )
-
-
-def _rezystor_uzwojenia(
-    cfg: GroundingConfig | None, u_kv: float, element_ref: str, nazwa_pl: str
-) -> RezystorPunktuNeutralnego | None:
-    """Rezystor punktu neutralnego uzwojenia TR uziemionego przez rezystor (R z konfiguracji
-    uzwojenia — wartość projektanta; I_n wyprowadzony z R; t_n — wartość robocza)."""
-    if cfg is None or cfg.type != "resistor_grounded" or not cfg.r_ohm or cfg.r_ohm <= 0:
-        return None
-    r = ParametrPunktuNeutralnego(
-        "rezystor.r_ohm", _ETYKIETA_R, float(cfg.r_ohm), "Ω", "MODEL", "wartość projektanta"
-    )
-    t_s, podstawa = _propozycja_czasu_rezystora(u_kv)
-    return RezystorPunktuNeutralnego(
-        element_ref=element_ref,
-        nazwa_pl=nazwa_pl,
-        r=r,
-        i_n=_prad_z_rezystancji(u_kv, r),
-        t_n=ParametrPunktuNeutralnego(
-            "rezystor.t_s", _ETYKIETA_T_N, t_s, "s", "PROPOZYCJA", podstawa
-        ),
-    )
-
-
-def punkt_zespolu(zu: ZespolUziemiajacy, u_kv: float) -> PunktUziemienia:
-    """Punkt uziemienia z rekordu zespołu przy napięciu sieci ``u_kv`` [kV]."""
-    nazwa = nazwa_elementu(zu, "zespoly_uziemiajace")
-    parametry: list[ParametrPunktuNeutralnego] = []
-    mp = zu.materialized_params
-    propozycja_r0, propozycja_x0 = _propozycja_z0_tu(u_kv)
-    r0 = _rozstrzygnij(
-        "r0_ohm",
-        "Rezystancja zerowa transformatora uziemiającego",
-        "Ω",
-        zu.r0_ohm,
-        mp,
-        propozycja=propozycja_r0,
-    )
-    x0 = _rozstrzygnij(
-        "x0_ohm",
-        "Reaktancja zerowa transformatora uziemiającego",
-        "Ω",
-        zu.x0_ohm,
-        mp,
-        propozycja=propozycja_x0,
-    )
-    assert r0 is not None and x0 is not None
-    parametry.extend((r0, x0))
+def _punkt_zespolu(trafo: Transformer) -> PunktUziemienia:
+    """Punkt uziemienia zespołu uziemiającego — transformatora uziemiającego z wyposażeniem
+    punktu neutralnego (karta ZU-JEDEN-NOSNIK). Gałęzie, Z_N i Z_0,zyg z TYCH SAMYCH
+    rozstrzygnięć co model składowej zerowej (``wyposazenie_zespolu``, ``parametry_z0_zygzaka``
+    przy napięciu górnym transformatora) — bocznik prawdy o uziemieniu i stempel Y0 nie mogą
+    się rozjechać."""
+    wyposazenie = wyposazenie_zespolu(trafo)
+    r0, x0 = parametry_z0_zygzaka(trafo, float(trafo.uhv_kv))
     z0_tu = complex(r0.wartosc, x0.wartosc)
-
-    galezie: list[GalazPunktuNeutralnego] = []
-    rezystor: RezystorPunktuNeutralnego | None = None
-    if zu.dlawik is not None:
-        galezie.extend(_galaz_dlawika(zu.dlawik, u_kv, parametry))
-    if zu.rezystor is not None:
-        galaz_r, rezystor = _galaz_rezystora(zu.rezystor, u_kv, parametry, zu.ref_id, nazwa)
-        rezystor = replace(rezystor, z0_tu_ohm=z0_tu, parametry_tu=(r0, x0))
-        galezie.append(galaz_r)
-    odmowa: str | None = None
-    if zu.uziemienie_bezposrednie:
-        if galezie:
-            odmowa = (
-                f"Zespół uziemiający {nazwa}: zadeklarowano uziemienie bezpośrednie punktu "
-                "neutralnego razem z dławikiem lub rezystorem — sprzeczne (punkt neutralny "
-                "połączony wprost z ziemią zwiera element w punkcie neutralnym)."
-            )
-        else:
-            galezie.append(
-                GalazPunktuNeutralnego(
-                    rodzaj="bezposrednie",
-                    z_ohm=complex(0.0, 0.0),
-                    prad_a=None,
-                    odlacznik_zamkniety=True,
-                )
-            )
-    elif not galezie:
-        odmowa = (
-            f"Zespół uziemiający {nazwa}: brak elementu w punkcie neutralnym transformatora "
-            "uziemiającego (dławika gaszącego, rezystora albo deklaracji uziemienia "
-            "bezpośredniego) — sposób uziemienia sieci nieokreślony."
-        )
+    rezystor = wyposazenie.rezystor
     return PunktUziemienia(
         rodzaj="zespol_uziemiajacy",
-        element_ref=zu.ref_id,
-        bus_ref=zu.bus_ref,
-        nazwa_pl=nazwa,
-        galezie=tuple(galezie),
+        element_ref=trafo.ref_id,
+        bus_ref=trafo.hv_bus_ref,
+        nazwa_pl=wyposazenie.nazwa_pl,
+        galezie=wyposazenie.galezie,
         z0_tu_ohm=z0_tu,
-        parametry=tuple(parametry),
+        parametry=(r0, x0, *wyposazenie.parametry),
         parametry_tu=(r0, x0),
-        odmowa_pl=odmowa,
-        ma_awsc=zu.dlawik is not None and zu.dlawik.awsc is not None,
-        regulacja_ciagla=(None if zu.dlawik is None else _regulacja_dlawika(zu.dlawik) == "ciagla"),
-        rezystor=rezystor,
+        odmowa_pl=wyposazenie.odmowa_pl,
+        ma_awsc=wyposazenie.ma_awsc,
+        regulacja_ciagla=wyposazenie.regulacja_ciagla,
+        rezystor=(
+            None if rezystor is None else replace(rezystor, z0_tu_ohm=z0_tu, parametry_tu=(r0, x0))
+        ),
+        typ_uzwojenia=trafo.hv_neutral.type if trafo.hv_neutral is not None else None,
     )
-
-
-def _regulacja_dlawika(dlawik: DlawikGaszacy) -> str:
-    if dlawik.regulacja is not None:
-        return dlawik.regulacja
-    z_katalogu = (dlawik.materialized_params or {}).get("regulacja")
-    # Zeszyt 1 §16 s. 31: dławik z automatyczną, płynną regulacją — rozwiązanie wymagane;
-    # zaczepy są wyłącznie wtedy, gdy rekord albo katalog je podaje.
-    return str(z_katalogu) if isinstance(z_katalogu, str) else "ciagla"
 
 
 def _punkty_uzwojen(
@@ -1037,13 +567,20 @@ def _punkty_uzwojen(
 ) -> list[PunktUziemienia]:
     """Punkty neutralne uzwojeń transformatorów z drogą prądu zerowego po stronie tej sieci.
 
-    Ten sam model połączeń co solver (``build_transformer_zero_seq_model``): bocznik po
-    stronie leżącej w sieci albo połączenie szeregowe (obie gwiazdy uziemione — droga do ziemi
+    Transformator uziemiający (zespół uziemiający) z zaciskiem górnym w tej sieci — punkt
+    ``zespol_uziemiajacy`` z gałęziami wyposażenia (także z odmową nazwaną: brak elementu,
+    sprzeczna deklaracja — sieć widzi wtedy zespół, którego sposób uziemienia jest nieokreślony).
+    Pozostałe — ten sam model połączeń co solver (``build_transformer_zero_seq_model``): bocznik
+    po stronie leżącej w sieci albo połączenie szeregowe (obie gwiazdy uziemione — droga do ziemi
     przez sieć drugiej strony). Transformator, którego modelu nie da się zbudować, zgłaszają
     jego kody (E-W5-02/03) — tu nie jest punktem uziemienia.
     """
     wynik: list[PunktUziemienia] = []
     for trafo in sorted(transformatory, key=lambda t: t.ref_id):
+        if jest_transformatorem_uziemiajacym(trafo):
+            if trafo.hv_bus_ref in szyny:
+                wynik.append(_punkt_zespolu(trafo))
+            continue
         strony = [
             s for s, szyna in (("HV", trafo.hv_bus_ref), ("LV", trafo.lv_bus_ref)) if szyna in szyny
         ]
@@ -1088,8 +625,55 @@ def _punkty_uzwojen(
                     z_n_uzwojenia_ohm=model.zn_hv_ohm if strona == "HV" else model.zn_lv_ohm,
                     z0_uzwojenia_ohm=z0_uzwojenia,
                     droga_szeregowa=model.connection == ZeroSeqConnection.SERIES_THROUGH,
+                    jawny=cfg is not None,
                 )
             )
+    return wynik
+
+
+@dataclass(frozen=True)
+class NosnikPunktuNeutralnego:
+    """Zadeklarowany uziemiony nośnik punktu neutralnego sieci SN (bloker E-W5-04)."""
+
+    element_ref: str
+    bus_ref: str
+    #: Klucz nośnika w rekordzie transformatora: ``hv_neutral`` | ``lv_neutral``.
+    pole: str
+    typ: str
+
+
+def nosniki_sieci(
+    enm: EnergyNetworkModel,
+) -> list[tuple[UziemienieSekcji, tuple[NosnikPunktuNeutralnego, ...]]]:
+    """Sieci SN z co najmniej dwoma ZADEKLAROWANYMI uziemionymi nośnikami punktu neutralnego
+    (decyzja architekta D1 karty POLA-GPZ-SZABLONY, kod E-W5-04): punkt neutralny sieci SN
+    uziemia się w JEDNYM miejscu — dwa boczniki zerowe w jednej sieci liczyłyby się równolegle.
+
+    JEDNO źródło sieci i punktów: ``uziemienie_sieci`` (ta sama prawda co mapowanie Y0).
+    Nośnik zadeklarowany: zespół uziemiający z typem uziemionym (niezależnie od stanów
+    odłączników gałęzi — to stan ruchowy, nie opis sieci) i uzwojenie transformatora
+    z jawną konfiguracją uziemioną. Punkt wyprowadzony bez konfiguracji (litera grupy, np. Dyn11
+    dwóch transformatorów GPZ za zamkniętym sprzęgłem) jest domyślną fizyką modelu (W5-A), nie
+    decyzją projektanta — nie jest nośnikiem (pomiar 2026-11-05: golden network ENM). Źródło na
+    szynie SN nie jest nośnikiem: jego opis punktu neutralnego fizyka pomija (W-W5-02,
+    ``impedancja_zerowa_zrodla_dozwolona``)."""
+    wynik: list[tuple[UziemienieSekcji, tuple[NosnikPunktuNeutralnego, ...]]] = []
+    trafo = {t.ref_id: t for t in enm.transformers}
+    for sekcja in uziemienie_sieci(enm):
+        nosniki: list[NosnikPunktuNeutralnego] = []
+        for punkt in sekcja.punkty:
+            if not punkt.jawny:
+                continue
+            element = trafo[punkt.element_ref]
+            pole = "hv_neutral" if punkt.bus_ref == element.hv_bus_ref else "lv_neutral"
+            cfg = element.hv_neutral if pole == "hv_neutral" else element.lv_neutral
+            if cfg is None or not uziemienie_grounded(cfg.type):
+                continue
+            nosniki.append(
+                NosnikPunktuNeutralnego(punkt.element_ref, punkt.bus_ref, pole, cfg.type)
+            )
+        if len(nosniki) > 1:
+            wynik.append((sekcja, tuple(nosniki)))
     return wynik
 
 
@@ -1166,15 +750,10 @@ def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[
 
 
 def _ostrzezenia(sekcja: UziemienieSekcji) -> tuple[str, ...]:
+    # Więcej niż jeden zespół uziemiający w sieci to bloker E-W5-04 (``nosniki_sieci``),
+    # nie ostrzeżenie — ENEA Zeszyt 1 §16 s. 29 dobiera zespół na pracę jednego zespołu na sieć
+    # sekcji A+B; §26.10.7 s. 56: przy zamkniętym łączniku szyn AWSCz blokowane w jednej sekcji.
     wynik: list[str] = []
-    zespoly = [p for p in sekcja.punkty_w_ruchu if p.rodzaj == "zespol_uziemiajacy"]
-    if len(zespoly) > 1:
-        wynik.append(
-            "Na połączoną sieć SN pracuje więcej niż jeden zespół uziemiający "
-            f"({len(zespoly)}: {', '.join(p.nazwa_pl for p in zespoly)}) — "
-            "ENEA Zeszyt 1 §16 s. 29 dobiera zespół na pracę jednego zespołu na sieć sekcji A+B; "
-            "§26.10.7 s. 56: przy zamkniętym łączniku szyn AWSCz blokowane w jednej sekcji."
-        )
     v = sekcja.rozstrojenie
     if v is not None and abs(v) < PROG_REZONANSU:
         wynik.append(
@@ -1215,12 +794,7 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
         if pasmo_napieciowe(u_kv) != "SN":
             continue
         szyny = frozenset(skladowa)
-        punkty: list[PunktUziemienia] = [
-            punkt_zespolu(zu, u_kv)
-            for zu in sorted(enm.zespoly_uziemiajace, key=lambda z: z.ref_id)
-            if zu.bus_ref in szyny
-        ]
-        punkty.extend(_punkty_uzwojen(list(enm.transformers), szyny, u_kv))
+        punkty = _punkty_uzwojen(list(enm.transformers), szyny, u_kv)
         b0, bez_b0, baterie_b0, b0_robocze = _b0_sieci(enm, szyny)
         sekcja = UziemienieSekcji(
             szyny=tuple(sorted(szyny)),

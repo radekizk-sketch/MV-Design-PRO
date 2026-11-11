@@ -77,8 +77,6 @@ KOLEKCJE_WEZLOWE_MOCY: tuple[str, ...] = (
     "loads",
     "generators",
     "shunt_capacitors",
-    # Zespół uziemiający SN: bocznik składowej zerowej na szynie (zabezpieczenie pola ZU).
-    "zespoly_uziemiajace",
 )
 KOLEKCJE_BEZ_ELEMENTOW_MOCY: tuple[str, ...] = (
     "header",

@@ -16,8 +16,8 @@ impedancja wchodzi do tego prądu. Dwie rodziny założeń biegu, jeden mechaniz
   regułę ma transformator z uzwojeniem zygzakowym, który NIE jest transformatorem uziemiającym
   sieci SN (np. Yzn11 — R0/X0 na fazę z założenia katalogu);
 * ``zespol_uziemiajacy.wartosc_robocza`` (ten moduł) — transformator uziemiający sieci SN
-  (zespół uziemiający), którego bocznik składowej zerowej Z_0,TU + 3·Z_N stoi na wartości
-  roboczej (R0/X0 zygzaka, zakres §16, AWSC); wpływa WYŁĄCZNIE na zwarcia doziemne w składowej
+  (zespół uziemiający, transformator ZNyn11 z wyposażeniem ``hv_neutral``), którego bocznik
+  składowej zerowej Z_0,zyg + 3·Z_N stoi na wartości roboczej (R0/X0 zygzaka, zakres §16, AWSC); wpływa WYŁĄCZNIE na zwarcia doziemne w składowej
   sieci zerowej szyny zespołu — ten sam predykat co gałąź z Z0 roboczym.
 * ``shunt.parametry_robocze`` (``enm.bateria_kondensatorow``, karta UX-04/POLE-BKR-MODEL) —
   element poprzeczny, nie gałąź, ale ten sam mechanizm danych przyjętych: bateria kondensatorów
@@ -55,6 +55,7 @@ from .mapping import (
 from .models import Cable, EnergyNetworkModel, OverheadLine, Transformer
 from .nazwy_elementow import nazwa_elementu
 from .parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+from .punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
 from .skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from .uziemienie_sekcji import uziemienie_sieci
 
@@ -120,8 +121,13 @@ def galezie_z0_robocze(
             wynik.append((galaz, pola))
     # Transformator z uzwojeniem zygzakowym: R0/X0 na fazę z wartości roboczej katalogu (ten sam
     # predykat pola — oznaczenie pozycji i brak wartości projektanta). Gałąź transformatora nie
-    # ma stanu łącznika; wyłączenie z grafu rozstrzyga `_galaz_w_grafie`.
+    # ma stanu łącznika; wyłączenie z grafu rozstrzyga `_galaz_w_grafie`. Transformator
+    # uziemiający (karta ZU-JEDEN-NOSNIK) — poza tym zbiorem: jego Z_0 zygzaka (z katalogu, wartości
+    # roboczej katalogu albo propozycji) jest częścią bocznika zespołu i ma JEDNO założenie
+    # `KOD_ZU_ROBOCZE` (`zalozenia_zespolow_uziemiajacych`) — bez podwójnej danej przyjętej.
     for transformator in sorted(enm.transformers, key=lambda t: t.ref_id):
+        if jest_transformatorem_uziemiajacym(transformator):
+            continue
         pola = pola_z0_robocze(
             transformator.materialized_params,
             transformator.model_dump(mode="json", include=_POLA_Z0_TRANSFORMATORA),
@@ -214,7 +220,7 @@ def zalozenia_zespolow_uziemiajacych(
     w tym stanie). ``bus_ref`` — szyna zespołu; składowa sieci zerowej szyny wyznacza punkty
     zwarcia, do których prądu wchodzi ten bocznik (``dane_przyjete_galezi_punktow``).
     """
-    if not enm.zespoly_uziemiajace:
+    if not any(jest_transformatorem_uziemiajacym(t) for t in enm.transformers):
         return ()
     zalozenia: list[dict[str, Any]] = []
     for sekcja in uziemienie_sieci(enm):

@@ -102,6 +102,8 @@ from .models import (
     UKLADY_SIECI_NN,
     EnergyNetworkModel,
     GeometriaSlupaLinii,
+    GroundingConfig,
+    Transformer,
     migruj_zapis_zastany_slownika,
 )
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY
@@ -141,6 +143,10 @@ from .pole_katalogowe import (
     aparaty_pola_z_referencji,
     brama_napieciowa_wyboru,
     rozwiaz_aparaty_pola,
+)
+from .punkt_neutralny_zespolu import (
+    blad_wyposazenia_punktu_neutralnego,
+    jest_transformatorem_uziemiajacym,
 )
 from .rodzaj_stacji import TYPY_STACJI_SN_NN
 from .rola_pola_sn import (
@@ -444,9 +450,9 @@ def _referenced_bus_refs(enm: dict[str, Any]) -> set[str]:
         dodaj(transformer.get("hv_bus_ref"))
         dodaj(transformer.get("lv_bus_ref"))
     # Każdy element stojący na szynie trzyma ją przy życiu — także bateria kondensatorów
-    # i zespół uziemiający (zacisk pola ZU jest szyną pomocniczą): bez nich usunięcie szyny
+    # (zespół uziemiający jest transformatorem — wyżej): bez nich usunięcie szyny
     # pomocniczej zostawiało element z odwołaniem do szyny, której nie ma.
-    for collection in ("sources", "loads", "generators", "shunt_capacitors", "zespoly_uziemiajace"):
+    for collection in ("sources", "loads", "generators", "shunt_capacitors"):
         for item in enm.get(collection, []):
             dodaj(item.get("bus_ref"))
     for substation in enm.get("substations", []):
@@ -1153,7 +1159,6 @@ KOLEKCJE_WYSZUKIWANIA_ELEMENTU: tuple[str, ...] = (
     "loads",
     "generators",
     "shunt_capacitors",
-    "zespoly_uziemiajace",
     "substations",
     "bays",
     "junctions",
@@ -4098,9 +4103,6 @@ def _element_requires_catalog(collection: str, element: dict[str, Any]) -> bool:
         # Bateria kondensatorów jest katalog-first: Qn/Un pochodzą WYŁĄCZNIE z pozycji
         # katalogu (`add_shunt_compensator_sn`), bez trybu ręcznego.
         "shunt_capacitors",
-        # Zespół uziemiający SN: transformator uziemiający, dławik i rezystor wyłącznie
-        # z pozycji katalogu (`add_zespol_uziemiajacy_sn`).
-        "zespoly_uziemiajace",
     }:
         return True
 
@@ -4882,19 +4884,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             grounding_config["r_ohm"] = float(grounding_payload["r_ohm"])
         if isinstance(grounding_payload.get("x_ohm"), int | float):
             grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
-        awsc_payload = grounding_payload.get("awsc_prad_wymuszenia_a")
-        if awsc_payload is not None:
-            if isinstance(awsc_payload, bool) or not isinstance(awsc_payload, int | float):
-                return _error_response(
-                    "Prąd wymuszenia AWSC punktu neutralnego GPZ musi być liczbą [A].",
-                    "source.invalid_grounding",
-                )
-            grounding_config["awsc_prad_wymuszenia_a"] = float(awsc_payload)
         blad_uziemienia_gpz = blad_konfiguracji_uziemienia(
             grounding_type,
             grounding_config.get("r_ohm"),
             grounding_config.get("x_ohm"),
-            awsc_prad_a=grounding_config.get("awsc_prad_wymuszenia_a"),
         )
         if blad_uziemienia_gpz is not None:
             return _error_response(
@@ -4994,7 +4987,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (§0 pkt 3): opis punktu neutralnego i Z0 źródła
     # dotyczą WYŁĄCZNIE sieci 110 kV za granicą modelu (równoważnik po stronie 110 kV).
     # Równoważnik na szynach SN nie opisuje uziemienia sieci SN — robi to zespół
-    # uziemiający sekcji (`zespoly_uziemiajace` niżej, `add_zespol_uziemiajacy_sn`) albo
+    # uziemiający sekcji (`zespoly_sekcji` niżej, `add_zespol_uziemiajacy_sn`) albo
     # punkt neutralny uzwojenia transformatora. Odmowa nazwana zamiast danej, którą
     # obliczenia pominęłyby (`enm.uziemienie_sekcji.impedancja_zerowa_zrodla_dozwolona`).
     if strona_rownowaznika != "HV_110":
@@ -5012,7 +5005,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "podaje się dla równoważnika po stronie 110 kV.",
                 "source.sn_neutral_not_on_source",
             )
-    zespoly_gpz = payload.get("zespoly_uziemiajace")
+    zespoly_gpz = payload.get("zespoly_sekcji")
     if zespoly_gpz is not None:
         if not isinstance(zespoly_gpz, list) or not all(isinstance(z, dict) for z in zespoly_gpz):
             return _error_response(
@@ -6360,17 +6353,7 @@ def _build_neutral_grounding(
     # R/X istotne tylko dla uziemienia przez rezystor/cewkę (impedancyjne).
     r_ohm = _as_positive_float(earthing_block.get(f"{side}_r_ohm"))
     x_ohm = _as_positive_float(earthing_block.get(f"{side}_x_ohm"))
-    # Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd wymuszenia AWSC zespołu uziemiającego strony.
-    awsc_surowy = earthing_block.get(f"{side}_awsc_prad_wymuszenia_a")
-    awsc_a: float | None = None
-    if awsc_surowy is not None:
-        if isinstance(awsc_surowy, bool) or not isinstance(awsc_surowy, int | float):
-            return (
-                None,
-                f"Punkt neutralny strony {strona}: prąd wymuszenia AWSC musi być liczbą [A].",
-            )
-        awsc_a = float(awsc_surowy)
-    blad = blad_konfiguracji_uziemienia(grounding_type, r_ohm, x_ohm, awsc_prad_a=awsc_a)
+    blad = blad_konfiguracji_uziemienia(grounding_type, r_ohm, x_ohm)
     if blad is not None:
         return None, f"Punkt neutralny strony {strona}: {blad}."
     config: dict[str, Any] = {"type": grounding_type}
@@ -6378,8 +6361,6 @@ def _build_neutral_grounding(
         config["r_ohm"] = r_ohm
     if x_ohm is not None:
         config["x_ohm"] = x_ohm
-    if awsc_a is not None:
-        config["awsc_prad_wymuszenia_a"] = awsc_a
     return config, None
 
 
@@ -6416,11 +6397,16 @@ def _powod_odmowy_tolerancji_nn(
     return None
 
 
-def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any] | None:
+def _blad_slownikow_transformatora(
+    parameters: dict[str, Any], stan_koncowy: dict[str, Any] | None = None
+) -> dict[str, Any] | None:
     """W5-A: pola słownikowe transformatora sprawdzane PRZY ZAPISIE — ten sam predykat,
     który czyta walidator (E-W5-02 grupa połączeń IEC 60076-1, E063 układ nN, spójność
-    R/X punktu neutralnego). Wartość spoza słownika = odmowa nazwana, nie awaria
-    modelu Pydantic przy następnym wczytaniu. Zwraca odpowiedź błędu albo ``None``."""
+    R/X punktu neutralnego, spójność wyposażenia punktu neutralnego transformatora
+    uziemiającego — karta ZU-JEDEN-NOSNIK). Wartość spoza słownika = odmowa nazwana, nie awaria
+    modelu Pydantic przy następnym wczytaniu. ``stan_koncowy`` — rekord transformatora po
+    korekcie (rozstrzyga, czy strona górna jest punktem neutralnym transformatora
+    uziemiającego). Zwraca odpowiedź błędu albo ``None``."""
     grupa = parameters.get("vector_group")
     if grupa is not None and not grupa_polaczen_poprawna(grupa):
         return _error_response(
@@ -6455,18 +6441,42 @@ def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any]
                 f"{lista_pl(ETYKIETA_PL_PUNKTU_NEUTRALNEGO[t] for t in TYPY_PUNKTU_NEUTRALNEGO)}.",
                 "transformer.invalid_neutral_grounding",
             )
-        blad = blad_konfiguracji_uziemienia(
-            config.get("type"),
-            config.get("r_ohm"),
-            config.get("x_ohm"),
-            awsc_prad_a=config.get("awsc_prad_wymuszenia_a"),
+        try:
+            cfg_modelu = GroundingConfig.model_validate(config)
+        except ValidationError:
+            return _error_response(
+                f"Punkt neutralny strony {strona} transformatora: nieprawidłowy opis wyposażenia "
+                "punktu neutralnego (dławik, rezystor, SPZ, wyłączenie od transformatorów).",
+                "transformer.invalid_neutral_grounding",
+            )
+        zespol = (
+            klucz == "hv_neutral"
+            and stan_koncowy is not None
+            and _jest_transformatorem_uziemiajacym_rekordu(stan_koncowy)
+        )
+        nazwa = f"Punkt neutralny strony {strona} transformatora"
+        blad = (
+            blad_wyposazenia_punktu_neutralnego(cfg_modelu, zespol=True, nazwa=nazwa)
+            if zespol
+            else blad_konfiguracji_uziemienia(
+                config.get("type"), config.get("r_ohm"), config.get("x_ohm")
+            )
+            or blad_wyposazenia_punktu_neutralnego(cfg_modelu, zespol=False, nazwa=nazwa)
         )
         if blad is not None:
             return _error_response(
-                f"Punkt neutralny strony {strona} transformatora: {blad}.",
+                blad if zespol else f"{nazwa}: {blad}.",
                 "transformer.invalid_neutral_grounding",
             )
     return None
+
+
+def _jest_transformatorem_uziemiajacym_rekordu(rekord: dict[str, Any]) -> bool:
+    """``jest_transformatorem_uziemiajacym`` dla rekordu transformatora (słownik operacji)."""
+    try:
+        return jest_transformatorem_uziemiajacym(Transformer.model_validate(rekord))
+    except ValidationError:
+        return False
 
 
 def _apply_station_neutral_grounding(
@@ -11555,9 +11565,6 @@ KOLEKCJE_Z_KONTRAKTEM_POL: tuple[str, ...] = (
     "loads",
     "junctions",
     "corridors",
-    # Karta UX-04/POLE-ZU: zespół uziemiający sekcji SN (dławik, rezystor, transformator
-    # uziemiający) — korekta nastawy dławika i rezystora idzie tą samą bramką kontraktu.
-    "zespoly_uziemiajace",
 )
 
 
@@ -11902,7 +11909,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     # sprawdzane tym samym predykatem co kreatory — korekta ekspercka nie ma
     # osobnej, luźniejszej drogi zapisu.
     if coll == "transformers":
-        blad_slownika = _blad_slownikow_transformatora(parameters)
+        blad_slownika = _blad_slownikow_transformatora(
+            parameters, {**current_element, **parameters}
+        )
         if blad_slownika is not None:
             return blad_slownika
     if coll == "branches":
@@ -12242,18 +12251,18 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         ref for ref in deleted_set if ref in {t.get("ref_id") for t in enm.get("transformers", [])}
     }
 
-    # Karta POLA-GPZ-SZABLONY (decyzja D1): transformator uziemiający usunięty wprost albo
-    # kaskadą (szyna SN zacisku pola, szyna potrzeb własnych) oddaje punkt neutralny sieci
-    # źródłu-dawcy z zapisu pary (`enm.zespol_uziemiajacy`) — para do przeniesienia w
-    # `add_sn_bay`. Szyna potrzeb własnych zespołu bez innych przyłączonych elementów znika
-    # razem z transformatorem (nie zostaje wyspą bez zasilania).
+    # Karta POLA-GPZ-SZABLONY (decyzja D1), karta ZU-JEDEN-NOSNIK: transformator uziemiający
+    # usunięty wprost albo kaskadą (szyna SN zacisku pola, szyna potrzeb własnych) oddaje opis
+    # punktu neutralnego źródłu-dawcy z typowanego zapisu ``hv_neutral.dawca``
+    # (`enm.zespol_uziemiajacy`). Szyna potrzeb własnych zespołu bez innych przyłączonych
+    # elementów znika razem z transformatorem (nie zostaje wyspą bez zasilania).
     if deleted_transformer_refs:
-        from enm.zespol_uziemiajacy import oddaj_uziemienie_zrodlu, zapis_zespolu
+        from enm.zespol_uziemiajacy import oddaj_uziemienie_zrodlu
 
         for transformator in enm.get("transformers", []):
             if transformator.get("ref_id") not in deleted_transformer_refs:
                 continue
-            if zapis_zespolu(transformator) is None:
+            if not _jest_transformatorem_uziemiajacym_rekordu(transformator):
                 continue
             oddaj_uziemienie_zrodlu(new_enm, transformator)
             szyna_nn = transformator.get("lv_bus_ref")

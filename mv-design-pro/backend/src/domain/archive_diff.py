@@ -668,7 +668,6 @@ _ETYKIETY_TYPOW_PL: dict[str, str] = {
     "loads": "Odbiory",
     "generators": "Generatory",
     "shunt_capacitors": "Baterie kondensatorów",
-    "zespoly_uziemiajace": "Zespoły uziemiające",
     "substations": "Stacje",
     "bays": "Pola rozdzielni",
     "junctions": "Złącza",

@@ -38,7 +38,6 @@ _ELEMENT_KEYS = (
     "loads",
     "generators",
     "shunt_capacitors",
-    "zespoly_uziemiajace",
     "substations",
     "bays",
     "junctions",
@@ -224,11 +223,48 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
     "shunt_capacitors": ("wylaczenie_od_transformatorow",),
 }
 
-#: Kolekcje elementow DODANE PO ZAMROZENIU odciskow: pusta kolekcja jest poza odciskiem
-#: (migawki sprzed karty haszuja bajtowo jak przed nia), niepusta — trescia modelu. Przypiete
-#: testem `tests/enm/test_hash_w5_uziemienie.py::test_pelny_odcisk_bez_danych_uziemienia_rowny_
-#: postaci_sprzed_karty` (hash bez zespolu = hash postaci sprzed karty, z kluczem i bez).
-_KOLEKCJE_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: tuple[str, ...] = ("zespoly_uziemiajace",)
+#: Karta ZU-JEDEN-NOSNIK: pola wyposażenia punktu neutralnego (`GroundingConfig` — dławik,
+#: rezystor, SPZ, transformatory wyłączające, dawca) dodane po zamrożeniu odcisków. Wartość
+#: domyślna = punkt neutralny bez wyposażenia zespołu (każdy zapis sprzed karty) — poza odciskiem,
+#: więc migawki sprzed karty haszują bajtowo jak przed nią; wartość nadana zmienia Z_N albo
+#: automatykę zespołu, więc jest treścią modelu (trzy hashe pełne i semantyczny). Słownik
+#: wartości domyślnych jest JEDNYM źródłem reguły dla wszystkich nośników punktu neutralnego.
+#: Przypięte testem `tests/enm/test_zu_hash_wyposazenia.py`.
+_POLA_PUNKTU_NEUTRALNEGO_POZA_HASHEM_GDY_DOMYSLNE: dict[str, Any] = {
+    "dlawik": None,
+    "rezystor": None,
+    "spz": False,
+    "wylaczenie_od_transformatorow_refs": [],
+    "dawca": None,
+}
+#: Nośniki `GroundingConfig` w rekordach modelu (klucz kolekcji → pola rekordu).
+_NOSNIKI_PUNKTU_NEUTRALNEGO: dict[str, tuple[str, ...]] = {
+    "sources": ("neutral_grounding",),
+    "transformers": ("hv_neutral", "lv_neutral"),
+}
+
+
+def _postac_punktu_neutralnego(cfg: Any) -> Any:
+    """Postać kanoniczna `GroundingConfig` pod odcisk: bez pól wyposażenia o wartości domyślnej
+    (także w opisie zapisanym przez dawcę). Nowy słownik — migawka wołającego nietknięta."""
+    if not isinstance(cfg, dict):
+        return cfg
+    wynik = {
+        k: v
+        for k, v in cfg.items()
+        if not (
+            k in _POLA_PUNKTU_NEUTRALNEGO_POZA_HASHEM_GDY_DOMYSLNE
+            and v == _POLA_PUNKTU_NEUTRALNEGO_POZA_HASHEM_GDY_DOMYSLNE[k]
+        )
+    }
+    dawca = wynik.get("dawca")
+    if isinstance(dawca, dict) and isinstance(dawca.get("neutral_grounding"), dict):
+        wynik["dawca"] = {
+            **dawca,
+            "neutral_grounding": _postac_punktu_neutralnego(dawca["neutral_grounding"]),
+        }
+    return wynik
+
 
 #: Karta UX-04/POLE-LINIOWE-WZORZEC: pola-LISTY ELEMENTÓW ZAGNIEŻDŻONYCH rekordu (aparat pola
 #: `Bay.primary_devices[*]`) dodane po zamrożeniu odcisków, z wartością domyślną pustej listy.
@@ -270,15 +306,6 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] =
             "zaczep_pierwotny_a",
             "zrodlo_zaczepu",
         )
-    },
-    # Karta EWALUATORY-ZIEMNOZWARCIOWE: prąd czynny wymuszenia AWSC zespołu uziemiającego
-    # (`GroundingConfig.awsc_prad_wymuszenia_a`) — pole SŁOWNIKA (nie listy) punktu neutralnego.
-    # `None` = punkt neutralny bez automatyki wymuszania składowej czynnej (każdy zapis sprzed
-    # karty) — poza odciskiem; podany prąd zmienia wynik obliczenia doziemnego, więc odcisk.
-    "sources": {"neutral_grounding": ("awsc_prad_wymuszenia_a",)},
-    "transformers": {
-        "hv_neutral": ("awsc_prad_wymuszenia_a",),
-        "lv_neutral": ("awsc_prad_wymuszenia_a",),
     },
 }
 
@@ -325,11 +352,9 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
                 )
                 for el in elementy
             ]
-        elif isinstance(elementy, dict):
-            # Pole-SŁOWNIK zagnieżdżony (punkt neutralny `GroundingConfig`) — ta sama reguła
-            # co dla elementów listy; nowy słownik, nie mutacja migawki wołającego.
-            pola_none = zagniezdzone_none.get(lista, ())
-            item[lista] = {k: v for k, v in elementy.items() if not (k in pola_none and v is None)}
+    for pole in _NOSNIKI_PUNKTU_NEUTRALNEGO.get(key, ()):
+        if pole in item:
+            item[pole] = _postac_punktu_neutralnego(item[pole])
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
     if pelna:
@@ -359,12 +384,6 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
                 for klucz, wartosc in payload["katalog_projektu"].items()
                 if klucz != "karty_widmowe"
             }
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: kolekcja zespołów uziemiających jest addytywna —
-    # model bez zespołu (pusta lista albo brak klucza) haszuje bajtowo jak przed kartą;
-    # zespół w modelu jest treścią sieci (zmienia składową zerową), więc zmienia odcisk.
-    for key in _KOLEKCJE_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE:
-        if key in payload and payload[key] == []:
-            del payload[key]
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
             for item in payload[key]:
@@ -419,7 +438,21 @@ _SEMANTIC_INCLUDE_TRANSFORMER = (
     "catalog_ref",
     "catalog_namespace",
     "vector_group",
+    # Karta ZU-JEDEN-NOSNIK §0 pkt 3: sposób pracy punktu neutralnego uzwojeń (z wyposażeniem
+    # zespołu uziemiającego — dławik, rezystor, łączniki, AWSC, SPZ, transformatory
+    # wyłączające) i impedancja zerowa zygzaka są semantyką sieci SN (rozstrzygają tryb
+    # doziemienia i Z_0 sieci). `None` — poza projekcją (`_POLA_SEMANTYCZNE_POZA_HASHEM_GDY_NONE`).
+    "hv_neutral",
+    "lv_neutral",
+    "r0_ohm",
+    "x0_ohm",
 )
+#: Pola projekcji semantycznej dołączone po zamrożeniu odcisków semantycznych, o wartości
+#: `None` poza projekcją (transformator bez opisu punktu neutralnego haszuje jak przed kartą
+#: ZU-JEDEN-NOSNIK). W hashach pełnych te pola obowiązują jak dotąd (`null` jest treścią).
+_POLA_SEMANTYCZNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
+    "transformers": ("hv_neutral", "lv_neutral"),
+}
 _SEMANTIC_INCLUDE_SOURCE = (
     "ref_id",
     "name",
@@ -450,17 +483,6 @@ _SEMANTIC_INCLUDE_SHUNT_CAPACITOR = (
     "catalog_ref",
     "catalog_namespace",
 )
-_SEMANTIC_INCLUDE_ZESPOL_UZIEMIAJACY = (
-    "ref_id",
-    "name",
-    "bus_ref",
-    "bay_ref",
-    "catalog_ref",
-    "catalog_namespace",
-    "dlawik",
-    "rezystor",
-    "uziemienie_bezposrednie",
-)
 _SEMANTIC_INCLUDE_BAY = (
     "ref_id",
     "name",
@@ -489,19 +511,10 @@ def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[s
     (W5-A: `Bus.grounding` skasowane → w projekcji jako `null`, jak przed karta;
     `Source.neutral_grounding` = `None` → poza projekcja, jak kazde pole addytywne)."""
     wynik = {k: item[k] for k in include if k in item}
+    for pole in _POLA_SEMANTYCZNE_POZA_HASHEM_GDY_NONE.get(key, ()):
+        if pole in wynik and wynik[pole] is None:
+            del wynik[pole]
     _postac_kanoniczna_elementu(wynik, key, pelna=False)
-    return wynik
-
-
-def _project_zespolu(item: dict[str, Any]) -> dict[str, Any]:
-    """Projekcja semantyczna zespołu: tożsamość, przyłączenie, katalog i RODZAJ elementów
-    punktu neutralnego (bez liczb — nastawa dławika czy R nie są semantyką)."""
-    wynik = _project(item, _SEMANTIC_INCLUDE_ZESPOL_UZIEMIAJACY, "zespoly_uziemiajace")
-    for urzadzenie in ("dlawik", "rezystor"):
-        if isinstance(wynik.get(urzadzenie), dict):
-            wynik[urzadzenie] = {
-                k: wynik[urzadzenie].get(k) for k in ("catalog_ref", "catalog_namespace")
-            }
     return wynik
 
 
@@ -528,18 +541,6 @@ def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
             _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR, "shunt_capacitors")
             for sc in raw.get("shunt_capacitors", [])
         ],
-        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: sposób uziemienia punktu neutralnego jest
-        # semantyką sieci — zespół uziemiający z rodzajem elementów punktu neutralnego
-        # (obecność dławika/rezystora, ich katalog). Klucz WYŁĄCZNIE dla modelu z zespołem.
-        **(
-            {
-                "zespoly_uziemiajace": [
-                    _project_zespolu(z) for z in raw.get("zespoly_uziemiajace", [])
-                ]
-            }
-            if raw.get("zespoly_uziemiajace")
-            else {}
-        ),
         "bays": [_project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])],
         "substations": [
             _project(s, _SEMANTIC_INCLUDE_SUBSTATION, "substations")
