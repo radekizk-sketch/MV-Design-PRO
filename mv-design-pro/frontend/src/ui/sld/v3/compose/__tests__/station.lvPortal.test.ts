@@ -43,6 +43,7 @@ import {
   lvPortalExtraHeight,
   lvTerminalPortXs,
   nnSideBelowBusHeight,
+  stationSnColumnLayout,
   planLvTerminal,
   requiredStationWidth,
   stationBlockHeight,
@@ -289,6 +290,66 @@ describe('PORTAL nN — projekcja SN kończy tor na zacisku nN i JEDNYM portalu'
     const bezOdbioru = composeStation(buildComposeInput(makeStation('st-f', ONE_TR)));
     expect(bezOdbioru.labels.stationName.rows.map((r) => r.text)).toContain('granica modelu — bez odbiorów nN');
   });
+});
+
+describe('SLD-CZYTELNOSC-STACJI: podpis szyny nN przy zacisku — iloczyn układ pól × źródła × odbiór', () => {
+  // Wyrocznia: podpis stoi przy zacisku wtedy i tylko wtedy, gdy na prawo od kolumny TR
+  // nie ma żadnej kolumny SN i stacja nie ma źródła po stronie nN (także
+  // strony nieznanej — rysowanej w rzędzie nN): szyna rzędu DER biegnie GRID pod zaciskiem
+  // od jego prawego końca, więc podpis stałby przy torze (pomiar akceptacji: 2 j.św.).
+  const UKLADY = {
+    tr_ostatni: ONE_TR,
+    tr_nie_ostatni: [makeBay(FIELD_ROLE.RMU_TRANSFORMER, 0), makeBay(FIELD_ROLE.RMU_LINE, 1)],
+  } as const;
+  const ZRODLA = {
+    brak: [] as StationDerSourceInput[],
+    nn: [DER_NN_A],
+    sn: [DER_SN],
+    nieznana: [{ ...DER_NN_A, id: 'gen-unk', connectionSide: 'unknown' as const }],
+    nn_i_sn: [DER_NN_A, DER_SN],
+  } as const;
+  for (const [uklad, pola] of Object.entries(UKLADY)) {
+    for (const [zrodla, der] of Object.entries(ZRODLA)) {
+      for (const odbior of [false, true]) {
+        it(`${uklad} × źródła ${zrodla} × odbiór ${odbior ? 'jest' : 'brak'}`, () => {
+          const id = `lbl-${uklad}-${zrodla}-${odbior}`;
+          const stacja = makeStation(id, [...pola], {
+            derSources: [...der],
+            ...(odbior ? { aggregatedLvLoad: ODBIOR } : {}),
+          });
+          // Źródło SN dokłada pole źródłowe SN jako kolumnę ZA polami (zmierzone na planie
+          // kolumn), więc kolumna TR przestaje być ostatnia — jego zejście przechodzi przez
+          // poziom zacisku.
+          const kolumny = stationSnColumnLayout(stacja, 0);
+          const zaTr = kolumny.filter((k) => k.centerX > Math.max(...lvTerminalPortXs(stacja)));
+          expect(zaTr.length > 0).toBe(uklad === 'tr_nie_ostatni' || der.some((d) => d.connectionSide === 'sn'));
+          const oczekiwane = zaTr.length === 0 && !der.some((d) => d.connectionSide !== 'sn');
+          expect(lvBusLabelAtTerminal(stacja)).toBe(oczekiwane);
+          const c = composeStation(buildComposeInput(stacja));
+          const podpis = c.labels.busbar.filter((l) => l.ownerRef === `${id}#lv-bus-voltage`);
+          const wPasmie = c.labels.stationName.rows.filter((r) => r.text === 'Szyna nN · 0,4 kV');
+          expect(podpis.length).toBe(oczekiwane ? 1 : 0);
+          expect(podpis.length + wPasmie.length).toBe(1);
+          if (!oczekiwane) return;
+          // Pas podpisu (od prawego końca zacisku, ± 2·GRID w pionie) wolny od każdego
+          // toru stacji poza samym zaciskiem.
+          const { x, y } = podpis[0].anchor;
+          const pas = { minX: x, maxX: x + 240, minY: y - 2 * GRID, maxY: y + 2 * GRID };
+          for (const seg of c.segments) {
+            if (seg.ownerRef === `${id}#lv-bus`) continue;
+            for (let i = 1; i < seg.points.length; i += 1) {
+              const a = seg.points[i - 1];
+              const b = seg.points[i];
+              const przecina =
+                Math.max(a.x, b.x) > pas.minX && Math.min(a.x, b.x) < pas.maxX &&
+                Math.max(a.y, b.y) > pas.minY && Math.min(a.y, b.y) < pas.maxY;
+              expect(przecina, `${seg.ownerRef} w pasie podpisu`).toBe(false);
+            }
+          }
+        });
+      }
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------
