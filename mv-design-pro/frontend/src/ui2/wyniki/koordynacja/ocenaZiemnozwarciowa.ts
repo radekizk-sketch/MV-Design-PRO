@@ -67,24 +67,50 @@ export interface KomorkaRodziny {
   powod_pl: string | null;
 }
 
+/** Stan źródła wymaganej wartości (backend `rodziny_eaz.StanWymagania`) — rozróżnienie, którego
+ *  ekran nie zmienia: ENEA zweryfikowane / założenie inżynierskie / niezweryfikowane / wartość
+ *  projektanta z przypadku obliczeniowego. */
+export type StanWymagania =
+  | 'ENEA_ZWERYFIKOWANE'
+  | 'ZALOZENIE_INZYNIERSKIE'
+  | 'NIEZWERYFIKOWANE'
+  | 'WARTOSC_PROJEKTANTA';
+
 /** Wymagany współczynnik (k_b, k_c, k_c,opor) z podstawą i stanem źródła. */
 export interface WymaganieWspolczynnika {
   symbol: string;
   wartosc: number;
   przyjete: boolean;
   stan_zrodla: StanZrodla;
+  stan: StanWymagania;
+  stan_pl: string;
   zrodlo_pl: string;
   uzasadnienie_pl: string;
 }
 
-/** Jeden warunek algorytmu 67N (rozruch U₀, sektor, próg rzutu) — wartość, nastawa, zapas. */
-export interface WarunekAlgorytmu67N {
-  klucz: 'U0' | 'SEKTOR' | 'PROG';
+/** Wiersz tabeli źródeł wymagań (backend `rodziny_eaz.ZRODLA_WYMAGAN_EAZ`). */
+export interface ZrodloWymagania {
+  klucz: string;
+  symbol: string;
   opis_pl: string;
-  wartosc: number;
-  nastawa: number;
-  zapas: number;
+  wartosc: number | null;
   jednostka: string;
+  stan: StanWymagania;
+  stan_pl: string;
+  odwolanie_pl: string;
+}
+
+/** Jeden warunek działania z JEDNEJ listy backendu (`warunki_dzialania`) — wartość, nastawa,
+ *  zapas; `null` — wielkość nieograniczona (czas pobudzenia do wyłączenia zwarcia) albo czas
+ *  charakterystyki bez zadziałania. */
+export interface WarunekAlgorytmu67N {
+  klucz: 'U0' | 'PROG' | 'KIERUNEK' | 'SEKTOR' | 'TRYB' | 'CZAS';
+  opis_pl: string;
+  wartosc: number | null;
+  nastawa: number | null;
+  zapas: number | null;
+  jednostka: string;
+  relacja: 'NIE_MNIEJ' | 'NIE_WIECEJ';
   spelniony: boolean;
   warunek_latex: string;
 }
@@ -225,6 +251,7 @@ export interface WynikOcenyZiemnozwarciowej {
   przypadek?: PrzypadekDoziemienia | null;
   wiersze_uziemien?: WierszUziemienia[];
   przypisy_uziemien?: Record<string, string>;
+  zrodla_wymagan?: ZrodloWymagania[];
 }
 
 /** Wiersze rodzin w kolejności backendu; `urzadzenieRef` zawęża do jednego sterownika. */

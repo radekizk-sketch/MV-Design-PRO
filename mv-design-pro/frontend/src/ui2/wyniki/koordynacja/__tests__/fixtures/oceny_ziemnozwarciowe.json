@@ -94,7 +94,7 @@
               "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
               "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
             },
             "wartosc": {
@@ -131,7 +131,7 @@
             "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
             "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
           },
           "powody_niepelnosci": [
@@ -306,7 +306,7 @@
               "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
               "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
             },
             "wartosc": {
@@ -343,7 +343,7 @@
             "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
             "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
           },
           "powody_niepelnosci": [
@@ -493,7 +493,7 @@
                 {
                   "jakosc": "ESTIMATED",
                   "nazwa_pl": "próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV)",
-                  "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+                  "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
                   "wartosc": {
                     "jednostka": "%",
                     "wartosc": 15.0
@@ -527,7 +527,7 @@
               "jednostka_redakcyjna": "funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna)",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
               "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
             },
             "wartosc": {
@@ -564,7 +564,7 @@
             "jednostka_redakcyjna": "funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
             "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
           },
           "powody_niepelnosci": [
@@ -574,7 +574,7 @@
             "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
             "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
             "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 2) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
-            "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 15 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw."
+            "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 15 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)). Uzupełnij nastawę w karcie nastaw."
           ],
           "przedmiot": {
             "element_ref": "gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik",
@@ -610,7 +610,7 @@
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 2) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
-              "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 15 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+              "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 15 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
               "Zakres ważności: Zwarcie jednofazowe z ziemią w węzłach sieci SN, stan ustalony, napięcie przed zwarciem c·U_n/√3 (c = 1, IEC 60909-0 tabela 1) — wynik nie obejmuje: zwarcie przez rezystancję przejścia R_F > 0 (zwarcia wysokooporowe); konduktancja upływu linii i kabli G0 (pominięta); błędy przekładników toru 3I0 i 3U0 (przekładniki idealne); stany przejściowe zapłonu i gaszenia łuku; czas własny wyłącznika i przekaźnika poza zwłoką nastawy; zadziałanie funkcji nadprądowych fazowych (50/51) przy zwarciu doziemnym — ocenia je ocena nadprądowa przy zwarciach IEC 60909."
             ],
             "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy napięcie U0 osiąga próg rozruchowy funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Napięcie przesunięcia punktu neutralnego U0 w % U0n: 100,8 % U0n wobec wymaganych ≥ 15 % U0n wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +85,8 % U0n, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1, względnie +572 % wartości granicznej)."
@@ -741,7 +741,7 @@
               "jednostka_redakcyjna": "CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych",
+              "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych; odwołanie: IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
               "wydanie": "konfiguracja koordynacji MV-DESIGN-PRO"
             },
             "wartosc": {
@@ -778,7 +778,7 @@
             "jednostka_redakcyjna": "CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych",
+            "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych; odwołanie: IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
             "wydanie": "konfiguracja koordynacji MV-DESIGN-PRO"
           },
           "powody_niepelnosci": [
@@ -2407,6 +2407,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -2415,6 +2417,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -2423,6 +2427,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -2538,7 +2544,7 @@
           },
           "u0_prog": {
             "jednostka": "%",
-            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
             "spelnia": null,
             "tekst": null,
             "wartosc": 15.0
@@ -2558,30 +2564,66 @@
               "klucz": "U0",
               "nastawa": 15.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 110.8838510647584,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 95.8838510647584
             },
             {
-              "jednostka": "°",
-              "klucz": "SEKTOR",
-              "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-              "spelniony": false,
-              "wartosc": 179.81511349511368,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-              "zapas": -89.81511349511368
-            },
-            {
               "jednostka": "A",
               "klucz": "PROG",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 28.257651626183467,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 26.257651626183467
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
               "spelniony": false,
               "wartosc": -28.257504506475396,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": -28.257504506475396
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.18488650488632175,
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+              "zapas": 89.81511349511368
+            },
+            {
+              "jednostka": "A",
+              "klucz": "TRYB",
+              "nastawa": 2.0,
+              "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": false,
+              "wartosc": -28.257504506475396,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": -30.257504506475396
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ],
           "W_POLU": [
@@ -2590,30 +2632,66 @@
               "klucz": "U0",
               "nastawa": 15.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 100.80350096796221,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 85.80350096796221
             },
             {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 80.34214680185686,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 78.34214680185686
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 80.34008096583914,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": 80.34008096583914
+            },
+            {
               "jednostka": "°",
               "klucz": "SEKTOR",
               "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
               "spelniony": true,
               "wartosc": 0.4108797778508233,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
               "zapas": 89.58912022214918
             },
             {
               "jednostka": "A",
-              "klucz": "PROG",
+              "klucz": "TRYB",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 80.34008096583914,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": 78.34008096583914
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ]
         },
@@ -2667,30 +2745,66 @@
                   "klucz": "U0",
                   "nastawa": 15.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 100.80350096796221,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 85.80350096796221
                 },
                 {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 80.34214680185686,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 78.34214680185686
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 80.34008096583914,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": 80.34008096583914
+                },
+                {
                   "jednostka": "°",
                   "klucz": "SEKTOR",
                   "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
                   "spelniony": true,
                   "wartosc": 0.4108797778508233,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
                   "zapas": 89.58912022214918
                 },
                 {
                   "jednostka": "A",
-                  "klucz": "PROG",
+                  "klucz": "TRYB",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 80.34008096583914,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": 78.34008096583914
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": 80.34008096583914
@@ -2703,7 +2817,7 @@
               "punkt_pl": "Zacisk odpływowy Pole pomiarowe",
               "re_a": -0.09118384326106191,
               "rola": "POZA_POLEM",
-              "rozstrzygajacy": "SEKTOR",
+              "rozstrzygajacy": "KIERUNEK",
               "u0_proc": 110.8838510647584,
               "warunki": [
                 {
@@ -2711,30 +2825,66 @@
                   "klucz": "U0",
                   "nastawa": 15.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 110.8838510647584,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 95.8838510647584
                 },
                 {
-                  "jednostka": "°",
-                  "klucz": "SEKTOR",
-                  "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-                  "spelniony": false,
-                  "wartosc": 179.81511349511368,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-                  "zapas": -89.81511349511368
-                },
-                {
                   "jednostka": "A",
                   "klucz": "PROG",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 28.257651626183467,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 26.257651626183467
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": false,
                   "wartosc": -28.257504506475396,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": -28.257504506475396
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.18488650488632175,
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+                  "zapas": 89.81511349511368
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "TRYB",
+                  "nastawa": 2.0,
+                  "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": false,
+                  "wartosc": -28.257504506475396,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": -30.257504506475396
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": -28.257504506475396
@@ -2744,6 +2894,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -2752,6 +2904,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -2760,6 +2914,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -2867,6 +3023,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -2875,6 +3033,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -2883,6 +3043,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -2997,7 +3159,7 @@
           },
           "u0_prog": {
             "jednostka": "%",
-            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
             "spelnia": null,
             "tekst": null,
             "wartosc": 15.0
@@ -3017,30 +3179,66 @@
               "klucz": "U0",
               "nastawa": 15.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 110.8838510647584,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 95.8838510647584
             },
             {
-              "jednostka": "°",
-              "klucz": "SEKTOR",
-              "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-              "spelniony": false,
-              "wartosc": 179.76585035155688,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-              "zapas": -89.76585035155688
-            },
-            {
               "jednostka": "A",
               "klucz": "PROG",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 35.3283562512512,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 33.3283562512512
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
               "spelniony": false,
               "wartosc": -35.32806124271248,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": -35.32806124271248
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.2341496484431218,
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+              "zapas": 89.76585035155688
+            },
+            {
+              "jednostka": "A",
+              "klucz": "TRYB",
+              "nastawa": 2.0,
+              "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": false,
+              "wartosc": -35.32806124271248,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": -37.32806124271248
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ],
           "W_POLU": [
@@ -3049,30 +3247,66 @@
               "klucz": "U0",
               "nastawa": 15.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 100.80350096796221,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 85.80350096796221
             },
             {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 73.91418649532275,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 71.91418649532275
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 73.9123021147145,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": 73.9123021147145
+            },
+            {
               "jednostka": "°",
               "klucz": "SEKTOR",
               "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
               "spelniony": true,
               "wartosc": 0.4091277762900063,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
               "zapas": 89.59087222371
             },
             {
               "jednostka": "A",
-              "klucz": "PROG",
+              "klucz": "TRYB",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 73.9123021147145,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": 71.9123021147145
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ]
         },
@@ -3126,30 +3360,66 @@
                   "klucz": "U0",
                   "nastawa": 15.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 100.80350096796221,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 85.80350096796221
                 },
                 {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 73.91418649532275,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 71.91418649532275
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 73.9123021147145,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": 73.9123021147145
+                },
+                {
                   "jednostka": "°",
                   "klucz": "SEKTOR",
                   "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
                   "spelniony": true,
                   "wartosc": 0.4091277762900063,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
                   "zapas": 89.59087222371
                 },
                 {
                   "jednostka": "A",
-                  "klucz": "PROG",
+                  "klucz": "TRYB",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 73.9123021147145,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": 71.9123021147145
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": 73.9123021147145
@@ -3162,7 +3432,7 @@
               "punkt_pl": "Zacisk odpływowy Pole pomiarowe",
               "re_a": -0.1443753665838398,
               "rola": "POZA_POLEM",
-              "rozstrzygajacy": "SEKTOR",
+              "rozstrzygajacy": "KIERUNEK",
               "u0_proc": 110.8838510647584,
               "warunki": [
                 {
@@ -3170,30 +3440,66 @@
                   "klucz": "U0",
                   "nastawa": 15.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 110.8838510647584,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 95.8838510647584
                 },
                 {
-                  "jednostka": "°",
-                  "klucz": "SEKTOR",
-                  "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-                  "spelniony": false,
-                  "wartosc": 179.76585035155688,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-                  "zapas": -89.76585035155688
-                },
-                {
                   "jednostka": "A",
                   "klucz": "PROG",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 35.3283562512512,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 33.3283562512512
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": false,
                   "wartosc": -35.32806124271248,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": -35.32806124271248
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.2341496484431218,
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+                  "zapas": 89.76585035155688
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "TRYB",
+                  "nastawa": 2.0,
+                  "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": false,
+                  "wartosc": -35.32806124271248,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": -37.32806124271248
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": -35.32806124271248
@@ -3203,6 +3509,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -3211,6 +3519,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -3219,6 +3529,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -3326,6 +3638,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -3334,6 +3648,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -3342,6 +3658,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -3456,7 +3774,7 @@
           },
           "u0_prog": {
             "jednostka": "%",
-            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 15 % U₀n, górną granicę zalecanego zakresu 5–15 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
             "spelnia": null,
             "tekst": null,
             "wartosc": 15.0
@@ -3476,30 +3794,66 @@
               "klucz": "U0",
               "nastawa": 15.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 110.8838510647584,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 95.8838510647584
             },
             {
-              "jednostka": "°",
-              "klucz": "SEKTOR",
-              "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-              "spelniony": false,
-              "wartosc": 179.4714240622606,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-              "zapas": -89.47142406226061
-            },
-            {
               "jednostka": "A",
               "klucz": "PROG",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 53.04828521593506,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 51.04828521593506
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
               "spelniony": false,
               "wartosc": -53.04602781974797,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": -53.04602781974797
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5285759377393902,
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+              "zapas": 89.47142406226061
+            },
+            {
+              "jednostka": "A",
+              "klucz": "TRYB",
+              "nastawa": 2.0,
+              "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": false,
+              "wartosc": -53.04602781974797,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": -55.04602781974797
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ],
           "W_POLU": [
@@ -3508,30 +3862,66 @@
               "klucz": "U0",
               "nastawa": 15.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 100.80350096796221,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 85.80350096796221
             },
             {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 57.80545643109621,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 55.80545643109621
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 57.805059771954944,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": 57.805059771954944
+            },
+            {
               "jednostka": "°",
               "klucz": "SEKTOR",
               "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
               "spelniony": true,
               "wartosc": 0.21225708464464788,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
               "zapas": 89.78774291535535
             },
             {
               "jednostka": "A",
-              "klucz": "PROG",
+              "klucz": "TRYB",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 57.805059771954944,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": 55.805059771954944
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ]
         },
@@ -3585,30 +3975,66 @@
                   "klucz": "U0",
                   "nastawa": 15.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 100.80350096796221,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 85.80350096796221
                 },
                 {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 57.80545643109621,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 55.80545643109621
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 57.805059771954944,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": 57.805059771954944
+                },
+                {
                   "jednostka": "°",
                   "klucz": "SEKTOR",
                   "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
                   "spelniony": true,
                   "wartosc": 0.21225708464464788,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
                   "zapas": 89.78774291535535
                 },
                 {
                   "jednostka": "A",
-                  "klucz": "PROG",
+                  "klucz": "TRYB",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 57.805059771954944,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": 55.805059771954944
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": 57.805059771954944
@@ -3621,7 +4047,7 @@
               "punkt_pl": "Zacisk odpływowy Pole pomiarowe",
               "re_a": -0.48938420256325127,
               "rola": "POZA_POLEM",
-              "rozstrzygajacy": "SEKTOR",
+              "rozstrzygajacy": "KIERUNEK",
               "u0_proc": 110.8838510647584,
               "warunki": [
                 {
@@ -3629,30 +4055,66 @@
                   "klucz": "U0",
                   "nastawa": 15.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 110.8838510647584,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 95.8838510647584
                 },
                 {
-                  "jednostka": "°",
-                  "klucz": "SEKTOR",
-                  "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-                  "spelniony": false,
-                  "wartosc": 179.4714240622606,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-                  "zapas": -89.47142406226061
-                },
-                {
                   "jednostka": "A",
                   "klucz": "PROG",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 53.04828521593506,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 51.04828521593506
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": false,
                   "wartosc": -53.04602781974797,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": -53.04602781974797
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5285759377393902,
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+                  "zapas": 89.47142406226061
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "TRYB",
+                  "nastawa": 2.0,
+                  "opis_pl": "kryterium trybu sin φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": false,
+                  "wartosc": -53.04602781974797,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": -55.04602781974797
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": -53.04602781974797
@@ -3662,6 +4124,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -3670,6 +4134,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -3678,6 +4144,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -3838,6 +4306,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -3846,6 +4316,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -3854,6 +4326,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -3916,7 +4390,139 @@
         "wzor_pradu_latex": "I_E = r\\cdot I_C"
       }
     ],
-    "wyniki_uziemien": []
+    "wyniki_uziemien": [],
+    "zrodla_wymagan": [
+      {
+        "jednostka": "1",
+        "klucz": "k_c.zerowopradowe",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)",
+        "opis_pl": "zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c_opor.zerowopradowe",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)",
+        "opis_pl": "zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c,opor",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.admitancyjne_rezystor",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 3 (s. 51)",
+        "opis_pl": "zabezpieczenia admitancyjne i konduktancyjne w sieciach o punkcie neutralnym uziemionym przez rezystor",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 2.0
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.konduktancyjne_awsc",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 4 (s. 51)",
+        "opis_pl": "zabezpieczenia konduktancyjne w sieciach skompensowanych z AWSCz",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.admitancyjne_pozostale",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 5 (s. 51)",
+        "opis_pl": "zabezpieczenia admitancyjne i susceptancyjne w pozostałych przypadkach",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.watometryczne",
+        "odwolanie_pl": "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+        "opis_pl": "IRiESD ENEA II.4.5.4.1.4 nie wymienia zabezpieczeń watometrycznych; przyjęto 1,5 — wartość punktu 4 dla kryterium składowej czynnej (konduktancyjnego)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.konduktancyjne_pozostale",
+        "odwolanie_pl": "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+        "opis_pl": "IRiESD ENEA II.4.5.4.1.4 nie podaje wartości dla zabezpieczenia konduktancyjnego w tym sposobie pracy punktu neutralnego; przyjęto 1,5 (wartość punktu 4)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_b",
+        "odwolanie_pl": "założenie inżynierskie oceny (IRiESD ENEA nie podaje k_b)",
+        "opis_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_b",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.rezystor",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 1 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 5–10 % w sieci z punktem neutralnym uziemionym przez rezystor; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 10.0
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.izolowany",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 5–15 % w sieci z izolowanym punktem neutralnym; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 15.0
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.kompensowany",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 10–20 % w sieci skompensowanej; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 20.0
+      },
+      {
+        "jednostka": "s",
+        "klucz": "delta_t",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
+        "opis_pl": "odstęp czasowy stopniowania: czas własny wyłącznika + wybieg przekaźnika + zapas (założenia koordynacji projektu)",
+        "stan": "NIEZWERYFIKOWANE",
+        "stan_pl": "odwołanie niezweryfikowane z treścią dokumentu",
+        "symbol": "Δt",
+        "wartosc": 0.2
+      },
+      {
+        "jednostka": "V",
+        "klucz": "u_tp",
+        "odwolanie_pl": "PN-EN 50522:2011, rysunek 4 i pkt 5.4.3 — treści normy brak w repozytorium, odwołanie niesprawdzone",
+        "opis_pl": "dopuszczalne napięcie dotykowe w funkcji czasu trwania zwarcia i warunek wystarczający U_E ≤ U_Tp",
+        "stan": "NIEZWERYFIKOWANE",
+        "stan_pl": "odwołanie niezweryfikowane z treścią dokumentu",
+        "symbol": "U_Tp(t_F)",
+        "wartosc": null
+      }
+    ]
   },
   "KOMPENSOWANY_AWSC_z_uziomem": {
     "doziemienie": {},
@@ -4013,7 +4619,7 @@
               "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
               "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
             },
             "wartosc": {
@@ -4050,7 +4656,7 @@
             "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
             "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
           },
           "powody_niepelnosci": [
@@ -4225,7 +4831,7 @@
               "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
               "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
             },
             "wartosc": {
@@ -4262,7 +4868,7 @@
             "jednostka_redakcyjna": "funkcja Io> (51N): próg 5 A (strona pierwotna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
             "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
           },
           "powody_niepelnosci": [
@@ -4412,7 +5018,7 @@
                 {
                   "jakosc": "ESTIMATED",
                   "nazwa_pl": "próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV)",
-                  "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+                  "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
                   "wartosc": {
                     "jednostka": "%",
                     "wartosc": 20.0
@@ -4446,7 +5052,7 @@
               "jednostka_redakcyjna": "funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna)",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+              "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
               "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
             },
             "wartosc": {
@@ -4483,7 +5089,7 @@
             "jednostka_redakcyjna": "funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna)",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; współczynniki czułości IRiESD II.4.5.4.1.4 nie są treścią repozytorium — kryterium porównuje z progiem",
+            "uwagi_pl": "funkcja rusza, gdy wielkość decydująca osiąga próg nastawy; wymagane współczynniki czułości k_c (IRiESD ENEA II.4.5.4.1.4) ocenia osobny rekord współczynnika",
             "wydanie": "model sieci biegu oceny (odcisk migawki w kopercie biegu)"
           },
           "powody_niepelnosci": [
@@ -4493,7 +5099,7 @@
             "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
             "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
             "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 3) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
-            "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 20 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw."
+            "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 20 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)). Uzupełnij nastawę w karcie nastaw."
           ],
           "przedmiot": {
             "element_ref": "gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik",
@@ -4529,7 +5135,7 @@
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (1)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel odejścia ST1 (2)) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
               "Dana przyjęta bez walidacji: B′0 (odcinek Kabel pola 3) = 122,5 µS/km, jakość danej: oszacowane — B′0 = B′1 — kabel z ekranem żył i izolacją polimerową (pole promieniowe): pojemność doziemna żyły jest jej pojemnością roboczą (IEC 60502-2: ekran na izolacji każdej żyły); producent nie podaje pojemności doziemnej tej pozycji. Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar prądu pojemnościowego).",
-              "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 20 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+              "Dana przyjęta bez walidacji: próg U₀> funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) = 20 %, jakość danej: oszacowane — Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
               "Zakres ważności: Zwarcie jednofazowe z ziemią w węzłach sieci SN, stan ustalony, napięcie przed zwarciem c·U_n/√3 (c = 1, IEC 60909-0 tabela 1) — wynik nie obejmuje: zwarcie przez rezystancję przejścia R_F > 0 (zwarcia wysokooporowe); konduktancja upływu linii i kabli G0 (pominięta); błędy przekładników toru 3I0 i 3U0 (przekładniki idealne); stany przejściowe zapłonu i gaszenia łuku; czas własny wyłącznika i przekaźnika poza zwłoką nastawy; zadziałanie funkcji nadprądowych fazowych (50/51) przy zwarciu doziemnym — ocenia je ocena nadprądowa przy zwarciach IEC 60909."
             ],
             "zdanie_pl": "Przy zwarciu doziemnym w każdym węźle strefy napięcie U0 osiąga próg rozruchowy funkcji Io> kierunkowe (67N) (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Napięcie przesunięcia punktu neutralnego U0 w % U0n: 99,33 % U0n wobec wymaganych ≥ 20 % U0n wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +79,33 % U0n, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1, względnie +396,7 % wartości granicznej)."
@@ -4660,7 +5266,7 @@
               "jednostka_redakcyjna": "CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s",
               "rodzaj": "ZALOZENIE_PROJEKTOWE",
               "status": "WSKAZANE",
-              "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych",
+              "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych; odwołanie: IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
               "wydanie": "konfiguracja koordynacji MV-DESIGN-PRO"
             },
             "wartosc": {
@@ -4697,7 +5303,7 @@
             "jednostka_redakcyjna": "CTI = czas własny wyłącznika 0,05 s + wybieg przekaźnika 0,05 s + zapas 0,1 s = 0,2 s",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych",
+            "uwagi_pl": "ten sam odstęp co w koordynacji zabezpieczeń nadprądowych; odwołanie: IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
             "wydanie": "konfiguracja koordynacji MV-DESIGN-PRO"
           },
           "powody_niepelnosci": [
@@ -6440,6 +7046,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -6448,6 +7056,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -6456,6 +7066,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -6571,7 +7183,7 @@
           },
           "u0_prog": {
             "jednostka": "%",
-            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
             "spelnia": null,
             "tekst": null,
             "wartosc": 20.0
@@ -6591,30 +7203,66 @@
               "klucz": "U0",
               "nastawa": 20.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 108.46435930061938,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 88.46435930061938
             },
             {
-              "jednostka": "°",
-              "klucz": "SEKTOR",
-              "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-              "spelniony": false,
-              "wartosc": 90.18488650488615,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-              "zapas": -0.18488650488615122
-            },
-            {
               "jednostka": "A",
               "klucz": "PROG",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 27.641068104535147,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 25.641068104535147
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
               "spelniony": false,
               "wartosc": -0.08919420675688523,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": -0.08919420675688523
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 89.81511349511385,
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+              "zapas": 0.18488650488615122
+            },
+            {
+              "jednostka": "A",
+              "klucz": "TRYB",
+              "nastawa": 2.0,
+              "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": false,
+              "wartosc": -0.08919420675688523,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": -2.0891942067568854
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ],
           "W_POLU": [
@@ -6623,30 +7271,66 @@
               "klucz": "U0",
               "nastawa": 20.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 99.33209154857818,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 79.33209154857818
             },
             {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 29.059126325443376,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 27.059126325443376
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 8.587385403514878,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": 8.587385403514878
+            },
+            {
               "jednostka": "°",
               "klucz": "SEKTOR",
               "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
               "spelniony": true,
               "wartosc": 72.81162446271885,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
               "zapas": 17.188375537281146
             },
             {
               "jednostka": "A",
-              "klucz": "PROG",
+              "klucz": "TRYB",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 8.587385403514878,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": 6.587385403514878
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ]
         },
@@ -6700,30 +7384,66 @@
                   "klucz": "U0",
                   "nastawa": 20.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 99.33209154857818,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 79.33209154857818
                 },
                 {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 29.059126325443376,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 27.059126325443376
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 8.587385403514878,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": 8.587385403514878
+                },
+                {
                   "jednostka": "°",
                   "klucz": "SEKTOR",
                   "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
                   "spelniony": true,
                   "wartosc": 72.81162446271885,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
                   "zapas": 17.188375537281146
                 },
                 {
                   "jednostka": "A",
-                  "klucz": "PROG",
+                  "klucz": "TRYB",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 8.587385403514878,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": 6.587385403514878
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": 8.587385403514878
@@ -6736,7 +7456,7 @@
               "punkt_pl": "Zacisk końcowy Kabel pola 3",
               "re_a": -0.08919420675688523,
               "rola": "POZA_POLEM",
-              "rozstrzygajacy": "SEKTOR",
+              "rozstrzygajacy": "KIERUNEK",
               "u0_proc": 108.46435930061938,
               "warunki": [
                 {
@@ -6744,30 +7464,66 @@
                   "klucz": "U0",
                   "nastawa": 20.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 108.46435930061938,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 88.46435930061938
                 },
                 {
-                  "jednostka": "°",
-                  "klucz": "SEKTOR",
-                  "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-                  "spelniony": false,
-                  "wartosc": 90.18488650488615,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-                  "zapas": -0.18488650488615122
-                },
-                {
                   "jednostka": "A",
                   "klucz": "PROG",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 27.641068104535147,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 25.641068104535147
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": false,
                   "wartosc": -0.08919420675688523,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": -0.08919420675688523
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 89.81511349511385,
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+                  "zapas": 0.18488650488615122
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "TRYB",
+                  "nastawa": 2.0,
+                  "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": false,
+                  "wartosc": -0.08919420675688523,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": -2.0891942067568854
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": -0.08919420675688523
@@ -6777,6 +7533,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -6785,6 +7543,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -6793,6 +7553,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -6900,6 +7662,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -6908,6 +7672,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -6916,6 +7682,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -7030,7 +7798,7 @@
           },
           "u0_prog": {
             "jednostka": "%",
-            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
             "spelnia": null,
             "tekst": null,
             "wartosc": 20.0
@@ -7050,30 +7818,66 @@
               "klucz": "U0",
               "nastawa": 20.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 108.46435930061938,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 88.46435930061938
             },
             {
-              "jednostka": "°",
-              "klucz": "SEKTOR",
-              "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-              "spelniony": false,
-              "wartosc": 90.23414964844308,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-              "zapas": -0.23414964844307917
-            },
-            {
               "jednostka": "A",
               "klucz": "PROG",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 34.55748956354434,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 32.55748956354434
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
               "spelniony": false,
               "wartosc": -0.14122508809837309,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": -0.14122508809837309
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 89.76585035155692,
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+              "zapas": 0.23414964844307917
+            },
+            {
+              "jednostka": "A",
+              "klucz": "TRYB",
+              "nastawa": 2.0,
+              "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": false,
+              "wartosc": -0.14122508809837309,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": -2.141225088098373
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ],
           "W_POLU": [
@@ -7082,30 +7886,66 @@
               "klucz": "U0",
               "nastawa": 20.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 99.1386104681623,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 79.1386104681623
             },
             {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 35.079982834823625,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 33.079982834823625
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 8.523101444300687,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": 8.523101444300687
+            },
+            {
               "jednostka": "°",
               "klucz": "SEKTOR",
               "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
               "spelniony": true,
               "wartosc": 75.93857607501741,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
               "zapas": 14.061423924982591
             },
             {
               "jednostka": "A",
-              "klucz": "PROG",
+              "klucz": "TRYB",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 8.523101444300687,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": 6.523101444300687
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ]
         },
@@ -7159,30 +7999,66 @@
                   "klucz": "U0",
                   "nastawa": 20.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 99.1386104681623,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 79.1386104681623
                 },
                 {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 35.079982834823625,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 33.079982834823625
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 8.523101444300687,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": 8.523101444300687
+                },
+                {
                   "jednostka": "°",
                   "klucz": "SEKTOR",
                   "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
                   "spelniony": true,
                   "wartosc": 75.93857607501741,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
                   "zapas": 14.061423924982591
                 },
                 {
                   "jednostka": "A",
-                  "klucz": "PROG",
+                  "klucz": "TRYB",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 8.523101444300687,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": 6.523101444300687
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": 8.523101444300687
@@ -7195,7 +8071,7 @@
               "punkt_pl": "Zacisk końcowy Kabel pola 3",
               "re_a": -0.14122508809837309,
               "rola": "POZA_POLEM",
-              "rozstrzygajacy": "SEKTOR",
+              "rozstrzygajacy": "KIERUNEK",
               "u0_proc": 108.46435930061938,
               "warunki": [
                 {
@@ -7203,30 +8079,66 @@
                   "klucz": "U0",
                   "nastawa": 20.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 108.46435930061938,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 88.46435930061938
                 },
                 {
-                  "jednostka": "°",
-                  "klucz": "SEKTOR",
-                  "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-                  "spelniony": false,
-                  "wartosc": 90.23414964844308,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-                  "zapas": -0.23414964844307917
-                },
-                {
                   "jednostka": "A",
                   "klucz": "PROG",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 34.55748956354434,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 32.55748956354434
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": false,
                   "wartosc": -0.14122508809837309,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": -0.14122508809837309
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 89.76585035155692,
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+                  "zapas": 0.23414964844307917
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "TRYB",
+                  "nastawa": 2.0,
+                  "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": false,
+                  "wartosc": -0.14122508809837309,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": -2.141225088098373
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": -0.14122508809837309
@@ -7236,6 +8148,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -7244,6 +8158,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -7252,6 +8168,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -7359,6 +8277,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -7367,6 +8287,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -7375,6 +8297,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -7489,7 +8413,7 @@
           },
           "u0_prog": {
             "jednostka": "%",
-            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3, s. 51). Uzupełnij nastawę w karcie nastaw.",
+            "powod_pl": "Brak nastawy U₀> — przyjęto 20 % U₀n, górną granicę zalecanego zakresu 10–20 % (IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)). Uzupełnij nastawę w karcie nastaw.",
             "spelnia": null,
             "tekst": null,
             "wartosc": 20.0
@@ -7509,30 +8433,66 @@
               "klucz": "U0",
               "nastawa": 20.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 109.05247151497852,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 89.05247151497852
             },
             {
-              "jednostka": "°",
-              "klucz": "SEKTOR",
-              "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-              "spelniony": false,
-              "wartosc": 90.52857593773894,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-              "zapas": -0.5285759377389354
-            },
-            {
               "jednostka": "A",
               "klucz": "PROG",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 52.17212927652198,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 50.17212927652198
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
               "spelniony": false,
               "wartosc": -0.48130143656981506,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": -0.48130143656981506
+            },
+            {
+              "jednostka": "°",
+              "klucz": "SEKTOR",
+              "nastawa": 90.0,
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 89.47142406226106,
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+              "zapas": 0.5285759377389354
+            },
+            {
+              "jednostka": "A",
+              "klucz": "TRYB",
+              "nastawa": 2.0,
+              "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": false,
+              "wartosc": -0.48130143656981506,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": -2.481301436569815
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ],
           "W_POLU": [
@@ -7541,30 +8501,66 @@
               "klucz": "U0",
               "nastawa": 20.0,
               "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 98.60396300056307,
               "warunek_latex": "U_0 \\ge U_{0>}",
               "zapas": 78.60396300056307
             },
             {
+              "jednostka": "A",
+              "klucz": "PROG",
+              "nastawa": 2.0,
+              "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 50.269514838379685,
+              "warunek_latex": "|3I_0| \\ge I_{0>}",
+              "zapas": 48.269514838379685
+            },
+            {
+              "jednostka": "A",
+              "klucz": "KIERUNEK",
+              "nastawa": 0.0,
+              "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+              "relacja": "NIE_MNIEJ",
+              "spelniony": true,
+              "wartosc": 8.170336306788784,
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+              "zapas": 8.170336306788784
+            },
+            {
               "jednostka": "°",
               "klucz": "SEKTOR",
               "nastawa": 90.0,
-              "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+              "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+              "relacja": "NIE_WIECEJ",
               "spelniony": true,
               "wartosc": 80.64618587698352,
-              "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+              "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
               "zapas": 9.353814123016477
             },
             {
               "jednostka": "A",
-              "klucz": "PROG",
+              "klucz": "TRYB",
               "nastawa": 2.0,
-              "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+              "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+              "relacja": "NIE_MNIEJ",
               "spelniony": true,
               "wartosc": 8.170336306788784,
-              "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+              "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
               "zapas": 6.1703363067887835
+            },
+            {
+              "jednostka": "s",
+              "klucz": "CZAS",
+              "nastawa": null,
+              "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+              "relacja": "NIE_WIECEJ",
+              "spelniony": true,
+              "wartosc": 0.5,
+              "warunek_latex": "t_{dz} \\le t_{pob}",
+              "zapas": null
             }
           ]
         },
@@ -7618,30 +8614,66 @@
                   "klucz": "U0",
                   "nastawa": 20.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 98.60396300056307,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 78.60396300056307
                 },
                 {
+                  "jednostka": "A",
+                  "klucz": "PROG",
+                  "nastawa": 2.0,
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 50.269514838379685,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 48.269514838379685
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 8.170336306788784,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": 8.170336306788784
+                },
+                {
                   "jednostka": "°",
                   "klucz": "SEKTOR",
                   "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
                   "spelniony": true,
                   "wartosc": 80.64618587698352,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
                   "zapas": 9.353814123016477
                 },
                 {
                   "jednostka": "A",
-                  "klucz": "PROG",
+                  "klucz": "TRYB",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 8.170336306788784,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": 6.1703363067887835
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": 8.170336306788784
@@ -7654,7 +8686,7 @@
               "punkt_pl": "Zacisk końcowy Kabel pola 2",
               "re_a": -0.48130143656981506,
               "rola": "POZA_POLEM",
-              "rozstrzygajacy": "SEKTOR",
+              "rozstrzygajacy": "KIERUNEK",
               "u0_proc": 109.05247151497852,
               "warunki": [
                 {
@@ -7662,30 +8694,66 @@
                   "klucz": "U0",
                   "nastawa": 20.0,
                   "opis_pl": "rozruch napięciowy U₀ ≥ U₀>",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": true,
                   "wartosc": 109.05247151497852,
                   "warunek_latex": "U_0 \\ge U_{0>}",
                   "zapas": 89.05247151497852
                 },
                 {
-                  "jednostka": "°",
-                  "klucz": "SEKTOR",
-                  "nastawa": 90.0,
-                  "opis_pl": "kierunek: prąd 3I₀ w sektorze działania",
-                  "spelniony": false,
-                  "wartosc": 90.52857593773894,
-                  "warunek_latex": "|\\varphi_0 - \\varphi_{os}| \\le \\Delta\\varphi",
-                  "zapas": -0.5285759377389354
-                },
-                {
                   "jednostka": "A",
                   "klucz": "PROG",
                   "nastawa": 2.0,
-                  "opis_pl": "rzut 3I₀ na oś charakterystyki ≥ I₀>",
+                  "opis_pl": "pobudzenie: moduł 3I₀ ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": true,
+                  "wartosc": 52.17212927652198,
+                  "warunek_latex": "|3I_0| \\ge I_{0>}",
+                  "zapas": 50.17212927652198
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "KIERUNEK",
+                  "nastawa": 0.0,
+                  "opis_pl": "kierunek: rzut 3I₀ na φ_ch zgodny z kierunkiem działania (do linii)",
+                  "relacja": "NIE_MNIEJ",
                   "spelniony": false,
                   "wartosc": -0.48130143656981506,
-                  "warunek_latex": "3I_0\\cos(\\varphi_0 - \\varphi_{os}) \\ge I_{0>}",
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge 0",
+                  "zapas": -0.48130143656981506
+                },
+                {
+                  "jednostka": "°",
+                  "klucz": "SEKTOR",
+                  "nastawa": 90.0,
+                  "opis_pl": "położenie wskazu 3I₀ w sektorze φ_ch ± Δφ",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 89.47142406226106,
+                  "warunek_latex": "\\min(|\\varphi_0 - \\varphi_{ch}|,\\,180^\\circ - |\\varphi_0 - \\varphi_{ch}|) \\le \\Delta\\varphi",
+                  "zapas": 0.5285759377389354
+                },
+                {
+                  "jednostka": "A",
+                  "klucz": "TRYB",
+                  "nastawa": 2.0,
+                  "opis_pl": "kryterium trybu cos φ: rzut 3I₀ na oś działania ≥ I₀>",
+                  "relacja": "NIE_MNIEJ",
+                  "spelniony": false,
+                  "wartosc": -0.48130143656981506,
+                  "warunek_latex": "s\\cdot 3I_0\\cos(\\varphi_0 - \\varphi_{ch}) \\ge I_{0>}",
                   "zapas": -2.481301436569815
+                },
+                {
+                  "jednostka": "s",
+                  "klucz": "CZAS",
+                  "nastawa": null,
+                  "opis_pl": "charakterystyka czasowa daje zadziałanie (pobudzenie do wyłączenia zwarcia)",
+                  "relacja": "NIE_WIECEJ",
+                  "spelniony": true,
+                  "wartosc": 0.5,
+                  "warunek_latex": "t_{dz} \\le t_{pob}",
+                  "zapas": null
                 }
               ],
               "wielkosc_a": -0.48130143656981506
@@ -7695,6 +8763,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -7703,6 +8773,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -7711,6 +8783,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -7871,6 +8945,8 @@
         "wymagania": {
           "k_b": {
             "przyjete": true,
+            "stan": "ZALOZENIE_INZYNIERSKIE",
+            "stan_pl": "założenie inżynierskie (wartość robocza)",
             "stan_zrodla": "WSKAZANE",
             "symbol": "k_b",
             "uzasadnienie_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
@@ -7879,6 +8955,8 @@
           },
           "k_c": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
@@ -7887,6 +8965,8 @@
           },
           "k_c_opor": {
             "przyjete": false,
+            "stan": "ENEA_ZWERYFIKOWANE",
+            "stan_pl": "zweryfikowano ze źródłem ENEA",
             "stan_zrodla": "ZWERYFIKOWANE",
             "symbol": "k_c,opor",
             "uzasadnienie_pl": "zalecana wartość współczynnika czułości: zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
@@ -7947,6 +9027,138 @@
         "wzor_pradu_latex": "I_E = r\\cdot\\sqrt{I_L^2 + I_{Res}^2}"
       }
     ],
-    "wyniki_uziemien": []
+    "wyniki_uziemien": [],
+    "zrodla_wymagan": [
+      {
+        "jednostka": "1",
+        "klucz": "k_c.zerowopradowe",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)",
+        "opis_pl": "zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c_opor.zerowopradowe",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)",
+        "opis_pl": "zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c,opor",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.admitancyjne_rezystor",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 3 (s. 51)",
+        "opis_pl": "zabezpieczenia admitancyjne i konduktancyjne w sieciach o punkcie neutralnym uziemionym przez rezystor",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 2.0
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.konduktancyjne_awsc",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 4 (s. 51)",
+        "opis_pl": "zabezpieczenia konduktancyjne w sieciach skompensowanych z AWSCz",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.admitancyjne_pozostale",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 5 (s. 51)",
+        "opis_pl": "zabezpieczenia admitancyjne i susceptancyjne w pozostałych przypadkach",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.watometryczne",
+        "odwolanie_pl": "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+        "opis_pl": "IRiESD ENEA II.4.5.4.1.4 nie wymienia zabezpieczeń watometrycznych; przyjęto 1,5 — wartość punktu 4 dla kryterium składowej czynnej (konduktancyjnego)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.konduktancyjne_pozostale",
+        "odwolanie_pl": "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+        "opis_pl": "IRiESD ENEA II.4.5.4.1.4 nie podaje wartości dla zabezpieczenia konduktancyjnego w tym sposobie pracy punktu neutralnego; przyjęto 1,5 (wartość punktu 4)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_b",
+        "odwolanie_pl": "założenie inżynierskie oceny (IRiESD ENEA nie podaje k_b)",
+        "opis_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_b",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.rezystor",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 1 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 5–10 % w sieci z punktem neutralnym uziemionym przez rezystor; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 10.0
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.izolowany",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 5–15 % w sieci z izolowanym punktem neutralnym; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 15.0
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.kompensowany",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 10–20 % w sieci skompensowanej; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 20.0
+      },
+      {
+        "jednostka": "s",
+        "klucz": "delta_t",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
+        "opis_pl": "odstęp czasowy stopniowania: czas własny wyłącznika + wybieg przekaźnika + zapas (założenia koordynacji projektu)",
+        "stan": "NIEZWERYFIKOWANE",
+        "stan_pl": "odwołanie niezweryfikowane z treścią dokumentu",
+        "symbol": "Δt",
+        "wartosc": 0.2
+      },
+      {
+        "jednostka": "V",
+        "klucz": "u_tp",
+        "odwolanie_pl": "PN-EN 50522:2011, rysunek 4 i pkt 5.4.3 — treści normy brak w repozytorium, odwołanie niesprawdzone",
+        "opis_pl": "dopuszczalne napięcie dotykowe w funkcji czasu trwania zwarcia i warunek wystarczający U_E ≤ U_Tp",
+        "stan": "NIEZWERYFIKOWANE",
+        "stan_pl": "odwołanie niezweryfikowane z treścią dokumentu",
+        "symbol": "U_Tp(t_F)",
+        "wartosc": null
+      }
+    ]
   }
 }

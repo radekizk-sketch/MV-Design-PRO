@@ -35,6 +35,7 @@ import {
   type SiecDoziemna,
   type WierszRodziny,
   type WynikOcenyZiemnozwarciowej,
+  type ZrodloWymagania,
 } from './ocenaZiemnozwarciowa';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 import { TabelaUziemienStacji } from './TabelaUziemienStacji';
@@ -137,9 +138,48 @@ function Komorka({ komorka, testid }: { komorka: KomorkaRodziny | undefined; tes
   );
 }
 
-function OpisWymagania({ przyjete, stan }: { przyjete: boolean; stan: string }) {
-  if (przyjete) return <>{T.ziemneWymaganiePrzyjete}</>;
-  return <>{stan === 'ZWERYFIKOWANE' ? T.ziemneWymaganieZweryfikowane : T.ziemneWymaganieWskazane}</>;
+/** Liczba warunku z jednostką; `null` — wielkość nieograniczona albo nieokreślona (opis
+ *  z backendu w podpowiedzi), nigdy liczba udająca wynik. */
+function LiczbaWarunku({ wartosc, jednostka }: { wartosc: number | null; jednostka: string }) {
+  if (wartosc === null) return <>{T.ziemneBezOgraniczenia}</>;
+  return (
+    <>
+      {formatWgJednostki(wartosc, jednostka)} {jednostka}
+    </>
+  );
+}
+
+/** Tabela źródeł wymagań z backendu (`zrodla_wymagan`) — wartość, stan i odwołanie bez
+ *  przekształceń; ekran nie nadaje stanu i nie zmienia liczby. */
+function ZrodlaWymagan({ zrodla, testid }: { zrodla: readonly ZrodloWymagania[]; testid: string }) {
+  if (zrodla.length === 0) return null;
+  return (
+    <details className="mvd-eaz-zrodla" data-testid={`${testid}-zrodla`}>
+      <summary>{T.ziemneZrodlaWymagan}</summary>
+      <table className="mvd-eaz-tabela">
+        <thead>
+          <tr>
+            <th>{T.ziemneKolSymbol}</th>
+            <th className="mvd-eaz-liczba">{T.ziemneKolWartosc}</th>
+            <th>{T.ziemneKolStanZrodla}</th>
+            <th>{T.ziemneKolOdwolanie}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {zrodla.map((z) => (
+            <tr key={z.klucz} data-testid={`${testid}-zrodlo`} data-klucz={z.klucz} data-stan={z.stan}>
+              <td title={z.opis_pl}>{z.symbol}</td>
+              <td className="mvd-num mvd-eaz-liczba">
+                {z.wartosc === null ? '—' : `${formatWgJednostki(z.wartosc, z.jednostka)} ${z.jednostka}`}
+              </td>
+              <td>{z.stan_pl}</td>
+              <td className="mvd-eaz-przypis">{z.odwolanie_pl}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  );
 }
 
 function Szczegoly({ wiersz, wynik, testid }: { wiersz: WierszRodziny; wynik: WynikOcenyZiemnozwarciowej; testid: string }) {
@@ -179,18 +219,18 @@ function Szczegoly({ wiersz, wynik, testid }: { wiersz: WierszRodziny; wynik: Wy
                           data-klucz={w.klucz}
                           data-spelniony={String(w.spelniony)}
                         >
-                          <td>
+                          <td title={w.opis_pl}>
                             <MathInline latex={w.warunek_latex} />
                             {rozstrzyga === w.klucz ? <span className="mvd-eaz-rozstrzyga">{T.ziemneRozstrzyga}</span> : null}
                           </td>
                           <td className="mvd-num mvd-eaz-liczba">
-                            {formatWgJednostki(w.wartosc, w.jednostka)} {w.jednostka}
+                            <LiczbaWarunku wartosc={w.wartosc} jednostka={w.jednostka} />
                           </td>
                           <td className="mvd-num mvd-eaz-liczba">
-                            {formatWgJednostki(w.nastawa, w.jednostka)} {w.jednostka}
+                            <LiczbaWarunku wartosc={w.nastawa} jednostka={w.jednostka} />
                           </td>
                           <td className="mvd-num mvd-eaz-liczba" data-spelnia={String(w.spelniony)}>
-                            {formatWgJednostki(w.zapas, w.jednostka)} {w.jednostka}
+                            <LiczbaWarunku wartosc={w.zapas} jednostka={w.jednostka} />
                           </td>
                         </tr>
                       )),
@@ -215,11 +255,16 @@ function Szczegoly({ wiersz, wynik, testid }: { wiersz: WierszRodziny; wynik: Wy
               <h6>{T.ziemneWymagane}</h6>
               <ul className="mvd-eaz-lista">
                 {wymagania.map(([klucz, w]) => (
-                  <li key={klucz} data-stan-zrodla={w.stan_zrodla} data-przyjete={String(w.przyjete)}>
+                  <li
+                    key={klucz}
+                    data-stan-zrodla={w.stan_zrodla}
+                    data-stan={w.stan}
+                    data-przyjete={String(w.przyjete)}
+                  >
                     <span className="mvd-num">
                       {w.symbol} ≥ {formatWgJednostki(w.wartosc, '1')}
                     </span>{' '}
-                    — {w.zrodlo_pl} (<OpisWymagania przyjete={w.przyjete} stan={w.stan_zrodla} />).{' '}
+                    — {w.zrodlo_pl} ({w.stan_pl}).{' '}
                     <span className="mvd-eaz-przypis">{w.uzasadnienie_pl}</span>
                   </li>
                 ))}
@@ -421,6 +466,9 @@ export function TabelaOcenyZiemnozwarciowej({
           wynik={wynik}
           testid={`${testid}-uziemienia`}
         />
+      ) : null}
+      {urzadzenieRef === undefined && wiersze.length > 0 ? (
+        <ZrodlaWymagan zrodla={wynik.zrodla_wymagan ?? []} testid={testid} />
       ) : null}
     </div>
   );

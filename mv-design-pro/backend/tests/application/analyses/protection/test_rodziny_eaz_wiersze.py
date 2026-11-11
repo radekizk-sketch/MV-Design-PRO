@@ -29,7 +29,7 @@ from application.analyses.protection.ocena_ziemnozwarciowa import (
     _wskaz,
     ocen_zabezpieczenia_ziemnozwarciowe,
     rusza,
-    warunki_67n,
+    warunki_dzialania,
     wykres_wskazowy_67n,
 )
 from application.analyses.protection.rodziny_eaz import (
@@ -242,7 +242,11 @@ def test_rf_max_odwzorowane_solverem(sposob: str, kod: str):
         if not pole.zwarcie_w_strefie:
             continue
         marginesy.append(
-            min(c.wartosc / c.nastawa for c in warunki_67n(f, pole) if c.klucz != "SEKTOR")
+            min(
+                c.wartosc / c.nastawa
+                for c in warunki_dzialania(f, pole)
+                if c.klucz in ("U0", "PROG", "TRYB")
+            )
             if kod == "67N"
             else abs(pole.prad_3i0_a) / f.prog
         )
@@ -307,7 +311,7 @@ def _pole(modul: float, kat_deg: float, u0: float) -> WielkosciPola:
 
 @pytest.mark.parametrize("tryb", ["RZUT", "SEKTOR"])
 @pytest.mark.parametrize("kierunek", ["DO_LINII", "DO_SZYN"])
-@pytest.mark.parametrize("polozenie", ["wewnatrz", "granica", "poza"])
+@pytest.mark.parametrize("polozenie", ["wewnatrz", "granica", "poza", "za_plecami"])
 @pytest.mark.parametrize("modul", [1.0, 10.0])
 @pytest.mark.parametrize("u0", [10.0, 90.0])
 def test_parytet_werdyktu_67n_i_wykresu(tryb, kierunek, polozenie, modul, u0):
@@ -316,7 +320,11 @@ def test_parytet_werdyktu_67n_i_wykresu(tryb, kierunek, polozenie, modul, u0):
     moduł (tryb sektora) ≥ próg, U0 ≥ U0>."""
     f = _f67(tryb, kierunek)
     os_deg = 90.0 + (180.0 if kierunek == "DO_SZYN" else 0.0)
-    kat = os_deg + {"wewnatrz": 20.0, "granica": 80.0, "poza": 120.0}[polozenie]
+    # „za plecami”: 200° od osi działania — 20° od prostej charakterystyki (w sektorze
+    # rozumianym bez kierunku), ale rzut ujemny: rozstrzyga decyzja kierunkowa.
+    kat = (
+        os_deg + {"wewnatrz": 20.0, "granica": 80.0, "poza": 120.0, "za_plecami": 200.0}[polozenie]
+    )
     pole = _pole(modul, (kat + 180.0) % 360.0 - 180.0, u0)
     wykres = wykres_wskazowy_67n(f, [_wskaz(f, pole, "W_POLU", "p")])
     wskaz = wykres["wskazy"][0]

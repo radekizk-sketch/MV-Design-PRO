@@ -341,8 +341,8 @@ describe('SekcjaNastaw — wynik', () => {
     await waitFor(() =>
       expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik')).toBeInTheDocument(),
     );
-    expect(screen.getByText('48.5 A')).toBeInTheDocument();
-    expect(screen.getByText('5820.5 A')).toBeInTheDocument();
+    expect(screen.getByText('48,5 A')).toBeInTheDocument();
+    expect(screen.getByText('5820,5 A')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-koordynacja-nastawy-werdykt').textContent).toBe(
       T.nastawyWynikKompletny,
     );

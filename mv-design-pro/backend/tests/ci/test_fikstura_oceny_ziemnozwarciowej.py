@@ -106,6 +106,8 @@ def _wariant(sposob: str, rezystancja_ohm: float | None) -> dict[str, Any]:
         "przypadek": wynik["przypadek"],
         "wiersze_uziemien": wynik["wiersze_uziemien"],
         "przypisy_uziemien": wynik["przypisy_uziemien"],
+        # Tabela źródeł wymagań (wartość, stan, odwołanie) — ekran pokazuje ją bez przekształceń.
+        "zrodla_wymagan": wynik["zrodla_wymagan"],
     }
 
 

@@ -220,3 +220,12 @@
 .mvd-eaz-wykres-tekst--drugi {
   font-size: 10px;
 }
+
+/* Źródła wymagań — zwinięte pod tabelami, rozwinięcie natywnym <details>. */
+.mvd-eaz-zrodla {
+  margin-top: 0.5rem;
+}
+.mvd-eaz-zrodla > summary {
+  cursor: pointer;
+  color: var(--mvd-muted);
+}

@@ -13291,6 +13291,138 @@
         "wspolczynnik_r": 1.0,
         "wzor_latex": "I_E = r\\cdot I_C"
       }
+    ],
+    "zrodla_wymagan": [
+      {
+        "jednostka": "1",
+        "klucz": "k_c.zerowopradowe",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 1 (s. 51)",
+        "opis_pl": "zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c_opor.zerowopradowe",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 2 (s. 51)",
+        "opis_pl": "zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa napięcia wynosi 50 % napięcia fazowego",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c,opor",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.admitancyjne_rezystor",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 3 (s. 51)",
+        "opis_pl": "zabezpieczenia admitancyjne i konduktancyjne w sieciach o punkcie neutralnym uziemionym przez rezystor",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 2.0
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.konduktancyjne_awsc",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 4 (s. 51)",
+        "opis_pl": "zabezpieczenia konduktancyjne w sieciach skompensowanych z AWSCz",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.admitancyjne_pozostale",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.4 ppkt 5 (s. 51)",
+        "opis_pl": "zabezpieczenia admitancyjne i susceptancyjne w pozostałych przypadkach",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "k_c",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.watometryczne",
+        "odwolanie_pl": "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+        "opis_pl": "IRiESD ENEA II.4.5.4.1.4 nie wymienia zabezpieczeń watometrycznych; przyjęto 1,5 — wartość punktu 4 dla kryterium składowej czynnej (konduktancyjnego)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_c.konduktancyjne_pozostale",
+        "odwolanie_pl": "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+        "opis_pl": "IRiESD ENEA II.4.5.4.1.4 nie podaje wartości dla zabezpieczenia konduktancyjnego w tym sposobie pracy punktu neutralnego; przyjęto 1,5 (wartość punktu 4)",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_c",
+        "wartosc": 1.5
+      },
+      {
+        "jednostka": "1",
+        "klucz": "k_b",
+        "odwolanie_pl": "założenie inżynierskie oceny (IRiESD ENEA nie podaje k_b)",
+        "opis_pl": "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej.",
+        "stan": "ZALOZENIE_INZYNIERSKIE",
+        "stan_pl": "założenie inżynierskie (wartość robocza)",
+        "symbol": "k_b",
+        "wartosc": 1.2
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.rezystor",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 1 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 5–10 % w sieci z punktem neutralnym uziemionym przez rezystor; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 10.0
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.izolowany",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 2 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 5–15 % w sieci z izolowanym punktem neutralnym; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 15.0
+      },
+      {
+        "jednostka": "%",
+        "klucz": "u0_prog.kompensowany",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.4.1.5 ppkt 3 (s. 51)",
+        "opis_pl": "zalecany zakres nastawy U₀> 10–20 % w sieci skompensowanej; wartość robocza bez nastawy — górna granica",
+        "stan": "ENEA_ZWERYFIKOWANE",
+        "stan_pl": "zweryfikowano ze źródłem ENEA",
+        "symbol": "U₀>",
+        "wartosc": 20.0
+      },
+      {
+        "jednostka": "s",
+        "klucz": "delta_t",
+        "odwolanie_pl": "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej, wersja 2.3, tekst ujednolicony obowiązujący od 19.10.2026, pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią",
+        "opis_pl": "odstęp czasowy stopniowania: czas własny wyłącznika + wybieg przekaźnika + zapas (założenia koordynacji projektu)",
+        "stan": "NIEZWERYFIKOWANE",
+        "stan_pl": "odwołanie niezweryfikowane z treścią dokumentu",
+        "symbol": "Δt",
+        "wartosc": 0.2
+      },
+      {
+        "jednostka": "V",
+        "klucz": "u_tp",
+        "odwolanie_pl": "PN-EN 50522:2011, rysunek 4 i pkt 5.4.3 — treści normy brak w repozytorium, odwołanie niesprawdzone",
+        "opis_pl": "dopuszczalne napięcie dotykowe w funkcji czasu trwania zwarcia i warunek wystarczający U_E ≤ U_Tp",
+        "stan": "NIEZWERYFIKOWANE",
+        "stan_pl": "odwołanie niezweryfikowane z treścią dokumentu",
+        "symbol": "U_Tp(t_F)",
+        "wartosc": null
+      }
     ]
   }
 }

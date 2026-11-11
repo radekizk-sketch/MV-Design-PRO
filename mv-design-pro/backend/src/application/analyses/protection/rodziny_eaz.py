@@ -204,7 +204,7 @@ def sprawdz_wartosci_wiersza(rodzina: RodzinaZiemnozwarciowa, klucze: set[str]) 
 
 
 # ---------------------------------------------------------------------------
-# Wymagane współczynniki k_b i k_c (podstawa i stan źródła)
+# Źródła wymagań: JEDNA tabela wartości, stanów i odwołań (wymaganie właściciela 3)
 # ---------------------------------------------------------------------------
 
 _IRIESD_DOKUMENT = "IRiESD ENEA Operator — Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej"
@@ -213,16 +213,221 @@ SposobPracyPunktuNeutralnego = Literal[
     "IZOLOWANY", "KOMPENSOWANY", "KOMPENSOWANY_AWSC", "UZIEMIONY_REZYSTOR"
 ]
 
+#: Stan źródła wymaganej wartości — rozróżnienie, którego wpięcie w ekran ani raport nie
+#: zmienia: wartość sprawdzona z treścią dokumentu ENEA (punkt i strona), założenie inżynierskie
+#: (dana przyjęta ESTIMATED), odwołanie wskazane, ale niesprawdzone z treścią dokumentu, oraz
+#: wartość podana przez projektanta w przypadku obliczeniowym (nie udaje ENEA).
+StanWymagania = Literal[
+    "ENEA_ZWERYFIKOWANE", "ZALOZENIE_INZYNIERSKIE", "NIEZWERYFIKOWANE", "WARTOSC_PROJEKTANTA"
+]
+ETYKIETY_STANU_WYMAGANIA_PL: dict[str, str] = {
+    "ENEA_ZWERYFIKOWANE": "zweryfikowano ze źródłem ENEA",
+    "ZALOZENIE_INZYNIERSKIE": "założenie inżynierskie (wartość robocza)",
+    "NIEZWERYFIKOWANE": "odwołanie niezweryfikowane z treścią dokumentu",
+    "WARTOSC_PROJEKTANTA": "wartość projektanta (przypadek obliczeniowy)",
+}
+
+
+@dataclass(frozen=True)
+class ZrodloWymagania:
+    """Wiersz tabeli źródeł: wymagana wartość, jej stan i odwołanie (dokument, punkt, strona)."""
+
+    klucz: str
+    symbol: str
+    opis_pl: str
+    wartosc: float | None
+    jednostka: str
+    stan: StanWymagania
+    odwolanie_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "klucz": self.klucz,
+            "symbol": self.symbol,
+            "opis_pl": self.opis_pl,
+            "wartosc": self.wartosc,
+            "jednostka": self.jednostka,
+            "stan": self.stan,
+            "stan_pl": ETYKIETY_STANU_WYMAGANIA_PL[self.stan],
+            "odwolanie_pl": self.odwolanie_pl,
+        }
+
+
+def _pkt(punkt: str) -> str:
+    return f"{_IRIESD_DOKUMENT}, {_IRIESD_WYDANIE}, {punkt}"
+
+
+#: Odstęp czasowy stopniowania Δt — wartość z założeń koordynacji projektu (``CoordinationConfig``:
+#: czas własny wyłącznika + wybieg przekaźnika + zapas); odwołanie do IRiESD pkt II.4.5.1.8 jest
+#: wskazane, ale niesprawdzone z treścią dokumentu.
+DELTA_T_ODWOLANIE_PL = _pkt("pkt II.4.5.1.8 (stopniowanie czasowe) — niesprawdzone z treścią")
+
+#: JEDNA tabela źródeł wymagań oceny zabezpieczeń ziemnozwarciowych. Funkcje ``wymaganie_*``
+#: i ``podstawa_u0_roboczego`` czytają wartości stąd; tabela jedzie w wyniku oceny
+#: (``zrodla_wymagan``) do ekranu i raportu bez przekształceń (przypięte testem).
+ZRODLA_WYMAGAN_EAZ: tuple[ZrodloWymagania, ...] = (
+    ZrodloWymagania(
+        "k_c.zerowopradowe",
+        "k_c",
+        "zabezpieczenia zerowoprądowe podczas zwarć bezoporowych",
+        1.5,
+        "1",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.4 ppkt 1 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "k_c_opor.zerowopradowe",
+        "k_c,opor",
+        "zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa "
+        "napięcia wynosi 50 % napięcia fazowego",
+        1.2,
+        "1",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.4 ppkt 2 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "k_c.admitancyjne_rezystor",
+        "k_c",
+        "zabezpieczenia admitancyjne i konduktancyjne w sieciach o punkcie neutralnym "
+        "uziemionym przez rezystor",
+        2.0,
+        "1",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.4 ppkt 3 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "k_c.konduktancyjne_awsc",
+        "k_c",
+        "zabezpieczenia konduktancyjne w sieciach skompensowanych z AWSCz",
+        1.5,
+        "1",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.4 ppkt 4 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "k_c.admitancyjne_pozostale",
+        "k_c",
+        "zabezpieczenia admitancyjne i susceptancyjne w pozostałych przypadkach",
+        1.2,
+        "1",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.4 ppkt 5 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "k_c.watometryczne",
+        "k_c",
+        "IRiESD ENEA II.4.5.4.1.4 nie wymienia zabezpieczeń watometrycznych; przyjęto 1,5 "
+        "— wartość punktu 4 dla kryterium składowej czynnej (konduktancyjnego)",
+        1.5,
+        "1",
+        "ZALOZENIE_INZYNIERSKIE",
+        "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+    ),
+    ZrodloWymagania(
+        "k_c.konduktancyjne_pozostale",
+        "k_c",
+        "IRiESD ENEA II.4.5.4.1.4 nie podaje wartości dla zabezpieczenia konduktancyjnego "
+        "w tym sposobie pracy punktu neutralnego; przyjęto 1,5 (wartość punktu 4)",
+        1.5,
+        "1",
+        "ZALOZENIE_INZYNIERSKIE",
+        "założenie inżynierskie oceny (analogia do pkt II.4.5.4.1.4 ppkt 4)",
+    ),
+    ZrodloWymagania(
+        "k_b",
+        "k_b",
+        "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń "
+        "ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut "
+        "pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi "
+        "inaczej.",
+        1.2,
+        "1",
+        "ZALOZENIE_INZYNIERSKIE",
+        "założenie inżynierskie oceny (IRiESD ENEA nie podaje k_b)",
+    ),
+    ZrodloWymagania(
+        "u0_prog.rezystor",
+        "U₀>",
+        "zalecany zakres nastawy U₀> 5–10 % w sieci z punktem neutralnym uziemionym przez "
+        "rezystor; wartość robocza bez nastawy — górna granica",
+        10.0,
+        "%",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.5 ppkt 1 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "u0_prog.izolowany",
+        "U₀>",
+        "zalecany zakres nastawy U₀> 5–15 % w sieci z izolowanym punktem neutralnym; wartość "
+        "robocza bez nastawy — górna granica",
+        15.0,
+        "%",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.5 ppkt 2 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "u0_prog.kompensowany",
+        "U₀>",
+        "zalecany zakres nastawy U₀> 10–20 % w sieci skompensowanej; wartość robocza bez "
+        "nastawy — górna granica",
+        20.0,
+        "%",
+        "ENEA_ZWERYFIKOWANE",
+        _pkt("pkt II.4.5.4.1.5 ppkt 3 (s. 51)"),
+    ),
+    ZrodloWymagania(
+        "delta_t",
+        "Δt",
+        "odstęp czasowy stopniowania: czas własny wyłącznika + wybieg przekaźnika + zapas "
+        "(założenia koordynacji projektu)",
+        None,
+        "s",
+        "NIEZWERYFIKOWANE",
+        DELTA_T_ODWOLANIE_PL,
+    ),
+    ZrodloWymagania(
+        "u_tp",
+        "U_Tp(t_F)",
+        "dopuszczalne napięcie dotykowe w funkcji czasu trwania zwarcia i warunek wystarczający "
+        "U_E ≤ U_Tp",
+        None,
+        "V",
+        "NIEZWERYFIKOWANE",
+        "PN-EN 50522:2011, rysunek 4 i pkt 5.4.3 — treści normy brak w repozytorium, odwołanie "
+        "niesprawdzone",
+    ),
+)
+_ZRODLO: dict[str, ZrodloWymagania] = {z.klucz: z for z in ZRODLA_WYMAGAN_EAZ}
+
+
+def zrodlo_wymagania(klucz: str) -> ZrodloWymagania:
+    return _ZRODLO[klucz]
+
+
+def zrodla_wymagan(delta_t_s: float) -> list[dict[str, Any]]:
+    """Tabela źródeł do wyniku oceny; Δt z założeń koordynacji biegu (wartość liczbowa)."""
+    return [
+        {**z.to_dict(), "wartosc": delta_t_s} if z.klucz == "delta_t" else z.to_dict()
+        for z in ZRODLA_WYMAGAN_EAZ
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Wymagane współczynniki k_b i k_c (podstawa i stan źródła)
+# ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class WymaganieWspolczynnika:
-    """Wymagana wartość współczynnika z podstawą; ``przyjete`` — wartość robocza (ESTIMATED)."""
+    """Wymagana wartość współczynnika z podstawą i stanem (``ZrodloWymagania.stan``);
+    ``przyjete`` — wartość robocza (ESTIMATED, wpis w ``dane_przyjete``)."""
 
     symbol: str
     wartosc: float
     podstawa: PodstawaWymagania
     przyjete: bool
     uzasadnienie_pl: str
+    stan: StanWymagania
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -239,45 +444,53 @@ class WymaganieWspolczynnika:
                 )
             ),
             "stan_zrodla": self.podstawa.status,
+            "stan": self.stan,
+            "stan_pl": ETYKIETY_STANU_WYMAGANIA_PL[self.stan],
             "uzasadnienie_pl": self.uzasadnienie_pl,
         }
 
 
-def _irie(ppkt: str, wartosc: float, opis: str, symbol: str) -> WymaganieWspolczynnika:
+def _z_tabeli(klucz: str) -> WymaganieWspolczynnika:
+    """Wymaganie z tabeli źródeł — wartość, stan i odwołanie bez przekształceń."""
+    z = _ZRODLO[klucz]
+    assert z.wartosc is not None, klucz
+    if z.stan == "ENEA_ZWERYFIKOWANE":
+        punkt = z.odwolanie_pl.removeprefix(f"{_IRIESD_DOKUMENT}, {_IRIESD_WYDANIE}, ")
+        return WymaganieWspolczynnika(
+            symbol=z.symbol,
+            wartosc=z.wartosc,
+            podstawa=PodstawaWymagania(
+                rodzaj="OSD",
+                dokument=_IRIESD_DOKUMENT,
+                wydanie=_IRIESD_WYDANIE,
+                jednostka_redakcyjna=punkt,
+                status="ZWERYFIKOWANE",
+                uwagi_pl=z.opis_pl,
+            ),
+            przyjete=False,
+            uzasadnienie_pl=f"zalecana wartość współczynnika czułości: {z.opis_pl}",
+            stan=z.stan,
+        )
+    assert z.stan == "ZALOZENIE_INZYNIERSKIE", klucz
     return WymaganieWspolczynnika(
-        symbol=symbol,
-        wartosc=wartosc,
-        podstawa=PodstawaWymagania(
-            rodzaj="OSD",
-            dokument=_IRIESD_DOKUMENT,
-            wydanie=_IRIESD_WYDANIE,
-            jednostka_redakcyjna=f"pkt II.4.5.4.1.4 ppkt {ppkt} (s. 51)",
-            status="ZWERYFIKOWANE",
-            uwagi_pl=opis,
-        ),
-        przyjete=False,
-        uzasadnienie_pl=f"zalecana wartość współczynnika czułości: {opis}",
-    )
-
-
-def _zalozenie(symbol: str, wartosc: float, uzasadnienie: str) -> WymaganieWspolczynnika:
-    return WymaganieWspolczynnika(
-        symbol=symbol,
-        wartosc=wartosc,
+        symbol=z.symbol,
+        wartosc=z.wartosc,
         podstawa=PodstawaWymagania(
             rodzaj="ZALOZENIE_PROJEKTOWE",
             dokument="Założenie inżynierskie oceny zabezpieczeń ziemnozwarciowych (wartość robocza)",
             wydanie="wartość robocza oceny zabezpieczeń ziemnozwarciowych",
-            jednostka_redakcyjna=f"wymagane {symbol} = {liczba_pl(wartosc)}",
+            jednostka_redakcyjna=f"wymagane {z.symbol} = {liczba_pl(z.wartosc)}",
             status="WSKAZANE",
-            uwagi_pl=uzasadnienie,
+            uwagi_pl=z.opis_pl,
         ),
         przyjete=True,
-        uzasadnienie_pl=uzasadnienie,
+        uzasadnienie_pl=z.opis_pl,
+        stan=z.stan,
     )
 
 
 def _z_przypadku(symbol: str, wartosc: float) -> WymaganieWspolczynnika:
+    """Wartość projektanta z przypadku obliczeniowego — oznaczona, nie udaje ENEA."""
     return WymaganieWspolczynnika(
         symbol=symbol,
         wartosc=wartosc,
@@ -289,16 +502,16 @@ def _z_przypadku(symbol: str, wartosc: float) -> WymaganieWspolczynnika:
             status="WSKAZANE",
         ),
         przyjete=False,
-        uzasadnienie_pl="wartość podana w przypadku obliczeniowym",
+        uzasadnienie_pl="wartość podana przez projektanta w przypadku obliczeniowym",
+        stan="WARTOSC_PROJEKTANTA",
     )
 
 
-K_B_ROBOCZE = 1.2
-_UZASADNIENIE_K_B = (
-    "IRiESD ENEA nie podaje współczynnika bezpieczeństwa nastawy zabezpieczeń "
-    "ziemnozwarciowych; przyjęto 1,2 — zapas na uchyb przekładników toru 3I₀ i rozrzut "
-    "pojemności doziemnej pola. Zmień w przypadku obliczeniowym, gdy metodyka OSD stanowi inaczej."
-)
+#: Klucze wymagań, które projektant może nadpisać w przypadku obliczeniowym
+#: (``StudyCaseConfig.wymagania_eaz``) — lista ZAMKNIĘTA, klucz spoza niej to błąd danych.
+KLUCZE_WYMAGAN_PRZYPADKU: tuple[str, ...] = ("k_b", "k_c", "k_c_opor")
+
+K_B_ROBOCZE = _ZRODLO["k_b"].wartosc
 
 
 def wymaganie_k_b(
@@ -309,7 +522,7 @@ def wymaganie_k_b(
         return None
     if wymagania and "k_b" in wymagania:
         return _z_przypadku("k_b", float(wymagania["k_b"]))
-    return _zalozenie("k_b", K_B_ROBOCZE, _UZASADNIENIE_K_B)
+    return _z_tabeli("k_b")
 
 
 def wymaganie_k_c(
@@ -324,39 +537,16 @@ def wymaganie_k_c(
     if wymagania and "k_c" in wymagania:
         return _z_przypadku("k_c", float(wymagania["k_c"]))
     if rodzina in ("ZEROWOPRADOWE", "KIERUNKOWE_67N"):
-        return _irie("1", 1.5, "zabezpieczenia zerowoprądowe podczas zwarć bezoporowych", "k_c")
+        return _z_tabeli("k_c.zerowopradowe")
     if rodzina == "WATOMETRYCZNE":
-        return _zalozenie(
-            "k_c",
-            1.5,
-            "IRiESD ENEA II.4.5.4.1.4 nie wymienia zabezpieczeń watometrycznych; przyjęto 1,5 "
-            "— wartość punktu 4 dla kryterium składowej czynnej (konduktancyjnego)",
-        )
+        return _z_tabeli("k_c.watometryczne")
     if sposob == "UZIEMIONY_REZYSTOR" and kod in ("Yo>", "Go>"):
-        return _irie(
-            "3",
-            2.0,
-            "zabezpieczenia admitancyjne i konduktancyjne w sieciach o punkcie neutralnym "
-            "uziemionym przez rezystor",
-            "k_c",
-        )
+        return _z_tabeli("k_c.admitancyjne_rezystor")
     if sposob == "KOMPENSOWANY_AWSC" and kod == "Go>":
-        return _irie(
-            "4", 1.5, "zabezpieczenia konduktancyjne w sieciach skompensowanych z AWSCz", "k_c"
-        )
+        return _z_tabeli("k_c.konduktancyjne_awsc")
     if kod in ("Yo>", "Bo>"):
-        return _irie(
-            "5",
-            1.2,
-            "zabezpieczenia admitancyjne i susceptancyjne w pozostałych przypadkach",
-            "k_c",
-        )
-    return _zalozenie(
-        "k_c",
-        1.5,
-        "IRiESD ENEA II.4.5.4.1.4 nie podaje wartości dla zabezpieczenia konduktancyjnego "
-        "w tym sposobie pracy punktu neutralnego; przyjęto 1,5 (wartość punktu 4)",
-    )
+        return _z_tabeli("k_c.admitancyjne_pozostale")
+    return _z_tabeli("k_c.konduktancyjne_pozostale")
 
 
 def wymaganie_k_c_opor(
@@ -368,30 +558,28 @@ def wymaganie_k_c_opor(
         return None
     if wymagania and "k_c_opor" in wymagania:
         return _z_przypadku("k_c,opor", float(wymagania["k_c_opor"]))
-    return _irie(
-        "2",
-        1.2,
-        "zabezpieczenia zerowoprądowe podczas zwarć oporowych, czyli jeśli składowa zerowa "
-        "napięcia wynosi 50 % napięcia fazowego",
-        "k_c,opor",
-    )
+    return _z_tabeli("k_c_opor.zerowopradowe")
 
 
 #: Zalecany zakres nastawy U₀> (IRiESD ENEA II.4.5.4.1.5, s. 51) — wartość robocza rozruchu
-#: napięciowego 67N bez nastawy to GÓRNA granica zakresu (zachowawczo dla czułości).
-ZAKRES_U0_IRIESD: dict[SposobPracyPunktuNeutralnego, tuple[float, float, str]] = {
-    "UZIEMIONY_REZYSTOR": (5.0, 10.0, "1"),
-    "IZOLOWANY": (5.0, 15.0, "2"),
-    "KOMPENSOWANY": (10.0, 20.0, "3"),
-    "KOMPENSOWANY_AWSC": (10.0, 20.0, "3"),
+#: napięciowego 67N bez nastawy to GÓRNA granica zakresu (zachowawczo dla czułości); górna
+#: granica i punkt — z tabeli źródeł.
+ZAKRES_U0_IRIESD: dict[SposobPracyPunktuNeutralnego, tuple[float, str]] = {
+    "UZIEMIONY_REZYSTOR": (5.0, "u0_prog.rezystor"),
+    "IZOLOWANY": (5.0, "u0_prog.izolowany"),
+    "KOMPENSOWANY": (10.0, "u0_prog.kompensowany"),
+    "KOMPENSOWANY_AWSC": (10.0, "u0_prog.kompensowany"),
 }
 
 
 def podstawa_u0_roboczego(sposob: SposobPracyPunktuNeutralnego) -> tuple[float, str]:
     """Wartość robocza U₀> i zdanie źródła (dana przyjęta ESTIMATED)."""
-    od, do, ppkt = ZAKRES_U0_IRIESD[sposob]
+    od, klucz = ZAKRES_U0_IRIESD[sposob]
+    z = _ZRODLO[klucz]
+    assert z.wartosc is not None
+    do = z.wartosc
     return do, (
         f"Brak nastawy U₀> — przyjęto {liczba_pl(do)} % U₀n, górną granicę zalecanego zakresu "
-        f"{liczba_pl(od)}–{liczba_pl(do)} % ({_IRIESD_DOKUMENT}, {_IRIESD_WYDANIE}, "
-        f"pkt II.4.5.4.1.5 ppkt {ppkt}, s. 51). Uzupełnij nastawę w karcie nastaw."
+        f"{liczba_pl(od)}–{liczba_pl(do)} % ({z.odwolanie_pl}). Uzupełnij nastawę w karcie "
+        "nastaw."
     )

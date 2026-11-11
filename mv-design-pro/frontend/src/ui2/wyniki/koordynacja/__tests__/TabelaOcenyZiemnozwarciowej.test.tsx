@@ -298,8 +298,15 @@ describe('wykres wskazowy 67N — parytet rysunku z werdyktem backendu', () => {
       const cosKata = (x * w.os[0] + y * w.os[1]) / Math.hypot(x, y);
       const cosGranicy = w.granice[0][0] * w.os[0] + w.granice[0][1] * w.os[1];
       const warunek = (klucz: string) => dane.warunki.find((x2) => x2.klucz === klucz)!.spelniony;
-      expect(cosKata >= cosGranicy - 1e-9).toBe(warunek('SEKTOR'));
-      expect(x * w.os[0] + y * w.os[1] >= w.prog_a - 1e-9).toBe(warunek('PROG'));
+      // Narysowany sektor φ_os ± Δφ = decyzja kierunkowa ∧ położenie w sektorze (lista backendu).
+      expect(cosKata >= cosGranicy - 1e-9).toBe(warunek('KIERUNEK') && warunek('SEKTOR'));
+      // Próg narysowany jako odcinek (tryb rzutu) = kryterium trybu; łuk (tryb sektorowy) —
+      // moduł 3I₀ ≥ I₀> (pobudzenie).
+      if (w.tryb === 'RZUT') {
+        expect(x * w.os[0] + y * w.os[1] >= w.prog_a - 1e-9).toBe(warunek('TRYB'));
+      } else {
+        expect(Math.hypot(x, y) >= w.prog_a - 1e-9).toBe(warunek('PROG'));
+      }
       expect(el.dataset.dziala).toBe(String(dane.dziala));
       expect(el).toHaveTextContent(formatWgJednostki(dane.modul_a, 'A'));
     }
@@ -326,5 +333,43 @@ describe('wzory LaTeX backendu — składnia KaTeX', () => {
       }
     }
     expect(bledy).toEqual([]);
+  });
+});
+
+describe('źródła wymagań — ekran nie zmienia wartości ani stanu (wymaganie właściciela 3)', () => {
+  it.each(Object.entries(WARIANTY))('%s: tabela źródeł = dane backendu', async (_n, wynik) => {
+    const user = userEvent.setup();
+    render(<TabelaOcenyZiemnozwarciowej wynik={wynik} />);
+    const zrodla = screen.getByTestId(`${TID}-zrodla`);
+    // Natywne rozwinięcie <details> klikiem w <summary>.
+    await user.click(within(zrodla).getByText(T.ziemneZrodlaWymagan));
+    const wiersze = within(zrodla).getAllByTestId(`${TID}-zrodlo`);
+    expect(wiersze).toHaveLength(wynik.zrodla_wymagan!.length);
+    wynik.zrodla_wymagan!.forEach((z, i) => {
+      const el = wiersze[i];
+      expect(el.dataset.klucz).toBe(z.klucz);
+      expect(el.dataset.stan).toBe(z.stan);
+      expect(el).toHaveTextContent(z.stan_pl);
+      expect(el).toHaveTextContent(z.odwolanie_pl);
+      if (z.wartosc !== null) expect(el).toHaveTextContent(formatWgJednostki(z.wartosc, z.jednostka));
+    });
+    // Stany ENEA / założenie / niezweryfikowane — wszystkie trzy obecne, bez scalania.
+    expect(new Set(wiersze.map((w) => w.dataset.stan))).toEqual(
+      new Set(['ENEA_ZWERYFIKOWANE', 'ZALOZENIE_INZYNIERSKIE', 'NIEZWERYFIKOWANE']),
+    );
+  });
+
+  it('wymagania wiersza niosą stan backendu bez przemapowania', async () => {
+    const user = userEvent.setup();
+    const wiersz = KOMPENSOWANY.wiersze!.find((w) => w.kod === '51N' && Object.keys(w.wymagania).length > 0)!;
+    render(<TabelaOcenyZiemnozwarciowej wynik={{ ...KOMPENSOWANY, wiersze: [wiersz] }} />);
+    await user.click(screen.getByTestId(`${TID}-szczegoly-przelacz`));
+    const pozycje = within(screen.getByTestId(`${TID}-wymagania`)).getAllByRole('listitem');
+    const wymagania = Object.values(wiersz.wymagania);
+    expect(pozycje).toHaveLength(wymagania.length);
+    wymagania.forEach((w, i) => {
+      expect(pozycje[i].dataset.stan).toBe(w.stan);
+      expect(pozycje[i]).toHaveTextContent(w.stan_pl);
+    });
   });
 });
