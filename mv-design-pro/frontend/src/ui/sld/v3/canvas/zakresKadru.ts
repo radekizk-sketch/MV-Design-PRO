@@ -40,6 +40,8 @@ import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/mode
 import type { TuszEtykietKadru } from './camera';
 import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
 import { kluczePrzynaleznosci, prostokatRefowWScenie } from './viewAnchor';
+import { GRID } from '../core/grid';
+import { measureTextWidth } from '../core/text';
 
 /** Cele kadru (rozstrzygnięcie §0.1 karty). */
 export type CelKadru = 'siec' | 'magistrala' | 'stacja' | 'sekcja' | 'pole' | 'tor' | 'zaznaczenie';
@@ -792,10 +794,37 @@ export function prostokatyZakresu(
   sceneByLod: Readonly<Record<SceneLod, SceneV3>>,
   zakresKadru: ZakresKadru,
   przelicz: (bbox: BoundingBox) => BoundingBox = (b) => b,
+  /** Migawka modelu — gdy podana, ramka celu obejmuje ODEJŚCIA kadru (znak kontynuacji
+   *  z nazwą celu, `odejsciaKadru`); bez niej (sonda dostępności celu) sam rysunek celu. */
+  snapshot?: EnergyNetworkModel,
 ): ProstokatyZakresu {
+  const refyCeluZbior = new Set(zakresKadru.refy);
+  /** Obrys odejść przy skali `scale` (pismo opisu stałe na ekranie), w układzie SCENY. */
+  const obrysOdejsc = (lod: SceneLod, scale: number): BoundingBox | null => {
+    if (!snapshot || refyCeluZbior.size === 0) return null;
+    const scena = sceneByLod[lod];
+    const baza = prostokatRefowWScenie(scena, zakresKadru.refy);
+    if (!baza) return null;
+    let box: BoundingBox | null = null;
+    for (const o of odejsciaKadru(snapshot, scena, refyCeluZbior, baza)) {
+      const b = obrysOdejscia(o, pismoOpisuOdejscia(scale));
+      box = box
+        ? { minX: Math.min(box.minX, b.minX), minY: Math.min(box.minY, b.minY), maxX: Math.max(box.maxX, b.maxX), maxY: Math.max(box.maxY, b.maxY) }
+        : b;
+    }
+    return box;
+  };
   const naPoziomie = (lod: SceneLod): BoundingBox | null => {
     const box = prostokatRefowWScenie(sceneByLod[lod], zakresKadru.refy);
-    return box ? przelicz(box) : null;
+    if (!box) return null;
+    // Skala 1 — punkt wyjścia iteracji kadru; dokładny obrys przy skali końcowej
+    // dokłada `tuszEtykiet` (ta sama funkcja `obrysOdejsc`).
+    const odejscia = obrysOdejsc(lod, 1);
+    return przelicz(
+      odejscia
+        ? { minX: Math.min(box.minX, odejscia.minX), minY: Math.min(box.minY, odejscia.minY), maxX: Math.max(box.maxX, odejscia.maxX), maxY: Math.max(box.maxY, odejscia.maxY) }
+        : box,
+    );
   };
   // Predykaty parami: przeszkody z prostokątem na poziomie — JEDNA lista, z której
   // powstają i prostokąty przeszkód, i przypisanie tuszu etykiet.
@@ -805,7 +834,7 @@ export function prostokatyZakresu(
       return box ? [{ przeszkoda, box }] : [];
     });
   const przeszkody = (lod: SceneLod): readonly BoundingBox[] => narysowanePrzeszkody(lod).map(({ box }) => przelicz(box));
-  const refyCelu = new Set(zakresKadru.refy);
+  const refyCelu = refyCeluZbior;
   // Podłoga opisów celu tylko dla kadru z kurtyną (cel ≠ sieć) — dokładnie ten
   // warunek stosuje kanwa (`SldCanvasV3`, `refyKadru` puste ⇒ brak podłogi).
   const podloga = refyCelu.size > 0 ? podlogaOpisowCelu(refyCelu) : undefined;
@@ -840,6 +869,8 @@ export function prostokatyZakresu(
         if (i !== undefined) tuszPrzeszkod[i] = dolacz(tuszPrzeszkod[i], narysowana.rect);
       }
     }
+    const odejscia = obrysOdejsc(lod, scale);
+    if (odejscia) cel = dolacz(cel, { x: odejscia.minX, y: odejscia.minY, width: odejscia.maxX - odejscia.minX, height: odejscia.maxY - odejscia.minY });
     const wynik: TuszEtykietKadru = {
       cel: cel ? przelicz(cel) : null,
       przeszkody: tuszPrzeszkod.map((b) => (b ? przelicz(b) : null)),
@@ -862,4 +893,258 @@ export function zakresNarysowany(
   if (zakresKadru.cel === 'siec') return true;
   const { celByLod } = prostokatyZakresu(sceneByLod, zakresKadru);
   return ([0, 1, 2] as const).some((lod) => lod >= zakresKadru.minLod && celByLod[lod] !== null);
+}
+
+// ---------------------------------------------------------------------------
+// ODEJŚCIA KADRU — znacznik kontynuacji z nazwą celu (karta SLD-CZYTELNOSC-STACJI)
+// ---------------------------------------------------------------------------
+//
+// PO CO. Kadr stacji obejmuje WYŁĄCZNIE tę stację (K2b §0.1), a kable i linie do
+// sąsiadów są elementami SIECI — kurtyna je przyciemnia. Ocena właściciela (0/10):
+// odpływ wychodzący za ramkę urywał się bez informacji, dokąd prowadzi. Znak
+// kontynuacji (dwie kreski poprzeczne — wzorzec łamania arkusza
+// `SHEET_CONTINUATION_ARROW`, `scene/buildScene.ts`) stoi tuż za krawędzią ramki
+// celu, a obok niego opis „dalej: <nazwa obiektu na drugim końcu>”. Ramka kadru
+// obejmuje znak i opis (`prostokatyZakresu`), więc początek każdego odpływu jest
+// w kadrze razem z celem.
+//
+// ŹRÓDŁA PRAWDY. Cel odejścia — WYŁĄCZNIE rekordy modelu: gałąź (`branches`,
+// bez łączników) o dokładnie jednym końcu w stacji kadru; koniec poza kadrem
+// nazywa stacja tej szyny (`stacjaSzyny`), a gdy szyna nie należy do stacji
+// (węzeł odgałęźny, złącze) — sama szyna z jej nazwą. Położenie — geometria
+// sceny: odcinek toru SN (klasa `sn`/`snTrunk`) tej gałęzi, którego koniec leży
+// w prostokącie celu, przecięty z krawędzią tego prostokąta. Zero domysłów
+// topologii, zero fizyki.
+
+/** Odstęp znaku kontynuacji od krawędzi ramki i rozstaw kresek [j.św.]. */
+const ODEJSCIE_KRESKA_ODSTEP = GRID;
+/** Połowa długości kreski poprzecznej znaku [j.św.]. */
+const ODEJSCIE_KRESKA_POLOWA = GRID;
+/** Pismo opisu odejścia na EKRANIE [px] — stałe, niezależne od skali (≥ progu
+ *  czytelności 9 px, `MIN_READABLE_LABEL_SCREEN_PX`, z zapasem jak t2 na L2). */
+export const OPIS_ODEJSCIA_PX = 11;
+const KLASY_TORU_ODEJSCIA: ReadonlySet<string> = new Set(['sn', 'snTrunk']);
+
+export type KierunekOdejscia = 'lewo' | 'prawo' | 'gora' | 'dol';
+
+export interface OdejscieKadru {
+  /** `ownerRef` odcinka sceny (trafienie, kurtyna, testy). */
+  readonly segmentRef: string;
+  /** Gałąź modelu, której odcinek przecina ramkę. */
+  readonly galazRef: string;
+  /** Nazwa obiektu na drugim końcu gałęzi. */
+  readonly cel: string;
+  readonly tekst: string;
+  /** Przecięcie odcinka z krawędzią prostokąta celu (układ sceny). */
+  readonly punkt: { readonly x: number; readonly y: number };
+  readonly kierunek: KierunekOdejscia;
+  /** Dwie kreski poprzeczne znaku (układ sceny). */
+  readonly kreski: readonly (readonly [{ readonly x: number; readonly y: number }, { readonly x: number; readonly y: number }])[];
+}
+
+const CELE_GALEZI = new WeakMap<EnergyNetworkModel, Map<string, ReadonlyMap<string, { cel: string }>>>();
+
+/** Gałęzie o dokładnie jednym końcu w stacjach kadru → nazwa drugiego końca. */
+function celeGaleziKadru(snapshot: EnergyNetworkModel, refy: ReadonlySet<string>): ReadonlyMap<string, { cel: string }> {
+  const klucz = [...refy].sort().join('|');
+  let pamiec = CELE_GALEZI.get(snapshot);
+  if (!pamiec) {
+    pamiec = new Map();
+    CELE_GALEZI.set(snapshot, pamiec);
+  }
+  const zapamietane = pamiec.get(klucz);
+  if (zapamietane) return zapamietane;
+  const ix = indeksModelu(snapshot);
+  const stacjeKadru = new Set<string>();
+  for (const ref of refy) {
+    const st = stacjaElementu(ix, ref);
+    if (st) stacjeKadru.add(st);
+  }
+  const wynik = new Map<string, { cel: string }>();
+  for (const br of snapshot.branches ?? []) {
+    if (RODZAJE_LACZNIKA.has(br.type)) continue;
+    const z = ix.stacjaSzyny.get(br.from_bus_ref) ?? null;
+    const doS = ix.stacjaSzyny.get(br.to_bus_ref) ?? null;
+    const wZ = z !== null && stacjeKadru.has(z);
+    const wDo = doS !== null && stacjeKadru.has(doS);
+    if (wZ === wDo) continue;
+    const dalekaSzyna = wZ ? br.to_bus_ref : br.from_bus_ref;
+    const dalekaStacja = wZ ? doS : z;
+    let cel: string;
+    if (dalekaStacja) {
+      cel = nazwa(ix, dalekaStacja);
+    } else {
+      // Drugi koniec to szyna poza stacjami (złącze kablowe, punkt odgałęźny): cel to
+      // stacje osiągalne przez takie szyny — przejście po rekordach gałęzi, zatrzymane
+      // na pierwszej szynie każdej stacji (stacja kadru nie jest celem).
+      const osiagniete = stacjeZaSzynaPosrednia(snapshot, ix, dalekaSzyna, stacjeKadru);
+      cel = osiagniete.length > 0 ? osiagniete.map((st) => nazwa(ix, st)).join(', ') : ix.nazwy.get(dalekaSzyna) ?? br.name ?? br.ref_id;
+    }
+    wynik.set(br.ref_id, { cel });
+  }
+  pamiec.set(klucz, wynik);
+  return wynik;
+}
+
+const SASIEDZTWO_SZYN = new WeakMap<EnergyNetworkModel, ReadonlyMap<string, readonly string[]>>();
+
+/** Stacje (posortowane) osiągalne z szyny spoza stacji przez szyny spoza stacji. */
+function stacjeZaSzynaPosrednia(
+  snapshot: EnergyNetworkModel,
+  ix: IndeksModelu,
+  start: string,
+  stacjeKadru: ReadonlySet<string>,
+): string[] {
+  let sasiedztwo = SASIEDZTWO_SZYN.get(snapshot);
+  if (!sasiedztwo) {
+    const m = new Map<string, string[]>();
+    for (const br of snapshot.branches ?? []) {
+      dopisz(m, br.from_bus_ref, br.to_bus_ref);
+      dopisz(m, br.to_bus_ref, br.from_bus_ref);
+    }
+    sasiedztwo = m;
+    SASIEDZTWO_SZYN.set(snapshot, m);
+  }
+  const odwiedzone = new Set<string>([start]);
+  const kolejka = [start];
+  const stacje = new Set<string>();
+  while (kolejka.length > 0) {
+    const szyna = kolejka.shift()!;
+    for (const nastepna of sasiedztwo.get(szyna) ?? []) {
+      if (odwiedzone.has(nastepna)) continue;
+      odwiedzone.add(nastepna);
+      const st = ix.stacjaSzyny.get(nastepna);
+      if (st) {
+        if (!stacjeKadru.has(st)) stacje.add(st);
+        continue;
+      }
+      kolejka.push(nastepna);
+    }
+  }
+  return [...stacje].sort();
+}
+
+/** Gałąź modelu odcinka sceny: baza refu, a dla połówek trasy (`…_L`, `…_R`) ref bez sufiksu. */
+function galazOdcinka(ownerRef: string, cele: ReadonlyMap<string, unknown>): string | null {
+  let kandydat = refBazowy(ownerRef);
+  for (;;) {
+    if (cele.has(kandydat)) return kandydat;
+    const krotszy = kandydat.replace(/_[LR]$/, '');
+    if (krotszy === kandydat) return null;
+    kandydat = krotszy;
+  }
+}
+
+const wewnatrz = (p: { readonly x: number; readonly y: number }, b: BoundingBox): boolean =>
+  p.x >= b.minX && p.x <= b.maxX && p.y >= b.minY && p.y <= b.maxY;
+
+/**
+ * Odejścia kadru na scenie: dla każdego odcinka toru SN gałęzi wychodzącej z kadru,
+ * którego koniec leży w `celBox`, pierwszy punkt wyjścia trasy z `celBox`. Wynik
+ * posortowany (deterministyczny): po refie odcinka.
+ */
+export function odejsciaKadru(
+  snapshot: EnergyNetworkModel,
+  scene: SceneV3,
+  refy: ReadonlySet<string>,
+  celBox: BoundingBox,
+): readonly OdejscieKadru[] {
+  const cele = celeGaleziKadru(snapshot, refy);
+  if (cele.size === 0) return [];
+  const wynik: OdejscieKadru[] = [];
+  for (const segment of scene.segments) {
+    const ownerRef = segment.meta?.ownerRef;
+    if (!ownerRef || !KLASY_TORU_ODEJSCIA.has(segment.meta?.kind ?? 'sn')) continue;
+    const galazRef = galazOdcinka(ownerRef, cele);
+    if (!galazRef) continue;
+    const pts = segment.points;
+    if (pts.length < 2) continue;
+    const trasa = wewnatrz(pts[0], celBox) ? pts : wewnatrz(pts[pts.length - 1], celBox) ? [...pts].reverse() : null;
+    if (!trasa) continue;
+    for (let i = 1; i < trasa.length; i++) {
+      const a = trasa[i - 1];
+      const b = trasa[i];
+      if (wewnatrz(b, celBox)) continue;
+      const kierunek: KierunekOdejscia =
+        b.x > a.x ? 'prawo' : b.x < a.x ? 'lewo' : b.y > a.y ? 'dol' : 'gora';
+      const punkt =
+        kierunek === 'prawo'
+          ? { x: celBox.maxX, y: a.y }
+          : kierunek === 'lewo'
+            ? { x: celBox.minX, y: a.y }
+            : kierunek === 'dol'
+              ? { x: a.x, y: celBox.maxY }
+              : { x: a.x, y: celBox.minY };
+      const { cel } = cele.get(galazRef)!;
+      wynik.push({
+        segmentRef: ownerRef,
+        galazRef,
+        cel,
+        tekst: `dalej: ${cel}`,
+        punkt,
+        kierunek,
+        kreski: kreskiOdejscia(punkt, kierunek),
+      });
+      break;
+    }
+  }
+  return wynik.sort((x, y) => x.segmentRef.localeCompare(y.segmentRef));
+}
+
+function kreskiOdejscia(
+  p: { readonly x: number; readonly y: number },
+  k: KierunekOdejscia,
+): OdejscieKadru['kreski'] {
+  const znak = k === 'prawo' || k === 'dol' ? 1 : -1;
+  const poziomo = k === 'prawo' || k === 'lewo';
+  return [1, 2].map((n) => {
+    const d = znak * n * ODEJSCIE_KRESKA_ODSTEP;
+    return poziomo
+      ? ([{ x: p.x + d, y: p.y - ODEJSCIE_KRESKA_POLOWA }, { x: p.x + d, y: p.y + ODEJSCIE_KRESKA_POLOWA }] as const)
+      : ([{ x: p.x - ODEJSCIE_KRESKA_POLOWA, y: p.y + d }, { x: p.x + ODEJSCIE_KRESKA_POLOWA, y: p.y + d }] as const);
+  });
+}
+
+/** Pismo opisu odejścia [j.św.] przy skali kamery — stałe `OPIS_ODEJSCIA_PX` na ekranie. */
+export function pismoOpisuOdejscia(scale: number): number {
+  return OPIS_ODEJSCIA_PX / (Number.isFinite(scale) && scale > 0 ? scale : 1);
+}
+
+/**
+ * Prostokąt opisu odejścia przy piśmie `fontSize` [j.św.] — za znakiem, w kierunku
+ * wyjścia trasy (poziomo) albo z prawej strony toru na wysokości znaku (pionowo).
+ * Ta sama funkcja daje kotwicę tekstu w kanwie i prostokąt do ramki kadru.
+ */
+export function prostokatOpisuOdejscia(o: OdejscieKadru, fontSize: number): { x: number; y: number; width: number; height: number } {
+  const width = measureTextWidth(o.tekst, fontSize);
+  const height = fontSize + 6;
+  const dalej = 3 * ODEJSCIE_KRESKA_ODSTEP;
+  switch (o.kierunek) {
+    case 'prawo':
+      return { x: o.punkt.x + dalej, y: o.punkt.y - height / 2, width, height };
+    case 'lewo':
+      return { x: o.punkt.x - dalej - width, y: o.punkt.y - height / 2, width, height };
+    case 'dol':
+      return { x: o.punkt.x + ODEJSCIE_KRESKA_POLOWA + GRID / 2, y: o.punkt.y + ODEJSCIE_KRESKA_ODSTEP, width, height };
+    case 'gora':
+      return { x: o.punkt.x + ODEJSCIE_KRESKA_POLOWA + GRID / 2, y: o.punkt.y - ODEJSCIE_KRESKA_ODSTEP - height, width, height };
+  }
+}
+
+/** Prostokąt całego odejścia (znak + opis) przy piśmie `fontSize`, jako `BoundingBox`. */
+export function obrysOdejscia(o: OdejscieKadru, fontSize: number): BoundingBox {
+  const r = prostokatOpisuOdejscia(o, fontSize);
+  let minX = r.x;
+  let minY = r.y;
+  let maxX = r.x + r.width;
+  let maxY = r.y + r.height;
+  for (const [a, b] of o.kreski) {
+    for (const p of [a, b]) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  return { minX, minY, maxX, maxY };
 }

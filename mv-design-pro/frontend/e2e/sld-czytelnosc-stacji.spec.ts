@@ -17,7 +17,9 @@
  *  - każdy narysowany opis w obszarze ma pismo ≥ 9 px ekranu;
  *  - odstęp sąsiednich równoległych tras (odpływów) w obszarze ≥ `MIN_ODSTEP_TRAS_PX`;
  *  - zacisk nN stacji ≥ `MIN_ZACISK_NN_PX`;
- *  - żaden przycisk paska narzędzi kanwy nie zawija etykiety i nie wychodzi poza kanwę.
+ *  - żaden przycisk paska narzędzi kanwy nie zawija etykiety i nie wychodzi poza kanwę;
+ *  - w kadrze stacji (dwuklik, „Dopasuj widok”) każdy odpływ wychodzący za ramkę ma znak
+ *    kontynuacji z nazwą celu („dalej: …”), opis ≥ 9 px i cały w widocznym obszarze kanwy.
  *
  * Asercje są MIĘKKIE (`expect.soft`): bieg zbiera pomiar całego iloczynu i zapisuje go do
  * `pomiary-<okno>-<motyw>.json` obok zrzutów — ten sam spec dał pomiar „przed” (na drzewie
@@ -81,6 +83,10 @@ interface PomiarWidoku {
   readonly zaciskNnPx: number | null;
   readonly przyciskiZawiniete: readonly string[];
   readonly przyciskiPozaKanwa: readonly string[];
+  /** Znaki kontynuacji odpływów kadru (`sld-v3-odejscie-kadru`). */
+  readonly odejscia: readonly string[];
+  readonly minOpisOdejsciaPx: number | null;
+  readonly odejsciaPozaObszarem: readonly string[];
 }
 
 async function viewBox(page: Page): Promise<string | null> {
@@ -118,7 +124,15 @@ async function dojdz(page: Page, droga: Droga, ref: string): Promise<void> {
     await expect(page.getByTestId('sld-v3-sciezka-kadru')).toBeVisible({ timeout: 10000 });
   } else if (droga === 'dopasuj') {
     await uchwyt.click();
-    await page.getByTestId('sld-v3-fit-view').click();
+    // Przy wąskiej kanwie (okno 1280×720 z otwartym inspektorem) polecenia kadru mogą
+    // być zwinięte do menu „Narzędzia” — droga projektanta: rozwinąć menu, kliknąć.
+    const dopasujWidok = page.getByTestId('sld-v3-fit-view');
+    const zMenu = !(await dopasujWidok.isVisible());
+    if (zMenu) await page.getByTestId('sld-v3-toolbar-menu-toggle').click();
+    await dopasujWidok.click();
+    if (zMenu && (await page.getByTestId('sld-v3-toolbar-menu').isVisible())) {
+      await page.getByTestId('sld-v3-toolbar-menu-toggle').click();
+    }
   } else {
     const box = await uchwyt.boundingBox();
     expect(box, 'uchwyt nazwy stacji na ekranie').not.toBeNull();
@@ -168,12 +182,46 @@ async function zmierz(page: Page, ref: string): Promise<PomiarWidoku> {
       for (const p of Array.from(svg.querySelectorAll<SVGPathElement>('path[data-owner-ref]'))) {
         if (p.hasAttribute('data-hit-role') || p.closest('[data-testid="sld-v3-labels"]') || p.closest('[data-kadr="poza"]')) continue;
         const o = p.getAttribute('data-owner-ref') ?? '';
-        const liczby = (p.getAttribute('d') ?? '').match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
-        if (/[AaCcQq]/.test(p.getAttribute('d') ?? '')) continue;
-        const pkt: { x: number; y: number }[] = [];
-        for (let i = 0; i + 1 < liczby.length; i += 2) {
-          pkt.push({ x: ctm.a * liczby[i] + ctm.c * liczby[i + 1] + ctm.e, y: ctm.b * liczby[i] + ctm.d * liczby[i + 1] + ctm.f });
+        // Parser ścieżki SVG (M/L/H/V/A/Z, bezwzględne i względne): łuk mostka na
+        // skrzyżowaniu (`A`) łączy dwa punkty TEJ SAMEJ prostej — liczony jak odcinek
+        // (dawniej ścieżki z łukiem były pomijane i para tras 6 px uszła pomiarowi).
+        const d = p.getAttribute('d') ?? '';
+        if (/[CcQqSsTt]/.test(d)) continue;
+        const tokeny = d.match(/[MLHVAZmlhvaz]|-?\d+(?:\.\d+)?(?:e-?\d+)?/g) ?? [];
+        const swiat: { x: number; y: number }[] = [];
+        let cx = 0;
+        let cy = 0;
+        let cmd = 'M';
+        for (let i = 0; i < tokeny.length; ) {
+          if (/[A-Za-z]/.test(tokeny[i])) {
+            cmd = tokeny[i];
+            i += 1;
+            if (cmd === 'Z' || cmd === 'z') continue;
+          }
+          const wzgl = cmd === cmd.toLowerCase();
+          const n = (k: number) => Number(tokeny[i + k]);
+          const C = cmd.toUpperCase();
+          if (C === 'M' || C === 'L') {
+            cx = (wzgl ? cx : 0) + n(0);
+            cy = (wzgl ? cy : 0) + n(1);
+            i += 2;
+          } else if (C === 'H') {
+            cx = (wzgl ? cx : 0) + n(0);
+            i += 1;
+          } else if (C === 'V') {
+            cy = (wzgl ? cy : 0) + n(0);
+            i += 1;
+          } else if (C === 'A') {
+            cx = (wzgl ? cx : 0) + n(5);
+            cy = (wzgl ? cy : 0) + n(6);
+            i += 7;
+          } else {
+            i += 1;
+            continue;
+          }
+          swiat.push({ x: cx, y: cy });
         }
+        const pkt = swiat.map((q) => ({ x: ctm.a * q.x + ctm.c * q.y + ctm.e, y: ctm.b * q.x + ctm.d * q.y + ctm.f }));
         for (let i = 0; i + 1 < pkt.length; i += 1) {
           const a = pkt[i];
           const b = pkt[i + 1];
@@ -228,6 +276,20 @@ async function zmierz(page: Page, ref: string): Promise<PomiarWidoku> {
         const wiersze = new Set(Array.from(range.getClientRects()).map((q) => Math.round(q.top)));
         if (wiersze.size > 1 && !przyciskiZawiniete.includes(nazwa)) przyciskiZawiniete.push(nazwa);
       }
+      const odejscia: string[] = [];
+      const odejsciaPozaObszarem: string[] = [];
+      let minOpisOdejsciaPx: number | null = null;
+      for (const g of Array.from(svg.querySelectorAll('[data-testid="sld-v3-odejscie-kadru"]'))) {
+        const t = g.querySelector('text');
+        const tekst = t?.textContent ?? '';
+        odejscia.push(tekst);
+        const px = Number(t?.getAttribute('font-size') ?? 0) * skala;
+        if (minOpisOdejsciaPx === null || px < minOpisOdejsciaPx) minOpisOdejsciaPx = px;
+        const r = g.getBoundingClientRect();
+        if (r.left < obszar.left - 0.5 || r.right > obszar.right + 0.5 || r.top < obszar.top - 0.5 || r.bottom > obszar.bottom + 0.5) {
+          odejsciaPozaObszarem.push(tekst);
+        }
+      }
       const warstwa = etykiety as HTMLElement | null;
       const ukryte = Number(warstwa?.getAttribute('data-hidden-unreadable') ?? 0) + Number(warstwa?.getAttribute('data-dropped-identity') ?? 0);
       const wKadrze = warstwa?.getAttribute('data-ukryte-opisy-w-kadrze');
@@ -245,6 +307,9 @@ async function zmierz(page: Page, ref: string): Promise<PomiarWidoku> {
         zaciskNnPx,
         przyciskiZawiniete,
         przyciskiPozaKanwa,
+        odejscia,
+        minOpisOdejsciaPx,
+        odejsciaPozaObszarem,
       };
     },
     { ref, progOpisu: MIN_OPIS_PX },
@@ -280,6 +345,12 @@ for (const okno of OKNA) {
           }
           expect.soft(pomiar.przyciskiZawiniete, `${opis}: przyciski paska zawinięte`).toEqual([]);
           expect.soft(pomiar.przyciskiPozaKanwa, `${opis}: przyciski paska poza kanwą`).toEqual([]);
+          if (droga !== 'kolko') {
+            expect.soft(pomiar.odejscia.length, `${opis}: znaki kontynuacji odpływów`).toBeGreaterThan(0);
+            expect.soft(pomiar.odejscia.every((t) => /^dalej: .+/.test(t)), `${opis}: opis odejścia z nazwą celu`).toBe(true);
+            expect.soft(pomiar.minOpisOdejsciaPx ?? 0, `${opis}: pismo opisu odejścia`).toBeGreaterThanOrEqual(MIN_OPIS_PX);
+            expect.soft(pomiar.odejsciaPozaObszarem, `${opis}: odejścia poza kadrem`).toEqual([]);
+          }
         }
       }
       writeFileSync(resolve(KATALOG, `pomiary-${okno.klucz}-${motyw.klucz}.json`), `${JSON.stringify(pomiary, null, 2)}\n`);

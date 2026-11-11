@@ -87,7 +87,15 @@ import {
   type ViewportTransform,
 } from './camera';
 import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
-import { nalezyDoZakresu, podlogaOpisowCelu, prostokatyZakresu, type ZakresKadru } from './zakresKadru';
+import {
+  nalezyDoZakresu,
+  odejsciaKadru,
+  pismoOpisuOdejscia,
+  podlogaOpisowCelu,
+  prostokatOpisuOdejscia,
+  prostokatyZakresu,
+  type ZakresKadru,
+} from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -2673,7 +2681,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       dispatch({ type: 'refit', bbox: trescSieci, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
       return;
     }
-    const { celByLod, przeszkodyByLod, tuszEtykiet } = prostokatyZakresu(sceneByLod, zadanie.zakres, sceneBoxToCameraWorld);
+    const { celByLod, przeszkodyByLod, tuszEtykiet } = prostokatyZakresu(
+      sceneByLod,
+      zadanie.zakres,
+      sceneBoxToCameraWorld,
+      props.snapshot,
+    );
     dispatch({
       type: 'kadruj',
       anchorByLod: celByLod,
@@ -2862,6 +2875,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [refyKadru],
   );
   const podlogaCelu = useMemo(() => (zbiorKadru ? podlogaOpisowCelu(zbiorKadru) : undefined), [zbiorKadru]);
+  // SLD-CZYTELNOSC-STACJI: odejścia kadru — odpływ wychodzący za ramkę celu kończy się
+  // znakiem kontynuacji z nazwą obiektu na drugim końcu (`zakresKadru.odejsciaKadru`); ta
+  // sama funkcja wyznacza je dla ramki kadru (`prostokatyZakresu`), więc znak i opis są w kadrze.
+  const odejscia = useMemo(() => {
+    if (!zbiorKadru || !props.snapshot) return [];
+    const baza = prostokatRefowWScenie(scene, [...zbiorKadru]);
+    return baza ? odejsciaKadru(props.snapshot, scene, zbiorKadru, baza) : [];
+  }, [zbiorKadru, props.snapshot, scene]);
   const pozaKadrem = useCallback(
     (ownerRef: string | undefined | null): boolean => zbiorKadru !== null && !nalezyDoZakresu(ownerRef, zbiorKadru),
     [zbiorKadru],
@@ -3651,6 +3672,45 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               <SceneLabelNode key={`label-${planned.index}`} planned={planned} cameraScale={camera.transform.scale} />
             ),
           )}
+        </g>
+        {/* SLD-CZYTELNOSC-STACJI: odejścia kadru (znak kontynuacji + „dalej: <cel>") —
+         *  pełna nieprzezroczystość nad kurtyną; pismo stałe na ekranie. */}
+        <g data-testid="sld-v3-odejscia-kadru" data-liczba-odejsc={odejscia.length}>
+          {odejscia.map((o) => {
+            const fontSize = pismoOpisuOdejscia(camera.transform.scale);
+            const r = prostokatOpisuOdejscia(o, fontSize);
+            return (
+              <g
+                key={`odejscie-${o.segmentRef}`}
+                data-testid="sld-v3-odejscie-kadru"
+                data-odejscie-galaz={o.galazRef}
+                data-odejscie-cel={o.cel}
+                data-odejscie-kierunek={o.kierunek}
+              >
+                {o.kreski.map(([a, b], i) => (
+                  <line
+                    key={i}
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
+                    stroke={palette.baseStroke}
+                    strokeWidth={segmentStrokeWidthForScale('sn', camera.transform.scale)}
+                  />
+                ))}
+                <text
+                  x={r.x}
+                  y={r.y + r.height / 2}
+                  dominantBaseline="middle"
+                  fill={palette.baseStroke}
+                  fontFamily="sans-serif"
+                  fontSize={fontSize}
+                >
+                  {o.tekst}
+                </text>
+              </g>
+            );
+          })}
         </g>
         {/* GEOMETRIA-STACJI (§0 pkt 5): obrys zaznaczenia — własna barwa
          *  (`highlight.selection`), niezależna od barwy roli pola. */}
