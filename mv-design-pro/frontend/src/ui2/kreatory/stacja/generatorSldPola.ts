@@ -61,8 +61,9 @@ import { RODZAJE_APARATU_SN } from '../../../ui/catalog/wartosciKodoweKarty';
  * przez normalizatory niżej (jedna geometria, dwa adaptery — nigdy dwie
  * równoległe ścieżki rysowania):
  *  · `BayDeviceTemplate.kind` — kanoniczny układ aparatury szablonu pola
- *    (CB, DS_BUS, DS_LINE, ES, CT, VT, FUSE, SURGE_ARRESTER, CABLE_HEAD,
- *    TRANSFORMER_DEVICE),
+ *    (CB, DS_BUS, DS_LINE, DS_BRANCH, ES, CT, VT, FUSE, SURGE_ARRESTER,
+ *    CABLE_HEAD, TRANSFORMER_DEVICE, THREE_POSITION_SWITCH, VOLTAGE_INDICATOR,
+ *    CORE_BALANCE_CT),
  *  · `BayDeviceInstanceTemplate.apparatus_kind` — kompozycja producenta
  *    (dokłada VPIS, przekaźnik, licznik i wyłącznik strony nN).
  */
@@ -70,9 +71,12 @@ export type RodzajAparatuBom =
   | 'APARAT_GLOWNY'
   | 'ODLACZNIK_SZYNOWY'
   | 'ODLACZNIK_LINIOWY'
+  | 'ODLACZNIK_ODGALEZIENIA'
+  | 'LACZNIK_TROJPOLOZENIOWY'
   | 'UZIEMNIK'
   | 'PRZEKLADNIK_PRADOWY'
   | 'PRZEKLADNIK_NAPIECIOWY'
+  | 'PRZEKLADNIK_FERRANTIEGO'
   | 'BEZPIECZNIK'
   | 'OGRANICZNIK_PRZEPIEC'
   | 'GLOWICA_KABLOWA'
@@ -109,15 +113,20 @@ export interface PozycjaBom {
 
 /**
  * `BayDeviceTemplate.kind` → rodzaj kanoniczny. Tablica ZAMKNIĘTA względem
- * kontraktu backendu (`bay_templates.py`) — test sprawdza obie strony, więc
- * nowy kind w kontrakcie czerwieni się tutaj, zamiast po cichu zniknąć z pola.
+ * kontraktu backendu (`bay_templates.py`): klucze wynikają z typu
+ * `BayDeviceTemplateWire['kind']`, którego równość z backendem przypina
+ * `backend/tests/ci/test_parytet_rodzajow_aparatu_pola.py` — nowy kind
+ * w kontrakcie czerwieni tamten test i kompilację tej tablicy.
  */
 export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   Record<BayDeviceTemplateWire['kind'], RodzajAparatuBom>
 > = {
   CB: 'APARAT_GLOWNY',
+  // Rozłącznik pola RMU stacji SN/nN (szablony `bay_template_rmu_*`) — aparat główny pola.
+  LOAD_SWITCH: 'APARAT_GLOWNY',
   DS_BUS: 'ODLACZNIK_SZYNOWY',
   DS_LINE: 'ODLACZNIK_LINIOWY',
+  DS_BRANCH: 'ODLACZNIK_ODGALEZIENIA',
   ES: 'UZIEMNIK',
   CT: 'PRZEKLADNIK_PRADOWY',
   VT: 'PRZEKLADNIK_NAPIECIOWY',
@@ -125,6 +134,9 @@ export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   SURGE_ARRESTER: 'OGRANICZNIK_PRZEPIEC',
   CABLE_HEAD: 'GLOWICA_KABLOWA',
   TRANSFORMER_DEVICE: 'TRANSFORMATOR',
+  THREE_POSITION_SWITCH: 'LACZNIK_TROJPOLOZENIOWY',
+  VOLTAGE_INDICATOR: 'WSKAZNIK_NAPIECIA',
+  CORE_BALANCE_CT: 'PRZEKLADNIK_FERRANTIEGO',
   UNBALANCE_CT: 'PRZEKLADNIK_PRADOWY',
   PHASE_TO_PHASE_VT: 'PRZEKLADNIK_NAPIECIOWY',
 };
@@ -145,12 +157,15 @@ export const RODZAJ_Z_KIND_INSTANCJI: Readonly<
   switch_disconnector: 'APARAT_GLOWNY',
   disconnector_busbar: 'ODLACZNIK_SZYNOWY',
   disconnector_line: 'ODLACZNIK_LINIOWY',
+  disconnector_branch: 'ODLACZNIK_ODGALEZIENIA',
+  three_position_switch: 'LACZNIK_TROJPOLOZENIOWY',
   earthing_switch: 'UZIEMNIK',
   fuse_set: 'BEZPIECZNIK',
   current_transformer: 'PRZEKLADNIK_PRADOWY',
   voltage_transformer: 'PRZEKLADNIK_NAPIECIOWY',
   unbalance_current_transformer: 'PRZEKLADNIK_PRADOWY',
   phase_to_phase_voltage_transformer: 'PRZEKLADNIK_NAPIECIOWY',
+  core_balance_ct: 'PRZEKLADNIK_FERRANTIEGO',
   surge_arrester: 'OGRANICZNIK_PRZEPIEC',
   cable_head: 'GLOWICA_KABLOWA',
   transformer: 'TRANSFORMATOR',
@@ -198,9 +213,15 @@ const POZA_TOREM: Readonly<Record<RodzajAparatuBom, UmiejscowienieBom | null>> =
   APARAT_GLOWNY: null,
   ODLACZNIK_SZYNOWY: null,
   ODLACZNIK_LINIOWY: null,
+  // Odłącznik odgałęzienia przekładnika napięciowego (Z.11/Z.11.1) nie przewodzi prądu
+  // roboczego pola — leży w odgałęzieniu pomiarowym, nie w torze mocy.
+  ODLACZNIK_ODGALEZIENIA: 'BOCZNE',
+  LACZNIK_TROJPOLOZENIOWY: null,
   UZIEMNIK: 'ZIEMIA',
   PRZEKLADNIK_PRADOWY: null,
   PRZEKLADNIK_NAPIECIOWY: 'BOCZNE',
+  // Przekładnik Ferrantiego obejmuje kabel odejścia — w osi toru, bez przerwy toru.
+  PRZEKLADNIK_FERRANTIEGO: null,
   BEZPIECZNIK: null,
   OGRANICZNIK_PRZEPIEC: 'ZIEMIA',
   GLOWICA_KABLOWA: null,
@@ -235,9 +256,14 @@ export const SYMBOL_RODZAJU_BOM: Readonly<Record<RodzajAparatuBom, SymbolId>> = 
   APARAT_GLOWNY: 'breaker',
   ODLACZNIK_SZYNOWY: 'disconnector',
   ODLACZNIK_LINIOWY: 'disconnector',
+  ODLACZNIK_ODGALEZIENIA: 'disconnector',
+  // Łącznik trójpołożeniowy i przekładnik Ferrantiego mają w kanonie wyłącznie glif QET
+  // (EN 60617, karta UX-04/POLE-LINIOWE-WZORZEC) — bez symbolu podobnego w zastępstwie.
+  LACZNIK_TROJPOLOZENIOWY: 'qetThreePositionSwitch',
   UZIEMNIK: 'earthSwitch',
   PRZEKLADNIK_PRADOWY: 'currentTransformer',
   PRZEKLADNIK_NAPIECIOWY: 'voltageTransformer',
+  PRZEKLADNIK_FERRANTIEGO: 'qetCoreBalanceCt',
   BEZPIECZNIK: 'fuse',
   OGRANICZNIK_PRZEPIEC: 'surgeArrester',
   GLOWICA_KABLOWA: 'cableHead',
@@ -548,6 +574,13 @@ export const KLASA_OZNACZENIA = 't4' as const;
 export const FONT_ROLI = LABEL_TYPOGRAPHY[KLASA_ROLI].fontSize;
 export const FONT_APARATU = LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize;
 export const FONT_OZNACZENIA = LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontSize;
+/** Odmiany kroju (font-weight) tych samych ról — pomiar szerokości liczy posuwy odmiany,
+ *  którą rysuje `PodgladRozdzielnicySn` (tabela posuwów kroju, `core/text.ts`). */
+export const WAGA_ROLI = LABEL_TYPOGRAPHY[KLASA_ROLI].fontWeight;
+export const WAGA_APARATU = LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight;
+export const WAGA_OZNACZENIA = LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontWeight;
+/** Nazwa aparatu w opisie pola — pogrubiona (wyróżnienie danej katalogowej). */
+export const WAGA_NAZWY_APARATU = 700;
 
 /**
  * POWIĘKSZENIE SYMBOLU względem gabarytu kanonicznego.
@@ -970,7 +1003,7 @@ export function zasiegSceny(scena: ScenaPola, os = 0): readonly [number, number]
     min = Math.min(min, bbox.x1);
     max = Math.max(max, bbox.x2);
     if (symbol.oznaczenie !== '') {
-      const szerokosc = measureTextWidth(symbol.oznaczenie, FONT_OZNACZENIA);
+      const szerokosc = measureTextWidth(symbol.oznaczenie, FONT_OZNACZENIA, WAGA_OZNACZENIA);
       // Oznaczenie stoi po PRAWEJ stronie symbolu (poza adnotacją, która ma je
       // po lewej — patrz `pozycjaOznaczenia`).
       if (symbol.umiejscowienie === 'ADNOTACJA') min = Math.min(min, bbox.x1 - ODSTEP_OZNACZENIA - szerokosc);

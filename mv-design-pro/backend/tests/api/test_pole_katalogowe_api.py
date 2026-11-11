@@ -35,7 +35,9 @@ REF_ZRODLO = "src-gpz-15kv-250mva-rx010"
 REF_KABEL = "cable-tfk-yakxs-3x120"
 REF_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 REF_TRAFO = "tr-sn-nn-15-04-2500kva-dyn11"
-POLE_KATALOGOWE = "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER"
+#: Pole projektowane — rodzina bez gazu fluorowanego (karta UX-04/POLE-LINIOWE-WZORZEC;
+#: rozporządzenie (UE) 2024/573, art. 13 ust. 9).
+POLE_KATALOGOWE = "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR__TRANSFORMER"
 
 
 @pytest.fixture()
@@ -166,7 +168,7 @@ def test_tryb_proby_zwraca_werdykt_i_niczego_nie_zapisuje(klient: TestClient) ->
     podglad = wynik["preview"]
     assert podglad["werdykt"] == "VALID"
     assert podglad["bay_role"] == "TR"
-    assert podglad["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__ROTOBLOK"
+    assert podglad["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR"
     assert [aparat["kind"] for aparat in podglad["aparaty"]].count("CB") == 1
     assert all(aparat["catalog_ref"] for aparat in podglad["aparaty"])
     # Brak migawki w odpowiedzi ⇒ końcówka nie ma czego utrwalić.
@@ -202,7 +204,7 @@ def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) 
     pole = nowe[0]
     assert pole["bay_role"] == "TR"
     assert pole["bay_template_ref"] == POLE_KATALOGOWE
-    assert pole["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__ROTOBLOK"
+    assert pole["switchgear_family_ref"] == "ZPUE_WLOSZCZOWA__ROTOBLOK_AIR"
     assert [aparat["kind"] for aparat in pole["primary_devices"]] == [
         "DS",
         "CB",

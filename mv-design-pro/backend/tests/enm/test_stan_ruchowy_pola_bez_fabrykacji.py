@@ -208,13 +208,14 @@ def test_blokada_wylacznie_z_regul_modelu(
 def test_predykat_blokady_jest_jeden_dla_modelu_odczytu_i_walidatora() -> None:
     """Predykaty parami: reguła blokady zamknięcia i reguła naruszenia (W034) używają tego
     samego zbioru łączników toru głównego i tego samego pojęcia „zamknięty"."""
+    # Pole bez portów: uziemnik skojarzony z KAŻDYM łącznikiem toru (reguła sprzed portów).
     wynik = blokady_zamkniecia(
-        [("es", "ES", "zamkniety"), ("cb", "CB", "otwarty"), ("ds", "DS", None)]
+        [("es", "ES", "zamkniety", {}), ("cb", "CB", "otwarty", {}), ("ds", "DS", None, {})]
     )
     assert wynik == {"es": None, "cb": True, "ds": True}
-    wynik = blokady_zamkniecia([("es", "ES", None), ("cb", "CB", "otwarty")])
+    wynik = blokady_zamkniecia([("es", "ES", None, {}), ("cb", "CB", "otwarty", {})])
     assert wynik == {"es": False, "cb": None}
-    assert blokady_zamkniecia([("ct", "CT", None)]) == {}
+    assert blokady_zamkniecia([("ct", "CT", None, {})]) == {}
 
 
 def test_koncowka_api_field_view_nie_wymysla_telemetrii(uow_factory: Any) -> None:

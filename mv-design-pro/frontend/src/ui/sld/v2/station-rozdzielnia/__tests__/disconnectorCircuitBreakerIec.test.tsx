@@ -12,7 +12,7 @@ describe('ApparatusCbSquare — IEC 60617-7-13-08', () => {
   it('closed: vertical contact line + 2 contact dots wewnątrz kwadratu', () => {
     const { container } = render(
       <svg>
-        <ApparatusCbSquare cx={50} cy={50} state="closed" energized />
+        <ApparatusCbSquare cx={50} cy={50} state="closed" />
       </svg>,
     );
     const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]');
@@ -31,7 +31,7 @@ describe('ApparatusCbSquare — IEC 60617-7-13-08', () => {
   it('open: horizontal break line + brak contact dots', () => {
     const { container } = render(
       <svg>
-        <ApparatusCbSquare cx={50} cy={50} state="open" energized={false} />
+        <ApparatusCbSquare cx={50} cy={50} state="open" />
       </svg>,
     );
     const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]');

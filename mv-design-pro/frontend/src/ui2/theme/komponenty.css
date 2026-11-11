@@ -250,6 +250,12 @@
   padding: 8px 16px;
   border-bottom: 1px solid var(--mvd-line);
 }
+/* Sekcja, do której prowadzi kliknięty obiekt rysunku (blok przekaźnika → „Zabezpieczenia
+ * i automatyka" karty pola): pionowa kreska fokusu przy lewej krawędzi, bez zmiany układu. */
+.mvd-kt-sekcja[data-wyrozniona='true'] {
+  box-shadow: inset 3px 0 0 var(--mvd-focus);
+  outline: none;
+}
 .mvd-kt-tytul {
   margin: 0;
   font-size: var(--mvd-font-size-data);
@@ -261,16 +267,21 @@
   gap: 2px;
   margin: 0;
 }
-/* Wiersz etykieta–wartość — JEDEN układ w całym inspektorze (karta techniczna K6, stan i telemetria
-   aparatu, wyniki elementu): etykieta nigdy nie łamie się w połowie; gdy etykieta i wartość nie
-   mieszczą się obok siebie w szerokości kontenera, wartość przechodzi POD etykietę (całą
-   wartością — `flex-shrink: 0`), zamiast ściskać etykietę do wąskiej kolumny. */
+/* Wiersz etykieta–wartość; wartość dłuższa niż reszta wiersza (np. podstawa rodzaju stacji)
+   przechodzi pod etykietę na całą szerokość zamiast zawijać się w wąskiej kolumnie. Słowo
+   dłuższe niż wiersz (referencja „pozycja katalogu <ref>", nazwa bez spacji) zawija się
+   w granicach wiersza (`overflow-wrap: anywhere`, wartość może się zwęzić — `min-width: 0`),
+   nigdy nie wychodzi na sąsiednią treść. Pomiar przed naprawą (2026-10-29, inspektor 360 px):
+   wartość „Konfiguracja pola" 380 px tekstu w wierszu 299 px. Tabele karty NIE dziedziczą tej
+   reguły — mają przewijanie w poziomie (`.mvd-kt-tabela-przewijanie`). Test: e2e
+   `ux04-pole-liniowe-zrzuty-screenshot.spec.ts::przelaneTeksty`. */
 .mvd-kt-wiersz {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 0 8px;
+  overflow-wrap: anywhere;
 }
 .mvd-kt-etykieta {
   flex: 0 0 auto;
@@ -282,8 +293,8 @@
 }
 .mvd-kt-wartosc {
   display: flex;
-  flex: 1 0 auto;
-  max-width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: baseline;
@@ -333,6 +344,12 @@
    zawijania komórek; kolumny poza szerokością inspektora przewija się w poziomie (klawiatura:
    fokus na obszarze tabeli), a pierwsza kolumna — nazwa obiektu — zostaje przy krawędzi. */
 .mvd-kt-tabela-przewijanie {
+  /* Blok zawierający dla elementów pozycjonowanych absolutnie w tabeli (nagłówek kolumny akcji
+     `.sr-only`): bez niego taki element liczy się od okna, stoi przy prawej krawędzi
+     tabeli max-content i rozszerza przewijany obszar DOKUMENTU — cała aplikacja przesuwała
+     się w poziomie przy zrzucie elementu (pomiar e2e 2026-11-04: `scrollWidth` 2626 px przy
+     oknie 1600 px, `scrollX` 627–732 px). */
+  position: relative;
   overflow-x: auto;
 }
 .mvd-kt-tabela {

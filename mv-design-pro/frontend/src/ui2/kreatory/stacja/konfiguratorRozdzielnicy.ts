@@ -35,6 +35,7 @@ import type {
 import {
   CONSTRUCTION_LABELS_PL,
   czyRodzinaDoBudowania,
+  NAZWY_IZOLACJI_RODZINY_PL,
   type FactoryConfigurationUnitWire,
   type FactoryConfigurationWire,
   type SwitchgearFamily,
@@ -48,7 +49,7 @@ import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 /** Tor konfiguracji rodziny — kontrakt `SwitchgearFamily.tor_konfiguracji`. */
 export type TorKonfiguracji = 'MODULARNY' | 'BLOK_RMU';
 
-/** Rodzaj aparatu w kompozycji pola — słownik kontraktu (20 wartości). */
+/** Rodzaj aparatu w kompozycji pola — słownik kontraktu (23 wartości). */
 export type RodzajAparatu = BayDeviceInstanceWire['apparatus_kind'];
 
 // ---------------------------------------------------------------- Bloki RMU
@@ -78,7 +79,11 @@ export function torRodziny(rodzina: SwitchgearFamily | null | undefined): TorKon
 // --------------------------------------- Oferta rodzin producenta (widok)
 
 /** Powód, dla którego rodziny katalogu NIE MOŻNA dziś użyć (albo `null`). */
-export type PowodNiedostepnosci = 'WYMAGA_KARTY' | 'WYCOFANA' | 'INNA_KLASA_NAPIECIOWA';
+export type PowodNiedostepnosci =
+  | 'WYMAGA_KARTY'
+  | 'WYCOFANA'
+  | 'INNA_KLASA_NAPIECIOWA'
+  | 'GAZ_FLUOROWANY';
 
 export interface PozycjaOfertyRodzin {
   readonly rodzina: SwitchgearFamily;
@@ -152,9 +157,11 @@ function powodNiedostepnosci(
   snVoltageKv: number,
 ): PowodNiedostepnosci | null {
   if (rodzina.status === 'deprecated') return 'WYCOFANA';
-  // Statusy dopuszczające budowę — jeden predykat frontu (`czyRodzinaDoBudowania`, lustro
-  // `POTWIERDZONE_STATUSY_RODZINY` z `switchgear/families.py`, parytet przypięty testem).
-  if (!czyRodzinaDoBudowania(rodzina)) return 'WYMAGA_KARTY';
+  // Dopuszczenie rodziny do NOWEJ stacji — jeden predykat frontu (`czyRodzinaDoBudowania`,
+  // pola wyliczane backendu, parytet przypięty testem): status rodziny, potem zakaz gazów
+  // fluorowanych w obiektach projektowanych (stacja z kreatora jest projektowana).
+  if (!rodzina.dopuszczona_do_budowania) return 'WYMAGA_KARTY';
+  if (!czyRodzinaDoBudowania(rodzina, 'PROJEKTOWANY')) return 'GAZ_FLUOROWANY';
   // Status potwierdzony bez ANI JEDNEGO źródła to ta sama luka danych, co brak
   // karty — polityka źródeł wymaga proweniencji, nie samej etykiety statusu.
   if (rodzina.source_refs.length === 0) return 'WYMAGA_KARTY';
@@ -265,7 +272,7 @@ export const KLUCZ_WYPOSAZENIA_Z_APARATU: Readonly<
 
 /**
  * Nazwy PL rodzajów aparatu kompozycji pola — KOMPLET słownika kontraktu
- * (20 wartości, test dwustronny). Brak wpisu oznaczałby kod backendu na ekranie
+ * (23 wartości, test dwustronny). Brak wpisu oznaczałby kod backendu na ekranie
  * projektanta.
  */
 export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
@@ -273,6 +280,7 @@ export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
   switch_disconnector: 'rozłącznik',
   disconnector_busbar: 'odłącznik szynowy',
   disconnector_line: 'odłącznik liniowy',
+  disconnector_branch: 'odłącznik odgałęzienia',
   earthing_switch: 'uziemnik',
   fuse_set: 'zestaw bezpieczników',
   current_transformer: 'przekładnik prądowy',
@@ -284,6 +292,8 @@ export const NAZWY_APARATU_PL: Readonly<Record<RodzajAparatu, string>> = {
   busbar: 'szyna zbiorcza',
   bus_coupler: 'sprzęgło szyn',
   voltage_indicator: 'wskaźnik obecności napięcia',
+  three_position_switch: 'łącznik trójpołożeniowy',
+  core_balance_ct: 'przekładnik Ferrantiego',
   protection_relay: 'zabezpieczenie',
   meter: 'licznik',
   transformer: 'transformator',
@@ -377,13 +387,7 @@ export function opisNapiecRodziny(rodzina: SwitchgearFamily | null | undefined):
 }
 
 /** Nazwy PL izolacji rodziny — komplet słownika kontraktu (test dwustronny). */
-export const NAZWY_IZOLACJI_PL: Readonly<Record<SwitchgearFamily['insulation_type'], string>> = {
-  air: 'powietrzna',
-  sf6: 'SF₆',
-  vacuum: 'próżniowa',
-  mixed: 'mieszana',
-  unknown: 'nieokreślona',
-};
+export const NAZWY_IZOLACJI_PL = NAZWY_IZOLACJI_RODZINY_PL;
 
 /** Nazwy PL toru konfiguracji — język projektanta, nie kod kontraktu. */
 export const NAZWY_TORU_PL: Readonly<Record<TorKonfiguracji, string>> = {

@@ -11,13 +11,15 @@ from network_model.catalog.mv_transformer_catalog import (
 # istniejacych + 16 pozycji polskich producentow (deklarowane) + 48 normatywnych 0,4 kV
 # Tier 2 + 126 normatywnych blokowych (9 mocy × 2 napiecia SN × 7 napiec nN; druga czesc
 # karty doklada 0,48 kV dla Tesla Megapack 2 XL: 108 + 18; karta KATALOG-TURBINY-TOR-V112
-# doklada 0,65 kV — strona sieci przeksztaltnika Vestas V112: + 18) + 1 karta producenta = 243.
+# doklada 0,65 kV — strona sieci przeksztaltnika Vestas V112: + 18) + 1 karta producenta = 243;
+# karta POLA-GPZ-SZABLONY doklada 2 transformatory uziemiajace ZNyn11 15/0,4 i 20/0,4 kV
+# (deklarowane wg ENEA Zeszyt 1 §16, NIEWERYFIKOWANY) = 245.
 # Dawne 50
 # „ZWERYFIKOWANYCH" nie mialo dolaczonego dokumentu i przekraczalo pulap strat Tier 2 —
 # sa NIEWERYFIKOWANY; ZWERYFIKOWANY ma wylacznie pozycja z karta producenta (1).
-EXPECTED_TOTAL = 243
+EXPECTED_TOTAL = 245
 EXPECTED_VERIFIED = 1
-EXPECTED_UNVERIFIED = 50
+EXPECTED_UNVERIFIED = 52
 
 
 def test_transformer_catalog_has_industrial_series_width() -> None:
@@ -26,8 +28,9 @@ def test_transformer_catalog_has_industrial_series_width() -> None:
 
     assert stats["liczba_transformatorow_ogolem"] == EXPECTED_TOTAL
     assert stats["liczba_wn_sn"] == 10
-    assert stats["liczba_sn_nn"] == EXPECTED_TOTAL - 10
-    assert stats["grupy_polaczen"] == ["Dyn11", "Yd11"]
+    # Transformatory uziemiające ZNyn11 (2) nie są transformatorami SN/nN rozdzielczymi.
+    assert stats["liczba_sn_nn"] == EXPECTED_TOTAL - 10 - 2
+    assert stats["grupy_polaczen"] == ["Dyn11", "Yd11", "ZNyn11"]
     assert stats["statusy_weryfikacji"] == ["NIEWERYFIKOWANY", "REFERENCYJNY", "ZWERYFIKOWANY"]
     assert stats["statusy_katalogowe"] == ["PRODUKCYJNY_V1", "REFERENCYJNY_V1"]
     assert len({item["params"]["rated_power_mva"] for item in all_types}) >= 16

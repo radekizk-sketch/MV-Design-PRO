@@ -21,10 +21,10 @@
  */
 
 import {
-  COLOR_DEVICE_CLOSED_BORDER,
+  COLOR_DEVICE_FAULT,
   COLOR_DEVICE_OPEN,
-  COLOR_DEVICE_OPEN_BORDER,
   COLOR_DEVICE_UNKNOWN,
+  COLOR_LIVE,
   COLOR_FIELD_TRUNK_ENERGIZED,
   COLOR_SELECTION,
   COLOR_TEXT_MUTED,
@@ -34,7 +34,7 @@ import {
   FONT_MONO,
   FONT_SANS,
 } from '../theme/tokens';
-import { ApparatusCableHead, ApparatusCbSquare, ApparatusEarthingSwitch, ApparatusFuse, ApparatusThreePositionSwitch, ApparatusTransformerSymbol, ApparatusVtThreePhase, CtPrimary } from './GpzApparatusSymbols';
+import { ApparatusCableHead, ApparatusCbSquare, ApparatusEarthingSwitch, ApparatusFuse, ApparatusThreePositionSwitch, ApparatusTransformerSymbol, ApparatusVtThreePhase, CtPrimary, barwaLacznika } from './GpzApparatusSymbols';
 import type { MouseEvent } from 'react';
 import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import {
@@ -134,10 +134,10 @@ function fieldSwitchState(field: StationFieldDescriptor): StationApparatus['swit
   return rep?.switchState ?? 'unknown';
 }
 
-function stateColor(state: StationApparatus['switchState']): string {
-  if (state === 'open') return COLOR_DEVICE_OPEN_BORDER;
-  if (state === 'unknown') return COLOR_DEVICE_UNKNOWN;
-  return COLOR_DEVICE_CLOSED_BORDER;
+/** Aparaty rysowane w tym katalogu łącznikiem trójpołożeniowym (sygnatura ABB UniSwitch:
+ *  rozłącznik i odłącznik, `ApparatusSymbol`) — mają zestyk uziemiający. */
+function maZestykUziemiajacy(kind: StationApparatus['kind'] | undefined): boolean {
+  return kind === 'LOAD_SWITCH' || kind === 'DS';
 }
 
 /** Format a solver MW value as a compact SCADA label (kW under 1 MW). */
@@ -252,14 +252,13 @@ function ApparatusSymbol(props: {
   let symbol: JSX.Element;
   switch (kind) {
     case 'CB':
-      symbol = <ApparatusCbSquare cx={cx} cy={cy} state={switchState} energized={energized} />;
+      symbol = <ApparatusCbSquare cx={cx} cy={cy} state={switchState} />;
       break;
     case 'LOAD_SWITCH':
     case 'DS': {
-      // The ABB UniSwitch signature: rozłącznik trzypołożeniowy (integral earthing).
-      const position =
-        switchState === 'closed' ? 'closed' : switchState === 'open' ? 'open' : 'unknown';
-      symbol = <ApparatusThreePositionSwitch cx={cx} cy={cy} position={position} />;
+      // The ABB UniSwitch signature: rozłącznik trzypołożeniowy (integral earthing); kolor
+      // i położenie noża ze stanu modelu (`barwaLacznika`, jedno źródło z kaflem v3).
+      symbol = <ApparatusThreePositionSwitch cx={cx} cy={cy} position={apparatus.switchState} />;
       break;
     }
     case 'FUSE':
@@ -308,8 +307,8 @@ function ProtectionChips(props: { field: StationFieldDescriptor; cx: number; top
     <g data-testid={`sr-protection-${field.fieldId}`} pointerEvents="none">
       {enabled.map((fn, i) => {
         const y = topY + i * (chipH + gap);
-        const active = fn.tripped ? COLOR_DEVICE_OPEN : fn.pickedUp ? '#FFB020' : '#0A1018';
-        const border = fn.enabled ? COLOR_DEVICE_CLOSED_BORDER : COLOR_TEXT_MUTED;
+        const active = fn.tripped ? COLOR_DEVICE_FAULT : fn.pickedUp ? '#FFB020' : '#0A1018';
+        const border = fn.enabled ? COLOR_LIVE : COLOR_TEXT_MUTED;
         return (
           <g key={fn.code} data-protection-code={fn.code} data-enabled={fn.enabled ? 'true' : 'false'}>
             <rect x={colX} y={y} width={chipW} height={chipH} rx={2} ry={2} fill={active} stroke={border} strokeWidth={0.9} />
@@ -456,14 +455,17 @@ function FieldColumn(props: {
         const rep = representativeApparatus(field);
         const shape = rep ? canonicalShapeForKind(rep.kind) : null;
         const cy = geom.busY + 15;
-        const fillColor = isOpen ? 'none' : state === 'unknown' ? COLOR_DEVICE_UNKNOWN : '#0A8D43';
-        const strokeColor = stateColor(state);
-        const sw = isOpen ? 1.8 : 1.4;
+        // Obrys i wypełnienie z JEDNEJ pary (`barwaLacznika`, jedno źródło z kaflem v3):
+        // wypełnienie tylko przy torze zamkniętym, kolor obrysu = kolor stanu.
+        const { polozenie, kolor: strokeColor } = barwaLacznika(state, maZestykUziemiajacy(rep?.kind));
+        const fillColor = polozenie.geometria === 'closed' ? strokeColor : 'none';
+        const sw = polozenie.geometria === 'open' ? 1.8 : 1.4;
         const common = {
           'data-testid': `sr-field-rep-symbol-${field.fieldId}`,
           'data-apparatus-kind': rep?.kind ?? 'none',
           'data-symbol-shape': shape ?? 'none',
           'data-state': state ?? 'unknown',
+          'data-kafel': polozenie.kafel,
         } as const;
         if (shape === 'square') {
           return <rect {...common} x={x - 7} y={cy - 7} width={14} height={14} rx={1} fill={fillColor} stroke={strokeColor} strokeWidth={sw} />;
@@ -607,7 +609,7 @@ function NNFeederColumn(props: {
       {/* Feeder drop. */}
       <line data-routing="orthogonal" x1={x} y1={geom.busY} x2={x} y2={geom.bottomY} stroke={nnBusColor} strokeWidth={1.8} />
       {/* nN feeder switch (LV breaker square). */}
-      <rect x={x - 4} y={geom.busY + 8} width={8} height={8} rx={1} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
+      <rect x={x - 4} y={geom.busY + 8} width={8} height={8} rx={1} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1} />
       {/* Terminator: PV = inverter node; load = arrowhead. */}
       {isPv ? (
         <g data-testid={`sr-nn-pv-${feeder.feederId}`}>
@@ -684,7 +686,7 @@ function NNTier(props: {
       />
       {/* nN main breaker between transformer and nN busbar. */}
       <line data-routing="orthogonal" x1={nn.spineX} y1={nn.transformerY + 9} x2={nn.spineX} y2={nn.busbar.y} stroke={nnBusColor} strokeWidth={1.8} />
-      <rect x={nn.spineX - 4} y={nn.mainBreakerY - 4} width={8} height={8} rx={1} fill="#0A8D43" stroke={COLOR_DEVICE_CLOSED_BORDER} strokeWidth={1} />
+      <rect x={nn.spineX - 4} y={nn.mainBreakerY - 4} width={8} height={8} rx={1} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1} />
       {detail === 'close' && (
         <text x={nn.spineX + 9} y={nn.mainBreakerY + 3} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={600}>
           Q0 nN
@@ -762,16 +764,24 @@ function NNTier(props: {
 /**
  * Upright rozłącznik diamond for the coupler (◇) — the canonical disconnector
  * shape, drawn UPRIGHT with a VERTICAL contact line. State is shown by COLOUR
- * only (green=closed, red=open); there is NO tilted blade and NO diagonal
+ * only — `barwaLacznika` (jedno źródło z kaflem łącznika v3: czerwony = zamknięty,
+ * zielony = otwarty, szary = nieustalony / brak danej, fioletowy = awaria); stan
+ * pochodzi z rekordu aparatu, nigdy z domysłu (np. ze stanu wyłącznika sprzęgła).
+ * Wypełnienie tylko przy torze zamkniętym. There is NO tilted blade and NO diagonal
  * segment. The diamond outline is a <polygon> (a symbol, not routing); the only
  * <line> is the vertical contact — so the coupler has zero diagonal segments.
  */
-function CouplerDisconnectorDiamond(props: { cx: number; cy: number; h: number; open: boolean }): JSX.Element {
-  const { cx, cy, h, open } = props;
-  const color = open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
-  const fill = open ? 'none' : '#0A8D43';
+function CouplerDisconnectorDiamond(props: { cx: number; cy: number; h: number; state: StationApparatus['switchState'] }): JSX.Element {
+  const { cx, cy, h, state } = props;
+  const { polozenie, kolor: color } = barwaLacznika(state, true);
+  const fill = polozenie.geometria === 'closed' ? color : 'none';
   return (
-    <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={open ? 'open' : 'closed'}>
+    <g
+      data-apparatus-kind="three_position_switch"
+      data-symbol-shape="diamond"
+      data-state={state ?? 'unknown'}
+      data-kafel={polozenie.kafel}
+    >
       <polygon
         points={`${cx},${cy - h} ${cx + h},${cy} ${cx},${cy + h} ${cx - h},${cy}`}
         fill={fill}
@@ -808,10 +818,8 @@ function SmcCoupler(props: {
   const lineColor = breakerOpen ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
   const dash = breakerOpen ? '3 3' : undefined;
   const breakerState = breakerOpen ? 'open' : 'closed';
-  // The section isolators are open iff their own switch is open OR the coupler is
-  // open (NOP) — shown by COLOUR, never by a tilted blade.
-  const aOpen = swA?.switchState === 'open' || breakerOpen;
-  const bOpen = swB?.switchState === 'open' || breakerOpen;
+  // The section isolators show THEIR OWN state from the model record (Q1 / Q2) — never
+  // the coupler breaker's (NOP) state; shown by COLOUR, never by a tilted blade.
   const handle = (id: string) => (onFieldClick ? (e: MouseEvent) => { e.stopPropagation(); onFieldClick(id); } : undefined);
 
   return (
@@ -830,13 +838,13 @@ function SmcCoupler(props: {
         <line data-routing="orthogonal" x1={aEnd} y1={busY} x2={aX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
         {/* vertical drop bus → switch */}
         <line data-routing="orthogonal" x1={aX} y1={busY} x2={aX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
-        <CouplerDisconnectorDiamond cx={aX} cy={swY} h={swH} open={aOpen} />
+        <CouplerDisconnectorDiamond cx={aX} cy={swY} h={swH} state={swA?.switchState} />
         {detail !== 'far' && <text x={aX - 12} y={swY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q1</text>}
         {/* vertical connector switch → breaker */}
         <line data-routing="orthogonal" x1={aX} y1={swY + swH + 1} x2={aX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={lineColor} strokeWidth={1.8} />
         {/* WYŁĄCZNIK sprzęgła — square, UPRIGHT, state by COLOUR. */}
         <g data-testid="sr-coupler-breaker" data-apparatus-kind="circuit_breaker" data-symbol-shape="square" data-state={breakerState} onClick={handle(`${field.fieldId}/q0`)}>
-          <ApparatusCbSquare cx={aX} cy={breakerY} state={breakerState} energized={!breakerOpen} />
+          <ApparatusCbSquare cx={aX} cy={breakerY} state={breakerState} />
         </g>
         {detail !== 'far' && <text x={aX - 12} y={breakerY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q0</text>}
         {/* NOP tag — text, NOT a ⊘ glyph; the red open □ already shows the state. */}
@@ -854,7 +862,7 @@ function SmcCoupler(props: {
       <g data-testid="sr-coupler-cell-b" onClick={handle(`${field.fieldId}/q2`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
         <line data-routing="orthogonal" x1={bStart} y1={busY} x2={bX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
         <line data-routing="orthogonal" x1={bX} y1={busY} x2={bX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
-        <CouplerDisconnectorDiamond cx={bX} cy={swY} h={swH} open={bOpen} />
+        <CouplerDisconnectorDiamond cx={bX} cy={swY} h={swH} state={swB?.switchState} />
         {detail !== 'far' && <text x={bX + 12} y={swY + 2} textAnchor="start" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q2</text>}
         <line data-routing="orthogonal" x1={bX} y1={swY + swH + 1} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={dash} />
       </g>
@@ -926,7 +934,7 @@ function BusbarShortCircuitPanel(props: {
         );
       })}
       {/* Icw verification verdict. */}
-      <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER} strokeWidth={1} />
+      <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_LIVE : COLOR_DEVICE_FAULT} strokeWidth={1} />
       <text x={x + panelW / 2} y={y + panelH - 8} textAnchor="middle" fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={800}>
         <TekstSvgZWzorami tekst={`$I_{k,\\max}''$ ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} $I_{cw}$ ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`} />
       </text>

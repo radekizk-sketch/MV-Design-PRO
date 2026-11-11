@@ -1329,6 +1329,18 @@ def get_all_lv_fuse_link_types() -> list[dict]:
     return records
 
 
+#: Warianty przekładni z gwiazdką rysunków Z.7 (s.86) i Z.12 (s.92), ENEA Zeszyt 1 — tabela
+#: „Uwaga”: przekładnia toru transformatora i łącznika szyn zależy od napięcia i mocy
+#: transformatora 110 kV/SN. Kolejność jak w tabeli; pierwszy wariant jest wartością roboczą
+#: szablonu pola.
+_WARIANTY_PRZEKLADNI_TRANSFORMATORA: tuple[tuple[int, str], ...] = (
+    (1000, "transformator 110/15 kV o mocy do 25 MVA"),
+    (1600, "transformator 110/15 kV o mocy 40 MVA"),
+    (800, "transformator 110/20 kV o mocy do 25 MVA"),
+    (1200, "transformator 110/20 kV o mocy 40 MVA"),
+)
+
+
 def get_all_ct_types() -> list[dict]:
     def _quality_meta(
         *,
@@ -1343,6 +1355,56 @@ def get_all_ct_types() -> list[dict]:
             "catalog_status": catalog_status,
             "contract_version": "2.0",
             "verification_note": verification_note,
+        }
+
+    def _ct_typu_ogolnego_osd(
+        type_id: str,
+        name: str,
+        ratio_primary_a: float,
+        ith_ka_1s: float,
+        rdzenie: list[tuple[str, float, str, float | None, list[str]]],
+        opis_rysunku: str,
+        uwaga: str,
+    ) -> dict:
+        """Typ ogólny OSD przekładnika pola GPZ z rysunku Zeszytu 1 (karta POLA-GPZ-SZABLONY,
+        tabliczki zweryfikowane ze źródłem). Pola skalarne opisują rdzeń I; Ith z szeregu
+        IEC 62271-200."""
+        pierwszy = rdzenie[0]
+        return {
+            "id": type_id,
+            "name": name,
+            "params": {
+                "ratio_primary_a": ratio_primary_a,
+                "ratio_secondary_a": 5.0,
+                "accuracy_class": pierwszy[2],
+                "burden_va": pierwszy[1],
+                "ith_ka_1s": ith_ka_1s,
+                **({"fs_safety_factor": pierwszy[3]} if pierwszy[3] is not None else {}),
+                "manufacturer": None,
+                "rdzenie": [
+                    {
+                        "przekladnia": przekladnia,
+                        "moc_va": moc,
+                        "klasa": klasa,
+                        "fs": fs,
+                        "przeznaczenie": przeznaczenie,
+                    }
+                    for przekladnia, moc, klasa, fs, przeznaczenie in rdzenie
+                ],
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=(
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja "
+                        f"02.2023 – 2) — {opis_rysunku}; IEC 61869-2; IEC 62271-200 (szereg "
+                        "wytrzymałości rozdzielnicy SN)"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa "
+                        "rdzeni). Pola skalarne opisują rdzeń I. " + uwaga
+                    ),
+                ),
+            },
         }
 
     source_reference = (
@@ -1562,6 +1624,161 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: przekładniki pól liniowych GPZ wg rysunków ENEA
+        # Operator „Stacje elektroenergetyczne 110 kV", Zeszyt 1 — TYP OGÓLNY OSD (jak rodziny
+        # rozdzielnic `TYP_OGOLNY_OSD__GPZ_*`), nie wyrób producenta. Przekładnia przełączalna
+        # 200-400/5 A: pole `ratio_primary_a` = zaczep 400 A, rdzenie z rysunku w `rdzenie`.
+        {
+            "id": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+            "name": "CT 200-400/5 A, 1 rdzeń 15 VA 5P20 (typ ogólny OSD, ENEA Z.10/Z.11.1)",
+            "params": {
+                "ratio_primary_a": 400.0,
+                "ratio_secondary_a": 5.0,
+                "accuracy_class": "5P20",
+                "burden_va": 15.0,
+                "ith_ka_1s": 20.0,
+                "manufacturer": None,
+                "rdzenie": [
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 15.0,
+                        "klasa": "5P20",
+                        "fs": None,
+                        "przeznaczenie": ["ZABEZPIECZENIA"],
+                    }
+                ],
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=(
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 (s.89) "
+                        "i Z.11.1 (s.91); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości "
+                        "rozdzielnicy SN: Ith 20 kA/1 s dla toru 200-1000 A)"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa rdzenia). "
+                        + verification_note
+                    ),
+                ),
+            },
+        },
+        {
+            "id": "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+            "name": "CT 200-400/5/5/5 A, 3 rdzenie (typ ogólny OSD, ENEA Z.11)",
+            "params": {
+                "ratio_primary_a": 400.0,
+                "ratio_secondary_a": 5.0,
+                "accuracy_class": "0,2S",
+                "burden_va": 10.0,
+                "ith_ka_1s": 20.0,
+                "fs_safety_factor": 5.0,
+                "manufacturer": None,
+                "rdzenie": [
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 10.0,
+                        "klasa": "0,2S",
+                        "fs": 5.0,
+                        "przeznaczenie": ["ROZLICZENIE", "JAKOSC_ENERGII"],
+                    },
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 10.0,
+                        "klasa": "0,2",
+                        "fs": 5.0,
+                        "przeznaczenie": ["REGULACJA"],
+                    },
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 15.0,
+                        "klasa": "5P20",
+                        "fs": None,
+                        "przeznaczenie": ["ZABEZPIECZENIA"],
+                    },
+                ],
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=(
+                        "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 (s.90); "
+                        "IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: "
+                        "Ith 20 kA/1 s dla toru 200-1000 A)"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Typ ogólny OSD z rysunku standardu: rdzeń I rozliczeniowy i analizatora "
+                        "jakości energii (AJEE — odbiorcy > 4 MW, wytwórcy ≥ 200 kW), rdzeń II "
+                        "układów regulacyjnych, rdzeń III zabezpieczeniowy. Pola skalarne opisują "
+                        "rdzeń I. " + verification_note
+                    ),
+                ),
+            },
+        },
+        # Karta POLA-GPZ-SZABLONY: przekładniki pól GPZ spoza pola liniowego — tabliczki
+        # zweryfikowane ze źródłem (Zeszyt 1, wersja 02.2023 – 2, obrazy stron s.86, s.92,
+        # s.96; `docs/standards/ENEA_Z1_110KV_SOURCE_VERIFICATION.md`). Tor transformatora
+        # i łącznika szyn: przekładnia z gwiazdką zależna od transformatora (tabela „Uwaga”
+        # rysunków Z.7 i Z.12) — po jednej pozycji na wariant; szablon pola wskazuje 1000/5 jako
+        # wartość roboczą, projektant wybiera wariant swojego transformatora.
+        *(
+            _ct_typu_ogolnego_osd(
+                f"ct_typ_ogolny_osd_{pierwotny}_5_5_5_5_z7",
+                f"CT {pierwotny}/5/5/5/5 A, 4 rdzenie (typ ogólny OSD, ENEA Z.7 — {wariant})",
+                float(pierwotny),
+                20.0,
+                [
+                    (f"{pierwotny}/5", 10.0, "0,2S", 5.0, ["POMIAR", "JAKOSC_ENERGII"]),
+                    (f"{pierwotny}/5", 10.0, "0,2", 5.0, ["POMIAR", "REGULACJA"]),
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ROZNICOWE"]),
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ],
+                "Z.7 s.86: rdzeń I układ pomiarowy bilansowo-kontrolny, rdzeń II pomiary "
+                "lokalne strony SN i ARN, rdzeń III zabezpieczenie różnicowe transformatora, "
+                f"rdzeń IV bloki I>, I>> sterownika pola; wariant tabeli „Uwaga”: {wariant}",
+                verification_note,
+            )
+            for pierwotny, wariant in _WARIANTY_PRZEKLADNI_TRANSFORMATORA
+        ),
+        *(
+            _ct_typu_ogolnego_osd(
+                f"ct_typ_ogolny_osd_{pierwotny}_5_5_z12",
+                f"CT {pierwotny}/5/5 A, 2 rdzenie (typ ogólny OSD, ENEA Z.12 — {wariant})",
+                float(pierwotny),
+                20.0,
+                [
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                    (f"{pierwotny}/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ],
+                "Z.12 s.92: rdzeń I bloki I>, I>>, rdzeń II blok zabezpieczenia "
+                f"ziemnozwarciowego; wariant tabeli „Uwaga”: {wariant}",
+                verification_note,
+            )
+            for pierwotny, wariant in _WARIANTY_PRZEKLADNI_TRANSFORMATORA
+        ),
+        _ct_typu_ogolnego_osd(
+            "ct_typ_ogolny_osd_100_5_5_5_z16",
+            "CT 100/5 A, 3 rdzenie (typ ogólny OSD, ENEA Z.16)",
+            100.0,
+            16.0,
+            [
+                ("100/5", 10.0, "0,2S", 5.0, ["POMIAR"]),
+                ("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+                ("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"]),
+            ],
+            "Z.16 s.96 (napis „100/5/5”, trzy rdzenie z tabliczkami): rdzeń I układ pomiarowy "
+            "bilansowo-kontrolny, rdzeń II bloki I>, I>>, rdzeń III blok zabezpieczenia "
+            "ziemnozwarciowego",
+            verification_note,
+        ),
+        _ct_typu_ogolnego_osd(
+            "ct_typ_ogolny_osd_100_5_z13",
+            "CT 100/5 A, 1 rdzeń (typ ogólny OSD, ENEA Z.13–Z.15)",
+            100.0,
+            16.0,
+            [("100/5", 15.0, "5P20", None, ["ZABEZPIECZENIA"])],
+            "Z.13 s.93, Z.14 s.94, Z.15 s.95 (napis „100/5”, tabliczka „I 15 VA; kl. 5P20”): "
+            "rdzeń I (4 żyły) bloki I>, I>> sterownika pola zespołu uziemiającego",
+            verification_note,
+        ),
         {
             "id": "ct_2000_5_10p10_30va_arteche",
             "name": "CT 2000/5 A kl. 10P10 30 VA",

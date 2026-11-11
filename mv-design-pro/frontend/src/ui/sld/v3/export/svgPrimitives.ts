@@ -15,9 +15,11 @@
  * SŁOWNIK WEJŚCIA JEST ZMIERZONY, NIE ZGADYWANY (reguła KLASA, NIE INSTANCJA):
  * pomiar realnego markupu eksportu fixtury goldenowej (53 stacje) na L0/L1/L2
  * dał komplet znaczników `svg,g,line,rect,circle,path,polygon,text,animate`,
- * komendy ścieżek `M L Z h q` i wyłącznie `transform="translate(x, y)"`.
- * Obsługiwany jest ten zbiór POSZERZONY o warianty tej samej klasy
- * (`m l h v H V Z Q q C c`, `polygon`) — a wszystko poza nim RZUCA WYJĄTEK z
+ * komendy ścieżek `M L Z h q A` i wyłącznie `transform="translate(x, y)"`
+ * (`A` — mostek §22.1 na pionie przecinającym kabel bez węzła modelu,
+ * `polylinePathWithBridges`, rozstrzygnięcie S7-P2 2026-10-30). Obsługiwany
+ * jest ten zbiór POSZERZONY o warianty tej samej klasy
+ * (`m l h v H V Z Q q C c a`, `polygon`) — a wszystko poza nim RZUCA WYJĄTEK z
  * nazwą nieobsłużonej konstrukcji. Ciche pominięcie byłoby dokładnie tym
  * defektem, który karta zamyka (plik „udany", a w CAD-zie pusty arkusz).
  *
@@ -82,6 +84,12 @@ export interface ExportDrawing {
  *  spłaszczaniu. Stała ⇒ wynik deterministyczny. 8 wystarcza dla glifów
  *  wielkości 16–40 px (`symbols/defs.ts`) — błąd cięciwy < 0,1 px. */
 const BEZIER_SEGMENTS = 8;
+
+/** Liczba odcinków na PÓŁOKRĄG łuku eliptycznego (`A`/`a`) — łuk o kącie
+ *  rozwarcia Δθ dostaje `ceil(|Δθ| / π · ARC_SEGMENTS_PER_HALF_TURN)` odcinków.
+ *  Stała ⇒ wynik deterministyczny. Mostek §22.1 ma promień `BRIDGE_RADIUS`
+ *  = 4 px: błąd cięciwy R·(1 − cos(π/16)) ≈ 0,08 px. */
+const ARC_SEGMENTS_PER_HALF_TURN = 8;
 
 /** Domyślne wypełnienie SVG, gdy atrybut `fill` nie jest podany i nie
  *  dziedziczy się z przodka (zgodnie ze specyfikacją SVG — ta sama
@@ -196,7 +204,11 @@ function parseDash(raw: string | null): readonly number[] | null {
 
 /** Parser `d` — zwraca listę PODŚCIEŻEK (każda: punkty + czy zamknięta). */
 export function parsePathData(d: string): readonly { readonly points: readonly ExportPoint[]; readonly closed: boolean }[] {
-  const tokens = d.match(/[MmLlHhVvZzQqCc]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [];
+  // Żeton komendy = DOWOLNA litera (wykładnik `e` liczby zjada dopasowanie liczby,
+  // bo liczba zaczyna się cyfrą): litera spoza słownika trafia do `default` i RZUCA.
+  // Dawniej żetonizator znał tylko litery słownika, więc np. `S` znikała po cichu,
+  // a jej współrzędne szły jako niejawne `L` — zła geometria bez wyjątku.
+  const tokens: string[] = [...(d.match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [])];
   const subpaths: { points: ExportPoint[]; closed: boolean }[] = [];
   let current: { points: ExportPoint[]; closed: boolean } | null = null;
   let x = 0;
@@ -213,6 +225,21 @@ export function parsePathData(d: string): readonly { readonly points: readonly E
       throw new Error(`Eksport schematu: uszkodzona ścieżka — oczekiwano liczby, jest „${token}" w „${d}".`);
     }
     return parsed;
+  };
+  /** Flaga łuku (`large-arc-flag`, `sweep-flag`): SVG dopuszcza zapis
+   *  zwarty bez separatora („0,01 4,4" ≡ „0 0 1 4 4"), więc żeton dłuższy niż
+   *  jeden znak oddaje pierwszą cyfrę, a resztę zostawia jako kolejny żeton. */
+  const nextFlag = (): boolean => {
+    const token = tokens[index];
+    if (token === undefined || !/^[01]/.test(token)) {
+      throw new Error(`Eksport schematu: uszkodzona flaga łuku — jest „${token}" w „${d}".`);
+    }
+    if (token.length === 1) {
+      index += 1;
+    } else {
+      tokens[index] = token.slice(1);
+    }
+    return token[0] === '1';
   };
   const push = (): void => {
     if (!current) {
@@ -243,9 +270,76 @@ export function parsePathData(d: string): readonly { readonly points: readonly E
     }
   };
 
+  /** Łuk eliptyczny SVG (W3C SVG 1.1, dodatek F.6.5–F.6.6: zamiana parametryzacji
+   *  końcowej na środkową z korektą za małych promieni), spłaszczony stałą liczbą
+   *  odcinków na półokrąg. Promień zerowy = odcinek prosty (F.6.2). */
+  const flattenArc = (
+    rxIn: number,
+    ryIn: number,
+    rotationDeg: number,
+    largeArc: boolean,
+    sweep: boolean,
+    end: ExportPoint,
+  ): void => {
+    const x1 = x;
+    const y1 = y;
+    if (x1 === end.x && y1 === end.y) return;
+    let rx = Math.abs(rxIn);
+    let ry = Math.abs(ryIn);
+    if (rx === 0 || ry === 0) {
+      x = end.x;
+      y = end.y;
+      push();
+      return;
+    }
+    const phi = (rotationDeg * Math.PI) / 180;
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
+    const dx2 = (x1 - end.x) / 2;
+    const dy2 = (y1 - end.y) / 2;
+    const x1p = cosPhi * dx2 + sinPhi * dy2;
+    const y1p = -sinPhi * dx2 + cosPhi * dy2;
+    const lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+    if (lambda > 1) {
+      const scale = Math.sqrt(lambda);
+      rx *= scale;
+      ry *= scale;
+    }
+    const numerator = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+    const denominator = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+    const coefficient =
+      (largeArc === sweep ? -1 : 1) * Math.sqrt(Math.max(0, numerator / denominator));
+    const cxp = (coefficient * rx * y1p) / ry;
+    const cyp = (-coefficient * ry * x1p) / rx;
+    const cx = cosPhi * cxp - sinPhi * cyp + (x1 + end.x) / 2;
+    const cy = sinPhi * cxp + cosPhi * cyp + (y1 + end.y) / 2;
+    const angle = (ux: number, uy: number, vx: number, vy: number): number =>
+      Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    const theta1 = angle(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+    let deltaTheta = angle((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+    if (!sweep && deltaTheta > 0) deltaTheta -= 2 * Math.PI;
+    if (sweep && deltaTheta < 0) deltaTheta += 2 * Math.PI;
+    const segments = Math.max(1, Math.ceil((Math.abs(deltaTheta) / Math.PI) * ARC_SEGMENTS_PER_HALF_TURN));
+    for (let step = 1; step <= segments; step += 1) {
+      if (step === segments) {
+        // Koniec łuku = punkt końcowy komendy DOKŁADNIE (bez błędu zaokrąglenia
+        // trygonometrii) — kolejny odcinek ścieżki startuje z tego samego punktu.
+        x = end.x;
+        y = end.y;
+      } else {
+        const theta = theta1 + (deltaTheta * step) / segments;
+        const ex = rx * Math.cos(theta);
+        const ey = ry * Math.sin(theta);
+        x = cosPhi * ex - sinPhi * ey + cx;
+        y = sinPhi * ex + cosPhi * ey + cy;
+      }
+      push();
+    }
+  };
+
   while (index < tokens.length) {
     const token = tokens[index];
-    if (/^[MmLlHhVvZzQqCc]$/.test(token)) {
+    if (/^[A-Za-z]$/.test(token)) {
       command = token;
       index += 1;
     } else if (command === '') {
@@ -316,6 +410,19 @@ export function parsePathData(d: string): readonly { readonly points: readonly E
         const c2 = rel ? { x: x + c2x, y: y + c2y } : { x: c2x, y: c2y };
         const end = rel ? { x: x + ex, y: y + ey } : { x: ex, y: ey };
         flattenBezier([c1, c2], end);
+        break;
+      }
+      case 'A':
+      case 'a': {
+        const rx = nextNumber();
+        const ry = nextNumber();
+        const rotation = nextNumber();
+        const largeArc = nextFlag();
+        const sweep = nextFlag();
+        const ex = nextNumber();
+        const ey = nextNumber();
+        const end = command === 'A' ? { x: ex, y: ey } : { x: x + ex, y: y + ey };
+        flattenArc(rx, ry, rotation, largeArc, sweep, end);
         break;
       }
       case 'Z':

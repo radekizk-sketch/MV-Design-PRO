@@ -3,7 +3,7 @@
 Cechy iloczynu:
 
 * stan danych wyposażenia ∈ {MODEL (tryb ``katalog``), PROPOZYCJA (tryb ``szablon`` —
-  dana przyjęta ``ESTIMATED``), BRAK_DANYCH (tryb ``wyczysc`` i pole świeżo utworzone)}
+  dana przyjęta ``ESTIMATED``), BRAK_DANYCH (tryb ``wyczysc``)}; pole świeżo utworzone — PROPOZYCJA (tor roboczy szablonu roli)
   × rola pola SN ∈ {IN, OUT, TR, FEEDER (wcięcie stacji), COUPLER, MEASUREMENT, OZE
   (``add_sn_bay``)} — każda kombinacja z sieci zbudowanej operacjami domenowymi;
 * przestrzeń katalogu aparatu ∈ {APARAT_SN × rodzaj katalogowy, CT, VT, OGRANICZNIK_SN,
@@ -29,8 +29,10 @@ from enm.wyposazenie_pola import (
     PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
+    dane_przyjete_wyposazenia,
     stan_danych_wyposazenia,
 )
+from network_model.catalog.gazy_fluorowane import czy_medium_z_gazem_fluorowanym
 from network_model.pochodne.pasma_napieciowe import izolacja_pokrywa_siec
 
 from tests.enm.siec_lacznikowa import _gpz, _kable, _odcinki, _pusty, galaz, wykonaj
@@ -61,9 +63,13 @@ NAPIECIE_SIECI_KV = 15.0
 
 
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
+    """Pierwsza pozycja rodzaju dopuszczona w polu PROJEKTOWANYM (pola sieci testowej budują
+    operacje projektowe — zakaz gazów fluorowanych, karta UX-04/POLE-LINIOWE-WZORZEC).
+    """
     return _pierwsza(
         katalog_biezacy().mv_apparatus_types,
         lambda t: t.device_kind == rodzaj_katalogowy
+        and not czy_medium_z_gazem_fluorowanym(t.medium)
         and izolacja_pokrywa_siec(t.u_n_kv, NAPIECIE_SIECI_KV) is True,
     )
 
@@ -89,8 +95,18 @@ def _poprawny_ref(rodzaj: str) -> str:
 
 #: Rola pola → wyposażenie z katalogu (realne zestawy aparatów tej funkcji pola).
 APARATY_ROLI: dict[str, list[tuple[str, str]]] = {
-    "IN": [("DS", "UPSTREAM"), ("CB", "MIDSTREAM"), ("CT", "MIDSTREAM"), ("ES", "GROUND_BRANCH")],
-    "OUT": [("DS", "UPSTREAM"), ("CB", "MIDSTREAM"), ("CT", "MIDSTREAM"), ("ES", "GROUND_BRANCH")],
+    "IN": [
+        ("DS", "UPSTREAM"),
+        ("CB", "MIDSTREAM"),
+        ("CT", "MIDSTREAM"),
+        ("ES", "GROUND_BRANCH"),
+    ],
+    "OUT": [
+        ("DS", "UPSTREAM"),
+        ("CB", "MIDSTREAM"),
+        ("CT", "MIDSTREAM"),
+        ("ES", "GROUND_BRANCH"),
+    ],
     "TR": [("LOAD_SWITCH", "MIDSTREAM"), ("ES", "GROUND_BRANCH")],
     "FEEDER": [("LOAD_SWITCH", "MIDSTREAM"), ("SURGE_ARRESTER", "GROUND_BRANCH")],
     "COUPLER": [("DS", "UPSTREAM"), ("CB", "MIDSTREAM"), ("DS", "DOWNSTREAM")],
@@ -100,9 +116,10 @@ APARATY_ROLI: dict[str, list[tuple[str, str]]] = {
 
 
 def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
-    """GPZ → 2 odcinki; stacja wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR) i pola
-    COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Zwraca (migawka, rola → pole SN,
-    pole nN stacji)."""
+    """GPZ → 2 odcinki; stacja SEKCYJNA wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR, dwie
+    sekcje szyn i sprzęgło bez pola) i pola COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Pole
+    sprzęgła wiąże się ze sprzęgłem sekcji (decyzja architekta D3 — w stacji o jednej sekcji
+    byłoby odmową). Zwraca (migawka, rola → pole SN, pole nN stacji)."""
     enm = _odcinki(_gpz(), [200, 300])
     enm = wykonaj(
         enm,
@@ -110,7 +127,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
         {
             "segment_ref": _kable(enm)[-1]["ref_id"],
             "field_apparatus_catalog_ref": APARAT_POLA,
-            "station_type": "B",
+            "station_type": "D",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "FEEDER"],
@@ -164,7 +181,11 @@ def _odmowa(enm: dict[str, Any], ladunek: dict[str, Any], kod: str) -> dict[str,
 
 def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
     return [
-        {"kind": rodzaj, "placement": umiejscowienie, "catalog_ref": _poprawny_ref(rodzaj)}
+        {
+            "kind": rodzaj,
+            "placement": umiejscowienie,
+            "catalog_ref": _poprawny_ref(rodzaj),
+        }
         for rodzaj, umiejscowienie in APARATY_ROLI[rola]
     ]
 
@@ -175,9 +196,20 @@ def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
 
 
 @pytest.mark.parametrize("rola", ROLE)
-def test_pole_swieze_bez_szablonu_jest_brakiem_danych(siec: Any, rola: str) -> None:
+def test_pole_swieze_bez_szablonu_ma_tor_roboczy_z_szablonu_roli(siec: Any, rola: str) -> None:
+    """KOREKTA (rozszerzenie karty SZABLONY-POL 2026-11-11, `enm.aparaty_pol_sn`): pole świeże
+    bez szablonu dostaje aparaty szablonu roli — aparat główny z pozycji katalogu gałęzi
+    (MODEL), pozostałe jako wartości robocze (ZASADA NR 4: PROPOZYCJA, dane przyjęte
+    ESTIMATED). Dawniej pole miało pustą listę aparatów (BRAK_DANYCH) i rysowało się samym
+    łącznikiem. Intencja testu (stan danych z rekordu pola) bez zmian."""
     enm, pola, _ = siec
-    assert stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"]) == "BRAK_DANYCH"
+    aparaty = _pole(enm, pola[rola])["primary_devices"]
+    assert stan_danych_wyposazenia(aparaty) == "PROPOZYCJA"
+    (glowny,) = (a for a in aparaty if a.get("linked_ref"))
+    assert glowny["catalog_ref"] == APARAT_POLA
+    przyjete = dane_przyjete_wyposazenia(aparaty)
+    assert len(przyjete) == sum(1 for a in aparaty if not a.get("catalog_ref"))
+    assert {d["jakosc"] for d in przyjete} == {"ESTIMATED"}
 
 
 @pytest.mark.parametrize("rola", ROLE)
@@ -214,7 +246,12 @@ def test_tryb_katalog_daje_model(siec: Any, rola: str) -> None:
 def test_tryb_szablon_daje_propozycje_jako_dana_przyjeta(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
     wynik = _wykonaj(
-        enm, {"bay_ref": pola[rola], "mode": "szablon", "bay_template_ref": SZABLON_ROLI[rola]}
+        enm,
+        {
+            "bay_ref": pola[rola],
+            "mode": "szablon",
+            "bay_template_ref": SZABLON_ROLI[rola],
+        },
     )
 
     assert wynik.get("error") is None, wynik.get("error")
@@ -237,7 +274,11 @@ def test_tryb_wyczysc_daje_brak_danych(siec: Any, rola: str) -> None:
     wyposazone = wykonaj(
         enm,
         "set_bay_equipment",
-        {"bay_ref": pola[rola], "mode": "katalog", "devices": _ladunek_katalogowy(rola)},
+        {
+            "bay_ref": pola[rola],
+            "mode": "katalog",
+            "devices": _ladunek_katalogowy(rola),
+        },
     )
     wynik = _wykonaj(wyposazone, {"bay_ref": pola[rola], "mode": "wyczysc"})
 
@@ -260,11 +301,14 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
 ) -> None:
     """Karta pola (E-11) czyta stan danych wyposażenia z odczytu pola — ta sama reguła,
     co odpowiedź operacji (`stan_danych_wyposazenia`), z REKORDU pola: pole świeże bez
-    rekordu aparatów to BRAK_DANYCH, choć rysunek pola uzupełnia aparaty z gałęzi."""
+    rekordu aparatów: pole świeże ma tor roboczy szablonu roli (PROPOZYCJA, dane przyjęte
+    ESTIMATED — `enm.aparaty_pol_sn`)."""
     enm, pola, _ = siec
     ref = pola[rola]
     if tryb == "swieze":
-        migawka, oczekiwany, przyjete = enm, "BRAK_DANYCH", []
+        aparaty_swieze = _pole(enm, ref)["primary_devices"]
+        migawka, oczekiwany = enm, "PROPOZYCJA"
+        przyjete = dane_przyjete_wyposazenia(aparaty_swieze)
     else:
         ladunek: dict[str, Any] = {"bay_ref": ref, "mode": tryb}
         if tryb == "katalog":
@@ -275,7 +319,11 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
             enm = wykonaj(
                 enm,
                 "set_bay_equipment",
-                {"bay_ref": ref, "mode": "katalog", "devices": _ladunek_katalogowy(rola)},
+                {
+                    "bay_ref": ref,
+                    "mode": "katalog",
+                    "devices": _ladunek_katalogowy(rola),
+                },
             )
         wynik = _wykonaj(enm, ladunek)
         assert wynik.get("error") is None, wynik.get("error")
@@ -288,7 +336,7 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
     assert (
         oczekiwany
         == {
-            "swieze": "BRAK_DANYCH",
+            "swieze": "PROPOZYCJA",
             "katalog": "MODEL",
             "szablon": "PROPOZYCJA",
             "wyczysc": "BRAK_DANYCH",
@@ -320,7 +368,11 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
         },
     )
     (pole_gpz,) = (b for b in enm["bays"])
-    ladunek = {"bay_ref": pole_gpz["ref_id"], "mode": "szablon", "bay_template_ref": szablon}
+    ladunek = {
+        "bay_ref": pole_gpz["ref_id"],
+        "mode": "szablon",
+        "bay_template_ref": szablon,
+    }
     if pole_gpz["bay_role"] != rola:
         _odmowa(enm, ladunek, "bay_equipment.template_role_mismatch")
         return
@@ -338,7 +390,11 @@ def test_szablon_z_rekordu_pola_bez_wskazania_w_ladunku(siec: Any) -> None:
     ze_wskazaniem = wykonaj(
         enm,
         "set_bay_equipment",
-        {"bay_ref": pola["OUT"], "mode": "szablon", "bay_template_ref": "bay_template_line_out"},
+        {
+            "bay_ref": pola["OUT"],
+            "mode": "szablon",
+            "bay_template_ref": "bay_template_line_out",
+        },
     )
     ponownie = _wykonaj(ze_wskazaniem, {"bay_ref": pola["OUT"], "mode": "szablon"})
     assert ponownie.get("error") is None
@@ -413,7 +469,11 @@ def test_pozycja_aparatu_innego_rodzaju(siec: Any, rodzaj: str) -> None:
             "bay_ref": pola["IN"],
             "mode": "katalog",
             "devices": [
-                {"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": _ref_aparatu_sn(obcy)}
+                {
+                    "kind": rodzaj,
+                    "placement": "MIDSTREAM",
+                    "catalog_ref": _ref_aparatu_sn(obcy),
+                }
             ],
         },
         "bay_equipment.catalog_kind_mismatch",
@@ -443,7 +503,11 @@ def test_ct_z_pozycja_vt_jest_odrzucony(siec: Any) -> None:
             "bay_ref": pola["IN"],
             "mode": "katalog",
             "devices": [
-                {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": _ref_przestrzeni("VT")}
+                {
+                    "kind": "CT",
+                    "placement": "MIDSTREAM",
+                    "catalog_ref": _ref_przestrzeni("VT"),
+                }
             ],
         },
         "catalog.item_not_found",
@@ -538,7 +602,11 @@ def test_dwa_aparaty_nie_wskazuja_tego_samego_lacznika(siec: Any) -> None:
     lacznik = _wylacznik_pola(enm, pola["OUT"])
     _odmowa(
         enm,
-        {"bay_ref": pola["OUT"], "mode": "katalog", "devices": [_cb(lacznik), _cb(lacznik)]},
+        {
+            "bay_ref": pola["OUT"],
+            "mode": "katalog",
+            "devices": [_cb(lacznik), _cb(lacznik)],
+        },
         "bay_equipment.linked_ref_duplicate",
     )
 
@@ -549,7 +617,8 @@ def test_dwa_aparaty_nie_wskazuja_tego_samego_lacznika(siec: Any) -> None:
 
 
 def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
-    """Pole GPZ na rodzinie bez przekładnika prądowego (ZPUE TPM) — CT odrzucony,
+    """Pole GPZ na rodzinie bez przekładnika prądowego (Schneider RM AirSeT — rodzina bez gazów
+    fluorowanych; dawniej ZPUE TPM z SF₆, zakazana w polu projektowanym) — CT odrzucony,
     wyłącznik przyjęty."""
     enm = wykonaj(
         _pusty(),
@@ -560,7 +629,7 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
-            "switchgear_family_ref": "ZPUE_WLOSZCZOWA__TPM",
+            "switchgear_family_ref": "SCHNEIDER__RM_AIRSET",
         },
     )
     (pole_gpz,) = (b["ref_id"] for b in enm["bays"])
@@ -570,7 +639,11 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "bay_ref": pole_gpz,
             "mode": "katalog",
             "devices": [
-                {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": _poprawny_ref("CT")}
+                {
+                    "kind": "CT",
+                    "placement": "MIDSTREAM",
+                    "catalog_ref": _poprawny_ref("CT"),
+                }
             ],
         },
         "bay_equipment.family_disallows",
@@ -594,14 +667,24 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
         ({"bay_ref": "@IN", "mode": "inny"}, "bay_equipment.mode_invalid"),
         ({"bay_ref": "@IN"}, "bay_equipment.mode_invalid"),
         ({"bay_ref": "@IN", "mode": "katalog"}, "bay_equipment.devices_missing"),
-        ({"bay_ref": "@IN", "mode": "katalog", "devices": []}, "bay_equipment.devices_missing"),
-        ({"bay_ref": "@IN", "mode": "katalog", "devices": ["CB"]}, "bay_equipment.device_invalid"),
+        (
+            {"bay_ref": "@IN", "mode": "katalog", "devices": []},
+            "bay_equipment.devices_missing",
+        ),
+        (
+            {"bay_ref": "@IN", "mode": "katalog", "devices": ["CB"]},
+            "bay_equipment.device_invalid",
+        ),
         (
             {"bay_ref": "@IN", "mode": "katalog", "devices": [{"kind": "XX"}]},
             "bay_equipment.kind_not_allowed",
         ),
         (
-            {"bay_ref": "@IN", "mode": "katalog", "devices": [{"kind": "CB", "placement": "X"}]},
+            {
+                "bay_ref": "@IN",
+                "mode": "katalog",
+                "devices": [{"kind": "CB", "placement": "X"}],
+            },
             "bay_equipment.placement_invalid",
         ),
         (
@@ -625,7 +708,11 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "bay_equipment.template_unknown",
         ),
         (
-            {"bay_ref": "@IN", "mode": "szablon", "bay_template_ref": "bay_template_transformer"},
+            {
+                "bay_ref": "@IN",
+                "mode": "szablon",
+                "bay_template_ref": "bay_template_transformer",
+            },
             "bay_equipment.template_role_mismatch",
         ),
         ({"bay_ref": "@NN", "mode": "wyczysc"}, "bay_equipment.bay_not_mv"),
@@ -657,6 +744,95 @@ def test_drugi_aparat_bledny_nie_zostawia_pierwszego(siec: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Iloczyn: pole opcjonalne aparatu (przekładnia, odgałęzienie) × rodzaj × postać wartości
+# ---------------------------------------------------------------------------
+
+#: Rodzaje bez katalogu SN (wpis bez `catalog_ref`): przekładnik Ferrantiego — jedyny, któremu
+#: zapisuje się przekładnię (rysunek Z.10/Z.11.1: „1/100"), oraz dwa rodzaje kontrolne.
+RODZAJE_POL_OPCJONALNYCH = ("CORE_BALANCE_CT", "CABLE_HEAD", "VOLTAGE_INDICATOR")
+
+#: Postać wartości → (czy poprawna dla pola, wartość zapisana po normalizacji).
+POSTACI_PRZEKLADNI: dict[str, tuple[Any, bool, Any]] = {
+    "zapis_rysunku": ("1/100", True, "1/100"),
+    "odstepy_brzegowe": (" 1/100 ", True, "1/100"),
+    "pusty": ("", False, None),
+    "same_odstepy": ("   ", False, None),
+    "liczba": (100, False, None),
+}
+POSTACI_ODGALEZIENIA: dict[str, tuple[Any, bool, Any]] = {
+    "identyfikator": ("pn", True, "pn"),
+    "odstepy_brzegowe": (" pn1 ", True, "pn1"),
+    "znak_spoza_identyfikatora": ("p-n", False, None),
+    "pusty": ("", False, None),
+    "liczba": (5, False, None),
+}
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_PRZEKLADNI))
+@pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
+def test_przekladnia_wylacznie_przekladnika_ferrantiego(
+    siec: Any, rodzaj: str, postac: str
+) -> None:
+    """Przekładnię zapisuje się WYŁĄCZNIE przekładnikowi Ferrantiego i wyłącznie jako niepusty
+    napis (znormalizowany); każdy inny rodzaj albo postać — odmowa atomowa
+    `bay_equipment.ratio_not_applicable` (model wejściowy nietknięty)."""
+    enm, pola, _ = siec
+    wartosc, poprawna, zapisana = POSTACI_PRZEKLADNI[postac]
+    ladunek = {
+        "bay_ref": pola["IN"],
+        "mode": "katalog",
+        "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "przekladnia": wartosc}],
+    }
+    if not (poprawna and rodzaj == "CORE_BALANCE_CT"):
+        _odmowa(enm, ladunek, "bay_equipment.ratio_not_applicable")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (aparat,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert aparat["przekladnia"] == zapisana
+
+
+@pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
+def test_brak_przekladni_nie_zostawia_pola_w_rekordzie(siec: Any, rodzaj: str) -> None:
+    """Pole addytywne: aparat bez przekładni nie niesie klucza (odcisk modelu sprzed pola
+    nietknięty — `enm/hash.py`, test odcisku w `test_pole_liniowe_gpz_szablony.py`)."""
+    enm, pola, _ = siec
+    wynik = _wykonaj(
+        enm,
+        {
+            "bay_ref": pola["IN"],
+            "mode": "katalog",
+            "devices": [{"kind": rodzaj, "placement": "MIDSTREAM"}],
+        },
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    (aparat,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert aparat.get("przekladnia") is None
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_ODGALEZIENIA))
+@pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
+def test_odgalezienie_toru_krotkim_identyfikatorem(siec: Any, rodzaj: str, postac: str) -> None:
+    """Odgałęzienie toru (Z.11.1: „pn" — odgałęzienie przekładnika napięciowego) przyjmuje
+    wyłącznie krótki identyfikator z liter i cyfr, dla każdego rodzaju aparatu; inna postać —
+    odmowa atomowa `bay_equipment.branch_invalid`."""
+    enm, pola, _ = siec
+    wartosc, poprawna, zapisana = POSTACI_ODGALEZIENIA[postac]
+    ladunek = {
+        "bay_ref": pola["IN"],
+        "mode": "katalog",
+        "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "odgalezienie": wartosc}],
+    }
+    if not poprawna:
+        _odmowa(enm, ladunek, "bay_equipment.branch_invalid")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (aparat,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert aparat["odgalezienie"] == zapisana
+
+
+# ---------------------------------------------------------------------------
 # Determinizm
 # ---------------------------------------------------------------------------
 
@@ -673,3 +849,233 @@ def test_determinizm(siec: Any, tryb: str) -> None:
     drugi = _wykonaj(copy.deepcopy(enm), ladunek)
     assert pierwszy.get("error") is None, pierwszy.get("error")
     assert pierwszy == drugi
+
+
+# ---------------------------------------------------------------------------
+# Wykonanie wyłącznika (stałe / wysuwne) — rozstrzygnięcie architekta 2026-10-30 pkt 3
+# ---------------------------------------------------------------------------
+
+#: Postać wykonania → (czy poprawna dla wyłącznika, wartość zapisana).
+POSTACI_WYKONANIA: dict[str, tuple[Any, bool, Any]] = {
+    "stale": ("STALE", True, "STALE"),
+    "wysuwne": ("WYSUWNE", True, "WYSUWNE"),
+    "spoza_slownika": ("NA_WOZKU", False, None),
+    "male_litery": ("wysuwne", False, None),
+    "liczba": (1, False, None),
+}
+#: Rodzaje aparatu × wymagana pozycja katalogu (wyłącznik ma pozycję katalogową aparatu SN).
+RODZAJE_WYKONANIA: dict[str, str | None] = {
+    "CB": APARAT_POLA,
+    "LOAD_SWITCH": _ref_aparatu_sn("ROZLACZNIK"),
+    "CORE_BALANCE_CT": None,
+    "CABLE_HEAD": None,
+}
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_WYKONANIA))
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_WYKONANIA))
+def test_wykonanie_wylacznie_wylacznika_ze_slownika(siec: Any, rodzaj: str, postac: str) -> None:
+    """Iloczyn rodzaj aparatu × postać wykonania: wykonanie (stałe / wysuwne) zapisuje się
+    WYŁĄCZNIE wyłącznikowi i wyłącznie ze słownika `rodzaje_aparatury.WYKONANIA_APARATU`; każdy
+    inny rodzaj albo postać — odmowa atomowa `bay_equipment.execution_not_applicable` (model
+    wejściowy nietknięty)."""
+    enm, pola, _ = siec
+    wartosc, poprawna, zapisana = POSTACI_WYKONANIA[postac]
+    aparat: dict[str, Any] = {
+        "kind": rodzaj,
+        "placement": "MIDSTREAM",
+        "wykonanie": wartosc,
+    }
+    if RODZAJE_WYKONANIA[rodzaj] is not None:
+        aparat["catalog_ref"] = RODZAJE_WYKONANIA[rodzaj]
+    ladunek = {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    if not (poprawna and rodzaj == "CB"):
+        _odmowa(enm, ladunek, "bay_equipment.execution_not_applicable")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert zapisany["wykonanie"] == zapisana
+    # Ten sam rekord przechodzi przez model ENM (walidator rodzaju) bez odmowy.
+    EnergyNetworkModel.model_validate(wynik["snapshot"])
+
+
+def test_brak_wykonania_nie_zostawia_pola_w_rekordzie(siec: Any) -> None:
+    """Pole addytywne: wyłącznik bez wykonania nie niesie klucza (odcisk modelu sprzed pola
+    nietknięty — `enm/hash.py::_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE`)."""
+    enm, pola, _ = siec
+    aparat = {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
+    wynik = _wykonaj(enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]})
+    assert wynik.get("error") is None, wynik.get("error")
+    (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert zapisany.get("wykonanie") is None
+
+
+# ---------------------------------------------------------------------------
+# Zaczep przekładnika wieloprzekładniowego (uwaga właściciela 2026-10-30, karta UX-04)
+# ---------------------------------------------------------------------------
+
+#: Pozycja katalogu CT o przekładni przełączalnej 200-400/5 A (typ ogólny OSD, ENEA Z.10/Z.11.1).
+CT_WIELOPRZEKLADNIOWY = "ct_typ_ogolny_osd_200_400_5_5p20_15va"
+
+
+def _ct_jednoprzekladniowy() -> str:
+    """Pierwsza pozycja CT, której rdzenie mają jeden zaczep (albo brak rdzeni wieloprzekładniowych)."""
+    from network_model.catalog.przekladniki import zaczepy_przekladnika
+
+    return _pierwsza(
+        katalog_biezacy().ct_types,
+        lambda t: len(zaczepy_przekladnika(r.przekladnia for r in t.lista_rdzeni())) < 2,
+    )
+
+
+#: Postać zaczepu w ładunku → (wartość, czy poprawna dla 200-400/5, zapis w rekordzie).
+POSTACI_ZACZEPU: dict[str, tuple[Any, bool, float | None]] = {
+    "brak": (None, True, None),
+    "200": (200, True, 200.0),
+    "400_float": (400.0, True, 400.0),
+    "spoza_tabliczki": (300, False, None),
+    "napis": ("400", False, None),
+    "logiczna": (True, False, None),
+}
+#: Pozycja aparatu (rodzaj, katalog) — CT wieloprzekładniowy, CT jednoprzekładniowy, VT.
+POZYCJE_ZACZEPU: dict[str, tuple[str, Any]] = {
+    "ct_wieloprzekladniowy": ("CT", lambda: CT_WIELOPRZEKLADNIOWY),
+    "ct_jednoprzekladniowy": ("CT", _ct_jednoprzekladniowy),
+    "vt": ("VT", lambda: _ref_przestrzeni("VT")),
+}
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_ZACZEPU))
+@pytest.mark.parametrize("pozycja", sorted(POZYCJE_ZACZEPU))
+def test_zaczep_przekladnika_iloczyn(siec: Any, pozycja: str, postac: str) -> None:
+    """Iloczyn pozycja aparatu × postać zaczepu: wybór projektanta zapisuje się WYŁĄCZNIE
+    przekładnikowi wieloprzekładniowemu i wyłącznie ze zbioru zaczepów tabliczki; brak wyboru
+    przy przekładniku wieloprzekładniowym daje wartość roboczą (zaczep najwyższy, źródło
+    WARTOSC_ROBOCZA) jako daną przyjętą ESTIMATED; przekładnik o jednej przekładni i VT nie
+    niosą zaczepu. Odmowy atomowe (model wejściowy nietknięty)."""
+    enm, pola, _ = siec
+    rodzaj, ref = POZYCJE_ZACZEPU[pozycja]
+    wartosc, poprawna, zapisana = POSTACI_ZACZEPU[postac]
+    aparat: dict[str, Any] = {
+        "kind": rodzaj,
+        "placement": "MIDSTREAM",
+        "catalog_ref": ref(),
+        "designation": "T1",
+    }
+    if wartosc is not None:
+        aparat["zaczep_pierwotny_a"] = wartosc
+    ladunek = {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    wieloprzekladniowy = pozycja == "ct_wieloprzekladniowy"
+    if wartosc is not None and not wieloprzekladniowy:
+        _odmowa(enm, ladunek, "bay_equipment.tap_not_applicable")
+        return
+    if not poprawna:
+        _odmowa(enm, ladunek, "bay_equipment.tap_invalid")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    EnergyNetworkModel.model_validate(wynik["snapshot"])
+    przyjete = wynik["wyposazenie_pola"]["dane_przyjete"]
+    zaczepowe = [d for d in przyjete if d["nazwa_pl"].startswith("zaczep pierwotny")]
+    if not wieloprzekladniowy:
+        assert zapisany.get("zaczep_pierwotny_a") is None
+        assert zapisany.get("zrodlo_zaczepu") is None
+        assert zaczepowe == []
+        return
+    if zapisana is None:
+        assert (zapisany["zaczep_pierwotny_a"], zapisany["zrodlo_zaczepu"]) == (
+            400.0,
+            "WARTOSC_ROBOCZA",
+        )
+        (dana,) = zaczepowe
+        assert dana["jakosc"] == "ESTIMATED"
+        assert dana["wartosc"] == {"wartosc": 400.0, "jednostka": "A"}
+        assert dana["nazwa_pl"] == "zaczep pierwotny przekładnika T1"
+        assert "200 A / 400 A" in dana["powod_pl"]
+    else:
+        assert (zapisany["zaczep_pierwotny_a"], zapisany["zrodlo_zaczepu"]) == (
+            zapisana,
+            "PROJEKTANT",
+        )
+        # Wybór projektanta jest daną projektu, nie daną przyjętą.
+        assert zaczepowe == []
+
+
+def test_zaczep_w_odczycie_pola_i_determinizm(siec: Any) -> None:
+    """Dana przyjęta zaczepu roboczego płynie do odczytu pola (`equipment_assumed_data`) —
+    ten sam rekord, ta sama reguła; dwa wykonania dają identyczny wynik."""
+    enm, pola, _ = siec
+    aparat = {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": CT_WIELOPRZEKLADNIOWY}
+    ladunek = {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    pierwszy = _wykonaj(copy.deepcopy(enm), ladunek)
+    assert pierwszy == _wykonaj(copy.deepcopy(enm), ladunek)
+    odczyt = _odczyt_pola(pierwszy["snapshot"], pola["IN"])
+    zaczepowe = [
+        d for d in odczyt["equipment_assumed_data"] if d["nazwa_pl"].startswith("zaczep pierwotny")
+    ]
+    assert [d["wartosc"]["wartosc"] for d in zaczepowe] == [400.0]
+
+
+@pytest.mark.parametrize(
+    ("zmiana", "fragment"),
+    [
+        ({"zaczep_pierwotny_a": 200.0}, "razem z jego"),
+        ({"zrodlo_zaczepu": "PROJEKTANT"}, "razem z jego"),
+        ({"zaczep_pierwotny_a": 300.0, "zrodlo_zaczepu": "PROJEKTANT"}, "spoza"),
+        ({"zaczep_pierwotny_a": 200.0, "zrodlo_zaczepu": "INNE"}, "zrodlo_zaczepu"),
+    ],
+)
+def test_walidator_rekordu_zaczepu(siec: Any, zmiana: dict[str, Any], fragment: str) -> None:
+    """Walidator rekordu aparatu: zaczep i źródło razem, zaczep ze zbioru tabliczki, źródło ze
+    słownika (ten sam zbiór zaczepów co operacja — `przekladniki.zaczepy_przekladnika`)."""
+    from pydantic import ValidationError
+
+    enm, pola, _ = siec
+    aparat = {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": CT_WIELOPRZEKLADNIOWY}
+    wynik = _wykonaj(enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]})
+    migawka = copy.deepcopy(wynik["snapshot"])
+    (zapisany,) = _pole(migawka, pola["IN"])["primary_devices"]
+    for klucz in ("zaczep_pierwotny_a", "zrodlo_zaczepu"):
+        zapisany.pop(klucz)
+    zapisany.update(zmiana)
+    with pytest.raises(ValidationError, match=fragment):
+        EnergyNetworkModel.model_validate(migawka)
+
+
+@pytest.mark.parametrize("rodzaj", ["VT", "CB"])
+def test_walidator_zaczepu_tylko_przekladnika_pradowego(rodzaj: str) -> None:
+    """Zaczep na aparacie innym niż przekładnik prądowy — odmowa walidatora rekordu."""
+    from enm.models import BayPrimaryDevice
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="wieloprzekładniowy"):
+        BayPrimaryDevice(
+            device_ref="d",
+            symbol_ref="s",
+            kind=rodzaj,
+            placement="MIDSTREAM",
+            zaczep_pierwotny_a=400.0,
+            zrodlo_zaczepu="PROJEKTANT",
+        )
+
+
+def test_rekord_bez_zaczepu_haszuje_jak_przed_atrybutem(siec: Any) -> None:
+    """Pole addytywne: zaczep `None` jest poza odciskiem (`hash.py`), a zaczep zapisany zmienia
+    odcisk (to dana projektu)."""
+    from enm.hash import compute_enm_hash
+
+    enm, pola, _ = siec
+    aparat = {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": CT_WIELOPRZEKLADNIOWY}
+    wynik = _wykonaj(enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]})
+    migawka = copy.deepcopy(wynik["snapshot"])
+    (zapisany,) = _pole(migawka, pola["IN"])["primary_devices"]
+    z_zaczepem = compute_enm_hash(EnergyNetworkModel.model_validate(migawka))
+    zapisany["zaczep_pierwotny_a"] = None
+    zapisany["zrodlo_zaczepu"] = None
+    bez = compute_enm_hash(EnergyNetworkModel.model_validate(migawka))
+    zapisany.pop("zaczep_pierwotny_a")
+    zapisany.pop("zrodlo_zaczepu")
+    assert compute_enm_hash(EnergyNetworkModel.model_validate(migawka)) == bez
+    assert z_zaczepem != bez

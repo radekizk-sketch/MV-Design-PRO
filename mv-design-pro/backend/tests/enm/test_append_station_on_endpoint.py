@@ -447,7 +447,8 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
 
 
 def test_continue_trunk_from_gpz_field_uses_terminal_bus_and_updates_line_run() -> None:
-    """Pierwszy odcinek wychodzi z terminala pola SN, nie z szyny sekcji GPZ."""
+    """Pierwszy odcinek wychodzi z terminala pola SN, nie z szyny sekcji GPZ; ciąg zapisuje port
+    startu w jednej postaci — `ref_id` pola (`_rozwiaz_port_startu`)."""
     snap = _empty_enm()
     snap = op(snap, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
     field = _first_gpz_line_field(snap)
@@ -479,7 +480,7 @@ def test_continue_trunk_from_gpz_field_uses_terminal_bus_and_updates_line_run() 
     corridor_ref = new_snap["corridors"][0]["ref_id"]
     line_run = next(run for run in new_snap["line_runs"] if run["id"] == corridor_ref)
     assert line_run["starting_bay_ref"] == field_ref
-    assert line_run["starting_port_ref"] == terminal_bus_ref
+    assert line_run["starting_port_ref"] == field_ref
     assert any(item["segment_ref"] == branch_ref for item in line_run["segments"])
 
 

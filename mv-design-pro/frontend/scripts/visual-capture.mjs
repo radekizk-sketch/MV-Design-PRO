@@ -94,7 +94,7 @@ async function buildProject() {
       String(f.bay_role ?? '').toUpperCase() === 'FEEDER'));
   if (branchField?.ref_id) {
     op = await domainOp(caseId, 'start_branch_segment_sn', {
-      from_ref: `${branchField.ref_id}.BRANCH`,
+      from_ref: branchField.ref_id,
       segment: { rodzaj: 'KABEL', dlugosc_m: 180, catalog_binding: bind('KABEL_SN', CABLE_ID) },
     });
   }

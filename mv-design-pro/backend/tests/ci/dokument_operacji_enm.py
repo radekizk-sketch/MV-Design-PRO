@@ -289,7 +289,7 @@ ZRODLO_GPZ = "src-gpz-15kv-300mva-rx010"
 TRANSFORMATOR_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 KABEL_SN = "cable-tfk-yakxs-3x120"
 APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
-ROZLACZNIK_SN = "sw-ls-schneider-rm6-17kv-400a"
+ROZLACZNIK_SN = "sw-ls-ogolny-prozniowy-24kv-630a"
 TRANSFORMATOR_630 = "tr-sn-nn-15-04-630kva-dyn11"
 ZKSN = "ZKSN-2P-630A"
 SLUP_ODGALEZNY = "SLUP-ODG-12"
@@ -377,6 +377,11 @@ def _odcinek(dlugosc_m: float, nazwa: str) -> Callable[[Kontekst], dict[str, Any
 
 def _segment_o_nazwie(k: Kontekst, nazwa: str) -> str:
     return str(k.galaz(lambda g: g.get("name") == nazwa)["ref_id"])
+
+
+def _aparat_pola(k: Kontekst, bay_ref: str, oznaczenie: str) -> dict[str, Any]:
+    pole = next(b for b in k.enm["bays"] if b["ref_id"] == bay_ref)
+    return next(a for a in pole["primary_devices"] if a.get("designation") == oznaczenie)
 
 
 def _stacja_b(k: Kontekst) -> dict[str, Any]:
@@ -656,6 +661,25 @@ KROKI: tuple[Krok, ...] = (
             "bay_ref": k.wskazany("pole_sn"),
             "mode": "szablon",
             "bay_template_ref": "bay_template_line_out",
+        },
+    ),
+    Krok(
+        "polozenie_lacznika",
+        "set_bay_apparatus_position",
+        "otwarcie odłącznika liniowego Q9 nowego pola (łącznik pola bez własnej gałęzi)",
+        lambda k: {
+            "bay_ref": k.wskazany("pole_sn"),
+            "device_ref": _aparat_pola(k, k.wskazany("pole_sn"), "Q9")["device_ref"],
+            "actual_state": "otwarty",
+        },
+    ),
+    Krok(
+        "stan_pola",
+        "set_object_state",
+        "oznaczenie pola L3 jako istniejącego w sieci (pole zastane, aparaty razem z polem)",
+        lambda k: {
+            "bay_ref": k.wskazany("pole_sn"),
+            "stan_obiektu": "ISTNIEJACY",
         },
     ),
     Krok(

@@ -572,20 +572,90 @@ interface OdciskiLod {
  * odczyt (`tekstBezWzorow`, ta sama funkcja, którą mierzy `measureTextWidth`) odtwarza
  * DOKŁADNIE poprzednią tablicę (54 z 54 na obu sieciach) — geometria, declutter i plany bez
  * zmian; różni się wyłącznie zapis tekstów (`$U_{n}$=20 kV`, `$u_{k}$`, `$P_{k}$`, `$S_{k}''$`).
+ *
+ * AKTUALIZACJA ŚWIADOMA (karta UX-04/POLE-LINIOWE-WZORZEC, 2026-10-28) — zmienione wyłącznie
+ * 4 odciski SCENY: L1 i L2 obu sieci; L0 scen, cały declutter i wszystkie plany bez zmian
+ * (zielone w kroku budżetów). Pomiar: pełne sceny L0/L1/L2 obu sieci zrzucone z bazy karty
+ * `f44e042f6` (`git archive`) i z drzewa karty, porównane liść po liściu. Dwa wkłady, oba
+ * zamierzone:
+ *  · tor pola z portów (stacja i GPZ, jedna reguła `compose/apparatusSequence.ts`): pole
+ *    stacji, którego aparaty nie niosą portów w modelu, dostaje w `meta.stopNotes` pełne
+ *    zdanie braku („aparaty pola nie niosą portów w modelu — kolejność wg umiejscowienia, bez
+ *    przewodów między aparatami") — 171 notatek w sieci referencyjnej (fikstura
+ *    `sldSubstrate52s` sprzed modelu portów), 342 w podwojonej, tylko L1/L2 (na L0 pola nie
+ *    są rysowane). Przewodów nie przybyło (bez portów nie ma węzła wspólnego), geometria
+ *    aparatów bez zmian;
+ *  · przedłużenie szyny do zaczepu źródła systemowego (`#hv-bus-source-extension`) kończy
+ *    się w osi zejścia źródła (x 232), nie 8 j.św. dalej przy prawej krawędzi symbolu (x 240)
+ *    — kikut za zaczepem był odcinkiem kończącym się poza portem i poza szyną (wyrocznia
+ *    `gpzInternalSegmentsEndAtPortsOrBus` dopuszczała go wyłącznie dlatego, że przedłużenie
+ *    uprawomocniało samo siebie).
+ * DOWÓD, ŻE TO JEDYNE ZMIANY: zrzut sześciu scen z usuniętymi notatkami braku portów
+ * i końcem przedłużenia zastąpionym stałą jest CO DO BAJTU identyczny w bazie i po karcie
+ * (sha256 `f7dc6c1ef93d4ffa265d0ef31069040b522f0dc5708b1d2dc596ea8f81601c1c` w obu fazach).
+ *
+ * TA SAMA KARTA, trzeci wkład (2026-10-29, stan obiektu ISTNIEJACY/PROJEKTOWANY) — znów
+ * wyłącznie 4 odciski SCENY L1/L2 obu sieci. Fikstura `sldSubstrate52s` jest
+ * przegenerowana z operacji backendu, które zapisują stan obiektu pola i aparatu
+ * (`PROJEKTOWANY` dla obiektów budowanych operacjami), a scena przenosi go do
+ * `symbols[].meta.stanObiektu` (ramka obiektu projektowanego i zakaz gazów fluorowanych
+ * w nowych polach czytają tę samą wartość). Pomiar sondą (`buildSceneV3` przez vite-node,
+ * kod i fikstura bazy `f44e042f6` z `git archive` wobec drzewa karty, porównanie liść po
+ * liściu): różnice to WYŁĄCZNIE (1) `meta.stanObiektu = 'PROJEKTOWANY'` na 171 symbolach
+ * sieci referencyjnej i 342 podwojonej, (2) notatki braku portów opisane wyżej (171/342),
+ * (3) koniec przedłużenia szyny 240 → 232. L0 obu sieci identyczne z bazą; kod bazy na
+ * nowej fiksturze daje odciski bazy (pole jest dla niego nieznane).
+ *
+ * TA SAMA KARTA, rozszerzenie 5 (2026-10-29, kafle stanu wg referencji HMI) — 6 odcisków
+ * SCENY: L0/L1/L2 obu sieci; cały declutter i wszystkie plany etykiet bez zmian (zielone).
+ * Punkt normalnie otwarty (`noPoint`) niesie położenie swojej gałęzi (`galezNop`, ta sama
+ * reguła co łącznik pola) i dostaje kafel stanu, więc symbol ma pole `state: 'open'`. Pomiar
+ * sondą (`buildSceneV3` przez vite-node, kod bazy `e4b778d35` z drzewa roboczego bazy wobec
+ * drzewa karty po scaleniu z kartą UX-04/POLE-BKR-MODEL, ta sama fikstura, porównanie liść
+ * po liściu): różnica to WYŁĄCZNIE `symbols[].state` na 9 symbolach `noPoint` (1 na scenę sieci
+ * referencyjnej, 2 na scenę podwojonej). Zrzut sześciu scen z zdjętym tym polem jest CO DO
+ * BAJTU identyczny z bazą (sha256 `936a9d0b6edf5165caee4eb43d59decea38980505603288e802a26342a511f47`
+ * w obu fazach); geometria bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, decyzje architekta §11.7 pkt 1–8,
+ * 2026-10-30) — przeliczone odciski; z 54 wpisów tablicy zmienione wszystkie 54. Pomiar sondą
+ * (te same funkcje co ten test, `vite-node`, archiwa `git archive`, fikstura podana jawnie):
+ *  · CZUBEK BYŁ CZERWONY: na `e41837b4e` 4 z 54 wpisów (sceny L1/L2 obu sieci) różniły się od
+ *    tablicy, na `dbe7c130b` 54 z 54 zgodne. Jedyna różnica sceny L1 sieci referencyjnej
+ *    (porównanie liść po liściu): `meta.gpzAdnotacje.panele[].rect.width` pola liniowego GPZ
+ *    24 → 144 — tło pola obejmuje podpis pola i opisy zabezpieczeń (§11.3 karty). Test biegnie
+ *    wyłącznie w kroku budżetów, więc czerwień nie wyszła przy tamtym commicie.
+ *  · Sonda 2×2 {szerokość tekstu 0,62 em, tabela posuwów kroju} × {fikstura `sldSubstrate52s`
+ *    sprzed, po regeneracji}: KAŻDY czynnik osobno zmienia 54 z 54 wpisów — tabela posuwów
+ *    (decyzja 7) zmienia prostokąt każdej etykiety, a za nim declutter i plan przy każdej
+ *    skali; regeneracja fikstury (jedna postać `starting_port_ref`, decyzja 3; kody EAZ bez
+ *    duplikatów, pkt B) zmienia identyfikatory korytarzy i treść okręgów przekaźników; kod
+ *    karty przy 0,62 em na fiksturze sprzed różni się od czubka w 54 z 54 wpisach (skrzyżowania
+ *    z mostkiem zamiast rozcinania kabla „węzłem T”, decyzja 1; zejścia L0 rozsunięte, decyzja
+ *    2; szerokości kolumn na rastrze; zaczep etykiet w krawędzi, decyzja 8).
+ *  · NIEZMIENNIK potwierdzony we wszystkich pięciu wariantach (czubek, A–D): etykiet sceny
+ *    55/520/914 (referencyjna) i 108/1030/1816 (podwojona) — żadna etykieta nie zginęła ani
+ *    nie przybyła; zmieniają się wyłącznie geometria i treść.
+ *  · Obrysy etykiet wg planu (`canvas/obrysyWgPlanu.ts`, ta sama karta): scena niesie listy
+ *    członków obrysów — `PanelPolaGpz.etykiety` i `PreviewElementMeta.wierszeBlokuPrzekaznika`.
+ *    Zmienione 4 odciski scen (L1 i L2 obu sieci; L0 nie ma adnotacji GPZ). Sonda: scena
+ *    z usuniętymi OBOMA polami daje DOKŁADNIE poprzednie odciski 11348eb5…/1fa2cc5d…/b92af088…/
+ *    90ab6519… — geometria, declutter i plany bez zmian (sieć referencyjna: 1 członek tła pola,
+ *    0 ramek bloku — jej pola GPZ nie mają układu powiązań).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '4e6dbcc8571e568de22a96dab483d012',
-      declutter: 'd07fba87b2f56a1eef4c600fe0709a17',
+      scena: 'f2583461996deb27a7213ea5ac48846c',
+      declutter: '839be59727464389e65c8f0867c71da8',
       plany: [
-        '3073b65d61f123c6da6d042c95f705b4',
-        '6b10640883aa9a473b7279618649d1e1',
-        '172728286ead7bb23cd923432968a504',
-        '1d40ebb9aa22cf4b7d406cfd7a7dea89',
-        'f77dcd8f91618667280fff097f9fd7ee',
-        '11e9a49e4ea8cebb2745065ce73382a7',
-        '11e9a49e4ea8cebb2745065ce73382a7',
+        '1285bc6dfb41c3425c255110a42279f4',
+        '26dd65b9af955de7877644091879b5af',
+        'ede5d4aaa1937bc8effc8738c4ab0a8a',
+        'c24572d28abafec0ce9a5033a79fd05d',
+        '683fdda2eb695f0a3f39c67ae28eb0ac',
+        '5b17920045292c06feae17cfd14dc9b6',
+        '5b17920045292c06feae17cfd14dc9b6',
       ],
     },
     {
@@ -617,16 +687,16 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
   ],
   podwojona: [
     {
-      scena: '8417ad34b7f98bff9a043d8fa5156142',
-      declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
+      scena: 'c7e64f315cb7298f5ff85d1943f3b9bf',
+      declutter: '5c8a9ecc9394c03aeeee770251a604dc',
       plany: [
-        'b8eea41ccf515f1acc228cd82b6436dd',
-        'bda4c229ea6367eb4a824f3a0511e4e6',
-        'eda8d972ac0062b74c5d1d3a1fb6b219',
-        '1c1f71a06b7b72d607069a888618b9af',
-        '799392b7e737ef4a3f90280596f220d8',
-        '5a8106565c8335db1702e7284d38d537',
-        '5a8106565c8335db1702e7284d38d537',
+        'bd3d70050a68901c4c4a87f5a5c40b93',
+        '3f4c0ec06022e8b430d6c44b9f9c59f2',
+        '13ddfe79dcd3608f9f4b6d4de13142d1',
+        'c3bc5cd93233aa9a1bef5cbd817ee74f',
+        '5a89923b837baa37c5903bbd512ca6fc',
+        'f14289a450e43d5dfc7d629f4bdd7590',
+        'f14289a450e43d5dfc7d629f4bdd7590',
       ],
     },
     {

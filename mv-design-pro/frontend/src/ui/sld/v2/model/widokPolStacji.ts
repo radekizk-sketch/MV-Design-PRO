@@ -9,9 +9,10 @@
  * zmian semantyki; to jest model danych, nie widok.
  */
 
-import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement, RodzajNapeduLacznika, StanObiektu } from '../../../../types/enm';
 import type { FieldRole } from '../domain/apparatusContracts';
 import type { BateriaPolaView } from './bateriaPola';
+import type { ZrodloU0PolaView } from './zrodloNapieciaZerowego';
 
 
 /**
@@ -27,7 +28,7 @@ export interface BayPrimaryDeviceView {
   readonly deviceRef: string;
   /** Uproszczony stan (mirror `cbState`/`dsState`/`esState` vocabulary).
    *  `undefined` gdy ENM nie niesie `switch_state` dla tego aparatu. */
-  readonly switchState?: 'closed' | 'open' | 'unknown';
+  readonly switchState?: 'closed' | 'open' | 'unknown' | 'earthed' | 'bad';
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `BayPrimaryDevice.linked_ref` — dla
    *  aparatów pomiarowych (CT/VT) wskazuje `Measurement.ref_id` (wzorzec
    *  potwierdzony w `backend/src/application/field_read_model.py:488`).
@@ -48,6 +49,46 @@ export interface BayPrimaryDeviceView {
   /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu — `catalog_ref` rekordu albo
    *  gałęzi (`null` = model go nie niesie; brak typu nie jest uzupełniany). */
   readonly typeRef?: string | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: wariant rysunku symbolu z rekordu aparatu
+   *  (`BayPrimaryDevice.render_variant`, np. `qet_en60617` szablonu ENEA Z.10) — wybiera
+   *  symbol (`compose/apparatusSequence.ts symbolIdForPrimaryDeviceKind`). `null` = wariant
+   *  kanoniczny. */
+  readonly renderVariant?: string | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: jawne porty aparatu z węzłami pola
+   *  (`BayPrimaryDevice.ports`) — z nich kompozycja GPZ czyta kolejność aparatów i rysuje
+   *  przewody port→port. Pusta lista = porty niepodane (rekord sprzed kontraktu portów). */
+  readonly ports?: readonly PortAparatuPolaView[];
+  /** Karta UX-04 (stan obiektu): istniejący / projektowany — z rekordu aparatu
+   *  (`BayPrimaryDevice.stan_obiektu`) albo, dla gałęzi łączeniowej pola, z reguły
+   *  `stanObiektuLacznika` (`ui/shared/stanObiektu.ts`, lustro backendu). `null` = stan
+   *  nieustalony; `undefined` = projekcja bez stanu (sylwetka konwencji). Rysunek pokazuje go
+   *  dyskretnie (podpowiedź na symbolu, atrybut `data-stan-obiektu`). */
+  readonly stanObiektu?: StanObiektu | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd łącznika z rekordu
+   *  (`BayPrimaryDevice.naped`) — rysuje znak napędu przy wyłączniku (silnikowy „M") albo przy
+   *  łączniku trójpołożeniowym (zasobnikowy z obsługą ręczną). Brak = napęd niepodany (bez
+   *  znaku). */
+  readonly naped?: RodzajNapeduLacznika;
+  /** Rozstrzygnięcie architekta 2026-10-30 pkt 3: wyłącznik w wykonaniu wysuwnym
+   *  (`BayPrimaryDevice.wykonanie` = WYSUWNE) — rysunek QET ze znacznikiem „○” członu wysuwnego
+   *  obok „×”. Brak = wykonanie stałe albo nieokreślone (bez znacznika). */
+  readonly wysuwny?: boolean;
+  /** Kody funkcji EAZ zasilanych z aparatu (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródła
+   *  linii pomiarowych do przekaźnika pola. Brak = aparat nie zasila żadnej funkcji. */
+  readonly funkcjeEazZasilane?: readonly string[];
+  /** Kody funkcji EAZ wyłączających wyłącznik (`BayPrimaryDevice.funkcje_eaz_wylaczajace`) —
+   *  cel linii wyłączania przekaźnika. Brak = żadna funkcja nie wyłącza aparatu. */
+  readonly funkcjeEazWylaczajace?: readonly string[];
+  /** Liczba uzwojeń wtórnych przekładnika napięciowego (`BayPrimaryDevice.uzwojenia`) —
+   *  wybiera rysunek z właściwą liczbą okręgów. Brak = tabliczka niepodana. */
+  readonly liczbaUzwojenWtornych?: number;
+}
+
+/** Port aparatu pola z modelu: nazwa portu (`we`/`wy`/`przylacze`/`obwod`) i węzeł pola
+ *  (`szyna`, `w1`…, `kabel`); `wezel = null` — przyłączenie niepodane. */
+export interface PortAparatuPolaView {
+  readonly portId: string;
+  readonly wezel: string | null;
 }
 
 /**
@@ -80,28 +121,37 @@ export interface BayProtectionMarkingView {
  * `Cable`/`OverheadLine.name`) + przekładnia sformatowana z `Measurement.
  * rating.ratio_primary`/`ratio_secondary` (np. „300/5" — CZYSTE formatowanie,
  * zero fizyki/zaokrągleń). BEZ-DOMAIN: oba pola źródłowe (`name`, `rating`)
- * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`) — układ pomiarowy
- * (3×CT fazowe / Ferranti-I0, `arrangement` niżej) to F10.6 (D3, DOMAIN,
- * `Measurement.ct_arrangement`). Dopasowanie na aparat CT NARYSOWANEGO stosu przez
+ * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`). Układ pomiarowy
+ * (`Measurement.ct_arrangement`) i liczba rdzeni — w inspektorze pomiaru, nie na
+ * schemacie (odbiór B-02 2026-11-04). Dopasowanie na aparat CT NARYSOWANEGO stosu przez
  * `measurementRef === BayPrimaryDevice.linked_ref` (wzorzec
  * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
  */
+/** Rodzaj przekładnika, którego tabliczkę opisuje adnotacja aparatu pola (`BayPrimaryDevice.kind`). */
+export type RodzajPrzekladnikaTabliczki = 'CT' | 'VT' | 'CORE_BALANCE_CT';
+
 export interface CtRatingAnnotationView {
-  readonly measurementRef: string;
-  readonly identifier: string;
+  /** Pomiar CT (`Measurement.ref_id`), z którego pochodzi adnotacja; `null` — adnotacja
+   *  z tabliczki aparatu pola (`deviceRef`). Dokładnie jedno z dwóch źródeł. */
+  readonly measurementRef: string | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): aparat CT pola
+   *  (`BayPrimaryDevice.device_ref`), którego tabliczkę (`BayPrimaryDevice.rdzenie`) niesie
+   *  adnotacja — gdy pole nie ma pomiaru CT wskazanego przez ten aparat (`linked_ref`).
+   *  Dopasowanie na aparat NARYSOWANEGO stosu po `deviceRef`. */
+  readonly deviceRef?: string;
+  /** Rodzaj przekładnika adnotacji z tabliczki aparatu: `'CT'` — prądowy (`rdzenie`), `'VT'` —
+   *  napięciowy (`uzwojenia`), `'CORE_BALANCE_CT'` — Ferrantiego (`przekladnia`). Rozstrzyga,
+   *  na jakim symbolu stosu kotwiczy adnotacja (`resolveCtRatingAnnotations`) i przyrostek refu
+   *  etykiety (`przyrostekTabliczkiPrzekladnika`). Brak — adnotacja z pomiaru CT. */
+  readonly rodzajPrzekladnika?: RodzajPrzekladnikaTabliczki;
+  /** `Measurement.name`; `null` dla adnotacji z tabliczki aparatu — tożsamość niesie sam
+   *  narysowany aparat (podpis aparatu pola), a tekst adnotacji to tabliczka. */
+  readonly identifier: string | null;
   readonly ratioText: string;
-  /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy —
-   *  `Measurement.ct_arrangement`. `undefined` gdy dana niedostarczona (WHITE
-   *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,
-   *  §18.3 „zero zgadywania"). */
-  readonly arrangement?: '3xCT' | 'ferranti';
-  /** CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT (osobne uzwojenia
-   *  wtórne, tabliczka IEC 61869-2) z `Measurement.ct_cores`. Doklejona jako
-   *  DODATKOWY człon etykiety (`ctRatingLabelText`, „… · N rdz.") WYŁĄCZNIE gdy
-   *  dana obecna — `undefined` gdy `Measurement.ct_cores` nieobecne (zero zmiany
-   *  tekstu/szerokości względem F10.4/F10.6, uczciwy brak). Oś odrębna od
-   *  `arrangement`. */
-  readonly cores?: number;
+  // Uwaga właściciela 2026-11-04 (odbiór B-02 pkt 6 i 8): na schemacie wyłącznie krótka
+  // przekładnia (`ratioText`); klasy dokładności, zaczep pierwotny, układ pomiarowy i liczba
+  // rdzeni są w inspektorze pola (`ui/field/EdytorWyposazeniaPola.tsx`) — pola tych członów
+  // etykiety usunięte z widoku (jedna prawda opisu przekładnika: inspektor).
   /** W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7 „CT pomiarowy vs
    *  zabezpieczeniowy") — przeznaczenie CT z `Measurement.purpose`. Wariant CT
    *  Z DANYCH, nie z domysłu: `undefined` gdy pomiar nie niesie `purpose`
@@ -120,8 +170,8 @@ export interface CtRatingAnnotationView {
  * obecne (adapter `resolveBayVtMountings` pomija VT bez tej danej, §20.2 „zero
  * zgadywania"). Dopasowanie na aparat VT NARYSOWANEGO stosu przez
  * `measurementRef === BayPrimaryDevice.linked_ref` (TA SAMA reguła co
- * `resolveMeterAnchor`/`resolveCtRatingAnnotations`). Oś odrębna od
- * `vtArrangements` (open_delta/star = oś 3U0, `protectionTopologyValidation`).
+ * `resolveMeterAnchor`/`resolveCtRatingAnnotations`). Oś odrębna od źródła napięcia
+ * zerowego 3U₀ (`MiniBlockBayDescriptor.zrodloU0`, `protectionTopologyValidation`).
  */
 export interface VtMountingAnnotationView {
   readonly measurementRef: string;
@@ -167,11 +217,11 @@ export interface MiniBlockBayDescriptor {
   readonly destinationName?: string;
   /** K30-63: stan CB (wyłącznika) — pokazuje czerwoną open marker zamiast
    *  domyślnie zielonego closed. 'unknown' → szary z '?'. */
-  readonly cbState?: 'closed' | 'open' | 'unknown';
+  readonly cbState?: 'closed' | 'open' | 'unknown' | 'bad';
   /** K30-63: stan DS (odłącznika). */
-  readonly dsState?: 'closed' | 'open' | 'unknown';
+  readonly dsState?: 'closed' | 'open' | 'unknown' | 'bad';
   /** K30-63: stan ES (uziemnika). Default 'open' (rest position). */
-  readonly esState?: 'closed' | 'open' | 'unknown';
+  readonly esState?: 'closed' | 'open' | 'unknown' | 'bad';
   /** F9.2 (SLD_CAD_SPEC_V3 §12.1): uporządkowana lista aparatów pola z
    *  `Bay.primary_devices` (ENM), gdy dane niepuste. `undefined` gdy pole nie
    *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
@@ -206,12 +256,11 @@ export interface MiniBlockBayDescriptor {
    *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak
    *  oznaczenia, §18.3 dosłownie — zero „z domysłu"). */
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
-  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): `Measurement.
-   *  vt_arrangement` WSZYSTKICH VT tego pola (wartości niepuste, deduplikowane).
-   *  `undefined`/puste = dana układu VT niedostarczona dla ŻADNEGO VT pola —
-   *  `protectionFunctionTopologyGaps` (`compose/protectionTopologyValidation.ts`)
-   *  degraduje 67N do dotychczasowego uproszczenia (sama obecność VT). */
-  readonly vtArrangements?: readonly ('open_delta' | 'star')[];
+  /** Źródło napięcia zerowego 3U₀ funkcji 67N pola (`Bay.zrodlo_u0_ref` rozstrzygnięty regułą
+   *  `v2/model/zrodloNapieciaZerowego.ts`, lustro backendu) — `undefined`, gdy pole nie ma
+   *  powiązania ani funkcji wymagającej źródła. Czyta je walidacja topologiczna 67N
+   *  (`compose/protectionTopologyValidation.ts`). */
+  readonly zrodloU0?: ZrodloU0PolaView;
   /** CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2, CTVT-MODEL/V12K-176): adnotacje montażu
    *  VT tego pola — JEDNA pozycja per aparat VT z `Measurement.vt_mounting`
    *  obecnym. `undefined` gdy pole nie niesie żadnego VT z montażem (brak danych

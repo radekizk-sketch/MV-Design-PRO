@@ -17,6 +17,10 @@
 /** Ścieżka do wykonywalnej przeglądarki Chromium albo `null`, gdy żadnej nie ma. */
 export function resolveChromiumExecutable(): string | null;
 
+/** Opcje `chromium.launch` z przeglądarką wskazaną przez `resolveChromiumExecutable` (jedno
+ *  źródło wyboru binarki dla e2e i skryptów zrzutów); `extra` przechodzi bez zmian. */
+export function chromiumLaunchOptions<T extends object = Record<string, never>>(extra?: T): T & { executablePath?: string };
+
 /** Kopia środowiska z dołożoną ścieżką do Chromium, gdy udało się ją ustalić. */
 export function getPlaywrightEnv(
   baseEnv?: NodeJS.ProcessEnv,

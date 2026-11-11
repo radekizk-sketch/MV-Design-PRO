@@ -11,6 +11,14 @@
  *  3. DETERMINIZM: hash GEOMETRII sceny jest NIEZALEŻNY od motywu — paleta nie
  *     wchodzi do sceny, więc goldeny i wyrocznie geometryczne nie mogą się
  *     ruszyć przy przełączeniu motywu.
+ *
+ * Przepisane w rozszerzeniu 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29).
+ * INTENCJA dawnych asercji `state.closed/open/nop` (kolor stanu rozróżnialny od klas napięć
+ * i czytelny na tle) zostaje, zmienia się nośnik: stan łącznika to WYPEŁNIONY kafel pod
+ * symbolem z JEDNEJ tabeli `STATE_COLOR` (czerwony = zamknięty, zielony = otwarty, szary „?"
+ * nieustalony, fioletowy „!" awaria), IDENTYCZNY w obu motywach i w eksporcie; NOP nie ma
+ * własnego koloru (stan łącznika NOP + znacznik funkcji). Kafel ≥ 3:1 do tła kanwy, glif
+ * na kaflu ≥ 4,5:1 — sprawdzane w bloku „kafle stanu" niżej, nie w progu kreski.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -27,6 +35,8 @@ import {
   sldPaletteForTheme,
   type SldPalette,
 } from '../palette';
+import { STATE_COLOR, STANY_KAFLA } from '../colorTokens';
+import { LIGHT_TECHNICAL_V3 } from '../../export/exportPalette';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = resolve(here, '../../scene/__tests__/fixtures/gpzFeeder.enm.json');
@@ -137,7 +147,9 @@ describe('paleta rysunku — SEMANTYKA klas napięć jest kontraktem', () => {
     ['WN↔SN', (p) => p.voltage.hv, (p) => p.voltage.sn],
     ['SN↔nN', (p) => p.voltage.sn, (p) => p.voltage.nn],
     ['WN↔nN', (p) => p.voltage.hv, (p) => p.voltage.nn],
-    ['NOP↔WN', (p) => p.state.nop, (p) => p.voltage.hv],
+    // Dawna para NOP↔WN: NOP nie ma już własnego koloru (stan łącznika + znacznik funkcji),
+    // a kafel stanu różni się od kreski napięcia NOŚNIKIEM (wypełnienie pod symbolem z białym
+    // glifem) — blok „kafle stanu" niżej.
     // Pary rozróżniane JASNOŚCIĄ, nie odcieniem (kanon: „SN" i „energizacja"
     // to ta sama rodzina zieleni w innym walorze — `colorTokens.ts` D8), nie
     // wchodzą do kontraktu odcienia; ich rozdział pilnuje próg kontrastu.
@@ -157,8 +169,6 @@ describe('paleta rysunku — SEMANTYKA klas napięć jest kontraktem', () => {
       expect(hueDistance(p.voltage.hv, p.voltage.sn)).toBeGreaterThanOrEqual(25);
       expect(hueDistance(p.voltage.sn, p.voltage.nn)).toBeGreaterThanOrEqual(25);
       expect(hueDistance(p.voltage.hv, p.voltage.nn)).toBeGreaterThanOrEqual(25);
-      // NOP (stan ruchowy) nie może zlać się z WN (poziom napięcia).
-      expect(hueDistance(p.state.nop, p.voltage.hv)).toBeGreaterThanOrEqual(25);
     }
   });
 });
@@ -200,10 +210,47 @@ describe('paleta rysunku — czytelność na tle kanwy', () => {
 
     it(`${nazwa}: KAŻDY token kreski ≥ 3:1 na tle kanwy`, () => {
       for (const [key, value] of allTokens(p)) {
-        if (key === 'canvasBackground') continue;
+        // Kafle stanu są WYPEŁNIENIEM z własnym progiem (blok „kafle stanu"), glif kafla stoi
+        // na kaflu, nie na tle kanwy.
+        if (key === 'canvasBackground' || key.startsWith('state.')) continue;
         expect(contrast(value, p.canvasBackground), `${nazwa} ${key}`).toBeGreaterThanOrEqual(3);
       }
     });
+  }
+});
+
+describe('paleta rysunku — kafle stanu łącznika (konwencja dyspozytorska, referencja HMI)', () => {
+  it('JEDNA tabela: oba motywy i eksport niosą TĘ SAMĄ tabelę kafli (zmienia się tylko tło)', () => {
+    expect(DARK_SCADA_SLD_PALETTE.state).toBe(STATE_COLOR);
+    expect(LIGHT_TECHNICAL_SLD_PALETTE.state).toBe(STATE_COLOR);
+    expect(LIGHT_TECHNICAL_V3.state).toEqual(STATE_COLOR);
+    expect(Object.keys(STATE_COLOR).sort()).toEqual([...STANY_KAFLA, 'glif'].sort());
+  });
+
+  it('czerwony = zamknięty, zielony = otwarty (iniekcja: dawna zieleń „zamknięty" — czerwony test)', () => {
+    // Wyrocznia odcienia niezależna od wartości: czerwień 0° ± 20°, zieleń 120° ± 30°.
+    const odlegloscOd = (hex: string, cel: number) => {
+      const d = Math.abs(hue(hex) - cel) % 360;
+      return d > 180 ? 360 - d : d;
+    };
+    expect(odlegloscOd(STATE_COLOR.zamkniety, 0)).toBeLessThanOrEqual(20);
+    expect(odlegloscOd(STATE_COLOR.otwarty, 120)).toBeLessThanOrEqual(30);
+    // Stany parami różne — kolor jednego stanu nie może udawać drugiego.
+    const wartosci = STANY_KAFLA.map((stan) => STATE_COLOR[stan].toLowerCase());
+    expect(new Set(wartosci).size).toBe(wartosci.length);
+  });
+
+  for (const [nazwa, p] of [
+    ['dark_scada', DARK_SCADA_SLD_PALETTE],
+    ['light_technical', LIGHT_TECHNICAL_SLD_PALETTE],
+    ['eksport', LIGHT_TECHNICAL_V3],
+  ] as const) {
+    for (const stan of STANY_KAFLA) {
+      it(`${nazwa} · ${stan}: kafel ≥ 3:1 do tła, glif na kaflu ≥ 4,5:1`, () => {
+        expect(contrast(p.state[stan], p.canvasBackground), `${nazwa} kafel ${stan}`).toBeGreaterThanOrEqual(3);
+        expect(contrast(p.state.glif, p.state[stan]), `${nazwa} glif na ${stan}`).toBeGreaterThanOrEqual(4.5);
+      });
+    }
   }
 });
 
@@ -242,7 +289,7 @@ describe('eksport — paleta DOKUMENTOWA niezależna od motywu ekranu', () => {
     return (
       `<svg><rect fill="${p.canvasBackground}"/>` +
       `<path stroke="${p.voltage.hv}"/><path stroke="${p.voltage.sn}"/><path stroke="${p.voltage.nn}"/>` +
-      `<circle stroke="${p.state.nop}"/><text fill="${p.baseStroke}">Sekcja 1</text></svg>`
+      `<rect fill="${p.state.zamkniety}"/><text fill="${p.baseStroke}">Sekcja 1</text></svg>`
     );
   }
 
@@ -250,7 +297,8 @@ describe('eksport — paleta DOKUMENTOWA niezależna od motywu ekranu', () => {
     const out = toLightTechnicalExportSvg(markupW(DARK_SCADA_SLD_PALETTE), DARK_SCADA_SLD_PALETTE);
     expect(out).toContain('#0F7A3D'); // SN drukowalny
     expect(out).toContain('#0A5A78'); // nN drukowalny
-    expect(out).toContain('#B71C1C'); // NOP drukowalny
+    // Kafel stanu w dokumencie = kafel ekranu (jedna tabela, karta UX-04 rozszerzenie 5).
+    expect(out).toContain(STATE_COLOR.zamkniety);
     expect(out).not.toContain(DARK_SCADA_SLD_PALETTE.voltage.sn);
     expect(out).not.toContain(DARK_SCADA_SLD_PALETTE.canvasBackground);
   });
@@ -262,11 +310,11 @@ describe('eksport — paleta DOKUMENTOWA niezależna od motywu ekranu', () => {
     );
     expect(out).toContain('#0F7A3D');
     expect(out).toContain('#0A5A78');
-    expect(out).toContain('#B71C1C');
+    expect(out).toContain(STATE_COLOR.zamkniety);
     // Barwy EKRANU jasnego nie mogą przeciec do dokumentu (poza tymi, które są
-    // z definicji wspólne — SN dokumentowy ma tę samą wartość co ekranowy).
+    // z definicji wspólne — SN dokumentowy ma tę samą wartość co ekranowy, kafle stanu
+    // są jedną tabelą ekranu i druku).
     expect(out).not.toContain(LIGHT_TECHNICAL_SLD_PALETTE.voltage.hv);
-    expect(out).not.toContain(LIGHT_TECHNICAL_SLD_PALETTE.state.nop);
     expect(out).not.toContain(LIGHT_TECHNICAL_SLD_PALETTE.baseStroke);
   });
 

@@ -14,6 +14,7 @@ import { useMemo } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
+  portStartuPunktu,
   resolveBranchPointBranchPortId,
   resolveBranchPointBranchPortOccupancy,
   resolveBranchSourceContext,
@@ -133,21 +134,18 @@ function zksnMainSegmentRefs(branchPoint: BranchPointSN | null): readonly string
     : [];
 }
 
+/** Odcinek przyłączony do zacisku portu odgałęźnego (`busRef` = szyna portu — ta sama
+ *  postać, którą przyjmuje start odgałęzienia). */
 function branchPortSegmentRef(
   snapshot: EnergyNetworkModel | null | undefined,
-  branchPoint: BranchPointSN,
-  portId: string,
   busRef: string,
 ): string | null {
-  const sourceRef = `${branchPoint.ref_id}.${portId}`;
   const connectedBranch = (snapshot?.branches ?? []).find((branch) => {
-    const endpointAPort = (branch as { endpoint_a_port?: { port_id?: string; bus_ref?: string } | null }).endpoint_a_port;
-    const endpointBPort = (branch as { endpoint_b_port?: { port_id?: string; bus_ref?: string } | null }).endpoint_b_port;
+    const endpointAPort = (branch as { endpoint_a_port?: { bus_ref?: string } | null }).endpoint_a_port;
+    const endpointBPort = (branch as { endpoint_b_port?: { bus_ref?: string } | null }).endpoint_b_port;
     return (
       branch.from_bus_ref === busRef
       || branch.to_bus_ref === busRef
-      || endpointAPort?.port_id === sourceRef
-      || endpointBPort?.port_id === sourceRef
       || endpointAPort?.bus_ref === busRef
       || endpointBPort?.bus_ref === busRef
     );
@@ -158,13 +156,12 @@ function branchPortSegmentRef(
 function zksnBranchPortOccupancy(
   snapshot: EnergyNetworkModel | null | undefined,
   branchPoint: BranchPointSN,
-  portId: string,
   busRef: string,
   index: number,
 ): string | null {
   return (
     resolveBranchPointBranchPortOccupancy(branchPoint, index)
-    ?? branchPortSegmentRef(snapshot, branchPoint, portId, busRef)
+    ?? branchPortSegmentRef(snapshot, busRef)
   );
 }
 
@@ -196,7 +193,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
       return ports.map((busRef, index) => {
         const portId = resolveBranchPointBranchPortId(ports.length, index);
         const occupiedSegmentRef = branchPoint
-          ? zksnBranchPortOccupancy(snapshot, branchPoint, portId, busRef, index)
+          ? zksnBranchPortOccupancy(snapshot, branchPoint, busRef, index)
           : null;
         return {
           busRef,
@@ -232,9 +229,10 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
     });
   };
 
-  const handleStartBranchFromPort = (portId: string) => {
+  const handleStartBranchFromPort = (index: number) => {
     if (!branchPoint) return;
-    const fromRef = `${branchPoint.ref_id}.${portId}`;
+    // Port startu w jedynej postaci: zacisk portu odgałęźnego (backend `_rozwiaz_port_startu`).
+    const fromRef = portStartuPunktu(branchPoint, index);
     const branchSource = resolveBranchSourceContext(snapshot, fromRef);
     if (!branchSource.sourceBusRef) return;
     openOperationForm('start_branch_segment_sn', {
@@ -244,7 +242,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
       source_type_label: branchSource.sourceType,
       source_name: branchSource.sourceName,
       source_voltage_label: branchSource.voltageLabel,
-      source_port_label: publicBranchPortLabel(branchSource.portLabel),
+      source_port_label: branchSource.portLabel,
       segment: mainRouteSegment ? routeSegmentOperationContext(mainRouteSegment, 'cable') : undefined,
     });
   };
@@ -313,12 +311,12 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
                 Brak wolnych pól odgałęźnych w materializacji ZK SN.
               </p>
             ) : (
-              branchPorts.map((port) => (
+              branchPorts.map((port, index) => (
                 <button
                   key={port.portId}
                   type="button"
                   disabled={port.occupied}
-                  onClick={() => handleStartBranchFromPort(port.portId)}
+                  onClick={() => handleStartBranchFromPort(index)}
                   data-testid={`zksn-action-start-branch-${port.portId}`}
                   className="w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
                 >
@@ -386,7 +384,7 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
       source_type_label: branchSource.sourceType,
       source_name: branchSource.sourceName,
       source_voltage_label: branchSource.voltageLabel,
-      source_port_label: publicBranchPortLabel(branchSource.portLabel),
+      source_port_label: branchSource.portLabel,
       segment: mainRouteSegment ? routeSegmentOperationContext(mainRouteSegment) : undefined,
     });
   };
@@ -407,7 +405,7 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
           <KeyValue label="Rola w sieci" value="węzeł linii napowietrznej z portem odgałęzienia" />
           <KeyValue label="Ciąg główny" value={mainRouteLabel} />
           <KeyValue label="Poziom napięcia" value={branchSource?.voltageLabel ?? MISSING_DASH} />
-          <KeyValue label="Port odgałęzienia" value={publicBranchPortLabel(branchSource?.portLabel)} />
+          <KeyValue label="Port odgałęzienia" value={branchSource?.portLabel || MISSING_DASH} />
           <KeyValue
             label="Stan łącznika"
             value={branchPoint ? opisLacznikowPortow(snapshot, branchPoint.ref_id) : MISSING_DASH}
@@ -578,12 +576,6 @@ function SurfaceHeader({ code: _code, title, subtitle }: { code: string; title: 
       <h2 className="mt-1 text-base font-semibold text-scada-text">{subtitle}</h2>
     </div>
   );
-}
-
-function publicBranchPortLabel(portLabel: string | null | undefined): string {
-  if (!portLabel) return 'port boczny odgałęzienia';
-  if (portLabel.startsWith('BRANCH')) return 'port boczny odgałęzienia';
-  return portLabel;
 }
 
 function KeyValue({ label, value }: { label: string; value: string }) {

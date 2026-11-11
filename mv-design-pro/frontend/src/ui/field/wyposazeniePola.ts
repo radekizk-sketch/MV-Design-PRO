@@ -13,7 +13,10 @@
 import type {
   BayPrimaryDevice,
   BayPrimaryPlacement,
+  KlasaPolaLiniowego,
   StanDanychWyposazenia,
+  StanObiektu,
+  WykonanieAparatu,
 } from '../../types/enm';
 import type { RolaUziemnika } from '../../types/uziemienie';
 
@@ -30,6 +33,9 @@ export type RodzajAparatuPolaSn =
   | 'FUSE'
   | 'CABLE_HEAD'
   | 'TRANSFORMER_DEVICE'
+  | 'THREE_POSITION_SWITCH'
+  | 'VOLTAGE_INDICATOR'
+  | 'CORE_BALANCE_CT'
   | 'UNBALANCE_CT'
   | 'PHASE_TO_PHASE_VT';
 
@@ -47,6 +53,9 @@ export const PRZESTRZEN_KATALOGU_APARATU: Readonly<Record<RodzajAparatuPolaSn, P
   FUSE: null,
   CABLE_HEAD: null,
   TRANSFORMER_DEVICE: null,
+  THREE_POSITION_SWITCH: null,
+  VOLTAGE_INDICATOR: null,
+  CORE_BALANCE_CT: null,
   UNBALANCE_CT: 'CT',
   PHASE_TO_PHASE_VT: 'VT',
 };
@@ -75,6 +84,9 @@ export const NAZWA_RODZAJU_APARATU_PL: Readonly<Record<RodzajAparatuPolaSn, stri
   FUSE: 'bezpieczniki',
   CABLE_HEAD: 'głowica kablowa',
   TRANSFORMER_DEVICE: 'transformator pola',
+  THREE_POSITION_SWITCH: 'łącznik trójpołożeniowy',
+  VOLTAGE_INDICATOR: 'wskaźnik napięcia',
+  CORE_BALANCE_CT: 'przekładnik Ferrantiego',
   UNBALANCE_CT: 'przekładnik niezrównoważenia baterii',
   PHASE_TO_PHASE_VT: 'przekładnik napięciowy międzyfazowy',
 };
@@ -90,6 +102,9 @@ export const RODZAJE_APARATU_POLA_SN: readonly RodzajAparatuPolaSn[] = [
   'FUSE',
   'CABLE_HEAD',
   'TRANSFORMER_DEVICE',
+  'THREE_POSITION_SWITCH',
+  'VOLTAGE_INDICATOR',
+  'CORE_BALANCE_CT',
   'UNBALANCE_CT',
   'PHASE_TO_PHASE_VT',
 ];
@@ -124,7 +139,48 @@ export interface WierszAparatu {
   linked_ref: string;
   designation: string;
   earthing_role: RolaUziemnika | '';
+  /**
+   * Stan obiektu instancji podany JAWNIE (decyzja projektanta: inwentaryzacja aparatu zastanego
+   * w polu istniejącym). `''` = reguła backendu (`enm.pola.aparaty_po_wymianie`): aparat
+   * niezmieniony zachowuje stan, nowy albo wymieniony jest projektowany.
+   */
+  stan_obiektu: StanObiektu | '';
+  /**
+   * Odgałęzienie toru (`BayPrimaryDevice.odgalezienie`, np. 'pn'); `''` = aparat toru głównego.
+   * Porty aparatu wyprowadza z niego backend (`rodzaje_aparatury.porty_toru_pola`) — ponowny
+   * zapis pola z odgałęzieniem przekładnika napięciowego odtwarza te same porty.
+   */
+  odgalezienie: string;
+  /**
+   * Przekładnia przekładnika Ferrantiego (`BayPrimaryDevice.przekladnia`, zapis z rysunku
+   * standardu, np. '1/100') — WYŁĄCZNIE rodzaj CORE_BALANCE_CT; `''` = dana nieopisana.
+   */
+  przekladnia: string;
+  /**
+   * Wykonanie wyłącznika (`BayPrimaryDevice.wykonanie`: stałe / wysuwne — człon wysuwny na
+   * wózku) — WYŁĄCZNIE rodzaj CB; `''` = wykonanie nieokreślone. Rozstrzygnięcie architekta
+   * 2026-10-30 pkt 3: domyślnie z szablonu pola, edytowalne tutaj, rysunek SLD ze znacznikiem
+   * członu wysuwnego.
+   */
+  wykonanie: WykonanieAparatu | '';
+  /**
+   * Zaczep pierwotny [A] przekładnika wieloprzekładniowego WYBRANY przez projektanta
+   * (`BayPrimaryDevice.zaczep_pierwotny_a` ze źródłem PROJEKTANT) — WYŁĄCZNIE rodzaj CT; `''` =
+   * wartość robocza (backend: `wartosci_robocze.rozstrzygnij_zaczep_przekladnika`, dana
+   * przyjęta ESTIMATED). Zaczep roboczy z rekordu nie wraca do ładunku jako wybór projektanta.
+   */
+  zaczep: string;
+  /** Zaczep zapisany w rekordzie jako wartość robocza (`null` — brak) — wyłącznie do opisu
+   *  opcji „wartość robocza" w formularzu; nie trafia do ładunku. */
+  zaczepRoboczy: number | null;
 }
+
+/** Rodzaj aparatu, któremu zapisuje się przekładnię (lustro walidatora `BayPrimaryDevice`). */
+export const RODZAJ_Z_PRZEKLADNIA: RodzajAparatuPolaSn = 'CORE_BALANCE_CT';
+/** Rodzaj aparatu, któremu zapisuje się wykonanie (lustro `rodzaje_aparatury.RODZAJE_Z_WYKONANIEM`). */
+export const RODZAJ_Z_WYKONANIEM: RodzajAparatuPolaSn = 'CB';
+/** Rodzaj aparatu, któremu wybiera się zaczep (lustro walidatora `BayPrimaryDevice`). */
+export const RODZAJ_Z_ZACZEPEM: RodzajAparatuPolaSn = 'CT';
 
 export const WIERSZ_PUSTY: WierszAparatu = {
   kind: '',
@@ -133,6 +189,12 @@ export const WIERSZ_PUSTY: WierszAparatu = {
   linked_ref: '',
   designation: '',
   earthing_role: '',
+  stan_obiektu: '',
+  odgalezienie: '',
+  przekladnia: '',
+  wykonanie: '',
+  zaczep: '',
+  zaczepRoboczy: null,
 };
 
 function czyRodzajPolaSn(kind: string): kind is RodzajAparatuPolaSn {
@@ -154,6 +216,14 @@ export function wierszeZAparatow(aparaty: readonly BayPrimaryDevice[] | null | u
       linked_ref: a.linked_ref ?? '',
       designation: a.designation ?? '',
       earthing_role: a.earthing_role ?? '',
+      // Stan rekordu NIE wraca do ładunku jawnie — aparat niezmieniony zachowuje go po stronie
+      // backendu, a zmieniony (wymieniony) musi stać się projektowany.
+      stan_obiektu: '',
+      odgalezienie: a.odgalezienie ?? '',
+      przekladnia: a.przekladnia ?? '',
+      wykonanie: a.wykonanie ?? '',
+      zaczep: a.zrodlo_zaczepu === 'PROJEKTANT' && a.zaczep_pierwotny_a != null ? String(a.zaczep_pierwotny_a) : '',
+      zaczepRoboczy: a.zrodlo_zaczepu === 'WARTOSC_ROBOCZA' ? (a.zaczep_pierwotny_a ?? null) : null,
     }));
 }
 
@@ -166,8 +236,47 @@ export function zmienRodzaj(wiersz: WierszAparatu, kind: RodzajAparatuPolaSn | '
     catalog_ref: kind === wiersz.kind ? wiersz.catalog_ref : '',
     linked_ref: kind && RODZAJE_Z_GALEZIA.includes(kind) ? wiersz.linked_ref : '',
     earthing_role: kind && RODZAJE_Z_ROLA_UZIEMIENIA.includes(kind) ? wiersz.earthing_role : '',
+    przekladnia: kind === RODZAJ_Z_PRZEKLADNIA ? wiersz.przekladnia : '',
+    wykonanie: kind === RODZAJ_Z_WYKONANIEM ? wiersz.wykonanie : '',
+    zaczep: kind === wiersz.kind && kind === RODZAJ_Z_ZACZEPEM ? wiersz.zaczep : '',
+    zaczepRoboczy: kind === wiersz.kind ? wiersz.zaczepRoboczy : null,
   };
 }
+
+/** Zmiana pozycji katalogowej: zaczepy należą do tabliczki pozycji, więc wybór zaczepu i opis
+ *  zaczepu roboczego innej pozycji nie przechodzą (zero przeniesionych fantomów). */
+export function zmienPozycje(wiersz: WierszAparatu, catalogRef: string): WierszAparatu {
+  if (catalogRef === wiersz.catalog_ref) return wiersz;
+  return { ...wiersz, catalog_ref: catalogRef, zaczep: '', zaczepRoboczy: null };
+}
+
+/** Zmiana klasy pola liniowego w ładunku: `zmien=false` — klucz pominięty (klasa bez zmian). */
+export interface ZmianaKlasyPola {
+  readonly zmien: boolean;
+  readonly wartosc: KlasaPolaLiniowego | null;
+}
+
+export const BEZ_ZMIANY_KLASY: ZmianaKlasyPola = { zmien: false, wartosc: null };
+
+/** Zmiana powiązania źródła napięcia zerowego 3U₀ (`Bay.zrodlo_u0_ref`, decyzja właściciela
+ *  2026-10-29): `zmien=false` — klucz pominięty (powiązanie bez zmian), `wartosc=null` —
+ *  powiązanie zdjęte. Poprawność źródła ocenia backend (ta sama reguła co przypisanie 67N). */
+export interface ZmianaZrodlaU0 {
+  readonly zmien: boolean;
+  readonly wartosc: string | null;
+}
+
+export const BEZ_ZMIANY_ZRODLA_U0: ZmianaZrodlaU0 = { zmien: false, wartosc: null };
+
+/** Klasy pola liniowego SN — lustro `bay_templates.KLASY_POLA_LINIOWEGO` / `NAZWY_KLASY_POLA_PL`
+ *  (parytet przypina `tests/enm/test_wyposazenie_pola_lustro_frontu.py`). */
+export const KLASY_POLA_LINIOWEGO: readonly KlasaPolaLiniowego[] = ['ODBIORCZE', 'MIESZANE', 'DEDYKOWANE_WYTWORCY'];
+
+export const NAZWA_KLASY_POLA_PL: Readonly<Record<KlasaPolaLiniowego, string>> = {
+  ODBIORCZE: 'pole odbiorcze (bez modułów wytwarzania)',
+  MIESZANE: 'pole linii mieszanej (moduły wytwarzania i odbiorcy)',
+  DEDYKOWANE_WYTWORCY: 'pole dedykowane modułom wytwarzania',
+};
 
 /** Ładunek `set_bay_equipment` — pola puste pomijane (backend: brak = dana niedostarczona). */
 export function zbudujPayloadWyposazenia(
@@ -175,21 +284,35 @@ export function zbudujPayloadWyposazenia(
   tryb: TrybWyposazenia,
   wiersze: readonly WierszAparatu[],
   szablonRef: string,
+  klasa: ZmianaKlasyPola = BEZ_ZMIANY_KLASY,
+  zrodloU0: ZmianaZrodlaU0 = BEZ_ZMIANY_ZRODLA_U0,
 ): Record<string, unknown> {
-  if (tryb === 'wyczysc') return { bay_ref: bayRef, mode: 'wyczysc' };
+  // Klasa pola liniowego (`Bay.klasa_pola`) i źródło 3U₀ (`Bay.zrodlo_u0_ref`): klucz obecny =
+  // ustaw (null = wyczyść), brak = bez zmiany — ten sam kontrakt co operacja `set_bay_equipment`.
+  const zKlasa = {
+    ...(klasa.zmien ? { klasa_pola: klasa.wartosc } : {}),
+    ...(zrodloU0.zmien ? { zrodlo_u0_ref: zrodloU0.wartosc } : {}),
+  };
+  if (tryb === 'wyczysc') return { bay_ref: bayRef, mode: 'wyczysc', ...zKlasa };
   if (tryb === 'szablon') {
     const ref = szablonRef.trim();
-    return { bay_ref: bayRef, mode: 'szablon', ...(ref ? { bay_template_ref: ref } : {}) };
+    return { bay_ref: bayRef, mode: 'szablon', ...(ref ? { bay_template_ref: ref } : {}), ...zKlasa };
   }
   return {
     bay_ref: bayRef,
     mode: 'katalog',
+    ...zKlasa,
     devices: wiersze.map((w) => {
       const aparat: Record<string, unknown> = { kind: w.kind, placement: w.placement };
       if (w.catalog_ref.trim()) aparat.catalog_ref = w.catalog_ref.trim();
       if (w.linked_ref.trim()) aparat.linked_ref = w.linked_ref.trim();
       if (w.designation.trim()) aparat.designation = w.designation.trim();
       if (w.earthing_role) aparat.earthing_role = w.earthing_role;
+      if (w.stan_obiektu) aparat.stan_obiektu = w.stan_obiektu;
+      if (w.odgalezienie.trim()) aparat.odgalezienie = w.odgalezienie.trim();
+      if (w.kind === RODZAJ_Z_PRZEKLADNIA && w.przekladnia.trim()) aparat.przekladnia = w.przekladnia.trim();
+      if (w.kind === RODZAJ_Z_WYKONANIEM && w.wykonanie) aparat.wykonanie = w.wykonanie;
+      if (w.kind === RODZAJ_Z_ZACZEPEM && w.zaczep.trim()) aparat.zaczep_pierwotny_a = Number(w.zaczep);
       return aparat;
     }),
   };

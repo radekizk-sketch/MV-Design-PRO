@@ -14,7 +14,42 @@ import { szynyStacji } from './szynyStacji';
 
 /** Minimalny wycinek migawki czytany przez regułę (wyrocznie sceny niosą tylko część pól). */
 export type ModelTransformatorow = Pick<EnergyNetworkModel, 'transformers'>
-  & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations'>>;
+  & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations' | 'bays'>>;
+
+/** Klucz zapisu pary przeniesienia punktu neutralnego w `Transformer.meta` — backend
+ *  `enm.zespol_uziemiajacy.ZAPIS_ZESPOLU`. */
+export const ZAPIS_ZESPOLU_UZIEMIAJACEGO = 'zespol_uziemiajacy';
+/** Rola pola zespołu uziemiającego — backend `ROLA_POLA_ZESPOLU_UZIEMIAJACEGO`. */
+export const ROLA_POLA_ZESPOLU_UZIEMIAJACEGO = 'ZU';
+
+/** Zapis pary zespołu uziemiającego na transformatorze (`null` — transformator nie jest
+ *  transformatorem uziemiającym pola ZU). */
+export function zapisZespoluUziemiajacego(
+  transformer: { readonly meta?: unknown },
+): { readonly bay_ref?: string | null; readonly wariant?: string | null; readonly zrodlo_ref?: string | null } | null {
+  const meta = transformer.meta;
+  if (meta === null || typeof meta !== 'object') return null;
+  const zapis = (meta as Record<string, unknown>)[ZAPIS_ZESPOLU_UZIEMIAJACEGO];
+  return zapis !== null && typeof zapis === 'object' ? (zapis as Record<string, string | null>) : null;
+}
+
+/**
+ * Pole zespołu uziemiającego (rola `ZU`), do którego należy transformator — JEDNO źródło
+ * odpowiedzi „transformator uziemiający ma swoje pole” we froncie (marker braku pola TR,
+ * rysunek pola ZU w GPZ). Lustro backendu `enm.pole_transformatorowe.pole_zespolu_transformatora`
+ * (parytet: wiersze `tr-uziemiajacy-*` tablicy `pole_transformatorowe_parytet_v1.json`):
+ * zapis pary musi wskazywać ISTNIEJĄCE pole roli `ZU`; inaczej `null` (transformator bez pola).
+ */
+export function poleZespoluTransformatora<B extends { readonly ref_id?: string; readonly id?: string; readonly bay_role?: string | null }>(
+  bays: readonly B[] | null | undefined,
+  transformer: { readonly meta?: unknown },
+): B | null {
+  const bayRef = zapisZespoluUziemiajacego(transformer)?.bay_ref;
+  if (!nonEmptyRef(bayRef)) return null;
+  const pole = (bays ?? []).find((bay) => bay.ref_id === bayRef || bay.id === bayRef);
+  if (!pole) return null;
+  return (pole.bay_role ?? '').toUpperCase() === ROLA_POLA_ZESPOLU_UZIEMIAJACEGO ? pole : null;
+}
 
 /** Rola katalogowa transformatora blokowego toru DER po stronie SN — backend
  *  `enm.domain_operations_v2` zapisuje ją w `Transformer.meta.catalog_role` przy
@@ -68,7 +103,8 @@ export function transformatorBlokowyDer(
  * `enm.pole_transformatorowe.transformatory_stacji`), czytana przez rysunek, inspektor,
  * konfigurator stacji, kartę stacji i kreator źródła:
  *  1. transformator blokowy źródła DER (`transformatorBlokowyDer`) jest wykluczony — także
- *     wtedy, gdy stacja deklaruje go w `transformer_refs`;
+ *     wtedy, gdy stacja deklaruje go w `transformer_refs`; tak samo transformator uziemiający
+ *     z polem zespołu (`poleZespoluTransformatora`) — aparat pola ZU, nie transformator rozdzielczy;
  *  2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
  *  3. przy BRAKU deklaracji — transformator, którego koniec leży na szynie stacji z lustra
  *     `szynyStacji` (strona górna na zacisku pola TR, strona dolna za wyłącznikiem głównym nN).
@@ -82,7 +118,14 @@ function transformatorStacji(
   transformer: Transformer,
   deklarowane: ReadonlySet<string>,
   szynyStacjiRefs: ReadonlySet<string>,
+  stacjaRef: string | null | undefined,
+  kontekst: KontekstTransformatorowStacji,
 ): boolean {
+  // Transformator uziemiający z polem zespołu należy do stacji TEGO pola (`Bay.substation_ref`)
+  // — rozstrzyga przed deklaracją i szynami: jego zaciski leżą na zacisku pola ZU i na szynie
+  // potrzeb własnych, których lustro `szynyStacji` nie niesie, a stacja zwykle go nie deklaruje.
+  // Bez tego blok stacji na L0, eksport i topologia gubiły aparat pola ZU (reguła kompletności).
+  if (kontekst.stacjaZespolu.has(transformer)) return kontekst.stacjaZespolu.get(transformer) === stacjaRef;
   if (deklarowane.size > 0) return transformerRefs(transformer).some((ref) => deklarowane.has(ref));
   return szynyStacjiRefs.has(transformer.hv_bus_ref) || szynyStacjiRefs.has(transformer.lv_bus_ref);
 }
@@ -99,6 +142,11 @@ export interface KontekstTransformatorowStacji {
   readonly refyBlokowe: ReadonlySet<string>;
   /** Transformatory migawki spełniające `transformatorBlokowyDer` (jedyny filtr, wyżej). */
   readonly blokowe: ReadonlySet<Transformer>;
+  /** Transformatory uziemiające z polem zespołu (`poleZespoluTransformatora`) — aparaty pola ZU,
+   *  nie transformatory rozdzielcze. */
+  readonly zespolu: ReadonlySet<Transformer>;
+  /** Stacja pola zespołu (`Bay.substation_ref`) transformatora uziemiającego z `zespolu`. */
+  readonly stacjaZespolu: ReadonlyMap<Transformer, string | null>;
   /** Pamięć szyn i deklaracji stacji (wyliczane raz na stację migawki przy pierwszym pytaniu —
    *  odwrotność reguły pyta o każdą stację dla każdego transformatora). */
   readonly stacje: Map<Substation, DaneStacji>;
@@ -111,12 +159,19 @@ interface DaneStacji {
 
 export function kontekstTransformatorowStacji(snapshot: ModelTransformatorow): KontekstTransformatorowStacji {
   const refyBlokowe = refyTransformatorowBlokowych(snapshot);
+  const stacjaZespolu = new Map<Transformer, string | null>();
+  for (const transformer of snapshot.transformers ?? []) {
+    const pole = poleZespoluTransformatora(snapshot.bays, transformer);
+    if (pole) stacjaZespolu.set(transformer, pole.substation_ref ?? null);
+  }
   return {
     snapshot,
+    stacjaZespolu,
     refyBlokowe,
     blokowe: new Set(
       (snapshot.transformers ?? []).filter((transformer) => transformatorBlokowyDer(transformer, refyBlokowe)),
     ),
+    zespolu: new Set(stacjaZespolu.keys()),
     stacje: new Map(),
   };
 }
@@ -161,7 +216,8 @@ export function selectStationDistributionTransformers(
   return (snapshot.transformers ?? []).filter(
     (transformer) =>
       !pelny.blokowe.has(transformer)
-      && transformatorStacji(transformer, deklarowane, szyny),
+      && !pelny.zespolu.has(transformer)
+      && transformatorStacji(transformer, deklarowane, szyny, station.ref_id, pelny),
   );
 }
 
@@ -179,7 +235,7 @@ export function transformatoryNalezaceDoStacji(
   if (!snapshot || !station) return [];
   const pelny = kontekstDla(snapshot, kontekst);
   const { deklarowane, szyny } = daneStacji(station, pelny);
-  return (snapshot.transformers ?? []).filter((transformer) => transformatorStacji(transformer, deklarowane, szyny));
+  return (snapshot.transformers ?? []).filter((transformer) => transformatorStacji(transformer, deklarowane, szyny, station.ref_id, pelny));
 }
 
 /**
@@ -197,7 +253,7 @@ export function stationRefOfTransformer(
   const pelny = kontekstDla(snapshot, kontekst);
   for (const station of snapshot.substations ?? []) {
     const { deklarowane, szyny } = daneStacji(station, pelny);
-    if (transformatorStacji(transformer, deklarowane, szyny)) {
+    if (transformatorStacji(transformer, deklarowane, szyny, station.ref_id, pelny)) {
       return station.ref_id ?? null;
     }
   }

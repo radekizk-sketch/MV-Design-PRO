@@ -269,10 +269,13 @@ def _measurement_dict(m: Any) -> dict[str, Any]:
         "ratio_primary": m.rating.ratio_primary,
         "ratio_secondary": m.rating.ratio_secondary,
         # Tabliczka przekładnika TEKSTEM obok symbolu (R2 §9): klasa, moc
-        # pomiarowa, liczba rdzeni i układ CT — pola addytywne, brak = None.
+        # pomiarowa, rdzenie (lista — liczba z listy, karta UX-04/POLE-LINIOWE-WZORZEC)
+        # i układ CT — pola addytywne, brak = None.
         "accuracy_class": m.rating.accuracy_class,
         "burden_va": m.rating.burden_va,
-        "ct_cores": getattr(m, "ct_cores", None),
+        "rdzenie": (
+            [r.model_dump(mode="json") for r in m.rdzenie] if m.rdzenie is not None else None
+        ),
         "ct_arrangement": getattr(m, "ct_arrangement", None),
     }
 

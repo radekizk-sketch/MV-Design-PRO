@@ -12,6 +12,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from network_model.catalog.gazy_fluorowane import AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL
 from network_model.catalog.governance import (
     brakuje_wymaganej_referencji,
     wymagalnosc_katalogu,
@@ -58,8 +59,14 @@ from .bateria_kondensatorow import (
     transformatory_zasilajace_baterie,
 )
 from .fix_actions import FixAction
+from .gaz_fluorowany_pola import (
+    KOD_WALIDATORA_GAZU_FLUOROWANEGO,
+    RODZAJE_GALEZI_LACZENIOWYCH,
+    naruszenia_gazu_fluorowanego,
+)
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
+from .katalog_projektu import kontekst_katalogu
 from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
@@ -73,6 +80,7 @@ from .models import (
     SwitchBranch,
     Transformer,
 )
+from .nosniki_punktu_neutralnego import wyspy_z_wieloma_nosnikami
 from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
@@ -446,12 +454,23 @@ class ENMValidator:
         self._check_zasada_toru(enm, issues)
         # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
         self._check_rodzaj_stacji(enm, issues)
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: gaz fluorowany w polu, które nie jest istniejące (W058)
+        self._check_gaz_fluorowany(enm, issues)
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: szablon pola niezgodny z polem (W050–W052)
+        self._check_zgodnosc_szablonu_pola(enm, issues)
+        self._check_pole_liniowe_gpz(enm, issues)
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: oznaczenia aparatów pola (W063)
+        self._check_oznaczenia_aparatow_pola(enm, issues)
+        # Decyzja właściciela 2026-10-29: 67N bez potwierdzonego źródła 3U₀ (W064)
+        self._check_zrodlo_u0_pol(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
         self._check_uziemienie_w5(enm, issues)
         # UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespoły uziemiające SN — E-ZU-01..02, W-ZU-01..06
         self._check_zespoly_uziemiajace(enm, issues)
+        # D1 (karta POLA-GPZ-SZABLONY): jeden uziemiony nośnik punktu neutralnego w wyspie SN
+        self._check_jeden_nosnik_punktu_neutralnego(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -1392,7 +1411,7 @@ class ENMValidator:
                     message_pl=(
                         f"{opis_obiektu(bay, 'Pole')}: uziemnik "
                         f"({_oznaczenia_aparatow(closed_es)}) ZAMKNIĘTY przy "
-                        f"jednocześnie zamkniętym łączniku toru głównego "
+                        f"jednocześnie zamkniętym łączniku toru z nim skojarzonym "
                         f"({_oznaczenia_aparatow(closed_main)}) — niedozwolona "
                         f"kombinacja stanów (uziemienie toru pod napięciem, blokada "
                         f"rozdzielnicy)."
@@ -2155,6 +2174,201 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_gaz_fluorowany(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W058: gaz fluorowany (SF₆) w polu albo aparacie pola, który nie jest istniejący.
+
+        Ta sama reguła co strażnik operacji domenowych (`enm.gaz_fluorowany_pola` →
+        `network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl`): operacje nie
+        wprowadzają NOWEGO naruszenia, więc walidator widzi rekordy zastane (stan obiektu
+        nieustalony — zapis sprzed atrybutu) z rodziną albo aparatem z gazem fluorowanym.
+        Poziom IMPORTANT: obliczenia sieci są poprawne, niezgodny jest wybór wyrobu
+        (rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a). Akcja: pole istniejące w sieci —
+        oznaczenie stanu (`set_object_state`), pole projektowane — wybór wykonania bez gazów
+        fluorowanych na karcie pola.
+        """
+        # Nośnik gazu jest tylko w polu z rodziną, z aparatem głównym albo z aparatem
+        # wyposażenia z pozycją katalogu — tylko te rekordy trafiają do reguły (walidator biegnie
+        # po każdej operacji; bez zrzutu całego modelu). Łącznik z pozycją katalogu (nośnik
+        # ŁĄCZNIK) czyta stan z aparatu pola, który go opisuje, albo z pola, do którego należy
+        # (`stan_obiektu_lacznika`) — wtedy reguła dostaje wszystkie pola.
+        laczniki = [
+            galaz.model_dump(mode="json")
+            for galaz in enm.branches
+            if galaz.type in RODZAJE_GALEZI_LACZENIOWYCH and galaz.catalog_ref
+        ]
+        pola_z_wyrobem = [
+            pole.model_dump(mode="json")
+            for pole in enm.bays
+            if laczniki
+            or pole.switchgear_family_ref
+            or pole.apparatus_catalog_ref
+            or any(a.catalog_ref for a in pole.primary_devices)
+        ]
+        if not pola_z_wyrobem and not laczniki:
+            return
+        with kontekst_katalogu(enm):
+            naruszenia = naruszenia_gazu_fluorowanego(
+                {"bays": pola_z_wyrobem, "branches": laczniki}
+            )
+        for naruszenie in naruszenia:
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_GAZU_FLUOROWANEGO,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=naruszenie.komunikat_pl,
+                    element_refs=[naruszenie.bay_ref or naruszenie.element_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Jeśli obiekt istnieje w sieci, oznacz go jako istniejący na karcie pola "
+                        f"albo łącznika; jeśli jest projektowany — "
+                        f"{AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=naruszenie.bay_ref or naruszenie.element_ref,
+                    ),
+                )
+            )
+
+    def _check_zgodnosc_szablonu_pola(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W050–W052: szablon pola niezgodny z polem (`enm.zgodnosc_szablonu_pola`).
+
+        W050 — wykonanie łączników niedopuszczone w izolacji rodziny rozdzielnicy (ENEA Zeszyt 1,
+        §13); W051 — szablon pola rozdzielni GPZ w polu stacji spoza GPZ; W052 — klasa pola
+        z generacją przy wykonaniu bez przekładnika napięciowego od strony linii (IRiESD
+        II.4.5.4.2.2–2.3). Ta sama reguła co strażnik operacji i kroku kreatora: operacje nie
+        wprowadzają NOWEJ niezgodności, więc walidator widzi rekordy zastane (zapis sprzed reguły,
+        import). Poziom IMPORTANT: obliczenia sieci są poprawne (aparaty pola nie mają
+        impedancji), niezgodny jest opis pola.
+        """
+        pola = [pole.model_dump(mode="json") for pole in enm.bays if pole.bay_template_ref]
+        if not pola:
+            return
+        # Import LENIWY: reguła czyta szablony pól (`bay_templates`), a te — kanon ról pola
+        # z pakietu `enm`, którego `__init__` importuje ten walidator (cykl przy imporcie
+        # szablonów jako pierwszych).
+        from .zgodnosc_szablonu_pola import (
+            AKCJA_NAPRAWCZA_SZABLONU_PL,
+            KODY_WALIDATORA_SZABLONU,
+            niezgodnosci_szablonu,
+        )
+
+        for niezgodnosc in niezgodnosci_szablonu({"bays": pola}):
+            akcja = AKCJA_NAPRAWCZA_SZABLONU_PL[niezgodnosc.kod]
+            issues.append(
+                ValidationIssue(
+                    code=KODY_WALIDATORA_SZABLONU[niezgodnosc.kod],
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=niezgodnosc.komunikat_pl,
+                    element_refs=[niezgodnosc.bay_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=f"{akcja[0].upper()}{akcja[1:]}.",
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT", element_ref=niezgodnosc.bay_ref
+                    ),
+                )
+            )
+
+    def _check_pole_liniowe_gpz(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W053–W057: pole liniowe GPZ niezgodne z klasą i siecią za polem
+        (`enm.pole_liniowe_gpz`, IRiESD ENEA Operator II.4.5.4.2, ENEA Zeszyt 1 Z.11).
+
+        W053 — generacja zasilana z pola odbiorczego; W054 — odbiory za polem dedykowanym
+        wytwórcy; W055 — SCO w polu z generacją; W056 — SPZ w polu dedykowanym; W057 — brak
+        rdzenia rozliczeniowego przy wymaganym pomiarze AJEE. Poziom IMPORTANT: obliczenia
+        sieci są poprawne, niezgodny jest opis pola (funkcje, wykonanie, klasa)."""
+        if not any(pole.gpz_section_id for pole in enm.bays):
+            return
+        from .pole_liniowe_gpz import KODY_WALIDATORA_POLA_LINIOWEGO, oceny_pol_liniowych
+
+        for ocena in oceny_pol_liniowych(enm.model_dump(mode="json")):
+            for niezgodnosc in ocena.niezgodnosci:
+                akcja = niezgodnosc.akcja_pl
+                issues.append(
+                    ValidationIssue(
+                        code=KODY_WALIDATORA_POLA_LINIOWEGO[niezgodnosc.kod],
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=niezgodnosc.komunikat_pl,
+                        element_refs=[niezgodnosc.bay_ref],
+                        wizard_step_hint="K3",
+                        suggested_fix=f"{akcja[0].upper()}{akcja[1:]}.",
+                        fix_action=FixAction(
+                            action_type="NAVIGATE_TO_ELEMENT", element_ref=niezgodnosc.bay_ref
+                        ),
+                    )
+                )
+
+    def _check_zrodlo_u0_pol(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W064: pole z funkcją 67N (zabezpieczenie ziemnozwarciowe kierunkowe) bez potwierdzonego
+        źródła napięcia zerowego 3U₀ (`enm.zrodlo_napiecia_zerowego` — decyzja właściciela
+        2026-10-29, ENEA Zeszyt 1 §26.9, Z.10/Z.11.1/Z.17). Operacje przypisują 67N wyłącznie przy
+        potwierdzonym źródle, więc W064 łapie powiązanie nieaktualne (pole pomiaru napięcia
+        usunięte, przekładnik zmieniony) i model sprzed reguły. Poziom IMPORTANT: obliczenia sieci
+        są poprawne, fikcyjna jest funkcja zabezpieczeniowa pola."""
+        if not any(pole.protection_codes for pole in enm.bays):
+            return
+        # Import LENIWY: reguła czyta szablony pól (cykl `bay_templates` ↔ pakiet `enm`).
+        from .zrodlo_napiecia_zerowego import (
+            AKCJA_NAPRAWCZA_ZRODLA_U0_PL,
+            KOD_WALIDATORA_ZRODLA_U0,
+            naruszenia_zrodla_u0,
+        )
+
+        for naruszenie in naruszenia_zrodla_u0(enm.model_dump(mode="json")):
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_ZRODLA_U0,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=naruszenie.komunikat_pl,
+                    element_refs=[naruszenie.bay_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        f"{AKCJA_NAPRAWCZA_ZRODLA_U0_PL[0].upper()}"
+                        f"{AKCJA_NAPRAWCZA_ZRODLA_U0_PL[1:]}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT", element_ref=naruszenie.bay_ref
+                    ),
+                )
+            )
+
+    def _check_oznaczenia_aparatow_pola(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """W063: dwa aparaty jednego pola o tym samym oznaczeniu (IEC 81346-1 —
+        `enm.oznaczenia_aparatow_pola`). Poziom IMPORTANT: obliczenia sieci nie zależą od
+        oznaczeń, niejednoznaczne jest polecenie łączeniowe i dokumentacja pola."""
+        if not enm.bays:
+            return
+        # Import LENIWY: reguła czyta nazwy rodzajów aparatu (`enm.wyposazenie_pola`), a ten
+        # moduł — szablony pól, które importują kanon ról z pakietu `enm` (cykl przy imporcie).
+        from .oznaczenia_aparatow_pola import (
+            AKCJA_NAPRAWCZA_OZNACZEN_PL,
+            KOD_WALIDATORA_OZNACZEN,
+            zdublowane_oznaczenia,
+        )
+
+        for naruszenie in zdublowane_oznaczenia(enm.bays):
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_OZNACZEN,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=naruszenie.komunikat_pl,
+                    element_refs=[naruszenie.bay_ref, *naruszenie.device_refs],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        f"{AKCJA_NAPRAWCZA_OZNACZEN_PL[0].upper()}{AKCJA_NAPRAWCZA_OZNACZEN_PL[1:]}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT", element_ref=naruszenie.bay_ref
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # Shunt capacitor banks (E040-E042, W040)
@@ -2937,6 +3151,62 @@ class ENMValidator:
     # P0.1 nN: topologia obwodow nN (E060-E064, W060, W062)
     # ------------------------------------------------------------------
 
+    def _check_jeden_nosnik_punktu_neutralnego(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E-W5-04 (decyzja architekta D1, karta POLA-GPZ-SZABLONY): dwa uziemione nośniki
+        punktu neutralnego w jednej wyspie galwanicznej SN. Predykat
+        ``enm.nosniki_punktu_neutralnego.wyspy_z_wieloma_nosnikami`` — ten sam czyta operacja
+        dodania pola zespołu uziemiającego (przeniesienie uziemienia ze źródła)."""
+        etykieta_pola = {
+            "neutral_grounding": "opis punktu neutralnego źródła",
+            "hv_neutral": "punkt neutralny uzwojenia górnego",
+            "lv_neutral": "punkt neutralny uzwojenia dolnego",
+        }
+        obiekty = {s.ref_id: s for s in enm.sources} | {t.ref_id: t for t in enm.transformers}
+        for _wyspa, nosniki in wyspy_z_wieloma_nosnikami(enm):
+            opisy = "; ".join(
+                f"{opis_obiektu(obiekty[n.element_ref], 'Źródło zasilania' if n.rodzaj == 'source' else 'Transformator')}"
+                f" — {etykieta_pola[n.pole]}: "
+                f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(n.typ, n.typ)}"
+                for n in nosniki
+            )
+            nadmiarowy = nosniki[1]
+            issues.append(
+                ValidationIssue(
+                    code="E-W5-04",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        "Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej "
+                        f"SN ({len(nosniki)}): {opisy}. Obliczenie zwarcia doziemnego połączyłoby "
+                        "je równolegle."
+                    ),
+                    element_refs=[n.element_ref for n in nosniki],
+                    wizard_step_hint="K1",
+                    suggested_fix=(
+                        "Pozostaw jeden uziemiony nośnik punktu neutralnego w wyspie SN: ustaw "
+                        "pozostałe na izolowany (źródło GPZ — gdy sieć uziemia transformator "
+                        "uziemiający pola zespołu uziemiającego) albo otwórz sprzęgło sekcji, "
+                        "jeżeli każda sekcja ma własny zespół uziemiający."
+                    ),
+                    fix_action=(
+                        FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=nadmiarowy.element_ref,
+                            modal_type="SourceModal",
+                            payload_hint={"required": nadmiarowy.pole},
+                        )
+                        if nadmiarowy.rodzaj == "source"
+                        else FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=nadmiarowy.element_ref,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": nadmiarowy.pole},
+                        )
+                    ),
+                )
+            )
+
     def _check_uziemienie_w5(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """W5-A: spojnosc jednej reprezentacji uziemienia punktu neutralnego.
 
@@ -3032,7 +3302,9 @@ class ENMValidator:
                 continue
             if cfg is None:
                 continue
-            blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+            blad = blad_konfiguracji_uziemienia(
+                cfg.type, cfg.r_ohm, cfg.x_ohm, awsc_prad_a=cfg.awsc_prad_wymuszenia_a
+            )
             if blad is not None:
                 issues.append(
                     ValidationIssue(
@@ -3118,7 +3390,9 @@ class ENMValidator:
             ):
                 if cfg is None:
                     continue
-                blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+                blad = blad_konfiguracji_uziemienia(
+                    cfg.type, cfg.r_ohm, cfg.x_ohm, awsc_prad_a=cfg.awsc_prad_wymuszenia_a
+                )
                 if blad is not None:
                     issues.append(
                         ValidationIssue(

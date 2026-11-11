@@ -163,11 +163,18 @@ export function selectStationTransformerUnits(
   // Ścieżka awaryjna: stacja deklaruje `transformer_refs`, ale migawka nie
   // niesie odpowiadających rekordów `Transformer` — refy bez terminali.
   // Rekordu brak, więc roli katalogowej nie ma skąd przeczytać — wyklucza wyłącznie
-  // wskazanie źródła (ten sam filtr, pierwszy kanał).
+  // wskazanie źródła (ten sam filtr, pierwszy kanał). Ref, którego rekord ISTNIEJE, a reguła
+  // go wykluczyła (transformator blokowy DER z rolą katalogową, transformator uziemiający pola
+  // ZU), nie jest „brakiem rekordu" — ścieżka awaryjna nie może go przywrócić (wcześniej
+  // przywracała: marker braku pola TR przy transformatorze uziemiającym, W041 fałszywe po
+  // stronie rysunku; wiersz `tr-uziemiajacy-w-polu-zu` tablicy parytetu).
   const refyBlokowe = pelnyKontekst?.regula.refyBlokowe ?? new Set<string>();
+  const refyRekordow = new Set(
+    (snapshot?.transformers ?? []).flatMap((tr) => [tr.ref_id, tr.id]).filter(nonEmptyRef),
+  );
   return (station.transformer_refs ?? [])
     .filter(nonEmptyRef)
-    .filter((ref) => !refyBlokowe.has(ref))
+    .filter((ref) => !refyBlokowe.has(ref) && !refyRekordow.has(ref))
     .sort()
     .map((ref) => ({
       ref,

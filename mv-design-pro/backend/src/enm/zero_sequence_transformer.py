@@ -27,8 +27,15 @@ Tablica połączeń (strona HV, strona LV → połączenie sekwencji zerowej):
     (gwiazda uziem., gwiazda uziem.)  → SZEREGOWE (droga HV↔LV), Z = Z_T0 + 3Z_N,HV + 3Z_N,LV
     (gwiazda uziem., trójkąt)         → BOCZNIK na HV do ziemi,   Z = Z_T0 + 3Z_N,HV
     (trójkąt,        gwiazda uziem.)  → BOCZNIK na LV do ziemi,   Z = Z_T0 + 3Z_N,LV
-    (zygzak uziem.,  *)               → BOCZNIK na HV do ziemi
-    (*,              zygzak uziem.)   → BOCZNIK na LV do ziemi
+    (zygzak uziem.,  *)               → BOCZNIK na HV do ziemi,   Z = Z_0,zyg + 3Z_N,HV
+    (*,              zygzak uziem.)   → BOCZNIK na LV do ziemi,   Z = Z_0,zyg + 3Z_N,LV
+
+Uzwojenie zygzakowe (karta POLA-GPZ-SZABLONY, decyzja architekta): Z_0,zyg = R0 + jX0 na fazę
+z ``Transformer.r0_ohm``/``x0_ohm`` (IEC 60076-6, dane producenta albo wartość robocza katalogu),
+NIE z u_k — u_k opisuje parę uzwojeń GN–DN (transformator uziemiający 100 kVA, u_k 4 %:
+0,04·15²/0,1 = 90 Ω zamiast pojedynczych omów, zaniżony prąd ziemnozwarciowy). Brak R0/X0 na
+elemencie — wartość robocza ``pochodne.impedancja_zerowa_zygzaka_robocza_ohm`` z adnotacją
+w śladzie (zasada nr 4). Grupy bez zygzaka liczą Z_T0 z u_k bez zmian.
     pozostałe (D-D, YN-y, Y-y, ...)   → OTWARTE (brak ścieżki I0)
 
 Założenia (jawne, IEC 60909-0 § 3.3.3 / § 6):
@@ -59,6 +66,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from network_model.core.uziemienie import ETYKIETA_PL_PUNKTU_NEUTRALNEGO
 from network_model.core.ybus import S_BASE_MVA
@@ -67,6 +75,7 @@ from network_model.pochodne import (
     impedancja_punktu_neutralnego_ohm,
     impedancja_rozproszenia_transformatora_pu,
     impedancja_z_napiecia_i_mocy_ohm,
+    impedancja_zerowa_zygzaka_robocza_ohm,
 )
 
 from .grupa_polaczen import parsuj_grupe_polaczen
@@ -180,7 +189,12 @@ def _neutral_grounded_and_zn(
             "uziemia uzwojenia bez punktu neutralnego — popraw grupę połączeń albo usuń "
             "konfigurację."
         )
-    blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
+    blad = blad_konfiguracji_uziemienia(
+        grounding.type,
+        grounding.r_ohm,
+        grounding.x_ohm,
+        awsc_prad_a=grounding.awsc_prad_wymuszenia_a,
+    )
     if blad is not None:
         raise OdmowaDanychError(
             f"{opis_trafo}: uziemienie punktu neutralnego (uzwojenie {_STRONA_PL[side]}) — "
@@ -337,7 +351,16 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         result={"z_t0_pu_sn": z_t_pu_sn, "z_t0_pu_base": z_t_pu_base},
     )
 
-    connection, z0_pu = _decide_connection(hv_winding, lv_winding, z_t_pu_base, zn_hv_pu, zn_lv_pu)
+    z_t0_pu = z_t_pu_base
+    zygzak = (
+        "HV"
+        if hv_winding == WindingZeroSeq.GROUNDED_ZIGZAG
+        else "LV" if lv_winding == WindingZeroSeq.GROUNDED_ZIGZAG else None
+    )
+    if zygzak is not None:
+        z_t0_pu = _z0_zygzaka_pu(tracer, trafo, nazwa, zygzak)
+
+    connection, z0_pu = _decide_connection(hv_winding, lv_winding, z_t0_pu, zn_hv_pu, zn_lv_pu)
 
     tracer.add(
         key=f"tr_z0_conn[{trafo.ref_id}]",
@@ -384,6 +407,48 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         zn_hv_ohm=zn_hv_ohm,
         zn_lv_ohm=zn_lv_ohm,
     )
+
+
+def _z0_zygzaka_pu(tracer: Any, trafo: Transformer, nazwa: str, strona: str) -> complex:
+    """Z_0 uzwojenia zygzakowego w per-unit na S_base z R0/X0 elementu (Ω na fazę na napięciu
+    strony zygzaka); brakująca składowa — wartość robocza (ślad nazywa, która)."""
+    u_kv = trafo.uhv_kv if strona == "HV" else trafo.ulv_kv
+    robocza = impedancja_zerowa_zygzaka_robocza_ohm(u_kv)
+    r0 = trafo.r0_ohm if trafo.r0_ohm is not None else robocza.real
+    x0 = trafo.x0_ohm if trafo.x0_ohm is not None else robocza.imag
+    robocze = [
+        etykieta
+        for etykieta, wartosc in (("R0", trafo.r0_ohm), ("X0", trafo.x0_ohm))
+        if wartosc is None
+    ]
+    z_base = impedancja_z_napiecia_i_mocy_ohm(u_kv, S_BASE_MVA) if u_kv > 0 else 0.0
+    z_pu = complex(r0, x0) / z_base if z_base > 0 else 0j
+    tracer.add(
+        key=f"tr_z0_zygzak[{trafo.ref_id}]",
+        title=f"Transformator {nazwa}: impedancja zerowa uzwojenia zygzakowego",
+        formula_latex=r"Z_{0,zyg} = \frac{R_0 + jX_0}{U^2 / S_{base}}",
+        inputs={
+            "ref_id": trafo.ref_id,
+            "strona": strona,
+            "r0_ohm": r0,
+            "x0_ohm": x0,
+            "u_kv": u_kv,
+            "s_base_mva": S_BASE_MVA,
+        },
+        substitution=f"Z_0,zyg = {_fmt_c(complex(r0, x0))} Ω → {_fmt_c(z_pu)} pu",
+        result={"z0_zygzaka_pu_base": z_pu},
+        notes=(
+            "Droga zerowa zygzaka z R0/X0 na fazę (IEC 60076-6), nie z u_k. "
+            + (
+                f"{' i '.join(robocze)} — wartość robocza (założenie inżynierskie: spadek 5 % "
+                "napięcia fazowego przy prądzie punktu neutralnego 400 A, X0/R0 = 5); wpisz "
+                "dane producenta w parametrach transformatora."
+                if robocze
+                else "R0 i X0 z elementu modelu."
+            )
+        ),
+    )
+    return z_pu
 
 
 def _decide_connection(

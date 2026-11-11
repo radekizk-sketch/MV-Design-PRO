@@ -43,6 +43,8 @@ import {
   type StacjaFormData,
   type WyborRozdzielnicy,
   brakujacePolaToru,
+  czyDwieSekcjeSzyn,
+  rolePolaWyboru,
   type SnFieldRole,
   type TrybUmiejscowienia,
 } from '../stacjaModel';
@@ -280,6 +282,35 @@ describe('stacjaModel — walidacja', () => {
       tryb,
     ).filter((e) => e.field === 'sn_fields_tor');
     expect(bledy.length > 0).toBe(brak.length > 0);
+  });
+
+  // Decyzja architekta D3: pole sprzęgła łączy dwie sekcje szyn SN — iloczyn rodzaj stacji ×
+  // tryb umiejscowienia. Ten sam warunek daje role do wyboru i błąd zapisu (jedno źródło,
+  // lustro odmowy backendu `field.coupler_requires_two_sections`).
+  it.each(
+    (['terminal', 'branch', 'inline', 'sectional'] as const).flatMap((typ) =>
+      (['SPLIT', 'ENDPOINT_APPEND'] as const).map((tryb) => [typ, tryb] as const),
+    ),
+  )('pole sprzęgła: rodzaj %s × tryb %s', (typ, tryb) => {
+    const dwieSekcje = typ === 'sectional' && tryb === 'SPLIT';
+    expect(czyDwieSekcjeSzyn(typ, tryb)).toBe(dwieSekcje);
+    const role: SnFieldRole[] = ['LINIA_IN', 'LINIA_OUT', 'SPRZEGLO', 'TRANSFORMATOROWE'];
+    expect(rolePolaWyboru(role, typ, tryb).includes('SPRZEGLO')).toBe(dwieSekcje);
+    expect(rolePolaWyboru(role, typ, tryb).filter((r) => r !== 'SPRZEGLO')).toEqual(
+      role.filter((r) => r !== 'SPRZEGLO'),
+    );
+    const pola = rozdzielnica('sectional').snFields;
+    expect(pola.some((f) => f.field_role === 'SPRZEGLO')).toBe(true);
+    const bledy = walidujFormularz(dane({ station_type: typ }), pola, tryb).filter(
+      (e) => e.field === 'sn_fields_sprzeglo',
+    );
+    expect(bledy.length > 0).toBe(!dwieSekcje);
+    const bezSprzegla = walidujFormularz(
+      dane({ station_type: typ }),
+      pola.filter((f) => f.field_role !== 'SPRZEGLO'),
+      tryb,
+    ).filter((e) => e.field === 'sn_fields_sprzeglo');
+    expect(bezSprzegla).toEqual([]);
   });
 
   it('blokuje zapis, gdy pole nie ma wskazanego aparatu (B-12)', () => {

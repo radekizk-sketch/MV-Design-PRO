@@ -57,7 +57,6 @@ from network_model.catalog.switchgear.device_instance import (
 )
 from network_model.catalog.switchgear.switchgear_family import (
     NAZWY_TOROW_KONFIGURACJI_PL,
-    POWODY_BLOKADY_RODZINY_PL,
     TorKonfiguracji,
 )
 from network_model.catalog.types import NAZWY_KATEGORII_KATALOGU_PL, CatalogNamespace
@@ -329,6 +328,13 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
     ZakresModulu("enm/grupa_polaczen.py"),
     ZakresModulu("enm/operacje_lacznikow.py"),
     ZakresModulu("enm/wyposazenie_pola.py"),
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: operacja stanu obiektu i odmowy zakazu gazów
+    # fluorowanych (komunikat odmowy `pole.gaz_fluorowany` i kwestia walidatora W058).
+    ZakresModulu("enm/stan_obiektu_pola.py"),
+    # Rozszerzenie 5 tej karty: położenie łącznika pola bez gałęzi (`set_bay_apparatus_position`).
+    ZakresModulu("enm/polozenie_aparatu_pola.py"),
+    ZakresModulu("enm/gaz_fluorowany_pola.py"),
+    ZakresModulu("network_model/catalog/gazy_fluorowane.py"),
     ZakresModulu(
         "enm/uziemienie.py",
         powod=(
@@ -469,6 +475,10 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
     "enm/domain_operations_v2.py:bledy": (
         "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji`, "
         "pola nazwami polskimi (karta BIEG-ZABEZPIECZEN-Z-MODELU)"
+    ),
+    "enm/wyposazenie_pola.py:zrodlo_po.braki_zrodla": (
+        "zdania braków źródła napięcia zerowego 3U₀ z `zrodlo_u0_pola` — pola nazwane "
+        "`opis_elementu`, kody braków osobno w `kody_brakow` (karta UX-04/POLE-LINIOWE-WZORZEC)"
     ),
     "enm/slownik_komunikatow.py:opisy": (
         "opisy błędów walidacji złożone z nazw pól formularza i opisów rodzaju błędu"
@@ -1487,12 +1497,11 @@ def _wielkie_pierwsze(tekst: str) -> str:
             "ETYKIETA_RODZAJU_ZABEZPIECZENIA",
             _male_pierwsze,
         ),
-        (
-            POWODY_BLOKADY_RODZINY_PL,
-            "ui/catalog/SwitchgearFamilyPicker.tsx",
-            "POWOD_BLOKADY_PL",
-            lambda t: _male_pierwsze(t).rstrip("."),
-        ),
+        # `POWODY_BLOKADY_RODZINY_PL` był tu porównywany z kopią `POWOD_BLOKADY_PL` w pickerze
+        # rodzin. Karta UX-04/POLE-LINIOWE-WZORZEC skasowała kopię: front pokazuje zdanie
+        # wyliczane backendu (`powod_blokady_pl`, `powod_blokady_nowych_pol_pl`) bez własnej
+        # mapy — parytet zastąpił strażnik `tests/ci/test_parytet_statusow_rodzin_rozdzielnic.py`
+        # (predykat frontu czyta wyłącznie pola backendu, brak drugiej kopii reguły).
     ],
 )
 def test_mapy_wartosci_sa_slowami_frontu(

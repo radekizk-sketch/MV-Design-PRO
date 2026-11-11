@@ -121,9 +121,10 @@ import {
 } from './canvasMenuSubject';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
 import { resolveTransformerRefForOwnerRef } from '../../shared/daneElementuKanwy';
+import { poleAdnotacjiZabezpieczen, SEKCJA_ZABEZPIECZEN_KARTY_POLA } from './poleAdnotacjiZabezpieczen';
 import { kontekstDostepnosciAkcji } from '../../shared/akcjeElementu';
 import { useKontekstElementuKanwy } from '../../shared/kontekstElementuKanwy';
-import { useSldActionExecutor } from '../../shared/sldActionExecutor';
+import { useSldActionExecutor, wykonawcaAkcjiMenu } from '../../shared/sldActionExecutor';
 // F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
 // kontenera v2 bez odpowiednika v3 — patrz sekcja montażu na dole pliku dla
 // szczegółowego mapowania na punkty F12-B 1-6.
@@ -267,8 +268,8 @@ import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // scena), rysunek eksportu reużywa `SheetLegend` (`sheet/Frame.tsx`) przez
 // `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
 import { renderToStaticMarkup } from 'react-dom/server';
-import { FRAME_MARGIN, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
-import { computeProjectLegendEntries } from '../sheet/projectLegend';
+import { FRAME_MARGIN, LegendStateTile, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
+import { atrybucjaSymboliSceny, computeProjectLegendEntries } from '../sheet/projectLegend';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sheetSizeFor } from '../sheet/outline';
 import type { SymbolId } from '../symbols/defs';
@@ -805,6 +806,10 @@ function SldV3LegendPanel(props: {
             >
               {entry.kind === 'symbol' ? (
                 <LegendPanelGlyph id={entry.id as SymbolId} />
+              ) : entry.kind === 'stan' ? (
+                <svg width={24} height={16} viewBox="0 0 24 16" aria-hidden="true" className="shrink-0">
+                  <LegendStateTile id={entry.id} y={2} />
+                </svg>
               ) : entry.kind === 'line' ? (
                 <LegendPanelLineSample id={entry.id} />
               ) : (
@@ -1619,6 +1624,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setContextRequest(null);
     setContextSubject(null);
   }, []);
+  // UX-04 (pomiar 2026-10-29, zrzut okna pola): akcja z menu OBIEKTU działała na
+  // obiekcie menu, a prawy inspektor pokazywał POPRZEDNIE zaznaczenie — „Otwórz
+  // kartę pola" z menu wyłącznika otwierało kartę pola, a inspektor dalej pokazywał
+  // odcinek kablowy zaznaczony po kreatorze magistrali. Reguła: wykonanie akcji
+  // z menu obiektu NAJPIERW zaznacza ten obiekt TĄ SAMĄ ścieżką co natywny lewy klik
+  // (`handleElementClick` — jedno źródło refu, rodzaju i tematu selekcji); samo
+  // otwarcie i zamknięcie menu bez akcji zaznaczenia nie zmienia. Menu tła nie ma
+  // obiektu — zaznaczenie zostaje.
+  const celMenuRef = useRef<{ readonly testId: string; readonly meta: SldElementClickMeta | undefined } | null>(null);
+  const klikElementuRef = useRef<((testId: string, meta?: SldElementClickMeta) => void) | null>(null);
   /** Indeks refów modelu — jedno przejście po snapshocie, nie skan na klik. */
   const modelIndex = useMemo(() => buildCanvasModelIndex(snapshot), [snapshot]);
   const handleElementContextMenu = useCallback(
@@ -1627,6 +1642,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // tła (jedyna kategoria BEZ obiektu modelu — jej akcje dotyczą arkusza,
       // nie elementu).
       if (testId === 'sld-v3-background') {
+        celMenuRef.current = null;
         setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
         setContextSubject(null);
         return;
@@ -1644,10 +1660,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           derKind: meta?.derKind,
           busRef: meta?.busRef,
           symbolId: meta?.symbolId,
+          deviceRef: meta?.deviceRef,
         },
         modelIndex,
       );
       if (wynik.stan === 'brak') return;
+      celMenuRef.current = { testId, meta };
       setContextRequest({
         kind: wynik.temat.menuKind,
         // Aparat pola jedzie do wykonawcy jako `${bayRef}#${SymbolId}` — ten sam ref,
@@ -1682,10 +1700,34 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const handleAction = useSldActionExecutor({ readOnly: props.readOnly ?? false });
   const handleContextMenuAction = useCallback(
     (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
-      handleAction(actionId, kind, elementId);
+      const cel = kind === 'background' ? null : celMenuRef.current;
+      celMenuRef.current = null;
+      if (cel) {
+        // Zaznaczany jest OBIEKT AKCJI. Menu symbolu aparatu ma za temat POLE (kotwica modelu)
+        // z refem wskazanego aparatu: akcja stanu łącznika działa na aparacie, więc zaznacza
+        // aparat (ścieżka lewego kliku w symbol); każda inna akcja (okno pola, wyposażenie,
+        // ochrona przepięciowa, pomiary) dotyczy pola i zaznacza POLE — inspektor i okno pola
+        // mówią o tym samym obiekcie (pomiar 2026-10-29: „Otwórz okno pola" z menu wyłącznika
+        // zostawiało w inspektorze aparat `…::dev::1`). „Akcja stanu łącznika" rozstrzyga TEN
+        // SAM klasyfikator, którym wykonawca wybiera ścieżkę akcji (`wykonawcaAkcjiMenu`).
+        const zaznaczPole = contextSubject?.deviceRef !== undefined
+          && elementId !== null
+          && wykonawcaAkcjiMenu(actionId, kind) !== 'stan-lacznika';
+        const metaCelu: SldElementClickMeta | undefined = zaznaczPole
+          ? {
+              ownerRef: elementId,
+              elementKind: cel.meta?.elementKind,
+              klasa: cel.meta?.klasa,
+            }
+          : cel.meta;
+        klikElementuRef.current?.(cel.testId, metaCelu);
+      }
+      // Akcje stanu łącznika działają na aparacie wskazanym symbolem (temat menu niesie jego
+      // ref — `canvasMenuSubject.ts`), nie na jedynym łączniku pola.
+      handleAction(actionId, kind, elementId, undefined, contextSubject?.deviceRef);
       closeContextMenu();
     },
-    [handleAction, closeContextMenu],
+    [handleAction, closeContextMenu, contextSubject],
   );
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
@@ -2082,6 +2124,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       modelRevision: snapshot?.header.revision ?? null,
       modelHash: snapshot?.header.hash_sha256 ?? null,
       stationCount: scene.meta.stationCount,
+      atrybucjaSymboli: atrybucjaSymboliSceny(scene),
       sheetAspect: contentFrame.height > 0 ? contentFrame.width / contentFrame.height : 0,
       lodLabelPl: SCENE_LOD_LABELS_PL[scene.meta.lod],
     });
@@ -2324,6 +2367,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               elementKind: meta.elementKind,
               derKind: meta.derKind,
               busRef: meta.busRef,
+              deviceRef: meta.deviceRef,
             },
             modelIndex,
           )
@@ -2363,6 +2407,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             derKind: meta.derKind,
             busRef: meta.busRef,
             symbolId: meta.symbolId,
+            deviceRef: meta.deviceRef,
           },
           modelIndex,
         );
@@ -2417,6 +2462,32 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         return;
       }
 
+      // Karta UX-04/POLE-LINIOWE-WZORZEC: blok przekaźnika (okrąg, wiersze kodów, odniesienie
+      // źródła 3U₀), linia wyłączania i linie pomiarowe pola nie są obiektami modelu, ale należą
+      // do POLA — natywny klik zaznacza pole (ta sama selekcja co klik w aparat pola) i otwiera
+      // w inspektorze kartę pola na sekcji „Zabezpieczenia i automatyka" (wiersze funkcji
+      // z przejściem do nastaw). Rozstrzyga `poleAdnotacjiZabezpieczen` — jedna reguła klasy.
+      const poleZabezpieczen = poleAdnotacjiZabezpieczen(meta, snapshot);
+      if (poleZabezpieczen) {
+        const typPola = elementTypeForKind('apparatus');
+        selectElement(
+          typPola
+            ? { id: poleZabezpieczen, type: typPola, name: poleZabezpieczen }
+            : { id: poleZabezpieczen, type: 'DescriptiveElement', name: poleZabezpieczen },
+        );
+        const tematPola = resolveCanvasMenuSubject({ ownerRef: poleZabezpieczen, elementKind: 'apparatus' }, modelIndex);
+        useKontekstElementuKanwy.getState().ustawKontekst({
+          selekcjaId: poleZabezpieczen,
+          elementKind: 'apparatus',
+          ref: poleZabezpieczen,
+          temat: tematPola.stan === 'temat' ? tematPola.temat : null,
+          tylkoOdczyt: props.readOnly ?? false,
+          sekcja: SEKCJA_ZABEZPIECZEN_KARTY_POLA,
+        });
+        odslonInspektor();
+        return;
+      }
+
       const type = elementTypeForKind(elementKind);
       // §16-v3/adaptacja flex: selekcja TRANSFORMATORA niesie REALNY ref
       // transformatora (ta sama rozdzielczość, której używa panel elementu —
@@ -2452,6 +2523,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [derDrag, modelIndex, odslonInspektor, props.readOnly, selectElement, snapshot],
   );
+  // Uzbrojona paleta OZE: klik w stację ją „zrzuca", klik gdzie indziej anuluje — akcja
+  // z menu nie może tego wywołać, więc w tym trybie zaznaczenie przed akcją jest pomijane.
+  klikElementuRef.current = (testId, meta) => {
+    if (!derDrag.state) handleElementClick(testId, meta);
+  };
 
   /**
    * Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w pusty

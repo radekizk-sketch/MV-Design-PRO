@@ -67,6 +67,30 @@ import {
 } from '../buildScene';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
 import { sceneSignature } from './syntheticNetworks';
+import { podpowiedzStanuObiektuPl } from '../../../../shared/stanObiektu';
+
+/** Podpowiedź poza zdaniem o braku pola TR: portal nN albo stan obiektu — liczba podpowiedzi
+ *  stanu = liczba symboli niosących `meta.stanObiektu` (bez transformatora z luką pola i portali). */
+function obszaryBezObcychPodpowiedzi(
+  obszary: ReturnType<typeof buildCanvasHitAreas>,
+  scene: ReturnType<typeof buildSceneV3>,
+): boolean {
+  const stany = new Set(
+    (['ISTNIEJACY', 'PROJEKTOWANY', null] as const).map((s) => podpowiedzStanuObiektuPl(s)),
+  );
+  const zPodpowiedzia = obszary.filter((a) => a.tytul != null);
+  const obce = zPodpowiedzia.filter(
+    (a) => a.tytul !== STATION_TR_FIELD_GAP_TEXT && a.tytul !== LV_PORTAL_TITLE_TEXT && !stany.has(a.tytul),
+  );
+  const symboleStanu = scene.symbols.filter(
+    (sym) =>
+      sym.meta?.stanObiektu !== undefined &&
+      sym.meta?.transformerFieldGap !== true &&
+      sym.meta?.elementKind !== 'lvPortal',
+  ).length;
+  const podpowiedziStanu = zPodpowiedzia.filter((a) => stany.has(a.tytul)).length;
+  return obce.length === 0 && podpowiedziStanu === symboleStanu;
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -286,6 +310,23 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // poprzednie odciski (L1 8f135f30…, L2 6de64cfc…) — geometria, położenia etykiet i zbiór
   // etykiet bez zmian; różnią się wyłącznie teksty „$u_{k}$ 11% · $P_{k}$ 120 kW",
   // „$S_{k}''$ 3000 MVA · 110 kV" i (L2) „… · $U_{n}$=20 kV · l = 40 m".
+  // AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, 2026-10-28): przedłużenie szyny WN do
+  // zaczepu źródła systemowego kończy się NA zejściu źródła, nie GRID za nim (dawny kikut
+  // 8 jednostek, którego wyrocznia `gpzInternalSegmentsEndAtPortsOrBus` nie umiała przyjąć).
+  // DOWÓD (sonda 2×2: ta fikstura, kod karty z dawnym końcem przedłużenia vs kod karty,
+  // sygnatura `sceneSignature` element po elemencie): na L1 i L2 różni się WYŁĄCZNIE jeden
+  // odcinek `…/substation#hv-bus-source-extension` — `200,320;240,320` → `200,320;232,320`;
+  // symbole, pozostałe odcinki, etykiety i skrzyżowania identyczne (49 / 57 pozycji).
+  // AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, decyzje architekta §11.7, 2026-10-30):
+  // odcisk niezależny od regeneracji fikstur (sonda: kod karty na fiksturze sprzed i po
+  // regeneracji daje ten sam odcisk). Zmiana wyłącznie z kodu, trzy przyczyny rozdzielone sondą
+  // sygnatury:
+  //  · tablica szerokości znaków kroju zamiast 0,62 em (decyzja 7) — węższe etykiety
+  //    („Pole liniowe GPZ 1.1" 112 → 89, „Sekcja 1 · 15 kV" 110 → 83), więc węższy GPZ (szyna WN
+  //    128–200 → 112–176, źródło x 224 → 200) i stacja przesunięta w lewo (528 → 440);
+  //  · szerokości kolumn pola zaokrąglane w górę do rastru (`snapUp` w `layout/measure.ts`,
+  //    +8/+16 — widoczne także w wariancie z dawną szerokością 0,62 em);
+  //  · etykiety po lewej kotwiczone prawą krawędzią (decyzja 8): podpis łącznika Q1 o 2 w lewo.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
     1: '4cb0397a11165fc008104bbbda5030b1',
     2: '6a731eeed8e60da2ffbc33d4fe142c7f',
@@ -451,10 +492,12 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       expect(zPodpowiedzia[0].ownerRef).toBe(trRef);
       // Kontrola negatywna: poza zdaniem stanu TR podpowiedź niesie WYŁĄCZNIE
       // portal domeny nN (LV Domain Projection po B-02, `LV_PORTAL_TITLE_TEXT`
-      // na KAŻDYM symbolu `lvPortal`) — zero pustych/fałszywych `<title>`.
-      const inne = obszary.filter((a) => a.tytul != null && a.tytul !== STATION_TR_FIELD_GAP_TEXT);
-      expect(inne.every((a) => a.tytul === LV_PORTAL_TITLE_TEXT && a.klasa === 'portal-nn')).toBe(true);
-      expect(inne.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
+      // na KAŻDYM symbolu `lvPortal`) albo stan obiektu aparatu z rekordem (karta
+      // UX-04: istniejący / projektowany) — zero pustych/fałszywych `<title>`.
+      const portale = obszary.filter((a) => a.tytul === LV_PORTAL_TITLE_TEXT);
+      expect(portale.every((a) => a.klasa === 'portal-nn')).toBe(true);
+      expect(portale.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
+      expect(obszaryBezObcychPodpowiedzi(obszary, scene)).toBe(true);
     });
   }
 
@@ -468,8 +511,9 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       scale: 1,
     });
     expect(obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT)).toHaveLength(0);
-    // Jedyne podpowiedzi na kanwie: portal domeny nN (LV Domain Projection).
-    expect(obszary.filter((a) => a.tytul != null).every((a) => a.tytul === LV_PORTAL_TITLE_TEXT)).toBe(true);
+    // Jedyne podpowiedzi na kanwie: portal domeny nN (LV Domain Projection) i stan obiektu
+    // aparatu z rekordem (karta UX-04).
+    expect(obszaryBezObcychPodpowiedzi(obszary, scene)).toBe(true);
   });
 
   // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (inspektor

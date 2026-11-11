@@ -2,25 +2,123 @@
  * SLD V3 — glify symboli IEC 60617 (SLD_CAD_SPEC_V3 §3, §6).
  *
  * Rysunek BAZOWY: neutralny kolor, czytelny w mono (P5). Stan łącznika
- * wyrażony GEOMETRIĄ (wypełnienie CB, kąt noża DS), nie kolorem. Nakładki
- * stanu (energizacja, napięcie) nakłada kanwa — nie glif.
+ * wyrażony GEOMETRIĄ (wypełnienie CB, kąt noża DS). Na kanwie i w eksporcie łącznik
+ * z położeniem dostaje dodatkowo KAFEL STANU (`KafelStanu`, referencja HMI
+ * 2026-10-29): wypełniony kafel pod symbolem w konwencji dyspozytorskiej (czerwony =
+ * zamknięty, zielony = otwarty, szary z „?" = nieustalony, fioletowy z „!" = awaria),
+ * biały symbol na kaflu. Kolor nigdy nie jest jedynym nośnikiem stanu — geometria styku
+ * zostaje. Nakładki energizacji i napięcia nakłada kanwa na tory; na łącznik z kaflem
+ * nie wpływają (warstwa stanu łączeniowego jest rozdzielna od warstwy napięcia).
  * Origin glifu = lewy-górny róg bboxa z SYMBOL_DEFS (porty pasują 1:1).
  */
 
-import { SYMBOL_DEFS, type SymbolId } from './defs';
-import { BASE_STROKE } from '../theme/colorTokens';
+import { SYMBOL_DEFS, czyLacznikZPolozeniem, czySymbolQet, obrysSymbolu, rodzajSymbolu, type SymbolId } from './defs';
+import { CadPrimitiveLayer } from '../cad/CadSymbol';
+import type { CadPrimitive } from '../cad/cadSymbolRegistry';
+import {
+  QET_BOK_KAFLA_STANU,
+  QET_KRESKA_GLIFU,
+  QET_SYMBOLE_POLA_SN,
+  QET_ZNACZNIK_STYKU,
+  type QetNozSymbolu,
+  type QetZnacznikStyku,
+  type QetPolozenieNoza,
+  type QetSymbolPolaSn,
+  type QetSymbolPolaSnId,
+} from '../cad/qet/qetPoleSn';
+import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
 import type { UkladPolaczenBaterii } from '../../../../types/enm';
-import { PORTY_APARATOW_POLA_BKR, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatowPolaBkr';
+import {
+  PORTY_APARATU_POLA,
+  RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+  RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+} from '../compose/rodzajeAparatuPola';
+import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
+import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, zasiegPionowyTuszu } from '../core/text';
+import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
+import { KRESKA_OKREGU_PRZEKAZNIKA, OKRAG_PRZEKAZNIKA, PISMO_KODU_W_OKREGU, ukladKodowWOkregu } from './okragPrzekaznika';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
  *  zmiany zachowania. Re-eksport zachowuje istniejący import w `SldCanvasV3.tsx`. */
 export const V3_STROKE_BASE = BASE_STROKE;
-export const V3_STROKE_APPARATUS = 1.2;
+export const V3_STROKE_APPARATUS = KRESKA_OKREGU_PRZEKAZNIKA;
+/** Kreska ramki bloku przekaźnika [px świata] — cieńsza od okręgu przekaźnika: ramka grupuje
+ *  okrąg i wiersze funkcji, nie jest aparatem. */
+export const V3_STROKE_RAMKI_BLOKU = 0.8;
 
-export type SwitchState = 'closed' | 'open' | 'unknown';
+/** Położenie łącznika na rysunku. `'earthed'` (uziemiony) — WYŁĄCZNIE łącznik
+ *  trójpołożeniowy (karta UX-04/POLE-LINIOWE-WZORZEC, ENEA Zeszyt 1 §13): nóż na zestyku
+ *  uziemiającym; tor pola jest wtedy OTWARTY. Pozostałe glify rysują go jak `unknown`.
+ *  `'bad'` — rekord aparatu zgłasza AWARIĘ (`BayDeviceState` „awaria"): położenie
+ *  niewiarygodne, odpowiednik „bad-state" podwójnego wskazania położenia IEC 61850-7-4
+ *  (Dbpos). Geometria jak `unknown`, kafel własny (`bledny`). Położenia pośredniego
+ *  (Dbpos „intermediate") model ENM nie niesie, więc go tu nie ma. */
+export type SwitchState = 'closed' | 'open' | 'unknown' | 'earthed' | 'bad';
+
+/** Margines kafla stanu wokół obrysu symbolu [px świata]. */
+export const KAFEL_STANU_MARGINES = 2;
+
+/** Położenie rysowane GEOMETRIĄ łącznika (nóż, wypełnienie korpusu, przerwa toru). */
+export type PolozenieGeometrii = 'closed' | 'open' | 'earthed' | 'unknown';
+
+/** Kolor i geometria łącznika — para z JEDNEGO źródła (`polozenieZeStanu`). */
+export interface PolozenieLacznika {
+  /** Stan kafla, czyli KOLOR: położenie TORU GŁÓWNEGO łącznika. */
+  readonly kafel: StanKafla;
+  /** Położenie rysowane geometrią glifu. */
+  readonly geometria: PolozenieGeometrii;
+}
+
+/**
+ * JEDNO ŹRÓDŁO koloru kafla i geometrii łącznika (uwaga właściciela 2026-10-30, karta
+ * UX-04/POLE-LINIOWE-WZORZEC §11.13; CLAUDE.md „KLASA, NIE INSTANCJA" pkt 3 — predykaty
+ * parami): stan aparatu z modelu wyznacza OBA naraz, glif nie ma własnego położenia noża,
+ * a kafel nie ma własnej reguły koloru. Konwencja dyspozytorska: czerwony = zamknięty,
+ * zielony = otwarty; kolor mówi o TORZE GŁÓWNYM łącznika:
+ *  • `closed`  → kafel zamknięty, nóż na zestyku toru (w osi);
+ *  • `open`    → kafel otwarty, nóż odchylony, poza zestykami;
+ *  • `earthed` → (WYŁĄCZNIE łącznik z zestykiem uziemiającym — trójpołożeniowy) kafel OTWARTY,
+ *    bo tor główny jest otwarty, a nóż leży na zestyku uziemiającym pod symbolem ziemi;
+ *    łącznik bez zestyku uziemiającego — rekord sprzeczny z rodzajem aparatu → nieustalony;
+ *  • `unknown` i brak danej → kafel nieustalony (szary z „?"), nóż w położeniu pośrednim
+ *    albo kreskowany;
+ *  • `bad` (rekord „awaria") → kafel błędny (fioletowy z „!"), nóż jak nieustalony.
+ */
+const POLOZENIE_ZE_STANU: Readonly<Record<SwitchState, PolozenieLacznika>> = {
+  closed: { kafel: 'zamkniety', geometria: 'closed' },
+  open: { kafel: 'otwarty', geometria: 'open' },
+  earthed: { kafel: 'otwarty', geometria: 'earthed' },
+  unknown: { kafel: 'nieustalony', geometria: 'unknown' },
+  bad: { kafel: 'bledny', geometria: 'unknown' },
+};
+
+/** Kolor i geometria ze stanu (`POLOZENIE_ZE_STANU`); `maZestykUziemiajacy` — czy aparat ma
+ *  położenie „uziemiony" (łącznik trójpołożeniowy). */
+export function polozenieZeStanu(state: SwitchState | undefined, maZestykUziemiajacy: boolean): PolozenieLacznika {
+  if (state === undefined || (state === 'earthed' && !maZestykUziemiajacy)) return POLOZENIE_ZE_STANU.unknown;
+  return POLOZENIE_ZE_STANU[state];
+}
+
+/** Kolor i geometria łącznika rysowanego symbolem `id` w stanie `state` — rodzaj semantyczny
+ *  symbolu rozstrzyga, czy aparat ma zestyk uziemiający (łącznik trójpołożeniowy z napędem
+ *  i bez napędu to ten sam rodzaj). */
+export function polozenieLacznika(id: SymbolId, state: SwitchState | undefined): PolozenieLacznika {
+  // Uziemnik: „uziemiony” = ZAMKNIĘTY (jego jedyny styk jest stykiem uziemiającym) — kafel
+  // zamknięty, nie szary nieustalony (uwaga koordynatora z oględzin odbioru B-02 2026-11-04).
+  if (state === 'earthed' && rodzajSymbolu(id) === 'earthSwitch') return POLOZENIE_ZE_STANU.closed;
+  return polozenieZeStanu(state, rodzajSymbolu(id) === 'qetThreePositionSwitch');
+}
+
+/** Geometria glifu kanonicznego (dwupołożeniowego, bez zestyku uziemiającego) z tego samego
+ *  źródła co kolor kafla: `bad`, brak danej i `earthed` (nie jest położeniem tych aparatów)
+ *  rysują się jako nieustalone — nigdy jako zamknięte albo otwarte z domysłu. */
+export function polozenieGeometrii(id: SymbolId, state: SwitchState | undefined): 'closed' | 'open' | 'unknown' {
+  const geometria = polozenieLacznika(id, state).geometria;
+  return geometria === 'earthed' ? 'unknown' : geometria;
+}
 
 /** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
  *  na L0. Źródło definicji = `miniRmuGrammar.ts` (gramatyka konstrukcyjna),
@@ -56,7 +154,7 @@ export interface GlyphProps {
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
   /** Nadpisanie koloru bazowego (nakładka napięcia na szynach itd.). */
   readonly stroke?: string;
-  /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["50/51","51N"], maks.
+  /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["51","51N"], maks.
    *  2 linie) — WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole, pozostałe
    *  glify je ignorują (wspólny `GlyphProps`, jak `state`, zero rozgałęzień
    *  sygnatury per symbol). */
@@ -70,6 +168,11 @@ export interface GlyphProps {
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
   readonly hasTopologyWarning?: boolean;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): ramka BLOKU
+   *  ZABEZPIECZEŃ (względem symbolu) — WYŁĄCZNIE `ProtectionRelayGlyph`; z ramką glif rysuje sam
+   *  prostokąt bez okręgu (kody funkcji i odniesienie 3U₀ są wierszami etykiet wewnątrz ramki).
+   *  Brak = okrąg przekaźnika modelu stacji. */
+  readonly ramkaBloku?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** TR2W-BEZ-POLA (§0.C.5): `true` gdy transformator SN/nN wisi na szynie SN
    *  BEZ skonfigurowanego pola transformatorowego — WYŁĄCZNIE
    *  `Transformer2WGlyph` czyta to pole (jak `labelLines`/`hasTopologyWarning`
@@ -133,6 +236,24 @@ export interface GlyphProps {
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
    *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: kolory kafla stanu (`SldPalette.state`,
+   *  JEDNA tabela `STATE_COLOR`). Podane = łącznik z położeniem (`czyLacznikZPolozeniem`)
+   *  rysuje się na kaflu stanu; brak = sam symbol (legenda, podgląd kreatora, harness mono). */
+  readonly kafleStanu?: KafleStanuLacznika;
+  /** Położenie CZŁONU WYSUWNEGO wyłącznika (decyzja właściciela 2026-11-04: kafle członu nad
+   *  i pod kaflem wyłącznika niosą kolor stanu członu, kafel wyłącznika — stan wyłącznika; dwa
+   *  niezależne stany). Model ENM nie niesie położenia członu (wsunięty / próba / wysunięty) —
+   *  wyłącznie wykonanie stałe / wysuwne — więc kanwa nie podaje wartości i kafle członu
+   *  rysują się w stanie nieustalonym (brak danych ≠ stan). Brak = `'nieustalony'`. */
+  readonly stanCzlonu?: StanKafla;
+  /** Poziom szczegółu kanwy (LOD0/LOD1/LOD2) — wybiera DETALE kafla z jednej tabeli
+   *  `DETALE_KAFLA_WG_LOD` (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5). Brak = LOD2
+   *  (legenda, eksport, podgląd kreatora — pełny rysunek). */
+  readonly lod?: 0 | 1 | 2;
+  /** Mnożnik boku ZNACZNIKA RODZAJU APARATU na kaflu stanu (`skalaZnacznikaKafla`, rozstrzygnięcie
+   *  architekta 2026-10-30 pkt 1: podłoga 8 px na LOD1). Kanwa podaje go z tego samego miejsca co
+   *  `strokeScale`; brak = 1 (rysunek świata: legenda, harness, eksport bez kamery). */
+  readonly skalaZnacznika?: number;
   /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów z modelu — WYŁĄCZNIE
    *  `CapacitorBankGlyph` (układ połączeń i obecność rekordu przekładnika niezrównoważenia
    *  pola). `undefined`/`uklad: null` = model nie deklaruje układu (znak „?"). */
@@ -143,6 +264,8 @@ export interface GlyphProps {
 export interface GlifBaterii {
   readonly uklad: UkladPolaczenBaterii | null;
   readonly przekladnikNiezrownowazenia: boolean;
+  /** Liczba rekordów `PHASE_TO_PHASE_VT` pola (0 — brak znaku przekładników międzyfazowych). */
+  readonly przekladnikiMiedzyfazowe?: number;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -182,7 +305,7 @@ function skalujWagi<T extends Readonly<Record<string, number>>>(props: GlyphProp
 }
 
 export function BreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('breaker', props.state);
   return (
     <g {...glyphGroupProps('breaker', props)}>
       <rect
@@ -214,7 +337,7 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
  * (`ProtectionRelayGlyph`, 24×24 z `labelLines`).
  */
 export function RecloserGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('recloser', props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('recloser', props)}>
@@ -235,7 +358,7 @@ export function RecloserGlyph(props: GlyphProps): JSX.Element {
 }
 
 export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('disconnector', props.state);
   // Nóż: zamknięty = w osi toru; otwarty = odchylony 45° (IEC 60617-7).
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
@@ -257,7 +380,7 @@ export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
  *  POPRZECZKA na końcu styku ruchomego (cecha odróżniająca zdolność
  *  łączenia pod obciążeniem). Stan z geometrii noża jak `DisconnectorGlyph`. */
 export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('loadBreakSwitch', props.state);
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
     <g {...glyphGroupProps('loadBreakSwitch', props)}>
@@ -291,13 +414,20 @@ export function LoadArrowGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Uziemnik: nóż zamknięty = w osi do ziemi, otwarty = odchylony, nieustalony = nóż
+ *  przerywany w osi (jak `DisconnectorGlyph`). Rozszerzenie 5: dawny domysł „brak danej =
+ *  otwarty" usunięty — uziemnik bez stanu w modelu jest NIEUSTALONY, nie otwarty. */
 export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'open';
+  const state = polozenieGeometrii('earthSwitch', props.state);
   const bladeEnd = state === 'open' ? { x: 15, y: 10 } : { x: 8, y: 14 };
   return (
     <g {...glyphGroupProps('earthSwitch', props)}>
       <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line x1={8} y1={4} x2={bladeEnd.x} y2={bladeEnd.y} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line
+        x1={8} y1={4} x2={bladeEnd.x} y2={bladeEnd.y}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+        strokeDasharray={state === 'unknown' ? '3 2' : undefined}
+      />
       <line x1={8} y1={14} x2={8} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {/* ⏚ IEC: trzy malejące kreski */}
       <line x1={2} y1={17} x2={14} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
@@ -358,6 +488,21 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
           strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         />
       )}
+      {/* Uziemienie bezpośrednie = ciągłe połączenie zacisku z uziomem w miejscu rezystora albo
+          dławika. Bez tej kreski tor miał przerwę 8 → 18 i wyglądał jak sieć izolowana — jedyny
+          wariant, w którym przerwa jest treścią symbolu (`symbols/__tests__/kierunekZiemi.test.tsx`,
+          predykat „przerwa ⇔ izolowana"). */}
+      {kind === 'direct' && (
+        <line
+          x1={8}
+          y1={8}
+          x2={8}
+          y2={18}
+          stroke={stroke(props)}
+          strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+          data-tor-uziemienia="bezposredni"
+        />
+      )}
       {!izolowana && (
         <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       )}
@@ -368,14 +513,22 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Rozłącznik bezpiecznikowy SN. Rozszerzenie 5: dawny domysł „brak danej = zamknięty"
+ *  usunięty — bez stanu w modelu nóż jest przerywany (nieustalony). */
 export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'closed';
+  const state = polozenieGeometrii('fuseSwitch', props.state);
   return (
     <g {...glyphGroupProps('fuseSwitch', props)}>
       <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {state === 'open'
         ? <line x1={8} y1={6} x2={15} y2={12} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-        : <line x1={8} y1={6} x2={8} y2={10} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />}
+        : (
+          <line
+            x1={8} y1={6} x2={8} y2={10}
+            stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+            strokeDasharray={state === 'unknown' ? '1.5 1' : undefined}
+          />
+        )}
       {/* wkładka bezpiecznikowa: prostokąt z żyłą */}
       <rect x={5} y={10} width={6} height={12} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={10} x2={8} y2={22} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
@@ -485,7 +638,7 @@ function BrakUzwojenia(props: { readonly c: { x: number; y: number }; readonly s
       y={props.c.y + 4.5}
       textAnchor="middle"
       fill={stroke(props.glif)}
-      fontFamily="sans-serif"
+      fontFamily={SLD_FONT_FAMILY}
       fontSize={13}
       fontWeight={700}
     >
@@ -513,6 +666,30 @@ function OznaczenieUzwojen(props: { readonly glif: GlyphProps }): JSX.Element | 
   );
 }
 
+/** Pismo znaku ostrzeżenia „!" przy symbolu — podłoga S9-7 (8 px, decyzja §11.7 pkt 5). */
+export const PISMO_ZNAKU_OSTRZEZENIA = { fontSize: MIN_TEXT_SCREEN_PX, fontWeight: 700 } as const;
+
+/** Promień kółka znaku ostrzeżenia [px świata]. */
+export const PROMIEN_ZNAKU_OSTRZEZENIA = 3.6;
+
+/** Znak ostrzeżenia „!" w kółku (TR2W-BEZ-POLA, F10.5): tusz „!" pismem 8 px wyśrodkowany
+ *  pionowo w kółku — linia bazowa z zasięgu tuszu kroju (`zasiegPionowyTuszu`), nie z szacunku. */
+function ZnakOstrzezenia(props: { readonly cx: number; readonly cy: number; readonly glif: GlyphProps }): JSX.Element {
+  const { fontSize, fontWeight } = PISMO_ZNAKU_OSTRZEZENIA;
+  const tusz = zasiegPionowyTuszu('!', fontSize, fontWeight);
+  return (
+    <>
+      <circle cx={props.cx} cy={props.cy} r={PROMIEN_ZNAKU_OSTRZEZENIA} fill="none" stroke={stroke(props.glif)} strokeWidth={grubosc(props.glif, 0.9)} />
+      <text
+        x={props.cx} y={props.cy - (tusz.gora + tusz.dol) / 2} textAnchor="middle"
+        fill={stroke(props.glif)} fontFamily={SLD_FONT_FAMILY} fontSize={fontSize} fontWeight={fontWeight}
+      >
+        !
+      </text>
+    </>
+  );
+}
+
 export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('transformer2W', props)}>
@@ -521,6 +698,18 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <OznaczenieUzwojen glif={props} />
+      {/* Karta POLA-GPZ-SZABLONY: wyprowadzenie punktu neutralnego uzwojenia ZYGZAKOWEGO
+          (transformator uziemiający ZNyn11, Zeszyt 1 Z.13–Z.15) — od okręgu górnego do zacisku
+          `punktNeutralny` na prawej krawędzi. Tylko zygzak z wyprowadzonym punktem (dana modelu). */}
+      {props.uzwojenia?.stan === 'znane'
+        && props.uzwojenia.gorne.rodzaj === 'zygzak'
+        && props.uzwojenia.gorne.punktNeutralny && (
+        <line
+          x1={16 + Math.sqrt(11 * 11 - 3 * 3)} y1={16} x2={32} y2={16}
+          stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+          data-punkt-neutralny="wyprowadzony"
+        />
+      )}
       {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
        *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
        *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),
@@ -530,13 +719,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
        *  Mono jak reszta glifu bazowego — kolor nie koduje tu stanu fizycznego. */}
       {props.hasFieldGapWarning && (
         <g data-field-gap-warning="true">
-          <circle cx={28} cy={4} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
-          <text
-            x={28} y={6.2} textAnchor="middle"
-            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
-          >
-            !
-          </text>
+          <ZnakOstrzezenia cx={28} cy={4} glif={props} />
         </g>
       )}
     </g>
@@ -546,6 +729,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
 export function CableHeadGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('cableHead', props)}>
+      <line x1={8} y1={0} x2={8} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <path d="M2,14 L14,14 L8,2 Z" fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
     </g>
@@ -562,13 +746,31 @@ export function JointSleeveGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * PUNKT NORMALNIE OTWARTY (NOP) — ZNACZNIK FUNKCJI (okrąg) na łączniku podziału sieci.
+ * Rozszerzenie 5 (referencja HMI 2026-10-29): NOP nie jest osobnym kolorem stanu, tylko
+ * funkcją łącznika; jego BIEŻĄCE położenie (`status` gałęzi łącznika NOP) rysuje geometria
+ * toru przez okrąg — otwarty = przerwa, zamknięty = tor ciągły, nieustalony = tor
+ * przerywany — i kafel stanu, jak każdy łącznik.
+ */
 export function NoPointGlyph(props: GlyphProps): JSX.Element {
+  const state = polozenieGeometrii('noPoint', props.state);
+  const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
-    <g {...glyphGroupProps('noPoint', props)}>
-      {/* jawna PRZERWA toru + okrąg łącznika otwartego */}
-      <line x1={0} y1={8} x2={4} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line x1={12} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <circle cx={8} cy={8} r={3.5} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    <g {...glyphGroupProps('noPoint', props)} data-nop-polozenie={state}>
+      {state === 'open' ? (
+        <>
+          <line x1={0} y1={8} x2={4} y2={8} stroke={stroke(props)} strokeWidth={w} />
+          <line x1={12} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={w} />
+        </>
+      ) : (
+        <line
+          x1={0} y1={8} x2={16} y2={8}
+          stroke={stroke(props)} strokeWidth={w}
+          strokeDasharray={state === 'unknown' ? '3 2' : undefined}
+        />
+      )}
+      <circle cx={8} cy={8} r={3.5} fill="none" stroke={stroke(props)} strokeWidth={w} />
     </g>
   );
 }
@@ -577,7 +779,7 @@ export function NoPointGlyph(props: GlyphProps): JSX.Element {
  *  `DisconnectorGlyph` obrócona o 90° (nóż w osi toru = zamknięty, odchylony =
  *  otwarty, przerywany = stan nieznany; poprzeczka styku stałego). */
 export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('lineSwitch', props.state);
   const bladeEnd = state === 'open' ? { x: 18, y: 1 } : { x: 22, y: 8 };
   return (
     <g {...glyphGroupProps('lineSwitch', props)}>
@@ -596,7 +798,7 @@ export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
 /** Karta SLD-SUBSTRAT (kontynuacja): wyłącznik na torze POZIOMYM — korpus
  *  `BreakerGlyph` (wypełniony = zamknięty, pusty = otwarty) z wyprowadzeniami W/E. */
 export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('lineBreaker', props.state);
   return (
     <g {...glyphGroupProps('lineBreaker', props)}>
       <rect
@@ -735,7 +937,7 @@ export function DerGeneratorGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={18} r={13} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <text
         x={16} y={22} textAnchor="middle"
-        fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
+        fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={12} fontWeight={700}
       >
         G
       </text>
@@ -770,7 +972,7 @@ export function DerUnknownGlyph(props: GlyphProps): JSX.Element {
   return derFrame(props, 'derUnknown', (
     <text
       x={16} y={22} textAnchor="middle"
-      fill={stroke(props)} fontFamily="sans-serif" fontSize={16} fontWeight={700}
+      fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={16} fontWeight={700}
     >
       ?
     </text>
@@ -793,28 +995,11 @@ export function BayNoEquipmentGlyph(props: GlyphProps): JSX.Element {
       />
       <text
         x={8} y={21} textAnchor="middle"
-        fill={stroke(props)} fontFamily="sans-serif" fontSize={13} fontWeight={700}
+        fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={13} fontWeight={700}
       >
         ?
       </text>
       <line x1={8} y1={28} x2={8} y2={32} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-    </g>
-  );
-}
-
-/**
- * GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola rezerwowego/wolnego — krótki tor pola
- * zamknięty poprzeczką i drugą, przerywaną: pole przygotowane, bez głowicy i bez odejścia.
- */
-export function BayReserveGlyph(props: GlyphProps): JSX.Element {
-  return (
-    <g {...glyphGroupProps('bayReserve', props)}>
-      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line x1={2} y1={8} x2={14} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line
-        x1={4} y1={13} x2={12} y2={13}
-        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} strokeDasharray="2 2"
-      />
     </g>
   );
 }
@@ -1061,23 +1246,55 @@ export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
 
 /**
  * F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg z kodami
- * funkcji ANSI/IEEE C37.2 (np. „50/51" nad „51N", maks. 2 linie ≤4 znaki,
- * §17.3 — obcinanie/wybór DWÓCH pierwszych kodów jest odpowiedzialnością
- * WOŁAJĄCEGO, `compose/station.ts`/`compose/gpz.ts`, ta funkcja rysuje
- * WYŁĄCZNIE to, co dostanie w `labelLines`, zero własnej logiki wyboru).
+ * funkcji ANSI/IEEE C37.2 (np. „51" nad „51N", maks. 2 linie). Wybór kodów
+ * mieszczących się w okręgu pismem podłogi 8 px i ich linie bazowe — JEDNA
+ * funkcja `ukladKodowWOkregu` (`symbols/okragPrzekaznika.ts`), którą woła
+ * kompozycja (`compose/station.ts`/`compose/gpz.ts`) i ten glif.
  * Brak wypełnienia (P5: rysunek bazowy mono) — element ADNOTACJI, nie stanu.
+ *
+ * Karta UX-04/POLE-LINIOWE-WZORZEC (odbiór właściciela 2026-11-04, korekta v2): z `ramkaBloku`
+ * glif rysuje BLOK ZABEZPIECZEŃ — wyłącznie prostokątną ramkę, BEZ okręgu; kody funkcji są
+ * wierszami etykiet sceny wewnątrz ramki (LOD2), na LOD1 ramka tego samego kształtu bez kodów.
  */
 export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
-  const lines = props.labelLines ?? [];
-  const ty = lines.length > 1 ? [9, 17] : [13.5];
+  const ramka = props.ramkaBloku;
+  if (ramka) {
+    return (
+      <g {...glyphGroupProps('protectionRelay', props)}>
+        <rect
+          x={ramka.x}
+          y={ramka.y}
+          width={ramka.width}
+          height={ramka.height}
+          fill="none"
+          stroke={stroke(props)}
+          strokeWidth={grubosc(props, V3_STROKE_RAMKI_BLOKU)}
+          data-przekaznik="ramka-bloku"
+        />
+        {/* F10.5 (spec §20.2): „!" nierozstrzygniętego prerekwizytu topologicznego funkcji —
+         *  w prawym górnym narożniku ramki (wiersze kodów zaczynają się oczko pod górną
+         *  krawędzią, więc narożnik jest wolny). */}
+        {props.hasTopologyWarning && (
+          <g data-topology-warning="true">
+            <ZnakOstrzezenia cx={ramka.x + ramka.width} cy={ramka.y} glif={props} />
+          </g>
+        )}
+      </g>
+    );
+  }
+  // Kody i ich linie bazowe z JEDNEGO źródła (`symbols/okragPrzekaznika.ts`): kompozycja
+  // podaje prefiks mieszczący się w okręgu pismem 8 px, glif rysuje go w liniach bazowych
+  // tej samej funkcji (blok tuszu wyśrodkowany w okręgu).
+  const uklad = ukladKodowWOkregu(props.labelLines ?? []);
   return (
     <g {...glyphGroupProps('protectionRelay', props)}>
-      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      {lines.slice(0, 2).map((line, i) => (
+      <circle cx={OKRAG_PRZEKAZNIKA.cx} cy={OKRAG_PRZEKAZNIKA.cy} r={OKRAG_PRZEKAZNIKA.r} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      {uklad.kody.map((line, i) => (
         <text
           key={line}
-          x={12} y={ty[i]} textAnchor="middle"
-          fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={600}
+          x={OKRAG_PRZEKAZNIKA.cx} y={uklad.linieBazowe[i]} textAnchor="middle"
+          fill={stroke(props)} fontFamily={SLD_FONT_FAMILY}
+          fontSize={PISMO_KODU_W_OKREGU.fontSize} fontWeight={PISMO_KODU_W_OKREGU.fontWeight}
         >
           {line}
         </text>
@@ -1089,13 +1306,7 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
        *  glifu bazowego, P5 — kolor NIE koduje tu stanu fizycznego). */}
       {props.hasTopologyWarning && (
         <g data-topology-warning="true">
-          <circle cx={19.5} cy={4.5} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
-          <text
-            x={19.5} y={6.7} textAnchor="middle"
-            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
-          >
-            !
-          </text>
+          <ZnakOstrzezenia cx={19.5} cy={4.5} glif={props} />
         </g>
       )}
     </g>
@@ -1114,7 +1325,7 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
       <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <text
         x={12} y={16} textAnchor="middle"
-        fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
+        fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={12} fontWeight={700}
       >
         {/* Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości
             (A/V) z danych pomiaru; „M" tylko gdy wielkość nieznana. */}
@@ -1140,7 +1351,7 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
  * górnym) — cecha, której `BreakerGlyph` (aparat pierwotny SN) nie niesie.
  */
 export function NnBreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = props.state ?? 'unknown';
+  const state = polozenieGeometrii('nnBreaker', props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('nnBreaker', props)}>
@@ -1205,12 +1416,443 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
         fill="none" stroke={stroke(props)} strokeWidth={w}
         data-lv-portal-flag="true"
       />
-      <text x={16} y={13} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+      <text x={16} y={13} textAnchor="middle" fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={8} fontWeight={700}>
         nN
       </text>
     </g>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Karta UX-04/POLE-LINIOWE-WZORZEC — symbole QElectroTech EN 60617 pola liniowego SN.
+// Geometria z importera (`cad/qet/qetPoleSn.ts`), rysunek przez wspólną warstwę
+// prymitywów CAD (`CadPrimitiveLayer`). Każde położenie noża (otwarte, zamknięte, uziemione,
+// nieznane) = obrót noża źródła o kąt z importera wokół przegubu (`noz.katy`).
+// ---------------------------------------------------------------------------
+
+/** Położenie noża symbolu QET dla stanu łącznika — geometria z JEDNEGO źródła z kolorem
+ *  kafla (`polozenieLacznika`); położenie bez kąta w importerze (niemożliwe dla kompletu
+ *  położeń generatora) rysuje się jako nieustalone. Symbol bez noża — rysunek źródła. */
+export function polozenieNozaQet(id: QetSymbolPolaSnId, state: SwitchState | undefined): QetPolozenieNoza {
+  const noz = QET_SYMBOLE_POLA_SN[id].noz;
+  if (!noz) return 'open';
+  const geometria = polozenieLacznika(id, state).geometria;
+  return noz.katy[geometria] === undefined ? 'unknown' : geometria;
+}
+
+/**
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC — STAN KAFLA łącznika z położeniem: kolor
+ * z TEJ SAMEJ pary co geometria noża (`polozenieLacznika`), jedna reguła dla rysunku,
+ * eksportu, legendy, inspektora i sond. `earthed` łącznika trójpołożeniowego → `otwarty`
+ * (kolor mówi o torze głównym, który jest otwarty; nóż na zestyku uziemiającym mówi, że pole
+ * jest uziemione — uwaga właściciela 2026-10-30). `null` = symbol bez położenia (patrz
+ * `SYMBOLE_LACZNIKOW_Z_POLOZENIEM`) — bez kafla.
+ */
+export function stanKaflaLacznika(id: SymbolId, state: SwitchState | undefined): StanKafla | null {
+  if (!czyLacznikZPolozeniem(id)) return null;
+  // Punkt NOP zadeklarowany na magistrali stacją (`LineRun.nop_station_ref`) nie wskazuje
+  // łącznika — model nie niesie położenia, więc znacznik funkcji stoi bez kafla (kafel „?"
+  // sugerowałby łącznik o nieznanym stanie, którego w modelu nie ma).
+  if (id === 'noPoint' && state === undefined) return null;
+  return polozenieLacznika(id, state).kafel;
+}
+
+/** Stan kafla z SAMEGO położenia — dla miejsc bez symbolu (inspektor, legenda); ta sama tabela
+ *  co rysunek. `earthed` przychodzi tu wyłącznie od łącznika trójpołożeniowego
+ *  (`stanAparatowPola` rysuje go jako nieustalony dla innych rodzajów) — tor otwarty. */
+export function stanKaflaPolozenia(state: SwitchState | undefined): StanKafla {
+  return polozenieZeStanu(state, true).kafel;
+}
+
+/** Opis położenia łącznika po polsku — JEDNA mapa (`v2/model/stanAparatowPola.ts`). */
+export { OPIS_POLOZENIA_PL };
+
+/** Znak na kaflu stanów bez położenia pewnego (drugi nośnik obok koloru). */
+const ZNAK_KAFLA: Readonly<Partial<Record<StanKafla, string>>> = { nieustalony: '?', bledny: '!' };
+
+/** Prostokąt kafla stanu względem lewego górnego rogu gabarytu. Łącznik QET: JEDNOLITY kafel
+ *  z importera (`kafel` — ten sam rozmiar dla każdego łącznika z nożem, gabaryt symbolu =
+ *  kafel), więc kafle aparatów jednego pola są równe. Symbol kanoniczny: obrys CAŁEGO
+ *  rysunku (`obrysSymbolu`) + `KAFEL_STANU_MARGINES`. */
+export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+  const kafel = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id].kafel : null;
+  if (kafel) {
+    // Kwadrat z JEDNEJ stałej (wymaganie właściciela 2026-10-29) — nie z wymiaru rysunku;
+    // wyłącznik wysuwny ma kafel w paśmie członu (`kafel.y` = pasmo szewronów nad kaflem).
+    return { x: 0, y: kafel.y, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
+  }
+  const o = obrysSymbolu(id);
+  const m = KAFEL_STANU_MARGINES;
+  return { x: o.x - m, y: o.y - m, width: o.width + 2 * m, height: o.height + 2 * m };
+}
+
+/** Wysokość znaku „?"/„!" kafla [px świata]: jedna czwarta krótszego boku kafla, nie mniej
+ *  niż podłoga czytelności S9-7 (`MIN_TEXT_SCREEN_PX` = 8 px przy wejściu w LOD 2 — decyzja
+ *  §11.7 pkt 5 karty UX-04/POLE-LINIOWE-WZORZEC: podłoga obejmuje litery symboli) i nie więcej
+ *  niż 12 — znak stanu niepewnego czytelny na kaflu każdego rozmiaru, w narożniku kafla. */
+export function rozmiarZnakuKafla(r: { readonly width: number; readonly height: number }): number {
+  return Math.min(12, Math.max(MIN_TEXT_SCREEN_PX, Math.floor(Math.min(r.width, r.height) / 4)));
+}
+
+/** Kafel stanu: wypełniony prostokąt pod symbolem, znak „?"/„!" w rogu, dymek z opisem
+ *  położenia; symbol na kaflu rysuje się kolorem `glif`. */
+function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element): (props: GlyphProps) => JSX.Element {
+  function GlifNaKaflu(props: GlyphProps): JSX.Element {
+    const kafle = props.kafleStanu;
+    const stan = kafle ? stanKaflaLacznika(id, props.state) : null;
+    if (!kafle || !stan) return <Glyph {...props} />;
+    const r = prostokatKaflaStanu(id);
+    const znak = DETALE_KAFLA_WG_LOD[props.lod ?? 2].znakNiepewny ? ZNAK_KAFLA[stan] : undefined;
+    // Człon wysuwny (decyzja właściciela 2026-11-04, synoptyka e²TANGO): OSOBNE kafle nad i pod
+    // kaflem wyłącznika, ta sama szerokość, stykające się krawędziami; kolor = stan członu
+    // (`stanCzlonu`), nie stan wyłącznika. Kafle członu zostają na każdym LOD (kształt).
+    const czlon = czySymbolQet(id) ? QET_SYMBOLE_POLA_SN[id].czlon : null;
+    const stanCzlonu: StanKafla = props.stanCzlonu ?? 'nieustalony';
+    const kafleCzlonu = czlon
+      ? ([
+          ['gora', r.y - czlon.pasmo],
+          ['dol', r.y + r.height],
+        ] as const)
+      : [];
+    return (
+      <g data-kafel-stanu={stan} data-kafel-symbol={id} {...(czlon ? { 'data-kafel-czlonu': stanCzlonu } : {})}>
+        <title>{OPIS_POLOZENIA_PL[props.state ?? 'unknown']}</title>
+        {kafleCzlonu.map(([nazwa, y]) => (
+          <rect
+            key={nazwa}
+            x={props.x + r.x}
+            y={props.y + y}
+            width={r.width}
+            height={czlon!.pasmo}
+            rx={1.5}
+            fill={kafle[stanCzlonu]}
+            stroke="none"
+            data-kafel={`czlon-${nazwa}`}
+          />
+        ))}
+        <rect
+          x={props.x + r.x}
+          y={props.y + r.y}
+          width={r.width}
+          height={r.height}
+          rx={1.5}
+          fill={kafle[stan]}
+          stroke="none"
+          data-kafel="tlo"
+        />
+        <Glyph {...props} stroke={kafle.glif} />
+        {znak && (
+          <text
+            x={props.x + r.x + 1}
+            y={props.y + r.y + rozmiarZnakuKafla(r)}
+            fill={kafle.glif}
+            fontFamily={SLD_FONT_FAMILY}
+            fontSize={rozmiarZnakuKafla(r)}
+            fontWeight={700}
+            data-kafel="znak"
+          >
+            {znak}
+          </text>
+        )}
+      </g>
+    );
+  }
+  return GlifNaKaflu;
+}
+
+/**
+ * Prymitywy noża symbolu QET w położeniu (przed obrotem `noz.katy`): nóż SZTYWNY w zasięgu
+ * położenia — jednokładność o skali `noz.zasiegi[położenie]` wokół przegubu dla KAŻDEGO punktu
+ * (ostrze i wkładka bezpiecznika na nożu przesuwają się do przegubu w tej samej proporcji, kształt
+ * noża bez zmian). W położeniu zamkniętym i uziemionym zasięg sprowadza koniec noża na styk stały,
+ * w nieustalonym skraca nóż (`kafelStanu.uklad.noz.zasiegNieustalony`). Ta sama reguła co importer
+ * (`scripts/import_qet_pole_sn.py::noz_w_zasiegu`), który z niej liczy obwiednię, odstępy od
+ * znaczników i stopień glifu. Nóż składa się wyłącznie z linii (importer przerywa import inaczej).
+ */
+export function prymitywyNozaQet(noz: QetNozSymbolu, polozenie: QetPolozenieNoza): readonly CadPrimitive[] {
+  const zasieg = noz.zasiegi[polozenie] ?? 1;
+  if (zasieg === 1) return noz.prymitywy;
+  const k = (x: number, y: number) => ({ x: noz.cx + (x - noz.cx) * zasieg, y: noz.cy + (y - noz.cy) * zasieg });
+  return noz.prymitywy.map((p) => {
+    if (p.k !== 'line') throw new Error(`nóż QET z prymitywem ${p.k} — importer dopuszcza wyłącznie linie`);
+    const a = k(p.x1, p.y1);
+    const b = k(p.x2, p.y2);
+    return { ...p, x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  });
+}
+
+/**
+ * Kreska PIKTOGRAMU KAFLA STANU (nóż, znaczniki rodzaju aparatu, ziemia, napęd) — STAŁA ŚWIATA
+ * `QET_KRESKA_GLIFU` (bok kafla / 24) na każdej skali kamery; symbol QET bez kafla (przekładnik,
+ * głowica, wskaźnik) — kreska glifu przez lejek `grubosc` (kompensacja PROPORCJE).
+ *
+ * DLACZEGO PIKTOGRAM KAFLA NIE BIERZE KOMPENSACJI. Decyzja właściciela 2026-10-30 (znacznik rodzaju
+ * aparatu przy styku stałym) wiąże geometrię kafla w jednostkach świata: znacznik 22–28 % boku
+ * kafla, kreska znacznika = kreska noża, margines tuszu znacznika od krawędzi kafla ≥ 4 j.św.
+ * i brak kolizji znacznika z nożem w każdym stanie, sprawdzane na LOD1 i LOD2, „te same proporcje
+ * w każdym rodzaju aparatu, w każdym stanie i w obu motywach". Kompensacja PROPORCJE
+ * (`strokeScaleFactor`: ×1,23 na dolnym brzegu LOD2, ×1,81 przy wejściu w LOD1, ×2,45 na dolnym
+ * brzegu LOD1) pogrubiała kreskę piktogramu względem kafla, który kompensacji nie ma (wypełniony
+ * kwadrat): tusz okręgu odłącznika schodził do 3,78 j.św. od krawędzi kafla już na LOD2, a ramiona
+ * krzyżyka wyłącznika zlewały się z nożem na LOD1 (pomiar w `znacznikRodzajuLacznika.test.tsx`).
+ * Czytelność piktogramu daje kontrast białego glifu z wypełnionym kaflem, nie waga kreski względem
+ * toru; przewody toru w kaflu i każdy rysunek poza kaflem zostają w lejku `grubosc`. Rozstrzygnięcie
+ * dwóch reguł właściciela: `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz UX04-KRESKA-PIKTOGRAMU-KAFLA.
+ */
+function kreskaPiktogramuKafla(props: GlyphProps, symbol: QetSymbolPolaSn): number {
+  return symbol.kafel ? QET_KRESKA_GLIFU : grubosc(props, QET_KRESKA_GLIFU);
+}
+
+/** Podłoga ekranu boku znacznika rodzaju aparatu na LOD1 [px] (rozstrzygnięcie architekta
+ *  2026-10-30 pkt 1). Na LOD2 obowiązuje udział `QET_ZNACZNIK_STYKU.udzial` i ≥ 10 px, które
+ *  daje sam udział (12 j.św. × 1,02 = 12,2 px na dolnym brzegu LOD2). */
+export const PODLOGA_ZNACZNIKA_LOD1_PX = 8;
+
+/**
+ * DETALE KAFLA WG LOD — JEDNA tabela (uwaga właściciela 2026-11-04, odbiór B-02 pkt 5): przy
+ * oddaleniu kafel zdejmuje DETALE, a kształt rozróżniający aparat (znacznik „×”, kreska „⊤”,
+ * kreska z okręgiem, ziemia, szewrony członu wysuwnego) zostaje zawsze i rośnie do podłogi
+ * czytelności (`skalaZnacznikaKafla`, `skalaKsztaltuWKaflu`) zamiast maleć razem z kaflem.
+ *  • `naped` — kwalifikator napędu „M” (atrybut łącznika; pełna informacja w inspektorze);
+ *  • `znakNiepewny` — znak „?”/„!” w narożniku kafla stanu nieustalonego/błędnego (drugim
+ *    nośnikiem obok koloru zostaje geometria noża: skrócony nóż w połowie kąta otwarcia).
+ */
+export const DETALE_KAFLA_WG_LOD: Readonly<Record<0 | 1 | 2, { readonly naped: boolean; readonly znakNiepewny: boolean }>> = {
+  2: { naped: true, znakNiepewny: true },
+  1: { naped: false, znakNiepewny: true },
+  0: { naped: false, znakNiepewny: false },
+};
+
+/**
+ * Mnożnik boku znacznika rodzaju aparatu (JEDNO źródło dla kanwy, tablicy łączników i testów):
+ * bok na ekranie = max(udział · bok kafla · skala, 8 px) na LOD1 — podłoga wygrywa z udziałem
+ * 22–28 % (rozstrzygnięcie architekta 2026-10-30 pkt 1; przy skali 0,51, dolnym brzegu LOD1,
+ * znacznik ma 15,7 j.św. = 33 % kafla). Na LOD2 — 1 (proporcje świata). Na LOD0 (uwaga właściciela
+ * 2026-11-04, odbiór B-02 pkt 5: przy oddaleniu kształt rozróżniający nie maleje względem kafla,
+ * detale znikają wg `DETALE_KAFLA_WG_LOD`) — mnożnik dolnego brzegu LOD1 (`SKALA_DOLNA_LOD1`):
+ * kształt ma w kaflu wielkość z dolnego brzegu LOD1 (15,7 j.św. = 33 % kafla) — największą, przy
+ * której znacznik nie nachodzi na nóż w żadnym położeniu (pomiar w `znacznikRodzajuLacznika.test.tsx`:
+ * mnożnik z podłogi na skali 0,45 daje krzyżyk na nożu otwartym). Na ekranie LOD0 kształt ma więc
+ * 15,7 j.św. × skala (< 8 px poniżej skali 0,51 — kafel 48 j.św. ma wtedy < 24,5 px). Znacznik rośnie
+ * wokół swojej kotwicy (punktu styku), kreska zostaje kreską noża (`QET_KRESKA_GLIFU`).
+ */
+export function skalaZnacznikaKafla(cameraScale: number, lod: 0 | 1 | 2): number {
+  if (lod === 2 || !Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
+  const s = lod === 0 ? Math.max(cameraScale, SKALA_DOLNA_LOD1) : cameraScale;
+  return Math.max(1, PODLOGA_ZNACZNIKA_LOD1_PX / (QET_ZNACZNIK_STYKU.bok * s));
+}
+
+/** Dolny brzeg LOD1 (zejście do LOD0, `l0Max · (1 − margines histerezy)` = 0,51). */
+export const SKALA_DOLNA_LOD1 = DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN);
+
+/** Prostokąt osiowy. */
+interface Obwiednia {
+  readonly x0: number;
+  readonly y0: number;
+  readonly x1: number;
+  readonly y1: number;
+}
+
+function obwiedniaPrymitywow(prims: readonly CadPrimitive[]): Obwiednia {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of prims) {
+    if (p.k === 'line') {
+      x0 = Math.min(x0, p.x1, p.x2);
+      x1 = Math.max(x1, p.x1, p.x2);
+      y0 = Math.min(y0, p.y1, p.y2);
+      y1 = Math.max(y1, p.y1, p.y2);
+    } else if (p.k === 'circle') {
+      x0 = Math.min(x0, p.cx - p.r);
+      x1 = Math.max(x1, p.cx + p.r);
+      y0 = Math.min(y0, p.cy - p.r);
+      y1 = Math.max(y1, p.cy + p.r);
+    } else {
+      throw new Error(`kształt rozróżniający kafla z prymitywem ${p.k} — dopuszczalne linie i okręgi`);
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
+/** Odstęp tuszu kształtu rozróżniającego od krawędzi obszaru, w którym rośnie [j.św.]. */
+export const ODSTEP_KSZTALTU_OD_KRAWEDZI = 0;
+
+/**
+ * Mnożnik kształtu rozróżniającego (znacznik, ziemia, szewrony) w obszarze `obszar` (kafel stanu
+ * albo pasmo członu): żądany mnożnik `f` (`skalaZnacznikaKafla`) ograniczony tak, żeby kształt
+ * powiększony wokół `kotwicy` nie wyszedł poza obszar pomniejszony o `ODSTEP_KSZTALTU_OD_KRAWEDZI`
+ * (tusz z połową kreski). Nigdy poniżej 1 — kształt nie maleje względem proporcji świata.
+ */
+export function skalaKsztaltuWKaflu(
+  prims: readonly CadPrimitive[],
+  kotwica: { readonly x: number; readonly y: number },
+  obszar: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  f: number,
+): number {
+  if (f <= 1) return 1;
+  const o = obwiedniaPrymitywow(prims);
+  const m = ODSTEP_KSZTALTU_OD_KRAWEDZI + QET_KRESKA_GLIFU / 2;
+  const granice = [
+    [kotwica.x - o.x0, kotwica.x - (obszar.x + m)],
+    [o.x1 - kotwica.x, obszar.x + obszar.width - m - kotwica.x],
+    [kotwica.y - o.y0, kotwica.y - (obszar.y + m)],
+    [o.y1 - kotwica.y, obszar.y + obszar.height - m - kotwica.y],
+  ] as const;
+  let fMax = f;
+  for (const [zasieg, miejsce] of granice) {
+    if (zasieg > 1e-9) fMax = Math.min(fMax, miejsce / zasieg);
+  }
+  return Math.max(1, fMax);
+}
+
+/**
+ * Symbol ziemi w skali `f`: pion odgałęzienia (pierwszy prymityw — przyłączenie do łącznika) bez
+ * zmian, kreski ziemi rosną wokół środka najszerszej (górnej) kreski — kształt ziemi rośnie w dół
+ * od miejsca przyłączenia, nie przesuwa się względem pionu (granica kafla `skalaKsztaltuWKaflu`).
+ */
+export function prymitywyZiemiWSkali(
+  prims: readonly CadPrimitive[],
+  kafel: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  f: number,
+): readonly CadPrimitive[] {
+  const [pion, gorna, ...reszta] = prims;
+  if (!pion || !gorna || gorna.k !== 'line') return prims;
+  const kreski = [gorna, ...reszta];
+  const kotwica = { x: (gorna.x1 + gorna.x2) / 2, y: gorna.y1 };
+  return [pion, ...prymitywyWSkali(kreski, kotwica, skalaKsztaltuWKaflu(kreski, kotwica, kafel, f))];
+}
+
+/** Prymitywy w skali `f` wokół kotwicy (jednokładność współrzędnych, kreska bez zmian). */
+export function prymitywyWSkali(
+  prims: readonly CadPrimitive[],
+  kotwica: { readonly x: number; readonly y: number },
+  f: number,
+): readonly CadPrimitive[] {
+  if (f === 1) return prims;
+  const x = (v: number) => kotwica.x + (v - kotwica.x) * f;
+  const y = (v: number) => kotwica.y + (v - kotwica.y) * f;
+  return prims.map((p) => {
+    if (p.k === 'line') return { ...p, x1: x(p.x1), y1: y(p.y1), x2: x(p.x2), y2: y(p.y2) };
+    if (p.k === 'circle') return { ...p, cx: x(p.cx), cy: y(p.cy), r: p.r * f };
+    throw new Error(`kształt rozróżniający kafla z prymitywem ${p.k} — dopuszczalne linie i okręgi`);
+  });
+}
+
+/** Prymitywy znacznika w skali `f` wokół kotwicy (jednokładność współrzędnych, kreska bez zmian).
+ *  Znacznik składa się z linii i okręgów (importer — `znaczniki` w `qetPoleSn.ts`). */
+export function prymitywyZnacznikaWSkali(z: QetZnacznikStyku, f: number): readonly CadPrimitive[] {
+  return prymitywyWSkali(z.prymitywy, z.kotwica, f);
+}
+
+/**
+ * Symbol QET w rolach importera (`qetPoleSn.ts`): PRZEWODY (tor i obwód wtórny w gabarycie)
+ * kreską przewodu `V3_STROKE_APPARATUS` przez lejek `grubosc`; GLIF — rysunek aparatu (`stale`,
+ * nóż i ZNACZNIKI rodzaju aparatu przy stykach stałych), ZIEMIA (symbol uziemienia skierowany
+ * w dół, poza miarą stopnia) i OSPRZĘT (napęd — atrybut łącznika) kreską glifu `QET_KRESKA_GLIFU`,
+ * proporcjonalną do kafla stanu (`kreskaPiktogramuKafla`). Znacznik ma kreskę i kolor noża
+ * (decyzja właściciela 2026-10-30: kolor znacznika taki sam jak kolor noża — kontrast na
+ * czerwonym i zielonym kaflu). Grupy `data-qet` są punktem pomiaru stopnia glifu w e2e
+ * (`getBBox` glifu względem kafla).
+ */
+function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
+  const symbol = QET_SYMBOLE_POLA_SN[id];
+  function QetGlyph(props: GlyphProps): JSX.Element {
+    const state: SwitchState = props.state ?? 'unknown';
+    const ink = stroke(props);
+    const wPrzewodu = grubosc(props, V3_STROKE_APPARATUS);
+    const wGlifu = kreskaPiktogramuKafla(props, symbol);
+    const noz = symbol.noz;
+    const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
+    const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
+    const prymitywyNoza = noz && polozenie ? prymitywyNozaQet(noz, polozenie) : [];
+    // Kształty rozróżniające rosną do podłogi czytelności w obrębie kafla / pasma członu;
+    // detale (napęd) wg jednej tabeli LOD (`DETALE_KAFLA_WG_LOD`).
+    const f = props.skalaZnacznika ?? 1;
+    const detale = DETALE_KAFLA_WG_LOD[props.lod ?? 2];
+    const kafel = symbol.kafel ?? { x: 0, y: 0, width: symbol.szerokosc, height: symbol.wysokosc };
+    const pasmaCzlonu = symbol.czlon
+      ? ([
+          ['gora', symbol.czlon.gora, 0],
+          ['dol', symbol.czlon.dol, kafel.y + kafel.height],
+        ] as const).map(([nazwa, prims, y]) => {
+          const obszar = { x: 0, y, width: symbol.szerokosc, height: symbol.czlon!.pasmo };
+          const kotwica = { x: symbol.szerokosc / 2, y: y + symbol.czlon!.pasmo / 2 };
+          return { nazwa, prims: prymitywyWSkali(prims, kotwica, skalaKsztaltuWKaflu(prims, kotwica, obszar, f)) };
+        })
+      : [];
+    return (
+      <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie}>
+        <g data-qet="przewody">
+          <CadPrimitiveLayer prims={symbol.przewody} ink={ink} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
+        </g>
+        <g data-qet="glif">
+          <CadPrimitiveLayer prims={symbol.stale} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+          {noz && (
+            <g transform={`rotate(${kat} ${noz.cx} ${noz.cy})`} data-qet="noz" data-qet-kat={kat}>
+              <CadPrimitiveLayer
+                prims={prymitywyNoza}
+                ink={ink}
+                paper="none"
+                strokeWidth={wGlifu}
+                nonScalingStroke={false}
+                state={polozenie === 'unknown' ? 'unknown' : 'closed'}
+              />
+            </g>
+          )}
+          {symbol.znaczniki.map((z) => (
+            <g key={`${z.styk}-${z.rodzaj}`} data-qet="znacznik" data-znacznik-rodzaj={z.rodzaj} data-znacznik-styk={z.styk}>
+              <CadPrimitiveLayer
+                prims={prymitywyZnacznikaWSkali(z, skalaKsztaltuWKaflu(z.prymitywy, z.kotwica, kafel, f))}
+                ink={ink}
+                paper="none"
+                strokeWidth={wGlifu}
+                nonScalingStroke={false}
+                state="closed"
+              />
+            </g>
+          ))}
+        </g>
+        {symbol.ziemia && (
+          <g data-qet="ziemia">
+            <CadPrimitiveLayer
+              prims={prymitywyZiemiWSkali(symbol.ziemia.prymitywy, kafel, f)}
+              ink={ink}
+              paper="none"
+              strokeWidth={wGlifu}
+              nonScalingStroke={false}
+              state="closed"
+            />
+          </g>
+        )}
+        {detale.naped && symbol.osprzet.length > 0 && (
+          <g data-qet="osprzet">
+            <CadPrimitiveLayer prims={symbol.osprzet} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+          </g>
+        )}
+        {symbol.czlon && (
+          // Człon wysuwny (synoptyka e²TANGO): przewód toru i podwójne szewrony nad kaflem (˄˄)
+          // i pod kaflem (˅˅). Na kaflach członu (`zKafelemStanu`) kolor glifu kafla — tło kafla
+          // członu niesie położenie członu, kafel wyłącznika stan wyłącznika; bez kafla kolor toru.
+          <g data-qet="czlon" data-czlon-kolor={ink}>
+            <CadPrimitiveLayer prims={symbol.czlon.przewody} ink={ink} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
+            {pasmaCzlonu.map((pasmo) => (
+              <g key={pasmo.nazwa} data-czlon-pasmo={pasmo.nazwa}>
+                <CadPrimitiveLayer prims={pasmo.prims} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+              </g>
+            ))}
+          </g>
+        )}
+      </g>
+    );
+  }
+  return QetGlyph;
+}
+
+const QET_GLYPHS: Readonly<Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.Element>> = Object.fromEntries(
+  (Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]).map((id) => [id, qetGlyph(id)]),
+) as Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.Element>;
 
 /**
  * UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN na końcu toru pola.
@@ -1232,6 +1874,12 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
  *  • brak danej — znak „?" (układ nieokreślony w modelu; obliczenie przyjmuje wartość
  *    roboczą, którą pokazują dane przyjęte, nie rysunek).
  */
+/** Położenia przekładników międzyfazowych w glifie baterii (poza okładkami x 6–26). */
+const POZYCJE_PRZEKLADNIKOW_MIEDZYFAZOWYCH: ReadonlyArray<{ readonly x: number; readonly para: string }> = [
+  { x: 2.5, para: 'L1-L2' },
+  { x: 29.5, para: 'L2-L3' },
+];
+
 function gwiazda(cx: number, cy: number, r: number): string {
   const dx = r * Math.sin(Math.PI / 3);
   const dy = r * Math.cos(Math.PI / 3);
@@ -1243,12 +1891,31 @@ export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
   const s = stroke(props);
   const uklad = props.bateria?.uklad ?? null;
   const zPrzekladnikiem = uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && props.bateria?.przekladnikNiezrownowazenia === true;
+  // Rysunek źródła ma dwie pary faz (L1-L2, L2-L3); rekordów ponad dwa nie ma gdzie postawić
+  // bez wymyślania pary L3-L1 — atrybut `data-przekladniki-miedzyfazowe` niesie liczbę z modelu.
+  const liczbaMiedzyfazowych = props.bateria?.przekladnikiMiedzyfazowe ?? 0;
   return (
     <g
       {...glyphGroupProps('capacitorBank', props)}
       data-uklad-baterii={uklad ?? 'NIEOKRESLONY'}
       data-przekladnik-niezrownowazenia={zPrzekladnikiem ? 'tak' : 'nie'}
     >
+      {liczbaMiedzyfazowych > 0 && (
+        <g data-przekladniki-miedzyfazowe={liczbaMiedzyfazowych}>
+          {/* Węzeł na doprowadzeniu baterii (s. 96: przekładniki przyłączone za ogranicznikiem,
+              na zaciskach baterii) i przekładniki międzyfazowe — znak przekładnika napięciowego
+              (EN 60617 06-13-01, dwa okręgi); pierwszy L1-L2 po lewej, drugi L2-L3 po prawej. */}
+          <circle cx={16} cy={3} r={1.2} fill={s} stroke="none" />
+          {POZYCJE_PRZEKLADNIKOW_MIEDZYFAZOWYCH.slice(0, liczbaMiedzyfazowych).map(({ x, para }) => (
+            <g key={para} data-rodzaj-aparatu={RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO} data-para-faz={para}>
+              <line x1={16} y1={3} x2={x} y2={3} stroke={s} strokeWidth={w} />
+              <line x1={x} y1={3} x2={x} y2={4} stroke={s} strokeWidth={w} />
+              <circle cx={x} cy={6} r={2} fill="none" stroke={s} strokeWidth={w} />
+              <circle cx={x} cy={9} r={2} fill="none" stroke={s} strokeWidth={w} />
+            </g>
+          ))}
+        </g>
+      )}
       {/* Kondensator (PN-EN 60617-4 04-02-01): doprowadzenie, dwie okładki, doprowadzenie. */}
       <line x1={16} y1={0} x2={16} y2={6} stroke={s} strokeWidth={w} />
       <line x1={6} y1={6} x2={26} y2={6} stroke={s} strokeWidth={w} data-okladka-kondensatora="1" />
@@ -1264,7 +1931,7 @@ export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
               <circle
                 cx={16} cy={25} r={3} fill="none" stroke={s} strokeWidth={w}
                 data-rodzaj-aparatu={RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA}
-                data-port={PORTY_APARATOW_POLA_BKR[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA][0]}
+                data-port={PORTY_APARATU_POLA[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA]?.[0]}
               />
               <line x1={19} y1={25} x2={24} y2={25} stroke={s} strokeWidth={w} />
             </>
@@ -1296,7 +1963,7 @@ export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
       {uklad === null && (
         <text
           x={16} y={27} textAnchor="middle" data-znak-ukladu="NIEOKRESLONY"
-          fill={s} fontFamily="sans-serif" fontSize={10} fontWeight={700}
+          fill={s} fontFamily={SLD_FONT_FAMILY} fontSize={10} fontWeight={700}
         >
           ?
         </text>
@@ -1305,7 +1972,7 @@ export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
-export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
+const GLIFY_SYMBOLI: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   recloser: RecloserGlyph,
   disconnector: DisconnectorGlyph,
@@ -1335,7 +2002,6 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derWind: DerWindGlyph,
   derUnknown: DerUnknownGlyph,
   bayNoEquipment: BayNoEquipmentGlyph,
-  bayReserve: BayReserveGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
   gpzCollapsed: GpzCollapsedGlyph,
@@ -1344,8 +2010,19 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   nnBreaker: NnBreakerGlyph,
   nnFuseSwitch: NnFuseSwitchGlyph,
   lvPortal: LvPortalGlyph,
+  ...QET_GLYPHS,
   capacitorBank: CapacitorBankGlyph,
 };
+
+/** Rejestr glifów. Łącznik z położeniem jest opakowany kaflem stanu TU, przy budowie
+ *  rejestru — każde miejsce rysujące symbol (kanwa, okno pola, eksport, harness) dostaje
+ *  tę samą regułę, a o kaflu decyduje wyłącznie podanie `kafleStanu`. */
+export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = Object.fromEntries(
+  (Object.keys(GLIFY_SYMBOLI) as SymbolId[]).map((id) => [
+    id,
+    czyLacznikZPolozeniem(id) ? zKafelemStanu(id, GLIFY_SYMBOLI[id]) : GLIFY_SYMBOLI[id],
+  ]),
+) as Record<SymbolId, (props: GlyphProps) => JSX.Element>;
 
 /** Sanity: każdy glif ma definicję i odwrotnie (spójność biblioteki). */
 export const SYMBOL_IDS = Object.keys(SYMBOL_DEFS) as readonly SymbolId[];

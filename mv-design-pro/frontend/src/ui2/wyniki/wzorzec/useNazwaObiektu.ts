@@ -62,6 +62,9 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   substation: 'stacja',
   bp: 'punkt odgałęźny',
   corridor: 'ciąg liniowy',
+  // Ciąg założony odcinkiem, który nie kontynuuje żadnego ciągu (`corridor/<odcisk>/run`,
+  // reguła ciągłości `continue_trunk_segment_sn`, karta UX-04/POLE-LINIOWE-WZORZEC).
+  run: 'ciąg od punktu startu',
   seg: 'odcinek',
   segment: 'odcinek',
   bus: 'szyna',
@@ -137,6 +140,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   coupler: 'sprzęgło',
   sn_coupler: 'sprzęgło SN',
   section_coupler: 'sprzęgło sekcyjne',
+  bay_coupler: 'sprzęgło sekcji',
   sn_field: 'pole SN',
   source_field: 'pole źródłowe',
   source_field_terminal: 'zacisk pola źródłowego',
@@ -167,6 +171,9 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   pv_inverter: 'falownik PV',
   wind_inverter: 'falownik wiatrowy',
   block_transformer: 'transformator blokowy',
+  // Pole zespołu uziemiającego (szyna potrzeb własnych i transformator uziemiający ZNyn11).
+  zu_bus_nn: 'szyna potrzeb własnych zespołu uziemiającego',
+  zu_transformer: 'transformator uziemiający',
   // Kopie elementów rozdzielnicy nN (operacja kopiowania odpływu).
   copy_bus: 'kopia szyny',
   copy_branch: 'kopia gałęzi',

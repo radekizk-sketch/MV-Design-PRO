@@ -24,7 +24,7 @@
  * ADNOTACJE POMIAROWE (nie elementy rysunku):
  *  · prostokąt niebieski — `OwnedLabel.rect` podpisu przęsła ze sceny;
  *  · odcinek pomarańczowy pod nim — zakres X polilinii, którą ten podpis
- *    OPISUJE (ref właściciela + kawałki `#tee-N` tego samego kabla ENM);
+ *    OPISUJE (polilinia właściciela — kabel ENM jest jedną polilinią sceny);
  *  · pionowa kreska — środek tej polilinii; różnica między nią a środkiem
  *    prostokąta TO JEST mierzony dryf.
  *
@@ -89,14 +89,13 @@ const sceny: Readonly<Record<SceneLod, SceneV3>> = {
 const podpis = scene.labels.find((l) => l.ownerKind === 'segment-span' && l.text.startsWith(PARA));
 if (!podpis) throw new Error(`brak podpisu przęsła „${PARA}" w scenie`);
 
-/** Zakres polilinii NIOSĄCEJ ref podpisu — z kawałkami `#tee-N`, bo to ten sam
- *  kabel ENM za kropką węzła T (`resolveTeeJunctions`). */
+/** Zakres polilinii NIOSĄCEJ ref podpisu (kabel ENM jest jedną polilinią sceny). */
 const refKabla = podpis.ownerRef.replace(/#segment-label$/, '');
 let kMinX = Infinity;
 let kMaxX = -Infinity;
 let kY = 0;
 for (const g of scene.segments) {
-  if (g.meta?.ownerRef?.replace(/#tee-\d+$/, '') !== refKabla) continue;
+  if (g.meta?.ownerRef !== refKabla) continue;
   for (const p of g.points) {
     if (p.x < kMinX) {
       kMinX = p.x;
@@ -161,7 +160,7 @@ const stopka2 =
   `podpis [${podpis.rect.x}..${podpis.rect.x + podpis.rect.width}] · opisywany kabel [${kMinX}..${kMaxX}] (dł. ${dlugosc} j.św.) · ` +
   `DRYF ŚRODKÓW ${dryf.toFixed(0)} j.św. = ${dlugosc > 0 ? ((dryf / dlugosc) * 100).toFixed(0) : '—'}% długości opisywanego kabla`;
 const stopka3 =
-  `niebieski prostokąt = OwnedLabel.rect ze sceny · pomarańczowy odcinek = zakres X polilinii właściciela (ref + kawałki #tee-N) · ` +
+  `niebieski prostokąt = OwnedLabel.rect ze sceny · pomarańczowy odcinek = zakres X polilinii właściciela · ` +
   `kreski pionowe = oba środki. Adnotacje POMIAROWE, nie elementy rysunku.`;
 const stopka4 =
   `kotwica kadru: środek opisywanego kabla w świecie (${srodek.x.toFixed(0)}, ${srodek.y.toFixed(0)}) → ` +

@@ -65,6 +65,26 @@ export const ROLA_SYMBOLU_PL: Readonly<Record<SymbolId, string>> = {
   nnBreaker: 'Łączenie i zabezpieczenie zwarciowe obwodu nN',
   nnFuseSwitch: 'Łączenie i zabezpieczenie bezpiecznikowe obwodu nN',
   lvPortal: 'Przejście do schematu nN stacji',
+  // Rysunki QElectroTech (wariant `qet_en60617`) to INNE RYSUNKI tych samych aparatów —
+  // rola jest rolą rodzaju semantycznego (`rodzajSymbolu`, `v3/symbols/defs.ts`); symbole bez
+  // odpowiednika kanonicznego (łącznik trójpołożeniowy, przekładnik Ferrantiego) mają rolę własną.
+  qetBreaker: 'Łączenie robocze i wyłączanie prądów zwarciowych pola',
+  qetBreakerZNapedem: 'Łączenie robocze i wyłączanie prądów zwarciowych pola',
+  qetBreakerWysuwny: 'Łączenie robocze i wyłączanie prądów zwarciowych pola',
+  qetBreakerWysuwnyZNapedem: 'Łączenie robocze i wyłączanie prądów zwarciowych pola',
+  qetDisconnector: 'Widoczna przerwa izolacyjna — odłączenie pola od szyny zbiorczej',
+  qetLoadBreakSwitch: 'Łączenie robocze prądów obciążenia pola',
+  qetFuseSwitch: 'Łączenie robocze i zabezpieczenie zwarciowe wkładkami bezpiecznikowymi',
+  qetEarthSwitch: 'Uziemienie odpływu po odłączeniu pola',
+  qetThreePositionSwitch: 'Łączenie, odłączanie i uziemianie odpływu jednym łącznikiem trójpołożeniowym',
+  qetThreePositionSwitchZNapedem: 'Łączenie, odłączanie i uziemianie odpływu jednym łącznikiem trójpołożeniowym',
+  qetCurrentTransformer: 'Pomiar prądu i tor zabezpieczeń',
+  qetVoltageTransformer: 'Pomiar napięcia i automatyka napięciowa',
+  qetVoltageTransformer2: 'Pomiar napięcia i automatyka napięciowa',
+  qetVoltageTransformer3: 'Pomiar napięcia i automatyka napięciowa',
+  qetCoreBalanceCt: 'Pomiar prądu zerowego 3I₀ (przekładnik Ferrantiego) — zabezpieczenia ziemnozwarciowe',
+  qetCableHead: 'Zakończenie kabla odpływu — jawny punkt wyprowadzenia ciągu głównego SN',
+  qetVoltageIndicator: 'Sygnalizacja obecności napięcia w polu',
 };
 
 /** Para ⟨pole, rodzaj aparatu⟩ rozebrana z identyfikatora. */

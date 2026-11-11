@@ -266,10 +266,11 @@ for (const motyw of MOTYWY) {
     await przejdzDoKroku(page, 'Pola rozdzielnicy SN');
     await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 20000 });
     await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
-    // Rotoblok — rodzina modułowa z kartą katalogową deklarującą napięcie sieci
-    // 15 kV (czyli tej szyny); rodziny spoza klasy napięciowej katalog pokazuje,
-    // ale nie pozwala na nich budować.
-    await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK');
+    // Rotoblok Air — rodzina modułowa bez gazów fluorowanych (klasa Um 24 kV obejmuje tę szynę
+    // 15 kV). Rotoblok z łącznikami w SF₆ jest dla stacji projektowanej widoczny, ale
+    // niewybieralny (zakaz gazów fluorowanych w nowych polach, dyrektywa 2026-10-28), tak jak
+    // rodziny spoza klasy napięciowej.
+    await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK_AIR');
     await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({
       timeout: 20000,
     });

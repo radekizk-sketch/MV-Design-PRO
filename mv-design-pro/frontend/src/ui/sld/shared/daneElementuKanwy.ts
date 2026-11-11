@@ -36,7 +36,7 @@ import {
   stanLacznikaToruZModelu,
 } from '../v2/model/stanAparatowPola';
 import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../shared/polaStacji';
-import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
+import { apparatusIdentifiers, orderedSymbolPrimaryDevices, symbolAparatuPola } from '../v3/compose/apparatusSequence';
 import type { PreviewElementKind } from '../v3/compose/preview';
 import { jestRodzajemGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
@@ -110,7 +110,7 @@ export interface DaneElementuKanwy {
    *  pozostałe pola = rekord ŹRÓDŁA runtime (karta #135: `null` = brak telemetrii, nigdy
    *  wartość domyślna). Całość `null`, gdy model nie ma ani położenia, ani rekordu. */
   readonly apparatusState?: {
-    readonly actualState: 'closed' | 'open' | 'unknown' | null;
+    readonly actualState: 'closed' | 'open' | 'earthed' | 'unknown' | 'bad' | null;
     readonly controlMode: BayControlMode | null;
     readonly communicationOk: boolean | null;
     readonly interlockBlocked: boolean | null;
@@ -531,7 +531,7 @@ export function buildDaneElementuStacji(
   // (stationCode), oznacznik pola = `Bay.bay_number` (dane) albo numeracja F⟨nn⟩ wg pozycji
   // pola w stacji (kolejność modelu wśród pól tej samej stacji), aparat = TEN SAM
   // identyfikator co na rysunku: sekwencja `projectBayPrimaryDevices` (kolejność
-  // `placement`) → symbole `symbolIdForPrimaryDeviceKind` → `apparatusIdentifiers` z
+  // `placement` albo porty ENM) → symbole `symbolAparatuPola` → `apparatusIdentifiers` z
   // oznaczeniami z danych. Brak którejkolwiek części ⇒ `null` (uczciwy brak); rodzaju
   // aparatu NIE zgaduje się z napisu identyfikatora (dawna heurystyka skasowana).
   let globalId: string | null = null;
@@ -549,8 +549,10 @@ export function buildDaneElementuStacji(
       if (rodzaj === 'bay') {
         globalId = `${kodStacji}.${fieldPart}`;
       } else {
-        const sekwencja = (projectBayPrimaryDevices(poleTrafione, galezieWgRef) ?? [])
-          .map((d) => ({ ref: d.deviceRef, symbol: symbolIdForPrimaryDeviceKind(d.kind), oznaczenie: d.designation }))
+        // UX-04/POLE-LINIOWE-WZORZEC: TA SAMA sekwencja co rysunek (porty ENM albo
+        // `placement`, `orderedSymbolPrimaryDevices`) i ten sam wybór symbolu (wariant rysunku).
+        const sekwencja = orderedSymbolPrimaryDevices(projectBayPrimaryDevices(poleTrafione, galezieWgRef, snapshot?.bays) ?? [])
+          .map((d) => ({ ref: d.deviceRef, symbol: symbolAparatuPola(d), oznaczenie: d.designation }))
           .filter((d): d is { ref: string; symbol: NonNullable<typeof d.symbol>; oznaczenie: string | undefined } => d.symbol != null);
         const identyfikatory = apparatusIdentifiers(
           sekwencja.map((d) => d.symbol),

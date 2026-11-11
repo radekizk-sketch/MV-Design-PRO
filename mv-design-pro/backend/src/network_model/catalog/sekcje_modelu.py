@@ -269,7 +269,9 @@ POLA_SEKCJI: Mapping[str, Mapping[str, MiejscePola]] = MappingProxyType(
             ),
         ),
         "TransformerType": _mapa(
-            identyfikacja=(*_META, "cooling_class"),
+            identyfikacja=(*_META, "cooling_class", KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU),
+            # Impedancja zerowa uzwojenia zygzakowego (transformator uziemiający ZNyn11).
+            short_circuit=("r0_ohm", "x0_ohm"),
             fundamental=(
                 "rated_power_mva",
                 "voltage_hv_kv",
@@ -759,6 +761,7 @@ SKLADNIKI_SEKCJI: Mapping[str, Mapping[str, tuple[DefinicjaSkladnika, ...]]] = M
             ),
             "short_circuit": (
                 _s("impedancja_zwarciowa", True, "uk_percent", "pk_kw", "vector_group"),
+                _s("skladowa_zerowa_zygzaka", False, "r0_ohm", "x0_ohm"),
             ),
             "dynamic": (_s("impedancja_rms", True, "uk_percent", "pk_kw"),),
         },

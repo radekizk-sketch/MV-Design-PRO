@@ -182,9 +182,19 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // kolejność remisu ciągów); kod karty na fiksturze bazy daje dokładnie 21240/44016/44016,
     // treść fikstury bazy z samymi nowymi identyfikatorami — 21576/44352/44352; atrybucja per
     // przyczyna przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21576);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(44352);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(44352);
+    // UX-04 rozstrzygnięcie KD-5 (2026-10-30): 21576/44352/44352 → 21288/44352/44352
+    // (zmierzone, −288 wyłącznie na L0) — port odgałęzienia stacji zwiniętej na L0 leży na
+    // DOLNEJ krawędzi pudełka stacji (zejścia odgałęzień rozsunięte, zero wspólnego pionu),
+    // więc każde z 12 zejść odgałęzień fikstury zaczyna się 24 px niżej (12 × 24 = 288);
+    // L1/L2 bez zmian. Atrybucja per przyczyna przy `VERTICAL_LENGTH_BASELINE`.
+    // UX-04 decyzje architekta §11.7 (2026-10-30): 21288/44352/44352 → 19976/43040/43040
+    // (zmierzone, −1312 na każdym LOD) — tabela posuwów kroju zamiast 0,62 em (niższe pasma
+    // etykiet) i regeneracja fikstury (jedna postać `starting_port_ref`); sonda 2×2 z
+    // wartościami każdego wariantu przy `VERTICAL_LENGTH_BASELINE` w
+    // `scripts/sld_v3_acceptance.mjs` (ta sama fikstura, ta sama funkcja pomiaru).
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(19976);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43040);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43040);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

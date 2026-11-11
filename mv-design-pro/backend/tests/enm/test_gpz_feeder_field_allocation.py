@@ -77,7 +77,7 @@ def _start_branch_from_field(snapshot: dict, field_ref: str, dlugosc_m: int = 20
         enm_dict=snapshot,
         op_name="start_branch_segment_sn",
         payload={
-            "from_ref": f"{field_ref}.BRANCH",
+            "from_ref": field_ref,
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": dlugosc_m,

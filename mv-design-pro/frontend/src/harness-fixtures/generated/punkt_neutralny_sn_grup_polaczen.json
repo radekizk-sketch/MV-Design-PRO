@@ -45,6 +45,26 @@
     "Yzn1": "directly_grounded",
     "Yzn11": "directly_grounded",
     "Yzn5": "directly_grounded",
-    "Yzn7": "directly_grounded"
+    "Yzn7": "directly_grounded",
+    "ZNd0": "isolated",
+    "ZNd6": "isolated",
+    "ZNy1": "isolated",
+    "ZNy11": "isolated",
+    "ZNy5": "isolated",
+    "ZNy7": "isolated",
+    "ZNyn1": "isolated",
+    "ZNyn11": "isolated",
+    "ZNyn5": "isolated",
+    "ZNyn7": "isolated",
+    "Zd0": "isolated",
+    "Zd6": "isolated",
+    "Zy1": "isolated",
+    "Zy11": "isolated",
+    "Zy5": "isolated",
+    "Zy7": "isolated",
+    "Zyn1": "isolated",
+    "Zyn11": "isolated",
+    "Zyn5": "isolated",
+    "Zyn7": "isolated"
   }
 }

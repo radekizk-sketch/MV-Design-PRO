@@ -199,6 +199,22 @@ materializuja sie z geometrii slupa przez solver `network_model/solvers/
 parametry_linii_napowietrznej.py` (standard ENEA Operator linii 110 kV §7.1 lit. j), a brak
 geometrii daje wartosc robocza rejestru `wartosci_robocze` (jakosc `ESTIMATED`).
 
+Karta POLA-GPZ-SZABLONY (przestrzen `TRAFO_SN_NN`, `TransformerType`): transformator
+uziemiajacy ZNyn11 15/0,4 kV i 20/0,4 kV 100 kVA (`tu-sn-nn-{15,20}-04-100kva-znyn11`; ENEA
+Operator, Stacje 110 kV, Zeszyt 1 §16 s.29–30 — zrodlo deklarowane, `NIEWERYFIKOWANY`; poza
+Tier 2 wg rozporzadzenia 548/2014 art. 1 ust. 2, `objety_tier2`) niesie impedancje zerowa
+uzwojenia zygzakowego `r0_ohm`/`x0_ohm` [Ω na faze po stronie SN, IEC 60076-6]. Pola sa
+opcjonalne kontraktu materializacji (`pola_opcjonalne` — pozycje bez zygzaka nie niosa kluczy)
+i jedynym nosnikiem drogi zerowej zygzaka w `enm/zero_sequence_transformer.py` (u_k NIE wchodzi
+do Z0 zygzaka). Wartosc pozycji to wartosc robocza oznaczona w `wartosci_robocze`
+(`ZALOZENIE_Z0_ZYGZAKA`; liczba z `pochodne.impedancja_zerowa_zygzaka_robocza_ohm`: spadek 5 %
+napiecia fazowego przy I_N = 400 A, X0/R0 = 5 — 15 kV: 0,637 + j3,185 Ω, 20 kV: 0,849 +
+j4,246 Ω), a bieg zwarcia doziemnego niesie ja jako dana przyjeta `ESTIMATED`
+(`branch.z0_wartosc_robocza`, element „transformatora”); wartosc projektanta na elemencie
+(`Transformer.r0_ohm`/`x0_ohm`) zdejmuje dana przyjeta. R0/X0 dla grupy bez uzwojenia
+zygzakowego — odmowa walidacji modelu. Przekladnik pradowy pola zespolu uziemiajacego
+`ct_typ_ogolny_osd_100_5_z13` (100/5 A, 15 VA 5P20, Z.13 s.93).
+
 Karta KATALOG-APARATURA-WN (linia UI/UX; numer nadany przy scaleniu z programem, bo karta
 wziela `048` rownolegle z karta LINIA-110): `KAT-T-050` wielkosci zwarciowe lacznika
 (`SwitchEquipmentType`: I_k, I_cw, I_cu) i aparatu SN (`MVApparatusType`) dodatnie i skonczone
@@ -335,9 +351,9 @@ decyzje podejmuje czlowiek.
 | `source-system` | 22 | 22 | 12 | 75,0 | 22 | `ik3_min_ka`, `rx_ratio_min`, `sk3_min_mva` | brak |
 | `spectral-card` | 0 | 0 | 0 | — | 0 | brak | brak |
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
-| `switch-equipment` | 50 | 33 | 7 | 68,6 | 50 | brak | brak |
+| `switch-equipment` | 52 | 33 | 7 | 68,1 | 52 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
-| `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
+| `transformer` | 265 | 1 | 8 | 50,6 | 265 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
 Rodzin objętych pomiarem: 30. Pozycji łącznie: 8114, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8114.

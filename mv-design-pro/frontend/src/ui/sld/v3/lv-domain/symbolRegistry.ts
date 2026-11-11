@@ -232,7 +232,7 @@ export const SYMBOL_ZABEZPIECZENIA: CadSymbolId = 'cad.zabezpieczenie';
 /** Kody funkcji ENM → numer ANSI/IEEE C37.2 (panel, podpowiedź) i ZNAK
  *  wielkości charakterystycznej w notacji IEC (wnętrze prostokąta
  *  zabezpieczenia — praktyka polskiej dokumentacji zabezpieczeń). */
-const FUNKCJA_ZABEZPIECZENIA: Readonly<Record<string, { readonly ansi: string; readonly iec: string; readonly nazwaPl: string }>> = {
+export const FUNKCJA_ZABEZPIECZENIA: Readonly<Record<string, { readonly ansi: string; readonly iec: string; readonly nazwaPl: string }>> = {
   overcurrent_50: { ansi: '50', iec: 'I>>', nazwaPl: 'nadprądowe bezzwłoczne' },
   overcurrent_51: { ansi: '51', iec: 'I>', nazwaPl: 'nadprądowe zwłoczne' },
   earth_fault_50N: { ansi: '50N', iec: 'I0>>', nazwaPl: 'ziemnozwarciowe bezzwłoczne' },

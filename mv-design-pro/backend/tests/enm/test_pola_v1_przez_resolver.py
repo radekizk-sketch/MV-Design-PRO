@@ -312,17 +312,52 @@ def test_odrzucenie_rodziny_blokowej_nie_mutuje_modelu_wejsciowego(tor: str) -> 
 
 
 @pytest.mark.parametrize("tor", TORY_Z_WSKAZANIEM_KATALOGOWYM)
-def test_pole_bez_wskazania_katalogowego_zachowuje_dotychczasowy_kontrakt(tor: str) -> None:
-    """Pole bez referencji szablonu: pusta lista aparatów pierwotnych (zero domysłu)."""
+def test_pole_bez_wskazania_katalogowego_ma_tor_szablonu_roli(tor: str) -> None:
+    """KOREKTA (rozszerzenie karty SZABLONY-POL 2026-11-11, `enm.aparaty_pol_sn`): pole SN bez
+    referencji szablonu dostaje aparaty szablonu, z którego ma funkcje EAZ (szablon kanoniczny
+    roli albo pole rozłącznikowe RMU — wg rodzaju aparatu z katalogu), nie domysł: rekordy są
+    identyczne z `aparaty_domyslne_pola_sn` dla tej gałęzi, konfiguracja pola i szablon pola
+    zostają niezadeklarowane (projektant ich nie wybrał). Dawniej lista była pusta, a pole
+    rysowało się samym łącznikiem (werdykt właściciela 0/10 widoku stacji)."""
+    from enm.aparaty_pol_sn import aparaty_domyslne_pola_sn, szablon_domyslny_pola_sn
+    from enm.pola import czy_pole_nn
+
     odpowiedz = _uruchom(tor, None, None)
     assert odpowiedz.get("error") in (None, ""), odpowiedz
 
     snapshot = odpowiedz["snapshot"]
+    galezie = {b["ref_id"]: b for b in snapshot["branches"]}
+    gpz = {s["ref_id"] for s in snapshot["substations"] if s.get("station_type") == "gpz"}
+    zbadane = 0
     for spec in pola(snapshot):
-        if not spec.get("bay_template_ref"):
-            assert (
-                spec["primary_devices"] == []
-            ), f"tor {tor}: pole bez szablonu dostalo aparaty z domyslu"
+        if spec.get("bay_template_ref") or czy_pole_nn(snapshot, spec):
+            continue
+        assert not spec.get("config_id"), spec["ref_id"]
+        szablon = szablon_domyslny_pola_sn(
+            spec["bay_role"], gpz=spec["substation_ref"] in gpz, insulation_type=None
+        )
+        galaz = next((galezie[e] for e in spec["equipment_refs"] if e in galezie), None)
+        if szablon is None or galaz is None:
+            assert spec["primary_devices"] == [], f"tor {tor}: {spec['ref_id']}"
+            continue
+        oczekiwane, _ = aparaty_domyslne_pola_sn(
+            field_ref=spec["ref_id"],
+            szablon_id=szablon,
+            bay_role=spec["bay_role"],
+            gpz=spec["substation_ref"] in gpz,
+            galaz=galaz,
+            stan_obiektu=spec.get("stan_obiektu"),
+        )
+        klucze = ("device_ref", "kind", "designation", "placement", "linked_ref", "catalog_ref")
+        assert [tuple(a.get(k) for k in klucze) for a in spec["primary_devices"]] == [
+            tuple(a.get(k) for k in klucze) for a in oczekiwane
+        ], f"tor {tor}: {spec['ref_id']}"
+        zbadane += 1
+    if tor == "gpz":
+        # Pola sekcji GPZ bez wskazania mają nazwany wzorzec ENEA Z.10 (`bay_template_ref`).
+        assert zbadane == 0
+    else:
+        assert zbadane > 0, f"tor {tor}: brak pola SN bez szablonu w iloczynie"
 
 
 @pytest.mark.parametrize("tor", TORY_Z_WSKAZANIEM_KATALOGOWYM)
@@ -458,6 +493,9 @@ MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
         "domain_operations.py:append_station_on_endpoint": 1,  # pola z payloadu kreatora
         # pisarz pola SN obu planów operacji `add_sn_bay` (deklaracja i katalog)
         "domain_operations_v2.py:_zapisz_pole_sn": 1,
+        # nowe pole sprzęgła `add_sn_bay` związane z gałęzią `bus_coupler` (decyzja D3);
+        # aparaty z `_aparaty_i_konfiguracja_pola` jak `_zapisz_pole_sn`
+        "domain_operations_v2.py:_zapisz_pole_sprzegla": 1,
         "domain_operations_v2.py:_add_converter_source_der_sn": 1,  # pole źródłowe DER-SN
     },
     "bez_szablonu": {

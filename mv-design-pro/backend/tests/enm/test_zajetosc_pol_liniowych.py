@@ -74,7 +74,7 @@ def _wykonaj(enm: dict[str, Any], operacja: str, field_ref: str) -> dict[str, An
         return _op(
             enm,
             "start_branch_segment_sn",
-            {"from_ref": f"{field_ref}.BRANCH", "segment": _odcinek(150)},
+            {"from_ref": field_ref, "segment": _odcinek(150)},
         )
     zacisk = _zacisk(enm, field_ref)
     odcinki = [b for b in enm["branches"] if b.get("type") == "cable"]

@@ -224,7 +224,7 @@ for (const motyw of [
       .map((f) => f.ref_id)[0];
     expect(wolnePole, 'wolne pole odgałęźne stacji przelotowej').toBeTruthy();
     let enm = await operacja(request, seed.caseId, 'start_branch_segment_sn', {
-      from_ref: `${wolnePole}.BRANCH`,
+      from_ref: wolnePole,
       segment: {
         rodzaj: 'LINIA_NAPOWIETRZNA',
         dlugosc_m: 300,
@@ -242,7 +242,7 @@ for (const motyw of [
       insert_at: { mode: 'RATIO', value: 0.5 },
       switch_type: 'ROZLACZNIK',
       switch_name: 'Łącznik sekcyjny NO',
-      catalog_binding: { catalog_namespace: 'APARAT_SN', catalog_item_id: 'sw-ls-schneider-rm6-17kv-400a', catalog_item_version: '2024.1' },
+      catalog_binding: { catalog_namespace: 'APARAT_SN', catalog_item_id: 'sw-ls-ogolny-prozniowy-24kv-630a', catalog_item_version: '2024.1' },
     });
     const lacznikNo = (enm.branches ?? []).find((b) => b.name === 'Łącznik sekcyjny NO');
     expect(lacznikNo, 'rozłącznik sekcyjny na odcinku napowietrznym').toBeTruthy();

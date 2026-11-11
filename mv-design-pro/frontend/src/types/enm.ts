@@ -13,6 +13,10 @@ import {
   type RodzajGaleziLacznika,
 } from './rodzajeGalezi';
 import type {
+  RdzenPrzekladnikaPradowego,
+  UzwojeniePrzekladnikaNapieciowego,
+} from './przekladniki';
+import type {
   RolaUziemnika,
   TolerancjaNapieciaNn,
   TypPunktuNeutralnego,
@@ -36,6 +40,9 @@ export interface GroundingConfig {
   type: TypPunktuNeutralnego;
   r_ohm?: number | null;
   x_ohm?: number | null;
+  /** Prąd czynny wymuszenia automatyki AWSC [A] — wyłącznie przy dławiku (`petersen_coil`);
+   *  predykat backendu `enm.uziemienie.blad_konfiguracji_uziemienia`. */
+  awsc_prad_wymuszenia_a?: number | null;
 }
 
 export interface BusLimits {
@@ -386,6 +393,13 @@ export interface SwitchBranch extends BranchBase {
    * Bieżące położenie czytane przez fizykę to `status`.
    */
   normal_state?: 'closed' | 'open' | null;
+  /**
+   * Stan obiektu łącznika (lustro `enm.models.SwitchBranch.stan_obiektu`): rozłącznik sekcyjny
+   * w ciągu, sprzęgło, łącznik pola bez lustra w wyposażeniu pola. Łącznik opisany aparatem pola
+   * dzieli stan z tym aparatem (`enm.gaz_fluorowany_pola.stan_obiektu_lacznika`); `null`/brak =
+   * stan z pola, które go wymienia, albo nieustalony.
+   */
+  stan_obiektu?: StanObiektu | null;
 }
 
 export interface FuseBranch extends BranchBase {
@@ -437,6 +451,9 @@ export interface Transformer extends ENMElement {
   p0_kw?: number | null;
   i0_percent?: number | null;
   vector_group?: string | null;
+  /** Impedancja zerowa na fazę uzwojenia zygzakowego [Ω] (transformator uziemiający ZNyn11). */
+  r0_ohm?: number | null;
+  x0_ohm?: number | null;
   hv_neutral?: GroundingConfig | null;
   lv_neutral?: GroundingConfig | null;
   /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */
@@ -1203,11 +1220,32 @@ export interface OgranicznikPrzepiecPola {
  * `enm.rola_pola_sn.ROLE_POLA_MODELU` (parytet: `backend/tests/enm/test_rola_pola_bkr.py`).
  * Każda lista ról modelu we froncie czyta ten typ (karta UX-04/POLE-BKR-MODEL). `BKR` — pole
  * baterii kondensatorów równoległych SN (ENEA Operator, Zeszyt 1 §13, Zał. 16).
+ * `ZU` — pole zespołu uziemiającego SN (karta POLA-GPZ-SZABLONY; Zeszyt 1 §16, Z.13–Z.15).
  */
 export const BAY_MODEL_ROLES = ['IN', 'OUT', 'TR', 'COUPLER', 'FEEDER', 'MEASUREMENT', 'OZE', 'ZU', 'BKR'] as const;
 export type BayModelRole = (typeof BAY_MODEL_ROLES)[number];
 
+/**
+ * Stan obiektu pola i instancji aparatu pola — lustro `network_model.catalog.gazy_fluorowane
+ * .StanObiektu`: `ISTNIEJACY` (obiekt zastany w sieci — ustawia go wyłącznie operacja
+ * `set_object_state` albo import istniejącej sieci niosący stan) albo `PROJEKTOWANY` (każda
+ * operacja tworząca nadaje go jawnie). `null`/brak = stan nieustalony (zapis sprzed atrybutu) —
+ * NIE jest stanem istniejącym.
+ */
+export type StanObiektu = 'ISTNIEJACY' | 'PROJEKTOWANY';
+
 export interface Bay extends ENMElement {
+  /** Stan obiektu pola (lustro `enm.models.Bay.stan_obiektu`). */
+  stan_obiektu?: StanObiektu | null;
+  /** Klasa pola liniowego (lustro `enm.models.Bay.klasa_pola`; IRiESD ENEA II.4.5.4.2.1–2.3):
+   *  odbiorcze, mieszane, dedykowane wytwórcy. `null` = nieustalona. Jedno źródło trybu
+   *  „linia/generacja" pola: generacja ⇔ klasa mieszana albo dedykowana wytwórcy. */
+  klasa_pola?: KlasaPolaLiniowego | null;
+  /** Źródło napięcia zerowego 3U₀ funkcji 67N (lustro `enm.models.Bay.zrodlo_u0_ref`, decyzja
+   *  właściciela 2026-10-29): `device_ref` przekładnika napięciowego z uzwojeniem otwartego
+   *  trójkąta w polu pomiaru napięcia szyn tej sekcji (ENEA Z.17) albo w tym polu — powiązanie
+   *  potwierdzone przez projektanta. `null`/brak — funkcja 67N nieprzypisana. */
+  zrodlo_u0_ref?: string | null;
   bay_role: BayModelRole;
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
@@ -1299,6 +1337,9 @@ export type BayCanonicalRole =
 export type BayDeviceState =
   | 'zamkniety'
   | 'otwarty'
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: położenie WYŁĄCZNIE łącznika trójpołożeniowego
+  // (ENEA Zeszyt 1 §13, Z.10) — lustro `backend/src/enm/models.py::BaySwitchState`.
+  | 'uziemiony'
   | 'zamkniety_naped_rozbrojony'
   | 'otwarty_naped_rozbrojony'
   | 'nieznany'
@@ -1353,10 +1394,23 @@ export type BayPrimaryDeviceKind =
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
   // WYŁĄCZNIE gdy pochodzi z danych (mirror `backend/src/enm/models.py`).
   | 'SURGE_ARRESTER'
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (ENEA Zeszyt 1, Z.10 s.89, §13): łącznik
+  // trójpołożeniowy, przekładnik Ferrantiego na kablu, pojemnościowy wskaźnik napięcia.
+  | 'THREE_POSITION_SWITCH'
+  | 'CORE_BALANCE_CT'
+  | 'VOLTAGE_INDICATOR'
   // UX-04/POLE-BKR-MODEL (ENEA Zeszyt 1 §17, Zał. 16): aparaty pola baterii kondensatorów —
-  // lustro `ui/sld/v3/compose/rodzajeAparatowPolaBkr.ts` (parytet z backendem).
+  // porty w jednej liście portów aparatów pola (`ui/sld/v3/compose/rodzajeAparatuPola.ts`).
   | 'UNBALANCE_CT'
   | 'PHASE_TO_PHASE_VT';
+
+/** Port aparatu pola — lustro `backend/src/enm/models.py::PortAparatuPola` (karta
+ *  UX-04/POLE-LINIOWE-WZORZEC). `wezel` — węzeł wewnętrzny pola (`szyna`, `w1`…, `kabel`);
+ *  porty o tym samym węźle łączy przewód; `null` = przyłączenie niepodane (brak danych). */
+export interface PortAparatuPola {
+  port_id: string;
+  wezel?: string | null;
+}
 
 export type BayPrimaryPlacement =
   | 'UPSTREAM'
@@ -1365,8 +1419,31 @@ export type BayPrimaryPlacement =
   | 'OFF_PATH'
   | 'GROUND_BRANCH';
 
+/** Klasa pola liniowego SN — lustro `network_model.catalog.bay_templates.KlasaPolaLiniowego`. */
+export type KlasaPolaLiniowego = 'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY';
+
+/** Rodzaj napędu łącznika pola — lustro backendu `obwody_wtorne_pola.RodzajNapedu` (parytet
+ *  przypina `ui/sld/v3/compose/__tests__/symbolNapeduLacznika.test.ts`). */
+/** Pochodzenie wybranego zaczepu przekładnika (lustro `wartosci_robocze.ZRODLA_ZACZEPU`). */
+export type ZrodloZaczepu = 'PROJEKTANT' | 'WARTOSC_ROBOCZA';
+
+/** Wykonanie aparatu — lustro `rodzaje_aparatury.WykonanieAparatu` (backend). */
+export type WykonanieAparatu = 'STALE' | 'WYSUWNE';
+
+/** Słownik wykonań aparatu w kolejności backendu (`WYKONANIA_APARATU`) z opisem polskim. */
+export const WYKONANIA_APARATU: readonly WykonanieAparatu[] = ['STALE', 'WYSUWNE'];
+export const OPIS_WYKONANIA_APARATU_PL: Readonly<Record<WykonanieAparatu, string>> = {
+  STALE: 'stałe',
+  WYSUWNE: 'wysuwne (człon wysuwny na wózku)',
+};
+
+export type RodzajNapeduLacznika = 'SILNIKOWY' | 'ZASOBNIKOWY_RECZNY';
+
 export interface BayPrimaryDevice {
   device_ref: string;
+  /** Stan obiektu instancji aparatu (lustro `enm.models.BayPrimaryDevice.stan_obiektu`): aparat
+   *  dziedziczy stan pola przy tworzeniu, aparat wymieniony jest projektowany. */
+  stan_obiektu?: StanObiektu | null;
   linked_ref?: string | null;
   catalog_ref?: string | null;
   symbol_ref: string;
@@ -1388,6 +1465,43 @@ export interface BayPrimaryDevice {
    *  `backend/src/enm/models.py::BayPrimaryDevice.earthing_role`. `null`/brak
    *  = dana niedostarczona (generyczny uziemnik, zero domysłu). */
   earthing_role?: RolaUziemnika | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC: jawne porty aparatu z węzłami pola — lustro
+   *  `backend/src/enm/models.py::BayPrimaryDevice.ports`. Pusta lista = porty niepodane. */
+  ports?: PortAparatuPola[];
+  /** Rdzenie przekładnika prądowego aparatu kind='CT' (lustro `BayPrimaryDevice.rdzenie`);
+   *  pusta lista = tabliczka niepodana. */
+  rdzenie?: RdzenPrzekladnikaPradowego[];
+  /** Uzwojenia przekładnika napięciowego aparatu kind='VT' (lustro `BayPrimaryDevice.uzwojenia`). */
+  uzwojenia?: UzwojeniePrzekladnikaNapieciowego[];
+  /** Przekładnia przekładnika Ferrantiego aparatu kind='CORE_BALANCE_CT' zapisana jak na
+   *  rysunku standardu (np. '1/100'); lustro `BayPrimaryDevice.przekladnia`. */
+  przekladnia?: string | null;
+  /** Odgałęzienie toru, w którym leży aparat (np. 'pn' — odgałęzienie przekładnika napięciowego
+   *  Z.11.1/Z.11); lustro `BayPrimaryDevice.odgalezienie`. `null`/brak = aparat toru głównego. */
+  odgalezienie?: string | null;
+  /** Napęd łącznika (lustro `BayPrimaryDevice.naped`, rodzaje dopuszczalne wg rodzaju aparatu —
+   *  backend `NAPEDY_RODZAJU_APARATU`): `'SILNIKOWY'` przy wyłączniku kind='CB',
+   *  `'ZASOBNIKOWY_RECZNY'` przy łączniku trójpołożeniowym; `null`/brak = napęd niepodany. */
+  naped?: RodzajNapeduLacznika | null;
+  /** Wykonanie wyłącznika kind='CB' — stałe albo wysuwne (człon wysuwny na wózku, ENEA Zeszyt 1
+   *  §13); lustro `BayPrimaryDevice.wykonanie` (rozstrzygnięcie architekta 2026-10-30 pkt 3).
+   *  Domyślnie z szablonu pola, edytowalne w inspektorze; rysunek SLD: znacznik „○” członu
+   *  wysuwnego obok „×” wyłącznika. `null`/brak = wykonanie nieokreślone. */
+  wykonanie?: WykonanieAparatu | null;
+  /** Wybrany zaczep pierwotny [A] przekładnika prądowego wieloprzekładniowego kind='CT' (np. 200
+   *  albo 400 dla „200-400/5") — lustro `BayPrimaryDevice.zaczep_pierwotny_a`; razem
+   *  z `zrodlo_zaczepu`. `null`/brak = przekładnik o jednej przekładni (nic do wyboru). */
+  zaczep_pierwotny_a?: number | null;
+  /** Pochodzenie zaczepu: wybór projektanta w inspektorze pola albo wartość robocza rejestru
+   *  (zaczep najwyższy, zasada nr 4 — dana przyjęta `ESTIMATED`). */
+  zrodlo_zaczepu?: ZrodloZaczepu | null;
+  /** Kody funkcji EAZ zasilanych z tego aparatu (rdzeń CT, uzwojenie VT, przekładnik
+   *  Ferrantiego) — lustro `BayPrimaryDevice.funkcje_eaz_zasilane`, materializowane przez
+   *  `dodaj_pole`/`zmien_pole` z obwodów wtórnych szablonu. */
+  funkcje_eaz_zasilane?: string[];
+  /** Kody funkcji EAZ wyłączających ten wyłącznik — lustro
+   *  `BayPrimaryDevice.funkcje_eaz_wylaczajace`. */
+  funkcje_eaz_wylaczajace?: string[];
 }
 
 export interface BayMeasurements {
@@ -1637,6 +1751,8 @@ export interface BayBaseModel {
   bay_template_ref?: string | null;
   /** Rodzina rozdzielnicy producenta (Reference Engine). Optional/additive. */
   switchgear_family_ref?: string | null;
+  /** Stan obiektu pola (`Bay.stan_obiektu`; `null` = nieustalony). */
+  stan_obiektu?: StanObiektu | null;
   /** W5-C: stan danych wyposażenia z rekordu pola (`Bay.primary_devices`). */
   equipment_data_state: StanDanychWyposazenia;
   /** W5-C: aparaty przyjęte jako wartość robocza (jakość ESTIMATED). */
@@ -1775,12 +1891,14 @@ export interface Measurement extends ENMElement {
    *  warunek konieczny dla 67N kierunkowego) vs gwiazda. WYŁĄCZNIE dla
    *  measurement_type==='VT'; `null`/brak = dotychczasowe uproszczenie. */
   vt_arrangement?: 'open_delta' | 'star' | null;
-  /** CTVT-MODEL (W5/V12K-173): liczba rdzeni przekładnika prądowego (osobne
-   *  uzwojenia wtórne, np. pomiarowe 0,2S + zabezpieczeniowe 5P10; tabliczka
-   *  CT wg IEC 61869-2). Dane producenta; WYŁĄCZNIE dla
-   *  measurement_type==='CT'; wartość > 0. `null`/brak = dana niedostarczona
-   *  (uczciwy brak, zero fabrykacji). Oś odrębna od `ct_arrangement`. */
-  ct_cores?: number | null;
+  /** Rdzenie przekładnika prądowego (tabliczka IEC 61869-2: przekładnia, moc, klasa, FS,
+   *  przeznaczenie) — lustro `network_model/catalog/przekladniki.RdzenPrzekladnikaPradowego`.
+   *  Liczba rdzeni = długość listy (dawne `ct_cores` skasowane). WYŁĄCZNIE dla
+   *  measurement_type==='CT'; `null`/brak = tabliczka niedostarczona. */
+  rdzenie?: RdzenPrzekladnikaPradowego[] | null;
+  /** Uzwojenia przekładnika napięciowego (tabliczka IEC 61869-3) — lustro
+   *  `UzwojeniePrzekladnikaNapieciowego`. WYŁĄCZNIE dla measurement_type==='VT'. */
+  uzwojenia?: UzwojeniePrzekladnikaNapieciowego[] | null;
   /** CTVT-MODEL (W5/V12K-173): typ montażu przekładnika napięciowego —
    *  szynowy (`bus`) vs kablowy (`cable`). Dane producenta/projektowe;
    *  WYŁĄCZNIE dla measurement_type==='VT'. Oś odrębna od `vt_arrangement`

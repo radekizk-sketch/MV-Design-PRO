@@ -50,6 +50,8 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../types/enm';
 import type { ElementType } from '../../types';
 import {
+  POWOD_NOP_APARATU_BEZ_GALEZI_PL,
+  POWOD_UZIEMIENIA_TYLKO_TROJPOLOZENIOWY_PL,
   SLD_MENU_REGISTRY,
   powodBrakuStartuCiagu,
   toastBus,
@@ -62,8 +64,9 @@ import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistral
 import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import { polaStacji } from '../../shared/polaStacji';
-import { czyLacznikZPozycjaNormalna, lacznikTematu } from '../../shared/stanLacznika';
+import { czyLacznikZPozycjaNormalna } from '../../shared/stanLacznika';
 import { jestPunktemWyprowadzeniaCiagu, rozbierzIdentyfikatorAparatu } from './identyfikatorAparatu';
+import { celStanuLacznika } from './celStanuLacznika';
 import type { OperacjaNn } from '../v3/lv-domain/operacjeNn';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
@@ -593,6 +596,7 @@ export function buildSldOperationContext(
   elementId: string | null,
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
+  deviceRef?: string,
 ): SldOperationAction | null {
   if (actionId === 'insert-gpz') {
     return {
@@ -655,10 +659,11 @@ export function buildSldOperationContext(
   }
   if (actionId === 'set-normal-open-point') {
     // W5-C: łącznik z TEGO SAMEGO resolvera, którym menu liczy dostępność pozycji
-    // (`akcjeElementu.ts::stanLacznikaMenu`) — pole wskazuje swój jedyny łącznik.
-    const { lacznik } = lacznikTematu(snapshot, elementId);
-    if (!czyLacznikZPozycjaNormalna(lacznik)) return null;
-    extraContext.switch_ref = lacznik.ref_id;
+    // (`akcjeElementu.ts::stanLacznikaMenu`) — pole wskazuje swój jedyny łącznik, symbol
+    // aparatu — gałąź tego aparatu (łącznik pola bez gałęzi nie ma pozycji normalnej).
+    const cel = celStanuLacznika(snapshot, elementId, deviceRef);
+    if (cel.rodzaj !== 'galaz' || !czyLacznikZPozycjaNormalna(cel.lacznik)) return null;
+    extraContext.switch_ref = cel.lacznik.ref_id;
   }
   if (actionId === 'conscious-split-on-segment') {
     extraContext.split_mode = 'explicit_preview_required';
@@ -764,7 +769,9 @@ export function wykonawcaAkcjiMenu(
   kind: SldElementKindForMenu,
 ): WykonawcaAkcjiMenu | null {
   if (isSldDeleteAction(actionId)) return 'usuniecie';
-  if (actionId === 'open-switch' || actionId === 'close-switch') return 'stan-lacznika';
+  if (actionId === 'open-switch' || actionId === 'close-switch' || actionId === 'earth-switch') {
+    return 'stan-lacznika';
+  }
   if (actionId === 'show-ncrfg') return 'zgodnosc-ncrfg';
   if (actionId === 'show-results') return 'wyniki-rozplywu';
   if (actionId === 'show-sc-contributions') return 'wklady-zwarciowe';
@@ -821,6 +828,7 @@ export function useSldActionExecutor(
   kind: SldElementKindForMenu,
   elementId: string | null,
   operacjaNn?: OperacjaNn,
+  deviceRef?: string,
 ) => void {
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
@@ -836,7 +844,13 @@ export function useSldActionExecutor(
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
 
   return useCallback(
-    (actionId: string, kind: SldElementKindForMenu, elementId: string | null, operacjaNn?: OperacjaNn) => {
+    (
+      actionId: string,
+      kind: SldElementKindForMenu,
+      elementId: string | null,
+      operacjaNn?: OperacjaNn,
+      deviceRef?: string,
+    ) => {
       if (readOnly && czyAkcjaZmieniaModel(actionId, kind)) {
         notify('Tryb podglądu schematu — przełącz na edycję, aby budować sieć.', 'warning');
         return;
@@ -890,21 +904,41 @@ export function useSldActionExecutor(
             notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
             return;
           }
-          const wynik = lacznikTematu(snapshot, elementId);
-          if (!wynik.lacznik) {
-            notify(wynik.powodPl, 'warning');
+          // Cel z TEGO SAMEGO resolvera co dostępność pozycji menu (`celStanuLacznika`):
+          // symbol aparatu wskazuje TEN aparat, menu pola — jedyny łącznik pola.
+          const cel = celStanuLacznika(snapshot, elementId, deviceRef);
+          if (cel.rodzaj === 'brak') {
+            notify(cel.powodPl, 'warning');
+            return;
+          }
+          // Sukces potwierdza centralny komunikat magazynu (`operationSuccessMessages`); tu
+          // wyłącznie odmowa (menu schematu nie ma własnego miejsca na błąd operacji).
+          const zgloszOdmowe = (odpowiedz: { readonly error?: unknown } | null | undefined) => {
+            if (!odpowiedz || odpowiedz.error) {
+              notify(typeof odpowiedz?.error === 'string' ? odpowiedz.error : 'Nie zmieniono stanu łącznika.', 'error');
+            }
+          };
+          if (cel.rodzaj === 'aparat') {
+            // Łącznik pola bez własnej gałęzi (odłącznik, uziemnik, łącznik trójpołożeniowy):
+            // położenie w rekordzie aparatu — blokady i sekwencję rozstrzyga backend.
+            const polozenie = actionId === 'open-switch'
+              ? 'otwarty'
+              : actionId === 'close-switch'
+                ? 'zamkniety'
+                : 'uziemiony';
+            void executeDomainOperation(activeCaseId, 'set_bay_apparatus_position', {
+              bay_ref: cel.bayRef,
+              device_ref: cel.deviceRef,
+              actual_state: polozenie,
+            }).then(zgloszOdmowe);
+            return;
+          }
+          if (actionId === 'earth-switch') {
+            notify(POWOD_UZIEMIENIA_TYLKO_TROJPOLOZENIOWY_PL, 'warning');
             return;
           }
           const operacja = actionId === 'open-switch' ? 'open_switch' : 'close_switch';
-          // Sukces potwierdza centralny komunikat magazynu (`operationSuccessMessages`); tu
-          // wyłącznie odmowa (menu schematu nie ma własnego miejsca na błąd operacji).
-          void executeDomainOperation(activeCaseId, operacja, { switch_ref: wynik.lacznik.ref_id }).then(
-            (odpowiedz) => {
-              if (!odpowiedz || odpowiedz.error) {
-                notify(odpowiedz?.error ?? 'Nie zmieniono stanu łącznika.', 'error');
-              }
-            },
-          );
+          void executeDomainOperation(activeCaseId, operacja, { switch_ref: cel.lacznik.ref_id }).then(zgloszOdmowe);
           return;
         }
 
@@ -993,6 +1027,7 @@ export function useSldActionExecutor(
             elementId,
             snapshot,
             logicalViews,
+            deviceRef,
           );
           if (operationContext) {
             openOperationForm(operationContext.op, operationContext.context);
@@ -1009,10 +1044,13 @@ export function useSldActionExecutor(
           // W5-C: punkt normalnie otwarty bez łącznika z pozycją normalną — powód z
           // resolvera (ten sam tekst, którym menu blokuje pozycję).
           if (actionId === 'set-normal-open-point') {
-            const wynik = lacznikTematu(snapshot, elementId);
+            const cel = celStanuLacznika(snapshot, elementId, deviceRef);
             notify(
-              wynik.powodPl
-                ?? 'Bezpiecznik nie ma pozycji normalnej — punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło.',
+              cel.rodzaj === 'brak'
+                ? cel.powodPl
+                : cel.rodzaj === 'aparat'
+                  ? POWOD_NOP_APARATU_BEZ_GALEZI_PL
+                  : 'Bezpiecznik nie ma pozycji normalnej — punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło.',
               'warning',
             );
             return;

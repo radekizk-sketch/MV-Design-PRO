@@ -1,7 +1,7 @@
 """Typowe stacje dystrybucyjne SN/nN — 10 templates (100-2500 kVA).
 
 Standardowe dystrybucyjne dla DSO, OSD, gospodarstw wiejskich i miejskich.
-Dyn11 vector group, 15/0.4 kV, ZPUE Rotoblok RMU domyślnie.
+Dyn11 vector group, 15/0.4 kV, RMU ZPUE TPM Air (bez gazów fluorowanych) domyślnie.
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ TYPOWE_SN_NN_TEMPLATES = (
     _typowa(
         "tpl_sn_nn_630kva",
         "Stacja SN/nN 630 kVA z RMU 3-pole, 4 odpływy",
-        "Najbardziej typowa dystrybucyjna 630 kVA, ZPUE Rotoblok RMU.",
+        "Najbardziej typowa dystrybucyjna 630 kVA, RMU ZPUE TPM Air.",
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=4,
         default_bays=3,

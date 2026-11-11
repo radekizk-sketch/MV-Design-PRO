@@ -104,6 +104,7 @@
  */
 
 import { rectsOverlap, type V3Rect } from '../core/grid';
+import { WIERSZ_BLOKU_PRZEKAZNIKA, kolumnyBlokuWPismie } from '../core/kolumnyBloku';
 import { buildRectIndex, createRectIndex, type RectIndex } from '../core/rectIndex';
 import {
   enlargedFontSizeWithinProportion,
@@ -116,7 +117,7 @@ import {
   shortenPreservingIdentity,
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
-import { lodClassOf, type OwnedLabel, type SimpleAnchorPlacement } from '../layout/labels';
+import { lodClassOf, wyrownanieEtykiety, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
 import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
@@ -145,6 +146,10 @@ export interface PlannedLabel {
   readonly rect: V3Rect;
   /** `true`, gdy pismo powiększono ponad rozmiar klasy typograficznej. */
   readonly enlarged: boolean;
+  /** Strona, po której etykieta stoi względem kotwicy w TYM planie — strona zastępcza, gdy plan
+   *  przeniósł etykietę (`stronyWKolejnosci`); `undefined` = strona zadeklarowana przez scenę
+   *  (`label.placement`). Trafia do węzła tekstu (`wyrownanieEtykiety`, zaczep w krawędzi). */
+  readonly strona?: SimpleAnchorPlacement;
 }
 
 export interface LabelRenderPlan {
@@ -232,6 +237,12 @@ function rozciagloscWzdluzTekstu(rect: V3Rect, rotated: boolean): number {
   return rotated ? rect.height : rect.width;
 }
 
+/** Odmiana kroju etykiety (CSS font-weight) z jej klasy typograficznej — ta sama, którą
+ *  rysuje `SceneLabelNode`; pomiar tuszu (`measureTextWidth`) liczy posuwy tej odmiany. */
+function wagaPisma(label: Pick<OwnedLabel, 'labelClass'>): number {
+  return LABEL_TYPOGRAPHY[label.labelClass].fontWeight;
+}
+
 /**
  * RAMKA-TNIE-PODPISY — prostokąt TUSZU: dokładnie to, co pokryją narysowane
  * glify. JEDYNE miejsce w planie, które zamienia (tekst, pismo, obrót) na
@@ -249,19 +260,28 @@ function rozciagloscWzdluzTekstu(rect: V3Rect, rotated: boolean): number {
  * `placement === undefined` ⇒ tusz WYŚRODKOWANY w slocie (tak rysuje
  * `SceneLabelNode`: `x`/`y` = środek prostokąta, `textAnchor=middle`,
  * `dominantBaseline=middle`) — to postać dla pisma NATURALNEGO, które nie
- * rośnie, więc nie ma od czego rosnąć. Pismo POWIĘKSZONE kotwiczy się stroną
- * (patrz `anchoredRect`).
+ * rośnie, więc nie ma od czego rosnąć. Wyjątek: wiersz bloku z
+ * `OwnedLabel.wyrownanieTekstu` — tusz przy krawędzi slotu, w której render
+ * kotwiczy tekst (`layout/labels.ts::zaczepTekstuEtykiety`). Pismo POWIĘKSZONE
+ * kotwiczy się stroną (patrz `anchoredRect`).
  */
 function prostokatTuszu(
   slot: V3Rect,
   text: string,
   fontSize: number,
+  fontWeight: number,
   rotated: boolean,
   placement: OwnedLabel['placement'],
+  wyrownanie?: WyrownanieTekstu,
 ): V3Rect {
-  const wzdluz = measureTextWidth(text, fontSize);
+  const wzdluz = measureTextWidth(text, fontSize, fontWeight);
   const wpoprzek = wysokoscWiersza(fontSize);
-  return anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
+  const rect = anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
+  // Wiersz bloku w piśmie naturalnym (`placement === undefined`): tusz skróconego tekstu
+  // przy tej krawędzi slotu, w której render kotwiczy tekst (`zaczepTekstuEtykiety`) —
+  // wiersze kolumny zachowują wspólną krawędź także po skróceniu.
+  if (placement !== undefined || rotated || wyrownanie === undefined) return rect;
+  return { ...rect, x: wyrownanie === 'poczatek' ? slot.x : slot.x + slot.width - rect.width };
 }
 
 /**
@@ -297,7 +317,7 @@ function prostokatPrzySymbolu(
   wyrownanie: WyrownaniePrzySymbolu,
 ): V3Rect {
   const rotated = label.rotated === true;
-  const wzdluz = measureTextWidth(text, fontSize);
+  const wzdluz = measureTextWidth(text, fontSize, wagaPisma(label));
   const wpoprzek = wysokoscWiersza(fontSize);
   const width = rotated ? wpoprzek : wzdluz;
   const height = rotated ? wzdluz : wpoprzek;
@@ -364,26 +384,66 @@ const NAME_ROW_SUFFIX = /#name-row-\d+$/;
  * jako blok, bez rozrywania wierszy. Kolizję z rysunkiem, jeśli powstanie w
  * nowym miejscu, rozstrzyga niżej ta sama maszyneria co zawsze.
  */
+
+/** Klucz pasma etykiety: wiersze nazw stacji (`#name-row-N`) albo wiersze jednego bloku
+ *  przekaźnika; `null` — etykieta poza pasmem. */
+function kluczPasma(label: OwnedLabel): string | null {
+  if (label.ownerKind === 'station-name') return `nazwy:${label.ownerRef.replace(NAME_ROW_SUFFIX, '')}`;
+  if (label.ownerKind === 'protection' && WIERSZ_BLOKU_PRZEKAZNIKA.test(label.ownerRef)) {
+    return `blok:${label.ownerRef.replace(WIERSZ_BLOKU_PRZEKAZNIKA, '')}`;
+  }
+  return null;
+}
+
 function przestawPasma(kandydaci: readonly Kandydat[], sheet: SheetOutline): Map<number, V3Rect> {
   const pasma = new Map<string, Kandydat[]>();
   for (const k of kandydaci) {
-    if (k.label.ownerKind !== 'station-name') continue;
-    const klucz = k.label.ownerRef.replace(NAME_ROW_SUFFIX, '');
+    const klucz = kluczPasma(k.label);
+    if (klucz === null) continue;
     const lista = pasma.get(klucz);
     if (lista) lista.push(k);
     else pasma.set(klucz, [k]);
   }
   const wynik = new Map<number, V3Rect>();
-  for (const wiersze of pasma.values()) {
-    // Kolejność wierszy = kolejność sceny (indeks rośnie razem z `#name-row-N`).
-    const uporzadkowane = [...wiersze].sort((a, b) => a.index - b.index);
+  for (const [klucz, wiersze] of pasma) {
+    // Karta UX-04/POLE-LINIOWE-WZORZEC (blok przekaźnika): wiersze bloku stoją w odstępie
+    // `ODSTEP_WIERSZY_KODOW_EAZ` od siebie; pismo podłogi celu kadru (13 px → wiersz 19 j.św.)
+    // jest wyższe od tego odstępu, więc powiększone wiersze nachodziły na siebie i plan
+    // przenosił kolejny wiersz na drugą stronę okręgu (wiersz poza blokiem i ramką). Blok to
+    // pasmo jak nazwy stacji, z jedną różnicą: wiersz NIE wchodzi wyżej niż w scenie (y =
+    // max(y sceny, dół poprzedniego)) — pismo naturalne zostaje bajtowo w miejscu sceny.
+    const blok = klucz.startsWith('blok:');
+    // Kolejność wierszy: nazwy — kolejność sceny (indeks rośnie razem z `#name-row-N`); blok —
+    // pozycja w scenie (odniesienia stoją pod kodami niezależnie od kolejności dopisania).
+    const uporzadkowane = [...wiersze].sort((a, b) => (blok ? a.slot.y - b.slot.y || a.slot.x - b.slot.x || a.index - b.index : a.index - b.index));
     const gora = Math.min(...uporzadkowane.map((k) => k.slot.y));
     let y = gora;
     const pas: { readonly index: number; readonly rect: V3Rect }[] = [];
-    for (const k of uporzadkowane) {
-      const height = k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height;
-      pas.push({ index: k.index, rect: { x: k.slot.x, y, width: k.slot.width, height } });
-      y += height;
+    // Odbiór B-02 pkt 7: kody bloku w KOLUMNACH — komórki jednego wiersza sceny (wspólne `y`)
+    // dzielą wiersz pasma (jedno `y`, wysokość najwyższej), a kolumny przesuwają się w prawo
+    // o przyrost szerokości poprzedniej kolumny (`kolumnyBlokuWPismie` — to samo źródło co zapas
+    // szerokości kolumny pola GPZ). Dawniej każda komórka była osobnym wierszem pasma, więc
+    // powiększone pismo układało dwie kolumny w jedną (prawa komórka zjeżdżała między wiersze).
+    const xKomorek = blok
+      ? kolumnyBlokuWPismie(
+          uporzadkowane.map((k) => ({
+            x: k.slot.x,
+            y: k.slot.y,
+            width: k.slot.width,
+            szerokoscPisma: k.enlarged ? measureTextWidth(k.tekstBazowy, k.fontSize, wagaPisma(k.label)) : k.slot.width,
+          })),
+        )
+      : null;
+    for (let i = 0; i < uporzadkowane.length; ) {
+      const wiersz = blok ? uporzadkowane.filter((k, j) => j >= i && k.slot.y === uporzadkowane[i].slot.y) : [uporzadkowane[i]];
+      const height = Math.max(...wiersz.map((k) => (k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height)));
+      const yWiersza = blok ? Math.max(wiersz[0].slot.y, y) : y;
+      wiersz.forEach((k, j) => {
+        const x = xKomorek ? xKomorek[i + j] : k.slot.x;
+        pas.push({ index: k.index, rect: { x, y: yWiersza, width: k.slot.width, height: k.enlarged ? wysokoscWiersza(k.fontSize) : k.slot.height } });
+      });
+      y = yWiersza + height;
+      i += wiersz.length;
     }
     // Przesunięcie pasma jako bloku: najpierw w górę o wystawanie pod arkusz,
     // potem (gdy pasmo jest wyższe od miejsca nad nim) z powrotem do y=0.
@@ -403,6 +463,8 @@ interface Dopasowanie {
   readonly rect: V3Rect;
   readonly fontSize: number;
   readonly enlarged: boolean;
+  /** Strona kotwicy dopasowania (`PlannedLabel.strona`). */
+  readonly strona?: SimpleAnchorPlacement;
 }
 
 /**
@@ -501,7 +563,7 @@ function najlepszeDopasowanie(
     // jednak TUSZ (wyśrodkowany w slocie, tak jak go rysuje `SceneLabelNode`),
     // a nie sam slot: tekst został już skrócony do rozciągłości slotu
     // (`tekstBazowy`), więc tusz ⊆ slot ⊆ rezerwacja ⊆ arkusz.
-    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, undefined);
+    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, undefined, wyrownanieEtykiety(label));
     return tekstBazowy.length > 0 && wolne(tusz)
       ? { text: tekstBazowy, rect: tusz, fontSize, enlarged: false }
       : null;
@@ -519,7 +581,7 @@ function najlepszeDopasowanie(
   const skroc = (maxWidth: number): string => {
     const zapamietane = skroconeDo.get(maxWidth);
     if (zapamietane !== undefined) return zapamietane;
-    const wynik = shortenPreservingIdentity(tekstBazowy, fontSize, maxWidth);
+    const wynik = shortenPreservingIdentity(tekstBazowy, fontSize, wagaPisma(label), maxWidth);
     skroconeDo.set(maxWidth, wynik);
     return wynik;
   };
@@ -541,7 +603,7 @@ function najlepszeDopasowanie(
       prostokatDla: (text, wyrownanie) =>
         przySymbolu && wyrownanie !== null && placement !== undefined
           ? prostokatPrzySymbolu(label, obrys, text, fontSize, placement, wyrownanie)
-          : prostokatTuszu(slot, text, fontSize, rotated, placement),
+          : prostokatTuszu(slot, text, fontSize, wagaPisma(label), rotated, placement),
     };
   };
 
@@ -551,7 +613,7 @@ function najlepszeDopasowanie(
     const { wyrownania, prostokatDla } = geometria(placement, przyObrysie);
     for (const wyrownanie of wyrownania) {
       const pelny = prostokatDla(tekstBazowy, wyrownanie);
-      if (wolne(pelny)) return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
+      if (wolne(pelny)) return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true, ...(placement !== undefined ? { strona: placement } : {}) };
     }
     return null;
   };
@@ -562,7 +624,7 @@ function najlepszeDopasowanie(
     const { wyrownania, prostokatDla } = geometria(placement, przyObrysie);
     for (const wyrownanie of wyrownania) {
       let lo = 1;
-      let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
+      let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize, wagaPisma(label))) - 1);
       let najlepszy: Dopasowanie | null = null;
       while (lo <= hi) {
         const mid = Math.floor((lo + hi) / 2);
@@ -573,7 +635,7 @@ function najlepszeDopasowanie(
         }
         const rect = prostokatDla(text, wyrownanie);
         if (wolne(rect)) {
-          najlepszy = { text, rect, fontSize, enlarged: true };
+          najlepszy = { text, rect, fontSize, enlarged: true, ...(placement !== undefined ? { strona: placement } : {}) };
           lo = mid + 1;
         } else {
           hi = mid - 1;
@@ -660,7 +722,7 @@ function ustapSasiadow(
   const rotated = label.rotated === true;
   const strony = stronyWKolejnosci(label.placement);
   for (const strona of strony.length === 0 ? [label.placement] : strony) {
-    const rect = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, strona);
+    const rect = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, strona);
     if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect)) continue;
     const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
     if (blokujace.length === 0) continue;
@@ -679,7 +741,7 @@ function ustapSasiadow(
         break;
       }
       zajeteBez.add(d.rect);
-      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged });
+      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged, ...(d.strona !== undefined ? { strona: d.strona } : {}) });
     }
     if (!wszystkieMieszcza) continue;
     for (const p of nowe) zaplanowane.set(p.index, p);
@@ -690,6 +752,7 @@ function ustapSasiadow(
       fontSize,
       rect,
       enlarged: true,
+      ...(strona !== undefined ? { strona } : {}),
     });
     uzyteKandydaty.set(kandydat.index, kandydat);
     return true;
@@ -727,6 +790,7 @@ export function planSceneLabels(
         const text = shortenPreservingIdentity(
           label.text,
           fontSize,
+          wagaPisma(label),
           rozciagloscWzdluzTekstu(label.rect, rotated),
         );
         return {
@@ -734,7 +798,7 @@ export function planSceneLabels(
           index,
           text,
           fontSize,
-          rect: prostokatTuszu(label.rect, text, fontSize, rotated, undefined),
+          rect: prostokatTuszu(label.rect, text, fontSize, wagaPisma(label), rotated, undefined, wyrownanieEtykiety(label)),
           enlarged: false,
         };
       }),
@@ -809,7 +873,7 @@ export function planSceneLabels(
     const tekstBazowy =
       !czytelna && label.ownerKind !== 'station-name'
         ? label.text
-        : shortenPreservingIdentity(label.text, fontSize, granicaTekstu);
+        : shortenPreservingIdentity(label.text, fontSize, wagaPisma(label), granicaTekstu);
     return { label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy };
   };
   labels.forEach((label, index) => {
@@ -827,6 +891,7 @@ export function planSceneLabels(
           ? shortenPreservingIdentity(
               label.text,
               fontCelu,
+              wagaPisma(label),
               label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated),
             )
           : label.text;
@@ -862,7 +927,7 @@ export function planSceneLabels(
         // granica pisma naturalnego (i tędy uciekał opis zbiorczy GPZ).
         text: k.tekstBazowy,
         fontSize: k.fontSize,
-        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, k.label.rotated === true, undefined),
+        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, wagaPisma(k.label), k.label.rotated === true, undefined, wyrownanieEtykiety(k.label)),
         enlarged: false,
       })),
       hiddenDetail,
@@ -944,6 +1009,7 @@ export function planSceneLabels(
       fontSize: dopasowanie.fontSize,
       rect: dopasowanie.rect,
       enlarged: dopasowanie.enlarged,
+      ...(dopasowanie.strona !== undefined ? { strona: dopasowanie.strona } : {}),
     });
   }
 

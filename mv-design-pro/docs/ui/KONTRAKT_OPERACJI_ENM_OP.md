@@ -245,7 +245,8 @@ Jedynym zrodlem listy jest `DOMAIN_EVENT_TYPES` w `backend/src/enm/domain_ops_mo
 kierunkach pilnowany skanem AST w `backend/tests/enm/test_rejestr_zdarzen_domenowych.py`.
 Dawna lista w tym miejscu (21 typow) i martwa kopia `enm/domain_event_types.py` rozjechaly sie
 z kodem — nie sa przepisywane tutaj ponownie. Typy stanu laczeniowego: `SWITCH_OPENED`,
-`SWITCH_CLOSED`, `NOP_SET`, `NOP_CLEARED`; wyposazenie pola: `BAY_EQUIPMENT_SET`.
+`SWITCH_CLOSED`, `NOP_SET`, `NOP_CLEARED`; wyposazenie pola: `BAY_EQUIPMENT_SET`; stan obiektu
+(istniejacy / projektowany) pola, aparatu pola albo lacznika: `OBJECT_STATE_SET`.
 
 ---
 
@@ -298,7 +299,7 @@ dokladnie jeden GPZ).
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `trunk_id` | `string` | NIE | Identyfikator magistrali = id ciagu liniowego `line_runs` (brak albo nieznana magistrala --- pierwsza magistrala modelu); odcinek dopisany na koniec ciagu (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4, „Ciagi liniowe”) |
+| `trunk_id` | `string` | NIE | Identyfikator ciagu = id ciagu liniowego `line_runs`. Odcinek trafia do ciagu, ktory start KONTYNUUJE (regula ciaglosci: ciag pusty, start na koncu ostatniego odcinka ciagu albo w tej samej stacji co ten koniec). Ciag wskazany, ktorego start nie kontynuuje --- odmowa `trunk.start_not_at_trunk_end`; brak albo nieznany ciag --- ciag konczacy sie na starcie, inaczej pusty, inaczej NOWY ciag z tego startu (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4, „Ciagi liniowe”) |
 | `from_terminal_id` | `string` | NIE | Identyfikator terminala, od ktorego kontynuowac (brak --- koniec magistrali) |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
@@ -308,7 +309,8 @@ dokladnie jeden GPZ).
 **Tworzy:**
 - Nowa szyne downstream (`bus`) z napieciem dziedziczonym topologicznie z szyny zrodlowej
 - Odcinek magistrali (`branch`) typu `cable` lub `line_overhead`
-- Aktualizuje magistrale (`corridor`) --- dodaje segment do `ordered_segment_refs`
+- Aktualizuje magistrale (`corridor`) --- dodaje segment do `ordered_segment_refs` ciagu, ktory start kontynuuje
+- Albo tworzy NOWY ciag, gdy start nie kontynuuje zadnego ciagu (drugie pole GPZ, wolne pole stacji w srodku ciagu): korytarz promieniowy z tym odcinkiem i ciag liniowy `branch` z portem startu; z pola GPZ --- przydzial pola zapisany dwustronnie (`corridor.meta.gpz_field_ref`, `bay.meta.assigned_corridor_ref`) i nazwa „Magistrala NN”
 
 **Warunek wstepny:** Szyna zrodlowa musi istniec i miec zdefiniowane napiecie.
 
@@ -357,7 +359,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 ### 3.4 `start_branch_segment_sn`
 
-**Cel:** Rozpoczecie nowego odgalezienia (branch) od istniejacej szyny SN.
+**Cel:** Rozpoczecie nowego odgalezienia (branch) z portu startu: pola liniowego SN (stacji albo GPZ), portu odgaleznego punktu (slup rozgalezny, ZK SN) albo szyny konca ciagu.
 
 **Publiczna nazwa V11:** tylko `start_branch_segment_sn`
 
@@ -365,16 +367,19 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `from_bus_ref` | `string` | TAK | Referencja szyny zrodlowej --- MUSI byc jawna, brak auto-detekcji |
+| `from_ref` | `string` | TAK, gdy brak `from_bus_ref` | Port startu w JEDNEJ postaci (rozstrzygniecie architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC; `_rozwiaz_port_startu` w `enm/domain_operations.py`): `ref_id` pola liniowego SN, gdy ciag startuje z pola (np. `gpz/…/bay/001`, `stn/…/sn_field/002`); inaczej ZACISK --- szyna portu odgaleznego punktu (`ports.BRANCH[i]` slupa albo ZK SN) lub szyna z tagiem `topology_terminal`. Dawna postac `⟨element⟩.BRANCH[_n]` nie jest rozpoznawana (odmowa `branch_connection.source_not_branch_capable`); punkt odgalezny wskazany bez portu --- odmowa `branch_point.required_port_missing` (slup bez portu) albo `branch_connection.invalid_source_port` |
+| `from_bus_ref` | `string` | TAK, gdy brak `from_ref` | Szyna zrodlowa; port startu wyznacza domena (`_port_startu_dla_szyny`). Podane razem z `from_ref` --- musza wskazywac te sama szyne |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
-| `segment.catalog_ref` | `string` | NIE | Referencja katalogowa |
+| `segment.catalog_ref` / `segment.catalog_binding` | `string` / obiekt | TAK (jedno z nich) | Wiazanie katalogowe odcinka |
+
+Ciag liniowy odgalezienia zapisuje ten sam port: `line_runs[].starting_port_ref` = `from_ref`, `starting_bay_ref` = pole albo punkt odgalezny.
 
 **Tworzy:**
 - Szyne koncowa odgalezienia (`bus`) z napieciem dziedziczonym topologicznie
 - Segment odgalezienia (`branch`)
 
-**Warunek wstepny:** Szyna `from_bus_ref` MUSI istniec w modelu. Brak auto-detekcji szyny zrodlowej.
+**Warunek wstepny:** Port startu MUSI istniec w modelu i byc wolny (pole liniowe bez przydzielonego ciagu, port punktu niezajety). Brak auto-detekcji szyny zrodlowej poza jawnym `from_bus_ref`.
 
 ---
 
@@ -487,12 +492,86 @@ kazdego aparatu wyprowadzany z `catalog_ref` (bez nowego pola): `MODEL` (pozycja
 |------|-----|----------|------|
 | `bay_ref` | `string` | TAK | Pole SN (pole nN --- odmowa `bay_equipment.bay_not_mv`) |
 | `mode` | `"katalog" \| "szablon" \| "wyczysc"` | TAK | Zrodlo wyposazenia |
-| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola) |
+| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola), `odgalezienie` (krotki identyfikator odgalezienia toru, np. `pn` --- odgalezienie przekladnika napieciowego Z.11 / Z.11.1; odmowa `bay_equipment.branch_invalid`), `stan_obiektu` (`ISTNIEJACY` / `PROJEKTOWANY`; puste: aparat niezmieniony zachowuje stan, nowy jest projektowany; odmowa `bay_equipment.object_state_invalid`), `przekladnia` (wylacznie przekladnik Ferrantiego `CORE_BALANCE_CT`, zapis z rysunku standardu, np. `1/100`; odmowa `bay_equipment.ratio_not_applicable`), `wykonanie` (wylacznie wylacznik `CB`: `STALE` / `WYSUWNE` --- czlon wysuwny na wozku; domyslnie z szablonu pola, rysunek SLD: znacznik kolka obok krzyzyka wylacznika; odmowa `bay_equipment.execution_not_applicable`), `zaczep_pierwotny_a` (wylacznie przekladnik pradowy wieloprzekladniowy z pozycji katalogu, np. 200-400/5 A: wybrany zaczep pierwotny w A ze zbioru zaczepow wspolnych rdzeni; puste: wartosc robocza --- zaczep najwyzszy, dana przyjeta `ESTIMATED` w `dane_przyjete`; rekord niesie `zaczep_pierwotny_a` i `zrodlo_zaczepu` `PROJEKTANT` / `WARTOSC_ROBOCZA`; odmowy `bay_equipment.tap_not_applicable`, `bay_equipment.tap_invalid`) |
 | `bay_template_ref` | `string` | przy `szablon` (albo z rekordu pola) | Szablon kanoniczny albo katalogowe pole rodziny tej samej funkcji pola |
+| `klasa_pola` | `"ODBIORCZE" \| "MIESZANE" \| "DEDYKOWANE_WYTWORCY" \| null` | NIE | Klasa pola liniowego SN (IRiESD ENEA Operator II.4.5.4.2.1--2.3); `null` --- klasa nieustalona (ocena przyjmuje klase wynikajaca z sieci za polem); odmowa `bay_equipment.line_class_invalid`. Klasa koryguje funkcje EAZ szablonu i dopuszcza wykonanie pola (klasa z generacja --- wylacznie Z.11.1 / Z.11, odmowa `pole.klasa_pola_niezgodna_z_wykonaniem`) |
+| `zrodlo_u0_ref` | `string \| null` | NIE | Zrodlo napiecia zerowego 3U₀ funkcji 67N (decyzja wlasciciela 2026-10-29): `device_ref` przekladnika napieciowego z uzwojeniem otwartego trojkata w polu pomiaru napiecia szyn (`MEASUREMENT` + `NAPIECIA_SZYN`, ENEA Z.17 s.97) tej samej sekcji albo w tym polu; `null`/pusty --- powiazanie zdjete; klucz nieobecny --- powiazanie rekordu bez zmian. Odmowa `bay_equipment.zrodlo_u0_niepoprawne` (aparat nieobecny, nie jest przekladnikiem napieciowym, bez otwartego trojkata, pole nie mierzy napiecia szyn, inna sekcja). Funkcja 67N wchodzi do zestawu EAZ pola WYLACZNIE przy przekladniku Ferrantiego w wyposazeniu i potwierdzonym zrodle (`enm/zrodlo_napiecia_zerowego.py::zrodlo_u0_pola`); zmiana spelnienia warunku przelicza zestaw |
+
+Odmowy zgodnosci szablonu (straznik kazdej operacji, `enm/zgodnosc_szablonu_pola.py`, te same
+co walidator W050--W052 i filtr `GET /api/catalog/bay-templates`): wykonanie lacznikow
+niedopuszczone w izolacji rodziny (`pole.wykonanie_lacznikow_niezgodne_z_izolacja`, ENEA Zeszyt 1 §13), szablon pola GPZ w stacji spoza GPZ
+(`pole.szablon_tylko_gpz`), klasa pola niezgodna z wykonaniem.
 
 Odpowiedz niesie dodatkowo `wyposazenie_pola` (`stan_danych`, stan kazdego aparatu,
 `dane_przyjete`). Zdarzenie: `BAY_EQUIPMENT_SET`. Operacja nie ocenia doboru aparatu (warstwa
-analizy) i nie ustawia stanu lacznika (stan zyje na galezi).
+analizy) i nie ustawia polozenia lacznika (lacznik z galezia: `open_switch` / `close_switch`;
+lacznik pola bez galezi: `set_bay_apparatus_position`, 3.7d). Aparat niezmieniony (ta sama
+instancja: `device_ref`, rodzaj, typ katalogowy) zachowuje stan obiektu i polozenie
+(`switch_state`) --- ponowne zastosowanie szablonu przy zmianie klasy pola albo powiazania zrodla
+3U₀ nie przestawia lacznikow; aparat nowy albo wymieniony ma polozenie nieustalone (nigdy domysl).
+
+---
+
+### 3.7c `set_object_state`
+
+**Cel:** Oznaczenie pola SN (razem z jego aparatami) albo jednej instancji aparatu pola jako
+istniejacego w sieci (`ISTNIEJACY`) albo projektowanego (`PROJEKTOWANY`). Kazda operacja
+tworzaca pole albo aparat nadaje `PROJEKTOWANY` jawnie; `ISTNIEJACY` ustawia wylacznie ta
+operacja albo import istniejacej sieci niosacy stan (arkusz importu --- kolumna `stan` arkusza
+„Szyny”; archiwum projektu --- rekord pola wprost).
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `bay_ref` | `string` | jedno z `bay_ref` / `switch_ref` | Pole rozdzielnicy |
+| `switch_ref` | `string` | jedno z `bay_ref` / `switch_ref` | Galaz laczeniowa poza polem (rozlacznik sekcyjny w ciagu, sprzeglo, lacznik pola bez lustra w wyposazeniu); galaz opisana aparatem pola ma stan tego aparatu i zmienia sie go przez `bay_ref` + `device_ref` |
+| `stan_obiektu` | `"ISTNIEJACY" \| "PROJEKTOWANY"` | TAK | Stan obiektu |
+| `device_ref` | `string` | NIE | Aparat pola --- bez niego stan dostaje pole i kazdy jego aparat (wraz z galeziami, ktore wskazuja) |
+
+Odmowy: `object_state.bay_ref_missing` (brak celu), `object_state.target_ambiguous` (oba cele),
+`object_state.state_invalid`, `object_state.bay_not_found`, `object_state.device_ref_invalid`,
+`object_state.device_not_found`, `object_state.switch_not_found`,
+`object_state.switch_has_bay_device` (galaz opisana aparatem pola --- wskazanie karty pola),
+`pole.gaz_fluorowany` (oznaczenie pola albo aparatu z gazem fluorowanym jako projektowanego ---
+rozporzadzenie (UE) 2024/573, art. 13 ust. 9 lit. a; akcja naprawcza „wybierz wykonanie bez
+gazow fluorowanych”). Zdarzenie: `OBJECT_STATE_SET`.
+
+Odmowa `pole.gaz_fluorowany` jest wspolna dla KAZDEJ operacji domenowej: straznik dyspozytora
+porownuje model przed i po operacji (`enm/gaz_fluorowany_pola.py`) --- utworzenie pola,
+dobudowa pola do istniejacej rozdzielnicy, wymiana aparatu (`set_bay_equipment`), przypisanie
+typu rozdzielnicy i zmiana stanu obiektu przechodza przez te sama regule.
+
+---
+
+### 3.7d `set_bay_apparatus_position`
+
+**Cel:** Polozenie lacznika pola SN bez wlasnej galezi laczeniowej (odlacznik szynowy
+i liniowy, uziemnik, lacznik trojpolozeniowy, rozlacznik i rozlacznik bezpiecznikowy poza torem
+galezi pola). Rekord `BayPrimaryDevice.switch_state` mial dotad jedynego pisarza --- budowe pola
+liniowego GPZ --- wiec po zmianie wyposazenia pola polozenie tych lacznikow bylo nieustalone,
+a polozenia „uziemiony” lacznika trojpolozeniowego nie dalo sie nadac. Wolana z menu aparatu na
+kanwie (`Otworz` / `Zamknij` / `Uziem` na symbolu lacznika pola). Polozenie lacznika bez galezi
+NIE wchodzi do modelu fizyki (rozplyw i zwarcia czytaja wylacznie galezie) --- operacja zmienia
+rysunek, blokady i opis pola, nie wyniki obliczen.
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `bay_ref` | `string` | TAK | Pole rozdzielnicy |
+| `device_ref` | `string` | TAK | Lacznik z wyposazenia pola |
+| `actual_state` | `"zamkniety" \| "otwarty" \| "uziemiony"` | TAK | Polozenie; „uziemiony” wylacznie lacznik trojpolozeniowy |
+
+Odmowy (kazda zostawia model bez zmian): `bay_apparatus_position.target_missing`,
+`bay_apparatus_position.state_invalid` (takze stany telemetrii --- awaria, nieznany, naped
+rozbrojony --- ktore pochodza wylacznie ze zrodla ruchowego),
+`bay_apparatus_position.bay_not_found`, `bay_apparatus_position.device_not_found`,
+`bay_apparatus_position.not_a_switch`, `bay_apparatus_position.linked_to_branch` (aparat
+opisujacy galaz laczeniowa --- wylacznik pola; jedna prawda polozenia w `Branch.status`, zmieniaja
+ja `open_switch` / `close_switch`), `bay_apparatus_position.earthed_not_allowed` (ENEA Zeszyt 1
+§13), `bay_apparatus_position.unchanged`, `bay_apparatus_position.three_position_sequence`
+(zamkniety ↔ uziemiony wylacznie przez otwarty --- PN-EN 62271-102, jeden styk ruchomy),
+`bay_apparatus_position.interlock` (zamkniecie uziemnika przy zamknietym skojarzonym laczniku
+toru albo odwrotnie --- te same pary co walidator, `enm.interlock_rules.blokady_zamkniecia`,
+IEC 62271-200 §5.11; polozenie nieustalone aparatu przeciwnego nie rozstrzyga blokady, tak jak
+w walidatorze). Zdarzenie: `BAY_APPARATUS_POSITION_SET`.
 
 ---
 
@@ -583,7 +662,7 @@ podane przez uzytkownika.
 | **Brak domyslnych dlugosci** | Pole `dlugosc_m` MUSI byc jawnie podane i > 0 w kazdej operacji tworzacej segment | Ustawienie `dlugosc_m = 100` gdy uzytkownik nie podal wartosci |
 | **Brak domyslnych napiec** | Napiecia sa dziedziczone WYLACZNIE topologicznie z podlaczonej szyny --- brak wartosci domyslnych | Ustawienie `voltage_kv = 15.0` gdy szyna zrodlowa nie ma napiecia |
 | **Brak auto-detekcji koncow pierscienia** | Operacja `connect_secondary_ring_sn` wymaga jawnych `from_bus_ref` i `to_bus_ref` | Automatyczne wybranie dwoch najdalszych szyn jako koncow pierscienia |
-| **Brak auto-detekcji szyny zrodlowej odgalezienia** | Operacja `start_branch_segment_sn` wymaga jawnego `from_bus_ref` | Automatyczne wybranie ostatniej szyny jako zrodlowej |
+| **Brak auto-detekcji szyny zrodlowej odgalezienia** | Operacja `start_branch_segment_sn` wymaga jawnego portu startu (`from_ref`) albo jawnej szyny (`from_bus_ref`) | Automatyczne wybranie ostatniej szyny jako zrodlowej |
 | **Brak zastepczych parametrow transformatora** | Parametry `uk_percent`, `pk_kw`, `sn_mva` NIE MAJA wartosci domyslnych --- wymagaja katalogu lub jawnego podania | Ustawienie `uk_percent = 6.0` jako wartosci domyslnej |
 
 ### 4.2 Dozwolone dziedziczenie topologiczne

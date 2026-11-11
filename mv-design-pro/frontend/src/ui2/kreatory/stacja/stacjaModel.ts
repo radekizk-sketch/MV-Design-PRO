@@ -43,6 +43,7 @@ import type {
   StationSwitchgearChoice,
   TopologicalStationKind,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import { notaPozycjiUkrytych, pozycjeDoWyboru } from '../../../ui/catalog/dopuszczenieNowychPol';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type {
   CatalogNamespace,
@@ -474,7 +475,41 @@ export function walidujFormularz(
       });
     }
   }
+  // Decyzja architekta D3: pole sprzęgła łączy dwie sekcje szyn SN — ten sam warunek co
+  // odmowa backendu `field.coupler_requires_two_sections` (stacja sekcyjna wcięta w odcinek
+  // ma dwie sekcje; każda inna stacja — jedną).
+  if (
+    snFields !== undefined
+    && snFields.some((f) => f.field_role === 'SPRZEGLO')
+    && !czyDwieSekcjeSzyn(data.station_type, tryb)
+  ) {
+    errors.push({
+      field: 'sn_fields_sprzeglo',
+      message:
+        'Pole sprzęgła łączy dwie sekcje szyn SN — ma je wyłącznie stacja sekcyjna wcięta '
+        + 'w odcinek. Zmień rodzaj stacji albo usuń pole sprzęgła.',
+    });
+  }
   return errors;
+}
+
+/**
+ * Czy stacja z kreatora ma dwie sekcje szyn SN (decyzja architekta D3): wyłącznie stacja
+ * sekcyjna wcięta w odcinek (`insert_station_on_segment_sn`, typ D buduje sekcję B
+ * i sprzęgło). Stacja na końcu ciągu ma jedną sekcję szyn — szynę końca odcinka.
+ */
+export function czyDwieSekcjeSzyn(stationType: TypStacji, tryb?: TrybUmiejscowienia): boolean {
+  return stationType === 'sectional' && tryb !== 'ENDPOINT_APPEND';
+}
+
+/** Role pól SN do wyboru w kreatorze: pole sprzęgła tylko w stacji o dwóch sekcjach szyn. */
+export function rolePolaWyboru(
+  role: readonly SnFieldRole[],
+  stationType: TypStacji,
+  tryb?: TrybUmiejscowienia,
+): SnFieldRole[] {
+  const dwieSekcje = czyDwieSekcjeSzyn(stationType, tryb);
+  return role.filter((rola) => rola !== 'SPRZEGLO' || dwieSekcje);
 }
 
 /**
@@ -991,6 +1026,25 @@ export function aparatyDlaPola(
   aparaty: readonly MVApparatusType[],
   snVoltageKv: number,
   rodzajeDlaRoli: readonly string[] = [],
+): MVApparatusType[] {
+  // Pole tworzone przez kreator stacji jest projektowane — wyłącznie pozycje dopuszczone przez
+  // backend (zakaz gazów fluorowanych, `ui/catalog/dopuszczenieNowychPol`).
+  return pozycjeDoWyboru(aparatyZgodneZPolem(aparaty, snVoltageKv, rodzajeDlaRoli), 'PROJEKTOWANY');
+}
+
+/** Zdanie o aparatach zgodnych z polem, które filtr dopuszczenia ukrył (`null` = żadnych). */
+export function notaAparatowPola(
+  aparaty: readonly MVApparatusType[],
+  snVoltageKv: number,
+  rodzajeDlaRoli: readonly string[] = [],
+): string | null {
+  return notaPozycjiUkrytych(aparatyZgodneZPolem(aparaty, snVoltageKv, rodzajeDlaRoli), 'PROJEKTOWANY');
+}
+
+function aparatyZgodneZPolem(
+  aparaty: readonly MVApparatusType[],
+  snVoltageKv: number,
+  rodzajeDlaRoli: readonly string[],
 ): MVApparatusType[] {
   const dopuszczalne = new Set(rodzajeDlaRoli);
   return aparaty

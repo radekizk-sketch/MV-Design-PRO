@@ -42,6 +42,8 @@ import {
   type SceneLod,
   sheetRowStationIds,
 } from '../buildScene';
+import { crossingBusGaps } from '../crossings';
+import { przecieciaMiedzyOdgalezieniamiStacji, przecieciaToruStacji } from './przecieciaStacji';
 import { requiredStationWidth, type StationMeasureInput } from '../../layout/measure';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
@@ -211,10 +213,14 @@ describe('RECENZJA EKSPERCKA — fixtury wielkoskalowe rodzina H (~100/250/500 s
       });
 
       for (const lod of LODS) {
-        it(`L${lod}: buduje bez wyjątku, ZERO-DEFEKT (crossing/kolizje/przecięcia/nieortog/niejedn=0)`, () => {
+        it(`L${lod}: buduje bez wyjątku, ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog/niejedn=0)`, () => {
           const scene = scenes[lod];
           const m = layoutMetricsReport(scene);
-          expect(m.crossingCount).toBe(0);
+          // Rozstrzygnięcie S7-P2 (2026-10-30): przecięcie dwóch kabli bez węzła modelu jest
+          // skrzyżowaniem z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
+          // i zero kropek bez węzła modelu, nie zerowa liczba przecięć.
+          expect(m.crossingWithoutBridgeCount).toBe(0);
+          expect(m.junctionDotGapCount).toBe(0);
           expect(m.labelCollisionCount).toBe(0);
           expect(m.subtreeIntersectionCount).toBe(0);
           expect(m.nonOrthogonalSegmentCount).toBe(0);
@@ -292,7 +298,8 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
   it('zero-defekt zachowany po dodaniu stacji (każdy LOD)', () => {
     for (const lod of LODS) {
       const m = layoutMetricsReport(buildSceneV3(plusOne, lod as SceneLod));
-      expect(m.crossingCount).toBe(0);
+      expect(m.crossingWithoutBridgeCount).toBe(0);
+      expect(m.junctionDotGapCount).toBe(0);
       expect(m.labelCollisionCount).toBe(0);
       expect(m.subtreeIntersectionCount).toBe(0);
       expect(m.nonOrthogonalSegmentCount).toBe(0);
@@ -513,27 +520,37 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
     }
   }
 
-  // ZNALEZISKO UBOCZNE (UCZCIWOŚĆ — CLAUDE.md „Raportuj stan zgodnie z
-  // prawdą"), POZA ZAKRESEM tej karty (lokalność PIONOWA, nie routing pól):
-  // scena „+1 odgałęzienie" na stacji, która JUŻ ma jedno odgałęzienie,
-  // mierzy `crossingCount=2` (nie 0) na WSZYSTKICH trzech topologiach —
-  // niezależnie od tego, KTÓRĄ stację ciągu wybierze `appendLateralBranch`
-  // (pierwszą czy ostatnią origin), więc przyczyną NIE jest długość pionu
-  // zejścia (kanał wielowierszowy), tylko sam fakt DRUGIEGO odgałęzienia z
-  // tej samej stacji — `computeRowChannelPlan` (`scene/buildScene.ts`)
-  // liczony PER WIERSZ najwyraźniej nie rezerwuje kanałów dla >1 odgałęzienia
-  // tej samej stacji tak, by się wzajemnie omijały. To ODRĘBNA klasa defektu
-  // (routing pól, nie lokalność pionowa Δy — poza L1 tej karty) i wymaga
-  // WŁASNEJ karty naprawczej z osobnym pomiarem/dowodem; nie jest tu ukrywane
-  // (test niżej dokumentuje znalezisko LICZBĄ, zgodnie z regułą KLASA §4 —
-  // deklaracja bez testu = fałszywa pewność), ale go NIE naprawia (poza
-  // zakresem SLD-LOC) ani nie wymaga zera (asercja `toBeGreaterThanOrEqual`,
-  // nie `toBe`, żeby przyszła naprawa tego OSOBNEGO defektu nie wywróciła tej
-  // karty).
-  it('ZNALEZISKO (poza zakresem SLD-LOC): 2. odgałęzienie tej samej stacji krzyżuje się z czymś — dokumentacja liczbą, do osobnej karty routingu pól', () => {
-    const after = buildSceneV3(appendLateralBranch(twoRingNetwork, openTrunkChain), 0);
-    const m = layoutMetricsReport(after);
-    console.log('[ZNALEZISKO poza zakresem SLD-LOC] +1 odgałęzienie (stacja z 2. lateralem) crossingCount=', m.crossingCount);
-    expect(m.crossingCount).toBeGreaterThanOrEqual(0);
-  });
+  // DRUGIE ODGAŁĘZIENIE TEJ SAMEJ STACJI (dawne znalezisko uboczne tej karty,
+  // naprawione u źródła kartą UX-04/POLE-LINIOWE-WZORZEC, sekcja
+  // ODEJŚCIA-ZAGNIEŻDŻONE): stacja z n polami odgałęźnymi wyprowadzała n kabli na
+  // JEDNYM poziomie strefy zejść — poziome odcinki odejść nakładały się, a pion
+  // pola bliższego szczelinie przecinał poziom pola dalszego (pomiar przed naprawą:
+  // crossingCount=2 na każdej z trzech topologii, a pion głębszego lateralu
+  // przechodził przez szynę SN pierwszej stacji wiersza płytszego). Każde pole
+  // odgałęźne ma teraz własny, zagnieżdżony sub-poziom (`departureLevelYOf`,
+  // `scene/buildScene.ts`; `departureStripExtraHeight`, `layout/bands.ts`), port
+  // odejścia jest wybierany po TOŻSAMOŚCI pola startowego ciągu (`startingBayRef`),
+  // a nie po kolejności ciągów, a laterale jednej szczeliny są komponowane od kanału
+  // skrajnego prawego (`kolejnoscKompozycjiLateralow`). Iloczyn mniejszej sieci ×
+  // liczba odgałęzień: `buildScene.odejsciaZagniezdzone.test.ts`. Asercja w całym iloczynie
+  // topologia × poziom szczegółu: zero przecięć między odgałęzieniami tej samej stacji, zero
+  // przecięć toru wewnętrznego stacji, zero przecięć z szyną; skrzyżowanie zejścia z magistralą
+  // innej pary stacji ma mostek §22.1 (rozstrzygnięcie S7-P2, 2026-10-30), a kropka stoi tylko
+  // na węźle modelu.
+  for (const topo of topologies) {
+    for (const lod of LODS) {
+      it(`${topo.nazwa} × +1 odgałęzienie (stacja z 2. odgałęzieniem) × L${lod}: zero przecięć odgałęzień stacji i toru stacji, mostek na każdym skrzyżowaniu`, () => {
+        const model = appendLateralBranch(topo.network, openTrunkChain);
+        const after = buildSceneV3(model, lod);
+        const m = layoutMetricsReport(after);
+        expect(m.crossingWithoutBridgeCount).toBe(0);
+        expect(m.junctionDotGapCount).toBe(0);
+        // Przecięcia z szyną (pion głębszego lateralu przez szynę SN stacji wiersza
+        // płytszego — pomiar przed naprawą: 1 dla +1 odgałęzienia).
+        expect(crossingBusGaps(after.segments)).toEqual([]);
+        expect(przecieciaToruStacji(after)).toEqual([]);
+        expect(przecieciaMiedzyOdgalezieniamiStacji(model, after)).toEqual([]);
+      });
+    }
+  }
 });

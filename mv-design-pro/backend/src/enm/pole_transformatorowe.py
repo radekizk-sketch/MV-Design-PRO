@@ -61,6 +61,7 @@ from .models import EnergyNetworkModel
 from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol
 from .slownik_komunikatow import opis_nazwy
 from .tor_pola import szyny_stacji
+from .zespol_uziemiajacy import ROLA_POLA_ZESPOLU_UZIEMIAJACEGO, ZAPIS_ZESPOLU
 
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
@@ -189,6 +190,28 @@ def transformator_blokowy_der(transformator: ElementEnm, refy_blokowe: set[str])
     return _tekst(meta, "catalog_role") == ROLA_TRANSFORMATORA_BLOKOWEGO_DER
 
 
+def pole_zespolu_transformatora(
+    enm: Mapping[str, object] | EnergyNetworkModel, transformator: ElementEnm
+) -> ElementEnm | None:
+    """Pole zespołu uziemiającego (rola ``ZU``), do którego należy transformator — JEDNO źródło
+    odpowiedzi „transformator uziemiający ma swoje pole” (W041, marker rysunku, rysunek pola ZU).
+
+    Powiązanie z zapisu pary przeniesienia punktu neutralnego (``Transformer.meta`` pod kluczem
+    ``ZAPIS_ZESPOLU``, ``bay_ref`` — `enm.zespol_uziemiajacy`); pole musi ISTNIEĆ i mieć rolę
+    ``ZU``. Zapis wskazujący pole, którego nie ma, albo pole innej roli to transformator BEZ pola
+    (``None``) — wtedy działa zwykła reguła W041, nie cichy wyjątek. Lustro frontu:
+    `frontend/src/ui/shared/transformatoryStacji.ts::poleZespoluTransformatora`."""
+    zapis = _pole(_pole(transformator, "meta", {}), ZAPIS_ZESPOLU, None)
+    bay_ref = _tekst(zapis, "bay_ref") if zapis is not None else ""
+    if not bay_ref:
+        return None
+    for bay in _lista(enm, "bays"):
+        if bay_ref in _refy(bay):
+            rola = _tekst(bay, "bay_role").upper()
+            return bay if rola == ROLA_POLA_ZESPOLU_UZIEMIAJACEGO else None
+    return None
+
+
 def transformatory_stacji(
     enm: Mapping[str, object] | EnergyNetworkModel,
     stacja: ElementEnm,
@@ -199,7 +222,9 @@ def transformatory_stacji(
     parytet przypięty plikiem `szynyStacjiParytet.json`, klucz `transformatory`):
 
       1. transformator blokowy źródła DER (`transformator_blokowy_der`) jest WYKLUCZONY —
-         także wtedy, gdy stacja deklaruje go w `transformer_refs`;
+         także wtedy, gdy stacja deklaruje go w `transformer_refs`; tak samo transformator
+         uziemiający, który ma swoje pole zespołu uziemiającego (`pole_zespolu_transformatora`) —
+         jest aparatem pola ZU, nie transformatorem rozdzielczym, i pola TR nie potrzebuje;
       2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
       3. przy BRAKU deklaracji — koniec transformatora na szynie stacji
          (`enm.tor_pola.szyny_stacji`: szyny główne, zaciski pól SN, końce aparatów pól nN).
@@ -216,6 +241,8 @@ def transformatory_stacji(
     wynik: list[ElementEnm] = []
     for transformator in _lista(enm, "transformers"):
         if transformator_blokowy_der(transformator, refy_blokowe):
+            continue
+        if pole_zespolu_transformatora(enm, transformator) is not None:
             continue
         if zadeklarowane:
             if _refy(transformator) & zadeklarowane:

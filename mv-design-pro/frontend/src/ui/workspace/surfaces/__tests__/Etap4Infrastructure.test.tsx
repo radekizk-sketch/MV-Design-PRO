@@ -368,12 +368,13 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(openOperationFormMock).toHaveBeenCalledWith(
       'start_branch_segment_sn',
       expect.objectContaining({
-        from_ref: 'zksn-1.BRANCH_1',
+        // Port startu w jedynej postaci: zacisk portu odgałęźnego (backend `_rozwiaz_port_startu`).
+        from_ref: 'bus-zksn-branch-1',
         element_ref: 'zksn-1',
         source_bus_ref: 'bus-zksn-branch-1',
         source_type_label: 'ZKSN',
         source_name: 'ZK SN 1',
-        source_port_label: 'port boczny odgałęzienia',
+        source_port_label: 'port odgałęźny 1 z 2',
         segment: expect.objectContaining({
           rodzaj: 'cable',
           catalog_binding: expect.objectContaining({
@@ -664,11 +665,11 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(openOperationFormMock).toHaveBeenCalledWith(
       'start_branch_segment_sn',
       expect.objectContaining({
-        from_ref: 'bp-1.BRANCH',
+        from_ref: 'bus-bp-branch',
         element_ref: 'bp-1',
         source_bus_ref: 'bus-bp-branch',
         source_type_label: 'Słup rozgałęźny',
-        source_port_label: 'port boczny odgałęzienia',
+        source_port_label: 'port boczny słupa rozgałęźnego',
         segment: expect.objectContaining({
           rodzaj: 'line_overhead',
           catalog_binding: expect.objectContaining({

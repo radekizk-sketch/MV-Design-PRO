@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any, Literal
 
 from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from enm.canonical_analysis import list_runs_for_case
-from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
+from enm.interlock_rules import (
+    blokady_zamkniecia,
+    is_closed,
+    is_open,
+    porty_aparatu,
+    runtime_state_record,
+)
 from enm.models import (
     TRYBY_PRACY_ZRODLA,
     Bay,
@@ -44,10 +51,17 @@ from enm.nastawy_zabezpieczen import (
     JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
+from enm.pole_liniowe_gpz import oceny_pol_liniowych
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from enm.uziemienie_sekcji import UziemienieSekcji, uziemienie_sieci
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
-from network_model.core.uziemienie import TypPunktuNeutralnego
+from enm.zrodlo_napiecia_zerowego import (
+    funkcje_bez_zrodla_u0,
+    funkcje_warunkowe_szablonu_pola,
+    zrodlo_u0_pola,
+)
+from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU, TypPunktuNeutralnego
+from pydantic import BaseModel
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
 #: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
@@ -120,6 +134,12 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
 }
 
 
+def _slownik_json(pary: list[tuple[str, Any]]) -> dict[str, Any]:
+    """`dict_factory` dla `dataclasses.asdict` — rekord kontraktu werdyktu (pydantic: etykieta,
+    wyjaśnienie) zagnieżdżony w dataclass oceny trafia do odpowiedzi jako słownik JSON."""
+    return {k: v.model_dump(mode="json") if isinstance(v, BaseModel) else v for k, v in pary}
+
+
 def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     branches = {branch.ref_id: branch for branch in enm.branches}
     # Karta W5-B: pola stacji czytane WPROST z rekordów `bays` (jedyny nośnik pól) — bez
@@ -153,6 +173,33 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
         None,
     )
     latest_pf_run = next((run for run in finished_runs if run.analysis_type == "PF"), None)
+
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): ocena pól liniowych GPZ wg klasy pola —
+    # funkcje EAZ, sieć za polem, typ modułów, pomiar AJEE (`enm.pole_liniowe_gpz`, jedno źródło
+    # dla walidatora W053–W057 i karty pola).
+    enm_json = enm.model_dump(mode="json")
+    oceny_pol = (
+        {
+            ocena.bay_ref: asdict(ocena, dict_factory=_slownik_json)
+            for ocena in oceny_pol_liniowych(enm_json)
+        }
+        if any(bay.gpz_section_id for bay in enm.bays)
+        else {}
+    )
+    # Źródło napięcia zerowego 3U₀ pola (decyzja właściciela 2026-10-29,
+    # `enm.zrodlo_napiecia_zerowego`): rozstrzygnięcie powiązania i kandydaci dla pola, którego
+    # szablon niesie funkcję warunkową (67N) albo które ma powiązanie lub funkcję zapisaną —
+    # wejście kontrolki powiązania na karcie pola (ta sama reguła co operacja i walidator W064).
+    zrodla_u0: dict[str, dict[str, Any]] = {}
+    for rekord_pola in enm_json.get("bays") or []:
+        if (
+            funkcje_warunkowe_szablonu_pola(rekord_pola)
+            or rekord_pola.get("zrodlo_u0_ref")
+            or funkcje_bez_zrodla_u0(rekord_pola.get("protection_codes") or [])
+        ):
+            zrodla_u0[str(rekord_pola.get("ref_id"))] = asdict(
+                zrodlo_u0_pola(enm_json, rekord_pola), dict_factory=_slownik_json
+            )
 
     items: list[dict[str, Any]] = []
     migrated_count = 0
@@ -215,6 +262,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
             switchgear_family_ref=bay.switchgear_family_ref,
+            stan_obiektu=bay.stan_obiektu,
             equipment_data_state=stan_danych_wyposazenia(list(bay.primary_devices)),
             equipment_assumed_data=dane_przyjete_wyposazenia(
                 [device.model_dump(mode="json") for device in bay.primary_devices]
@@ -234,6 +282,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             latest_sc_run_id=str(latest_sc_run.id) if latest_sc_run is not None else None,
             latest_pf_run_id=str(latest_pf_run.id) if latest_pf_run is not None else None,
             measurement_chain=measurement_chain,
+            zrodlo_u0_potwierdzone=bool(
+                (zrodla_u0.get(bay.ref_id) or {}).get("potwierdzone", False)
+            ),
         )
 
         canonical_model = BayCanonicalModel(
@@ -265,6 +316,8 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
                 "project_results": (
                     project_results.model_dump(mode="json") if project_results is not None else None
                 ),
+                "ocena_pola_liniowego": oceny_pol.get(bay.ref_id),
+                "zrodlo_u0": zrodla_u0.get(bay.ref_id),
             }
         )
 
@@ -474,7 +527,7 @@ def _build_primary_devices(
                     placement="GROUND_BRANCH",
                     is_controllable=False,
                     render_variant="kanoniczny",
-                    earthing_role="surge_ground",
+                    earthing_role=ROLA_UZIEMIENIA_RODZAJU_APARATU["SURGE_ARRESTER"],
                 )
             )
 
@@ -605,6 +658,7 @@ def _zloz_stan_ruchowy(
                 device.device_ref,
                 device.kind,
                 stany[device.device_ref].actual_state if device.device_ref in stany else None,
+                porty_aparatu(device),
             )
             for device in devices
         ]
@@ -641,14 +695,12 @@ def _build_operating_state(
     """Położenie normalne = pozycja normalna łącznika w modelu (``normal_state``); bieżące =
     stan aparatu (źródło albo ``status`` w modelu);
     alarm niezgodności = znane bieżące różne od normalnego (porównanie, nie telemetria)."""
+    # Klasyfikacja położenia z JEDNEGO źródła reguł blokad (`interlock_rules.is_closed` /
+    # `is_open`): „uziemiony" łącznika trójpołożeniowego to tor otwarty, nie stan nieznany.
     current_position: Literal["zamkniety", "otwarty", "nieznany"] = (
         "zamkniety"
-        if switch_state.actual_state in {"zamkniety", "zamkniety_naped_rozbrojony"}
-        else (
-            "otwarty"
-            if switch_state.actual_state in {"otwarty", "otwarty_naped_rozbrojony"}
-            else "nieznany"
-        )
+        if is_closed(switch_state.actual_state)
+        else ("otwarty" if is_open(switch_state.actual_state) else "nieznany")
     )
     return BayOperatingState(
         normal_position=normal_position,
@@ -1058,6 +1110,7 @@ def _build_project_results(
     latest_sc_run_id: str | None,
     latest_pf_run_id: str | None,
     measurement_chain: BayMeasurementChain | None,
+    zrodlo_u0_potwierdzone: bool = False,
 ) -> BayProjectResults | None:
     run_ref = latest_pf_run_id or latest_sc_run_id
     if run_ref is None:
@@ -1087,6 +1140,7 @@ def _build_project_results(
         sources_by_bus=sources_by_bus,
         transformers_by_bus=transformers_by_bus,
         sekcja=sekcja_szyny.get(bay.bus_ref),
+        zrodlo_u0_potwierdzone=zrodlo_u0_potwierdzone,
     )
     proof_binding = BayProofBinding(
         proof_ref=f"proof:{bay.ref_id}:{run_ref}",
@@ -1261,19 +1315,44 @@ def _build_earth_fault_path(
     sources_by_bus: dict[str, list[Source]],
     transformers_by_bus: dict[str, list[Transformer]],
     sekcja: UziemienieSekcji | None,
+    zrodlo_u0_potwierdzone: bool = False,
 ) -> BayEarthFaultPath | None:
     """Droga doziemna pola. Pole sieci SN: sposób uziemienia i urządzenie uziemiające
     (zespół uziemiający w ruchu) z JEDNEJ prawdy o uziemieniu sekcji (karta UX-04/POLE-ZU);
     sekcja z odmową nazwaną (zespół bez elementu, sprzeczna deklaracja) → sposób nieznany
     (`None`), nie domysł. Pole poza siecią SN (WN): opis punktu neutralnego źródła albo
-    transformatora przy szynie (sieć 110 kV za granicą modelu — `Source.neutral_grounding`)."""
+    transformatora przy szynie (sieć 110 kV za granicą modelu — `Source.neutral_grounding`).
+
+    Tor napięcia zerowego i prądu zerowego — z łańcucha pomiarowego pola (encje `Measurement`),
+    a gdy łańcuch go nie niesie — z potwierdzonego źródła 3U₀ pola
+    (`enm.zrodlo_napiecia_zerowego`: przekładnik Ferrantiego pola + powiązanie z uzwojeniem
+    otwartego trójkąta przekładnika pola pomiaru napięcia, ENEA Z.10/Z.11.1/Z.17). Jedna prawda
+    o torze 3U₀ dla przypisania 67N i dla wymagań funkcji pola wytwórcy
+    (`domain.der_protection_functions` — bez toru napięcia zerowego 67N jest kwestią otwartą)."""
     punkty = sekcja.punkty_w_ruchu if sekcja is not None else ()
     # Sieć SN ma ZAWSZE rozstrzygnięty sposób uziemienia (także „izolowany” — dana modelu,
-    # nie brak); `None` tylko dla pola poza siecią SN bez źródła i bez łańcucha pomiarowego.
-    if sekcja is None and measurement_chain is None and not sources_by_bus.get(bay.bus_ref):
+    # nie brak); `None` tylko dla pola poza siecią SN bez źródła, bez łańcucha pomiarowego
+    # i bez potwierdzonego źródła 3U₀.
+    if (
+        sekcja is None
+        and measurement_chain is None
+        and not sources_by_bus.get(bay.bus_ref)
+        and not zrodlo_u0_potwierdzone
+    ):
         return None
     punkt_pola = punkt_przylaczenia_pola(bay)
     transformers = transformers_by_bus.get(punkt_pola, []) if punkt_pola else []
+    prad_zerowy = (
+        measurement_chain.zero_sequence_current_source if measurement_chain is not None else "brak"
+    )
+    napiecie_zerowe = (
+        measurement_chain.zero_sequence_voltage_source if measurement_chain is not None else "brak"
+    )
+    if zrodlo_u0_potwierdzone:
+        if prad_zerowy == "brak":
+            prad_zerowy = "przekladnik_ferrantiego"
+        if napiecie_zerowe == "brak":
+            napiecie_zerowe = "otwarty_trojkat_vt"
     zespoly = [p.element_ref for p in punkty if p.rodzaj == "zespol_uziemiajacy"]
     if sekcja is not None:
         tryb: TypPunktuNeutralnego | None = (
@@ -1290,16 +1369,8 @@ def _build_earth_fault_path(
         ]
     return BayEarthFaultPath(
         neutral_grounding_mode=tryb,
-        zero_sequence_current_source=(
-            measurement_chain.zero_sequence_current_source
-            if measurement_chain is not None
-            else "brak"
-        ),
-        zero_sequence_voltage_source=(
-            measurement_chain.zero_sequence_voltage_source
-            if measurement_chain is not None
-            else "brak"
-        ),
+        zero_sequence_current_source=prad_zerowy,
+        zero_sequence_voltage_source=napiecie_zerowe,
         closure_path_elements=sorted(
             set(elementy_drogi + [transformer.ref_id for transformer in transformers])
         ),

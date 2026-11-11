@@ -177,6 +177,10 @@ const KLUCZE_APARATU_SN = {
   i_th_ka: true,
   i_th_pochodzenie: true,
   making_capacity_ka: true,
+  medium: true,
+  gaz_fluorowany: true,
+  dopuszczony_do_nowych_pol: true,
+  powod_blokady_nowych_pol_pl: true,
   u_n_kv: true,
   wartosci_robocze: true,
 } as const satisfies KluczeTypu<MVApparatusType>;
@@ -276,6 +280,7 @@ const KLUCZE_PRZEKLADNIKA_PRADOWEGO = {
   ratio_primary_a: true,
   ratio_secondary_a: true,
   rct_ohm: true,
+  rdzenie: true,
 } as const satisfies KluczeTypu<CTCatalogType>;
 
 const KLUCZE_PRZEKLADNIKA_NAPIECIOWEGO = {
@@ -532,6 +537,9 @@ const KLUCZE_LACZNIKA = {
   ik_ka: true,
   in_a: true,
   medium: true,
+  gaz_fluorowany: true,
+  dopuszczony_do_nowych_pol: true,
+  powod_blokady_nowych_pol_pl: true,
   u_m_kv: true,
   un_kv: true,
 } as const satisfies KluczeTypu<SwitchEquipmentType>;

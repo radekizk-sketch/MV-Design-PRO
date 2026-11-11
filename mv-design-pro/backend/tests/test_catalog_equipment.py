@@ -113,8 +113,9 @@ class TestTransformerCatalog:
             assert t["params"]["rated_power_mva"] > 0, f"{t['id']}: Sn must be > 0"
 
     def test_transformer_vector_groups(self):
-        """Grupy polaczen sa poprawne."""
-        valid_groups = {"Yd11", "Dyn11", "Yd5", "YNd11"}
+        """Grupy polaczen sa poprawne (ZNyn11 — transformator uziemiający zespołu uziemiającego
+        GPZ, ENEA Zeszyt 1 §16)."""
+        valid_groups = {"Yd11", "Dyn11", "Yd5", "YNd11", "ZNyn11"}
         for t in get_all_transformer_types():
             vg = t["params"]["vector_group"]
             assert vg in valid_groups, f"{t['id']}: invalid vector group {vg}"

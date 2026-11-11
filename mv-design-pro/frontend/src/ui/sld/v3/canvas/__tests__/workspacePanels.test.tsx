@@ -21,6 +21,7 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
+import { stanKaflaLacznika } from '../../symbols/glyphs';
 
 /**
  * KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy wąskiej kanwie
@@ -356,6 +357,14 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
       // otwarty, znak powiązania (karta SLD-SUBSTRAT — rezerwa pierścieniowa
       // substratu) i nota o punkcie neutralnym.
       if (['cable', 'overhead', 'openTerminal', 'tieMarker', 'sn-neutral-earthing'].includes(id)) continue;
+      // Wpisy KAFLI STANU łącznika (rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC, id
+      // `stan-<stan>`): odpowiadają stanowi REALNIE narysowanemu kaflem na scenie (ta sama
+      // reguła `stanKaflaLacznika`, którą rysuje kanwa) — zero fabrykacji w obie strony.
+      if (id.startsWith('stan-')) {
+        const stan = id.replace('stan-', '');
+        expect(scene.symbols.some((s) => stanKaflaLacznika(s.symbolId, s.state) === stan), id).toBe(true);
+        continue;
+      }
       expect(presentIds.has(id as never)).toBe(true);
     }
   });

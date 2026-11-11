@@ -46,12 +46,14 @@ import {
 import { useSldActionExecutor } from '../../sld/shared/sldActionExecutor';
 import {
   buildKartaTechniczna,
+  type CelAkcjiKarty,
   type CelWierszaTabeli,
   type AkcjaWiersza,
   type EdycjaWiersza,
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
+import type { ObslugaAkcjiKarty } from './KartaTechnicznaElementu';
 
 /** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
 interface ZrodloWynikowElementu {
@@ -140,7 +142,7 @@ export function wskazanieAparatuPola(
 ): { readonly zaznaczenie: SelectedElement; readonly kontekst: KontekstElementuKanwy } {
   const pole = (snapshot?.bays ?? []).find((b) => b.ref_id === cel.poleRef) ?? null;
   const galezie = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
-  const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
+  const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie, snapshot?.bays)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
   const symbolId = urzadzenie ? symbolIdForPrimaryDeviceKind(urzadzenie.kind) ?? undefined : undefined;
   const wynik = resolveCanvasMenuSubject({ ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId }, index);
   const typ = elementTypeForKind('apparatus');
@@ -184,6 +186,11 @@ export interface StanPaneluElementu {
   /** Operacja usuwająca brak z wiersza karty (kreator `add_relay` z `bay_ref`); `null` poza
    *  trybem edycji modelu — jak `edytuj`. */
   readonly wykonajAkcjeWiersza: ((akcja: AkcjaWiersza) => void) | null;
+  /** Akcja wiersza tabeli karty (przejście do nastaw): ekran E-27 zawsze, formularz operacji
+   *  modelu wyłącznie przy dozwolonej edycji — inaczej `null` i przycisku nie ma. */
+  readonly akcjaKarty: ObslugaAkcjiKarty;
+  /** Sekcja karty, do której prowadzi kliknięty obiekt rysunku (`KontekstElementuKanwy.sekcja`). */
+  readonly sekcjaWyrozniona: string | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -265,6 +272,14 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     [index, snapshot, tylkoOdczytKontekstu],
   );
 
+  const akcjaKarty = useCallback<ObslugaAkcjiKarty>(
+    (cel: CelAkcjiKarty) => {
+      if (cel.rodzaj === 'ekran') return () => openRouteSurface(cel.kodEkranu);
+      return edycjaDozwolona ? () => openOperationForm(cel.operacja, { ...cel.kontekst }) : null;
+    },
+    [edycjaDozwolona, openOperationForm, openRouteSurface],
+  );
+
   const temat = kontekst?.temat ?? null;
   const akcje = useMemo(
     () => (temat ? akcjeElementu(snapshot, logicalViews, temat, status) : []),
@@ -274,7 +289,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     (actionId: string) => {
       if (!temat) return;
       // Ten sam ref operacji co menu kanwy — aparat pola jako `${bayRef}#${SymbolId}`.
-      wykonawca(actionId, temat.menuKind, refOperacjiTematu(temat));
+      wykonawca(actionId, temat.menuKind, refOperacjiTematu(temat), undefined, temat.deviceRef);
     },
     [temat, wykonawca],
   );
@@ -335,6 +350,8 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     karta,
     edytuj: edycjaDozwolona ? edytuj : null,
     wykonajAkcjeWiersza: edycjaDozwolona ? wykonajAkcjeWiersza : null,
+    akcjaKarty,
+    sekcjaWyrozniona: kontekst?.sekcja ?? null,
     otworzAparat,
   };
 }

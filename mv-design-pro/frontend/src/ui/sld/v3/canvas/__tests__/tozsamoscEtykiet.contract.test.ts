@@ -230,7 +230,7 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
       // identycznie dla dwudziestu stacji. Intencja asercji bez zmian: każdy
       // skrót MUSI być jawnie oznaczony, żeby nie udawał kompletnej danej.
       expect(p.text.includes('…'), `${p.label.ownerRef} skrócone bez wielokropka`).toBe(true);
-      expect(measureTextWidth(p.text, p.fontSize)).toBeLessThanOrEqual(p.rect.width);
+      expect(measureTextWidth(p.text, p.fontSize, LABEL_TYPOGRAPHY[p.label.labelClass].fontWeight)).toBeLessThanOrEqual(p.rect.width);
     }
   });
 });

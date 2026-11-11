@@ -169,6 +169,43 @@ ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b
 ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
     "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
 )
+#: Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-28, zakaz gazów fluorowanych w polach
+#: projektowanych): + 2 rozłączniki próżniowe typu ogólnego (`switch_equipment_types` i ich
+#: projekcje `mv_apparatus_types`), pole ``medium`` w każdej projekcji aparatu SN (50
+#: pozycji) oraz 2 typy ogólne OSD przekładnika prądowego pola liniowego z listą rdzeni
+#: (`ct_types`; lista pusta jest poza odciskiem). Dowód w teście niżej: zrzut bez tych pozycji
+#: i bez pola ``medium`` daje
+#: DOKŁADNIE ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna liczba katalogu się nie
+#: zmieniła. Pełny odcisk katalogu domyślnego po karcie:
+#: 179c98a7c33b3b79321978aa3ea1afefb8ad2636d5efca674424606ae251f035 (pomiar po korekcie
+#: pochodzenia przekładników pola liniowego — `source_reference` typów ogólnych OSD).
+ODCISK_PO_KARCIE_POLA_LINIOWEGO = "4d6c88a2ac72db91f224c06af7425475110c661b544488524654f0128d2070de"
+ROZLACZNIKI_BEZ_GAZU_F = ("sw-ls-ogolny-prozniowy-12kv-630a", "sw-ls-ogolny-prozniowy-24kv-630a")
+#: Ta sama karta: dwa typy ogólne OSD przekładnika prądowego pola liniowego GPZ (Z.10/Z.11.1
+#: jednordzeniowy, Z.11 trójrdzeniowy) z jawną listą rdzeni.
+PRZEKLADNIKI_POLA_LINIOWEGO = (
+    "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+    "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+)
+
+
+def _cofnij_karte_pola_liniowego(zrzut: dict[str, object]) -> None:
+    """Usuwa zmiany katalogu karty UX-04/POLE-LINIOWE-WZORZEC (cztery pozycje, pole medium)."""
+    for identyfikator in PRZEKLADNIKI_POLA_LINIOWEGO:
+        postac = zrzut["ct_types"].pop(identyfikator)  # type: ignore[attr-defined]
+        assert postac["rdzenie"], identyfikator
+    # Pozostałe typy CT/VT nie niosą listy (pusta lista poza odciskiem).
+    for przestrzen, pole in (("ct_types", "rdzenie"), ("vt_types", "uzwojenia")):
+        assert all(pole not in p for p in zrzut[przestrzen].values())  # type: ignore[attr-defined]
+    for przestrzen in ("switch_equipment_types", "mv_apparatus_types"):
+        for identyfikator in ROZLACZNIKI_BEZ_GAZU_F:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
+    aparaty = zrzut["mv_apparatus_types"].values()  # type: ignore[attr-defined]
+    assert len(aparaty) == 50
+    for postac in aparaty:
+        postac.pop("medium")
+
+
 #: Karta UX-04/POLE-BKR-MODEL (2026-10-28): typ baterii kondensatorów niesie pola karty
 #: (układ połączeń, stopnie, tolerancja, dławik, rezystory rozładowcze), a pozycje referencyjne
 #: — układ z ENEA Zeszyt 1 §17 s. 32 i Zał. 16 w źródle. Dowód liść po liściu (zrzut bazy
@@ -177,6 +214,14 @@ ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
 #: ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110``. Pełny odcisk katalogu domyślnego po karcie:
 #: 46ec81535a6f8799fa5678885a27ea8b0cd96733d6944f2e88b02fdb7866c47f.
 ODCISK_PO_BATERII_BKR = "e0fbf7f1be94901452cf8f77475f505d154bfe915c7d1cc8ed2be7c785a86f39"
+#: Scalenie gałęzi UI/UX (karta UX-04/POLE-BKR-MODEL) z kartą UX-04/POLE-LINIOWE-WZORZEC
+#: (2026-10-29): obie karty zmieniły rozłączne liście katalogu (bateria BKR —
+#: ``shunt_capacitor_types``; pole liniowe — rozłączniki próżniowe, ``medium``, przekładniki
+#: pola liniowego). Dowód obiema drogami w teście niżej. Pełny odcisk katalogu domyślnego po
+#: scaleniu: 744734f2cf6f5084f9fee0a2872a226ce4715992d587d4d0efe293fdf5c2e5cd.
+ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR = (
+    "81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e"
+)
 _ZRODLO_BATERII_PRZED_KARTA = "Katalog kompensatorów MV-DESIGN-PRO / wartości referencyjne"
 #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-28): trzy nowe przestrzenie elementów zespołu
 #: uziemiającego sekcji SN (2 transformatory uziemiające ZNyn11, 3 dławiki gaszące, 4 rezystory
@@ -235,6 +280,37 @@ PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO: dict[str, int] = {
     "arc_suppression_coil_types": 3,
     "neutral_earthing_resistor_types": 4,
 }
+#: Karta POLA-GPZ-SZABLONY (2026-11-05): przekładniki prądowe typu ogólnego OSD pól GPZ (Z.7 s.86,
+#: Z.12 s.92 — po cztery przekładnie; Z.13 s.93; Z.16 s.96), dwa transformatory uziemiające
+#: ZNyn11 (§16 s.29–30) i trzy pola typu transformatora — impedancja zerowa uzwojenia
+#: zygzakowego R0/X0 z mapą wartości roboczych (`None` w każdej pozycji bez zygzaka). Dowód liść
+#: po liściu (zrzut bazy `9dafb6083` vs drzewo karty): różnią się WYŁĄCZNIE te liście.
+POZYCJE_POL_GPZ: dict[str, tuple[str, ...]] = {
+    "ct_types": tuple(
+        f"ct_typ_ogolny_osd_{p}_z{z}"
+        for z, przekladnie in (
+            ("7", ("800_5_5_5_5", "1000_5_5_5_5", "1200_5_5_5_5", "1600_5_5_5_5")),
+            ("12", ("800_5_5", "1000_5_5", "1200_5_5", "1600_5_5")),
+            ("13", ("100_5",)),
+            ("16", ("100_5_5_5",)),
+        )
+        for p in przekladnie
+    ),
+    "transformer_types": ("tu-sn-nn-15-04-100kva-znyn11", "tu-sn-nn-20-04-100kva-znyn11"),
+}
+POLA_Z0_ZYGZAKA_TYPU = ("r0_ohm", "x0_ohm", "wartosci_robocze")
+
+
+def _cofnij_karte_pol_gpz(zrzut: dict[str, object]) -> None:
+    """Cofa zmiany karty POLA-GPZ-SZABLONY w zrzucie (pozycje i pola typu transformatora)."""
+    for przestrzen, identyfikatory in POZYCJE_POL_GPZ.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
+    for postac in zrzut["transformer_types"].values():  # type: ignore[attr-defined]
+        for nazwa in POLA_Z0_ZYGZAKA_TYPU:
+            assert postac.pop(nazwa) is None, postac["id"]
+
+
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -317,6 +393,18 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM
     for przestrzen, liczba in PRZESTRZENIE_ZESPOLU_UZIEMIAJACEGO.items():
         assert len(zrzut.pop(przestrzen)) == liczba, przestrzen  # type: ignore[arg-type]
+    # Karta POLA-GPZ-SZABLONY: cofnięcie jej pozycji i pól typu daje odcisk sprzed karty.
+    zrzut_karty = copy.deepcopy(zrzut)
+    assert _odcisk_zrzutu(zrzut_karty) != ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
+    _cofnij_karte_pol_gpz(zrzut)
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_I_BKR
+    # Scalenie kart UX-04/POLE-LINIOWE-WZORZEC i UX-04/POLE-BKR-MODEL: rozłączne zmiany katalogu,
+    # dowód obiema drogami. Droga A — cofnięcie baterii BKR daje odcisk karty pola liniowego.
+    zrzut_bez_bkr = copy.deepcopy(zrzut)
+    assert _wytnij_pola_baterii_bkr(zrzut_bez_bkr) == 5
+    assert _odcisk_zrzutu(zrzut_bez_bkr) == ODCISK_PO_KARCIE_POLA_LINIOWEGO
+    # Droga B — cofnięcie karty pola liniowego daje odcisk karty BKR.
+    _cofnij_karte_pola_liniowego(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_BATERII_BKR
     assert _wytnij_pola_baterii_bkr(zrzut) == 5
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_APARATURY_I_LINII_110

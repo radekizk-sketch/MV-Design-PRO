@@ -38,6 +38,13 @@ import copy
 from typing import Any
 
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from network_model.catalog.bay_templates import (
+    BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
+    BAY_TEMPLATES_GPZ_POLA,
+    SZABLON_WARIANTU_ZESPOLU,
+    BayTemplate,
+    szablon_pola_liniowego_gpz,
+)
 
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, TRAFO, _gpz, odcinek, ok, op
 
@@ -131,7 +138,7 @@ def zbuduj_siec() -> dict[str, Any]:
         op(
             enm,
             "start_branch_segment_sn",
-            {"from_ref": f"{pola_odgalezne[1]}.BRANCH", "segment": odcinek(400, "Odgałęzienie 1")},
+            {"from_ref": pola_odgalezne[1], "segment": odcinek(400, "Odgałęzienie 1")},
         )
     )
     koniec_odgalezienia = str(_kabel(enm, "Odgałęzienie 1")["to_bus_ref"])
@@ -208,3 +215,198 @@ def zbuduj_gpz_110kv() -> dict[str, Any]:
             },
         )
     )
+
+
+def _pola_liniowe_sekcji(model: dict[str, Any], sekcja: str) -> list[str]:
+    return sorted(
+        b["ref_id"]
+        for b in model["bays"]
+        if b.get("gpz_section_id") == sekcja and "gpz_line_field" in (b.get("tags") or [])
+    )
+
+
+def dodaj_pole_pomiaru_napiecia_z17(enm: dict[str, Any], sekcja: str) -> tuple[dict[str, Any], str]:
+    """Pole pomiaru napięcia szyn wg ENEA Z.17 w sekcji ``sekcja`` GPZ — ścieżką użytkownika:
+    `add_sn_bay` (rola pomiarowa, funkcja „pomiar napięcia szyn") i `set_bay_equipment`
+    w trybie szablonu Z.17. Zwraca model i identyfikator przekładnika napięciowego pola
+    (uzwojenie III w otwartym trójkącie — źródło 3U₀ sekcji)."""
+    stacja = next(s for s in enm["substations"] if s.get("gpz_sections"))
+    szyna = next(
+        sek["bus_ref"] for sek in stacja["gpz_sections"] if sek.get("section_id") == sekcja
+    )
+    przed = {b["ref_id"] for b in enm["bays"]}
+    enm = ok(
+        op(
+            enm,
+            "add_sn_bay",
+            {
+                "bus_ref": szyna,
+                "station_ref": stacja["ref_id"],
+                "bay_role": "MEASUREMENT",
+                "apparatus_kind": "MEASUREMENT",
+                "funkcja_pomiaru": "NAPIECIA_SZYN",
+            },
+        )
+    )
+    pole_ref = next(b["ref_id"] for b in enm["bays"] if b["ref_id"] not in przed)
+    enm = ok(
+        op(
+            enm,
+            "set_bay_equipment",
+            {
+                "bay_ref": pole_ref,
+                "mode": "szablon",
+                "bay_template_ref": BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id,
+            },
+        )
+    )
+    pole = next(b for b in enm["bays"] if b["ref_id"] == pole_ref)
+    vt_ref = next(a["device_ref"] for a in pole["primary_devices"] if a["kind"] == "VT")
+    return enm, str(vt_ref)
+
+
+def zbuduj_gpz_pola_liniowe(
+    wykonania_sekcji: dict[int, tuple[str, str, str | None]],
+    sekcje_pomiaru_napiecia: tuple[int, ...] = (),
+) -> dict[str, Any]:
+    """GPZ ``gpz_110kv`` (dwie sekcje SN, po dwa pola liniowe na sekcję), w którym pola liniowe
+    sekcji ``n`` (1 albo 2) z ``wykonania_sekcji`` dostają wykonanie (wykonanie pola ENEA,
+    wykonanie łączników, klasa pola) ścieżką użytkownika — operacją `set_bay_equipment`
+    w trybie szablonu; pola sekcji spoza słownika zostają przy wzorcu domyślnym (Z.10
+    z łącznikiem trójpołożeniowym). Pierwsze pole liniowe każdej sekcji jest zajęte kablem
+    odejścia (`continue_trunk_segment_sn` z pola), drugie zostaje wolne.
+
+    Sekcje z ``sekcje_pomiaru_napiecia`` dostają pole pomiaru napięcia ENEA Z.17
+    (`dodaj_pole_pomiaru_napiecia_z17`), a pola liniowe tej sekcji — powiązanie źródła
+    napięcia zerowego 3U₀ z jego przekładnikiem (ta sama operacja `set_bay_equipment`, klucz
+    ``zrodlo_u0_ref``); funkcję 67N przypisuje wtedy resolver szablonu. Pola sekcji bez pola
+    pomiaru napięcia zostają bez 67N (decyzja właściciela 2026-10-29)."""
+    enm = zbuduj_gpz_110kv()
+    sekcje = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})
+    zrodla_u0: dict[int, str] = {}
+    for numer in sorted(sekcje_pomiaru_napiecia):
+        enm, zrodla_u0[numer] = dodaj_pole_pomiaru_napiecia_z17(enm, sekcje[numer - 1])
+    for numer, sekcja in enumerate(sekcje, start=1):
+        wykonanie = wykonania_sekcji.get(numer)
+        if wykonanie is None and numer not in zrodla_u0:
+            continue
+        for pole_ref in _pola_liniowe_sekcji(enm, sekcja):
+            zadanie: dict[str, Any] = {"bay_ref": pole_ref, "mode": "szablon"}
+            if wykonanie is not None:
+                wykonanie_pola, wykonanie_lacznikow, klasa = wykonanie
+                zadanie["bay_template_ref"] = szablon_pola_liniowego_gpz(
+                    wykonanie_pola, wykonanie_lacznikow
+                ).template_id
+                if klasa is not None:
+                    zadanie["klasa_pola"] = klasa
+            if numer in zrodla_u0:
+                zadanie["zrodlo_u0_ref"] = zrodla_u0[numer]
+            enm = ok(op(enm, "set_bay_equipment", zadanie))
+    for numer, sekcja in enumerate(sekcje, start=1):
+        enm = ok(
+            op(
+                enm,
+                "continue_trunk_segment_sn",
+                {
+                    "field_ref": _pola_liniowe_sekcji(enm, sekcja)[0],
+                    "segment": odcinek(400, f"Odejście sekcji {numer}"),
+                },
+            )
+        )
+    return enm
+
+
+def zbuduj_gpz_pole_liniowe_z10(sekcja_staly: int) -> dict[str, Any]:
+    """Karta UX-04/POLE-LINIOWE-WZORZEC: pola liniowe sekcji ``sekcja_staly`` (1 albo 2) w wykonaniu
+    z wyłącznikiem stałym i odłącznikiem szynowym (izolacja powietrzna, §13), drugiej sekcji —
+    wzorzec domyślny (Z.10 z łącznikiem trójpołożeniowym). Dwie fikstury (wariant w sekcji 1 / 2)
+    dają iloczyn {łącznik trójpołożeniowy / wyłącznik stały} × {sekcja 1 / 2} × {pole zajęte /
+    wolne} (`zbuduj_gpz_pola_liniowe`)."""
+    # Pole pomiaru napięcia Z.17 (łącznik trójpołożeniowy, jak rysunek s.97) w sekcji z polami
+    # Z.10 z łącznikiem trójpołożeniowym — jedna rozdzielnica sekcji, jedno wykonanie łączników.
+    # Iloczyn {Z.10 z potwierdzonym źródłem 3U₀ / Z.10 bez pola Z.17 w sekcji}.
+    return zbuduj_gpz_pola_liniowe(
+        {sekcja_staly: ("Z10", "STALY_Z_ODLACZNIKIEM", None)},
+        sekcje_pomiaru_napiecia=(3 - sekcja_staly,),
+    )
+
+
+def zbuduj_gpz_pole_liniowe_z11() -> dict[str, Any]:
+    """Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenia 1, 2, 4): pola liniowe z ODGAŁĘZIENIEM
+    przekładnika napięciowego od strony linii — sekcja 1: Z.11.1 z łącznikiem trójpołożeniowym,
+    klasa mieszana (odbiór i generacja); sekcja 2: Z.11 z wyłącznikiem stałym i odłącznikiem
+    szynowym, klasa dedykowana wytwórcy. Iloczyn {Z.11.1 / Z.11} × {łącznik trójpołożeniowy /
+    wyłącznik stały z odłącznikiem odgałęzienia i uziemnikiem} × {pole zajęte / wolne}."""
+    # Pole pomiaru napięcia Z.17 w sekcji 1 (Z.11.1 z łącznikiem trójpołożeniowym): iloczyn
+    # {Z.11.1 z potwierdzonym źródłem 3U₀ / Z.11 bez pola Z.17 w sekcji}.
+    return zbuduj_gpz_pola_liniowe(
+        {
+            1: ("Z11_1", "TROJPOLOZENIOWY", "MIESZANE"),
+            2: ("Z11", "STALY_Z_ODLACZNIKIEM", "DEDYKOWANE_WYTWORCY"),
+        },
+        sekcje_pomiaru_napiecia=(1,),
+    )
+
+
+def dodaj_pole_gpz_z_szablonu(
+    enm: dict[str, Any], sekcja: str, szablon: BayTemplate
+) -> tuple[dict[str, Any], str]:
+    """Karta POLA-GPZ-SZABLONY: pole rozdzielni SN GPZ w sekcji ``sekcja`` z szablonu pola GPZ
+    (`BAY_TEMPLATES_GPZ_POLA`) — ścieżką użytkownika: `add_sn_bay` z rolą szablonu i aparatem
+    wyłącznikowym, potem `set_bay_equipment` w trybie szablonu. Zwraca model i ref pola."""
+    stacja = next(s for s in enm["substations"] if s.get("gpz_sections"))
+    szyna = next(
+        sek["bus_ref"] for sek in stacja["gpz_sections"] if sek.get("section_id") == sekcja
+    )
+    przed = {b["ref_id"] for b in enm["bays"]}
+    zadanie: dict[str, Any] = {
+        "bus_ref": szyna,
+        "station_ref": stacja["ref_id"],
+        "bay_role": szablon.bay_role,
+    }
+    if szablon.bay_role == "MEASUREMENT":
+        zadanie.update({"apparatus_kind": "MEASUREMENT", "funkcja_pomiaru": "NAPIECIA_SZYN"})
+    else:
+        zadanie["apparatus_kind"] = "CB"
+    if szablon.bay_role == "ZU":
+        # Pole zespołu uziemiającego: wariant uziemienia wskazuje szablon już przy dodaniu pola —
+        # `add_sn_bay` tworzy transformator uziemiający i przenosi punkt neutralny.
+        zadanie["bay_template_ref"] = szablon.template_id
+    enm = ok(op(enm, "add_sn_bay", zadanie))
+    pole_ref = next(b["ref_id"] for b in enm["bays"] if b["ref_id"] not in przed)
+    enm = ok(
+        op(
+            enm,
+            "set_bay_equipment",
+            {"bay_ref": pole_ref, "mode": "szablon", "bay_template_ref": szablon.template_id},
+        )
+    )
+    return enm, pole_ref
+
+
+def zbuduj_gpz_pola_szablonow() -> dict[str, Any]:
+    """Karta POLA-GPZ-SZABLONY: GPZ ``gpz_110kv`` (dwie sekcje, po dwa pola liniowe Z.10),
+    w sekcji 1 — pole transformatora Z.7, łącznika szyn Z.12, baterii kondensatorów Z.16
+    i pomiaru napięcia Z.17 z szablonów pól GPZ (kolejność `BAY_TEMPLATES_GPZ_POLA`)."""
+    enm = zbuduj_gpz_110kv()
+    sekcja = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})[0]
+    for szablon in BAY_TEMPLATES_GPZ_POLA:
+        if (
+            szablon.bay_role == "ZU"
+            and szablon.template_id != SZABLON_WARIANTU_ZESPOLU["Z13"].template_id
+        ):
+            # Jeden zespół uziemiający w wyspie galwanicznej SN (Zeszyt 1 §16, bloker E-W5-04):
+            # scena niesie wariant Z.13; Z.14 i Z.15 ćwiczą testy pola zespołu.
+            continue
+        enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
+    return enm
+
+
+def zbuduj_gpz_pole_zespolu(wariant: str) -> dict[str, Any]:
+    """Karta POLA-GPZ-SZABLONY: GPZ ``gpz_110kv`` z jednym polem zespołu uziemiającego wariantu
+    ``wariant`` (Z13 / Z14 / Z15) w sekcji 1 — jeden zespół w wyspie galwanicznej SN (Zeszyt 1 §16,
+    bloker E-W5-04), więc każdy wariant ma własną scenę (zrzuty pól Z.13–Z.15)."""
+    enm = zbuduj_gpz_110kv()
+    sekcja = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})[0]
+    enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, SZABLON_WARIANTU_ZESPOLU[wariant])
+    return enm

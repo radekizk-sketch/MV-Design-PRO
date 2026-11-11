@@ -139,6 +139,9 @@ import {
   entryCollinearityGaps,
   interiorCrossings,
   junctionDotGaps,
+  przecieciaBezMostka,
+  wezlyModeluEnm,
+  BRIDGE_RADIUS,
 } from '../src/ui/sld/v3/scene/crossings.ts';
 import {
   allGpzHvColumnsComplete,
@@ -604,7 +607,33 @@ const EXPECTED_STATION_COUNT = 53;
 // nowymi identyfikatorami (487 ziaren, odwzorowanie 1:1 po pozycji, 0 konfliktów) =
 // 21576/44352/44352 = fikstura nowa. Ta sama topologia, inna kolejność remisu
 // `id.localeCompare` (precedens SLD-SUBSTRAT wyżej).
-const VERTICAL_LENGTH_BASELINE = { 0: 21576, 1: 44352, 2: 44352 };
+// UX-04 rozstrzygnięcie KD-5 (2026-10-30): 21576/44352/44352 → 21288/44352/44352 (−288
+// wyłącznie na L0, zmierzone). Port odgałęzienia stacji zwiniętej na L0 leży na DOLNEJ
+// krawędzi pudełka stacji (zejścia odgałęzień rozsunięte, zero wspólnego pionu), więc każde
+// z 12 zejść odgałęzień fikstury zaczyna się 24 px niżej (12 × 24 = 288). L1/L2 bez zmian.
+// UX-04 decyzje architekta §11.7 (2026-10-30): 21288/44352/44352 → 19976/43040/43040
+// (−1312 na KAŻDYM LOD, zmierzone). Dwie przyczyny rozdzielone sondą 2×2 {szerokość tekstu
+// 0,62 em, tabela posuwów kroju} × {fikstura sprzed regeneracji, fikstura po regeneracji},
+// kod karty w pozostałych punktach bez zmian:
+//   fikstura sprzed: 0,62 em 21288/44352/44352 (= poprzednia stała), tabela 20376/43440/43440;
+//   fikstura po:     0,62 em 20936/44000/44000,                      tabela 19976/43040/43040.
+// Tabela posuwów (decyzja 7): węższe podpisy pól i stacji niższe pasma etykiet (−912 na
+// fiksturze sprzed, −960 na fiksturze po). Regeneracja fikstury (jedna postać
+// `starting_port_ref`, nowe identyfikatory korytarzy, inna kolejność remisu ciągów
+// odgałęzień — atrybucja w `crossings.test.ts`): −352 przy 0,62 em, −400 przy tabeli.
+// Cały spadek siedzi w przyczynie „rezerwacja-kanalu" (niżej); pozostałe przyczyny bez zmian.
+const VERTICAL_LENGTH_BASELINE = { 0: 19976, 1: 43040, 2: 43040 };
+
+// Rozstrzygnięcie architekta S7-P2 (2026-10-30): skrzyżowania toru mocy z mostkiem §22.1
+// na fiksturze referencyjnej, zmierzone po skasowaniu rozcinania kabli „węzłem T" (dawniej
+// te same przecięcia były rysowane kropką bez węzła modelu). Pin w obie strony: zmiana
+// liczby skrzyżowań wymaga świadomej zmiany tej stałej z pomiarem.
+// 7/18/18 → 8/19/19 (regeneracja fikstury 2026-10-30, jedna postać `starting_port_ref`):
+// sonda 2×2 jak przy `VERTICAL_LENGTH_BASELINE` — fikstura sprzed regeneracji daje 7/18/18
+// przy obu szerokościach tekstu, fikstura po regeneracji 8/19/19 przy obu; nowe
+// identyfikatory korytarzy układają wiersze odgałęzień w innej kolejności remisu i przybywa
+// jedno skrzyżowanie odgałęzienie × odgałęzienie na każdym LOD, z mostkiem (0 bez mostka).
+const CROSSING_WITH_BRIDGE_BASELINE = { 0: 8, 1: 19, 2: 19 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -661,10 +690,18 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // port wyjścia jest o 72 px wyżej, a jog do pasa magistrali o tyle dłuższy. Suma pionów
   // spada (−2000). Zero fabrykacji ma pierwszeństwo przed krótszym jogiem (rejestr
   // GEOMETRIA-STACJI-BRAK-WYPOSAZENIA).
-  0: { footprint: 32, 'rezerwacja-kanalu': 21248, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  // UX-04 decyzje architekta §11.7 (2026-10-30, zmierzone, sonda 2×2 przy
+  // `VERTICAL_LENGTH_BASELINE`): „rezerwacja-kanalu" 21248/42048/42048 → 19648/40736/40736.
+  // Na L0 stała nie była obniżona po rozsunięciu zejść KD-5 (−288 w sumie pionów tego samego
+  // dnia): pomiar kodu karty przy 0,62 em na fiksturze sprzed regeneracji daje 20952 i
+  // „jog-trasy" 96 (+8 — dłuższy jog zejścia przy szerszych podpisach), a tabela posuwów
+  // przywraca jog 88. Wartości sondy „rezerwacja-kanalu": fikstura sprzed — 0,62 em
+  // 20952/42048/42048, tabela 20048/41136/41136; fikstura po — 0,62 em 20600/41696/41696,
+  // tabela 19648/40736/40736. footprint i „slupek-terminalny" bez zmian w każdym wariancie.
+  0: { footprint: 32, 'rezerwacja-kanalu': 19648, 'jog-trasy': 88, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
-  2: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  1: { footprint: 1936, 'rezerwacja-kanalu': 40736, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  2: { footprint: 1936, 'rezerwacja-kanalu': 40736, 'jog-trasy': 160, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -741,7 +778,21 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // GEOMETRIA-STACJI (2026-10-21, zmierzone): 55336/76512/80136 → 53520/68528/73160 — węższe
 // kolumny pól (stos z rekordów modelu bez dorysowanych aparatów konwencji), krótsze szyny
 // i przęsła; załamania bez zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 53520, 1: 68528, 2: 73160 };
+// UX-04 decyzje architekta §11.7 (2026-10-30, zmierzone): 53520/68528/73160 →
+// 45312/58832/62784. Czubek przed kartą (`e41837b4e`) mierzył 52816/67872/72512 (luz
+// 704/656/648 po wcześniejszych spadkach, nigdy nieodebrany). Sonda 2×2 jak przy
+// `VERTICAL_LENGTH_BASELINE`: fikstura sprzed — 0,62 em 53648/69160/73832, tabela
+// 45344/58864/62816; fikstura po — 0,62 em 53736/69248/73944, tabela 45312/58832/62784.
+// Kod karty przy 0,62 em względem czubka: +832/+1288/+1320 — szerokości kolumn pól
+// zaokrąglone w górę do rastru (`snapUp` w `bayColumnRequiredWidth`
+// i `derColumnRequiredWidth`, `layout/measure.ts`; każda z 53 szyn SN stacji +8…+24 na L1/L2,
+// razem szyny +944/+504 na L1/L2, przęsła między stacjami i łącznik ciągu dalszego
+// odpowiednio dłuższe); dowód: ten sam kod przy 0,62 em bez `snapUp` kolumn daje dokładnie
+// poziomy czubka 52816/67872/72512 (sonda liść po liściu odcinków sceny). Tabela
+// posuwów kroju: −8304/−10296/−11016 na fiksturze sprzed i −8424/−10416/−11160 na fiksturze
+// po (węższe kolumny pól i stacji). Regeneracja fikstury: −32 na każdym LOD przy tabeli.
+// Załamania bez zmian (43/171/171 w każdym wariancie).
+const HORIZONTAL_LENGTH_BASELINE = { 0: 45312, 1: 58832, 2: 62784 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**
@@ -788,7 +839,14 @@ const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 // komórek spada marginalnie: zmierzone L2 0.022805 (L0 0.013808 i L1 0.022240
 // zostają nad dotychczasową podłogą — bez korekty). Podłoga = NOWA zmierzona
 // wartość minus ~0.00005 na jitter metryk tekstu (ta sama reguła co S7-P1/P4).
-const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02275 };
+// UX-04 decyzje architekta §11.7 (2026-10-30): PODNIESIONA 0.01374/0.02223/0.02275 →
+// 0.01615/0.02476/0.02555 (zaryglowanie zysku). Zmierzone 0.016201/0.024810/0.025599. Sonda
+// 2×2 jak przy `VERTICAL_LENGTH_BASELINE`: fikstura sprzed — 0,62 em
+// 0.015944/0.023830/0.024650, tabela 0.017502/0.026731/0.027579; fikstura po — 0,62 em
+// 0.014760/0.022099/0.022865, tabela 0.016201/0.024810/0.025599. Tabela posuwów kroju
+// zwęża arkusz (krótsze poziomy i piony przy tej samej treści), więc udział pokrytych
+// komórek rośnie. Podłoga = zmierzona wartość minus ~0.00005 (reguła S7-P1/P4).
+const SHEET_FILL_FLOOR = { 0: 0.01615, 1: 0.02476, 2: 0.02555 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -1563,19 +1621,70 @@ for (const lod of LODS) {
   }
 
   // -- §22.1 (F13.2, D3-3/D3-5): fizyka obrazu — skrzyżowania i kropki -------
+  // Rozstrzygnięcie architekta S7-P2 (2026-10-30, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`
+  // §12, `SLD_CAD_SPEC_V3.md` §22.1): przecięcie dwóch kabli bez węzła modelu jest
+  // skrzyżowaniem z mostkiem; kropka węzłowa stoi wyłącznie na węźle modelu. Warunek odbioru
+  // zmienia się z „0 przecięć" na „0 przecięć bez mostka i 0 kropek bez węzła modelu";
+  // liczba skrzyżowań z mostkiem jest przypięta per LOD (`CROSSING_WITH_BRIDGE_BASELINE`).
   const crossings = interiorCrossings(scene.segments);
   const snCrossings = crossings.filter((c) => !c.involvesBus);
   const busCrossGaps = crossingBusGaps(scene.segments);
+  const bezMostka = przecieciaBezMostka(scene.segments);
   check(
-    'crossing_probe (§22.1, węzeł T, V12K-137): TWARDE ZERO przecięć toru mocy — 0 sn×sn (Rodziny A/B rozcięte węzłem T, styk końcem + kropka) ORAZ 0 z SZYNĄ (mostek na szynie zakazany). Mostek półłukowy dopuszczalny WYŁĄCZNIE dla dowiedzionych nieredukowalnych (na fixturze referencyjnej: brak)',
-    snCrossings.length === 0 && busCrossGaps.length === 0,
-    `przecięcia_sn×sn=${snCrossings.length} przecięcia_z_szyną=${busCrossGaps.length}`,
+    `crossing_probe (§22.1, S7-P2): każde przecięcie toru mocy sn×sn z mostkiem (0 bez mostka) ORAZ 0 z SZYNĄ (mostek na szynie zakazany); skrzyżowania z mostkiem = ${CROSSING_WITH_BRIDGE_BASELINE[lod]} (przypięte, zmierzone 2026-10-30)`,
+    bezMostka.length === 0 && busCrossGaps.length === 0 && snCrossings.length === CROSSING_WITH_BRIDGE_BASELINE[lod],
+    `przecięcia_sn×sn=${snCrossings.length} bez_mostka=${bezMostka.length} przecięcia_z_szyną=${busCrossGaps.length}${bezMostka.length ? ' np. ' + JSON.stringify(bezMostka[0]) : ''}`,
   );
-  const dotGaps = junctionDotGaps(scene, SYMBOL_DEFS);
+  // Sabotaż: krótki pion (±BRIDGE_RADIUS/2) przez środek poziomu toru mocy — półłuk się nie
+  // mieści, więc kanwa narysowałaby przecięcie bez przeskoku. Sonda MUSI dać FAIL.
+  const poziomToru = scene.segments.find(
+    (g) => g.meta?.kind === 'sn' && g.points.length === 2 && g.points[0].y === g.points[1].y && Math.abs(g.points[1].x - g.points[0].x) > 4 * GRID,
+  );
+  const xSabotazu = poziomToru ? Math.round((poziomToru.points[0].x + poziomToru.points[1].x) / 2) + 1 : 0;
+  const zKrotkimPionem = poziomToru
+    ? [
+        ...scene.segments,
+        {
+          points: [
+            { x: xSabotazu, y: poziomToru.points[0].y - BRIDGE_RADIUS / 2 },
+            { x: xSabotazu, y: poziomToru.points[0].y + BRIDGE_RADIUS / 2 },
+          ],
+          meta: { kind: 'sn', ownerRef: 'seg/sabotaz-krotki-pion' },
+        },
+      ]
+    : null;
   check(
-    'junction_dot_probe (§22.1, V12K-039): kropka węzłowa ⇔ realny węzeł rozgałęzienia tras (obustronnie); 0 luk',
+    'crossing_probe (test negatywny — przecięcie bez rysowalnego mostka MUSI dać FAIL)',
+    zKrotkimPionem != null && przecieciaBezMostka(zKrotkimPionem).some((c) => c.vOwnerRef === 'seg/sabotaz-krotki-pion'),
+    zKrotkimPionem ? '' : 'brak poziomu toru mocy na fixturze — sabotaż niewykonalny',
+  );
+  const wezlyModelu = wezlyModeluEnm(enm);
+  const dotGaps = junctionDotGaps(scene, SYMBOL_DEFS, wezlyModelu);
+  const kropkiZWezlem = scene.symbols.filter((sym) => sym.symbolId === 'junction' && wezlyModelu.has(sym.meta?.wezelModelu ?? '')).length;
+  check(
+    'junction_dot_probe (§22.1, V12K-039, S7-P2): kropka węzłowa ⇔ węzeł modelu (szyna, pole, transformator) w realnym rozgałęzieniu tras (obustronnie); 0 luk, 0 kropek bez węzła modelu',
     dotGaps.length === 0,
-    `luki=${dotGaps.length}${dotGaps.length ? ' np. ' + JSON.stringify(dotGaps[0]) : ''}`,
+    `luki=${dotGaps.length} kropki_z_węzłem_modelu=${kropkiZWezlem}${dotGaps.length ? ' np. ' + JSON.stringify(dotGaps[0]) : ''}`,
+  );
+  // Sabotaż: kropka węzłowa postawiona NA torze mocy (środek poziomu toru) — raz bez węzła
+  // modelu, raz z odwołaniem do węzła, którego model nie ma. Obie MUSZĄ dać FAIL.
+  const kropka = (wezelModelu, testId) => ({
+    symbolId: 'junction',
+    x: xSabotazu - 1 - SYMBOL_DEFS.junction.width / 2,
+    y: poziomToru.points[0].y - SYMBOL_DEFS.junction.height / 2,
+    meta: { elementKind: 'apparatus', testId, ...(wezelModelu ? { wezelModelu } : {}) },
+  });
+  const zKropkaBezWezla = poziomToru ? { ...scene, symbols: [...scene.symbols, kropka(undefined, 'sld-v3-wezel-sabotaz')] } : null;
+  check(
+    'junction_dot_probe (test negatywny — kropka bez węzła modelu na torze MUSI dać FAIL)',
+    zKropkaBezWezla != null && junctionDotGaps(zKropkaBezWezla, SYMBOL_DEFS, wezlyModelu).some((g) => g.reason === 'kropka-bez-wezla-modelu' && g.testId === 'sld-v3-wezel-sabotaz'),
+    zKropkaBezWezla ? '' : 'brak poziomu toru mocy na fixturze — sabotaż niewykonalny',
+  );
+  const zKropkaFikcyjna = poziomToru ? { ...scene, symbols: [...scene.symbols, kropka('bus/nie-istnieje-w-modelu', 'sld-v3-wezel-fikcja')] } : null;
+  check(
+    'junction_dot_probe (test negatywny — kropka z węzłem spoza modelu MUSI dać FAIL)',
+    zKropkaFikcyjna != null && junctionDotGaps(zKropkaFikcyjna, SYMBOL_DEFS, wezlyModelu).some((g) => g.reason === 'kropka-bez-wezla-modelu' && g.testId === 'sld-v3-wezel-fikcja'),
+    zKropkaFikcyjna ? '' : 'brak poziomu toru mocy na fixturze — sabotaż niewykonalny',
   );
 
   // -- §22.3 (F13.3, D3-4/D3-15): pas ochronny szyny + wejście przez głowicę -

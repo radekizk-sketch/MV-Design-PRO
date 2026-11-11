@@ -47,7 +47,9 @@ interface WierszTablicy {
     readonly hv: 'sn' | 'nn' | 'obca';
     readonly lv: 'sn' | 'nn' | 'obca';
     readonly blokowy_der?: boolean;
+    readonly zespol_uziemiajacy_pole?: string;
   } | null;
+  readonly cecha_zespol_uziemiajacy?: 'zapis' | 'brak_zapisu';
   readonly oczekiwane_znalezisko: boolean;
 }
 
@@ -112,6 +114,21 @@ function migawkaZWiersza(wiersz: WierszTablicy): EnergyNetworkModel {
       uk_percent: 6.0,
       pk_kw: 6.5,
     });
+    if (wiersz.transformator.zespol_uziemiajacy_pole) {
+      // Zapis pary przeniesienia punktu neutralnego — jedyne powiązanie transformatora
+      // uziemiającego z polem ZU (kształt identyczny z pytestem).
+      Object.assign(transformers[transformers.length - 1], {
+        vector_group: 'ZNyn11',
+        meta: {
+          zespol_uziemiajacy: {
+            bay_ref: wiersz.transformator.zespol_uziemiajacy_pole,
+            wariant: 'Z15',
+            zrodlo_ref: null,
+            dane_przyjete: [],
+          },
+        },
+      });
+    }
     if (stacja.deklaruje_transformator) transformerRefs.push('tr-1');
     if (wiersz.transformator.blokowy_der) {
       generators.push({
@@ -191,6 +208,16 @@ describe('parytet marker (rysunek) ↔ ostrzeżenie (gotowość) — pole transf
     expect(cechy).toContain('brak|jest');
     expect(cechy).toContain('jest|brak');
     expect(cechy).toContain('brak|brak');
+    // Transformator uziemiający pola ZU: {zapis jest, brak} × {pole ZU jest, brak, inna rola}.
+    const zespol = new Set(
+      wiersze
+        .filter((w) => w.cecha_zespol_uziemiajacy)
+        .map((w) => `${w.cecha_zespol_uziemiajacy}|${w.stacja.role_pol.includes('ZU')}|${w.transformator?.zespol_uziemiajacy_pole ?? '-'}|${w.oczekiwane_znalezisko}`),
+    );
+    expect(zespol).toContain('zapis|true|pole-001|false');
+    expect(zespol).toContain('zapis|false|pole-009|true');
+    expect(zespol).toContain('zapis|false|pole-001|true');
+    expect(zespol).toContain('brak_zapisu|true|-|true');
     const werdykty = new Set(wiersze.map((w) => w.oczekiwane_znalezisko));
     expect(werdykty).toEqual(new Set([true, false]));
   });

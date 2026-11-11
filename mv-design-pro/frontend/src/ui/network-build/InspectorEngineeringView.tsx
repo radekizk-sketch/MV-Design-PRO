@@ -16,9 +16,10 @@
 
 import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
 import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
+import { OPIS_POLOZENIA_PL, stanStatusuGalezi } from '../sld/v2/model/stanAparatowPola';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { BayWindowSchematic } from '../field/BayWindowSchematic';
+import { SchematPolaSn } from '../field/SchematPolaSn';
 import {
   availabilityLabel,
   commandExecutionStateLabel,
@@ -33,7 +34,12 @@ import {
 import { useFieldReadModel, type FieldReadModelItem } from '../field/useFieldReadModel';
 import { useKatalogPola, type KatalogPola } from '../field/useKatalogPola';
 import { bayKindLabelPl, etykietaStatusuZrodlaSzablonuPl } from '../catalog/BayTemplatePicker';
-import { CONSTRUCTION_LABELS_PL, powodBlokadyRodzinyPl } from '../catalog/SwitchgearFamilyPicker';
+import {
+  CONSTRUCTION_LABELS_PL,
+  opisMediumRodzinyPl,
+  powodBlokadyRodzinyPl,
+} from '../catalog/SwitchgearFamilyPicker';
+import { nazwaStanuObiektuPl } from '../shared/stanObiektu';
 import { PORT_KIND_LABELS_PL } from '../sld/v2/core/ports';
 import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -55,6 +61,7 @@ import type {
   Generator,
   LogicalViewsV1,
   Port,
+  StanObiektu,
 } from '../../types/enm';
 import { isApparatusBranch } from '../../types/enm';
 import { RODZAJ_GALEZI_PL } from '../shared/rodzajGalezi';
@@ -146,6 +153,7 @@ function buildBayCatalogSection(
   bayTemplateRef: string | null,
   familyRefFromModel: string | null,
   katalog: KatalogPola,
+  stanObiektu: StanObiektu | null,
 ): PropertySection {
   const section = (fields: PropertyField[]): PropertySection => ({
     id: 'catalog',
@@ -208,7 +216,7 @@ function buildBayCatalogSection(
     });
   } else if (rodzina) {
     const producent = producenci.find((entry) => entry.manufacturer_ref === rodzina.manufacturer_ref);
-    const powod = powodBlokadyRodzinyPl(rodzina);
+    const powod = powodBlokadyRodzinyPl(rodzina, stanObiektu);
     fields.push(
       { key: 'family_name', label: 'Rodzina rozdzielnicy', value: rodzina.family_name, source: 'catalog' },
       { key: 'manufacturer', label: 'Producent', value: nazwaObiektuPl(producent?.name, 'producent', producent ? null : { spozaKatalogu: true }), source: 'catalog' },
@@ -225,10 +233,14 @@ function buildBayCatalogSection(
         unit: 'kV',
         source: 'catalog',
       },
-      { key: 'um_classes', label: 'Klasy napięciowe $U_{m}$', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
+      { key: 'um_classes', label: 'Klasy napięciowe Um', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
+      { key: 'family_medium', label: 'Medium rozdzielnicy', value: opisMediumRodzinyPl(rodzina), source: 'catalog' },
       {
         key: 'family_buildable',
-        label: 'Dopuszczona do budowania konfiguracji',
+        label:
+          stanObiektu === 'ISTNIEJACY'
+            ? 'Dopuszczona w polu istniejącym'
+            : 'Dopuszczona w polu projektowanym',
         value: powod === null ? 'Tak — status potwierdzony źródłem katalogowym' : `Nie — ${powod}`,
         source: 'catalog',
       },
@@ -324,6 +336,7 @@ export function buildBaySections(
           { key: 'bay_ref', label: 'Oznaczenie pola', value: item.bay_ref },
           { key: 'name', label: 'Nazwa', value: item.bay_name },
           { key: 'role', label: 'Rola kanoniczna', value: fieldRoleLabelPl(baseModel.bay_role) },
+          { key: 'object_state', label: 'Stan obiektu', value: nazwaStanuObiektuPl(baseModel.stan_obiektu ?? null) },
           {
             key: 'integrity',
             label: 'Integralność modelu',
@@ -335,6 +348,7 @@ export function buildBaySections(
         baseModel.bay_template_ref ?? null,
         baseModel.switchgear_family_ref ?? null,
         katalog,
+        baseModel.stan_obiektu ?? null,
       ),
       {
         id: 'runtime',
@@ -1176,7 +1190,9 @@ function buildSectionsForElement(
           { key: 'ref_id', label: 'Oznaczenie aparatu', value: branch.ref_id },
           { key: 'name', label: 'Nazwa', value: branch.name },
           { key: 'kind', label: 'Rodzaj aparatu', value: apparatusLabel },
-          { key: 'status', label: 'Stan ruchowy', value: branch.status === 'closed' ? 'zamknięty' : 'otwarty' },
+          // Jedna mapa etykiet położenia (`OPIS_POLOZENIA_PL`, kafel stanu kanwy i inspektor):
+          // brak `status` to stan nieustalony, nie „otwarty" (dawny domysł).
+          { key: 'status', label: 'Stan ruchowy', value: OPIS_POLOZENIA_PL[stanStatusuGalezi(branch.status)] },
           ...(branchParent ? [{ key: 'parent_station', label: 'Stacja nadrzędna', value: branchParent }] : []),
         ],
       });
@@ -1911,7 +1927,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           />
         ))}
 
-        {selectedBayField && <BayWindowSchematic item={selectedBayField} />}
+        {selectedBayField && <SchematPolaSn item={selectedBayField} snapshot={snapshot} />}
 
         {/* K6: działania na samym końcu inspektora, zwinięte — pozycje rejestru menu kanwy
             i operacje modelu tego widoku w JEDNYM bloku (operacje modelu tylko w trybie edycji

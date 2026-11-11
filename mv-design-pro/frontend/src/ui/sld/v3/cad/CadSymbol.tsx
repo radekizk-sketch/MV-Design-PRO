@@ -17,6 +17,7 @@
  */
 import type { CSSProperties } from 'react';
 
+import { SLD_FONT_FAMILY } from '../core/text';
 import {
   ELECTRICAL_CAD_SYMBOL_REGISTRY,
   prymitywy,
@@ -31,8 +32,30 @@ import {
  *  grubszy od toru pierwotnego). */
 export const CAD_SYMBOL_STROKE_PX = 1.4;
 
-/** Wzór kreski przerywanej stanu nieznanego [u] — skaluje się z symbolem. */
+/** Wzór kreski przerywanej stanu nieznanego [u] — skaluje się z symbolem (kreska
+ *  `non-scaling-stroke` w px ekranu, kreskowanie w jednostkach symbolu). */
 export const CAD_DASH_NIEZNANY = '1.5 1';
+
+/** Waga CSS liter symboli (kod literowy maszyny, „3" przekładnika i przekształtnika, „M"
+ *  napędu, znaki wnętrza zabezpieczenia) — JEDNA dla rejestru CAD i symboli QET; importer QET
+ *  mierzy litery odmianą tej wagi (`QET_ODMIANA_KROJU_LITER`, przypina
+ *  `cad/__tests__/literySymboli.test.tsx`). */
+export const WAGA_LITERY_SYMBOLU = 600;
+
+/**
+ * Wzór kreski przerywanej dla kreski w JEDNOSTKACH SCENY (`nonScalingStroke = false`, symbole
+ * QET pola liniowego SN): kreska i przerwa proporcjonalne do grubości kreski — przy końcach
+ * zaokrąglonych (`strokeLinecap: round`) każdy odcinek wydłuża się o grubość kreski, więc stały
+ * wzór `1,5 1` przy grubości ≥ 1 zlewał się w linię ciągłą (nóż stanu nieznanego i sprzężenie
+ * napędu rysowały się jak ciągłe). Widoczna kreska = 2 × grubość, widoczna przerwa = grubość.
+ */
+export function wzorKreskiPrzerywanejSceny(gruboscKreski: number): string {
+  return `${gruboscKreski} ${2 * gruboscKreski}`;
+}
+
+function wzorKreskiPrzerywanej(w: number | undefined, ctx: KontekstRysunkuCad): string {
+  return ctx.nonScaling ? CAD_DASH_NIEZNANY : wzorKreskiPrzerywanejSceny(grubosc(w, ctx));
+}
 
 export interface CadSymbolProps {
   readonly id: CadSymbolId;
@@ -99,7 +122,7 @@ function rysujPrymityw(p: CadPrimitive, i: number, ctx: KontekstRysunkuCad): JSX
           x2={p.x2}
           y2={p.y2}
           {...kreska(p.w, ctx)}
-          strokeDasharray={p.nozStanu && ctx.state === 'unknown' ? CAD_DASH_NIEZNANY : undefined}
+          strokeDasharray={p.kreskowana || (p.nozStanu && ctx.state === 'unknown') ? wzorKreskiPrzerywanej(p.w, ctx) : undefined}
           data-cad={p.nozStanu ? 'noz' : 'line'}
         />
       );
@@ -120,7 +143,7 @@ function rysujPrymityw(p: CadPrimitive, i: number, ctx: KontekstRysunkuCad): JSX
           dominantBaseline="central"
           fontFamily={ctx.fontFamily}
           fontSize={p.size}
-          fontWeight={600}
+          fontWeight={WAGA_LITERY_SYMBOLU}
           fill={ctx.ink}
           data-cad="letter"
         >
@@ -138,6 +161,38 @@ function rysujPrymityw(p: CadPrimitive, i: number, ctx: KontekstRysunkuCad): JSX
   }
 }
 
+export interface CadPrimitiveLayerProps {
+  readonly prims: readonly CadPrimitive[];
+  readonly ink: string;
+  readonly paper: string;
+  /** Grubość bazowa kreski — px ekranu przy `nonScalingStroke`, jednostki sceny bez niego. */
+  readonly strokeWidth: number;
+  readonly nonScalingStroke: boolean;
+  /** Położenie łącznika — WYŁĄCZNIE do kreski przerywanej noża w stanie nieznanym. */
+  readonly state: CadSwitchState;
+  readonly fontFamily?: string;
+}
+
+/**
+ * Warstwa prymitywów CAD bez transformacji gabarytu — TEN SAM rysunek prymitywów co
+ * `CadSymbol` (jedno miejsce zamiany LINE/CIRCLE/ARC/PATH/PIVOT/LETTER na SVG). Karta
+ * UX-04/POLE-LINIOWE-WZORZEC: rysuje nią symbole QET pola liniowego SN
+ * (`symbols/glyphs.tsx`), których geometria pochodzi z importera, nie z rejestru nN.
+ */
+export function CadPrimitiveLayer(props: CadPrimitiveLayerProps): JSX.Element {
+  const ctx: KontekstRysunkuCad = {
+    ink: props.ink,
+    paper: props.paper,
+    strokePx: props.strokeWidth,
+    nonScaling: props.nonScalingStroke,
+    // Krój schematu (`SLD_FONT_FAMILY`, Liberation Sans ≡ Arial) — ten sam, którego posuwy
+    // niesie `core/metrykiKroju.json` (importer QET mierzy nim litery symboli).
+    fontFamily: props.fontFamily ?? SLD_FONT_FAMILY,
+    state: props.state,
+  };
+  return <>{props.prims.map((p, i) => rysujPrymityw(p, i, ctx))}</>;
+}
+
 export function CadSymbol(props: CadSymbolProps): JSX.Element {
   const def = ELECTRICAL_CAD_SYMBOL_REGISTRY[props.id];
   const scale = props.scale ?? 1;
@@ -148,7 +203,9 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
     paper: props.paper,
     strokePx: props.strokePx ?? CAD_SYMBOL_STROKE_PX,
     nonScaling: props.nonScalingStroke ?? true,
-    fontFamily: props.fontFamily ?? 'Inter, "Segoe UI", Arial, sans-serif',
+    // Krój schematu (`SLD_FONT_FAMILY`, Liberation Sans ≡ Arial) — ten sam, którego posuwy
+    // niesie `core/metrykiKroju.json` (importer QET mierzy nim litery symboli).
+    fontFamily: props.fontFamily ?? SLD_FONT_FAMILY,
     state,
   };
   const c = def.anchors.center;
@@ -179,7 +236,7 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
               dominantBaseline="central"
               fontFamily={ctx.fontFamily}
               fontSize={4.6}
-              fontWeight={600}
+              fontWeight={WAGA_LITERY_SYMBOLU}
               fill={ctx.ink}
               data-cad="mark"
             >

@@ -282,6 +282,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.element_missing': 'wspolne',
   'catalog.element_not_found': 'wspolne',
   'catalog.clear_forbidden': 'wspolne',
+  'catalog.object_state_not_applicable': 'wspolne',
+  'catalog.object_state_invalid': 'wspolne',
   'catalog.materialization_required': 'wspolne',
   'catalog.materialization_incomplete': 'wspolne',
   'catalog.nameplate_mismatch': 'wspolne',
@@ -357,6 +359,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'earthing.neutral_grounding_inconsistent': 'zwarcia',
   // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z pominiętymi danymi uziemienia (SOURCES).
   'source.sn_neutral_data_ignored': 'zwarcia',
+  'earthing.multiple_grounded_neutrals_in_island': 'zwarcia',
   'nn.measurement.required_missing': 'zwarcia',
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
@@ -514,6 +517,9 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   relay: 'zabezpieczenia',
   tcc: 'zabezpieczenia',
   station: 'stacje',
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: kody `bay.*` (W049–W057 — gaz fluorowany, wykonanie
+  // i klasa pola liniowego GPZ, AJEE) leżą wszystkie w obszarze STATIONS rejestru.
+  bay: 'stacje',
   apparatus: 'stacje',
   field: 'stacje',
   trunk: 'wspolne',

@@ -54,10 +54,11 @@
 import type { RouteVertex } from '../layout/route';
 import type { V3Rect } from '../core/grid';
 import { SEGMENT_STROKE_WIDTH, type PreviewElementKind, type PreviewSegment, type PreviewSymbol } from '../compose/preview';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { OwnerKind } from '../layout/labels';
 import type { PlannedLabel } from './labelLegibility';
 import { LV_PORTAL_TITLE_TEXT, STATION_TR_FIELD_GAP_TEXT } from '../layout/measure';
+import { podpowiedzStanuObiektuPl } from '../../../shared/stanObiektu';
 
 /**
  * Najmniejszy dopuszczalny wymiar obszaru trafienia w pikselach EKRANU.
@@ -144,8 +145,10 @@ export interface CanvasHitArea {
   /** TR2W-BEZ-POLA (§0.C.5): PODPOWIEDŹ obiektu — natywny `<title>` SVG na
    *  kształcie, KTÓRY UŻYTKOWNIK FAKTYCZNIE WSKAZUJE KURSOREM (warstwa trafień
    *  leży NAD rysunkiem, więc `<title>` na grupie rysunkowej nigdy by się nie
-   *  pokazał — byłby kontrolką-widmem). Dziś WYŁĄCZNIE zdanie o transformatorze
-   *  bez skonfigurowanego pola SN; `undefined` dla obiektów bez podpowiedzi. */
+   *  pokazał — byłby kontrolką-widmem). Trzy źródła, w tej kolejności: zdanie
+   *  o transformatorze bez skonfigurowanego pola SN, opis portalu domeny nN, stan
+   *  obiektu aparatu z rekordem (karta UX-04: istniejący / projektowany / nieustalony);
+   *  `undefined` dla obiektów bez podpowiedzi. */
   readonly tytul?: string | undefined;
   readonly klasa: HitObjectClass;
   /** Kolejność malowania w DOM (rośnie = wyżej). Rozstrzyga nakładanie. */
@@ -191,8 +194,8 @@ function expandRectToMinHit(rect: V3Rect, scale: number): HitRectShape {
 
 /** Gabaryt symbolu = jego OBRYS trafienia (glif IEC mieści się w tym prostokącie). */
 function symbolInkRect(symbol: PreviewSymbol): V3Rect {
-  const def = SYMBOL_DEFS[symbol.symbolId];
-  return { x: symbol.x, y: symbol.y, width: def.width, height: def.height };
+  // Blok zabezpieczeń — obrysem trafienia jest jego ramka (`symbols/blokZabezpieczen.ts`).
+  return gabarytSymbolu(symbol);
 }
 
 /** Połowa grubości WIDOCZNEJ kreski odcinka (obrys trafienia toru). */
@@ -392,12 +395,14 @@ export function buildCanvasHitAreas(input: CanvasHitAreaInput): readonly CanvasH
       elementKind: symbol.meta?.elementKind,
       // TR2W-BEZ-POLA (§0.C.5): treść stanu niekompletnego — na kształcie
       // trafienia, bo to on odbiera wskazanie kursorem.
+      // Karta UX-04 (stan obiektu): aparat z rekordem — stan istniejący / projektowany
+      // dyskretnie, w podpowiedzi (bez znaku na rysunku; rekord bez stanu — „nieustalony").
       tytul:
         symbol.meta?.transformerFieldGap === true
           ? STATION_TR_FIELD_GAP_TEXT
           : symbol.meta?.elementKind === 'lvPortal'
             ? LV_PORTAL_TITLE_TEXT
-            : undefined,
+            : podpowiedzStanuObiektuPl(symbol.meta?.stanObiektu),
       klasa: klasaSymbolu(symbol.meta?.elementKind),
       z: z++,
       obrys: { ksztalt: 'prostokat', x: rect.x, y: rect.y, width: rect.width, height: rect.height },

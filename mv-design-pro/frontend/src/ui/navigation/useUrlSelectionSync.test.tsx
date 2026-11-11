@@ -341,7 +341,25 @@ describe('useUrlSelectionSync', () => {
       expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(formularz?.surfaceId);
     });
 
-    it('okno otwarte przez użytkownika (formularz operacji) nie jest ruszane przez selekcję', async () => {
+    /**
+     * Iloczyn: źródło selekcji (kanoniczna z panelu × niekanoniczna z kanwy, nazwa = ref) ×
+     * cel (szyna bez okna × odcinek i stacja z oknem technicznym). Pomiar 2026-10-29 (UX-04,
+     * e2e Z.10): pozycja menu kanwy zaznacza obiekt NIEKANONICZNIE i otwiera kreator — gałąź
+     * kanonikalizacji otwierała okno techniczne obiektu w miejsce kreatora. Wcześniej test
+     * sprawdzał wyłącznie selekcję kanoniczną, więc ta gałąź nie była pokryta.
+     */
+    it.each([
+      ['kanoniczna', 'bus-sn', () => kanoniczny('bus-sn')],
+      ['kanoniczna', 'kab-1', () => kanoniczny('kab-1')],
+      ['kanoniczna', 'stn/abc/station', () => kanoniczny('stn/abc/station')],
+      ['niekanoniczna (klik w schemat)', 'bus-sn', () => ({ id: 'bus-sn', type: 'Bus' as const, name: 'bus-sn' })],
+      ['niekanoniczna (klik w schemat)', 'kab-1', () => ({ id: 'kab-1', type: 'LineBranch' as const, name: 'kab-1' })],
+      [
+        'niekanoniczna (klik w schemat)',
+        'stn/abc/station',
+        () => ({ id: 'stn/abc/station', type: 'Station' as const, name: 'stn/abc/station' }),
+      ],
+    ])('formularz operacji nie jest ruszany przez selekcję %s obiektu %s', async (_zrodlo, ref, selekcja) => {
       act(() => {
         window.history.replaceState(null, '', '/#sld');
         useSelectionStore.getState().clearSelection();
@@ -350,15 +368,16 @@ describe('useUrlSelectionSync', () => {
       act(() => {
         render(<UrlSelectionSyncProbe />);
       });
+      await act(() => new Promise<void>((koniec) => requestAnimationFrame(() => koniec())));
       const formularz = useNetworkBuildStore.getState().activeSurface;
-      expect(formularz).not.toBeNull();
-      for (const ref of ['bus-sn', 'kab-1']) {
-        act(() => {
-          useSelectionStore.getState().selectElement(kanoniczny(ref));
-        });
-        await waitFor(() => expect(useSelectionStore.getState().selectedElement?.id).toBe(ref));
-        expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(formularz?.surfaceId);
-      }
+      expect(formularz?.routeState.payload?.delegate).toBe('operation_form');
+      act(() => {
+        useSelectionStore.getState().selectElement(selekcja());
+      });
+      // Selekcja doszła do postaci kanonicznej (nazwa publiczna zamiast refu) — efekt przeszedł
+      // gałąź kanonikalizacji, a formularz został.
+      await waitFor(() => expect(useSelectionStore.getState().selectedElement).toEqual(kanoniczny(ref)));
+      expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(formularz?.surfaceId);
     });
   });
 });

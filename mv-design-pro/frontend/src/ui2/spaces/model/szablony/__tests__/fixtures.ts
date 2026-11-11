@@ -115,7 +115,7 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
     id: over.id ?? 'tpl_sn_nn_630kva',
     name_pl: over.name_pl ?? 'Stacja SN/nN 630 kVA z RMU 3-pole, 4 odpływy',
     category: over.category ?? 'typowa_sn_nn',
-    description_pl: over.description_pl ?? 'Najbardziej typowa dystrybucyjna 630 kVA, ZPUE Rotoblok RMU.',
+    description_pl: over.description_pl ?? 'Najbardziej typowa dystrybucyjna 630 kVA, RMU ZPUE TPM Air.',
     use_case_pl: over.use_case_pl ?? 'Standardowa dystrybucyjna terenowa.',
     nc_rfg_type: over.nc_rfg_type ?? null,
     tags: over.tags ?? ['dystrybucyjna', 'typowa', '15kV'],

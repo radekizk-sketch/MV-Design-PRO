@@ -82,6 +82,9 @@ _SEKCJE_GPZ = BezOkna(
 KLASYFIKACJA_BEZ_FORMULARZA: dict[str, BezOkna | SciezkaMenu] = {
     "open_switch": SciezkaMenu(("open-switch",), _WYKONAWCA_MENU),
     "close_switch": SciezkaMenu(("close-switch",), _WYKONAWCA_MENU),
+    "set_bay_apparatus_position": SciezkaMenu(
+        ("open-switch", "close-switch", "earth-switch"), _WYKONAWCA_MENU
+    ),
     "delete_element": SciezkaMenu(
         (
             "delete-bay",
@@ -105,6 +108,11 @@ KLASYFIKACJA_BEZ_FORMULARZA: dict[str, BezOkna | SciezkaMenu] = {
         ("ui/field/EdytorWyposazeniaPola.tsx",),
         "Wyposażenie pola edytuje się w miejscu na karcie pola (E-11) — lista aparatów pola "
         "z wyborem typu katalogowego.",
+    ),
+    "set_object_state": BezOkna(
+        ("ui/field/EdytorStanuObiektuPola.tsx",),
+        "Stan obiektu pola (istniejący / projektowany) zmienia się w miejscu na karcie pola "
+        "(E-11) — przycisk przy polu i wybór stanu przy każdym aparacie.",
     ),
     "update_protection_settings": BezOkna(
         ("ui2/kreatory/przekaznik/EdytorNastawZabezpieczenia.tsx",),

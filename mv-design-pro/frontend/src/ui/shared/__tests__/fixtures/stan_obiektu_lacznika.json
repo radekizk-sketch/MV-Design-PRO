@@ -1,0 +1,1387 @@
+[
+  {
+    "enm": {
+      "bays": [],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_brak__pole_brak",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_brak__pole_istniejacy",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_brak__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_brak__pole_bez_stanu",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_istniejacy__pole_brak",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_istniejacy__pole_istniejacy",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_istniejacy__pole_projektowany",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_istniejacy__pole_bez_stanu",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_projektowany__pole_brak",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_projektowany__pole_istniejacy",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_projektowany__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_brak__galaz_projektowany__pole_bez_stanu",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_brak__pole_brak",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_brak__pole_istniejacy",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_brak__pole_projektowany",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_brak__pole_bez_stanu",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_istniejacy__pole_brak",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_istniejacy__pole_istniejacy",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_istniejacy__pole_projektowany",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_istniejacy__pole_bez_stanu",
+    "stan": "ISTNIEJACY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_projektowany__pole_brak",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_projektowany__pole_istniejacy",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_projektowany__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "ISTNIEJACY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_istniejacy__galaz_projektowany__pole_bez_stanu",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_brak__pole_brak",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_brak__pole_istniejacy",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_brak__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_brak__pole_bez_stanu",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_istniejacy__pole_brak",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_istniejacy__pole_istniejacy",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_istniejacy__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_istniejacy__pole_bez_stanu",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_projektowany__pole_brak",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_projektowany__pole_istniejacy",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_projektowany__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": "PROJEKTOWANY"
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_projektowany__galaz_projektowany__pole_bez_stanu",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_brak__pole_brak",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_brak__pole_istniejacy",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_brak__pole_projektowany",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_brak__pole_bez_stanu",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_istniejacy__pole_brak",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_istniejacy__pole_istniejacy",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_istniejacy__pole_projektowany",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "ISTNIEJACY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_istniejacy__pole_bez_stanu",
+    "stan": null
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_projektowany__pole_brak",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "ISTNIEJACY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_projektowany__pole_istniejacy",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": "PROJEKTOWANY"
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_projektowany__pole_projektowany",
+    "stan": "PROJEKTOWANY"
+  },
+  {
+    "enm": {
+      "bays": [
+        {
+          "equipment_refs": [
+            "sw-1"
+          ],
+          "ref_id": "pole-a",
+          "stan_obiektu": null
+        },
+        {
+          "equipment_refs": [],
+          "primary_devices": [
+            {
+              "device_ref": "q1",
+              "linked_ref": "sw-1",
+              "stan_obiektu": null
+            }
+          ],
+          "ref_id": "pole-b",
+          "stan_obiektu": "PROJEKTOWANY"
+        }
+      ],
+      "branches": [
+        {
+          "ref_id": "sw-1",
+          "stan_obiektu": "PROJEKTOWANY",
+          "type": "switch"
+        }
+      ]
+    },
+    "nazwa": "aparat_bez_stanu__galaz_projektowany__pole_bez_stanu",
+    "stan": "PROJEKTOWANY"
+  }
+]

@@ -1,0 +1,55 @@
+<definition version="0.100.0" type="element" link_type="simple" width="20" height="80" hotspot_x="10" hotspot_y="40">
+    <uuid uuid="{0bc02728-809f-1880-14f8-a402485f871f}"/>
+    <names>
+        <name lang="ar">مفتاح-عازل بمصهر؛ مفتاح مصهر عازل تحت الحمل</name>
+        <name lang="ca">Fusible interruptor-seccionador; </name>
+        <name lang="cs">Pojistkový odpínač</name>
+        <name lang="da">Sikringsafbryder med skillefunktion; Lastafbrydende sikringsafbryder</name>
+        <name lang="de">Sicherungs-Lasttrennschalter</name>
+        <name lang="el">Ασφάλεια-διακόπτης αποζεύκτης; Διακόπτης απομόνωσης υπό φορτίο με ασφάλεια</name>
+        <name lang="en">Fuse switch-disconnector; On-load isolating fuse switch</name>
+        <name lang="es">Interruptor seccionador con fusible; interruptor seccionador fusible en carga</name>
+        <name lang="fi">Sulakekytkin-erotuskytkin; Kuormitettuna erottava sulakekytkin</name>
+        <name lang="fr">Fusible interrupteur-sectionneur</name>
+        <name lang="hr">Osigurač-prekidač-rastavljač; Rastavna osigurač-sklopka pod opterećenjem</name>
+        <name lang="hu">Olvadóbiztosítós terheléskapcsoló; Terhelés alatti szakaszoló olvadóbiztosítós kapcsoló</name>
+        <name lang="it">Interruttore-sezionatore con fusibile; Interruttore sezionatore portafusibile in carico</name>
+        <name lang="ja">ヒューズ開閉断路器；負荷開閉ヒューズスイッチ</name>
+        <name lang="ko">퓨즈 부하 개폐기; 부하 개폐형 퓨즈 스위치</name>
+        <name lang="mn">Хайлмаг унтраалга-таслагч; Ачаалалтай үед тусгаарлах хайлмаг унтраалга</name>
+        <name lang="nb">Lastsikringsbryter; lastskillebryter med sikring</name>
+        <name lang="nl">Zekeringslastscheider; Lastscheider met zekering onder belasting</name>
+        <name lang="nl_BE">Zekering-lastscheidingsschakelaar; Lastscheidingszekering</name>
+        <name lang="pl">Rozłącznik bezpiecznikowy; Łącznik izolacyjny bezpiecznikowy</name>
+        <name lang="pt">Interruptor-seccionador com fusível; Interruptor de corte em carga com fusível</name>
+        <name lang="pt_BR">Interruptor-seccionador fusível sob carga</name>
+        <name lang="ro">Întrerupător-separator cu fuzibil; Întrerupător cu fuzibil separator de sarcină</name>
+        <name lang="ru">Предохранитель-выключатель-разъединитель; Разъединитель с предохранителем под нагрузкой</name>
+        <name lang="sk">Poistkový spínač-odpojovač; Zaťažovací izolačný poistkový spínač</name>
+        <name lang="sl">Varovalka-stikalo z ločilnikom; ločilno varovalko-stikalo pod obremenitvijo</name>
+        <name lang="sr">Осигурач прекидач-растављач; Изолациони осигурач-прекидач под оптерећењем</name>
+        <name lang="sv">Säkringsbrytare med frånskiljning; Lastfrånskiljande säkringsbrytare</name>
+        <name lang="tr">Sigorta şalter-ayırıcı; Yükte açma-kapama izolasyon sigorta şalteri</name>
+        <name lang="uk">Запобіжник-вимикач-роз'єднувач; Запобіжник-вимикач з навантажувальною ізоляцією</name>
+        <name lang="zh">接线端子09</name>
+    </names>
+    <informations>Author: The QElectroTech team
+License: see http://qelectrotech.org/wiki/doc/elements_license</informations>
+    <description>
+        <dynamic_text x="5" y="12.5" z="1" text_width="-1" Halignment="AlignLeft" Valignment="AlignTop" frame="false" rotation="0" keep_visual_rotation="false" text_from="ElementInfo" uuid="{37f12fd0-4cb7-465d-b5b7-15de808c68f9}" font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular">
+            <text></text>
+            <info_name>label</info_name>
+        </dynamic_text>
+        <line x1="0" y1="30" x2="0" y2="10" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="0" y1="10" x2="-5" y2="-10" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="0" y1="-13" x2="0" y2="-30" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="-3" y1="6" x2="-6" y2="-5" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="-2" y1="-6" x2="1" y2="5" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="1" y1="5" x2="-3" y2="6" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="-2" y1="-6" x2="-6" y2="-5" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <ellipse x="-1" y="-12" width="2" height="2" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="-2" y1="-13" x2="2" y2="-13" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <terminal uuid="{ff02a6e3-204e-4d1a-a109-2feab0413f81}" name="" x="0" y="-30" orientation="n" type="Generic"/>
+        <terminal uuid="{eed07aa8-c389-45d9-95f3-b641eb5b81de}" name="" x="0" y="30" orientation="s" type="Generic"/>
+    </description>
+</definition>

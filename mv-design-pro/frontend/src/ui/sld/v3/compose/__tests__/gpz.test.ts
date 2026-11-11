@@ -23,10 +23,12 @@ import type {
   CanonicalGpzProps,
   RolaPolaGpz,
 } from '../../../v2/canvas/canonicalGpzModel';
+import { PLAKIETKI_GPZ } from '../../../v2/canvas/canonicalGpzModel';
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView } from '../../../v2/model/widokPolStacji';
 import { uzwojeniaZGrupyPolaczen } from '../../symbols/uzwojenia';
 import {
   ETYKIETA_ROLI_POLA_PL,
+  KLASA_DANYCH_GPZ,
   KONTRAKT_NEGATYWNY_GPZ,
   ROLE_POL_GPZ,
   szerokoscSlotowNaglowka,
@@ -49,8 +51,11 @@ import {
   gpzInternalSegmentsEndAtPortsOrBus,
   noDirectTransformerBusTies,
   noGpzSymbolOverlaps,
+  podpisyWPasieBezNakladania,
   type GpzComposition,
+  type PodpisAparatuWPasie,
 } from '../gpz';
+import { labelLineHeight, measureLabelWidth } from '../../core/text';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -833,6 +838,8 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
       neutralEarthingNotePl: null,
       zone: null,
       adnotacje: null,
+      brakiPrzylaczy: [],
+      brakiTopologiiFunkcji: [],
     };
   }
 
@@ -965,6 +972,10 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez rejestru device-ref', () => {
+  // Kody ze słownika funkcji EAZ (`funkcje_eaz.py`: kod = numer IEEE; karta UX-04, deduplikacja
+  // u źródła 2026-10-30). Dawny zapis „50/51" nie jest kodem słownika, a jego tusz pismem 8 px
+  // nie mieści się w okręgu (podłoga S9-7, `symbols/okragPrzekaznika.ts`) — intencja „okrąg
+  // niesie prefiks dwóch kodów" zostaje na kodach, które się w nim mieszczą.
   const propsWithCodes = (codes: readonly string[]): CanonicalGpzProps =>
     baseProps({
       sections: [
@@ -985,10 +996,10 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
   });
 
   it('F11.1 (usunięcie wyjątku §17.6): pole z kodami, ale BEZ `primaryDevices`/`protectionMarking` refów (bare `protectionCodes`, wywołujący sprzed F11.1) ⇒ DOKŁADNIE jeden okrąg z DWOMA pierwszymi kodami, ZERO segmentów wtórnych, ale missingData JEST zgłaszana TERAZ (parytet ze stacjami — dawny wyjątek R-1 ZNIESIONY)', () => {
-    const composition = composeGpz(propsWithCodes(['50/51', '51N']), ORIGIN);
+    const composition = composeGpz(propsWithCodes(['51', '51N']), ORIGIN);
     expect(composition.protectionSymbols).toHaveLength(1);
     expect(composition.protectionSymbols[0].bayRef).toBe('b-prot');
-    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['50/51', '51N']);
+    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['51', '51N']);
     // BEZ danych refów (brak `protectionMarking.breakerRef`/`ctRef`) — brak
     // linii wtórnych z KONSTRUKCJI, dokładnie jak stacja z `protection_ref==null`.
     expect(composition.protectionSegments).toHaveLength(0);
@@ -1013,20 +1024,20 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
   });
 
   it('B-1 (§17.4 L1, circle-only): okrąg BEZ kodów, zero etykiet protection', () => {
-    const composition = composeGpz(propsWithCodes(['50/51', '51N', '67N']), ORIGIN, [], 'circle-only');
+    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN, [], 'circle-only');
     expect(composition.protectionSymbols).toHaveLength(1);
     expect(composition.protectionSymbols[0].protectionCodes).toBeUndefined();
     expect(composition.labels.protection).toHaveLength(0);
   });
 
   it('B-1 (§17.4 L0, none): warstwa adnotacji nieobecna mimo kodów w danych', () => {
-    const composition = composeGpz(propsWithCodes(['50/51']), ORIGIN, [], 'none');
+    const composition = composeGpz(propsWithCodes(['51']), ORIGIN, [], 'none');
     expect(composition.protectionSymbols).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
   });
 
   it('istniejące wyrocznie GPZ (grid/overlap/porty/parity) pozostają zielone przy polu z kodami — okrąg nie zaburza toru mocy', () => {
-    const composition = composeGpz(propsWithCodes(['50/51', '51N', '67N']), ORIGIN);
+    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN);
     expect(allGpzSymbolsOnGrid(composition)).toBe(true);
     expect(noGpzSymbolOverlaps(composition)).toBe(true);
     expect(gpzInternalSegmentsEndAtPortsOrBus(composition)).toBe(true);
@@ -1065,7 +1076,7 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
   ];
 
   const protMarking: BayProtectionMarkingView = {
-    codes: ['50/51', '51N'],
+    codes: ['51', '51N'],
     breakerRef: 'cb-1',
     ctRef: 'ct-1',
   };
@@ -1514,7 +1525,8 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   it('sloty belki mieszczą NAJDŁUŻSZY wariant tekstu (brak wyniku / wynik / wynik nieaktualny) — geometria nie zależy od stanu biegu', () => {
     const sloty = szerokoscSlotowNaglowka();
     const pelny = { pZasilaniaMw: '−8888,8888', qZasilaniaMvar: '−8888,8888', pOdplywowMw: '−8888,8888', qOdplywowMvar: '−8888,8888' };
-    const miara = (t: string): number => Math.ceil(t.length * 13 * 0.62);
+    // Miara z tabeli posuwów kroju w klasie danych GPZ — ta sama, którą liczy kompozycja.
+    const miara = (t: string): number => measureLabelWidth(t, KLASA_DANYCH_GPZ);
     for (const t of [tekstZasilaniaGpz(null), tekstZasilaniaGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.zasilanie);
     for (const t of [tekstOdplywowGpz(null), tekstOdplywowGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.odplywy);
     for (const t of [tekstAlarmowGpz(null, false, false), tekstAlarmowGpz('8888', true, true)]) expect(miara(t)).toBeLessThanOrEqual(sloty.alarmy);
@@ -1551,7 +1563,7 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   // = min z wariantów wykonalnych; w karcie jednowierszowej wartości nie zachodzą na
   // opis pola; karty rozłączne i w obrysie tabeli; legenda nie zachodzi na tytuł
   // ani na karty.
-  const polaTabeli = (n: number, plakietki: readonly ('SPZ' | 'SCO')[]): PoleTabeliGpzWejscie[] =>
+  const polaTabeli = (n: number, plakietki: readonly (typeof PLAKIETKI_GPZ)[number][]): PoleTabeliGpzWejscie[] =>
     Array.from({ length: n }, (_, i) => ({
       bayRef: `b-${i}`,
       oznaczenie: `Pole liniowe ${i + 1}`,
@@ -1563,7 +1575,8 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
     return ulozWariantTabeliGpz(pola, 0, 0, 0, true).karty[0].rect.width;
   };
   for (const n of [1, 4, 9]) {
-    for (const plakietki of [[], ['SPZ', 'SCO']] as const) {
+    // Pięć plakietek — pole Z.11.1 niesie SPZ, LRW, NZ i OWG (rozszerzenie 5 karty UX-04).
+    for (const plakietki of [[], ['SPZ', 'SCO'], PLAKIETKI_GPZ] as const) {
       const pola = polaTabeli(n, plakietki);
       const prog = progJednowierszowy(pola);
       for (const [nazwa, szerokosc] of [['wąska', prog - GRID], ['próg jednowierszowy', prog], ['szeroka', 100000]] as const) {
@@ -1614,14 +1627,15 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   });
 });
 
-describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', () => {
-  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji, OWG — każdy z uzasadnieniem', () => {
+describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA', () => {
+  // Plakietka OWG opuściła kontrakt negatywny (rozszerzenie 5 karty UX-04): OWG ma wpis
+  // słownika funkcji EAZ z podstawą i kod w zestawie funkcji pola Z.11.1/Z.11.
+  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji — każdy z uzasadnieniem', () => {
     expect(Object.keys(KONTRAKT_NEGATYWNY_GPZ).sort()).toEqual([
       'gpz.header.address',
       'gpz.header.control',
       'gpz.header.reset_signals',
       'gpz.header.transmission',
-      'gpz.status_flags.OWG',
     ]);
     for (const uzasadnienie of Object.values(KONTRAKT_NEGATYWNY_GPZ)) {
       expect(uzasadnienie).toMatch(/reguła phantom|Brak podstawy/);
@@ -1629,11 +1643,11 @@ describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', 
   });
 
   for (const [opis, props] of [['minimalny', baseProps()], ['pełny', pelnyGpz()], ['bez nazwy', pelnyGpz({ name: null })]] as const) {
-    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu SPZ/SCO`, () => {
+    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu plakietek`, () => {
       const c = composeGpz(props, ORIGIN);
       for (const klucz of Object.keys(KONTRAKT_NEGATYWNY_GPZ)) expect(c.parityKeys.has(klucz), klucz).toBe(false);
       const plakietki = c.adnotacje!.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.flaga));
-      expect(plakietki.every((f) => f === 'SPZ' || f === 'SCO')).toBe(true);
+      expect(plakietki.every((f) => (PLAKIETKI_GPZ as readonly string[]).includes(f))).toBe(true);
     });
   }
 });
@@ -1682,5 +1696,65 @@ describe('GPZ-PARYTET — determinizm adnotacji', () => {
       expect(p.rect.x - a.adnotacje!.panele[i].rect.x).toBe(dx);
       expect(p.rect.y - a.adnotacje!.panele[i].rect.y).toBe(dy);
     });
+  });
+});
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC — pas podpisów aparatów pola bez nakładania.
+ *
+ * Iloczyn: {podpisy rozłączne, zachodzące, równej wysokości} × {jeden pas, dwa pasy (inna
+ * kotwica X, inna strona)} × {kolejność wejścia wprost, odwrócona}. Defekt, który przypina:
+ * Z.11 wykonanie stałe — głowica GK1 odgałęzienia i uziemnik Q51 obok niej dawały ten sam
+ * prostokąt podpisu, rozwiązywacz zdejmował drugi (aparat bez oznaczenia na schemacie).
+ */
+describe('podpisyWPasieBezNakladania — pas podpisów aparatów pola', () => {
+  const H = labelLineHeight('t3');
+  const podpis = (ref: string, y: number, x = 100, placement: 'left' | 'right' = 'right', symbolX = 0): PodpisAparatuWPasie => ({
+    ownerRef: ref,
+    text: ref,
+    anchor: { x, y },
+    placement,
+    symbolX,
+  });
+  const gora = (p: PodpisAparatuWPasie): number => Math.round((p.anchor.y - H / 2) / GRID) * GRID;
+
+  it('podpisy rozłączne — kotwice nietknięte (geometria bez kolizji bez zmian)', () => {
+    const wejscie = [podpis('a', 100), podpis('b', 140), podpis('c', 200)];
+    expect(podpisyWPasieBezNakladania(wejscie)).toEqual(wejscie);
+  });
+
+  it.each([
+    ['wprost', false],
+    ['odwrócona', true],
+  ])('podpisy zachodzące w jednym pasie — rozłączne, kolejność wg wysokości symbolu (wejście %s)', (_n, odwroc) => {
+    // Pomiar sceny Z.11 stałego: GK1 środek 676, Q51 środek 680 (kafel 48 px), T3 środek 712.
+    const baza = [podpis('Q5', 632, 2128, 'right', 1976), podpis('Q51', 680, 2128, 'right', 2072), podpis('GK1', 676, 2128, 'right', 1992), podpis('T3', 712, 2128, 'right', 2032)];
+    const wejscie = odwroc ? [...baza].reverse() : baza;
+    const wynik = podpisyWPasieBezNakladania(wejscie);
+    expect(wynik.map((p) => p.ownerRef)).toEqual(wejscie.map((p) => p.ownerRef));
+    const wgRef = new Map(wynik.map((p) => [p.ownerRef, gora(p)]));
+    expect(Object.fromEntries(wgRef)).toEqual({ Q5: 624, GK1: 672, Q51: 688, T3: 704 });
+    const posortowane = [...wgRef.values()].sort((a, b) => a - b);
+    for (let i = 1; i < posortowane.length; i += 1) expect(posortowane[i]).toBeGreaterThanOrEqual(posortowane[i - 1] + H);
+    // Podpis przesunięty ma prostokąt na siatce — rozwiązywacz (`snapToGrid(kotwica − H/2)`)
+    // nie przesuwa go z powrotem na podpis poprzedni.
+    const przesuniete = wynik.filter((p, i) => p !== wejscie[i]);
+    expect(przesuniete.map((p) => p.ownerRef).sort()).toEqual(['Q51']);
+    for (const p of przesuniete) expect((p.anchor.y - H / 2) % GRID).toBe(0);
+  });
+
+  it('równa wysokość — kolejność wg położenia X symbolu (deterministyczna niezależnie od wejścia)', () => {
+    const a = podpis('lewy', 300, 100, 'right', 10);
+    const b = podpis('prawy', 300, 100, 'right', 50);
+    const wprost = podpisyWPasieBezNakladania([a, b]);
+    const odwrotnie = podpisyWPasieBezNakladania([b, a]);
+    expect(gora(wprost[0])).toBe(gora(odwrotnie[1]));
+    expect(gora(wprost[1])).toBe(gora(odwrotnie[0]));
+    expect(gora(wprost[0])).toBeLessThan(gora(wprost[1]));
+  });
+
+  it('dwa pasy (inna kotwica X albo inna strona) nie przesuwają się nawzajem', () => {
+    const wejscie = [podpis('a', 300, 100), podpis('b', 300, 200), podpis('c', 300, 100, 'left')];
+    expect(podpisyWPasieBezNakladania(wejscie)).toEqual(wejscie);
   });
 });

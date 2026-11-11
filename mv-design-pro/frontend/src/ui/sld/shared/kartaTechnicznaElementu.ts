@@ -30,9 +30,11 @@ import type {
   Measurement,
   Source,
   GPZSection,
+  StanObiektu,
   Substation,
   Transformer,
 } from '../../../types/enm';
+import { isSwitchBranch } from '../../../types/enm';
 import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
@@ -76,7 +78,9 @@ import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
-import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
+import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
+import { funkcjaEaz, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
+import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import { symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
 import { ROLA_SYMBOLU_PL } from './identyfikatorAparatu';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
@@ -161,11 +165,25 @@ export interface CelWierszaTabeli {
   readonly aparatRef: string;
 }
 
+/** Cel akcji wiersza tabeli karty — wyłącznie istniejące drogi aplikacji: ekran przestrzeni
+ *  roboczej (np. E-27 „Zabezpieczenia i automatyka" z edytorem nastaw) albo formularz operacji
+ *  domenowej z kontekstem (np. `add_relay` dla pola bez urządzenia zabezpieczeniowego). */
+export type CelAkcjiKarty =
+  | { readonly rodzaj: 'ekran'; readonly kodEkranu: 'E-27' }
+  | { readonly rodzaj: 'operacja'; readonly operacja: 'add_relay'; readonly kontekst: Readonly<Record<string, string>> };
+
+export interface AkcjaWierszaKarty {
+  readonly etykietaPl: string;
+  readonly cel: CelAkcjiKarty;
+}
+
 export interface WierszTabeli {
   readonly klucz: string;
   readonly komorki: Readonly<Record<string, string | null>>;
   /** Karta otwierana klikiem w wiersz; brak = wiersz bez przejścia. */
   readonly cel?: CelWierszaTabeli;
+  /** Przejście z wiersza (np. do nastaw funkcji zabezpieczenia). */
+  readonly akcja?: AkcjaWierszaKarty;
   /** Kolumny, których treść zawiera już komórka poprzedniej kolumny (nazwa pola zaczynająca się
    *  etykietą roli — `opisBezPowtorzen`): renderer scala je z nią (`colSpan`), więc informacja
    *  stoi raz, a nazwa ma szerokość obu kolumn. Wartość w `komorki` zostaje (dane, testy). */
@@ -297,11 +315,13 @@ export const WYMAGANE_POLA_KARTY: Readonly<Record<RodzajKarty, readonly string[]
     'szyna',
     'tabela:aparaty',
     'zabezpieczenie',
+    'tabela:funkcje_eaz',
     'przekladniki',
     'przylaczenie',
+    'stan_obiektu',
   ],
-  aparat: ['nazwa', 'rodzaj', 'pole', 'stacja', 'typ', 'ur', 'ir', 'ik_wyl', 'stan'],
-  lacznik: ['nazwa', 'rodzaj', 'polaczenie', 'stan', 'typ', 'ur', 'ir', 'ik_wyl'],
+  aparat: ['nazwa', 'rodzaj', 'pole', 'stacja', 'typ', 'ur', 'ir', 'ik_wyl', 'stan', 'stan_obiektu'],
+  lacznik: ['nazwa', 'rodzaj', 'polaczenie', 'stan', 'typ', 'ur', 'ir', 'ik_wyl', 'stan_obiektu'],
   transformator: [
     'nazwa',
     'rola',
@@ -400,12 +420,6 @@ function edycja(elementRef: string, parametr: string, wartosc: unknown): EdycjaW
   };
 }
 
-const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
-  closed: 'zamknięty',
-  open: 'otwarty',
-  unknown: 'nieustalony (model niejednoznaczny)',
-};
-
 const WYKONANIE_STACJI_PL: Readonly<Record<string, string>> = {
   wnetrzowa: 'wnętrzowa',
   kontenerowa: 'kontenerowa',
@@ -430,6 +444,9 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   PCS: 'Układ przekształtnikowy PCS',
   BATTERY: 'Bateria',
   SURGE_ARRESTER: 'Ogranicznik przepięć',
+  THREE_POSITION_SWITCH: 'Łącznik trójpołożeniowy',
+  VOLTAGE_INDICATOR: 'Pojemnościowy wskaźnik napięcia',
+  CORE_BALANCE_CT: 'Przekładnik Ferrantiego',
   UNBALANCE_CT: 'Przekładnik niezrównoważenia baterii',
   PHASE_TO_PHASE_VT: 'Przekładnik napięciowy międzyfazowy',
 };
@@ -714,7 +731,25 @@ function stanAparatu(ix: IndeksModelu, aparat: AparatPola, bay: Bay | null): str
   const stan = bay
     ? stanLacznikaPolaZModelu(aparat.ref, bay, ix.galezie)
     : stanLacznikaToruZModelu(aparat.ref, ix.galezie);
-  return stan ? POLOZENIE_PL[stan] : null;
+  return stan ? OPIS_POLOZENIA_PL[stan] : null;
+}
+
+/** Stan obiektu (istniejący / projektowany) — nazwa PL; `null` = stan nieustalony (zapis sprzed
+ *  atrybutu), na karcie opis braku, nigdy domysł „istniejący". */
+function nazwaStanuObiektu(stan: StanObiektu | null | undefined): string | null {
+  return stan ? NAZWY_STANOW_OBIEKTU_PL[stan] : null;
+}
+
+/** Stan obiektu aparatu: rekord aparatu pola niesie własny stan (`BayPrimaryDevice.stan_obiektu`
+ *  — ten sam, który ocenia zakaz gazów fluorowanych), gałąź łączeniowa — regułę
+ *  `stanObiektuLacznika` (lustro backendu: aparat wskazujący gałąź, stan gałęzi, stan pola). */
+function stanObiektuAparatu(ix: IndeksModelu, aparat: AparatPola): string | null {
+  if (aparat.urzadzenie) return nazwaStanuObiektu(aparat.urzadzenie.stan_obiektu);
+  // Bezpiecznik (gałąź `fuse`) nie niesie stanu obiektu w modelu — tylko jego rekord w polu.
+  if (aparat.galaz && isSwitchBranch(aparat.galaz)) {
+    return nazwaStanuObiektu(stanObiektuLacznika(ix.model.bays, aparat.galaz));
+  }
+  return null;
 }
 
 /**
@@ -1189,6 +1224,61 @@ function opisGeneratora(g: Generator): string {
   return `${publicTechnicalLabel(g.name, 'Źródło')} · ${formatGeneratorTypeLabelPl(g.gen_type ?? null)} · ${zapisLiczby(g.p_mw, 'MW') ?? 'bez mocy czynnej'}`;
 }
 
+/**
+ * Sekcja „Zabezpieczenia i automatyka" karty pola (karta UX-04/POLE-LINIOWE-WZORZEC): wiersz na
+ * KAŻDĄ funkcję `Bay.protection_codes` — kod (numer IEEE C37.2 albo skrót krajowy), zapis
+ * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`)
+ * i przejście do nastaw (blok przekaźnika na schemacie niesie wszystkie kody pola — odbiór B-02
+ * właściciela 2026-11-04, więc karta nie rozróżnia funkcji „na schemacie” i „poza nim”): pole z urządzeniem
+ * zabezpieczeniowym → ekran E-27 (edytor nastaw), pole bez urządzenia → kreator przekaźnika
+ * z refem pola (`add_relay`). Kod spoza słownika (model go nie dopuszcza) dostaje jawne
+ * „brak w słowniku funkcji", nie zmyśloną nazwę.
+ */
+function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty {
+  const kody = bay.protection_codes ?? [];
+  // JEDNO źródło stanu zabezpieczenia pola (`ui/shared/zabezpieczeniePola`) — to samo, z którego
+  // pochodzi wiersz „Zabezpieczenie" i oznaczenie zabezpieczeń na kanwie.
+  const maUrzadzenie = zabezpieczeniePola(ix.model, bay).rodzaj === 'sterownik';
+  const akcja: AkcjaWierszaKarty = maUrzadzenie
+    ? { etykietaPl: 'Nastawy', cel: { rodzaj: 'ekran', kodEkranu: 'E-27' } }
+    : {
+        etykietaPl: 'Dodaj urządzenie (nastawy)',
+        cel: { rodzaj: 'operacja', operacja: 'add_relay', kontekst: { bay_ref: bay.ref_id } },
+      };
+  return {
+    id: 'zabezpieczenia',
+    tytul: 'Zabezpieczenia i automatyka',
+    wiersze: [...wierszeZabezpieczeniaPola(ix, bay), lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay))],
+    tabele: [
+      {
+        klucz: 'funkcje_eaz',
+        podpis: 'Funkcje zabezpieczeń i automatyki pola',
+        kolumny: [
+          { klucz: 'kod', etykieta: 'Kod (ANSI)' },
+          { klucz: 'oznaczenie', etykieta: 'Oznaczenie' },
+          { klucz: 'funkcja', etykieta: 'Funkcja' },
+          { klucz: 'rodzaj', etykieta: 'Rodzaj' },
+        ],
+        wiersze: kody.map((kod) => {
+          const f = funkcjaEaz(kod);
+          return {
+            klucz: kod,
+            komorki: {
+              kod: f?.ansi ? `${kod} (ANSI ${f.ansi})` : kod,
+              oznaczenie: f?.oznaczeniePl ?? null,
+              funkcja: f?.nazwaPl ?? 'brak w słowniku funkcji',
+              rodzaj: f ? RODZAJ_FUNKCJI_EAZ_PL[f.rodzaj] : null,
+            },
+            akcja,
+          };
+        }),
+        pustaPl: 'Pole nie ma funkcji zabezpieczeń ani automatyki w modelu.',
+        zrodloPl: 'Funkcje: model pola (Bay.protection_codes); nazwy: słownik funkcji EAZ.',
+      },
+    ],
+  };
+}
+
 function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTechniczna {
   const aparaty = aparatyPola(ix, bay);
   const zacisk = zaciskPola(bay);
@@ -1218,6 +1308,9 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
         ...(bay.outgoing_destination_ref
           ? [wiersz('kierunek', 'Kierunek (stacja docelowa)', kierunek, { brakPl: 'stacja docelowa spoza modelu' })]
           : []),
+        wiersz('stan_obiektu', 'Stan obiektu', nazwaStanuObiektu(bay.stan_obiektu), {
+          brakPl: 'stan obiektu nieustalony w modelu (zapis sprzed atrybutu)',
+        }),
       ],
     },
     {
@@ -1283,14 +1376,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
         },
       ],
     },
-    {
-      id: 'zabezpieczenia',
-      tytul: 'Zabezpieczenie i pomiary',
-      wiersze: [
-        ...wierszeZabezpieczeniaPola(ix, bay),
-        lista('przekladniki', 'Przekładniki', przekladnikiPola(ix, bay)),
-      ],
-    },
+    sekcjaZabezpieczenIAutomatyki(ix, bay),
     // Przyłączenie dotyczy pola z zaciskiem (odpływ, zasilanie, źródło); pole bez zacisku w modelu
     // (sprzęgło, pomiar napięcia) nie ma tej sekcji — zamiast pustej listy odcinków.
     ...(zacisk
@@ -1347,6 +1433,7 @@ function kartaAparatu(
           `${opisSzyny(ix, galaz.from_bus_ref) ?? BRAK_DANYCH_PL} — ${opisSzyny(ix, galaz.to_bus_ref) ?? BRAK_DANYCH_PL}`,
         ),
         wiersz('stan', 'Położenie (model)', stanAparatu(ix, aparat, null)),
+        wiersz('stan_obiektu', 'Stan obiektu', stanObiektuAparatu(ix, aparat)),
       ]
     : [
         wiersz('nazwa', 'Nazwa', nazwa, galaz ? { edycja: edycja(galaz.ref_id, 'name', galaz.name) } : {}),
@@ -1361,6 +1448,7 @@ function kartaAparatu(
         // Położenie i zdolność wyłączalna dotyczą tylko łącznika; aparat niełączeniowy
         // (przekładnik, ogranicznik, głowica) nie ma tych wierszy — zamiast „nie dotyczy”.
         ...(aparat.lacznik ? [wiersz('stan', 'Położenie (model)', stanAparatu(ix, aparat, bay))] : []),
+        wiersz('stan_obiektu', 'Stan obiektu', stanObiektuAparatu(ix, aparat)),
       ];
   return {
     rodzaj: lacznikToru ? 'lacznik' : 'aparat',
@@ -1458,7 +1546,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
           wiersz('rodzaj', 'Rodzaj', RODZAJ_GALEZI_PL[galaz.type]),
           wiersz('od', 'Początek', koniec(galaz.from_bus_ref)),
           wiersz('do', 'Koniec', koniec(galaz.to_bus_ref)),
-          wiersz('stan', 'Stan (model)', galaz.status === 'open' ? 'otwarty' : galaz.status === 'closed' ? 'zamknięty' : null),
+          wiersz('stan', 'Stan (model)', galaz.status === 'open' || galaz.status === 'closed' ? OPIS_POLOZENIA_PL[galaz.status] : null),
         ],
       },
       {

@@ -59,14 +59,17 @@ CATALOG_TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 RODZINA_MODULARNA = "ZPUE_WLOSZCZOWA__RELF"
 POLE_MODULARNE = "ZPUE_WLOSZCZOWA__RELF__LINE_OUT"
 
-#: Rodzina BLOKOWA i jej pojedyncza celka (wskazanie bez bloku = błąd).
-RODZINA_BLOKOWA = "SCHNEIDER__RM6"
-POLE_BLOKOWE = "SCHNEIDER__RM6__LINE_OUT"
+#: Rodzina BLOKOWA i jej pojedyncza celka (wskazanie bez bloku = błąd). Karta
+#: UX-04/POLE-LINIOWE-WZORZEC: pola budowane operacjami są PROJEKTOWANE, a pole projektowane
+#: nie może mieć gazu fluorowanego (rozporządzenie (UE) 2024/573, art. 13 ust. 9) — RM6 (SF₆)
+#: zastąpił ZPUE TPM AIR (izolacja suchym powietrzem, łączniki próżniowe).
+RODZINA_BLOKOWA = "ZPUE_WLOSZCZOWA__TPM_AIR"
+POLE_BLOKOWE = "ZPUE_WLOSZCZOWA__TPM_AIR__LINE_OUT"
 
 #: Blok, którego DWIE jednostki mają tę samą funkcję (odpływ liniowy), ale
-#: RÓŻNĄ aparaturę toru głównego: „B" to wyłącznik, „I" rozłącznik. Bez numeru
+#: RÓŻNĄ aparaturę toru głównego: „L" to rozłącznik, „W" wyłącznik. Bez numeru
 #: jednostki obu pól nie da się od siebie odróżnić — a to są różne wyroby.
-BLOK_ROZNE_JEDNOSTKI = "SCHNEIDER__RM6__BI"
+BLOK_ROZNE_JEDNOSTKI = "ZPUE_WLOSZCZOWA__TPM_AIR__LW"
 
 #: Wszystkie operacje przenoszące WYBÓR BLOKU projektanta (inwentarz klasy).
 OPERACJE_KLASY = ("wciecie", "koniec_ciagu", "operacja_katalogowa")
@@ -256,7 +259,7 @@ def test_kazda_operacja_zapisuje_blok_i_jednostke_pod_ta_sama_nazwa(operacja: st
 def test_numer_jednostki_rozstrzyga_aparature_pola(operacja: str) -> None:
     """Dwie jednostki tej samej ROLI, różne wyroby — numer jednostki je rozróżnia.
 
-    Blok B-I ma dwa odpływy liniowe: „B" z wyłącznikiem i „I" z rozłącznikiem.
+    Blok L-W ma dwa odpływy liniowe: „L" z rozłącznikiem i „W" z wyłącznikiem.
     Gdyby aparaturę rozstrzygała rola pola (a nie jednostka), oba pola wyszłyby
     identyczne — i model kłamałby o wyrobie, który stoi w rozdzielnicy.
     """
@@ -272,7 +275,7 @@ def test_numer_jednostki_rozstrzyga_aparature_pola(operacja: str) -> None:
     aparaty = [tuple(a["kind"] for a in spec.get("primary_devices") or []) for spec in pola]
     assert all(aparaty), f"operacja {operacja} zapisala pole bloku bez aparatow"
     assert aparaty[0] != aparaty[1], (
-        "Jednostki B (wylacznik) i I (rozlacznik) tego samego bloku daja "
+        "Jednostki L (rozlacznik) i W (wylacznik) tego samego bloku daja "
         f"identyczna aparature {aparaty[0]} — numer jednostki nie rozstrzyga."
     )
     kinds_wszystkie = {kind for tor in aparaty for kind in tor}

@@ -20,7 +20,10 @@ import {
   type ShuntCapacitor,
   type UkladPolaczenBaterii,
 } from '../../../../types/enm';
-import { RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../../v3/compose/rodzajeAparatowPolaBkr';
+import {
+  RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+  RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+} from '../../v3/compose/rodzajeAparatuPola';
 
 /** Dane baterii potrzebne rysunkowi (glif `capacitorBank`). */
 export interface BateriaPolaView {
@@ -32,6 +35,10 @@ export interface BateriaPolaView {
    *  `UNBALANCE_CT`) — glif rysuje go w połączeniu międzygwiazdowym (Zał. 16), bo
    *  przekładnik obejmuje to połączenie, a nie tor pola. */
   readonly przekladnikNiezrownowazenia: boolean;
+  /** Liczba rekordów przekładników napięciowych międzyfazowych pola (`PHASE_TO_PHASE_VT`;
+   *  Zał. 16 s. 96: T4 L1-L2 i T5 L2-L3 „SN/0,1 kl. 3P” na zaciskach baterii, rozładowanie
+   *  §17) — glif rysuje je przy doprowadzeniu baterii, nie w osi toru pola. */
+  readonly przekladnikiMiedzyfazowe: number;
 }
 
 function jestUkladem(value: unknown): value is UkladPolaczenBaterii {
@@ -63,6 +70,9 @@ export function bateriaNaKoncuToruPola(
     przekladnikNiezrownowazenia: (bay.primary_devices ?? []).some(
       (device) => device.kind === RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
     ),
+    przekladnikiMiedzyfazowe: (bay.primary_devices ?? []).filter(
+      (device) => device.kind === RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+    ).length,
   };
 }
 

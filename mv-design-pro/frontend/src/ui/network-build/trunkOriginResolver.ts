@@ -101,7 +101,9 @@ export function resolveOriginKindFromContext(
 /**
  * Resolver pełny: snapshot + kontekst.
  *
- *  - Najpierw szuka branch_point (ZKSN, słup rozgałęźny) po `from_ref` lub `terminal_id`.
+ *  - Najpierw szuka branch_point (ZKSN, słup rozgałęźny) po `from_ref` (zacisk portu
+ *    odgałęźnego punktu — jedyna postać portu startu, backend `_rozwiaz_port_startu`) lub
+ *    `terminal_id`.
  *  - Następnie szuka pola SN (bay) i wnioskuje pole kablowe vs napowietrzne.
  *  - Jeżeli nie da się rozstrzygnąć — zwraca null (forma powinna pozwolić
  *    użytkownikowi domknąć kontekst albo polegać na innym guard).
@@ -115,10 +117,8 @@ export function resolveTrunkOriginKind(
 
   if (!snapshot || !context) return null;
 
-  const fromRef = asTrimmed(context.from_ref);
-  const refSeed = fromRef && fromRef.includes('.') ? fromRef.split('.', 2)[0] : fromRef;
   const candidateRefs = [
-    refSeed,
+    asTrimmed(context.from_ref),
     asTrimmed(context.field_ref),
     asTrimmed(context.terminal_id),
     asTrimmed(context.from_terminal_id),
@@ -127,7 +127,10 @@ export function resolveTrunkOriginKind(
 
   for (const ref of candidateRefs) {
     const branchPoint = snapshot.branch_points?.find(
-      (candidate) => candidate.ref_id === ref || candidate.id === ref,
+      (candidate) =>
+        candidate.ref_id === ref
+        || candidate.id === ref
+        || (Array.isArray(candidate.ports?.BRANCH) && candidate.ports.BRANCH.includes(ref)), // ui-terminology-ignore
     );
     if (branchPoint) {
       if (branchPoint.branch_point_type === 'zksn') return 'pole_liniowe_kablowe_zksn';

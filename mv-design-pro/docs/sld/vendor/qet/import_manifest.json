@@ -1,0 +1,1379 @@
+{
+  "schemaVersion": 1,
+  "origin": "https://github.com/qelectrotech/qelectrotech-elements",
+  "upstreamCommit": "14a4727f70856d8e79de59a353fa3c52d3e90e21",
+  "license": "CC-BY-3.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution": "The QElectroTech team",
+  "wyjscie": "frontend/src/ui/sld/v3/cad/qet/qetPoleSn.ts",
+  "skala": 0.4,
+  "rasterZaciskowQet": 20,
+  "uwaga": "Skala 0,4 przenosi raster zacisków QET (20 jednostek) na raster schematu GRID = 8. Zaciski każdego symbolu leżą w rasterze 20 jednostek QET, więc po imporcie leżą na siatce schematu. Łączniki z położeniem składa układ kafla (kafelStanu.uklad): nóż w położeniu ZAMKNIĘTYM pionowo nad przegubem do styku stałego, położenia otwarte, nieustalone i uziemione — obrót noża wokół przegubu (reguła importera, kąty w wyjściu).",
+  "elementy": [
+    {
+      "id": "en_60617_07_13_05",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt",
+      "upstreamBlobSha": "8df98b9b5c2783ea2413b406bef53ded66da628a",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_13_06",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_06.elmt",
+      "upstreamBlobSha": "58a1758ff8fda670013b32a3a2068633223b4e9c",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_13_07",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt",
+      "upstreamBlobSha": "cee8fc840450295927176ac3b938eeded5f2fcd5",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_13_08",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_08.elmt",
+      "upstreamBlobSha": "ca96486920218370b3afffb17a0ae8bfe3f6414c",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_07_21_09",
+      "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_21/en_60617_07_21_09.elmt",
+      "upstreamBlobSha": "8079d0cde1116a3efa45064a5211b3cbf92ba2e0",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_02_15_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt",
+      "upstreamBlobSha": "4c1c408e1e15c304f08c67cb03a5456b941bc614",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_06_09_10",
+      "sourcePath": "10_electric/91_en_60617/en_60617_06/en_60617_06_09/en_60617_06_09_10.elmt",
+      "upstreamBlobSha": "37de2decfe2a496cd014a1dd411a5e8d52e990ca",
+      "teksty": { "Form 1 / Forme 1": "pomin" }
+    },
+    {
+      "id": "en_60617_06_13_10",
+      "sourcePath": "10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_10.elmt",
+      "upstreamBlobSha": "4742b0a5097196c28ac3c07e30ce427a95a36ad2",
+      "teksty": { "Form 1 / Forme 1": "pomin", "3": "zachowaj" }
+    },
+    {
+      "id": "en_60617_06_13_01A",
+      "sourcePath": "10_electric/91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt",
+      "upstreamBlobSha": "a883a2e6daec80c241594505c96295c917884adc",
+      "teksty": { "Form 1 / Forme 1": "pomin" }
+    },
+    {
+      "id": "hv_uziemnik",
+      "sourcePath": "10_electric/10_allpole/450_high_voltage/interrupteur_sectionneur_de_terre.elmt",
+      "upstreamBlobSha": "addcaa782655cfe3d85a8f285cb48ec02194fee5",
+      "teksty": {}
+    },
+    {
+      "id": "hv_wskaznik_pojemnosciowy",
+      "sourcePath": "10_electric/10_allpole/450_high_voltage/signal_capacitif.elmt",
+      "upstreamBlobSha": "fa4f0d85eabef67c8dfcf4cd102fdba3bc7c91d4",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_03_03_05",
+      "sourcePath": "10_electric/91_en_60617/en_60617_03/en_60617_03_03/en_60617_03_03_05.elmt",
+      "upstreamBlobSha": "93d917ff316a374b81696b92ddf91501d4da2b49",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_02_05_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_05/en_60617_02_05_01.elmt",
+      "upstreamBlobSha": "a898d98255ccabb9b81d0e4b185723c95d5b3536",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_03_01_14",
+      "sourcePath": "10_electric/91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt",
+      "upstreamBlobSha": "0b62c546b2fc8651ae8c8d75cab73e657e9effc6",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_02_13_26",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_26.elmt",
+      "upstreamBlobSha": "6af19ab8ebe7f4643033d6db0e9dfbbd8a11c2af",
+      "teksty": { "M": "zachowaj" }
+    },
+    {
+      "id": "en_60617_02_13_20",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_20.elmt",
+      "upstreamBlobSha": "2f5f838b2563c4aacb697a370ed99f5f946f5a71",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_02_13_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_01.elmt",
+      "upstreamBlobSha": "cd510c0dc8025bcb2f83be90c9bde092119bcac2",
+      "teksty": {}
+    }
+  ],
+  "symbole": [
+    {
+      "symbolId": "qetBreaker",
+      "namePl": "Wyłącznik",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_07_13_05", "obrot": 0, "przesuniecie": [0, 0] }],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "koniec": [-8, -23] },
+        "znaczniki": [
+          {
+            "rodzaj": "wylacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [3, 4],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
+          }
+        ]
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0, 1],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        }
+      ],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wylacz",
+          "punkt": [120, 60],
+          "dir": "E",
+          "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetBreakerZNapedem",
+      "namePl": "Wyłącznik z napędem silnikowym",
+      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M) w układzie kafla",
+      "skladniki": [
+        { "element": "en_60617_07_13_05", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_02_13_26", "obrot": 0, "przesuniecie": [0, 0] }
+      ],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "koniec": [-8, -23] },
+        "znaczniki": [
+          {
+            "rodzaj": "wylacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [3, 4],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
+          }
+        ],
+        "osprzetKotwica": [6, 0]
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0, 1],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        }
+      ],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wylacz",
+          "punkt": [120, 60],
+          "dir": "E",
+          "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
+        }
+      ],
+      "osprzet": [
+        {
+          "skladnik": 1,
+          "powod": "napęd silnikowy wyłącznika (EN 60617 02-13-26) z modelu (`BayPrimaryDevice.naped` = SILNIKOWY, ENEA Zeszyt 1, Z.11.1: napęd M wyłącznika) — atrybut łącznika (decyzja właściciela 2026-10-30: napęd M zostaje jako atrybut); kreskowana linia sprzężenia mechanicznego kończy się w przegubie noża, okrąg z literą M po lewej stronie osi"
+        }
+      ],
+      "skalaLokalna": [
+        {
+          "skladnik": 1,
+          "prymitywy": [1, 2],
+          "srodek": [-14, 0],
+          "skala": 3.5,
+          "powod": "okrąg napędu z literą M powiększony 3,5× wokół punktu styku z linią sprzężenia — litera M 8,4 j.św., czytelna w całym LOD2 (§11.1 wiersz 4 karty UX-04)"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetBreakerWysuwny",
+      "namePl": "Wyłącznik w wykonaniu wysuwnym",
+      "zlozenie": null,
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_05",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "wylacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3,
+              4
+            ],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
+          }
+        ],
+        "czlonWysuwny": true
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wylacz",
+          "punkt": [
+            120,
+            60
+          ],
+          "dir": "E",
+          "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetBreakerWysuwnyZNapedem",
+      "namePl": "Wyłącznik w wykonaniu wysuwnym z napędem silnikowym",
+      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M), w układzie kafla; człon wysuwny — pasma podwójnych szewronów nad kaflem (˄˄) i pod kaflem (˅˅) w osi toru (kafelStanu.uklad.czlonWysuwny)",
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_05",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_13_26",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "wylacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3,
+              4
+            ],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
+          }
+        ],
+        "osprzetKotwica": [
+          6,
+          0
+        ],
+        "czlonWysuwny": true
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wylacz",
+          "punkt": [
+            120,
+            60
+          ],
+          "dir": "E",
+          "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
+        }
+      ],
+      "osprzet": [
+        {
+          "skladnik": 1,
+          "powod": "napęd silnikowy wyłącznika (EN 60617 02-13-26) z modelu (`BayPrimaryDevice.naped` = SILNIKOWY, ENEA Zeszyt 1, Z.11.1: napęd M wyłącznika) — atrybut łącznika (decyzja właściciela 2026-10-30: napęd M zostaje jako atrybut); kreskowana linia sprzężenia mechanicznego kończy się w przegubie noża, okrąg z literą M po lewej stronie osi"
+        }
+      ],
+      "skalaLokalna": [
+        {
+          "skladnik": 1,
+          "prymitywy": [
+            1,
+            2
+          ],
+          "srodek": [
+            -14,
+            0
+          ],
+          "skala": 3.5,
+          "powod": "okrąg napędu z literą M powiększony 3,5× wokół punktu styku z linią sprzężenia — litera M 8,4 j.św., czytelna w całym LOD2 (§11.1 wiersz 4 karty UX-04)"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetDisconnector",
+      "namePl": "Odłącznik",
+      "zlozenie": null,
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_06",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "odlacznik",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "odlacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3
+            ],
+            "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 2; wzorzec HMI e²TANGO 3Q1): odłącznik — kreska styku stałego prostopadła do noża („⊤”, IEC 60617 S00220 z elementu 07-13-06), BEZ okręgu; okrąg „○” należy wyłącznie do rozłącznika. Od uziemnika odróżnia go brak symbolu ziemi"
+          }
+        ]
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "symbolId": "qetLoadBreakSwitch",
+      "namePl": "Rozłącznik",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_07_13_08", "obrot": 0, "przesuniecie": [0, 0] }],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": { "skladnik": 0, "prymitywy": [2], "przegub": [0, 0], "koniec": [-8, -23] },
+        "znaczniki": [
+          {
+            "rodzaj": "rozlacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [3, 4],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — rozłącznik: kreska styku z okręgiem zawieszonym pod nią (IEC 60617 S00290 = S00227 + S00220 + S00221, rejestr `docs/sld/SLD_SYMBOL_NORMATIVE_REGISTRY.md`; QET 07-13-08 ma to samo złożenie), nóż zamknięty dochodzi do okręgu"
+          }
+        ]
+      },
+      "skalaLokalna": [
+        {
+          "skladnik": 0,
+          "prymitywy": [3],
+          "srodek": [0, -24],
+          "skala": 0.56,
+          "powod": "okrąg styku rozłącznika w proporcji rejestru symboli repo (S00221: promień okręgu / długość kreski styku = 1,4 / 5 = 0,28, `cadSymbolRegistry.ts` R_OKRAGU_ROZLACZNIKA) — w źródle QET okrąg ma promień połowy kreski; jednokładność wokół środka kreski styku, okrąg nadal styka się z kreską"
+        }
+      ],
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0, 1],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        }
+      ],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ]
+    },
+    {
+      "symbolId": "qetFuseSwitch",
+      "namePl": "Rozłącznik z bezpiecznikami",
+      "zlozenie": "element QET en_60617_07_21_09 (rozłącznik z bezpiecznikami: nóż z wkładką bezpiecznikową) + znacznik rozłącznika z elementu en_60617_07_13_08 (kreska styku z okręgiem) — ten sam znacznik co rozłącznik",
+      "skladniki": [
+        { "element": "en_60617_07_21_09", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_07_13_08", "obrot": 0, "przesuniecie": [0, 0] }
+      ],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [1, 3, 4, 5, 6],
+          "przegub": [0, 10],
+          "koniec": [-5, -10]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "rozlacznik",
+            "styk": "closed",
+            "skladnik": 1,
+            "prymitywy": [3, 4],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — rozłącznik: kreska styku z okręgiem zawieszonym pod nią (IEC 60617 S00290 = S00227 + S00220 + S00221, rejestr `docs/sld/SLD_SYMBOL_NORMATIVE_REGISTRY.md`; QET 07-13-08 ma to samo złożenie), nóż zamknięty dochodzi do okręgu; znacznik z elementu 07-13-08, jak w rozłączniku — jedna geometria znacznika rodzaju (w źródle 07-21-09 okrąg styku jest odsunięty od kreski i ma inną proporcję)"
+          }
+        ]
+      },
+      "skalaLokalna": [
+        {
+          "skladnik": 1,
+          "prymitywy": [3],
+          "srodek": [0, -24],
+          "skala": 0.56,
+          "powod": "okrąg styku rozłącznika w proporcji rejestru symboli repo (S00221: promień okręgu / długość kreski styku = 1,4 / 5 = 0,28, `cadSymbolRegistry.ts` R_OKRAGU_ROZLACZNIKA) — w źródle QET okrąg ma promień połowy kreski; jednokładność wokół środka kreski styku, okrąg nadal styka się z kreską"
+        }
+      ],
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0, 2],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        },
+        {
+          "skladnik": 0,
+          "prymitywy": [7, 8],
+          "powod": "kreska i okrąg styku źródła 07-21-09 zastąpione znacznikiem rozłącznika z elementu 07-13-08 — ten sam znacznik rodzaju co w rozłączniku"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [0, 1, 2],
+          "powod": "z rozłącznika 07-13-08 zostaje wyłącznie znacznik styku stałego (kreska z okręgiem); nóż i przewody pochodzą z elementu 07-21-09"
+        }
+      ],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -30] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 30] }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [0, -40],
+          "powod": "zacisk rozłącznika 07-13-08, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [0, 20],
+          "powod": "zacisk rozłącznika 07-13-08, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetEarthSwitch",
+      "namePl": "Uziemnik",
+      "zlozenie": "element HV hv_uziemnik (nóż, kreska styku stałego) + uziemienie en_60617_02_15_01 pod przegubem",
+      "skladniki": [
+        { "element": "hv_uziemnik", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_02_15_01", "obrot": 0, "przesuniecie": [0, 0] }
+      ],
+      "ukladKafla": {
+        "rodzaj": "uziemnik",
+        "noz": { "skladnik": 0, "prymitywy": [3], "przegub": [0, 0], "koniec": [-4, -8.5] },
+        "znaczniki": [
+          {
+            "rodzaj": "uziemnik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [4],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — uziemnik: sama kreska styku stałego prostopadła do noża"
+          }
+        ],
+        "ziemia": {
+          "skladnik": 1,
+          "prymitywy": [0, 2, 3],
+          "powod": "symbol uziemienia EN 60617 02-15-01 (IEC 60617 S00200) pod uziemnikiem, skierowany w dół, na końcu pionu odgałęzienia (wzorzec HMI e²TANGO, polecenie właściciela 2026-10-30): najszersza kreska u góry przy pionie, kreski maleją w dół"
+        }
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0, 1, 2],
+          "powod": "uziemienie elementu HV zastąpione symbolem EN 60617 02-15-01 — ten sam kształt ziemi w każdym łączniku kafla"
+        },
+        {
+          "skladnik": 0,
+          "prymitywy": [5, 6],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [1],
+          "powod": "pion odgałęzienia ziemi generuje układ kafla (kafelStanu.uklad.ziemia.pionQet) od punktu przyłączenia"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [4],
+          "powod": "czwarta kreska źródła (szerokość 1 j. QET) — po skali ziemi 0,6 j.św., węższa od grubości kreski glifu (2 j.św.), rysowałaby się jako plamka; symbol uziemienia IEC 60617 S00200 ma trzy kreski"
+        }
+      ],
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [0, -20] }],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [0, -15],
+          "powod": "zacisk symbolu uziemienia — obwód uziemienia łącznika, nie port pola"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetThreePositionSwitch",
+      "namePl": "Łącznik trójpołożeniowy",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż i kreska styku „⊤” — znacznik funkcji odłącznika przy zestyku szynowym, bez okręgu) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym)",
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_06",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_07_13_07",
+          "obrot": -90,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_15_01",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "trojpolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "odlacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3
+            ],
+            "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 2): funkcja odłącznika łącznika trójpołożeniowego przy styku zamknięcia — kreska styku „⊤” (IEC 60617 S00220 z elementu 07-13-06), BEZ okręgu; okrąg „○” należy wyłącznie do rozłącznika"
+          },
+          {
+            "rodzaj": "uziemnik",
+            "styk": "earthed",
+            "skladnik": 1,
+            "prymitywy": [
+              5
+            ],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — funkcja uziemnika: sama kreska zestyku uziemiającego prostopadła do noża w położeniu uziemionym"
+          }
+        ],
+        "ziemia": {
+          "skladnik": 2,
+          "prymitywy": [
+            0,
+            2,
+            3
+          ],
+          "powod": "symbol uziemienia EN 60617 02-15-01 (IEC 60617 S00200) pod uziemnikiem, skierowany w dół, na końcu pionu odgałęzienia (wzorzec HMI e²TANGO, polecenie właściciela 2026-10-30): najszersza kreska u góry przy pionie, kreski maleją w dół"
+        }
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "powod": "z drugiego egzemplarza odłącznika dwukierunkowego (obrót −90°) zostaje wyłącznie kreska zestyku — zestyk uziemiający"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [
+            1
+          ],
+          "powod": "pion odgałęzienia ziemi generuje układ kafla (kafelStanu.uklad.ziemia.pionQet) od punktu przyłączenia"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [
+            4
+          ],
+          "powod": "czwarta kreska źródła (szerokość 1 j. QET) — po skali ziemi 0,6 j.św., węższa od grubości kreski glifu (2 j.św.), rysowałaby się jako plamka; symbol uziemienia IEC 60617 S00200 ma trzy kreski"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [
+            -20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [
+            0,
+            20
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [
+            20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 2,
+          "zacisk": [
+            0,
+            -15
+          ],
+          "powod": "zacisk symbolu uziemienia — obwód uziemienia łącznika, nie port pola"
+        }
+      ],
+      "uwaga": "Położenia (tabela stan → kolor → geometria, karta UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY = nóż pionowo w osi toru na zestyku szynowym ze znacznikiem „⊤”; OTWARTY (odłączony) = nóż odchylony o 45° w prawo, poza oboma zestykami; UZIEMIONY = nóż poziomo w prawo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia skierowany w dół; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Zestyk uziemiający po prawej stronie osi — jak na rysunku ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona przegubu (zacisk dolny, wspólny z nożem)."
+    },
+    {
+      "symbolId": "qetThreePositionSwitchZNapedem",
+      "namePl": "Łącznik trójpołożeniowy z napędem zasobnikowym",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: nóż i kreska styku „⊤” — znacznik funkcji odłącznika przy zestyku szynowym, bez okręgu) + en_60617_07_13_07 obrócony o −90° (kreska zestyku — znacznik funkcji uziemnika przy zestyku uziemiającym po prawej) + en_60617_02_15_01 (uziemienie w dół pod zestykiem uziemiającym) + en_60617_02_13_20 (napęd energią zmagazynowaną) i en_60617_02_13_01 (napęd ręczny) po lewej stronie osi",
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_06",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_07_13_07",
+          "obrot": -90,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_15_01",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_13_20",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_13_01",
+          "obrot": -90,
+          "przesuniecie": [
+            -24,
+            18
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "trojpolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "odlacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3
+            ],
+            "powod": "uwaga właściciela 2026-11-04 (odbiór B-02, pkt 2): funkcja odłącznika łącznika trójpołożeniowego przy styku zamknięcia — kreska styku „⊤” (IEC 60617 S00220 z elementu 07-13-06), BEZ okręgu; okrąg „○” należy wyłącznie do rozłącznika"
+          },
+          {
+            "rodzaj": "uziemnik",
+            "styk": "earthed",
+            "skladnik": 1,
+            "prymitywy": [
+              5
+            ],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — funkcja uziemnika: sama kreska zestyku uziemiającego prostopadła do noża w położeniu uziemionym"
+          }
+        ],
+        "ziemia": {
+          "skladnik": 2,
+          "prymitywy": [
+            0,
+            2,
+            3
+          ],
+          "powod": "symbol uziemienia EN 60617 02-15-01 (IEC 60617 S00200) pod uziemnikiem, skierowany w dół, na końcu pionu odgałęzienia (wzorzec HMI e²TANGO, polecenie właściciela 2026-10-30): najszersza kreska u góry przy pionie, kreski maleją w dół"
+        },
+        "osprzetKotwica": [
+          6,
+          0
+        ]
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6
+          ],
+          "powod": "z drugiego egzemplarza odłącznika dwukierunkowego (obrót −90°) zostaje wyłącznie kreska zestyku — zestyk uziemiający"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [
+            1
+          ],
+          "powod": "pion odgałęzienia ziemi generuje układ kafla (kafelStanu.uklad.ziemia.pionQet) od punktu przyłączenia"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [
+            4
+          ],
+          "powod": "czwarta kreska źródła (szerokość 1 j. QET) — po skali ziemi 0,6 j.św., węższa od grubości kreski glifu (2 j.św.), rysowałaby się jako plamka; symbol uziemienia IEC 60617 S00200 ma trzy kreski"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [
+            -20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [
+            0,
+            20
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [
+            20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie znacznik styku — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 2,
+          "zacisk": [
+            0,
+            -15
+          ],
+          "powod": "zacisk symbolu uziemienia — obwód uziemienia łącznika, nie port pola"
+        }
+      ],
+      "uwaga": "Położenia (tabela stan → kolor → geometria, karta UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY = nóż pionowo w osi toru na zestyku szynowym ze znacznikiem „⊤”; OTWARTY (odłączony) = nóż odchylony o 45° w prawo, poza oboma zestykami; UZIEMIONY = nóż poziomo w prawo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia skierowany w dół; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Zestyk uziemiający po prawej stronie osi — jak na rysunku ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona przegubu (zacisk dolny, wspólny z nożem).",
+      "osprzet": [
+        {
+          "skladnik": 3,
+          "powod": "napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY; ENEA Zeszyt 1, Z.10 s.89, Z.11 s.90, Z.11.1 s.91: kwadrat na kreskowanym sprzężeniu mechanicznym przy łączniku Q1) — kształt EN 60617 02-13-20 (napęd energią zmagazynowaną); koniec sprzężenia w przegubie noża, kwadrat po LEWEJ stronie osi (prawą zajmuje zestyk uziemiający z ziemią)"
+        },
+        {
+          "skladnik": 4,
+          "powod": "obsługa ręczna napędu (ENEA Zeszyt 1, Z.10/Z.11/Z.11.1: od kwadratu napędu w dół kreskowany odcinek zakończony poprzeczką) — kształt EN 60617 02-13-01 (napęd ręczny); obrót o −90° stawia koniec sprzężenia w środku dolnego boku kwadratu, a poprzeczkę na dole"
+        }
+      ],
+      "skalaLokalna": [
+        {
+          "skladnik": 3,
+          "prymitywy": [
+            0
+          ],
+          "srodek": [
+            -14,
+            0
+          ],
+          "skala": 2,
+          "powod": "kwadrat napędu powiększony 2× wokół punktu styku z linią sprzężenia — znak napędu czytelny w kaflu (bok 8 j.św.)"
+        },
+        {
+          "skladnik": 4,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "srodek": [
+            8,
+            0
+          ],
+          "skala": 0.75,
+          "powod": "odcinek obsługi ręcznej skrócony do 0,75 wokół końca sprzężenia — poprzeczka mieści się w kaflu z marginesem pod kwadratem napędu"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetCurrentTransformer",
+      "namePl": "Przekładnik prądowy",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_06_09_10", "obrot": 0, "przesuniecie": [0, 0] }],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [-30, -60] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [-30, 0] }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wtorny",
+          "skladnik": 0,
+          "punkt": [-10, -30],
+          "dir": "E",
+          "powod": "koniec doprowadzenia rdzenia przekładnika (rysunek źródła nie ma zacisku wtórnego)",
+          "przedluzenie": {
+            "kierunek": "S",
+            "powod": "doprowadzenie rdzenia leży między rastrami zacisków — przedłużenie przewodu obwodu wtórnego do najbliższego rastru schematu w dół, skąd biegnie linia pomiarowa"
+          }
+        }
+      ],
+      "skalaRysunku": {
+        "k": 3,
+        "srodek": [-30, -30],
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół punktu, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+      },
+      "skalaLokalna": [
+        {
+          "skladnik": 0,
+          "prymitywy": [2, 4, 5],
+          "srodek": [-20, -30],
+          "skala": 0.3333333333333333,
+          "powod": "doprowadzenie rdzenia przekładnika i jego kreski zmniejszone trzykrotnie przed jednokładnością rysunku (skala 3) — rdzeń rośnie do stopnia toru, a doprowadzenie obwodu wtórnego zostaje w długości źródła i nie poszerza gabarytu ponad kafel"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetCoreBalanceCt",
+      "namePl": "Przekładnik Ferrantiego",
+      "zlozenie": "element QET en_60617_06_13_10 (rdzeń pierścieniowy, przewód toru, doprowadzenie uzwojenia wtórnego) + dwa przewody tego elementu przesunięte o ±7,5 j. QET i rysowane przerywaną — kontur kabla przewleczonego przez rdzeń wg rysunku ENEA Z.10 s.89",
+      "skladniki": [
+        { "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [-7.5, 0] },
+        { "element": "en_60617_06_13_10", "obrot": 0, "przesuniecie": [7.5, 0] }
+      ],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 40] }
+      ],
+      "uwaga": "Oznaczenie Ferrantiego wg rysunku standardu ENEA (Zeszyt 1, Z.10 s.89; uwaga właściciela 2026-11-04): pierścień rdzenia i kabel przewleczony przez rdzeń — dwie przerywane linie konturu kabla po obu stronach osi toru, wychodzące ponad i pod pierścień. Kreska ukośna ze znakiem „3” elementu EN 60617 06-13-10 (trzy przewlekane przewody) pominięta — z nią symbol wyglądał jak drugi zwykły przekładnik prądowy. Przewód przechodzi przez symbol bez przerwy toru (port ENM „obwod”).",
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [3, 4],
+          "powod": "kreska ukośna i znak „3” elementu QET (trzy przewlekane przewody pierwotne) — uwaga właściciela 2026-11-04: symbol mylony ze zwykłym przekładnikiem prądowym; oznaczenie Ferrantiego wg rysunku ENEA (kontur kabla, składniki 1 i 2)"
+        },
+        { "skladnik": 1, "prymitywy": [0, 3, 4, 5, 6, 7], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" },
+        { "skladnik": 2, "prymitywy": [0, 3, 4, 5, 6, 7], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" }
+      ],
+      "zaciskiPozaTorem": [
+        { "skladnik": 1, "zacisk": [0, -40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" },
+        { "skladnik": 1, "zacisk": [0, 40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" },
+        { "skladnik": 2, "zacisk": [0, -40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" },
+        { "skladnik": 2, "zacisk": [0, 40], "powod": "zacisk przewodu składnika konturu kabla (składniki 1 i 2 niosą wyłącznie przerywany kontur kabla przewleczonego przez rdzeń) — nie jest zaciskiem toru" }
+      ],
+      "kreskowanie": [
+        { "skladnik": 1, "prymitywy": [1], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" },
+        { "skladnik": 2, "prymitywy": [1], "powod": "kontur kabla przewleczonego przez rdzeń (rysunek ENEA Z.10 s.89, „Przekładnik Ferrantiego”): ze składnika przesuniętego o 7,5 j. QET od osi toru zostaje wyłącznie przewód elementu, rysowany przerywaną (kreskowanie niżej) — to nie przewód toru" }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wtorny",
+          "skladnik": 0,
+          "punkt": [40, 0],
+          "dir": "E",
+          "powod": "koniec doprowadzenia uzwojenia wtórnego przekładnika Ferrantiego (rysunek źródła nie ma zacisku wtórnego)"
+        }
+      ],
+      "skalaRysunku": {
+        "k": 2,
+        "srodek": [0, 1],
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół środka rdzenia, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+      },
+      "skalaLokalna": [
+        {
+          "skladnik": 0,
+          "prymitywy": [5, 6, 7],
+          "srodek": [3.8596491228070176, 0],
+          "skala": 0.64375,
+          "powod": "doprowadzenie uzwojenia wtórnego przekładnika Ferrantiego (x 20…60) i jego kreski zmniejszone przed jednokładnością rysunku (skala 2) do odcinka x 14,25…40: początek na krawędzi rdzenia o promieniu 14,25 (decyzja niżej), koniec w porcie wtórnym (40, 0) na rastrze — środek 1,375/0,35625 i skala 25,75/40 wynikają z tych dwóch punktów"
+        },
+        {
+          "skladnik": 0,
+          "prymitywy": [0],
+          "srodek": [0, 1],
+          "skala": 0.7125,
+          "powod": "rdzeń pierścieniowy (promień 20 wokół (0, 1)) zmniejszony do promienia 14,25 wokół własnego środka przed jednokładnością rysunku (skala 2) — uwaga właściciela 2026-11-04: średnica przekładnika Ferrantiego ok. 25 % mniejsza (dawniej promień 19 j. QET, rdzeń 30,4 j.św.; teraz 22,8 j.św.)"
+        },
+        { "skladnik": 1, "prymitywy": [1], "srodek": [0, 1], "skala": 0.45, "powod": "kontur kabla przewleczonego przez rdzeń skrócony do 0,45 długości przewodu elementu wokół środka rdzenia (0, 1): wychodzi ok. 3 j.św. ponad i pod pierścień (rysunek ENEA Z.10 s.89) i mieści się w gabarycie symbolu" },
+        { "skladnik": 2, "prymitywy": [1], "srodek": [0, 1], "skala": 0.45, "powod": "kontur kabla przewleczonego przez rdzeń skrócony do 0,45 długości przewodu elementu wokół środka rdzenia (0, 1): wychodzi ok. 3 j.św. ponad i pod pierścień (rysunek ENEA Z.10 s.89) i mieści się w gabarycie symbolu" }
+      ]
+    },
+    {
+      "symbolId": "qetVoltageTransformer",
+      "namePl": "Przekładnik napięciowy",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_06_13_01A", "obrot": 0, "przesuniecie": [0, 0] }],
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [0, -40] }],
+      "uwaga": "Element EN 60617 06-13-01 (forma 1): dwa okręgi — uzwojenie pierwotne (u góry, port toru) i jedno uzwojenie wtórne. Zacisk wtórny jest portem obwodu wtórnego (linia pomiarowa do przekaźnika), nie portem toru; przekładnik jest zakończeniem odgałęzienia (port ENM „przylacze”). Symbol dla przekładnika z co najwyżej jednym uzwojeniem wtórnym w modelu.",
+      "portyWtorne": [
+        {
+          "name": "wtorny",
+          "skladnik": 0,
+          "zacisk": [0, 71],
+          "przedluzenie": {
+            "kierunek": "S",
+            "powod": "zacisk wtórny źródła leży między rastrami zacisków — przedłużenie przewodu obwodu wtórnego do najbliższego rastru schematu w dół, skąd biegnie linia pomiarowa"
+          }
+        }
+      ]
+    },
+    {
+      "symbolId": "qetVoltageTransformer2",
+      "namePl": "Przekładnik napięciowy o dwóch uzwojeniach wtórnych",
+      "zlozenie": "złożenie z dwóch kopii elementu QET en_60617_06_13_01A: kopia bazowa (uzwojenie pierwotne i pierwsze wtórne) + kopia obrócona o 90° przesunięta tak, by jej okręgi stanęły symetrycznie po bokach osi (trzy okręgi: pierwotne u góry, wtórne u dołu i z prawej)",
+      "skladniki": [
+        { "element": "en_60617_06_13_01A", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_06_13_01A", "obrot": 90, "przesuniecie": [15.5, 15.5] }
+      ],
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [0, -40] }],
+      "pominPrymitywy": [
+        {
+          "skladnik": 1,
+          "prymitywy": [1, 3, 4],
+          "powod": "doprowadzenia kopii (i okrąg ponad liczbę uzwojeń modelu) nie należą do symbolu — okręgi kopii są wyłącznie znakami dodatkowych uzwojeń wtórnych (EN 60617 06-13-01 forma 1: jedno kółko na uzwojenie)"
+        }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [0, 71],
+          "powod": "zacisk kopii elementu dającej okręgi dodatkowych uzwojeń wtórnych — doprowadzenia kopii pominięte; linię pomiarową prowadzi zacisk wtórny elementu bazowego"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [0, -40],
+          "powod": "zacisk kopii elementu dającej okręgi dodatkowych uzwojeń wtórnych — doprowadzenia kopii pominięte; linię pomiarową prowadzi zacisk wtórny elementu bazowego"
+        }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wtorny",
+          "skladnik": 0,
+          "zacisk": [0, 71],
+          "przedluzenie": {
+            "kierunek": "S",
+            "powod": "zacisk wtórny źródła leży między rastrami zacisków — przedłużenie przewodu obwodu wtórnego do najbliższego rastru schematu w dół, skąd biegnie linia pomiarowa"
+          }
+        }
+      ],
+      "uwaga": "Liczba okręgów = 1 + liczba uzwojeń wtórnych przekładnika w modelu (pole ENM „uzwojenia”)."
+    },
+    {
+      "symbolId": "qetVoltageTransformer3",
+      "namePl": "Przekładnik napięciowy o trzech uzwojeniach wtórnych",
+      "zlozenie": "złożenie z dwóch kopii elementu QET en_60617_06_13_01A: kopia bazowa (uzwojenie pierwotne i pierwsze wtórne) + kopia obrócona o 90° przesunięta tak, by jej okręgi stanęły symetrycznie po bokach osi (cztery okręgi w romb: pierwotne u góry, wtórne u dołu, z lewej i z prawej — jak na schemacie ENEA Zeszyt 1, Z.11.1)",
+      "skladniki": [
+        { "element": "en_60617_06_13_01A", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_06_13_01A", "obrot": 90, "przesuniecie": [15.5, 15.5] }
+      ],
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [0, -40] }],
+      "pominPrymitywy": [
+        {
+          "skladnik": 1,
+          "prymitywy": [1, 4],
+          "powod": "doprowadzenia kopii (i okrąg ponad liczbę uzwojeń modelu) nie należą do symbolu — okręgi kopii są wyłącznie znakami dodatkowych uzwojeń wtórnych (EN 60617 06-13-01 forma 1: jedno kółko na uzwojenie)"
+        }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [0, 71],
+          "powod": "zacisk kopii elementu dającej okręgi dodatkowych uzwojeń wtórnych — doprowadzenia kopii pominięte; linię pomiarową prowadzi zacisk wtórny elementu bazowego"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [0, -40],
+          "powod": "zacisk kopii elementu dającej okręgi dodatkowych uzwojeń wtórnych — doprowadzenia kopii pominięte; linię pomiarową prowadzi zacisk wtórny elementu bazowego"
+        }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wtorny",
+          "skladnik": 0,
+          "zacisk": [0, 71],
+          "przedluzenie": {
+            "kierunek": "S",
+            "powod": "zacisk wtórny źródła leży między rastrami zacisków — przedłużenie przewodu obwodu wtórnego do najbliższego rastru schematu w dół, skąd biegnie linia pomiarowa"
+          }
+        }
+      ],
+      "uwaga": "Liczba okręgów = 1 + liczba uzwojeń wtórnych przekładnika w modelu (pole ENM „uzwojenia”)."
+    },
+    {
+      "symbolId": "qetCableHead",
+      "namePl": "Głowica kablowa",
+      "zlozenie": null,
+      "skladniki": [{ "element": "en_60617_03_03_05", "obrot": -90, "przesuniecie": [0, 0] }],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [40, 0] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [-20, 0] }
+      ],
+      "uwaga": "Element EN 60617 03-03-05 (złącze wtykowe: wtyk zaczerniony + gniazdo) — znak głowicy kablowej i złącza kablowego jak na schematach ENEA Zeszyt 1, Z.10/Z.11.1 (zaczerniony prostokąt nad czaszą). Obrót o −90° ustawia wtyk (strona rozdzielnicy) u góry, a gniazdo (strona kabla) u dołu toru pola. Ten sam symbol dla głowicy toru głównego i złącza odgałęzienia przekładnika napięciowego.",
+      "skalaRysunku": {
+        "k": 2,
+        "srodek": [0, 0],
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół punktu, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+      }
+    },
+    {
+      "symbolId": "qetVoltageIndicator",
+      "namePl": "Pojemnościowy wskaźnik napięcia",
+      "zlozenie": null,
+      "skladniki": [{ "element": "hv_wskaznik_pojemnosciowy", "obrot": 0, "przesuniecie": [0, 0] }],
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [10, -10] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [10, 10] }
+      ],
+      "uwaga": "Przewód toru przechodzi przez symbol (odczep pojemnościowy w izolatorze) — port ENM „przylacze” na węźle toru, bez przerwy toru.",
+      "skalaRysunku": {
+        "k": 4,
+        "srodek": [10, 0],
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół punktu, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+      }
+    },
+    {
+      "symbolId": "bayReserve",
+      "namePl": "Odejście kablowe poza modelem",
+      "zlozenie": "kabel odejścia pola kreskowany (przewód elementu EN 60617 03-01-14 bez łuku zakończenia) zakończony grotem strzałki przepływu energii w jednym kierunku (EN 60617 02-05-01) skierowanym w dół — od szyny do sieci",
+      "skladniki": [
+        { "element": "en_60617_03_01_14", "obrot": 90, "przesuniecie": [0, 0] },
+        { "element": "en_60617_02_05_01", "obrot": 90, "przesuniecie": [0, 40] }
+      ],
+      "porty": [{ "name": "top", "skladnik": 0, "zacisk": [-40, 0] }],
+      "uwaga": "Zakończenie toru pola, którego kabel odpływowy nie jest w modelu (pole wolne / rezerwowe). Decyzja właściciela 2026-10-30 (karta UX-04, uwaga „dziwna laska pod przekładnikiem Ferrantiego”): tor wyjściowy rysowany kreskowanym kablem ze strzałką w dół, bez łuku końca kabla niepodłączonego (03-01-14) — kreska przerywana mówi „kabla nie ma w modelu”, grot — kierunek odejścia od szyny. Nie jest znakiem uziemienia ani przewodem toru.",
+      "przewodyJakoRysunek": {
+        "powod": "kabel odejścia jest treścią znaku zakończenia toru pola wolnego — nie jest przewodem toru do przycięcia; gabaryt obejmuje cały znak i port"
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [1],
+          "powod": "łuk końca kabla niepodłączonego (EN 60617 03-01-14) zastąpiony grotem kierunku odejścia — decyzja właściciela 2026-10-30"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [0, 1],
+          "powod": "trzon strzałki 02-05-01 pominięty — trzonem jest kreskowany kabel odejścia (składnik 0), grot stoi na jego końcu"
+        }
+      ],
+      "skalaLokalna": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0],
+          "srodek": [-40, 0],
+          "skala": 1.1428571428571428,
+          "powod": "przewód 03-01-14 (od zacisku −40 do 30) wydłużony wokół zacisku do 40 — kabel kończy się w wierzchołku grotu (80 jednostek QET = 32 j.św., gabaryt toru bez zmian)"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [2],
+          "srodek": [0, 0],
+          "skala": 11.666666666666666,
+          "powod": "grot 02-05-01 (długość źródła 1,5 jednostki QET = 0,6 j.św., nieczytelny) powiększony wokół wierzchołka do 17,5 jednostki QET = 7 j.św. długości i 7 j.św. rozpiętości — czytelny kierunek odejścia na LOD1 i LOD2"
+        }
+      ],
+      "kreskowanie": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0],
+          "powod": "kabel odejścia pola wolnego nie jest w modelu — linia przerywana (decyzja właściciela 2026-10-30: tor wyjściowy kreskowany)"
+        }
+      ]
+    }
+  ],
+  "kafelStanu": {
+    "bokQet": 120,
+    "marginesQet": 5,
+    "powod": "jednolity kwadratowy kafel stanu łączników pola (wyłącznik, wyłącznik z napędem, odłącznik, rozłącznik, rozłącznik z bezpiecznikami, uziemnik, łącznik trójpołożeniowy) — wymaganie właściciela 2026-10-29: kwadrat 48 × 48 jednostek świata w skali bazowej LOD2 (120 jednostek QET przy skali 0,4), jeden wymiar dla wszystkich łączników i stanów; kreska glifu 5 jednostek QET (2 jednostki świata = bok/24) — grubość proporcjonalna do kafla (uwaga właściciela 2026-10-29: wyraźny znak rodzaju aparatu); zacisk źródła wewnątrz kafla przedłużony przewodem do krawędzi, zacisk poza kaflem przeniesiony na krawędź z przycięciem przewodu",
+    "kreskaGlifuQet": 5,
+    "uklad": {
+      "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny = otwarty; przy styku stałym znacznik rodzaju aparatu („×” wyłącznik, kreska „⊤” odłącznik, kreska z okręgiem „○” rozłącznik, kreska uziemnik z symbolem ziemi) o boku 12 j.św. = 25 % boku kafla 48 j.św. (przedział właściciela 22–28 %), kreska znacznika = kreska noża, margines znacznika od krawędzi kafla ≥ 4 j.św. (tusz), odstęp tuszu znacznika od noża ≥ 1 j.św. poza strefą styku (5 j.św. wokół punktu, w którym nóż spoczywa na styku w danym położeniu, i wokół przegubu dla sprzężenia napędu oraz pionu ziemi); symbol ziemi pod uziemnikiem skierowany w dół, szerokość 12 j.św., pion odgałęzienia 3 j.św.",
+      "czlonWysuwny": {
+        "pasmoQet": 120,
+        "szerokoscSzewronuQet": 60,
+        "wysokoscSzewronuQet": 25,
+        "odstepSzewronowQet": 20,
+        "powod": "decyzja właściciela 2026-11-04 (odbiór B-02; synoptyka e²TANGO z wyłącznikiem wysuwnym): człon wysuwny wyłącznika — OSOBNE kafle nad i pod kaflem wyłącznika, trzy kafle w pionie stykające się krawędziami, ta sama szerokość: górny kafel z podwójnym szewronem w górę (˄˄), kafel wyłącznika (×), dolny kafel z podwójnym szewronem w dół (˅˅); tor przechodzi przez wszystkie trzy. Kafel członu jest kwadratem boku kafla stanu (120 j. QET = 48 j.św.), szewron 24 × 10 j.św., odstęp szewronów 8 j.św. Kolor kafli członu = stan członu wysuwnego (położenie członu), kolor kafla wyłącznika = stan wyłącznika — dwa niezależne stany (`symbols/glyphs.tsx::zKafelemStanu`, `stanCzlonu`)"
+      },
+      "znacznik": {
+        "bokQet": 30,
+        "udzial": [0.22, 0.28],
+        "marginesQet": 10,
+        "odstepOdNozaQet": 2.5,
+        "strefaStykuQet": 12.5
+      },
+      "noz": { "katOtwarty": 45, "zasiegNieustalony": 0.6 },
+      "ziemia": { "szerokoscQet": 30, "pionQet": 7.5 },
+      "rodzaje": {
+        "odlacznik": {
+          "przegub": [60, 95],
+          "styki": { "closed": [60, 27.5] },
+          "ziemiaPrzy": null,
+          "powod": "odłącznik (uwaga właściciela 2026-11-04, odbiór B-02 pkt 2): znacznik — sama kreska styku „⊤” bez okręgu, więc nóż ma długość noża uziemnika (67,5 j. QET), żeby stopień glifu mieścił się w przedziale kafla jak u pozostałych łączników; przegub jak w łączniku dwupołożeniowym"
+        },
+        "dwupolozeniowy": {
+          "przegub": [60, 95],
+          "styki": { "closed": [60, 42.5] },
+          "ziemiaPrzy": null
+        },
+        "uziemnik": {
+          "przegub": [60, 90],
+          "styki": { "closed": [60, 23.5] },
+          "ziemiaPrzy": "przegub",
+          "powod": "uwaga właściciela 2026-11-04 (odbiór B-02 pola Z.10, uziemnik Q8; wzorzec synoptyki e²TANGO): górny styk uziemnika niżej, z wyraźnym odstępem od górnej krawędzi kafla — styk stały z 20 na 23,5 j. QET (9,4 j.św. od krawędzi), przegub z 87,5 na 90 j. QET: nóż zachowuje stopień glifu 0,554 boku kafla (przedział 0,55–0,7), a symbol ziemi pod przegubem rośnie na dolnym brzegu LOD1 do podłogi 8 px w granicy kafla (przegub 92,5 dawał 7,14 px — test znacznikRodzajuLacznika); przewód od portu górnego wchodzi pionem w styk"
+        },
+        "trojpolozeniowy": {
+          "przegub": [60, 75],
+          "styki": { "closed": [60, 12.5], "earthed": [91.25, 75] },
+          "powod": "uwaga właściciela 2026-11-04 (odbiór B-02 pkt 2): funkcja odłącznika ma kreskę styku „⊤” bez okręgu, więc styk zamknięcia przesunięty w górę o długość okręgu (z 42,5 na 12,5 j. QET), przegub i zestyk uziemiający o 5 j. QET niżej, zestyk uziemiający o 3,75 j. QET w prawo — kreska uziemnika powiększona do podłogi czytelności (8 px na dolnym brzegu LOD1) nie nachodzi na nóż otwarty, żeby stopień glifu został w przedziale kafla; zasięg noża na zestyku uziemiającym = 0,5 długości (liczba dokładna)",
+          "ziemiaPrzy": "earthed"
+        }
+      }
+    }
+  },
+  "stopienSymboli": {
+    "kafel": [0.55, 0.7],
+    "tor": [0.33, 0.7],
+    "powod": "spójny stopień symboli pola na LOD2 (uwaga właściciela 2026-10-29: glif aparatu ma zajmować ok. 55–70 % boku kafla stanu, a symbole toru — przekładniki, głowica, wskaźnik napięcia — nie mogą być drobne wobec kafli): wysokość rysunku aparatu wzdłuż osi toru (bez przewodów i osprzętu) jako ułamek boku kafla — łącznik w każdym położeniu noża w [0,55; 0,70], symbol toru w [0,33; 0,70] (dolna granica toru: wskaźnik pojemnościowy, którego rysunek przy większej skali przekracza szerokość kafla)"
+  }
+}

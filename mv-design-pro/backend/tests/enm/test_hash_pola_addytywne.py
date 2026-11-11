@@ -88,12 +88,22 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "lv_voltage_tolerance",
         ),
         "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
-        "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
+        # + karta POLA-GPZ-SZABLONY: impedancja zerowa uzwojenia zygzakowego (test odcisku:
+        # `tests/enm/test_hash_w5_uziemienie.py` — postać sprzed karty bez tych pól).
+        "transformers": ("lv_earthing_system", "lv_voltage_tolerance", "r0_ohm", "x0_ohm"),
         # W5-C: `SwitchBranch.normal_state` (pozycja normalna łącznika) — to samo prawo
         # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
         # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).
         # + karta LINIA-110: geometria słupa i proweniencja parametrów z geometrii.
-        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii", "normal_state"),
+        # + karta UX-04/POLE-LINIOWE-WZORZEC: `SwitchBranch.stan_obiektu` (stan obiektu
+        # łącznika; test odcisku: `tests/enm/test_stan_obiektu_iloczyn.py`).
+        "branches": (
+            "screen_bonding",
+            "geometria_slupa",
+            "parametry_z_geometrii",
+            "normal_state",
+            "stan_obiektu",
+        ),
         # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
         # `tests/enm/test_hash_w5b_bays.py`).
         "bays": (
@@ -111,6 +121,13 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "wybor_bloku",
             "metadane_pochodzenia",
             "surge_arresters",
+            # Karta UX-04/POLE-LINIOWE-WZORZEC: `Bay.stan_obiektu` i `Bay.klasa_pola` (test
+            # odcisku: `tests/enm/test_hash_w5b_bays.py`).
+            "stan_obiektu",
+            "klasa_pola",
+            # Ta sama karta (decyzja właściciela 2026-10-29 pkt 4): `Bay.zrodlo_u0_ref`
+            # (powiązanie źródła 3U₀ funkcji 67N; test odcisku: `test_hash_w5b_bays.py`).
+            "zrodlo_u0_ref",
         ),
         "generators": (
             "dynamika",
@@ -120,6 +137,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "nastawy_zabezpieczen",
             "deklaracje_modulu",
         ),
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: rdzenie CT i uzwojenia VT jako listy
+        # (`Measurement.rdzenie` / `uzwojenia`; brak = tabliczka niedostarczona).
+        "measurements": ("rdzenie", "uzwojenia"),
         # Karta UX-04/POLE-BKR-MODEL: parametry baterii kondensatorów nadane na elemencie —
         # to samo prawo; test odcisku: `tests/enm/test_bateria_kondensatorow_model.py`
         # (bateria bez pól karty i z polami `None` haszuje jak przed kartą).

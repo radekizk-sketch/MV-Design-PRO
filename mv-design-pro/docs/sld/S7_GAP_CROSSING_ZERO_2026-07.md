@@ -79,6 +79,10 @@ Przebudowa musi zaatakować OBIE rodziny; kolejność od najmniejszego ryzyka:
   decyzji właściciela + aktualizacji §22.1 i `junction_dot_probe` (realny węzeł ENM
   vs. węzeł rysunkowy). Alternatywa: szyna zbiorcza magistrali zamiast łańcucha
   przęseł. Obie to zmiany kontraktu, nie routingu.
+  **ZASTĄPIONE rozstrzygnięciem architekta z 2026-10-30 (§12):** węzeł T bez węzła
+  modelu skasowany; przecięcie dwóch kabli bez węzła modelu = skrzyżowanie z mostkiem
+  §22.1, kropka wyłącznie na węźle modelu; warunek odbioru „0 kropek bez węzła modelu
+  i mostek na każdym przecięciu" zamiast „crossingCount = 0".
 - **S7-P3 (balancing + światła rozdzielone).** Dopiero po P1/P2, gdy bbox spadnie:
   `TOP_LEVEL_FIELD_CLEARANCE` +20–35% netto-dodatnio (§5/§6 S6).
 - **Architektura (S7.5).** Migracja geometrii do `engine/sld-layout/layoutEngine.ts`
@@ -576,3 +580,75 @@ STOPCE poza bbox treści — domyka Z4 dla tego skryptu).
 poddrzew (centrowanie CoG); migracja `buildScene`→`layoutEngine.ts`. GAP
 nieredukowalny w bieżącej reprezentacji (§8.4) — S7.6 dotyczy WYŁĄCZNIE osi Y
 (kompresja pionowa), oś X bez zmian. crossingCount=0 utrzymany jako warunek odbioru.
+
+## §12 ROZSTRZYGNIĘCIE ARCHITEKTA S7-P2 (2026-10-30) — mostek zamiast fałszywego węzła T
+
+**Ustalenie (oględziny zrzutów karty UX-04/POLE-LINIOWE-WZORZEC).** Wykonanie S7-P2 z §7
+rozcinało kabel poziomy w punkcie przecięcia z pionem zejścia i stawiało tam kropkę
+„węzła T". W modelu sieci w tym miejscu nie ma żadnego węzła — przęsło magistrali i zejście
+odgałęzienia innej pary stacji są dwoma niezależnymi kablami. Kropka rysowała więc
+połączenie, którego w sieci nie ma (fikcja elektryczna, sprzeczna z §22.1 „kropka wyłącznie
+na realnym węźle ENM"). Pomiar na bazie `e41837b4e`: 92 kropki „węzła T" w 58 fiksturach ×
+L0/L1/L2, żadna z węzłem modelu; na fiksturze referencyjnej `sldSubstrate52s` 7/18/18 kropek
+(L0/L1/L2) i 0/0/0 przecięć.
+
+**Rozstrzygnięcie.**
+1. Każde przecięcie kabli toru mocy, w którym model nie ma węzła, jest skrzyżowaniem
+   z mostkiem §22.1 (pion przeskakuje poziom półłukiem o promieniu GRID/2, kanwa i eksport
+   liczą mostek tą samą funkcją `polylinePathWithBridges`). Kabel poziomy NIE jest rozcinany.
+2. Kropka węzłowa stoi wyłącznie tam, gdzie model ma węzeł (`PreviewElementMeta.wezelModelu`
+   ∈ szyny ∪ pola ∪ transformatory modelu — `wezlyModeluEnm`): węzeł nazwany toru albo węzeł
+   pola, z którego odchodzi odczep aparatu bocznego. Kropka odczepu stoi przy tym tylko
+   w ROZGAŁĘZIENIU — co najmniej trzy ramiona toru w punkcie (`ramionaToru`; IEC 61082-1:
+   kropka oznacza połączenie T, nie załamanie). Stos aparatów pola bez portów ENM nie ma
+   przewodów między aparatami, więc port sąsiada stosu odległy o
+   `APPARATUS_STACK_VERTICAL_GAP` liczy się jako ramię ciągłości toru. Odczep z końca toru
+   (uziemnik pola za ostatnim aparatem, glif źródła OZE przy głowicy kablowej pola bez
+   narysowanego kabla) jest narożnikiem — bez kropki. Emisja kropek sceny i wymagania
+   wyroczni biorą punkty z jednego predykatu (`odczepyWezlowModelu`).
+3. Warunek odbioru zmienia się z `crossingCount = 0` na: **zero kropek bez węzła modelu
+   (`junctionDotGaps` z wezłami modelu = 0, metryka `junctionDotGapCount`) i mostek na każdym
+   przecięciu toru mocy (`przecieciaBezMostka` = 0, metryka `crossingWithoutBridgeCount`,
+   razem z przecięciami z szyną `crossingBusGaps`, które pozostają zakazane)**. Liczba
+   skrzyżowań z mostkiem jest przypięta: fikstura referencyjna 8/19/19
+   (`CROSSING_WITH_BRIDGE_BASELINE` w `frontend/scripts/sld_v3_acceptance.mjs`), 58 fikstur ×
+   L0/L1/L2 razem 113 skrzyżowań i 65 kropek z węzłem modelu. Przed regeneracją fikstur
+   (jedna postać `starting_port_ref`, decyzja architekta pkt 3) było 7/18/18 i 107: nowe
+   identyfikatory korytarzy układają wiersze odgałęzień `sldSubstrate52s` w innej kolejności
+   remisu i przybywa jedno skrzyżowanie odgałęzienie × odgałęzienie na każdym LOD (2 kopie
+   fikstury × 3 LOD = +6), każde z mostkiem; sonda 2×2 (kod karty × fikstura sprzed i po
+   regeneracji, przy obu szerokościach tekstu) przypisuje różnicę wyłącznie fiksturze
+   (`scene/__tests__/wezlyMostkiRozlacznoscFikstur.test.ts`, z iniekcjami: kropka bez węzła,
+   kropka z węzłem spoza modelu, kropka obok toru, kropka w narożniku, rozgałęzienie bez
+   kropki, przecięcie bez rysowalnego mostka). Dawne 67 obejmowało dwie kropki narożnika
+   (`gpzProtectionDataPath` L1/L2, uziemnik pola `tr01` za przekładnikiem prądowym).
+   Ten sam test pilnuje rozłączności toru (rozstrzygnięcie KD-5): każdy koniec odcinka toru
+   zakotwiczony (`sceneSegmentEndpointGaps`, przed naprawą 15 luk), zero szyn zerowej długości
+   (przed: 10), każde źródło przyłączone torem (`sourceConnectivityGaps`, przed: 6 — glif
+   źródła pola OZE w GPZ bez przewodu z głowicy kablowej).
+4. Zakazane pozostają przecięcia, dla których mostek nie jest odpowiedzią: kabel przez tor
+   wewnętrzny stacji i przecięcie kabli dwóch odgałęzień tej samej stacji (wyrocznie
+   `przecieciaToruStacji`, `przecieciaMiedzyOdgalezieniamiStacji`,
+   `scene/__tests__/przecieciaStacji.ts`).
+
+**Wachlarz pól GPZ fikstury `gpzProtectionDataPath` (decyzja architekta 2026-10-30, pkt 4).**
+Układ z jednym koniecznym skrzyżowaniem z mostkiem (przęsło magistrali `segment_L` × zejście
+odgałęzienia `branch_segment_L`, na L0/L1/L2 po 1) jest układem DOCELOWYM, nie długiem:
+zejście z pola GPZ dalszego od osi musi przejść nad magistralą wychodzącą z pola bliższego,
+a mostek jest jawnym zaprzeczeniem połączenia. Przypięte w
+`buildScene.odejsciaZagniezdzone.test.ts` (wachlarz GPZ: `junctionDotGaps` z węzłami modelu
+= 0, `przecieciaBezMostka` = 0).
+
+**Geometria L0 (rozstrzygnięcie KD-5, ta sama karta).** Zejścia odgałęzień stacji zwiniętej
+wychodzą z dolnej krawędzi pudełka stacji, rozsunięte (zero wspólnego pionu na żadnym LOD);
+suma pionów fikstury referencyjnej L0 21576 → 21288 (12 zejść × 24 px), L1/L2 bez zmian.
+Po tabeli posuwów kroju (decyzja architekta pkt 7) i regeneracji fikstur suma pionów wynosi
+19976/43040/43040 (−1312 na każdym LOD; sonda 2×2 przy `VERTICAL_LENGTH_BASELINE`
+w `frontend/scripts/sld_v3_acceptance.mjs`).
+
+**Pliki.** `frontend/src/ui/sld/v3/scene/crossings.ts` (`przecieciaBezMostka`,
+`junctionDotGaps`, `wezlyModeluEnm`), `scene/buildScene.ts` (`LayoutMetricsReport`:
+`crossingWithoutBridgeCount`, `junctionDotGapCount`; kasacja rozcinania „węzłem T"),
+`export/svgPrimitives.ts` (spłaszczanie łuku `A` mostka w eksporcie PDF/DXF/PNG — wcześniej
+eksport rzucał wyjątkiem na ścieżce z mostkiem), `scripts/sld_v3_acceptance.mjs`
+(`crossing_probe`, `junction_dot_probe` z testami negatywnymi), `SLD_CAD_SPEC_V3.md` §22.1.

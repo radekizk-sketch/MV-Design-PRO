@@ -1,0 +1,214 @@
+{
+  "funkcje": {
+    "25": {
+      "ansi": "25",
+      "nazwa_pl": "kontrola synchronizmu przy załączaniu",
+      "oznaczenie_pl": "synchrocheck",
+      "rodzaj": "BLOKADA"
+    },
+    "26": {
+      "ansi": "26",
+      "nazwa_pl": "temperaturowe transformatora",
+      "oznaczenie_pl": "temperatura",
+      "rodzaj": "TECHNOLOGICZNE"
+    },
+    "27": {
+      "ansi": "27",
+      "nazwa_pl": "podnapięciowe (przekładniki od strony linii)",
+      "oznaczenie_pl": "U<",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "32": {
+      "ansi": "32",
+      "nazwa_pl": "kierunkowe mocy czynnej (od skutków mocy zwrotnej)",
+      "oznaczenie_pl": "P>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "50": {
+      "ansi": "50",
+      "nazwa_pl": "nadprądowe zwarciowe (bezzwłoczne)",
+      "oznaczenie_pl": "I>>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "50BF": {
+      "ansi": "50BF",
+      "nazwa_pl": "lokalna rezerwa wyłącznikowa",
+      "oznaczenie_pl": "LRW",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "50N": {
+      "ansi": "50N",
+      "nazwa_pl": "ziemnozwarciowe bezzwłoczne (prąd zerowy)",
+      "oznaczenie_pl": "Io>>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "51": {
+      "ansi": "51",
+      "nazwa_pl": "nadprądowe zwłoczne",
+      "oznaczenie_pl": "I>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "51N": {
+      "ansi": "51N",
+      "nazwa_pl": "ziemnozwarciowe zwłoczne (prąd zerowy)",
+      "oznaczenie_pl": "Io>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "59": {
+      "ansi": "59",
+      "nazwa_pl": "nadnapięciowe (przekładniki od strony linii)",
+      "oznaczenie_pl": "U>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "59N": {
+      "ansi": "59N",
+      "nazwa_pl": "nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
+      "oznaczenie_pl": "U0>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "60N": {
+      "ansi": "60N",
+      "nazwa_pl": "od niezrównoważenia baterii kondensatorów (prąd między punktami gwiazd)",
+      "oznaczenie_pl": "Ir>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "63": {
+      "ansi": "63",
+      "nazwa_pl": "gazowo-przepływowe transformatora",
+      "oznaczenie_pl": "Buchholz",
+      "rodzaj": "TECHNOLOGICZNE"
+    },
+    "63P": {
+      "ansi": "63P",
+      "nazwa_pl": "od wzrostu ciśnienia w kadzi transformatora",
+      "oznaczenie_pl": "ciśnienie",
+      "rodzaj": "TECHNOLOGICZNE"
+    },
+    "67": {
+      "ansi": "67",
+      "nazwa_pl": "nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+      "oznaczenie_pl": "I> kierunkowe",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "67N": {
+      "ansi": "67N",
+      "nazwa_pl": "ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+      "oznaczenie_pl": "Io> kierunkowe",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "78": {
+      "ansi": "78",
+      "nazwa_pl": "przesunięcie wektora napięcia (ochrona od pracy wyspowej)",
+      "oznaczenie_pl": "skok wektora",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "79": {
+      "ansi": "79",
+      "nazwa_pl": "samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+      "oznaczenie_pl": "SPZ",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "81O": {
+      "ansi": "81O",
+      "nazwa_pl": "nadczęstotliwościowe",
+      "oznaczenie_pl": "f>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "81R": {
+      "ansi": "81R",
+      "nazwa_pl": "szybkość zmian częstotliwości (ROCOF)",
+      "oznaczenie_pl": "df/dt",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "81U": {
+      "ansi": "81U",
+      "nazwa_pl": "podczęstotliwościowe",
+      "oznaczenie_pl": "f<",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "87T": {
+      "ansi": "87T",
+      "nazwa_pl": "różnicowe transformatora",
+      "oznaczenie_pl": "różnicowe",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "90": {
+      "ansi": "90",
+      "nazwa_pl": "automatyczna regulacja napięcia transformatora",
+      "oznaczenie_pl": "ARN",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "BD": {
+      "ansi": null,
+      "nazwa_pl": "zabezpieczenia technologiczne dławika gaszącego (dwa stopnie)",
+      "oznaczenie_pl": "BD I / BD II",
+      "rodzaj": "TECHNOLOGICZNE"
+    },
+    "BT": {
+      "ansi": null,
+      "nazwa_pl": "zabezpieczenia technologiczne transformatora uziemiającego (dwa stopnie)",
+      "oznaczenie_pl": "BT I / BT II",
+      "rodzaj": "TECHNOLOGICZNE"
+    },
+    "Go>": {
+      "ansi": null,
+      "nazwa_pl": "ziemnozwarciowe konduktancyjne",
+      "oznaczenie_pl": "Go>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "NZ": {
+      "ansi": null,
+      "nazwa_pl": "blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+      "oznaczenie_pl": "blokada NZ",
+      "rodzaj": "BLOKADA"
+    },
+    "OWG": {
+      "ansi": null,
+      "nazwa_pl": "wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR)",
+      "oznaczenie_pl": "OWG",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "SCO": {
+      "ansi": null,
+      "nazwa_pl": "samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
+      "oznaczenie_pl": "SCO",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "SPZE": {
+      "ansi": null,
+      "nazwa_pl": "samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
+      "oznaczenie_pl": "SPZE",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "SZR": {
+      "ansi": null,
+      "nazwa_pl": "samoczynne załączenie rezerwy (przekaźnik w polu łącznika szyn)",
+      "oznaczenie_pl": "SZR",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "Yo>": {
+      "ansi": null,
+      "nazwa_pl": "ziemnozwarciowe admitancyjne",
+      "oznaczenie_pl": "Yo>",
+      "rodzaj": "ZABEZPIECZENIE"
+    },
+    "ZAWSC": {
+      "ansi": null,
+      "nazwa_pl": "automatyka wymuszania składowej czynnej prądu ziemnozwarciowego",
+      "oznaczenie_pl": "ZAWSC",
+      "rodzaj": "AUTOMATYKA"
+    },
+    "ZS": {
+      "ansi": null,
+      "nazwa_pl": "współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+      "oznaczenie_pl": "ZS",
+      "rodzaj": "ZABEZPIECZENIE"
+    }
+  },
+  "rodzaje": [
+    "ZABEZPIECZENIE",
+    "AUTOMATYKA",
+    "BLOKADA",
+    "TECHNOLOGICZNE"
+  ]
+}

@@ -201,6 +201,15 @@ describe.each(PRZYPADKI)('żywy inspektor po kliku: $nazwa', (przypadek) => {
     const pasek = screen.getByTestId('inspektor-dzialania');
     expect(kontener.contains(pasek)).toBe(true);
     expect(kontener.contains(screen.getByTestId(przypadek.okno))).toBe(true);
+    // Jedno przewijanie (treść inspektora): kontener nie ustala wysokości ani przewijania,
+    // więc procentowa wysokość okna (`h-full` korzenia okna) nie ma się do czego odnieść i okno
+    // ma naturalną wysokość pod panelem elementu. Pomiar 2026-10-29 (UX-04): kontener
+    // `h-full overflow-y-auto` dawał trzy zagnieżdżone przewijania i uciętą ocenę pola. jsdom nie
+    // liczy układu — układ mierzy e2e (`jednoPrzewijanieInspektora`), tu przypięty mechanizm.
+    expect(screen.getByTestId('workspace-surface-panel').parentElement, 'okno wprost w kontenerze').toBe(kontener);
+    expect(kontener.className, 'kontener bez własnej wysokości i przewijania').not.toMatch(
+      /(^|\s)(h-\S+|max-h-\S+|min-h-\S+|overflow-\S+|flex|grid)(\s|$)/,
+    );
     expect(pasek.compareDocumentPosition(screen.getByTestId(przypadek.okno)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Sekcja „Wyniki" i bramka „Pokaż wyniki" (status wyników) są widoczne także nad oknem.
     expect(kontener.contains(screen.getByTestId('inspektor-wyniki'))).toBe(true);

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import copy
 import math
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -34,8 +34,14 @@ from domain.generator_validation import (
     sprawdz_moc_generatora,
     technologia_generatora,
 )
+from network_model.catalog.bay_templates import (
+    SZABLON_WARIANTU_ZESPOLU,
+    WARIANT_SZABLONU_ZESPOLU,
+    _main_apparatus_primary_kind,
+)
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
+from network_model.catalog.mv_transformer_catalog import transformator_uziemiajacy_dla_napiecia
 from network_model.catalog.switchgear import (
     NiezgodnoscKonfiguracjiError,
     family_supports_voltage,
@@ -50,6 +56,7 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETR_COS_PHI_MASZYNY,
     RODZINA_MASZYNA_SYNCHRONICZNA,
     blad_wartosci_maszyny,
+    liczba_pl,
 )
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
 from network_model.nazwy import nazwa_nadana
@@ -77,16 +84,19 @@ from network_model.pochodne.pasma_napieciowe import (
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
+from .aparaty_pol_sn import uzupelnij_aparaty_pol_sn
 from .assembler import czestotliwosc_studium_hz
 from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
 from .deklaracje_modulu import pola_nc_rfg_generatora
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
+    KOD_SPRZEGLO_SEKCJI_ZAJETE,
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
     POLE_RODZAJU_POLA,
     _aparaty_i_konfiguracja_pola,
+    _aparaty_pola_liniowego_gpz,
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
     _apply_materialized_transformer_fields,
@@ -101,16 +111,22 @@ from .domain_operations import (
     _nazwa_pola_w_modelu,
     _odmowa_typu_ladunku,
     _opt_float_any,
+    _powiaz_aparaty_pola_z_galezia,
     _powod_odmowy_tolerancji_nn,
     _require_catalog_ref,
     _require_transformer_fields,
     _response,
     _rodzaj_aparatu_sn_z_katalogu,
     blad_pomiaru_w_torze_tranzytu,
+    meta_pola_sprzegla,
     metadane_pochodzenia_pola,
     rozstrzygnij_pomiar_pola,
+    rozstrzygnij_sprzeglo_pola,
+    sekcje_szyn_sn_stacji,
     szyna_prowadzi_tranzyt_sn,
+    utworz_galaz_sprzegla,
     wybor_bloku_fabrycznego,
+    zwiaz_pole_ze_sprzeglem,
 )
 from .dynamika_z_katalogu import (
     BladMaterializacjiDynamiki,
@@ -122,6 +138,7 @@ from .dynamika_z_katalogu import (
 )
 from .exceptions import DomainInvariantError
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
+from .gaz_fluorowany_pola import RODZAJE_GALEZI_LACZENIOWYCH
 from .katalog_projektu import katalog_biezacy, sekcja_katalogu_projektu
 from .katalog_projektu_karty import (
     KLUCZ_KART_WIDMOWYCH,
@@ -142,6 +159,7 @@ from .nazwy_elementow import (
 )
 from .operacje_lacznikow import close_switch, open_switch, set_normal_open_point
 from .pola import (
+    aparaty_po_wymianie,
     dodaj_pole,
     pola_nn_stacji,
     pola_sn_stacji,
@@ -160,6 +178,7 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
     rozwiaz_plan_pola,
 )
+from .polozenie_aparatu_pola import set_bay_apparatus_position
 from .rola_pola_sn import (
     ROLE_POLA_MODELU,
     kanoniczna_rola_pola_sn,
@@ -183,6 +202,7 @@ from .slownik_komunikatow import (
     w_cudzyslowie,
     wartosc_w_zdaniu,
 )
+from .stan_obiektu_pola import set_object_state
 from .topology import transformatory_zasilajace_gpz
 from .topology_ops import (
     attach_protection,
@@ -196,6 +216,14 @@ from .tor_pola import szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
+from .zespol_uziemiajacy import (
+    NAPIECIE_POTRZEB_WLASNYCH_KV,
+    WariantZespolu,
+    przenies_uziemienie_na_zespol,
+    wariant_z_uziemienia_zrodla,
+    zmien_wariant_zespolu,
+)
+from .zrodlo_napiecia_zerowego import warunki_funkcji_eaz_pola
 
 
 def _opis_pola(enm: dict[str, Any], field_ref: object, rodzaj: str = "Pole") -> str:
@@ -536,9 +564,40 @@ def _wymagane_pola_odcinka(segment: dict[str, Any], *pola: str) -> dict[str, flo
     return wartosci
 
 
+def _rodzaj_galezi_z_szablonu_pola(
+    payload: dict[str, Any], station: Mapping[str, Any], bay_role: str
+) -> str | None:
+    """Rodzaj gałęzi aparatu pola bez pozycji katalogu i bez deklaracji rodzaju — rodzaj
+    aparatu GŁÓWNEGO szablonu, z którego pole bierze tor (wskazany `bay_template_ref` albo
+    szablon domyślny roli, `enm.aparaty_pol_sn.szablon_domyslny_pola_sn`). Para predykatów
+    z jednego źródła: typ gałęzi ↔ rodzaj rekordu aparatu głównego. Pole rodziny albo bloku
+    fabrycznego — `None` (wyłącznik; aparat główny pola rodziny wskazuje rodzina)."""
+    from network_model.catalog.bay_templates import rodzaj_aparatu_glownego_szablonu
+
+    from .aparaty_pol_sn import szablon_domyslny_pola_sn
+
+    szablon = payload.get("bay_template_ref")
+    if isinstance(szablon, str) and szablon.strip():
+        return rodzaj_aparatu_glownego_szablonu(szablon.strip())
+    if payload.get("switchgear_family_ref") or wybor_bloku_fabrycznego(payload):
+        return None
+    return rodzaj_aparatu_glownego_szablonu(
+        szablon_domyslny_pola_sn(
+            bay_role, gpz=station.get("station_type") == "gpz", insulation_type=None
+        )
+    )
+
+
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
     normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
-    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK", "UZIEMNIK"}:
+    if normalized in {
+        "DISCONNECTOR",
+        "DS",
+        "ODLACZNIK",
+        "ODŁĄCZNIK",
+        "UZIEMNIK",
+        "THREE_POSITION_SWITCH",
+    }:
         return "disconnector"
     if normalized in {
         "LOAD_SWITCH",
@@ -2021,19 +2080,36 @@ def _default_sn_bay_name(role: str) -> str:
 
 
 def _resolve_bay_template_protection_codes(
-    manufacturer_ref: str | None, bay_template_ref: str | None, bay_role: str
+    manufacturer_ref: str | None,
+    bay_template_ref: str | None,
+    bay_role: str,
+    klasa_pola: str | None = None,
+    warunki: Collection[str] = frozenset(),
 ) -> list[str]:
-    """Wymagane funkcje zabezpieczeniowe (ANSI/IEC) pola → Bay.protection_codes.
+    """Wymagane funkcje EAZ pola (kody słownika `funkcje_eaz`) → Bay.protection_codes.
 
-    Kolejność (zero fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
+    Zestaw należy do SZABLONU pola (karta UX-04/POLE-LINIOWE-WZORZEC). Kolejność (zero
+    fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
     1. `CompleteMvBayTemplate.protection_requirements` z wybranego szablonu producenta
        (reużycie kanonicznego resolvera Reference Engine — bez równoległej ścieżki), gdy
        paczka producenta je dostarcza — mają pierwszeństwo (dane producenckie);
-    2. kanoniczna tablica wymaganych funkcji per rola pola (`BAY_PROTECTION_CODES_BY_ROLE`,
-       PTPiREE/IRiESD + IEC 60255): IN/OUT/FEEDER/TR/COUPLER/OZE; pole pomiarowe = puste
-       (uczciwy brak, nie fabrykacja).
+    2. `BayTemplate.funkcje_eaz` wskazanego szablonu kanonu (np. ENEA Z.10 ≠ Z.11 przy tej
+       samej roli; pole rezerwowe bez wyłącznika = puste); szablon pola liniowego GPZ —
+       skorygowany klasą pola (`klasa_pola`, IRiESD II.4.5.4.2: bez SCO w polu z generacją,
+       bez SPZ w polu dedykowanym wytwórcy — `bay_templates.funkcje_eaz_pola_liniowego`);
+    3. funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI`) — pole bez szablonu;
+       pole pomiarowe = puste (uczciwy brak, nie fabrykacja).
+
+    Na KAŻDEJ z trzech dróg funkcja warunkowa (`bay_templates.WARUNKI_FUNKCJI_EAZ` — 67N) trafia
+    do zestawu wyłącznie przy warunku spełnionym w modelu (``warunki`` z
+    `enm.zrodlo_napiecia_zerowego.warunki_funkcji_eaz_pola`; domyślnie żaden — pole budowane
+    nie ma jeszcze powiązanego źródła 3U₀). Decyzja właściciela 2026-10-29.
     """
-    from network_model.catalog.bay_templates import protection_codes_for_bay_role
+    from network_model.catalog.bay_templates import (
+        bez_niespelnionych_warunkow,
+        funkcje_eaz_roli,
+        funkcje_eaz_szablonu,
+    )
 
     if bay_template_ref:
         from network_model.catalog.switchgear.canonical_fallback import (
@@ -2053,9 +2129,12 @@ def _resolve_bay_template_protection_codes(
                 None,
             )
         if template is not None and template.protection_requirements:
-            return list(template.protection_requirements)
+            return bez_niespelnionych_warunkow(template.protection_requirements, warunki)
+        z_szablonu = funkcje_eaz_szablonu(bay_template_ref, klasa_pola, warunki)
+        if z_szablonu is not None:
+            return z_szablonu
 
-    return protection_codes_for_bay_role(bay_role)
+    return funkcje_eaz_roli(bay_role, warunki)
 
 
 def _pole_rekonfigurowane_i_szyna(
@@ -2142,6 +2221,20 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             "Wskazane pole SN nie należy do wybranej szyny SN.",
             "sn.field_bus_mismatch",
         )
+
+    # Karta POLA-GPZ-SZABLONY: pole zespołu uziemiającego (rola ZU) — wariant uziemienia z szablonu
+    # pola (Z.13 / Z.14 / Z.15) albo, bez szablonu, z opisu punktu neutralnego źródła wyspy,
+    # który pole przenosi na transformator uziemiający (`enm.zespol_uziemiajacy`).
+    wariant_zespolu, odmowa_zespolu = _wariant_pola_zespolu(
+        enm, payload, bay_role=bay_role, bus_ref=bus_ref, existing_field=existing_field
+    )
+    if odmowa_zespolu is not None:
+        return odmowa_zespolu
+    if wariant_zespolu is not None and not existing_field_ref:
+        payload = {
+            **payload,
+            "bay_template_ref": SZABLON_WARIANTU_ZESPOLU[wariant_zespolu].template_id,
+        }
 
     # POMIAR POLA (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, korekta V12K-336):
     # dokładanie pojedynczego pola NIE deklaruje przyłącza klienta — pole
@@ -2270,7 +2363,17 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     # polu (reguła katalog-first). Brak pozycji katalogowej ⇒ decyduje deklaracja,
     # jak dotąd.
     rodzaj_z_katalogu = _rodzaj_aparatu_sn_z_katalogu(catalog_ref) if catalog_ref else None
-    branch_type = _sn_bay_branch_type(rodzaj_z_katalogu or apparatus_kind)
+    # Deklaracja `apparatus_kind` liczy się wyłącznie jako RODZAJ ŁĄCZNIKA (wyłącznik,
+    # rozłącznik, odłącznik, rozłącznik bezpiecznikowy); funkcja pola podana jako rodzaj
+    # („MEASUREMENT") nie jest wyrobem — wtedy rodzaj z szablonu pola.
+    rodzaj_glowny = rodzaj_z_katalogu or (
+        apparatus_kind
+        if isinstance(apparatus_kind, str) and _main_apparatus_primary_kind(apparatus_kind)
+        else None
+    )
+    branch_type = _sn_bay_branch_type(
+        rodzaj_glowny or _rodzaj_galezi_z_szablonu_pola(payload, station, bay_role)
+    )
 
     # V12K-058 (G-POLE-R): powiązania producenckie pola (szablon/rodzina/producent/
     # zabezpieczenie) — trafiają na rekord pola przez `enm.pola.zbuduj_pole` (parytet ze
@@ -2320,9 +2423,20 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
-    # refy danych). Bez szablonu: brak kodów (wsteczna zgodność).
+    # refy danych). Bez szablonu: brak kodów (wsteczna zgodność). Pole rekonfigurowane
+    # zachowuje zadeklarowaną klasę pola liniowego — zestaw funkcji wg klasy (IRiESD II.4.5.4.2)
+    # — i potwierdzone powiązanie źródła 3U₀ (funkcja warunkowa 67N, decyzja właściciela
+    # 2026-10-29: `enm.zrodlo_napiecia_zerowego`); pole nowe nie ma powiązania, więc bez 67N.
     protection_codes = _resolve_bay_template_protection_codes(
-        manufacturer_ref, bay_template_ref, bay_role
+        manufacturer_ref,
+        bay_template_ref,
+        bay_role,
+        existing_field.get("klasa_pola") if isinstance(existing_field, dict) else None,
+        (
+            warunki_funkcji_eaz_pola(enm, existing_field)
+            if isinstance(existing_field, dict)
+            else frozenset()
+        ),
     )
     if protection_codes:
         producer_refs["protection_codes"] = protection_codes
@@ -2344,7 +2458,9 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             payload,
             field_ref=field_ref,
             bay_template_ref=bay_template_ref,
-            main_apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
+            # Rodzaj wyrobu z KATALOGU wygrywa z deklaracją (KOMPLETNOSC-POLA-TR) — rekord
+            # aparatu głównego opisuje ten sam wyrób co gałąź aparatu pola.
+            main_apparatus_kind=rodzaj_glowny,
         )
     except NiezgodnoscKonfiguracjiError as blad:
         return _error_response(str(blad), _KOD_BLEDU_POLA_KATALOGOWEGO)
@@ -2375,6 +2491,45 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         producer_refs["primary_devices"] = primary_devices_spec
 
     new_enm = kopia_graniczna_enm(enm)
+    # Decyzja architekta D3: pole sprzęgła jest rekordem pola związanym z gałęzią `bus_coupler`
+    # między sekcjami — nie powstaje ze zmiany funkcji innego pola (ani odwrotnie), bo jego
+    # aparatem jest łącznik sekcji, a nie aparat na zacisku pola.
+    rola_przed = existing_field.get("bay_role") if isinstance(existing_field, dict) else None
+    if existing_field is not None and (bay_role == "COUPLER") != (rola_przed == "COUPLER"):
+        return _error_response(
+            "Pole sprzęgła nie powstaje ze zmiany funkcji innego pola i nie zmienia funkcji — "
+            "jego aparatem jest sprzęgło sekcji szyn. Dodaj nowe pole sprzęgła albo usuń pole "
+            "i dodaj pole właściwej funkcji.",
+            "sn.coupler_zmiana_roli",
+        )
+    if bay_role == "COUPLER" and _sprzeglo_pola(new_enm, existing_field) is None:
+        # Nowe pole sprzęgła albo pole sprzęgła-rezerwa (gałąź sprzęgła usunięta,
+        # `delete_element`) — wiązanie z gałęzią `bus_coupler` JEDNĄ regułą
+        # (`rozstrzygnij_sprzeglo_pola`); ogólna droga niżej zbudowałaby zacisk i drugi
+        # wyłącznik na zacisku, czyli martwy aparat pola sprzęgła.
+        return _zapisz_pole_sprzegla(
+            new_enm,
+            station=station,
+            existing_field=existing_field,
+            bus_ref=bus_ref,
+            field_ref=field_ref,
+            field_name=field_name,
+            seed=seed,
+            gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            apparatus_params=apparatus_params,
+            apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            wybor_bloku=wybor_bloku,
+            primary_devices_spec=primary_devices_spec,
+            protection_ref=protection_ref,
+            protection_codes=protection_codes,
+            manufacturer_ref=manufacturer_ref,
+            pochodzenie_pola=pochodzenie_pola,
+            tags=list(payload.get("tags") or []),
+        )
     existing_equipment_refs = (
         _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
     )
@@ -2390,8 +2545,16 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             None,
         )
         if branch is not None:
-            branch["name"] = f"Aparat {field_name}"
-            branch["type"] = branch_type
+            if branch.get("type") != "bus_coupler":
+                branch["name"] = f"Aparat {field_name}"
+                branch["type"] = branch_type
+            # Gałąź sprzęgła pola sprzęgła zachowuje typ i nazwę łącznika sekcji (D3). Aparat
+            # główny nowego toru wskazuje gałąź aparatu pola (każda rola — para rekord pola ↔
+            # gałąź ↔ aparat główny z jednego źródła, `_powiaz_aparaty_pola_z_galezia`).
+            if "primary_devices" in producer_refs:
+                producer_refs["primary_devices"] = _powiaz_aparaty_pola_z_galezia(
+                    producer_refs["primary_devices"], branch
+                )
             # Pochodzenie katalogowe deklarujemy TYLKO wtedy, gdy pozycja katalogu
             # naprawdę stoi za aparatem. Pole bez wskazanego aparatu jest kanoniczne
             # (`requires_catalog_binding`) i nie może nieść kategorii, z której nic
@@ -2560,6 +2723,52 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
             primary_devices=primary_devices_spec or None,
         )
+        if (
+            isinstance(gpz_section_id, str)
+            and gpz_section_id.strip()
+            and not aparaty_pola
+            and not bay_template_ref
+            and not switchgear_family_ref
+            and not wybor_bloku
+        ):
+            # Karta UX-04/POLE-LINIOWE-WZORZEC: pole liniowe GPZ bez wskazanego szablonu —
+            # TA SAMA reguła co pola tworzone z GPZ i przydziałem odgałęzienia
+            # (`_aparaty_pola_liniowego_gpz`: wzorzec ENEA Zeszyt 1, Z.10, aparat główny
+            # wskazuje gałąź aparatu pola).
+            galaz_aparatu = next(
+                (
+                    b
+                    for b in new_enm.get("branches", [])
+                    if isinstance(b, dict) and b.get("ref_id") == apparatus_ref
+                ),
+                None,
+            )
+            try:
+                aparaty_pola, konfiguracja_pola, bay_template_ref = _aparaty_pola_liniowego_gpz(
+                    field_ref=field_ref,
+                    bay_role=bay_role,
+                    bay_template_ref=None,
+                    switchgear_family_ref=None,
+                    napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
+                    galaz_aparatu=galaz_aparatu,
+                )
+            except NiezgodnoscKonfiguracjiError as blad:
+                return _error_response(str(blad), _KOD_BLEDU_POLA_KATALOGOWEGO)
+            # Funkcje EAZ z szablonu rozstrzygniętego wyżej (wzorzec ENEA) — kody liczone przed
+            # rozstrzygnięciem szablonu byłyby kodami roli, nie pola Z.10.
+            protection_codes = _resolve_bay_template_protection_codes(
+                manufacturer_ref, bay_template_ref, bay_role
+            )
+        elif aparaty_pola and not any(a.get("linked_ref") for a in aparaty_pola):
+            # Tor z szablonu, pola rodziny albo bloku: aparat główny wskazuje gałąź aparatu pola,
+            # łączniki bez gałęzi — położenie zgodne ze stanem gałęzi (ta sama reguła co pole
+            # liniowe GPZ i pole stacji bez szablonu).
+            galaz_pola = next(
+                b
+                for b in new_enm.get("branches", [])
+                if isinstance(b, dict) and b.get("ref_id") == apparatus_ref
+            )
+            aparaty_pola = _powiaz_aparaty_pola_z_galezia(aparaty_pola, galaz_pola)
         dodaj_pole(
             new_enm,
             zbuduj_pole(
@@ -2589,9 +2798,36 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
                     "default_device_ref": apparatus_ref,
                     "field_status": "CONFIGURED_FOR_TRUNK",
                 },
+                stan_obiektu="PROJEKTOWANY",
             ),
         )
         created.insert(0, field_ref)
+        # Aparaty toru pola bez szablonu — ta sama reguła co pola stacji (`enm.aparaty_pol_sn`).
+        uzupelnij_aparaty_pol_sn(new_enm, [field_ref])
+
+    zdarzenia_zespolu: list[dict[str, Any]] = []
+    if bay_role == "ZU" and existing_field_ref:
+        # Zmiana szablonu pola ZU na szablon innego wariantu — nośnik punktu neutralnego
+        # transformatora tym samym krokiem (ta sama funkcja co `set_bay_equipment`).
+        if wariant_zespolu is not None:
+            zmien_wariant_zespolu(new_enm, field_ref, wariant_zespolu)
+    elif bay_role == "ZU" and wariant_zespolu is not None:
+        utworzone, odmowa = _dodaj_transformator_zespolu(
+            new_enm,
+            field_ref=field_ref,
+            terminal_bus_ref=terminal_bus_ref,
+            station_ref=str(station["ref_id"]),
+            seed=seed,
+            wariant=wariant_zespolu,
+            field_name=field_name,
+        )
+        if odmowa is not None:
+            return odmowa
+        created.extend(utworzone)
+        zdarzenia_zespolu = [
+            {"event_seq": 4, "event_type": "BUS_CREATED", "element_id": utworzone[0]},
+            {"event_seq": 5, "event_type": "TRANSFORMER_CREATED", "element_id": utworzone[1]},
+        ]
 
     return _response(
         new_enm,
@@ -2606,8 +2842,311 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             },
             {"event_seq": 2, "event_type": "FIELD_DEVICE_CREATED_SN", "element_id": apparatus_ref},
             {"event_seq": 3, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
+            *zdarzenia_zespolu,
         ],
     )
+
+
+def _sprzeglo_pola(
+    enm: Mapping[str, Any], pole_rec: Mapping[str, Any] | None
+) -> dict[str, Any] | None:
+    """Gałąź `bus_coupler` będąca aparatem pola (`equipment_refs`) — `None` dla pola nowego
+    i pola sprzęgła-rezerwy (gałąź usunięta)."""
+    if not isinstance(pole_rec, Mapping):
+        return None
+    refy = {r for r in pole_rec.get("equipment_refs") or [] if isinstance(r, str)}
+    return next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict) and b.get("type") == "bus_coupler" and b.get("ref_id") in refy
+        ),
+        None,
+    )
+
+
+def _zapisz_pole_sprzegla(
+    new_enm: dict[str, Any],
+    *,
+    station: dict[str, Any],
+    existing_field: dict[str, Any] | None,
+    bus_ref: str,
+    field_ref: str,
+    field_name: str,
+    seed: str,
+    gpz_section_id: str | None,
+    catalog_ref: str | None,
+    catalog_binding: dict[str, Any] | None,
+    apparatus_params: dict[str, Any],
+    apparatus_kind: str | None,
+    bay_template_ref: str | None,
+    switchgear_family_ref: str | None,
+    wybor_bloku: dict[str, Any] | None,
+    primary_devices_spec: list[dict[str, Any]],
+    protection_ref: str | None,
+    protection_codes: list[str] | None,
+    manufacturer_ref: str | None,
+    pochodzenie_pola: dict[str, Any] | None,
+    tags: list[str],
+) -> dict[str, Any]:
+    """Pole sprzęgła `add_sn_bay` (decyzja architekta D3) — nowe albo pole sprzęgła-rezerwa
+    (`existing_field`, gałąź sprzęgła usunięta): wiąże się z istniejącym sprzęgłem sekcji bez
+    pola, a gdy sąsiednia sekcja nie ma sprzęgła — tworzy je tym samym krokiem. Rozdzielnica
+    o jednej sekcji — odmowa `field.coupler_requires_two_sections`. Nie powstaje zacisk pola
+    ani drugi wyłącznik."""
+    station_ref = str(station["ref_id"])
+    sprzeglo, odmowa = rozstrzygnij_sprzeglo_pola(
+        new_enm,
+        sekcje=sekcje_szyn_sn_stacji(new_enm, station),
+        bus_ref=bus_ref,
+        nowy_coupler_ref=_make_id("sn", seed, "bay_coupler"),
+    )
+    if odmowa is not None or sprzeglo is None:
+        kod, komunikat = odmowa or (KOD_SPRZEGLO_SEKCJI_ZAJETE, "")
+        return _error_response(komunikat, kod)
+    created: list[str] = [field_ref]
+    zdarzenia: list[dict[str, Any]] = []
+    if sprzeglo.do_utworzenia:
+        sekcje = sekcje_szyn_sn_stacji(new_enm, station)
+        numery = (
+            f"{sekcje.index(sprzeglo.section_a_bus_ref) + 1}-"
+            f"{sekcje.index(sprzeglo.section_b_bus_ref) + 1}"
+        )
+        nazwa_sprzegla = (
+            f"Sprzęgło sekcji GPZ {numery}"
+            if station.get("station_type") == "gpz"
+            else f"Sprzęgło sekcji {numery} {nazwa_nadana(station.get('name')) or ''}".strip()
+        )
+        new_enm, blad = utworz_galaz_sprzegla(
+            new_enm, sprzeglo, nazwa=nazwa_sprzegla, station=station
+        )
+        if blad is not None:
+            return _error_response(
+                f"Nie udało się utworzyć sprzęgła sekcji szyn: {blad}", "sn.coupler_branch_failed"
+            )
+        created.append(sprzeglo.coupler_ref)
+        zdarzenia.append(
+            {"event_seq": 1, "event_type": "BRANCH_CREATED", "element_id": sprzeglo.coupler_ref}
+        )
+    aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
+        field_ref=field_ref,
+        bay_template_ref=bay_template_ref,
+        switchgear_family_ref=switchgear_family_ref,
+        wybor_bloku=wybor_bloku or {},
+        napiecie_szyny_kv=_bus_voltage_kv(new_enm, bus_ref),
+        primary_devices=primary_devices_spec or None,
+    )
+    aparaty_pola = zwiaz_pole_ze_sprzeglem(
+        new_enm,
+        sprzeglo,
+        catalog_ref=catalog_ref,
+        apparatus_params=apparatus_params,
+        field_ref=field_ref,
+        station_ref=station_ref,
+        field_role="SPRZEGLO",
+        bay_role="COUPLER",
+        aparaty_pola=aparaty_pola,
+    )
+    meta_pola: dict[str, Any] = {
+        **meta_pola_sprzegla(sprzeglo, requires_catalog_binding=catalog_ref is None),
+        "apparatus_kind": apparatus_kind,
+        "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+        "field_status": "CONFIGURED_FOR_TRUNK",
+    }
+    if existing_field is not None:
+        # Pole sprzęgła-rezerwa (gałąź sprzęgła usunięta) wiąże się ponownie — rekord zostaje
+        # tym samym polem (identyfikator, kolejność, nazwa), dostaje gałąź i aparaty.
+        zmien_pole(
+            new_enm,
+            field_ref,
+            name=field_name,
+            equipment_refs=[sprzeglo.coupler_ref],
+            gpz_section_id=gpz_section_id,
+            primary_devices=aparaty_po_wymianie(
+                existing_field.get("primary_devices") or [], aparaty_pola
+            ),
+            config_id=konfiguracja_pola,
+            protection_ref=protection_ref or existing_field.get("protection_ref"),
+            protection_codes=protection_codes or existing_field.get("protection_codes"),
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            manufacturer_ref=manufacturer_ref or existing_field.get("manufacturer_ref"),
+            meta={**(existing_field.get("meta") or {}), **meta_pola},
+        )
+        uzupelnij_aparaty_pol_sn(new_enm, [field_ref])
+        created.remove(field_ref)
+        zdarzenia.append(
+            {
+                "event_seq": len(zdarzenia) + 1,
+                "event_type": "FIELD_UPDATED_SN",
+                "element_id": field_ref,
+            }
+        )
+        return _response(
+            new_enm, created=created, selection_id=field_ref, selection_type="bay", events=zdarzenia
+        )
+    dodaj_pole(
+        new_enm,
+        zbuduj_pole(
+            ref_id=field_ref,
+            name=field_name,
+            bay_role="COUPLER",
+            field_role="SPRZEGLO",
+            bus_ref=bus_ref,
+            substation_ref=station_ref,
+            gpz_section_id=gpz_section_id,
+            equipment_refs=[sprzeglo.coupler_ref],
+            protection_ref=protection_ref,
+            protection_codes=protection_codes,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            manufacturer_ref=manufacturer_ref,
+            primary_devices=aparaty_pola,
+            config_id=konfiguracja_pola,
+            wybor_bloku=wybor_bloku,
+            metadane_pochodzenia=pochodzenie_pola,
+            tags=tags,
+            meta=meta_pola,
+            stan_obiektu="PROJEKTOWANY",
+        ),
+    )
+    uzupelnij_aparaty_pol_sn(new_enm, [field_ref])
+    zdarzenia.append(
+        {
+            "event_seq": len(zdarzenia) + 1,
+            "event_type": "FIELDS_CREATED_SN",
+            "element_id": field_ref,
+        }
+    )
+    return _response(
+        new_enm, created=created, selection_id=field_ref, selection_type="bay", events=zdarzenia
+    )
+
+
+def _wariant_pola_zespolu(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    bay_role: str,
+    bus_ref: str,
+    existing_field: dict[str, Any] | None,
+) -> tuple[WariantZespolu | None, dict[str, Any] | None]:
+    """Wariant pola zespołu uziemiającego żądania ``add_sn_bay`` albo odmowa nazwana.
+
+    Rola ZU nie powstaje z rekonfiguracji pola innej roli (ani odwrotnie): transformator
+    uziemiający i przeniesienie punktu neutralnego tworzy wyłącznie dodanie pola, oddaje —
+    usunięcie transformatora (`delete_element`). Szablon wskazany musi być szablonem pola ZU."""
+    rola_przed = existing_field.get("bay_role") if isinstance(existing_field, dict) else None
+    if existing_field is not None and (bay_role == "ZU") != (rola_przed == "ZU"):
+        return None, _error_response(
+            "Pole zespołu uziemiającego nie powstaje ze zmiany funkcji innego pola i nie zmienia "
+            "funkcji — dodaj nowe pole zespołu uziemiającego albo usuń transformator "
+            "uziemiający i pole.",
+            "sn.zespol_uziemiajacy_zmiana_roli",
+        )
+    if bay_role != "ZU":
+        return None, None
+    ref = payload.get("bay_template_ref")
+    if isinstance(ref, str) and ref.strip():
+        wariant = WARIANT_SZABLONU_ZESPOLU.get(ref.strip())
+        if wariant is None:
+            return None, _error_response(
+                "Pole zespołu uziemiającego bierze szablon jednego z wariantów: "
+                + lista_pl(
+                    (f"{s.name} Z.{w[1:]}" for w, s in SZABLON_WARIANTU_ZESPOLU.items()), "albo"
+                )
+                + ".",
+                "sn.zespol_uziemiajacy_szablon",
+            )
+        return wariant, None  # type: ignore[return-value]
+    if existing_field is not None:
+        return None, None
+    wariant_zrodla = wariant_z_uziemienia_zrodla(enm, bus_ref)
+    if wariant_zrodla is None:
+        return None, _error_response(
+            "Pole zespołu uziemiającego wymaga wskazania wariantu — szablonu pola Z.13 (dławik "
+            "z automatyczną regulacją), Z.14 (dławik i rezystor równolegle) albo Z.15 (rezystor); "
+            "źródło sieci tej sekcji nie opisuje uziemienia przez dławik ani przez rezystor, "
+            "z którego wariant by wynikał.",
+            "sn.zespol_uziemiajacy_wariant",
+        )
+    return wariant_zrodla, None
+
+
+def _dodaj_transformator_zespolu(
+    enm: dict[str, Any],
+    *,
+    field_ref: str,
+    terminal_bus_ref: str,
+    station_ref: str,
+    seed: str,
+    wariant: WariantZespolu,
+    field_name: str,
+) -> tuple[list[str], dict[str, Any] | None]:
+    """Transformator uziemiający ZNyn11 pola ZU (zacisk SN = zacisk pola, strona 0,4 kV = nowa
+    szyna potrzeb własnych) z pozycji katalogu dla napięcia szyny i przeniesienie punktu
+    neutralnego wyspy na ten transformator — mutacja ``enm`` (kopii wołającego) w miejscu."""
+    napiecie_kv = _bus_voltage_kv(enm, terminal_bus_ref)
+    pozycja = transformator_uziemiajacy_dla_napiecia(float(napiecie_kv or 0.0))
+    if pozycja is None:
+        return [], _error_response(
+            "Katalog transformatorów uziemiających ZNyn11 ma pozycje dla sieci 15 kV i 20 kV — "
+            f"szyna pola ma {liczba_pl(float(napiecie_kv or 0.0))} kV. Dodaj pozycję transformatora "
+            "uziemiającego dla tego napięcia do katalogu.",
+            "sn.zespol_uziemiajacy_napiecie",
+        )
+    parametry, blad = _pozycja_katalogu(
+        namespace="TRAFO_SN_NN",
+        catalog_ref=str(pozycja["id"]),
+        opis_pl="Transformator uziemiający",
+    )
+    if blad is not None:
+        return [], blad
+    szyna_nn = _make_id("sn", seed, "zu_bus_nn")
+    transformator_ref = _make_id("sn", seed, "zu_transformer")
+    wynik = create_node(
+        enm,
+        {
+            "ref_id": szyna_nn,
+            "name": f"Szyna potrzeb własnych 0,4 kV — {field_name}",
+            "voltage_kv": NAPIECIE_POTRZEB_WLASNYCH_KV,
+            "tags": ["zespol_uziemiajacy"],
+            "meta": {"field_ref": field_ref, "station_ref": station_ref},
+        },
+    )
+    if not wynik.success:
+        return [], _error_response(
+            "Nie udało się utworzyć szyny potrzeb własnych zespołu uziemiającego.",
+            "sn.zespol_uziemiajacy_szyna",
+        )
+    if wynik.enm is not enm:
+        # `create_node` zwraca model z szyną — wołający trzyma referencję `enm` (kopię operacji).
+        nowy = dict(wynik.enm)
+        enm.clear()
+        enm.update(nowy)
+    transformator: dict[str, Any] = {
+        "ref_id": transformator_ref,
+        "name": f"Transformator uziemiający — {field_name}",
+        "hv_bus_ref": terminal_bus_ref,
+        "lv_bus_ref": szyna_nn,
+        "catalog_ref": pozycja["id"],
+        "overrides": [],
+        "tags": ["zespol_uziemiajacy"],
+        "meta": {"field_ref": field_ref, "station_ref": station_ref},
+    }
+    _apply_catalog_metadata(transformator, None, default_namespace="TRAFO_SN_NN")
+    _apply_materialized_transformer_fields(transformator, parametry)
+    enm.setdefault("transformers", []).append(transformator)
+    odmowa = przenies_uziemienie_na_zespol(
+        enm, transformator=transformator, bay_ref=field_ref, wariant=wariant
+    )
+    if odmowa is not None:
+        return [], _error_response(odmowa, "sn.zespol_uziemiajacy_przeniesienie")
+    rekord = pole_modelu(enm, field_ref) or {}
+    zmien_pole(
+        enm, field_ref, equipment_refs=[*(rekord.get("equipment_refs") or []), transformator_ref]
+    )
+    return [szyna_nn, transformator_ref], None
 
 
 #: Rodzaj aparatu głównego pola (`BayPrimaryDevice.kind`) → wariant aparatu
@@ -2839,6 +3378,7 @@ def _add_nn_outgoing_field_internal(
             apparatus_catalog_ref=(wiazanie_aparatu or {}).get("catalog_item_id"),
             tags=list(payload.get("tags") or []),
             meta=meta_odplywu,
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
 
@@ -2915,6 +3455,7 @@ def _append_nn_source_meta_field(
             apparatus_catalog_ref=(wiazanie_aparatu or {}).get("catalog_item_id"),
             tags=["nn_source_field"],
             meta=meta_pola_zrodla,
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
 
@@ -4538,6 +5079,9 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         kopia_galaz["name"] = f"{nazwa_prefix} — {nazwa_elementu(oryginal, 'branches')}"
         kopia_galaz["from_bus_ref"] = _przemapuj_bus(oryginal.get("from_bus_ref"))
         kopia_galaz["to_bus_ref"] = _przemapuj_bus(oryginal.get("to_bus_ref"))
+        if kopia_galaz.get("type") in RODZAJE_GALEZI_LACZENIOWYCH:
+            # Kopia łącznika to NOWA instancja — obiekt projektowany (UX-04), nie stan oryginału.
+            kopia_galaz["stan_obiektu"] = "PROJEKTOWANY"
         new_enm.setdefault("branches", []).append(kopia_galaz)
         created.append(kopia_galaz["ref_id"])
         ev_seq += 1
@@ -5397,6 +5941,7 @@ def _dodaj_pole_zrodla_sn(
                 "default_device_ref": apparatus_ref,
                 "field_status": "CONFIGURED_FOR_TRUNK",
             },
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
     return (
@@ -5498,6 +6043,7 @@ def _append_converter_field_if_needed(
             apparatus_catalog_ref=aparat_pola_ref,
             tags=["nn_source_field"],
             meta=field_meta,
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
 
@@ -5902,8 +6448,8 @@ def _add_converter_source_der_sn(
     LF/SC liczą je istniejącymi mechanizmami (zero zmian solverów, zero nowej fizyki).
     """
     from network_model.catalog.bay_templates import (
+        funkcje_eaz_roli,
         mv_source_field_primary_devices,
-        protection_codes_for_bay_role,
     )
 
     has_block_transformer = bool(der_topology.get("has_block_transformer"))
@@ -6173,9 +6719,7 @@ def _add_converter_source_der_sn(
         cable_head=bool(mv_field_cfg.get("cable_head", True)),
     )
     protection_codes = (
-        protection_codes_for_bay_role("OZE")
-        if bool(mv_field_cfg.get("protection_relay", True))
-        else []
+        funkcje_eaz_roli("OZE") if bool(mv_field_cfg.get("protection_relay", True)) else []
     )
     field_name = nazwa_nadana(mv_field_cfg.get("field_name")) or nazwa_pola_zrodlowego_sn(
         technology
@@ -6221,6 +6765,7 @@ def _add_converter_source_der_sn(
                 "der_role": "mv_source_field",
                 "der_feeder_bus_ref": block_hv_bus_ref,
             },
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
     created.insert(0, field_ref)
@@ -9026,6 +9571,11 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "set_normal_open_point",
         # W5-C: wyposażenie pola SN (`enm/wyposazenie_pola.py`)
         "set_bay_equipment",
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (`enm/stan_obiektu_pola.py`)
+        "set_object_state",
+        # Rozszerzenie 5 karty UX-04: położenie łącznika pola bez gałęzi
+        # (`enm/polozenie_aparatu_pola.py`)
+        "set_bay_apparatus_position",
         # Universal
         "set_connection_conditions",
     }
@@ -9065,5 +9615,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "close_switch": close_switch,
     "set_normal_open_point": set_normal_open_point,
     "set_bay_equipment": set_bay_equipment,
+    "set_object_state": set_object_state,
+    "set_bay_apparatus_position": set_bay_apparatus_position,
     "set_connection_conditions": set_connection_conditions,
 }

@@ -27,7 +27,8 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
-/** Etykiety położenia łącznika inspektora (`PanelElementuKanwy.POLOZENIE_LACZNIKA_PL`). */
+/** Etykiety położenia łącznika inspektora — wyrocznia niezależna od `OPIS_POLOZENIA_PL`
+ *  (`ui/sld/v2/model/stanAparatowPola.ts`, jedna mapa kanwy, legendy i inspektora). */
 const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
   closed: 'zamknięty',
   open: 'otwarty',

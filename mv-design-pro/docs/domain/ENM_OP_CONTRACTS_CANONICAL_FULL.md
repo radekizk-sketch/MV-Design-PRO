@@ -147,6 +147,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `przepnij_element_na_pole` | Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym; odcinek bez wolnego pola dostaje nowe pole liniowe utworzone w tej operacji | `element_ref` | `field_ref` | nie | `enm/domain_operations.py::przepnij_element_na_pole` |
 | `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola albo usunięcie wyposażenia | `bay_ref`, `mode` | `bay_template_ref`, `devices` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
 | `set_normal_open_point` | Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni punkt podziału tego samego pierścienia zostaje zamknięty | `switch_ref` | `close_ref` | nie | `enm/operacje_lacznikow.py::set_normal_open_point` |
+| `set_object_state` | Oznaczenie pola SN (z aparatami), jednego aparatu pola albo łącznika poza polem jako istniejącego w sieci albo projektowanego | `stan_obiektu` | `bay_ref`, `device_ref`, `switch_ref` | nie | `enm/stan_obiektu_pola.py::set_object_state` |
 | `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `catalog_binding`, `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
 | `update_gpz_section` | Aktualizacja sekcji szyn GPZ (nazwa, kolejność, sprzęgła) | `substation_ref`, `section_id` | `side`, `updates` | nie | `enm/domain_operations.py::update_gpz_section` |
 
@@ -184,7 +185,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
-| `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
+| `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `stan_obiektu` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
 | `delete_element` | Usunięcie elementu z modelu sieci | `element_ref` | — | nie | `enm/domain_operations.py::delete_element` |
 | `refresh_snapshot` | Odświeżenie koperty odpowiedzi bez modyfikacji modelu | — | — | nie | `enm/domain_operations.py::refresh_snapshot` |
 | `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, współczynnik mocy, tryb pracy) | — | `moc_przylaczeniowa_mw`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
@@ -229,7 +230,7 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 | `add_grid_source_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `add_grid_source_sn` | `gpz_line_field_apparatus` | `apparatus_kind`, `catalog_binding`, `catalog_item_id`, `catalog_ref` |
 | `add_grid_source_sn` | `gpz_line_field_apparatus.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
-| `add_grid_source_sn` | `grounding` | `r_ohm`, `type`, `x_ohm` |
+| `add_grid_source_sn` | `grounding` | `awsc_prad_wymuszenia_a`, `r_ohm`, `type`, `x_ohm` |
 | `add_grid_source_sn` | `manual_equivalent` | `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `sn_voltage_kv`, `u_set_pu`, `voltage_hv_kv`, `x0_ohm`, `x_ohm`, `z0_z1_ratio` |
 | `add_grid_source_sn` | `transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `add_grid_source_sn` | `zero_sequence` | `enabled`, `r0_ohm`, `x0_ohm`, `z0_z1_ratio` |
@@ -262,10 +263,10 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 | `add_zespol_uziemiajacy_sn` | `rezystor.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `append_station_on_endpoint` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `append_station_on_endpoint` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
-| `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `append_station_on_endpoint` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `catalog_bindings`, `equipment`, `equipment_refs`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
 | `append_station_on_endpoint` | `station` | `construction_type`, `designation`, `name`, `nn_earthing`, `nn_voltage_kv`, `station_auxiliary`, `station_type`, `switchgear` |
-| `append_station_on_endpoint` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `append_station_on_endpoint` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `append_station_on_endpoint` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
 | `append_station_on_endpoint` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
 | `append_station_on_endpoint` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
@@ -287,10 +288,10 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 | `insert_station_on_segment_sn` | `insert_at` | `mode`, `value` |
 | `insert_station_on_segment_sn` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `insert_station_on_segment_sn` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
-| `insert_station_on_segment_sn` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `insert_station_on_segment_sn` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `insert_station_on_segment_sn` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `equipment`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
 | `insert_station_on_segment_sn` | `station` | `construction_type`, `designation`, `name`, `name_pl`, `nn_earthing`, `nn_voltage_kv`, `sn_voltage_kv`, `station_auxiliary`, `station_name`, `station_type`, `switchgear` |
-| `insert_station_on_segment_sn` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `insert_station_on_segment_sn` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_awsc_prad_wymuszenia_a`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `insert_station_on_segment_sn` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
 | `insert_station_on_segment_sn` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
 | `insert_station_on_segment_sn` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
@@ -298,7 +299,7 @@ Obiekty zagnieżdżone ładunku mają kształt w **32** operacjach (`KSZTALTY_ZA
 | `insert_station_on_segment_sn` | `transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `insert_zksn_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `insert_zksn_on_segment_sn` | `insert_at` | `mode`, `value` |
-| `set_bay_equipment` | `devices` | `catalog_ref`, `designation`, `earthing_role`, `kind`, `linked_ref`, `placement` |
+| `set_bay_equipment` | `devices` | `catalog_ref`, `designation`, `earthing_role`, `kind`, `linked_ref`, `odgalezienie`, `placement`, `przekladnia`, `stan_obiektu`, `wykonanie`, `zaczep_pierwotny_a` |
 | `set_nn_cable_laying_conditions` | `cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
 | `start_branch_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
 | `start_branch_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `catalog_ref`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
@@ -314,7 +315,7 @@ Ciąg liniowy (`line_runs`, `enm/models.py::LineRun`) to magistrala albo odgał�
 | Operacja | Klucz ciągu | Skutek w `line_runs` |
 |---|---|---|
 | `add_grid_source_sn` | — | Zakłada ciąg magistrali GPZ (`run_kind` `main_trunk`, id = id magistrali, bez odcinków) z początkiem w pierwszym polu liniowym GPZ i jego zacisku. |
-| `continue_trunk_segment_sn` | `trunk_id` | Dopisuje utworzony odcinek na koniec ciągu `trunk_id` (brak albo nieznana magistrala → pierwsza magistrala modelu); ciąg zakładany, gdy magistrala go nie ma (początek: `field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu i numer `order`. |
+| `continue_trunk_segment_sn` | `trunk_id` | Dopisuje utworzony odcinek na koniec ciągu, który start odcinka KONTYNUUJE (jedna reguła ciągłości: ciąg pusty, start na końcu ostatniego odcinka ciągu albo w tej samej stacji co ten koniec). Ciąg `trunk_id`, którego start nie kontynuuje — odmowa `trunk.start_not_at_trunk_end`; brak albo nieznany ciąg → ciąg kończący się na starcie, inaczej pusty, inaczej NOWY ciąg z tego startu (`run_kind` `branch`, korytarz promieniowy, port startu = zacisk odcinka; z pola GPZ — przydział pola zapisany dwustronnie i nazwa „Magistrala NN”). Ciąg zakładany, gdy magistrala go nie ma (początek: `field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu i numer `order`. |
 | `delete_element` | — | Usuwa z `segments` i `stations` każdego ciągu odcinki i stacje usunięte wprost albo kaskadą (numeracja `order` od nowa) — para do czyszczenia magistral; ciąg bez odcinków zostaje razem z magistralą. |
 | `insert_branch_pole_on_segment_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Wstawienie na końcu odcinka nie dzieli go. |
 | `insert_section_switch_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Łącznik nie jest odcinkiem ciągu (magistrala wymienia go między połówkami). |
@@ -575,7 +576,7 @@ Odpowiedź: HTTP 200; elementy utworzone 14, zmienione 0, usunięte 1; zdarzenia
       "switch_name": "Rozłącznik R1",
       "catalog_binding": {
         "catalog_namespace": "APARAT_SN",
-        "catalog_item_id": "sw-ls-schneider-rm6-17kv-400a",
+        "catalog_item_id": "sw-ls-ogolny-prozniowy-24kv-630a",
         "catalog_item_version": "2024.1"
       }
     }
@@ -910,7 +911,46 @@ Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `BAY_EQUIPMENT_SET`; zaznaczenie: `sn/4e25c122e61bf16c44050a6a3cc6ad25/bay`.
 
-#### 22. `add_load_sn` — odbiór SN na węźle za pierwszym odcinkiem
+#### 22. `set_bay_apparatus_position` — otwarcie odłącznika liniowego Q9 nowego pola (łącznik pola bez własnej gałęzi)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_bay_apparatus_position",
+    "idempotency_key": "przyklad-22",
+    "payload": {
+      "bay_ref": "sn/4e25c122e61bf16c44050a6a3cc6ad25/bay",
+      "device_ref": "sn/4e25c122e61bf16c44050a6a3cc6ad25/bay::dev::3",
+      "actual_state": "otwarty"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `BAY_APPARATUS_POSITION_SET`; zaznaczenie: `sn/4e25c122e61bf16c44050a6a3cc6ad25/bay`.
+
+#### 23. `set_object_state` — oznaczenie pola L3 jako istniejącego w sieci (pole zastane, aparaty razem z polem)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_object_state",
+    "idempotency_key": "przyklad-23",
+    "payload": {
+      "bay_ref": "sn/4e25c122e61bf16c44050a6a3cc6ad25/bay",
+      "stan_obiektu": "ISTNIEJACY"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `OBJECT_STATE_SET`; zaznaczenie: `sn/4e25c122e61bf16c44050a6a3cc6ad25/bay`.
+
+#### 24. `add_load_sn` — odbiór SN na węźle za pierwszym odcinkiem
 
 ```json
 {
@@ -918,7 +958,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_load_sn",
-    "idempotency_key": "przyklad-22",
+    "idempotency_key": "przyklad-24",
     "payload": {
       "bus_ref": "bus/c3947d92b7bae3acbe0466d8e2d90c31/downstream",
       "p_mw": 0.4,
@@ -931,7 +971,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `LOAD_SN_CREATED`; zaznaczenie: `load/b4e28f9f829afd6948a0b33c3a3a2ecc/sn`.
 
-#### 23. `add_generator_sn` — generator synchroniczny SN z tabliczką podaną ręcznie (katalog bez typu maszyny)
+#### 25. `add_generator_sn` — generator synchroniczny SN z tabliczką podaną ręcznie (katalog bez typu maszyny)
 
 ```json
 {
@@ -939,7 +979,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_generator_sn",
-    "idempotency_key": "przyklad-23",
+    "idempotency_key": "przyklad-25",
     "payload": {
       "bus_ref": "bus/75d9eee75d208ab70b09f39b7d218fd1/downstream",
       "p_mw": 1.0,
@@ -957,7 +997,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `GENERATOR_SN_CREATED`; zaznaczenie: `gen/326b00c26c1a3072f7d12971b87a326b/sn`.
 
-#### 24. `add_shunt_compensator_sn` — bateria kondensatorów SN z katalogu
+#### 26. `add_shunt_compensator_sn` — bateria kondensatorów SN z katalogu
 
 ```json
 {
@@ -965,7 +1005,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_shunt_compensator_sn",
-    "idempotency_key": "przyklad-24",
+    "idempotency_key": "przyklad-26",
     "payload": {
       "bus_ref": "bus/75d9eee75d208ab70b09f39b7d218fd1/downstream",
       "name": "Bateria K1",
@@ -1828,6 +1868,7 @@ skanuje wszystkie emisje w handlerach).
 Rejestr `DOMAIN_EVENT_TYPES` liczy **69** typów:
 
 - `AUX_LOAD_CREATED`
+- `BAY_APPARATUS_POSITION_SET`
 - `BAY_EQUIPMENT_SET`
 - `BESS_INVERTER_CREATED`
 - `BESS_SOURCE_CREATED`
@@ -1871,6 +1912,7 @@ Rejestr `DOMAIN_EVENT_TYPES` liczy **69** typów:
 - `NN_SWITCH_DEVICE_CREATED`
 - `NOP_CLEARED`
 - `NOP_SET`
+- `OBJECT_STATE_SET`
 - `PARAMETERS_UPDATED`
 - `PORTS_CREATED`
 - `PROTECTION_CREATED`

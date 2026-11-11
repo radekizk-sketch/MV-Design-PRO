@@ -69,14 +69,18 @@ describe('SldCanonPresetG9 — GPO wielopolowe (mixed sources on one busbar)', (
   });
 
   it('protection split per type: NC RfG interface; each bay carries its own machine/IBG set', () => {
+    // Loss-of-mains = the 27/59/81U/81O/81R criteria, each function once (architect decision
+    // 2026-10-30, `funkcje_eaz`: the former aggregate "anti-islanding" duplicated them).
     const iface = G9.fields.find((f) => f.interface_protection)?.protection_codes ?? [];
-    expect(iface).toContain('anti-islanding');
+    expect(iface).toEqual(expect.arrayContaining(['27', '59', '81U', '81O', '81R']));
+    expect(iface).not.toContain('anti-islanding');
     expect(iface).not.toContain('87G'); // no machine functions on the interface
     expect(iface).not.toContain('46');
     const byKind = (k: string) => G9.fields.find((f) => f.source_kind === k)?.protection_codes ?? [];
     expect(byKind('SYNCHRONOUS')).toEqual(expect.arrayContaining(['87G', '40', '32', '64']));
     expect(byKind('ASYNCHRONOUS')).toEqual(expect.arrayContaining(['46', '47', '49', '51']));
-    expect(byKind('IBG')).toContain('anti-islanding');
+    expect(byKind('IBG')).toEqual(expect.arrayContaining(['27', '59', '81U', '81O', '81R']));
+    expect(byKind('IBG')).not.toContain('anti-islanding');
   });
 
   it('readout bound to the FROZEN solver; metering = boundary; κ physical; ≤ Icw', () => {

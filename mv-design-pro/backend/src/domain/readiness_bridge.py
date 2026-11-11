@@ -69,6 +69,23 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W046": "station.bkr_unbalance_ct_missing",
     "W047": "station.bkr_discharge_vt_missing",
     "W048": "station.bkr_transformer_trip_incomplete",
+    # „Gaz fluorowany w polu, które nie jest istniejące" == ten sam warunek (jedna reguła
+    # `network_model.catalog.gazy_fluorowane.odmowa_gazu_fluorowanego_pl`, karta UX-04).
+    "W058": "bay.fluorinated_gas_not_existing",
+    "W050": "bay.switching_execution_insulation_mismatch",
+    "W051": "bay.gpz_template_outside_gpz",
+    "W052": "bay.line_class_execution_mismatch",
+    "W053": "bay.generation_fed_from_load_bay",
+    "W054": "bay.loads_behind_dedicated_generation_bay",
+    "W055": "bay.ufls_in_bay_with_generation",
+    "W056": "bay.reclosing_in_dedicated_generation_bay",
+    "W057": "bay.settlement_core_missing",
+    # „Dwa aparaty pola o tym samym oznaczeniu" == ten sam warunek (jedna reguła
+    # `enm.oznaczenia_aparatow_pola`, rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC).
+    "W063": "bay.apparatus_designation_duplicate",
+    # „Funkcja 67N bez potwierdzonego źródła napięcia zerowego 3U₀" == ten sam warunek (jedna
+    # reguła `enm.zrodlo_napiecia_zerowego`, decyzja właściciela 2026-10-29).
+    "W064": "bay.earth_fault_u0_source_unconfirmed",
     # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
     # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
     "E065": "source.gpz_section_unsupplied",
@@ -127,6 +144,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "E-W5-02": "transformer.vector_group_invalid",
     # Uziemienie uzwojenia bez wyprowadzonego punktu neutralnego.
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    # D1 (karta POLA-GPZ-SZABLONY): dwa uziemione nosniki punktu neutralnego w jednej wyspie
+    # galwanicznej SN (`enm/nosniki_punktu_neutralnego.py`).
+    "E-W5-04": "earthing.multiple_grounded_neutrals_in_island",
     # Uklad uziemienia ekranu kabla inny niz uklad odniesienia katalogowych r0/x0.
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zrodlo SN z danymi uziemienia (pominiete) i reguly

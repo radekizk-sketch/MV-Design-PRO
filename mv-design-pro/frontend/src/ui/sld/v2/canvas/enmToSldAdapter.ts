@@ -30,10 +30,17 @@ import type {
   Bay,
   Measurement,
 } from '../../../../types/enm';
+import { isSwitchBranch } from '../../../../types/enm';
+import { stanObiektuLacznika } from '../../../shared/stanObiektu';
 import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import { bateriaWidokuPola } from '../model/bateriaPola';
+import {
+  przeznaczeniePrzekladnika,
+  krotkaPrzekladniaRdzeni,
+  krotkaPrzekladniaUzwojen,
+} from '../model/tabliczkaPrzekladnika';
 import { polaSnStacji, stacjaPola } from '../../../shared/polaStacji';
 import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji } from '../../../shared/rodzajStacji';
 import type { GpzViewModel } from '../model/widokSld';
@@ -1831,7 +1838,8 @@ function collectStationTransformerUnits(
  *  - oznaczenie: numer dyspozytorski (`bay_number`), krótka nazwa odpływu, skrót roli, nazwa;
  *  - stany łączników z modelu (`stanyAparatowPolaZModelu`: `status` gałęzi łączeniowych pola);
  *  - tor pierwotny i konfiguracja pola z danych rekordu.
- * ADNOTACJE pola (oznaczenie zabezpieczeń, miernik, CT, VT) blok stacji NIE projektuje —
+ * ADNOTACJE pola (oznaczenie zabezpieczeń, miernik, CT, VT, odniesienie źródła napięcia
+ * zerowego 3U₀ funkcji 67N) blok stacji NIE projektuje —
  * dokładnie tak, jak rysowała je produkcyjna ścieżka pól stacji przed kartą W5-B (stacje
  * budowane operacjami). Rzutowanie `protection_codes` rekordów pól stacji powiększa arkusz
  * substratu 52 stacji z 8328×5771 do 11096×7467 (171 okręgów przekaźnika) — to zmiana wyglądu
@@ -1877,7 +1885,7 @@ function buildExplicitStationMiniBays(
       esState: states.esState,
       // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH, gdy pole niesie
       // zmaterializowane aparaty; `undefined` → konwencja §12.4.
-      primaryDevices: projectBayPrimaryDevices(bay, branchByRef),
+      primaryDevices: projectBayPrimaryDevices(bay, branchByRef, snapshot.bays),
       // UX-04/POLE-BKR-MODEL: bateria na zacisku końca toru pola (ta sama funkcja co GPZ).
       ...bateriaWidokuPola(bay, snapshot),
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
@@ -2172,9 +2180,14 @@ export function projectBayPrimaryDevices(
   // GPZ-PARYTET cz. 2 (pkt 2): gałęzie migawki po `ref_id` — stan aparatu z `status` jego
   // gałęzi łączeniowej (`stanAparatuZModelu`), nie z samego rekordu.
   galezieWgRef: ReadonlyMap<string, Branch>,
+  // Karta UX-04 (stan obiektu): wszystkie pola modelu — stan obiektu łącznika z gałęzi czyta
+  // regułę `stanObiektuLacznika` (aparat pola wskazujący gałąź może leżeć w innym polu).
+  polaModelu: readonly Bay[] | null | undefined,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
-  if (!devices || devices.length === 0) return aparatyZGaleziPola(bay.equipment_refs ?? [], galezieWgRef);
+  if (!devices || devices.length === 0) {
+    return aparatyZGaleziPola(bay.equipment_refs ?? [], galezieWgRef, polaModelu);
+  }
   // Porządek fizyczny aparatów — JEDNA funkcja dla adaptera v2 i sekwencji v3
   // (`orderByPrimaryPlacement`, `v2/domain/apparatusContracts.ts`).
   return orderByPrimaryPlacement(devices)
@@ -2192,6 +2205,20 @@ export function projectBayPrimaryDevices(
       designation: device.designation ?? undefined,
       pochodzenie: 'rekord_pola',
       typeRef: device.catalog_ref ?? null,
+      // Karta UX-04/POLE-LINIOWE-WZORZEC: wariant rysunku i porty aparatu z rekordu —
+      // kompozycja wybiera nimi symbol i prowadzi przewody port→port.
+      renderVariant: device.render_variant ?? null,
+      ports: (device.ports ?? []).map((port) => ({ portId: port.port_id, wezel: port.wezel ?? null })),
+      // Karta UX-04 (stan obiektu): stan instancji aparatu z jego rekordu (ten sam, który
+      // ocenia zakaz gazów fluorowanych, `enm/gaz_fluorowany_pola.py`); `null` = nieustalony.
+      stanObiektu: device.stan_obiektu ?? null,
+      // Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd, powiązania funkcji EAZ
+      // i liczba uzwojeń wtórnych z rekordu — pola obecne tylko, gdy rekord je niesie.
+      ...(device.naped ? { naped: device.naped } : {}),
+      ...(device.wykonanie === 'WYSUWNE' ? { wysuwny: true } : {}),
+      ...(device.funkcje_eaz_zasilane?.length ? { funkcjeEazZasilane: [...device.funkcje_eaz_zasilane] } : {}),
+      ...(device.funkcje_eaz_wylaczajace?.length ? { funkcjeEazWylaczajace: [...device.funkcje_eaz_wylaczajace] } : {}),
+      ...(device.uzwojenia?.length ? { liczbaUzwojenWtornych: device.uzwojenia.length } : {}),
     }));
 }
 
@@ -2229,6 +2256,7 @@ const RODZAJ_APARATU_Z_TYPU_GALEZI: Readonly<Record<string, BayPrimaryDeviceKind
 function aparatyZGaleziPola(
   equipmentRefs: readonly string[],
   galezieWgRef: ReadonlyMap<string, Branch>,
+  polaModelu: readonly Bay[] | null | undefined,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const aparaty: BayPrimaryDeviceView[] = [];
   for (const ref of equipmentRefs) {
@@ -2244,9 +2272,17 @@ function aparatyZGaleziPola(
       placement: 'MIDSTREAM',
       sectionSide: null,
       deviceRef: galaz.ref_id,
-      ...(galaz.type === 'fuse' ? {} : { switchState: stanStatusuGalezi(galaz.status) }),
+      // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: stan z `status` gałęzi dla KAŻDEGO
+      // łącznika, także bezpiecznikowego — `FuseBranch` niesie `status` (backend
+      // `BranchBase.status`; operacje `open_switch`/`close_switch` obejmują bezpieczniki,
+      // `TYPY_LACZNIKOW_ENM`). Dawne pominięcie rysowało rozłącznik bezpiecznikowy bez
+      // położenia, choć model je ma.
+      switchState: stanStatusuGalezi(galaz.status),
       pochodzenie: 'galaz_pola',
       typeRef: galaz.catalog_ref ?? null,
+      // Karta UX-04 (stan obiektu): łącznik — reguła `stanObiektuLacznika` (lustro backendu);
+      // bezpiecznik nie niesie stanu obiektu w modelu (`FuseBranch`), więc stan nieustalony.
+      stanObiektu: isSwitchBranch(galaz) ? stanObiektuLacznika(polaModelu, galaz) : null,
     });
   }
   return aparaty.length > 0 ? aparaty : undefined;
@@ -2312,39 +2348,79 @@ export function resolveBayProtectionMarking(
  * KONKRETNY aparat NARYSOWANEGO stosu (`linked_ref` match) dzieje się w
  * `compose/protectionMarking.ts` `resolveCtRatingAnnotations` (adapter nie
  * zna geometrii — wzorzec `resolveBayProtectionMarking`). `undefined` gdy
- * pole nie ma żadnego CT (brak danych = brak oznaczenia, §18.3 dosłownie).
- * F10.6 (D3, V12K-036): układ pomiarowy (`Measurement.ct_arrangement`)
- * przekazywany 1:1 jako `arrangement` — `undefined` gdy dana niedostarczona
- * (adnotacja rysuje sam identyfikator+przekładnię, zero zgadywania).
+ * pole nie ma ani pomiaru CT, ani aparatu CT z tabliczką rdzeni (brak danych =
+ * brak oznaczenia, §18.3 dosłownie). Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja
+ * architekta §11.7 pkt 6): aparat CT pola z `BayPrimaryDevice.rdzenie`, na który nie
+ * wskazuje pomiar CT pola, daje adnotację z tabliczki (KRÓTKA przekładnia —
+ * `v2/model/tabliczkaPrzekladnika.ts`), zakotwiczoną po `deviceRef`. Odbiór B-02
+ * (2026-11-04, pkt 6 i 8): układ pomiarowy, liczba rdzeni, klasy i zaczep NIE są
+ * przenoszone na schemat — opis pełny w inspektorze (pomiaru i pola).
  *
  * F11.1 (SLD_CAD_SPEC_V3 §18.3, rejestr device-ref w GPZ): eksportowana,
- * `snapshot` zwężony do `Pick<..., 'measurements'>` — `v2/canvas/
+ * `snapshot` zwężony do `Pick<..., 'measurements'>` (+ `buses` — napięcie szyny pola) — `v2/canvas/
  * enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
  * `CanonicalGpzBay.ctRatingAnnotations` (jedna prawda stacja↔GPZ).
  */
 export function resolveBayCtRatingAnnotations(
   bay: Bay,
-  snapshot: Pick<EnergyNetworkModel, 'measurements'>,
+  snapshot: Pick<EnergyNetworkModel, 'measurements'> & { readonly buses?: EnergyNetworkModel['buses'] },
 ): readonly CtRatingAnnotationView[] | undefined {
+  // Napięcie znamionowe szyny pola — strona pierwotna krótkiej przekładni VT („15/√3 / 0,1/√3 kV”).
+  const napiecieSzynyKv = (snapshot.buses ?? []).find((b) => b.ref_id === bay.bus_ref)?.voltage_kv ?? null;
   const measurements = (snapshot.measurements ?? []).filter(
     (m: Measurement) => m.measurement_type === 'CT' && m.bay_ref === bay.ref_id,
   );
-  if (measurements.length === 0) return undefined;
-  return measurements.map((m) => ({
+  const zPomiarow = measurements.map((m): CtRatingAnnotationView => ({
     measurementRef: m.ref_id,
     identifier: m.name,
     ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
-    arrangement: m.ct_arrangement ?? undefined,
     // W5 (§12–15/uwaga 7): przeznaczenie CT (pomiarowy/zabezpieczeniowy/łączony)
     // 1:1 z `Measurement.purpose` — dana wariantu, zero domysłu. Kanał
     // geometrycznie neutralny (patrz `CtRatingAnnotationView.purpose`).
     purpose: m.purpose,
-    // CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT 1:1 z
-    // `Measurement.ct_cores` — dana producenta (IEC 61869-2), doklejana do
-    // etykiety WYŁĄCZNIE gdy obecna (`undefined` gdy `null`/brak — uczciwy brak,
-    // zero fabrykacji). Domyka konsumenta-render danej wprowadzonej w V12K-176.
-    cores: m.ct_cores ?? undefined,
   }));
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): tabliczka aparatu CT
+  // pola (`BayPrimaryDevice.rdzenie` — z szablonu pola albo z pozycji katalogu) dla aparatu, na
+  // który nie wskazuje pomiar CT tego pola (jeden aparat — jedna adnotacja; pomiar ma
+  // pierwszeństwo, bo niesie tożsamość pomiaru). Brak rdzeni w rekordzie = brak tabliczki.
+  const pomiaryPola = new Set(measurements.map((m) => m.ref_id));
+  // Ta sama reguła dla KAŻDEGO przekładnika pola z tabliczką w rekordzie aparatu (klasa „opis
+  // przekładnika przy symbolu", karta UX-04): prądowy — rdzenie, napięciowy — uzwojenia
+  // (przekładnia i klasy, PN-EN 61869-3), Ferrantiego — przekładnia. Kolejność aparatów z modelu.
+  const zTabliczek = (bay.primary_devices ?? []).flatMap((d): CtRatingAnnotationView[] => {
+    if (d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0 && !(d.linked_ref && pomiaryPola.has(d.linked_ref))) {
+      return [{
+        measurementRef: null,
+        deviceRef: d.device_ref,
+        rodzajPrzekladnika: 'CT',
+        identifier: null,
+        ratioText: krotkaPrzekladniaRdzeni(d.rdzenie)!,
+        purpose: przeznaczeniePrzekladnika(d.rdzenie),
+      }];
+    }
+    if (d.kind === 'VT' && (d.uzwojenia?.length ?? 0) > 0) {
+      return [{
+        measurementRef: null,
+        deviceRef: d.device_ref,
+        rodzajPrzekladnika: 'VT',
+        identifier: null,
+        ratioText: krotkaPrzekladniaUzwojen(d.uzwojenia, napiecieSzynyKv)!,
+        purpose: przeznaczeniePrzekladnika(d.uzwojenia),
+      }];
+    }
+    if (d.kind === 'CORE_BALANCE_CT' && d.przekladnia != null && d.przekladnia.trim() !== '') {
+      return [{
+        measurementRef: null,
+        deviceRef: d.device_ref,
+        rodzajPrzekladnika: 'CORE_BALANCE_CT',
+        identifier: null,
+        ratioText: d.przekladnia.trim(),
+      }];
+    }
+    return [];
+  });
+  const adnotacje = [...zPomiarow, ...zTabliczek];
+  return adnotacje.length > 0 ? adnotacje : undefined;
 }
 
 /**

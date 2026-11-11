@@ -4,7 +4,7 @@
 |-----------------|------------------------------------------------------------------------------|
 | Data            | 2026-03-28                                                                   |
 | Zakres          | Przeplyw przypisywania typow katalogowych do elementow sieci SN              |
-| Pliki kluczowe  | `ui/catalog/elementCatalogRegistry.ts`, `ui/catalog/useCatalogAssignment.ts`, `ui/catalog/TypeLibraryBrowser.tsx`, `ui/network-build/CatalogBrowser.tsx` |
+| Pliki kluczowe  | `ui/catalog/elementCatalogRegistry.ts`, `ui/catalog/TypePicker.tsx`, `ui/catalog/dopuszczenieNowychPol.ts`, `ui2/kreatory/przypisanie-katalogu/KreatorPrzypisaniaKatalogu.tsx`, `ui/catalog/TypeLibraryBrowser.tsx`, `ui/network-build/CatalogBrowser.tsx` |
 | Status dokumentu| **ZAMKNIETY**                                                                |
 
 ---
@@ -20,16 +20,19 @@ ReadinessBar: blocker "missing_catalog" / "no_catalog"
   |-- openOperationForm('assign_catalog_to_element', { element_ref })
   |
   v
-CatalogBrowser (inline w panelu inspektora)
-  |-- filtracja po namespace (z elementCatalogRegistry)
-  |-- wyswietlenie typow katalogowych (readonly)
+KreatorPrzypisaniaKatalogu (identyfikator pozycji; dla lacznika przelacznik
+  "inwentaryzacja aparatu zastanego" -> stan_obiektu: 'ISTNIEJACY')
+  albo TypePicker z siatki wlasciwosci (PropertyGridContainer)
+  |-- filtracja po kategorii (z elementCatalogRegistry)
+  |-- aparatura SN: wylacznie pozycje dopuszczone do obiektu projektowanego
+  |   (pole backendu dopuszczony_do_nowych_pol, ui/catalog/dopuszczenieNowychPol.ts;
+  |   zakaz gazow fluorowanych, rozporzadzenie (UE) 2024/573, art. 13 ust. 9)
   |
   v
 Uzytkownik wybiera typ
   |
   v
-useCatalogAssignment.assignType(element_id, catalog_type_id)
-  |-- executeDomainOperation('assign_catalog_to_element', { element_id, type_id })
+executeDomainOperation('assign_catalog_to_element', { element_ref, catalog_item_id | catalog_binding })
   |
   v
 Backend: materializacja parametrow
@@ -51,7 +54,6 @@ Plik: `ui/catalog/elementCatalogRegistry.ts`
 
 Rejestr mapowania typ elementu sieci --> namespace katalogu. Uzyty przez:
 - `CatalogBrowser` -- do filtracji typow po namespace
-- `useCatalogAssignment` -- do walidacji kompatybilnosci
 - `MissingCatalogReview` -- do skanu elementow bez katalogu
 - `TypeLibraryBrowser` -- do organizacji zakladek
 
@@ -108,7 +110,7 @@ Przegladarka katalogu renderowana inline w panelu inspektora (nie jako overlay m
 | Wyszukiwanie           | Pelnotekstowe po nazwie typu, producencie, parametrach            |
 | Sortowanie             | Po nazwie, S_n, U_n, I_n (zalezne od namespace)                  |
 | Podglad parametrow     | Rozwijany wiersz z pelna karta parametrow typu                    |
-| Selekcja               | Przycisk "Przypisz" --> `useCatalogAssignment.assignType()`       |
+| Selekcja               | Brak -- przegladarka wylacznie pokazuje pozycje (takze niedopuszczone do obiektow projektowanych, np. SF6 dla inwentaryzacji sieci zastanej); przypisanie prowadzi TypePicker albo kreator przypisania |
 | Tryb                   | **Readonly** -- nie pozwala na edycje/tworzenie typow katalogowych|
 
 ### Readonly -- uzasadnienie
@@ -233,7 +235,7 @@ Wszystkie guardy uruchamiane w CI (`python-tests.yml`) i lokalnie.
 | elementCatalogRegistry   | KOMPLETNY  | 36 mapowań, SSOT, przetestowany              |
 | CatalogBrowser           | KOMPLETNY  | Readonly by design, filtracja po namespace   |
 | TypeLibraryBrowser       | KOMPLETNY  | 4 zakladki, pelna przegladarka               |
-| useCatalogAssignment     | KOMPLETNY  | Hook: assign + clear + walidacja             |
+| TypePicker               | KOMPLETNY  | Przypisanie typu; aparatura SN filtrowana polem backendu `dopuszczony_do_nowych_pol` |
 | MissingCatalogReview     | KOMPLETNY  | Skan branches + trafo + generators           |
 | Sources excluded         | BY DESIGN  | Source bez catalog_ref -- IEC 60909 / PF     |
 | Materializacja           | KOMPLETNY  | Backend: resolve --> apply --> validate       |

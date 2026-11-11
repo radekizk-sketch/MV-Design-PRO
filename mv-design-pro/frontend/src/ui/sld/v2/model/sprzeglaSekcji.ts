@@ -18,7 +18,7 @@
  * rekordu), bez przechodzenia grafu.
  */
 import type { Bay, Branch } from '../../../../types/enm';
-import { stanGaleziPola, type StanLacznikaRysunku } from './stanAparatowPola';
+import { stanGaleziPola, type StanLacznikaDwupolozeniowego } from './stanAparatowPola';
 
 /** Rodzaj łącznika sprzęgła rysowany glifem toru poziomego: `wylacznik` →
  *  `lineBreaker`, `lacznik` → `lineSwitch` (łącznik, którego funkcji model nie zawęża
@@ -34,7 +34,7 @@ export interface SprzegloSekcjiView {
   readonly toBusRef: string;
   /** Stan z `Branch.status` rozstrzygnięty rekordami aparatów pola (brak/inna wartość
    *  albo rekord sprzeczny = nieznany). */
-  readonly state: StanLacznikaRysunku;
+  readonly state: StanLacznikaDwupolozeniowego;
   /** Pole sprzęgła wskazujące tę gałąź (`null` = brak rekordu pola). */
   readonly bayRef: string | null;
   /** Oznaczenie: nazwa pola sprzęgła, inaczej nazwa gałęzi, inaczej jej ref. */

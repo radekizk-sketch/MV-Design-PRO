@@ -32,7 +32,7 @@ TRANSFORMATOR_630 = "tr-sn-nn-15-04-630kva-dyn11"
 LINIA_SN = "line-base-al-st-70"
 ZKSN = "ZKSN-2P-630A"
 SLUP_ROZGALEZNY = "SLUP-ODG-12"
-LACZNIK_SEKCYJNY = "sw-ls-schneider-rm6-17kv-400a"
+LACZNIK_SEKCYJNY = "sw-ls-ogolny-prozniowy-24kv-630a"
 
 
 class BladBudowy(RuntimeError):
@@ -268,6 +268,15 @@ def normalizuj_migawke(enm: dict[str, Any], *, czas: str) -> dict[str, Any]:
 
 def segmenty_korytarza(enm: dict[str, Any], indeks: int = 0) -> list[str]:
     return list(enm["corridors"][indeks]["ordered_segment_refs"])
+
+
+def port_odgalezny(enm: dict[str, Any], punkt_ref: str, indeks: int = 0) -> str:
+    """Zacisk portu odgałęźnego punktu (szyna ``ports.BRANCH[indeks]`` słupa rozgałęźnego albo
+    ZKSN) — jedyna postać portu startu odgałęzienia z punktu (``_rozwiaz_port_startu``)."""
+    for punkt in enm.get("branch_points", []):
+        if punkt.get("ref_id") == punkt_ref:
+            return str(punkt["ports"]["BRANCH"][indeks])
+    raise BladBudowy(f"brak punktu odgałęźnego {punkt_ref} w migawce")
 
 
 def pole_gpz(enm: dict[str, Any], indeks: int = 0) -> str:

@@ -1,0 +1,71 @@
+/*
+ * Tabele oceny pola liniowego GPZ (karta pola E-11, `OcenaPolaLiniowegoGpz.tsx`).
+ *
+ * Gospodarz karty bywa wąski (kolumna inspektora 340–420 px, tryb szeroki 560 px —
+ * `ui2/shell/useShellStore.ts`) albo szeroki (obszar główny), dlatego układ zależy od szerokości
+ * KONTENERA, nie okna (wzorzec `ui2/wyniki/wzorzec/kartaWerdyktu.css`).
+ *
+ * Pomiar przed naprawą (2026-10-29, e2e zrzutów pola, okno 1600 px, inspektor 360 px): tabela
+ * czterech i pięciu kolumn ze zdaniami w sekcji szerokości ok. 300 px — kolumna „Ocena" miała
+ * ok. 40 px, więc „Kryterium spełnione" i słowa typu „zabezpieczeniowych" wychodziły poza
+ * komórkę i nakładały się na tekst kolumny obok (sekcja 7 razy wyższa niż okno inspektora).
+ *
+ * Wąski kontener (< 640 px — przy pięciu kolumnach to mniej niż 128 px na kolumnę, czyli mniej niż
+ * najdłuższe słowa treści pisane krojem danych) układa każdy wiersz jako blok: komórka pod
+ * komórką, z nazwą kolumny z `data-etykieta` (ta sama stała co nagłówek — test pary w
+ * `OcenaPolaLiniowegoGpz.test.tsx`). Szeroki kontener zostaje tabelą. W obu układach tekst
+ * komórki zawija się w jej granicach (`overflow-wrap: anywhere`) — nigdy nie wchodzi na
+ * komórkę obok (e2e `ux04-pole-liniowe-zrzuty-screenshot.spec.ts::zrzutyOknaPola`).
+ *
+ * Klasa tabeli ma własny przedrostek `mvd-ocena-pola-`: arkusze są globalne, a `.mvd-ocena-tabela`
+ * należy do ekranu oceny wyników (`ui2/wyniki/ocena/ocena.css`) — wspólna nazwa nakładała jego
+ * odstępy i nagłówki bez zawijania na tabele karty pola, a regułę wąskiego kontenera na tabelę
+ * ekranu oceny (pomiar 2026-10-29, `scripts/css_kolizje_klas_guard.py`).
+ */
+
+.mvd-ocena-pola {
+  container-type: inline-size;
+}
+
+.mvd-ocena-pola-tabela th,
+.mvd-ocena-pola-tabela td {
+  overflow-wrap: anywhere;
+}
+
+@container (max-width: 639.98px) {
+  .mvd-ocena-pola-tabela,
+  .mvd-ocena-pola-tabela tbody,
+  .mvd-ocena-pola-tabela tr,
+  .mvd-ocena-pola-tabela td {
+    display: block;
+    width: auto;
+  }
+
+  .mvd-ocena-pola-tabela colgroup,
+  .mvd-ocena-pola-tabela thead {
+    display: none;
+  }
+
+  .mvd-ocena-pola-tabela tr {
+    padding: 4px 0;
+  }
+
+  .mvd-ocena-pola-tabela td {
+    padding-right: 0;
+  }
+
+  .mvd-ocena-pola-tabela td + td {
+    margin-top: 2px;
+  }
+
+  /* Pierwsza komórka wiersza (funkcja, sygnał) jest nagłówkiem bloku — bez nazwy kolumny. */
+  .mvd-ocena-pola-tabela td:first-child {
+    font-weight: 600;
+  }
+
+  .mvd-ocena-pola-tabela td + td::before {
+    content: attr(data-etykieta) ': ';
+    color: var(--mvd-muted);
+    font-weight: 500;
+  }
+}

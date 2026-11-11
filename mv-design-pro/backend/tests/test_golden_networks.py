@@ -33,7 +33,7 @@ def _branch_field_ref(enm: dict, station_ref: str) -> str:
     for spec in pola_stacji(enm, station_ref):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in {"LINIA_ODG", "FEEDER"}:
-            return f"{spec['ref_id']}.BRANCH"
+            return str(spec["ref_id"])
     raise AssertionError(f"Brak pola odgałęźnego w stacji {station_ref}")
 
 
@@ -243,7 +243,7 @@ class TestGN03SNRingNOP:
                 {
                     "segment_id": branches[1]["ref_id"],
                     "insert_at": {"mode": "RATIO", "value": 0.5},
-                    "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
+                    "catalog_ref": "sw-ls-ogolny-prozniowy-24kv-630a",
                 },
             )
             enm = r["snapshot"]

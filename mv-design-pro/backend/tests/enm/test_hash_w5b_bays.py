@@ -36,6 +36,11 @@ WARTOSCI: dict[str, Any] = {
     "wybor_bloku": {"factory_configuration_ref": "blok", "factory_unit_index": 1},
     "metadane_pochodzenia": {"bay_kind": "liniowe_doplywowe"},
     "surge_arresters": [{"device_ref": "ogr"}],
+    "stan_obiektu": "ISTNIEJACY",
+    "klasa_pola": "MIESZANE",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4): powiązanie
+    # źródła napięcia zerowego 3U₀ — treść modelu (rozstrzyga przypisanie 67N).
+    "zrodlo_u0_ref": "vt",
 }
 
 

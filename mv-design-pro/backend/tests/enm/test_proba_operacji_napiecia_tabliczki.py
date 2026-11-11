@@ -32,6 +32,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import odmowa_napiecia_generatora, odmowa_tabliczki_baterii
 from enm.katalog_projektu import katalog_biezacy
 from fastapi.testclient import TestClient
+from network_model.catalog.gazy_fluorowane import czy_medium_z_gazem_fluorowanym
 
 from tests.api.test_pole_katalogowe_api import (  # noqa: F401 — fikstura `klient`
     _ciag_sn,
@@ -204,14 +205,19 @@ def _wykonaj_ogranicznik(siec: dict[str, Any], pozycja: str) -> dict[str, Any]:
 
 def _wykonaj_aparat_pola(siec: dict[str, Any], pozycja: str, rodzaj: str) -> dict[str, Any]:
     umiejscowienie = "GROUND_BRANCH" if rodzaj == "SURGE_ARRESTER" else "MIDSTREAM"
+    aparat: dict[str, Any] = {"kind": rodzaj, "placement": umiejscowienie, "catalog_ref": pozycja}
+    # Test sprawdza WYŁĄCZNIE poziom izolacji (U_m wobec U_s) każdej pozycji katalogu. Pozycja
+    # z gazem fluorowanym (np. wyłącznik z SF₆) jest w obiekcie projektowanym odrzucana inną
+    # regułą (`pole.gaz_fluorowany`, karta UX-04/POLE-LINIOWE-WZORZEC; iloczyn w
+    # `test_stan_obiektu_iloczyn.py`) — tu jest aparatem ISTNIEJĄCYM, żeby reguła izolacji
+    # dotyczyła także tych pozycji.
+    typ = katalog_biezacy().mv_apparatus_types.get(pozycja)
+    if typ is not None and czy_medium_z_gazem_fluorowanym(typ.medium):
+        aparat["stan_obiektu"] = "ISTNIEJACY"
     return execute_domain_operation(
         siec,
         "set_bay_equipment",
-        {
-            "bay_ref": "POLE-IN",
-            "mode": "katalog",
-            "devices": [{"kind": rodzaj, "placement": umiejscowienie, "catalog_ref": pozycja}],
-        },
+        {"bay_ref": "POLE-IN", "mode": "katalog", "devices": [aparat]},
     )
 
 
