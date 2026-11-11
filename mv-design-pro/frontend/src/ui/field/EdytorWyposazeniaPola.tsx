@@ -13,6 +13,8 @@
  * Katalog aparatów i szablonów pobierany dopiero po otwarciu edycji („Zmień wyposażenie") —
  * sama karta pola nie odpytuje katalogu, gdy pole nie ma z nim powiązania.
  */
+import { opisBezPowtorzen } from '../shared/opisBezPowtorzen';
+import { RODZAJ_GALEZI_PL } from '../sld/shared/kartaTechnicznaElementu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type {
@@ -216,7 +218,11 @@ export function EdytorWyposazeniaPola({
         {stanDanych
           ? opisStanuWyposazenia(
               stanDanych,
-              lacznikiPola.map((l) => l.name || 'łącznik bez nazwy'),
+              // Nazwa łącznika bez nazwy pola, które karta już nazywa („Aparat Pole liniowe
+              // GPZ 2.1” → „Wyłącznik”) — jedna reguła `opisBezPowtorzen`.
+              lacznikiPola.map((l) =>
+                opisBezPowtorzen({ rodzaj: RODZAJ_GALEZI_PL[l.type], nazwa: l.name || null, nadrzedne: [bay.name] }),
+              ),
             )
           : 'Stan danych wyposażenia nieznany — brak modelu odczytu pola.'}
       </p>

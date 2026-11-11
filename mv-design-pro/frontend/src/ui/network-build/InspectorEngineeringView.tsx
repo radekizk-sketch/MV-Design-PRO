@@ -17,7 +17,6 @@
 import { etykietaPunktuNeutralnegoPL } from '../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { BayWindowSchematic } from '../field/BayWindowSchematic';
 import {
   availabilityLabel,
   commandExecutionStateLabel,
@@ -100,6 +99,19 @@ import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 import { nazwaKatalogowa } from '../shared/nazwaKatalogowa';
+import {
+  FORMY_POZYCJI,
+  FORMY_SYGNALU,
+  PROG_LISTY_W_WIERSZU,
+  opisGrupy,
+  podzielNaBraki,
+  type GrupaBrakow,
+} from '../shared/zwijanieBrakow';
+import {
+  InformacjeAudytowe,
+  type WierszInformacjiAudytowych,
+} from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
+import { useShellStore } from '../../ui2/shell/useShellStore';
 
 // =============================================================================
 // Types
@@ -117,6 +129,8 @@ export interface PropertySection {
   id: string;
   label: string;
   fields: PropertyField[];
+  /** Odmiana rzeczownika pozycji przy zwiniętej grupie braków (domyślnie „pozycja”). */
+  formyPozycji?: readonly [string, string, string];
 }
 
 interface QuickAction {
@@ -273,12 +287,20 @@ export function buildBaySections(
   bayName: string,
   katalog: KatalogPola,
   ports: readonly Port[] | null,
-): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
+): {
+  sections: PropertySection[];
+  elementType: string;
+  elementName: string;
+  actions: QuickAction[];
+  /** Identyfikatory techniczne pola (KD6: nie na pierwszym planie — `InformacjeAudytowe`). */
+  audyt: WierszInformacjiAudytowych[];
+} {
   if (!item) {
     return {
       elementType: 'bay',
       elementName: bayName,
       actions: [],
+      audyt: [],
       sections: [
         {
           id: 'bay_missing',
@@ -314,24 +336,64 @@ export function buildBaySections(
       value: sanitizeEngineerText(issue.message_pl),
     }));
 
+  // KD6: identyfikatory techniczne (identyfikator i oznaczenie pola w modelu, stan integralności
+  // modelu odczytu, identyfikatory toru pomiarowego, obliczenia i uzasadnienia) — do informacji
+  // audytowych, nie na pierwszy plan karty.
+  const audyt: WierszInformacjiAudytowych[] = [
+    { etykieta: 'Identyfikator pola', wartosc: item.bay_id },
+    { etykieta: 'Oznaczenie pola w modelu', wartosc: item.bay_ref },
+    { etykieta: 'Integralność modelu pola', wartosc: integrityStatusLabel(canonicalModel.integrity_status) },
+    ...(measurementChain?.chain_ref ? [{ etykieta: 'Identyfikator toru pomiarowego', wartosc: measurementChain.chain_ref }] : []),
+    ...(projectResults?.run_ref ? [{ etykieta: 'Ostatnie obliczenie', wartosc: projectResults.run_ref }] : []),
+    ...(projectResults?.proof_binding.proof_ref
+      ? [{ etykieta: 'Identyfikator uzasadnienia', wartosc: projectResults.proof_binding.proof_ref }]
+      : []),
+  ];
+  // Wyniki i wywód pola: wiersz tylko z daną; bez wyników — jedno zdanie stanu wyników.
+  const wierszeWynikow: PropertyField[] = [
+    { key: 'result_state', label: 'Stan wyników', value: resultStateLabel(projectResults?.result_state) },
+    ...(projectResults?.result_message_pl
+      ? [{ key: 'result_message', label: 'Opis wyników', value: projectResults.result_message_pl }]
+      : []),
+    ...(projectResults?.source_contributions_sc.length
+      ? [{ key: 'sc_contributions', label: 'Wkłady źródeł w zwarciu', value: projectResults.source_contributions_sc.length }]
+      : []),
+    ...(projectResults?.source_contributions_pf.length
+      ? [{ key: 'pf_contributions', label: 'Wkłady źródeł w rozpływie', value: projectResults.source_contributions_pf.length }]
+      : []),
+    ...(projectResults?.earth_fault_path
+      ? [{
+          key: 'earth_fault',
+          label: 'Tor ziemnozwarciowy',
+          value: etykietaPunktuNeutralnegoPL(projectResults.earth_fault_path.neutral_grounding_mode),
+        }]
+      : []),
+  ];
+  const wierszeWywodu: PropertyField[] = [
+    ...(projectResults?.proof_binding.input_data_refs.length
+      ? [{ key: 'input_refs', label: 'Powiązane dane wejściowe', value: projectResults.proof_binding.input_data_refs.length }]
+      : []),
+    ...(projectResults?.proof_binding.source_contribution_refs.length
+      ? [{
+          key: 'source_refs',
+          label: 'Powiązane wkłady źródeł',
+          value: projectResults.proof_binding.source_contribution_refs.length,
+        }]
+      : []),
+  ];
+
   return {
     elementType: 'bay',
     elementName: item.bay_name,
     actions: [],
+    audyt,
     sections: [
       {
         id: 'ident',
         label: 'Identyfikacja',
         fields: [
-          { key: 'bay_id', label: 'Identyfikator pola', value: item.bay_id },
-          { key: 'bay_ref', label: 'Oznaczenie pola', value: item.bay_ref },
           { key: 'name', label: 'Nazwa', value: item.bay_name },
           { key: 'role', label: 'Rola kanoniczna', value: fieldRoleLabelPl(baseModel.bay_role) },
-          {
-            key: 'integrity',
-            label: 'Integralność modelu',
-            value: integrityStatusLabel(canonicalModel.integrity_status),
-          },
         ],
       },
       buildBayCatalogSection(
@@ -342,6 +404,7 @@ export function buildBaySections(
       {
         id: 'runtime',
         label: 'Stan ruchowy pola',
+        formyPozycji: FORMY_SYGNALU,
         // Karta #135: stan ruchowy pola WYŁĄCZNIE ze źródła runtime (`runtime_state` modelu
         // odczytu = rekord źródła albo `null`). Bez źródła każdy wiersz: „brak telemetrii".
         fields: [
@@ -440,7 +503,6 @@ export function buildBaySections(
         id: 'measurements',
         label: 'Tor pomiarowy',
         fields: [
-          { key: 'chain_ref', label: 'Identyfikator toru', value: measurementChain?.chain_ref ?? null },
           { key: 'ct_refs', label: 'Przekładniki prądowe', value: joinValues(measurementChain?.ct_refs) },
           { key: 'vt_refs', label: 'Przekładniki napięciowe', value: joinValues(measurementChain?.vt_refs) },
           { key: '3i0', label: 'Źródło 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
@@ -499,49 +561,8 @@ export function buildBaySections(
             ],
           }]
         : []),
-      {
-        id: 'results',
-        label: 'Wyniki projektowe pola',
-        fields: [
-          { key: 'run_ref', label: 'Ostatnie obliczenie', value: projectResults?.run_ref ?? null },
-          { key: 'result_state', label: 'Stan wyników', value: resultStateLabel(projectResults?.result_state) },
-          { key: 'result_message', label: 'Opis wyników', value: projectResults?.result_message_pl ?? null },
-          {
-            key: 'sc_contributions',
-            label: 'Wkłady źródeł w zwarciu',
-            value: projectResults?.source_contributions_sc.length ?? null,
-          },
-          {
-            key: 'pf_contributions',
-            label: 'Wkłady źródeł w rozpływie',
-            value: projectResults?.source_contributions_pf.length ?? null,
-          },
-          {
-            key: 'earth_fault',
-            label: 'Tor ziemnozwarciowy',
-            value: projectResults?.earth_fault_path
-              ? etykietaPunktuNeutralnegoPL(projectResults.earth_fault_path.neutral_grounding_mode)
-              : null,
-          },
-        ],
-      },
-      {
-        id: 'proof',
-        label: 'Wywód pola',
-        fields: [
-          { key: 'proof_ref', label: 'Identyfikator uzasadnienia', value: projectResults?.proof_binding.proof_ref ?? null },
-          {
-            key: 'input_refs',
-            label: 'Powiązane dane wejściowe',
-            value: projectResults?.proof_binding.input_data_refs.length ?? null,
-          },
-          {
-            key: 'source_refs',
-            label: 'Powiązane wkłady źródeł',
-            value: projectResults?.proof_binding.source_contribution_refs.length ?? null,
-          },
-        ],
-      },
+      { id: 'results', label: 'Wyniki projektowe pola', fields: wierszeWynikow },
+      ...(wierszeWywodu.length > 0 ? [{ id: 'proof', label: 'Wywód pola', fields: wierszeWywodu }] : []),
       ...(activeAlarms.length || readinessMessages.length
         ? [{
             id: 'alarms',
@@ -2613,8 +2634,8 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     [elementId, selectedElement, snapshot],
   );
 
-  const { sections, elementType, elementName, actions } = useMemo(
-    () => {
+  const { sections, elementType, elementName, actions, audyt } = useMemo(
+    (): ReturnType<typeof buildBaySections> => {
       if (isSelectedBay) {
         return buildBaySections(
           selectedBayField,
@@ -2627,17 +2648,20 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           selectedBayPorts,
         );
       }
-      return buildSectionsForElement(
-        elementId ?? '',
-        snapshot,
-        readinessIssues,
-        fieldReadModelData.fields,
-        logicalViews,
-        selectedElement,
-        ncRfgOperators,
-        pfCurves,
-        dynamicProfiles,
-      );
+      return {
+        ...buildSectionsForElement(
+          elementId ?? '',
+          snapshot,
+          readinessIssues,
+          fieldReadModelData.fields,
+          logicalViews,
+          selectedElement,
+          ncRfgOperators,
+          pfCurves,
+          dynamicProfiles,
+        ),
+        audyt: [],
+      };
     },
     [
       elementId,
@@ -2815,6 +2839,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   // nazwą i innym rodzajem. Zostają: dowód obliczeń, akcje źródła przekształtnikowego,
   // schemat pola i operacje, których pasek działań panelu nie ma.
   const kartaObiektu = stanPanelu?.karta ?? null;
+  const szczegolyAudytowe = useShellStore((stan) => stan.szczegolyAudytowe);
   const pokazTechCard = Boolean(techCardSubjectWithActions) && !kartaObiektu;
   const akcjeKartyBezPaska = kartaObiektu ? techCardSubjectWithActions?.actions ?? [] : [];
   const operacjeModelu: OperacjaModeluInspektora[] =
@@ -2987,7 +3012,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           />
         ))}
 
-        {selectedBayField && <BayWindowSchematic item={selectedBayField} />}
+        {!kartaObiektu && (
+          <InformacjeAudytowe wiersze={audyt} szczegolyAudytowe={szczegolyAudytowe} testid="inspektor-informacje-audytowe" />
+        )}
 
         {/* K6: działania na samym końcu inspektora, zwinięte — pozycje rejestru menu kanwy
             i operacje modelu tego widoku w JEDNYM bloku (operacje modelu tylko w trybie edycji
@@ -3155,28 +3182,107 @@ export function SectionBlock({
     payload: Record<string, unknown>,
   ) => Promise<unknown>;
 }) {
+  // KD6 (kontrakt prezentacji §10): jednakowe braki sekcji zwinięte do jednego wiersza
+  // (`podzielNaBraki` — jedna reguła), sekcja złożona z samego braku — jedną linią.
+  const podzial = useMemo(() => podzielNaBraki(section.fields, brakPolaSekcji), [section.fields]);
+  const idSekcji = sectionTestId(section);
+  const formy = section.formyPozycji ?? FORMY_POZYCJI;
+  if (podzial.pusta) {
+    return (
+      <div
+        className="border-b border-gray-100"
+        data-testid={`engineering-section-${idSekcji}`}
+        data-pusta="true"
+      >
+        <div className="flex flex-wrap items-baseline gap-x-2 px-4 py-1.5 text-[length:var(--mvd-font-size-data)]">
+          <h4 className="font-semibold text-gray-500">{section.label}</h4>
+          <GrupaBrakowSekcji grupa={podzial.pusta} formy={formy} idSekcji={idSekcji} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className="border-b border-gray-100"
-      data-testid={`engineering-section-${sectionTestId(section)}`}
+      data-testid={`engineering-section-${idSekcji}`}
     >
       <div className="px-4 py-2">
         <h4 className="text-[length:var(--mvd-font-size-data)] font-semibold text-gray-500 mb-1.5">
           {section.label}
         </h4>
         <div className="space-y-1">
-          {section.fields.map((field, index) => (
-            <EngineeringField
-              key={`${field.key}:${index}`}
-              field={field}
-              elementId={elementId}
-              activeCaseId={activeCaseId}
-              executeDomainOperation={executeDomainOperation}
-            />
-          ))}
+          {podzial.elementy.map((element, index) =>
+            element.rodzaj === 'wiersz' ? (
+              <EngineeringField
+                key={`${element.pozycja.key}:${index}`}
+                field={element.pozycja}
+                elementId={elementId}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+              />
+            ) : (
+              <div
+                key={`grupa:${element.grupa.brak}`}
+                className="flex items-baseline justify-between gap-2 text-[length:var(--mvd-font-size-data)]"
+              >
+                <GrupaBrakowSekcji grupa={element.grupa} formy={formy} idSekcji={idSekcji} wWierszu />
+              </div>
+            ),
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+/** Brak pola sekcji do zwinięcia — ten sam tekst, który pokazałby wiersz; `null` = wiersz
+ *  z wartością albo wiersz, którego zwinąć nie wolno (edycja nazwy, komunikaty kontroli). */
+export function brakPolaSekcji(field: PropertyField): string | null {
+  if (field.key === 'name' || field.label === 'Konfiguracja' || field.label === 'Ostrzeżenie') return null;
+  const tekst = formatValue(field.value);
+  return isMissingFieldValue(tekst) || tekst === BRAK_TELEMETRII ? tekst : null;
+}
+
+function GrupaBrakowSekcji({
+  grupa,
+  formy,
+  idSekcji,
+  wWierszu = false,
+}: {
+  grupa: GrupaBrakow<PropertyField>;
+  formy: readonly [string, string, string];
+  idSekcji: string;
+  wWierszu?: boolean;
+}) {
+  const testid = `engineering-braki-${idSekcji}-${slugForTestId(grupa.brak)}`;
+  const nazwy = grupa.pozycje.map((pole) => (
+    <li key={pole.key} data-testid={`engineering-field-${pole.key}`} data-brak={grupa.brak}>
+      {pole.label}
+    </li>
+  ));
+  if (grupa.pozycje.length <= PROG_LISTY_W_WIERSZU) {
+    return (
+      <span data-testid={testid} data-liczba={grupa.pozycje.length} className="text-gray-500">
+        <ul className="inline">
+          {grupa.pozycje.map((pole, i) => (
+            <li key={pole.key} className="inline" data-testid={`engineering-field-${pole.key}`} data-brak={grupa.brak}>
+              {i > 0 ? ', ' : ''}
+              {pole.label}
+            </li>
+          ))}
+        </ul>
+        {': '}
+        <span className="font-medium text-gray-800">{grupa.brak}</span>
+      </span>
+    );
+  }
+  return (
+    <details data-testid={testid} data-liczba={grupa.pozycje.length} className={wWierszu ? 'w-full' : undefined}>
+      <summary className="cursor-pointer text-gray-500">
+        <span className="font-medium text-gray-800">{opisGrupy(grupa, formy)}</span>
+      </summary>
+      <ul className="mt-1 list-disc pl-5 text-gray-500">{nazwy}</ul>
+    </details>
   );
 }
 

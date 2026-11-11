@@ -41,6 +41,7 @@ import {
   segmentPublicIdentity,
   stationPublicIdentity,
 } from '../../shared/publicTechnicalLabels';
+import { opisBezPowtorzen } from '../../shared/opisBezPowtorzen';
 import { pola, polaNnStacji, polaSnStacji, stacjaPola, zaciskPola } from '../../shared/polaStacji';
 import { podpisStacjiPl, rodzajStacji, TYPY_STACJI_BEZ_RODZAJU } from '../../shared/rodzajStacji';
 import { szynyStacji } from '../../shared/szynyStacji';
@@ -292,7 +293,8 @@ const WYKONANIE_STACJI_PL: Readonly<Record<string, string>> = {
   inna: 'inna',
 };
 
-const RODZAJ_GALEZI_PL: Readonly<Record<Branch['type'], string>> = {
+/** Rodzaj gałęzi po polsku — jedna tablica karty technicznej i karty pola. */
+export const RODZAJ_GALEZI_PL: Readonly<Record<Branch['type'], string>> = {
   line_overhead: 'Linia napowietrzna',
   cable: 'Kabel',
   switch: 'Łącznik',
@@ -958,7 +960,11 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
             return {
               klucz: a.ref,
               komorki: {
-                aparat: a.galaz ? `${a.rodzajPl} · ${publicTechnicalLabel(a.galaz.name, a.rodzajPl)}` : `${a.rodzajPl}${a.urzadzenie?.designation ? ` ${a.urzadzenie.designation}` : ''}`,
+                // Nazwa aparatu bez nazwy pola, które karta już nazywa („Aparat Pole liniowe
+                // GPZ 1.1” → „Wyłącznik”) — jedna reguła `opisBezPowtorzen`.
+                aparat: a.galaz
+                  ? opisBezPowtorzen({ rodzaj: a.rodzajPl, nazwa: publicTechnicalLabel(a.galaz.name, a.rodzajPl), nadrzedne: [nazwaPola(bay)] })
+                  : `${a.rodzajPl}${a.urzadzenie?.designation ? ` ${a.urzadzenie.designation}` : ''}`,
                 typ: zn.typ,
                 ur: zn.ur,
                 ir: zn.ir,
@@ -1349,6 +1355,19 @@ export function buildKartaTechniczna(
     default:
       return null;
   }
+}
+
+/**
+ * Karta techniczna pola SN wprost z referencji pola — karta pola E-11 (`BayConfiguratorSurface`)
+ * pokazuje TĘ SAMĄ kartę co inspektor (aparaty z typem i znamionami, zabezpieczenie,
+ * przekładniki), bez drugiej kopii reguł. `null` — pola nie ma w modelu.
+ */
+export function buildKartaTechnicznaPola(
+  snapshot: EnergyNetworkModel | null,
+  bayRef: string,
+  katalogi: KatalogiKarty = KATALOGI_PUSTE,
+): KartaTechniczna | null {
+  return buildKartaTechniczna(snapshot, { kind: 'bay', elementId: bayRef }, katalogi);
 }
 
 /** Wszystkie klucze karty (wiersze i tabele `tabela:<klucz>`) — dla testu parytetu i e2e. */

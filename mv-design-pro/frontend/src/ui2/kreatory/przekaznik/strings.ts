@@ -3,13 +3,10 @@
 import type { OpcjaWyboru } from '../rama';
 
 export const PRZEKAZNIK_STRINGS = {
-  eyebrow: 'MODEL SIECI · ZABEZPIECZENIE POLA SN',
+  eyebrow: 'Model sieci · zabezpieczenie pola SN',
   tytul: 'Zabezpieczenie pola SN',
-  cel:
-    'Przypisz zabezpieczenie do pola SN — dobierasz rodzinę ochrony i typ katalogowy przekaźnika, '
-    + 'a system wiąże go z wyłącznikiem wykonawczym oraz przekładnikami pomiarowymi pola. '
-    + 'Nastawy (progi, charakterystyki, zwłoki) wpisujesz potem w edytorze nastaw — backend '
-    + 'przelicza je przez przekładnię i sprawdza z zakresami katalogu.',
+  // KD6: wstęp jednym zdaniem — szczegóły (wiązanie z wyłącznikiem i CT, nastawy) w kroku zapisu.
+  cel: 'Dobierz rodzinę ochrony i typ katalogowy przekaźnika dla pola SN; nastawy wpiszesz potem w edytorze nastaw.',
   odznaka: 'Nowe zabezpieczenie',
 
   krokPole: 'Pole i aparat',
@@ -17,8 +14,6 @@ export const PRZEKAZNIK_STRINGS = {
 
   // Pole SN
   poleTytul: 'Kontekst pola',
-  polePomoc: 'Zabezpieczenie działa w polu SN — po co: wykrywa zwarcia i przeciążenia; '
-    + 'z czego: prąd z przekładnika CT; co daje: sygnał wyłączenia do wyłącznika pola.',
   poleSn: 'Pole SN',
   poleSnPlaceholder: '— wybierz pole SN —',
   aparat: 'Wyłącznik wykonawczy',
@@ -86,7 +81,9 @@ export const PRZEKAZNIK_STRINGS = {
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem zabezpieczenia.',
   brakPolaWalid: 'Wybierz pole SN dla zabezpieczenia.',
   brakKatalogu: 'Wybierz typ zabezpieczenia z katalogu.',
-  walidacjaStopka: 'Uzupełnij pole SN i typ katalogowy, aby zapisać zabezpieczenie.',
+  // Stopka mówi o TYM, czego brakuje (kreator otwarty z karty pola ma pole wybrane).
+  walidacjaBrakPola: 'Wybierz pole SN, aby zapisać zabezpieczenie.',
+  walidacjaBrakKatalogu: 'Wybierz typ katalogowy przekaźnika, aby zapisać zabezpieczenie.',
   bladDodania: 'Nie udało się dodać zabezpieczenia.',
 
   // Panel teorii (V12K-066)

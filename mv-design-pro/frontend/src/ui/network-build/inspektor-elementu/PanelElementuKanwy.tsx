@@ -16,6 +16,7 @@
  *    jest nieaktywna (`aria-disabled`) z przyczyną w opisie przycisku.
  * Zero fizyki: każda liczba pochodzi z modelu albo z wyniku backendu.
  */
+import { FORMY_SYGNALU, opisGrupy, podzielNaBraki } from '../../shared/zwijanieBrakow';
 import type { JSX } from 'react';
 
 import {
@@ -213,6 +214,14 @@ export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
  */
 export function SekcjaStanuAparatu({ stan }: { readonly stan: DaneElementuKanwy['apparatusState'] }): JSX.Element {
   const polozenie = stan?.actualState ? POLOZENIE_LACZNIKA_PL[stan.actualState] : BRAK_POLOZENIA_W_MODELU;
+  const sygnaly = [
+    { klucz: 'tryb', etykieta: 'Tryb sterowania', wartosc: controlModeLabel(stan?.controlMode ?? null) },
+    { klucz: 'komunikacja', etykieta: 'Komunikacja', wartosc: communicationOkLabel(stan?.communicationOk ?? null) },
+    { klucz: 'uzaleznienie', etykieta: 'Uzależnienie operacyjne', wartosc: interlockBlockedLabel(stan?.interlockBlocked ?? null) },
+    { klucz: 'zmiana', etykieta: 'Ostatnia zmiana', wartosc: stan?.lastChangeAt ?? BRAK_TELEMETRII },
+  ];
+  // KD6: jednakowe braki telemetrii jednym wierszem z rozwinięciem (`zwijanieBrakow`).
+  const podzial = podzielNaBraki(sygnaly, (s) => (s.wartosc === BRAK_TELEMETRII ? BRAK_TELEMETRII : null));
   return (
     <section data-testid="inspektor-stan-aparatu" aria-label="Stan i telemetria aparatu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Stan i telemetria aparatu</h4>
@@ -221,22 +230,35 @@ export function SekcjaStanuAparatu({ stan }: { readonly stan: DaneElementuKanwy[
           <dt className="mvd-kafel-kv-label">Położenie łącznika (model)</dt>
           <dd data-testid="inspektor-aparat-stan" className="mvd-kafel-kv-value">{polozenie}</dd>
         </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Tryb sterowania</dt>
-          <dd data-testid="inspektor-aparat-tryb" className="mvd-kafel-kv-value">{controlModeLabel(stan?.controlMode ?? null)}</dd>
-        </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Komunikacja</dt>
-          <dd data-testid="inspektor-aparat-komunikacja" className="mvd-kafel-kv-value">{communicationOkLabel(stan?.communicationOk ?? null)}</dd>
-        </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Uzależnienie operacyjne</dt>
-          <dd data-testid="inspektor-aparat-uzaleznienie" className="mvd-kafel-kv-value">{interlockBlockedLabel(stan?.interlockBlocked ?? null)}</dd>
-        </div>
-        <div className="mvd-kafel-kv-row">
-          <dt className="mvd-kafel-kv-label">Ostatnia zmiana</dt>
-          <dd data-testid="inspektor-aparat-zmiana" className="mvd-kafel-kv-value mvd-num">{stan?.lastChangeAt ?? BRAK_TELEMETRII}</dd>
-        </div>
+        {podzial.elementy.map((element) =>
+          element.rodzaj === 'wiersz' ? (
+            <div key={element.pozycja.klucz} className="mvd-kafel-kv-row">
+              <dt className="mvd-kafel-kv-label">{element.pozycja.etykieta}</dt>
+              <dd
+                data-testid={`inspektor-aparat-${element.pozycja.klucz}`}
+                className={element.pozycja.klucz === 'zmiana' ? 'mvd-kafel-kv-value mvd-num' : 'mvd-kafel-kv-value'}
+              >
+                {element.pozycja.wartosc}
+              </dd>
+            </div>
+          ) : (
+            <div key="telemetria" className="mvd-kafel-kv-row">
+              <dt className="mvd-kafel-kv-label">Telemetria</dt>
+              <dd className="mvd-kafel-kv-value">
+                <details data-testid="inspektor-aparat-telemetria" data-liczba={element.grupa.pozycje.length}>
+                  <summary className="cursor-pointer">{opisGrupy(element.grupa, FORMY_SYGNALU)}</summary>
+                  <ul className="mt-1 flex flex-col gap-0.5" style={{ color: 'var(--mvd-muted)' }}>
+                    {element.grupa.pozycje.map((s) => (
+                      <li key={s.klucz}>
+                        {s.etykieta}: <span data-testid={`inspektor-aparat-${s.klucz}`}>{s.wartosc}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </dd>
+            </div>
+          ),
+        )}
       </dl>
     </section>
   );

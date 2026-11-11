@@ -64,19 +64,27 @@ vi.mock('../../../../ui/network-build/forms/catalogFirstRules', () => ({
 }));
 
 const FIELD_ITEM = { bay_ref: 'bay-1', bay_id: 'bay-1', bay_name: 'Pole liniowe A' };
+const FIELD_ITEM_2 = { bay_ref: 'bay-2', bay_id: 'bay-2', bay_name: 'Pole liniowe B' };
 
+// Stabilny wynik hooka (jak `useFieldReadModel` z pamięcią zapytania) — nowy obiekt na każdy
+// render zmieniałby listę pól przy każdym renderze i resetował wybór pola.
+const MODEL_ODCZYTU = {
+  data: { fields: [FIELD_ITEM, FIELD_ITEM_2] },
+  itemsByBayRef: new Map([['bay-1', FIELD_ITEM], ['bay-2', FIELD_ITEM_2]]),
+};
 vi.mock('../../../../ui/field/useFieldReadModel', () => ({
-  useFieldReadModel: () => ({
-    data: { fields: [FIELD_ITEM] },
-    itemsByBayRef: new Map([['bay-1', FIELD_ITEM]]),
-  }),
+  useFieldReadModel: () => MODEL_ODCZYTU,
 }));
 
+// Kontekst z karty pola (`{bay_ref}`) rozstrzyga pole jak `resolveFieldReadModelItem` — po
+// referencji pola; brak kontekstu — `null` (kreator bierze wtedy pierwsze pole z listy).
 vi.mock('../../../../ui/field/fieldReadModelSelectors', () => ({
   buildFieldReadModelOptions: () => [
     { ref_id: 'bay-1', name: 'Pole liniowe A', bay_role: 'FEEDER', station_name: 'GPZ Wschód', bus_name: 'Szyna I', ct_count: 1, vt_count: 1 },
+    { ref_id: 'bay-2', name: 'Pole liniowe B', bay_role: 'FEEDER', station_name: 'GPZ Wschód', bus_name: 'Szyna II', ct_count: 1, vt_count: 0 },
   ],
-  resolveFieldReadModelItem: () => null,
+  resolveFieldReadModelItem: (_items: unknown, ctx: Record<string, unknown> | undefined) =>
+    ctx?.bay_ref === 'bay-2' ? FIELD_ITEM_2 : ctx?.bay_ref === 'bay-1' ? FIELD_ITEM : null,
 }));
 
 vi.mock('../../../../ui/field/fieldControlSelectors', () => ({
@@ -157,6 +165,52 @@ describe('KreatorPrzekaznika — realna ścieżka', () => {
         expect.objectContaining({ relay_type: 'ZIEMNOZWARCIOWY' }),
       );
     });
+  });
+
+  // KARTA-POLA-KD6: kreator otwarty z karty KONKRETNEGO pola („dodaj zabezpieczenie” →
+  // `add_relay` z `{bay_ref}`) ma to pole i jego wyłącznik wybrane, kontekst pola jako zwartą
+  // listę danych, a stopka nazywa jedyny brak (typ katalogowy), nie „uzupełnij pole SN”.
+  it.each([
+    ['bay-2', 'Szyna II'],
+    ['bay-1', 'Szyna I'],
+  ])('otwarty z karty pola %s: pole i wyłącznik wybrane, stopka mówi o typie katalogowym', async (poleRef, szyna) => {
+    activeForm = { op: 'add_relay', context: { bay_ref: poleRef } };
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPrzekaznika />);
+    await waitFor(() =>
+      expect((screen.getByTestId('mvd-kreator-przekaznik-bay') as HTMLSelectElement).value).toBe(poleRef),
+    );
+    expect((screen.getByTestId('mvd-kreator-przekaznik-breaker') as HTMLSelectElement).value).toBe('cb-1');
+    const kontekst = screen.getByTestId('mvd-kreator-przekaznik-kontekst');
+    expect(kontekst.tagName).toBe('DL');
+    expect(kontekst).toHaveTextContent(szyna);
+    expect(screen.getByTestId('mvd-kreator-walidacja')).toHaveTextContent('Wybierz typ katalogowy przekaźnika');
+    expect(screen.getByTestId('mvd-kreator-walidacja')).not.toHaveTextContent('pole SN');
+    await pickCatalog();
+    expect(screen.queryByTestId('mvd-kreator-walidacja')).toBeNull();
+    await userEvent.click(screen.getByTestId('mvd-kreator-przekaznik-zapisz'));
+    await waitFor(() =>
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_relay',
+        expect.objectContaining({ bay_ref: poleRef, breaker_ref: 'cb-1', catalog_ref: 'relay-1' }),
+      ),
+    );
+  });
+
+  it('pole odznaczone: stopka nazywa brak pola SN', async () => {
+    render(<KreatorPrzekaznika />);
+    const pole = await screen.findByTestId('mvd-kreator-przekaznik-bay');
+    await userEvent.selectOptions(pole, '');
+    expect(screen.getByTestId('mvd-kreator-walidacja')).toHaveTextContent('Wybierz pole SN');
+    expect(screen.queryByTestId('mvd-kreator-przekaznik-kontekst')).toBeNull();
+  });
+
+  it('wstęp kreatora jednym zdaniem, nagłówek bez wersalików w źródle', () => {
+    render(<KreatorPrzekaznika />);
+    const cel = document.querySelector('.mvd-kreator-cel')?.textContent ?? '';
+    expect(cel.match(/[.!?](?=\s|$)/gu) ?? []).toHaveLength(1);
+    expect(document.querySelector('.mvd-kreator-eyebrow')?.textContent).toBe('Model sieci · zabezpieczenie pola SN');
   });
 
   it('uczciwy stan zerowy: bez typu katalogowego zapis zablokowany', async () => {

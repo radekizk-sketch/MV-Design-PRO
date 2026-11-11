@@ -891,8 +891,13 @@ describe('InspectorEngineeringView', () => {
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
     expect(screen.getByText('Wkłady źródeł w zwarciu')).toBeInTheDocument();
     expect(screen.getByText('Wywód pola')).toBeInTheDocument();
-    expect(screen.getByText('Schemat Kanoniczny')).toBeInTheDocument();
-    expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
+    // KARTA-POLA-KD6: miniatura „Schemat kanoniczny” skasowana (stałe kolory, ucięty podpis,
+    // powtórzenie nazwy i roli); identyfikator pola i „Integralność modelu” nie są na
+    // pierwszym planie — idą do informacji audytowych.
+    expect(screen.queryByTestId('bay-svg-renderer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Integralność modelu')).not.toBeInTheDocument();
+    expect(screen.queryByText('Identyfikator pola')).not.toBeInTheDocument();
+    expect(screen.queryByText('Po migracji')).not.toBeInTheDocument();
   });
 
   // Karta #135 — stan ruchowy pola bez fabrykacji: model odczytu pola bez źródła runtime ma
@@ -980,7 +985,13 @@ describe('InspectorEngineeringView', () => {
     expect(screen.getByText('Stan ruchowy pola')).toBeInTheDocument();
     // Łączność, dostępność sterowania i pomiarów, chwila ostatniej aktualizacji, stan
     // polecenia i stan beznapięciowy — wszystkie bez źródła: „brak telemetrii".
-    expect(screen.getAllByText(BRAK_TELEMETRII).length).toBeGreaterThanOrEqual(11);
+    // KARTA-POLA-KD6: jedenaście jednakowych braków telemetrii — JEDEN wiersz z liczbą
+    // sygnałów i rozwinięciem (nazwy sygnałów w rozwinięciu), nie ściana „brak telemetrii”.
+    const grupa = screen.getByTestId('engineering-braki-stan_ruchowy_pola-brak_telemetrii');
+    expect(grupa).toHaveTextContent('brak telemetrii (11 sygnałów)');
+    expect(grupa.getAttribute('data-liczba')).toBe('11');
+    expect(screen.getByTestId('engineering-section-stan_ruchowy_pola')).toHaveAttribute('data-pusta', 'true');
+    expect(screen.getAllByText(/brak telemetrii/)).toHaveLength(1);
     for (const wymyslone of ['Łączność ograniczona', 'Brak łączności', 'Częściowo dostępne', 'Częściowe']) {
       expect(screen.queryByText(wymyslone)).not.toBeInTheDocument();
     }

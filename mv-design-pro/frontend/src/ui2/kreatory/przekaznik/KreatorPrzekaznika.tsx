@@ -199,6 +199,15 @@ export function KreatorPrzekaznika() {
   const brakPol = !kotwicaWylacznik && bayOptions.length === 0;
   const kotwicaOk = kotwicaWylacznik ? Boolean(wylacznikLiniowy) : Boolean(bayRef);
   const kompletne = Boolean(kotwicaOk && catalogItemId.trim());
+  // Stopka nazywa TEN brak, który blokuje zapis (jedno źródło z `kompletne`): kreator otwarty
+  // z karty pola ma pole wybrane — nie wolno mu mówić „uzupełnij pole SN”.
+  const walidacja = !kotwicaOk
+    ? T.walidacjaBrakPola
+    : !catalogItemId.trim()
+      ? T.walidacjaBrakKatalogu
+      : brakCt
+        ? T.brakCt
+        : null;
 
   const onZapisz = useCallback(async () => {
     if (!activeCaseId) {
@@ -283,7 +292,7 @@ export function KreatorPrzekaznika() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={!kompletne ? T.walidacjaStopka : brakCt ? T.brakCt : null}
+      walidacja={walidacja}
       akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !kompletne || !activeCaseId || brakPol, testid: 'mvd-kreator-przekaznik-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-przekaznik-anuluj' }}
       krokWstecz={krokIndex > 0 ? { etykieta: T.wstecz, onClick: () => setKrok(KROKI[krokIndex - 1].id), testid: 'mvd-kreator-przekaznik-wstecz' } : undefined}
@@ -299,7 +308,18 @@ export function KreatorPrzekaznika() {
 
       {krok === 'pole' ? (
         <KreatorSekcja tytul={T.poleTytul} testid="mvd-kreator-przekaznik-pole">
-          <KreatorInfo>{kotwicaWylacznik ? T.wylacznikPomoc : T.polePomoc}</KreatorInfo>
+          {kotwicaWylacznik ? <KreatorInfo>{T.wylacznikPomoc}</KreatorInfo> : null}
+          {selectedBayInfo ? (
+            // Kontekst pola — zwarta lista danych wybranego pola (KD6), nie akapit objaśnień.
+            <dl className="mvd-kreator-kontekst" data-testid="mvd-kreator-przekaznik-kontekst">
+              <div><dt>{T.readStacja}</dt><dd>{selectedBayInfo.station_name}</dd></div>
+              <div><dt>{T.readSzyna}</dt><dd>{selectedBayInfo.bus_name}</dd></div>
+              <div>
+                <dt>{T.readPomiar}</dt>
+                <dd data-ton={brakCt ? 'warn' : undefined}>{`CT: ${pomiar.ct} / VT: ${pomiar.vt}`}</dd>
+              </div>
+            </dl>
+          ) : null}
           <KreatorSiatka kolumny={2}>
             {kotwicaWylacznik ? (
               <RzadWartosci
@@ -355,14 +375,6 @@ export function KreatorPrzekaznika() {
             wymagane
             testid="mvd-kreator-przekaznik-katalog"
           />
-
-          {selectedBayInfo ? (
-            <KreatorSiatka kolumny={3}>
-              <RzadWartosci etykieta={T.readStacja} wartosc={selectedBayInfo.station_name} />
-              <RzadWartosci etykieta={T.readSzyna} wartosc={selectedBayInfo.bus_name} />
-              <RzadWartosci etykieta={T.readPomiar} wartosc={`CT: ${pomiar.ct} / VT: ${pomiar.vt}`} ton={brakCt ? 'warn' : undefined} />
-            </KreatorSiatka>
-          ) : null}
 
           {brakCt ? <KreatorInfo testid="mvd-kreator-przekaznik-brak-ct">{T.brakCt}</KreatorInfo> : null}
 

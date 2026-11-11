@@ -36,14 +36,16 @@
 }
 .mvd-kreator-head-gora {
   display: flex;
+  flex-wrap: wrap; /* wąski panel: znacznik schodzi pod tytuł zamiast być ucięty */
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 6px 12px;
 }
+/* KD6 (kontrakt prezentacji §10 pkt 7): nagłówek kreatora w kroju bazowym — krój maszynowy
+   zostaje dla liczb i kodów (numer kroku, oznaczenia, wartości). */
 .mvd-kreator-eyebrow {
-  font: 600 10.5px/1 var(--mvd-font-mono);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: 600 11px/1.3 var(--mvd-font-sans);
+  letter-spacing: 0.04em;
   color: var(--mvd-accent);
 }
 .mvd-kreator-tytul {
@@ -64,13 +66,12 @@
 .mvd-kreator-odznaka {
   flex-shrink: 0;
   align-self: flex-start;
-  padding: 4px 10px;
+  max-width: 100%;
+  padding: 3px 8px;
   border: 1px solid var(--mvd-line);
   border-radius: 999px;
   background: var(--mvd-chip);
-  font: 600 10px/1 var(--mvd-font-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 600 11px/1.2 var(--mvd-font-sans);
   color: var(--mvd-accent);
   white-space: nowrap;
 }
@@ -215,11 +216,21 @@
   background: var(--mvd-panel-2);
 }
 .mvd-kreator-sekcja-tytul {
-  font: 600 11px/1.2 var(--mvd-font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 600 12px/1.3 var(--mvd-font-sans);
   color: var(--mvd-muted);
 }
+/* Kontekst kreatora — zwarta lista danych obiektu (etykieta : wartość w jednym wierszu). */
+.mvd-kreator-kontekst {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+.mvd-kreator-kontekst > div { display: contents; }
+.mvd-kreator-kontekst dt { color: var(--mvd-muted); }
+.mvd-kreator-kontekst dd { margin: 0; color: var(--mvd-ink); overflow-wrap: anywhere; }
+.mvd-kreator-kontekst dd[data-ton="warn"] { color: var(--mvd-warn); }
 .mvd-kreator-sekcja-nota {
   font-size: 11px;
   color: var(--mvd-muted);

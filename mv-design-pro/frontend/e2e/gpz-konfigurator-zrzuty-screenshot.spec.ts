@@ -16,6 +16,13 @@
  * <motyw>` — kreator zabezpieczenia otwarty akcją karty pola. Karta dłuższa niż ekran: kadr
  * całego panelu (wyższe okno i zdjęte przewijanie wewnętrzne panelu).
  *
+ * KARTA-POLA-KD6 (standard warsztatu KD6, kontrakt prezentacji §10): pomiar karty pola —
+ * wysokość, liczba wierszy i liczba słów na pierwszym planie (adnotacje `karta-pola-<motyw>`);
+ * stan ruchowy bez telemetrii jednym wierszem; bez identyfikatora technicznego, „po migracji”
+ * i miniatury schematu na pierwszym planie. Kreator otwarty akcją karty ma pole i wyłącznik
+ * wybrane, stopka nazywa brak typu katalogowego; zapis natywnym klikiem wiąże przekaźnik z polem
+ * (`Bay.protection_ref` z realnego backendu).
+ *
  * Sufiks plików: `GPZ_ZRZUTY_ETAP` (`przed` — stan sprzed przebudowy ekranu, `po` — domyślnie).
  * Zrzuty: `docs/audit/visual/gpz_konfigurator/` (przez `katalogZrzutow` — bez
  * `ZRZUTY_DO_DOKUMENTACJI=1` trafiają do `test-results/zrzuty-dokumentacji/…`).
@@ -62,6 +69,20 @@ for (const motyw of MOTYWY) {
   });
 }
 
+/** Pomiar karty pola (KD6): wysokość treści, wiersze danych i słowa na pierwszym planie. */
+async function pomiarKartyPola(page: Page): Promise<string> {
+  return page.getByTestId('bay-card-sections').evaluate((el) => {
+    const widoczne = (e: Element) => (e as HTMLElement).getClientRects().length > 0;
+    const wiersze = Array.from(
+      el.querySelectorAll(
+        'div[data-testid^="engineering-field-"], [data-testid^="engineering-braki-"], .mvd-kt-wiersz, tbody tr, [data-testid="karta-pola-powiazania"] li, [data-testid="karta-pola-powiazania"] button',
+      ),
+    ).filter(widoczne).length;
+    const slowa = ((el as HTMLElement).innerText.match(/\S+/gu) ?? []).length;
+    return `${Math.round(el.scrollHeight)} px · ${wiersze} wierszy · ${slowa} słów`;
+  });
+}
+
 /** Panel karty pola w całości: wyższe okno i zdjęte przewijanie wewnętrzne sekcji karty. */
 async function zrzutCalejKartyPola(page: Page, plik: string): Promise<void> {
   await page.setViewportSize({ width: 1600, height: 2600 });
@@ -97,15 +118,39 @@ for (const motyw of MOTYWY) {
     await expect(page.getByTestId('karta-pola-powiazania')).toBeVisible({ timeout: 20000 });
     await expect(page.getByTestId(`karta-pola-zabezpieczenie-${pole11.ref_id}`)).toHaveAttribute('data-wyroznione', 'true');
     await expect(page.getByTestId(`karta-pola-odejscie-${pole11.ref_id}`)).toContainText('Odejście: kabel Odcinek 1');
+    // KD6: co stoi w polu — tabela aparatów K6; stan ruchowy bez telemetrii jednym wierszem;
+    // identyfikatory techniczne i miniatura schematu nie na pierwszym planie.
+    const karta = page.getByTestId('bay-configurator-surface');
+    await expect(karta.getByTestId('inspektor-karta-tabela-aparaty')).toContainText('Wyłącznik');
+    await expect(karta.getByTestId('inspektor-karta-tabela-aparaty')).not.toContainText('Aparat Pole liniowe');
+    await expect(karta.getByTestId('engineering-braki-stan_ruchowy_pola-brak_telemetrii')).toContainText('brak telemetrii (11 sygnałów)');
+    for (const zbedne of [/Element #/u, /Po migracji/u, /Integralność modelu/u]) {
+      await expect(page.getByTestId('bay-card-sections')).not.toContainText(zbedne);
+    }
+    await expect(karta.getByTestId('bay-svg-renderer')).toHaveCount(0);
+    test.info().annotations.push({ type: `karta-pola-${motyw.klucz}`, description: await pomiarKartyPola(page) });
     await zrzutCalejKartyPola(page, `gpz-karta-pola-zabezpieczenie-${motyw.klucz}-${ETAP}.png`);
 
-    // (c) akcja karty pola → kreator zabezpieczenia przypięty do pola.
+    // (c) akcja karty pola → kreator zabezpieczenia przypięty do pola: pole i wyłącznik wybrane,
+    // stopka nazywa jedyny brak (typ katalogowy); zapis natywnym klikiem wiąże przekaźnik z polem.
     await page.getByTestId(`karta-pola-napraw-zabezpieczenie-${pole11.ref_id}`).click();
     const kreator = page.getByTestId('mvd-kreator-przekaznik');
     await expect(kreator).toBeVisible({ timeout: 20000 });
+    await expect(page.getByTestId('mvd-kreator-przekaznik-bay')).toHaveValue(pole11.ref_id, { timeout: 20000 });
+    await expect(page.getByTestId('mvd-kreator-przekaznik-breaker')).not.toHaveValue('');
+    await expect(page.getByTestId('mvd-kreator-walidacja')).toHaveText('Wybierz typ katalogowy przekaźnika, aby zapisać zabezpieczenie.');
     await kreator.screenshot({ path: resolve(KATALOG, `gpz-karta-pola-kreator-zabezpieczenia-${motyw.klucz}-${ETAP}.png`) });
-    await page.getByTestId('mvd-kreator-przekaznik-anuluj').click();
+    const katalogPrzekaznika = page.getByTestId('mvd-kreator-przekaznik-katalog');
+    await expect(katalogPrzekaznika.locator('option:not([value=""])').first()).toBeAttached({ timeout: 20000 });
+    const typ = await katalogPrzekaznika.locator('option:not([value=""])').first().getAttribute('value');
+    await katalogPrzekaznika.selectOption(typ!);
+    await page.getByTestId('mvd-kreator-przekaznik-zapisz').click();
     await expect(kreator).toHaveCount(0, { timeout: 20000 });
+    await expect
+      .poll(async () => ((await enm(request, seed.caseId)).bays ?? []).find((b) => b.ref_id === pole11.ref_id)?.protection_ref ?? null, {
+        timeout: 20000,
+      })
+      .not.toBeNull();
 
     // (b) „Bez odejścia” z Pola GPZ 2.1 → karta pola z wyróżnionym odejściem. Karta pola zajmuje
     // obszar roboczy zamiast kanwy — powrót do schematu ścieżką użytkownika: okruszek „Schemat”.

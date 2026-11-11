@@ -42,6 +42,7 @@ export type EnmGpz = {
     bay_role?: string;
     bus_ref?: string;
     terminal_bus_ref?: string | null;
+    protection_ref?: string | null;
   }>;
   shunt_capacitors?: Array<{ ref_id: string; bus_ref: string }>;
   buses?: Array<{ ref_id: string; name?: string; voltage_kv?: number }>;

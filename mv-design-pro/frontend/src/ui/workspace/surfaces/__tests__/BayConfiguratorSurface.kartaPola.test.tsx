@@ -10,6 +10,12 @@
  * {katalog: brak powiązania / szablon+rodzina znalezione / szablon spoza katalogu / rodzina
  * spoza katalogu / rodzina `requires_catalog` / rodzina `user_defined` / niezgodność rodzin /
  * błąd HTTP katalogu} × {zaciski: brak / wolny + przyłączony} × {edycja nazwy natywnym klikiem}.
+ *
+ * KD6 (karta KARTA-POLA-KD6): aparaty, zabezpieczenie i przekładniki pola pokazuje karta
+ * techniczna K6 (ta sama co inspektor) — z tych samych źródeł co model odczytu pola
+ * (`Bay.primary_devices`, a bez nich łączniki `Bay.equipment_refs`). Katalog aparatów i
+ * transformatorów K6 to wspólna, jednorazowa pamięć sesji (`useKatalogiKarty`); asercje
+ * „bez zapytań o katalog” dotyczą katalogu producentów pola (`useKatalogPola`).
  */
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -25,6 +31,14 @@ import type { WorkspaceSurfaceDescriptor } from '../../types';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 
 let licznikPrzypadku = 0;
+
+/** Zapytania o katalog producentów pola (szablony, rodziny, producenci) — `useKatalogPola`. */
+function zapytanoOKatalogPola(stub: ReturnType<typeof vi.fn>): boolean {
+  return stub.mock.calls.some(([u]) =>
+    ['/api/catalog/complete-bay-templates', '/api/catalog/switchgear-families', '/api/catalog/manufacturers']
+      .some((trasa) => String(u).startsWith(trasa)),
+  );
+}
 
 function surface(entityRef: string | null, payload: Record<string, unknown> = {}): WorkspaceSurfaceDescriptor {
   return {
@@ -47,6 +61,13 @@ function surface(entityRef: string | null, payload: Record<string, unknown> = {}
   };
 }
 
+/** Aparaty pola w migawce — ten sam zbiór, z którego backend składa model odczytu pola. */
+const URZADZENIA_POLA = [
+  { device_ref: 'cb-1', catalog_ref: 'cat:cb', symbol_ref: 'symbol:cb', kind: 'CB', placement: 'MIDSTREAM', is_controllable: true },
+  { device_ref: 'ds-1', catalog_ref: 'cat:ds', symbol_ref: 'symbol:ds', kind: 'DS', placement: 'UPSTREAM', is_controllable: true },
+];
+let urzadzeniaMigawki: unknown[] = [];
+
 function snapshot(ports: Port[] | null, napiecieSzynyKv: number | null = null): EnergyNetworkModel {
   return {
     header: { revision: 3 },
@@ -60,7 +81,7 @@ function snapshot(ports: Port[] | null, napiecieSzynyKv: number | null = null): 
       substation_ref: 'st-1', bus_ref: 'bus-1', equipment_refs: [],
       // Migawka NIE niesie aparatów — model pola składa je z łączników gałęzi po stronie
       // backendu. Karta czytająca migawkę zamiast modelu pola pokazałaby „brak aparatów".
-      primary_devices: [],
+      primary_devices: urzadzeniaMigawki,
       ports,
     }],
   } as unknown as EnergyNetworkModel;
@@ -227,19 +248,32 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
     render(<BayConfiguratorSurface surface={surface('NIE-ISTNIEJE')} />);
     expect(await screen.findByTestId('bay-card-missing')).toHaveTextContent('nie występuje w modelu');
     expect(screen.queryByTestId('bay-card-sections')).not.toBeInTheDocument();
-    expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/'))).toBe(false);
+    expect(zapytanoOKatalogPola(stub)).toBe(false);
   });
 
-  it('aparaty z modelu pola, nie z migawki (migawka ma puste primary_devices)', async () => {
-    podstawFetch({ pole: item(null, null) });
-    ustawModel();
-    render(<BayConfiguratorSurface surface={surface('bay-1')} />);
-    await waitFor(() => expect(screen.getByTestId('engineering-field-device_0')).toBeInTheDocument());
-    expect(wartosc('device_0')).toContain('Wyłącznik');
-    expect(wartosc('device_1')).toContain('Odłącznik');
-    // Rola z kanonu ról pól — nagłówek i schemat pola, nigdy kod roli.
-    expect(screen.queryByText('LINIA_OUT')).not.toBeInTheDocument();
-    expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
+  it('aparaty pola w tabeli K6 (typ, znamiona), raz — bez sekcji „Aparaty pierwotne” i bez miniatury schematu', async () => {
+    urzadzeniaMigawki = URZADZENIA_POLA;
+    try {
+      podstawFetch({ pole: item(null, null) });
+      ustawModel();
+      render(<BayConfiguratorSurface surface={surface('bay-1')} />);
+      const tabela = await screen.findByTestId('inspektor-karta-tabela-aparaty');
+      expect(tabela).toHaveTextContent('Wyłącznik');
+      expect(tabela).toHaveTextContent('Odłącznik');
+      expect(within(tabela).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(
+        expect.arrayContaining(['Aparat', 'Typ', 'Uᵣ', 'Iᵣ']),
+      );
+      // Jedna informacja w jednym miejscu: sekcje modelu odczytu niesione przez K6 nie wracają.
+      for (const sekcja of ['identyfikacja', 'aparaty_pierwotne', 'tor_pomiarowy', 'zabezpieczenie_pola']) {
+        expect(screen.queryByTestId(`engineering-section-${sekcja}`)).not.toBeInTheDocument();
+      }
+      expect(screen.queryByTestId('bay-svg-renderer')).not.toBeInTheDocument();
+      // Rola z kanonu ról pól — w nagłówku raz, nigdy kod roli.
+      expect(screen.queryByText('LINIA_OUT')).not.toBeInTheDocument();
+      expect(screen.getAllByText('Pole liniowe wyjściowe')).toHaveLength(1);
+    } finally {
+      urzadzeniaMigawki = [];
+    }
   });
 
   it('brak powiązania z katalogiem: zdanie, bez zapytań o katalog', async () => {
@@ -248,7 +282,7 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
     render(<BayConfiguratorSurface surface={surface('bay-1')} />);
     await waitFor(() => expect(screen.getByTestId('engineering-field-catalog_binding')).toBeInTheDocument());
     expect(wartosc('catalog_binding')).toContain('bez szablonu producenta');
-    expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/'))).toBe(false);
+    expect(zapytanoOKatalogPola(stub)).toBe(false);
   });
 
   it('szablon i rodzina z katalogu: nazwy, status źródła, liczby z rekordu katalogu', async () => {
@@ -333,24 +367,27 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
     expect(wartosc('port_1')).toContain('Wolny');
   });
 
-  it('zmiana nazwy pola natywnym klikiem wysyła operację domenową modelu', async () => {
+  it.each([
+    ['MODEL_EDIT', true],
+    ['RESULT_VIEW', false],
+  ] as const)('nazwa pola: tryb %s — wiersz „Nazwa” z „Zmień” obecny = %s (inaczej nazwa tylko w nagłówku)', async (tryb, obecny) => {
     podstawFetch({ pole: item(null, null) });
     ustawModel();
-    const operacja = vi.fn().mockResolvedValue(null);
-    useSnapshotStore.setState({ executeDomainOperation: operacja });
+    useAppStateStore.setState({ activeMode: tryb });
     const user = userEvent.setup();
     render(<BayConfiguratorSurface surface={surface('bay-1')} />);
-    const pole = await screen.findByTestId('engineering-field-name');
-    await user.click(within(pole).getByRole('button'));
-    const wejscie = within(pole).getByRole('textbox');
-    await user.clear(wejscie);
-    await user.type(wejscie, 'Pole L-7{Enter}');
-    await act(async () => undefined);
-    expect(operacja).toHaveBeenCalledWith(
-      useAppStateStore.getState().activeCaseId,
-      'update_element_parameters',
-      { element_ref: 'bay-1', parameters: { name: 'Pole L-7' } },
-    );
+    await screen.findByTestId('karta-pola-k6');
+    expect(screen.getAllByText('Pole liniowe 1')).toHaveLength(obecny ? 2 : 1);
+    if (!obecny) {
+      expect(screen.queryByTestId('inspektor-karta-zmien-nazwa')).not.toBeInTheDocument();
+      return;
+    }
+    await user.click(screen.getByTestId('inspektor-karta-zmien-nazwa'));
+    const formularz = useNetworkBuildStore.getState().activeSurface;
+    expect(formularz?.routeState.payload?.operation).toBe('update_element_parameters');
+    expect(formularz?.routeState.payload?.context).toEqual({
+      element_ref: 'bay_ref_1', field: 'name', value: 'Pole liniowe 1', source: 'karta_pola',
+    });
   });
   // Karta W5-C: wyposażenie pola SN — stan danych i dane przyjęte z modelu odczytu pola,
   // zapis natywnym klikiem przez operację `set_bay_equipment` magazynu. Iloczyn:
@@ -382,10 +419,12 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
       expect(screen.getByTestId('wyposazenie-pola-stan').getAttribute('data-stan')).toBe('PROPOZYCJA'),
     );
     expect(screen.getByTestId('wyposazenie-pola-dane-przyjete')).toHaveTextContent('Wyłącznik Q1');
-    expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/mv-apparatus-types'))).toBe(false);
+    // Katalog przekładników i szablonów pola edytor pobiera dopiero przy zmianie wyposażenia
+    // (katalog aparatów SN czyta karta K6 — wspólna pamięć sesji `useKatalogiKarty`).
+    expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/ct-types'))).toBe(false);
     await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
     await waitFor(() =>
-      expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/mv-apparatus-types'))).toBe(true),
+      expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/ct-types'))).toBe(true),
     );
     await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'wyczysc');
     await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
