@@ -25,6 +25,7 @@ import {
 import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
 import { jestPolemKodowym, nazwaWartosciKodowej, POLA_KODOWE_KARTY } from '../wartosciKodoweKarty';
 import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
+import { tekstZrodlowy } from '../../../test/tekstZWzorami';
 
 const fetchTypesByCategoryMock = vi.fn();
 const fetchPtpireeMock = vi.fn();
@@ -115,11 +116,13 @@ describe('Panel ogólny karty katalogu — każde pole schematu, brak jawny', ()
       BRAK_DANYCH_PL,
     );
     const jakosc = within(siatka).getByTestId('type-library-pole-card_field_status');
-    expect(jakosc).toHaveTextContent(`${ETYKIETY_POL_KARTY.ith_ka_1s}: oszacowane — wartość robocza`);
-    expect(jakosc).toHaveTextContent(
+    // Nazwy pól ze wzorem (`$I_{th}$`) składa KaTeX — porównanie po tekście źródłowym.
+    const zrodlo = tekstZrodlowy(jakosc);
+    expect(zrodlo).toContain(`${ETYKIETY_POL_KARTY.ith_ka_1s}: oszacowane — wartość robocza`);
+    expect(zrodlo).toContain(
       `${ETYKIETY_POL_KARTY.rct_ohm}: karta techniczna (źródło: karta producenta)`,
     );
-    expect(jakosc).toHaveTextContent(`${ETYKIETY_POL_KARTY.burden_va}: jakość nieokreślona`);
+    expect(zrodlo).toContain(`${ETYKIETY_POL_KARTY.burden_va}: jakość nieokreślona`);
     expect(jakosc.textContent ?? '').not.toMatch(/ESTIMATED|DATASHEET|NIEZNANA|field_name/);
     expect(siatka.textContent ?? '').not.toMatch(/\[object Object\]/);
   });

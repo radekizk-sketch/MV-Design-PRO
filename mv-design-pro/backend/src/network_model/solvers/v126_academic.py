@@ -522,6 +522,21 @@ SKLADNIKI_METODY_DETEKCJI: dict[str, tuple[str, ...]] = {
     "51N/50N": ("51N", "50N"),
 }
 
+#: Nazwy polskie metod i funkcji detekcji doziemień (każdy kod tabeli decyzyjnej i listy
+#: ``METODY_DETEKCJI_KOMPLET``; parytet przypina ``tests/application/analyses/test_v126_wzory.py``)
+#: — tekst kroku śladu nazywa funkcje słowami, nie kodami.
+METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL: dict[str, str] = {
+    "wattmetric": "watometryczna",
+    "admittance": "admitancyjna",
+    "transient_directional": "kierunkowa stanów przejściowych",
+    "fifth_harmonic": "piątej harmonicznej",
+    "51N+67N": "nadprądowa ziemnozwarciowa 51N z kierunkową 67N",
+    "51N/50N": "nadprądowa ziemnozwarciowa zwłoczna 51N i bezzwłoczna 50N",
+    "51N": "nadprądowa ziemnozwarciowa zwłoczna 51N",
+    "67N": "kierunkowa ziemnozwarciowa 67N",
+    "50N": "nadprądowa ziemnozwarciowa bezzwłoczna 50N",
+}
+
 #: Słownik funkcji detekcji doziemień przekaźnika, które projektant wskazuje w wyposażeniu
 #: (`relay_methods`): metody proste i funkcje składowe metod złożonych — jedno źródło dla
 #: formularza (`ui2/wyniki/akademickie/parametry.ts`) i nazw polskich (`v126_wzory`), parytet
@@ -2963,8 +2978,9 @@ class V126AcademicSolver:
             {"recommended_method": recommended, "required_functions": list(skladniki)},
             "Wybór metody jest decyzją logiczną — bez jednostek fizycznych.",
             result_pl=(
-                f"Metoda zalecana: {recommended}; funkcje wymagane w przekaźniku: "
-                f"{', '.join(skladniki)}"
+                f"Metoda zalecana: {METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL[recommended]}; funkcje "
+                "wymagane w przekaźniku: "
+                f"{', '.join(METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL[k] for k in skladniki)}"
             ),
         )
         u0_start = 5.0

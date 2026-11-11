@@ -120,14 +120,21 @@ KANALY_TRESCI: dict[str, str] = {
     "badge_pl": ETYKIETA,
     "basis_pl": ZDANIE,
     "bez_podstawy_pl": ZDANIE,
+    "brak_b0_pl": ZDANIE,
+    "brak_doziemienia_pl": ZDANIE,
+    "brak_ikss_pl": ZDANIE,
+    "brak_pl": ZDANIE,
+    "brak_podstawy_pl": ZDANIE,
     "braki_ncrfg_pl": ZDANIE,
     "braki_pl": ZDANIE,
+    "c_max_zrodlo_pl": ETYKIETA,
     "canonical_message_pl": ZDANIE,
     "capability_source_pl": ETYKIETA,
     "catalog_policy_pl": ZDANIE,
     "category_label_pl": ETYKIETA,
     "certyfikat_brakujacy_pl": ZDANIE,
     "certyfikat_odrzucony_pl": ZDANIE,
+    "charakter_pl": ETYKIETA,
     "chroniony_obiekt_pl": ETYKIETA,
     "claim_kind_pl": ETYKIETA,
     "conditional_pl": ZDANIE,
@@ -144,6 +151,7 @@ KANALY_TRESCI: dict[str, str] = {
     "display_pl": ETYKIETA,
     "domena_pl": ETYKIETA,
     "dzialanie_pl": ETYKIETA,
+    "earth_fault_factor_zrodlo_pl": ETYKIETA,
     "element_pl": ETYKIETA,
     "element_type_label_pl": ETYKIETA,
     "elementy_pl": ZDANIE,
@@ -171,6 +179,7 @@ KANALY_TRESCI: dict[str, str] = {
     "krzywa_pl": ETYKIETA,
     "label_pl": ETYKIETA,
     "library_name_pl": ETYKIETA,
+    "limit_pl": ETYKIETA,
     "limitation_pl": ZDANIE,
     "loading_powod_braku_pl": ZDANIE,
     "mechanizm_pl": ZDANIE,
@@ -186,6 +195,7 @@ KANALY_TRESCI: dict[str, str] = {
     "nazwa_operatora_pl": ETYKIETA,
     "nazwa_pl": ETYKIETA,
     "nazwa_punktu_pl": ETYKIETA,
+    "nazwa_stacji_pl": ETYKIETA,
     "nazwa_urzadzenia_pl": ETYKIETA,
     "new_value_pl": ETYKIETA,
     "no_module_reason_pl": ZDANIE,
@@ -194,6 +204,7 @@ KANALY_TRESCI: dict[str, str] = {
     "note_pl": ZDANIE,
     "notes_pl": ZDANIE,
     "odeslanie_pl": ETYKIETA,
+    "odmowa_pl": ZDANIE,
     "odniesienie_pl": ETYKIETA,
     "ograniczenie_pl": ZDANIE,
     "okres_obserwacji_pl": ETYKIETA,
@@ -205,6 +216,7 @@ KANALY_TRESCI: dict[str, str] = {
     "opis_pl": ZDANIE,
     "opis_przedmiotu_pl": ZDANIE,
     "opis_typu_pl": ZDANIE,
+    "opis_uziemienia_pl": ZDANIE,
     "opis_zrodla_pl": ZDANIE,
     "ostrzezenia": ZDANIE,
     "over_limit_label_pl": ETYKIETA,
@@ -219,6 +231,7 @@ KANALY_TRESCI: dict[str, str] = {
     "podstawa_t_pomiaru_pl": ZDANIE,
     "podstawa_u_min_pl": ZDANIE,
     "podstawa_zakresow_pl": ZDANIE,
+    "podwojne_doziemienie_pl": ZDANIE,
     "pokrycie_pl": ZDANIE,
     "pokrycie_programu_pl": ZDANIE,
     "pole_pl": ETYKIETA,
@@ -235,12 +248,15 @@ KANALY_TRESCI: dict[str, str] = {
     "powody_pl": ZDANIE,
     "poza_zakresem_pl": ZDANIE,
     "pozycja_pl": ETYKIETA,
+    "praktyka_pl": ZDANIE,
     "procedure_basis_pl": ZDANIE,
     "profile_name_pl": ETYKIETA,
     "proof_status_pl": ETYKIETA,
     "provenance_caveat_pl": ZDANIE,
     "provenance_label_pl": ETYKIETA,
+    "przedmiot_pl": ETYKIETA,
     "przyczyna": ZDANIE,
+    "przyczyna_braku_pl": ZDANIE,
     "przyczyna_pl": ZDANIE,
     "przyjete_pl": ZDANIE,
     "punkt_krytyczny_pl": ZDANIE,
@@ -268,6 +284,7 @@ KANALY_TRESCI: dict[str, str] = {
     "rola_pl": ETYKIETA,
     "section_label_pl": ETYKIETA,
     "sekcja_audytowa_pl": ZDANIE,
+    "settings_podstawa_pl": ZDANIE,
     "skrot_pl": ETYKIETA,
     "skutek_pl": ETYKIETA,
     "slad_pl": ZDANIE,
@@ -290,6 +307,7 @@ KANALY_TRESCI: dict[str, str] = {
     "title_pl": ETYKIETA,
     "tozsamosc_pl": ETYKIETA,
     "tresc_pl": ZDANIE,
+    "tryb_pl": ETYKIETA,
     "typ_nazwa_pl": ETYKIETA,
     "unit_check_pl": ETYKIETA,
     "unit_name_pl": ETYKIETA,
@@ -326,9 +344,11 @@ KANALY_TRESCI: dict[str, str] = {
     "wzor_opis_pl": ZDANIE,
     "z0_missing_reason_pl": ZDANIE,
     "zakres_pl": ETYKIETA,
+    "zakres_sieci_pl": ZDANIE,
     "zakres_stosowalnosci_pl": ZDANIE,
     "zalozenia_pl": ZDANIE,
     "zalozenie_pl": ZDANIE,
+    "zastrzezenia_pl": ZDANIE,
     "zawartosc_pl": ETYKIETA,
     "zdanie_goly_aparat_pl": ZDANIE,
     "zdanie_kombinacja_pl": ZDANIE,
@@ -421,6 +441,13 @@ MODULY_POZA_KLASA: dict[str, tuple[str, str]] = {
 TOKENY_FORMATU_DANYCH: dict[str, str] = {
     "application/xlsx_import/importer.py:zaczep_min": "nagłówek kolumny arkusza transformatorów",
     "application/xlsx_import/importer.py:zaczep_max": "nagłówek kolumny arkusza transformatorów",
+    # Nagłówki kolumn arkusza źródeł cytowane w odwróconych apostrofach (zapis cytatu tokenu
+    # formatu wg strażnika prozy symboli — goły „Sk_MVA” byłby symbolem spłaszczonym).
+    "application/xlsx_import/importer.py:`Sk_MVA`": "nagłówek kolumny arkusza źródeł",
+    "application/xlsx_import/importer.py:`Ik_kA`": "nagłówek kolumny arkusza źródeł",
+    "application/xlsx_import/importer.py:`Sk_min_MVA`": "nagłówek kolumny arkusza źródeł",
+    "application/xlsx_import/importer.py:`Ik_min_kA`": "nagłówek kolumny arkusza źródeł",
+    "application/xlsx_import/importer.py:`RX_min`": "nagłówek kolumny arkusza źródeł",
     "application/xlsx_import/importer.py:PLUS_6": (
         "wartość słownika tolerancji nN w arkuszu (tabela 1 IEC 60909-0) — projektant ją wpisuje"
     ),
@@ -960,7 +987,7 @@ _RODZAJE_OBIEKTOW = re.compile(
     r"|dławik|dlawik|turbin|falownik|przekształtnik|przeksztaltnik|składni|skladni|maszyn"
     r"|regulator|stabilizator|jednostk|odejści|odejsci|konfiguracj|migawk|operacj|przewód"
     r"|przewod|rcd$|der$|oze$|osd$|operator|wariant|grup|plik|warstw|zestaw|wynik|rozpływ"
-    r"|rozplyw|ścieżk|sciezk|trasa|tras|miejsc|zasob|zasób)",
+    r"|rozplyw|ścieżk|sciezk|trasa|tras|miejsc|zasob|zasób|silni)",
     re.IGNORECASE,
 )
 #: Słowa kotwiczące identyfikator (``o ID``, ``identyfikatorem``) — pomijane przy szukaniu
@@ -1267,6 +1294,23 @@ KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
         "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`, "
         "oznaczenie normowe, nie kod"
     ),
+    "application/eligibility_service.py:sekcja.odmowy": (
+        "zdania odmów sekcji uziemienia `SekcjaUziemienia.odmowy` (`enm/uziemienie_sekcji.py`): "
+        "`odmowa_pl` punktów — kanał ZDANIE w zakresie strażnika"
+    ),
+    "enm/uziemienie_sekcji.py:(nazwa_pl for _, nazwa_pl in self.galezie_bez_b0)": (
+        "nazwy odcinków (`nazwa_elementu`) z par (ref, nazwa) zbieranych w `_b0_sieci` — pole "
+        "obcego obiektu, którego elementów składnia nie rozstrzyga"
+    ),
+    "enm/validator.py:list(czesci)": (
+        "polskie nazwy części zespołu uziemiającego z `czesci_zespolu_bez_katalogu` "
+        "(`enm/uziemienie_sekcji.py`: „transformator uziemiający”, „dławik gaszący”, "
+        "„rezystor uziemiający”) — wynik funkcji obcego modułu"
+    ),
+    "solver_input/v126_contracts.py:sorted(nazwy)": (
+        "nazwy elementów (`nazwa_elementu`) zebrane przez `galaz` rejestru wartości roboczych "
+        "niezawodności — parametr `nazwa` metody, której wywołania składnia nie rozstrzyga"
+    ),
     "network_model/solvers/ncrfg_ptpiree/stosowalnosc.py:zdolnosci": (
         "polskie nazwy zdolności dodatkowych z `_wymagane_zdolnosci_dodatkowe` („praca "
         "wyspowa”, „rozruch autonomiczny”, „tłumienie oscylacji mocy”) — wynik funkcji, której "
@@ -1382,6 +1426,9 @@ KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
 _PRZEKSZTALCENIA_TEKSTU: frozenset[str] = frozenset(
     {"replace", "strip", "rstrip", "lstrip", "lower", "upper", "capitalize"}
 )
+#: Metody tekstu ucinające początek albo koniec (``nazwa_pl.removesuffix(f" ({punkt})")``) —
+#: wynik jest fragmentem elementu, więc kodem być nie może, jakikolwiek jest argument.
+_UCIECIA_TEKSTU: frozenset[str] = frozenset({"removesuffix", "removeprefix"})
 #: Wywołania zwracające tę samą kolekcję (porządek, kopia, zbiór).
 _OPAKOWANIA_KOLEKCJI: frozenset[str] = frozenset(
     {"sorted", "list", "tuple", "set", "frozenset", "reversed", "fromkeys", "w_cudzyslowie"}
@@ -1390,7 +1437,7 @@ _OPAKOWANIA_KOLEKCJI: frozenset[str] = frozenset(
 _DOKLADAJACE_ELEMENT: frozenset[str] = frozenset({"append", "add", "appendleft"})
 _DOKLADAJACE_KOLEKCJE: frozenset[str] = frozenset({"extend", "update"})
 #: Mapa tekstów po polsku — jej wartości są tekstem dla projektanta (konwencja nazw).
-_MAPA_TEKSTOW = re.compile(r"^(?:NAZWY_\w+|ETYKIETA_PL_\w+|ETYKIETY_\w+|OPISY_\w+|\w+_PL)$")
+_MAPA_TEKSTOW = re.compile(r"^_?(?:NAZWY_\w+|ETYKIETA_PL_\w+|ETYKIETY_\w+|OPISY_\w+|\w+_PL)$")
 #: Samodzielny element pisany wielkimi literami — kod wartości (``FINISHED``, ``PF``),
 #: chyba że jest skrótem inżynierskim albo symbolem wielkości.
 _ELEMENT_WIELKIMI = re.compile(r"^[A-Z][A-Z0-9]+$")
@@ -1997,6 +2044,8 @@ class _Sklejenia:
             ):
                 # Przekształcenie tekstu stałymi (``t.replace(".", ",")``, ``t.rstrip("0")``)
                 # nie tworzy kodu — element jest tym, co przekształcane.
+                return dalej(wyrazenie.func.value)
+            if isinstance(wyrazenie.func, ast.Attribute) and wyrazenie.func.attr in _UCIECIA_TEKSTU:
                 return dalej(wyrazenie.func.value)
             if isinstance(wyrazenie.func, ast.Name) and not _funkcja_nazywajaca(wyrazenie.func.id):
                 # Element z funkcji ``src``: każda wartość jej ``return`` jest elementem.
@@ -3122,9 +3171,18 @@ def test_petla_nastaw_ma_etykiety() -> None:
 
 
 def test_symbole_wielkosci_nie_sa_kluczami() -> None:
-    """Symbole z indeksem dolnym (lista z podstawą normową) przechodzą; klucz pola nie."""
-    assert kody_w_tekscie("I_B ≤ I_n ≤ I_z; t_b = 0,1 s; c_max; R_A·I_Δn ≤ 50 V; u_k") == []
+    """Symbol wielkości z indeksem dolnym w segmencie wzoru LaTeX przechodzi (kanon: symbol
+    słowami albo wzorem renderowanym przez KaTeX, decyzja architekta 2026-10-30 pkt 3); klucz
+    pola — także obok wzoru i w zapisie bez segmentu — nie."""
+    assert (
+        kody_w_tekscie(
+            r"$I_B \le I_n \le I_z$; $t_b$ = 0,1 s; $c_{max}$; $R_A I_{\Delta n} \le 50$ V; $u_k$"
+        )
+        == []
+    )
     assert kody_w_tekscie("Pole in_a musi być dodatnie") == ["in_a"]
+    assert kody_w_tekscie("Wzór $I_n$ i pole in_a") == ["in_a"]
+    assert kody_w_tekscie("napięcie zwarcia u_k bez wzoru") == ["u_k"]
 
 
 def test_strazenik_wykrywa_wstrzykniety_klucz_w_kazdym_kanale(tmp_path: Path) -> None:
@@ -3158,6 +3216,48 @@ def test_strazenik_wykrywa_wstrzykniety_klucz_w_kazdym_kanale(tmp_path: Path) ->
         n.linia > len(wzor.read_text(encoding="utf-8").splitlines())
         for n in naruszenia_klasy(sciezka, kopia)
     )
+
+
+@pytest.mark.parametrize(
+    ("sciezka", "przed", "po", "powod"),
+    [
+        # Wzór LaTeX w argumencie ``symbol_latex`` przechodzi; ten sam zapis w treści — nie.
+        (
+            "network_model/solvers/v126_academic.py",
+            'opis_pl=(\n                "sieć SN skompensowana, dławik gaszący w tej stacji — "',
+            'opis_pl=(\n                "sieć SN skompensowana I_L dławik gaszący w tej stacji — "',
+            "kod I_L",
+        ),
+        # Element z PRYWATNEJ mapy nazw (``_NAZWY_…``) przechodzi; z mapy spoza konwencji — nie.
+        (
+            "network_model/solvers/v126_academic.py",
+            '", ".join(_NAZWY_PARAMETROW_TRV[k] for k in brak_trv)',
+            '", ".join(_KLUCZE_TRV[k] for k in brak_trv)',
+            "sklejenie (_KLUCZE_TRV[k] for k in brak_trv)",
+        ),
+        # Nazwa ucięta ``removesuffix`` przechodzi; ucięty kod — nie.
+        (
+            "enm/dane_przyjete_galezi.py",
+            "d.nazwa_pl.removesuffix(",
+            "d.kod.removesuffix(",
+            "sklejenie (d.kod.removesuffix(",
+        ),
+    ],
+)
+def test_wzor_mapa_prywatna_i_uciecie_tekstu_w_kopii_realnego_pliku(
+    tmp_path: Path, sciezka: str, przed: str, po: str, powod: str
+) -> None:
+    """Iloczyn cech scalenia kart BKR i ZU: kopia realnego pliku jest czysta, a jedna iniekcja
+    klasy (klucz obok wzoru, mapa bez konwencji nazw, ucięty kod) czerwieni strażnika."""
+    tresc = (SRC / sciezka).read_text(encoding="utf-8")
+    assert tresc.count(przed) == 1, przed
+    czysta = tmp_path / "czysta.py"
+    czysta.write_text(tresc, encoding="utf-8")
+    assert naruszenia_klasy(sciezka, czysta) == []
+    brudna = tmp_path / "brudna.py"
+    brudna.write_text(tresc.replace(przed, po), encoding="utf-8")
+    powody = [n.powod for n in naruszenia_klasy(sciezka, brudna)]
+    assert any(p.startswith(powod) for p in powody), powody
 
 
 def test_strazenik_modeluje_zamiane_kluczy_odmow_dynamiki(tmp_path: Path) -> None:
@@ -3698,6 +3798,7 @@ def test_odmowa_dynamiki_nazywa_rodzaj_obiektu_slowami() -> None:
         ("Generator '⟨⟩' (", True),
         ("Wykryto model w projekcie ", True),
         ("Usunięcie zwarcia w węźle ", True),
+        ("Rozruch silnika ", True),
         ("Run nie znaleziony: ", False),
         ("Kopia zapasowa nie znaleziona: project=", False),
         ("", False),

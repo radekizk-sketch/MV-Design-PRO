@@ -338,7 +338,11 @@ function pozycjePrzewoduN(wyniki: WynikiRozplywuNiesymetrycznego): PozycjaPodsum
       { etykieta: T.rnMaxUNPe, wartosc: fmtLubKreska(s.max_u_n_pe_v, 1), jednostka: T.jednV },
       {
         etykieta: T.rnMaxUNPeSzyna,
-        wartosc: szyna ? szyna.name || szyna.element_id : s.max_u_n_pe_bus_id ?? T.kreska,
+        wartosc: szyna
+          ? nazwaObiektuPl(szyna.name, 'szyna')
+          : s.max_u_n_pe_bus_id
+            ? nazwaObiektuPl(null, 'szyna', { spozaModelu: true })
+            : T.kreska,
       },
     );
   }
@@ -348,7 +352,11 @@ function pozycjePrzewoduN(wyniki: WynikiRozplywuNiesymetrycznego): PozycjaPodsum
       { etykieta: T.rnMaxPradN, wartosc: fmtLubKreska(s.max_prad_n_a, 1), jednostka: T.jednA },
       {
         etykieta: T.rnMaxPradNGalaz,
-        wartosc: galaz ? galaz.name || galaz.element_id : s.max_prad_n_branch_id ?? T.kreska,
+        wartosc: galaz
+          ? nazwaObiektuPl(galaz.name, 'element')
+          : s.max_prad_n_branch_id
+            ? nazwaObiektuPl(null, 'element', { spozaModelu: true })
+            : T.kreska,
       },
     );
   }

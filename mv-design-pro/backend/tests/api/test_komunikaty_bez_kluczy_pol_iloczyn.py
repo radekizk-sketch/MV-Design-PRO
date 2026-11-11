@@ -137,25 +137,25 @@ _ODMOWY_API = [
     Przypadek(
         "odmowa_api",
         "sk3_mva",
-        _stala("Sk″"),
+        _stala("moc zwarciowa sieci zasilającej"),
         lambda k: _podglad(k, short_circuit_mode="SHORT_CIRCUIT_POWER", rx_ratio=0.1),
     ),
     Przypadek(
         "odmowa_api",
         "rx_ratio",
-        _stala("stosunek R/X"),
+        _stala("stosunek rezystancji do reaktancji"),
         lambda k: _podglad(k, short_circuit_mode="SHORT_CIRCUIT_POWER", sk3_mva=250.0),
     ),
     Przypadek(
         "odmowa_api",
         "r_ohm",
-        _stala("rezystancja R"),
+        _stala("rezystancja sieci zasilającej"),
         lambda k: _podglad(k, short_circuit_mode="IMPEDANCE", x_ohm=1.0),
     ),
     Przypadek(
         "odmowa_api",
         "x_ohm",
-        _stala("reaktancja X"),
+        _stala("reaktancja sieci zasilającej"),
         lambda k: _podglad(k, short_circuit_mode="IMPEDANCE", r_ohm=0.1),
     ),
     Przypadek(
@@ -167,7 +167,7 @@ _ODMOWY_API = [
     Przypadek(
         "odmowa_api",
         "r0_ohm",
-        _stala("rezystancji R0"),
+        _stala("rezystancji zerowej"),
         lambda k: _podglad(k, sk3_mva=250.0, rx_ratio=0.1, zero_sequence_enabled=True, x0_ohm=2.0),
     ),
     Przypadek(
@@ -323,7 +323,7 @@ _SCENARIUSZE = [
     Przypadek(
         "scenariusz_zwarciowy",
         "thermal_time_seconds",
-        _stala("Czas trwania zwarcia t_k"),
+        _stala("Czas trwania zwarcia"),
         lambda k: _scenariusz(
             k,
             {"element_ref": "bus-1", "location_type": "BUS", "position": None},
@@ -497,22 +497,25 @@ _RDZEN = [
     Przypadek(
         "rdzen_obliczeniowy",
         "ir_a",
-        _stala("Nastawa długozwłoczna I_r"),
+        _stala("Prąd nastawczy członu długozwłocznego"),
         lambda _k: _mccb(ir_a=0.0),
     ),
     Przypadek(
-        "rdzen_obliczeniowy", "tr_s", _stala("Zwłoka długozwłoczna t_r"), lambda _k: _mccb(tr_s=0.0)
+        "rdzen_obliczeniowy",
+        "tr_s",
+        _stala("Czas zwłoki członu długozwłocznego"),
+        lambda _k: _mccb(tr_s=0.0),
     ),
     Przypadek(
         "rdzen_obliczeniowy",
         "tsd_s",
-        _stala("bez odpowiadającej zwłoki t_sd"),
+        _stala("bez odpowiadającego czasu zwłoki"),
         lambda _k: _mccb(isd_a=400.0),
     ),
     Przypadek(
         "rdzen_obliczeniowy",
         "in_a",
-        _stala("Prąd znamionowy I_n"),
+        _stala("Prąd znamionowy"),
         lambda _k: _krzywa_mcb(in_a=0.0),
     ),
     Przypadek(
@@ -548,7 +551,7 @@ _RDZEN = [
     Przypadek(
         "rdzen_obliczeniowy",
         "x0_ohm",
-        _stala("reaktancji X0"),
+        _stala("reaktancji zerowej"),
         lambda _k: _podglad_solvera(
             sk3_mva=250.0, rx_ratio=0.1, zero_sequence_enabled=True, r0_ohm=0.5, x0_ohm=0.0
         ),
@@ -556,7 +559,7 @@ _RDZEN = [
     Przypadek(
         "rdzen_obliczeniowy",
         "z0_z1_ratio",
-        _stala("Stosunek Z0/Z1"),
+        _stala("Stosunek impedancji składowej zerowej do zgodnej"),
         lambda _k: _podglad_solvera(
             sk3_mva=250.0, rx_ratio=0.1, zero_sequence_enabled=True, z0_z1_ratio=0.0
         ),
@@ -576,7 +579,7 @@ _RDZEN = [
     Przypadek(
         "rdzen_obliczeniowy",
         "uk_percent",
-        _stala("napięcie zwarcia u_k"),
+        _stala("napięcie zwarcia"),
         lambda _k: _impedancja_transformatora(uk_percent=0.0),
     ),
     Przypadek(
@@ -660,21 +663,31 @@ def _aparat_nn(**pola: object) -> str:
 
 
 _KATALOG = [
-    Przypadek("katalog_typow", "in_a", _stala("prąd znamionowy I_n"), lambda _k: _rcd(in_a=0.0)),
+    Przypadek("katalog_typow", "in_a", _stala("prąd znamionowy [A]"), lambda _k: _rcd(in_a=0.0)),
     Przypadek(
         "katalog_typow",
         "i_delta_n_a",
-        _stala("znamionowy prąd różnicowy I_Δn"),
+        _stala("znamionowy prąd różnicowy [A]"),
         lambda _k: _rcd(i_delta_n_a=0.0),
     ),
-    Przypadek("katalog_typow", "t_a_s", _stala("czas zadziałania t_a"), lambda _k: _rcd(t_a_s=0.0)),
+    Przypadek(
+        "katalog_typow",
+        "t_a_s",
+        _stala("czas zadziałania przy znamionowym prądzie różnicowym"),
+        lambda _k: _rcd(t_a_s=0.0),
+    ),
     Przypadek(
         "katalog_typow",
         "capacity_kwh",
         _stala("pojemność magazynu energii"),
         lambda _k: _magazyn(capacity_kwh=0.0),
     ),
-    Przypadek("katalog_typow", "c_rate", _stala("współczynnik C"), lambda _k: _magazyn(c_rate=0.0)),
+    Przypadek(
+        "katalog_typow",
+        "c_rate",
+        _stala("krotność prądu ładowania magazynu"),
+        lambda _k: _magazyn(c_rate=0.0),
+    ),
     Przypadek(
         "katalog_typow",
         "nominal_voltage_dc_v",
@@ -684,19 +697,19 @@ _KATALOG = [
     Przypadek(
         "katalog_typow",
         "pq_curve",
-        _stala("rosnąco według mocy czynnej P"),
+        _stala("rosnąco po mocy czynnej"),
         lambda _k: _przeksztaltnik(pq_curve=((0.5, -0.1, 0.1), (0.2, -0.1, 0.1))),
     ),
     Przypadek(
         "katalog_typow",
         "q_min_mvar",
-        _stala("najmniejsza moc bierna Q"),
+        _stala("mocy biernej minimalnej"),
         lambda _k: _przeksztaltnik(pq_curve=((0.5, 0.2, 0.1),)),
     ),
     Przypadek(
         "katalog_typow",
         "ir_range",
-        _stala("nastawy długozwłocznej I_r"),
+        _stala("nastawy prądu członu długozwłocznego"),
         lambda _k: _aparat_nn(ir_range=(200.0, 100.0)),
     ),
 ]

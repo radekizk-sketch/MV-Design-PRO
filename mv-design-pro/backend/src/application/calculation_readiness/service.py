@@ -236,7 +236,7 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     for gen in enm.generators:
         if _generator_q_mvar_jawne(gen) is None:
             missing.append(
-                f"Moc bierna generatora '{nazwa_elementu(gen, 'generators')}' (kod 'generator.q_missing')"
+                f"Moc bierna generatora '{nazwa_elementu(gen, 'generators')}' (kod gotowości: generator.q_missing)"
             )
             blockers.append(gen.ref_id)
     # D6: falownik PV bez trybu sterowania (control_mode) => BLOCKER
@@ -385,9 +385,10 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     ]
     nota_min = (
         (
-            f" Scenariusz MIN: {len(bez_danych_min)} źródło(-a) bez minimalnej mocy zwarciowej i minimalnego prądu zwarciowego "
-            f"({', '.join(bez_danych_min)}) — impedancja sieci zasilającej z danych maksymalnych (kod 'source.sk_min_missing', "
-            "założenie niekonserwatywne dla czułości zabezpieczeń)."
+            " Scenariusz MIN: źródła bez minimalnej mocy zwarciowej i minimalnego prądu "
+            f"zwarciowego ({len(bez_danych_min)}: {', '.join(bez_danych_min)}) — impedancja sieci "
+            "zasilającej przyjęta z danych scenariusza MAX (założenie niekonserwatywne dla "
+            "czułości zabezpieczeń)."
         )
         if bez_danych_min
         else ""

@@ -149,7 +149,7 @@ export const OPISY_BRAKOW_SSCI: Readonly<Record<string, string>> = {
   current_loop_bandwidth_hz: 'Pole karty przekształtnika: pasmo pętli prądowej.',
   pll_bandwidth_hz: 'Pole karty przekształtnika: pasmo pętli synchronizacji fazowej (PLL).',
   filter_l_pu: 'Pole karty przekształtnika: indukcyjność filtra wyjściowego.',
-  'dane niekompletne': 'Tablice impedancji Z_grid(f), Z_conv(f) i L(f) — solver ich nie zwrócił (dane niekompletne).',
+  'dane niekompletne': 'Tablice impedancji sieci, impedancji przekształtnika i wzmocnienia pętli — solver ich nie zwrócił (dane niekompletne).',
 };
 
 /** Opis braku SSCI — nigdy kod maszynowy (kod spoza słownika: zdanie uczciwe). */

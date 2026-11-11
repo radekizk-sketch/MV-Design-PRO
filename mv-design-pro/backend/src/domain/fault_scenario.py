@@ -223,9 +223,9 @@ class ShortCircuitConfig:
         """
         if "c_factor" in data:
             raise FaultScenarioValidationError(
-                "Klucz `c_factor` scenariusza został usunięty — współczynnik c wynika ze "
-                "scenariusza MAX/MIN (IEC 60909-0 tab. 1 per węzeł) albo z nadpisania "
-                "z uzasadnieniem (pole `nadpisanie_c`)."
+                "Płaska liczba współczynnika c w scenariuszu nie jest przyjmowana — "
+                "współczynnik c wynika ze scenariusza MAX/MIN (IEC 60909-0 tab. 1 dla każdego "
+                "węzła) albo z nadpisania c podanego z uzasadnieniem."
             )
         if "scenariusz" not in data:
             raise FaultScenarioValidationError(
@@ -449,12 +449,12 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
 
     if scenario.fault_mode == FaultMode.IMPEDANCE and scenario.fault_impedance is None:
         raise FaultScenarioValidationError(
-            "Zwarcie przez impedancję wymaga jawnej impedancji przejścia (R_f, X_f)"
+            "Zwarcie przez impedancję wymaga jawnej impedancji przejścia (rezystancji i reaktancji przejścia)"
         )
 
     if scenario.config.thermal_time_seconds <= 0:
         raise FaultScenarioValidationError(
-            "Czas trwania zwarcia t_k (do oceny cieplnej) musi być > 0 s, otrzymano: "
+            "Czas trwania zwarcia (do oceny cieplnej) musi być dodatni [s], otrzymano: "
             f"{scenario.config.thermal_time_seconds}"
         )
 

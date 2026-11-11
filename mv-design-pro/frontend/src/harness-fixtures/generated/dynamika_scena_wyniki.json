@@ -1345,7 +1345,7 @@
     "odcisk_punktu_pracy": "d51a578a2b194abe014ec7d2c0a1d189a61ec3bcee1cc1211d911ac0470d1a95",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "20f708846687817ffee9823ddd8a35634c33ccf6e39aaac2e116d2dc80b2b8be",
+    "odcisk_implementacji": "a69208450ac1a178c0cf57e2b008687a0963decc42c539f14ac1953f8280ca26",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -3777,7 +3777,7 @@
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
       "input_hash": "8b12f6fe970a833cadbf1f24e724e5526369143746b5b124e3fd6f98274c39c4",
-      "result_hash": "18542560f6e67de07749987293fcc8252de6f5fd6650e2a00fff61b7ec1df448",
+      "result_hash": "68a721c9d7dccd91922d7a0c21ae726c88e364576aaa6babba6636a8c0de08de",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

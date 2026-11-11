@@ -864,7 +864,7 @@ def _liczba(wartosc: float) -> str:
 
 def _klasyfikacja(progi: _ProgiKlas, p_max_kw: float, napiecie_kv: float) -> KlasyfikacjaModulu:
     for nazwa, wartosc in (
-        ("moc maksymalna P_max [kW]", p_max_kw),
+        ("moc maksymalna [kW]", p_max_kw),
         ("napięcie przyłączenia [kV]", napiecie_kv),
     ):
         if not math.isfinite(wartosc) or wartosc < 0.0:

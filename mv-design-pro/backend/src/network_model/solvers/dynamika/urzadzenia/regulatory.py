@@ -293,9 +293,9 @@ def zbuduj_regulator_obrotow(
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
             f"Regulator obrotów {wariant!r} wymaga parametrów, których kontrakt nie niesie "
-            "(turbina wodna: czas rozruchu wody Tw, wzmocnienie At, przepływ jałowy q_NL, "
-            "serwomotor kierownicy Tg/Tr/Tf, ograniczenie prędkości serwomotoru, tłumienie "
-            f"Dturb). Warianty, które da się złożyć: "
+            "(turbina wodna: czas rozruchu wody, wzmocnienie turbiny, przepływ jałowy, "
+            "stałe czasowe i ograniczenie prędkości serwomotoru kierownicy, tłumienie "
+            f"turbiny). Warianty, które da się złożyć: "
             f"{_lista_wariantow(WARIANTY_TURBINY_ZLOZALNE)}",
             wariant=wariant,
             zlozalne=WARIANTY_TURBINY_ZLOZALNE,

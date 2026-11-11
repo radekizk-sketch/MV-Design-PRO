@@ -28,7 +28,7 @@
  */
 
 import type { EnergyNetworkModel, GroundingConfig, ZespolUziemiajacy } from '../../../types/enm';
-import { miejsceWKolekcji, nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
+import { miejsceWKolekcji, nazwaObiektuPl, nazwaZRodzajemPl } from '../../../ui/shared/nazwaObiektu';
 import type {
   DoziemienieSieci,
   ExtendedTrace,
@@ -314,7 +314,7 @@ function opisZespolu(zespol: ZespolUziemiajacy): string {
 
 function wpisZespolu(zespol: ZespolUziemiajacy): UziemienieWpis {
   return {
-    element: zespol.name || zespol.ref_id,
+    element: nazwaZRodzajemPl(zespol.name, 'Zespół uziemiający'),
     strona: T.uziemienieZespol,
     opis: opisZespolu(zespol),
     rOhm: zespol.rezystor?.r_ohm ?? null,

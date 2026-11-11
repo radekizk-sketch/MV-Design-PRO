@@ -341,7 +341,7 @@ def dane_sieci_it(
             kod=KOD_BRAK_POJEMNOSCI,
             reason_pl=(
                 "Prąd pierwszego zwarcia doziemnego układu IT płynie przez pojemności doziemne "
-                "sieci — brak susceptancji zerowej b_0 (pojemności doziemnej) na kilometr: "
+                "sieci — brak jednostkowej susceptancji zerowej (pojemności doziemnej): "
                 f"{'odcinki ' + ', '.join(braki) if braki else 'brak odcinków sieci nN'}. "
                 "Uzupełnij pojemność doziemną odcinków (dana z karty kabla); pojemność nie jest "
                 "zgadywana."

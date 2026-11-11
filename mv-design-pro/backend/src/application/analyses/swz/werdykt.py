@@ -651,7 +651,7 @@ def ocen_swz(
                     f"Rodzaj aparatu „{nazwa_typu_aparatu_swz_pl(aparat.typ)}” nieobsłużony "
                     "w werdykcie samoczynnego wyłączenia zasilania (obsługiwane: "
                     f"{', '.join(NAZWY_TYPOW_APARATU_SWZ_PL[t] for t in _TYPY_APARATU_DOZWOLONE)}"
-                    ") — brak modelu prądu zadziałania Ia, nie fabrykacja."
+                    ") — brak modelu prądu zapewniającego samoczynne wyłączenie, nie fabrykacja."
                 ),
                 ik1_min_a=ik1_min_a,
                 ia_wymagane_a=None,

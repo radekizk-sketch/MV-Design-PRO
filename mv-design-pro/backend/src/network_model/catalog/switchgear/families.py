@@ -187,7 +187,8 @@ ELEKTROMETAL__E2ALPHA = SwitchgearFamily(
         "powietrzna, pojedynczy system szyn. Napięcia 12/17.5/24 kV, prąd "
         "znamionowy 630-2000 A (szyna do 2500 A), krótkotrwały do 31.5 kA "
         "(12/17.5 kV) lub 25 kA (24 kV). Klasy LSC2B + PM + AFLR + IP4X/IP54. "
-        "Konstrukcja z blachy aluminiowo-cynkowej 2-3 mm. Status repo_verified."
+        "Konstrukcja z blachy aluminiowo-cynkowej 2-3 mm. Stan źródła: weryfikacja na danych "
+        "publicznych."
     ),
 )
 

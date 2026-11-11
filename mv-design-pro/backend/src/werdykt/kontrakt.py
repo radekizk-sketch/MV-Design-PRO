@@ -610,7 +610,8 @@ class Niepewnosc(_Zamrozony):
             if self.wartosc is None or self.metoda_pl is None or self.powod_pl is not None:
                 raise ValueError(
                     "Niepewność oszacowana wymaga wartości z jednostką i metody oszacowania "
-                    "(bez powodu braku); brak oszacowania zapisz jako `nie_dotyczy=True` z powodem."
+                    "(bez powodu braku); brak oszacowania zapisz jako niepewność „nie dotyczy” "
+                    "z powodem."
                 )
             if self.wartosc.wartosc < 0.0:
                 raise ValueError(

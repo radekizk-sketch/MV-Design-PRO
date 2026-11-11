@@ -96,6 +96,10 @@ _KOD_KROPKOWY = re.compile(
 _PLIK_KROPKOWY = re.compile(r"\.(?:yaml|yml|json|csv|xlsx|xls|txt|zip|pdf|docx|py|ts|tsx|md)$")
 #: Fragment kodu w odwróconych apostrofach (zapis dokumentacji kodu, nie zdania).
 _ODWROCONE = re.compile(r"`[^`]+`")
+#: Segment wzoru LaTeX (`$I_E = r\\,I_C$`) — symbol wielkości w zapisie renderowanym przez
+#: KaTeX (decyzja architekta 2026-10-30 pkt 3: symbol w prozie słowami albo wzorem LaTeX), nie
+#: klucz pola; indeksy dolne wzoru nie są kodami ``snake_case``.
+_SEGMENT_LATEX = re.compile(r"\$[^$]+\$")
 #: Słowo pisane wielkimi literami (kandydat na kod wartości bez podkreślnika).
 _WIELKIE_SLOWO = re.compile(r"(?<![\w./-])[A-Z][A-Z0-9]+(?![\w-])")
 
@@ -232,7 +236,7 @@ def bez_dopisku_kodu(tekst: str) -> str:
 def kody_w_tekscie(tekst: str) -> list[str]:
     """Tokeny kodu w tekście dla projektanta (pusta lista = tekst czysty). Kod w dopisku
     po zdaniu (``bez_dopisku_kodu``) nie jest treścią zdania."""
-    tekst = bez_dopisku_kodu(tekst)
+    tekst = _SEGMENT_LATEX.sub(" ", bez_dopisku_kodu(tekst))
     znalezione: list[str] = []
     for token in (*_SNAKE.findall(tekst), *_WIELKIE_KODY.findall(tekst)):
         znalezione.append(token)
@@ -388,6 +392,12 @@ _SLOWA_POZA_KOMUNIKATEM: dict[str, str] = {
     "description": "opis pola schematu API (dokumentacja OpenAPI), nie odpowiedź operacji",
     "target_layer": "dana rejestru operacji kanonicznych",
 }
+#: Sufiks argumentu nazwanego niosącego WZÓR LaTeX (``symbol_latex``, ``warunek_latex``):
+#: zapis renderuje KaTeX (kanon wzorów w polach ``*_latex``, decyzja architekta 2026-10-30
+#: pkt 3), indeksy dolne symboli nie są kluczami pól. Przypina
+#: ``test_klucze_pol_w_komunikatach_src.test_wzor_mapa_prywatna_i_uciecie_tekstu_w_kopii_realnego_
+#: pliku``.
+_SUFIKS_WZORU = "_latex"
 #: Wywołania, których argumenty są rejestrem deweloperskim, nie komunikatem:
 _WYWOLANIA_POZA_KOMUNIKATEM: dict[str, str] = {
     "PozycjaBramyKatalogowejV2": (
@@ -480,7 +490,8 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
 _SKLEJAJACE: frozenset[str] = frozenset({"lista_pl", "_lista_nazw"})
 #: Mapa etykiet po polsku (konwencja nazw: ``NAZWY_…``, ``ETYKIETA_PL_…``, ``…_PL``) — jej
 #: wartości i odczyty ``MAPA[klucz]`` są tekstem dla projektanta.
-_MAPA_PL = re.compile(r"^(?:NAZWY_\w+|ETYKIETA_PL_\w+|\w+_PL)$")
+#: Mapa nazw po polsku (także prywatna modułu, ``_NAZWY_…`` — widoczność nie zmienia klasy).
+_MAPA_PL = re.compile(r"^_?(?:NAZWY_\w+|ETYKIETA_PL_\w+|\w+_PL)$")
 #: Atrybut elementu, który JEST tekstem dla człowieka (nazwa, opis PL, oznaczenie aparatu).
 _ATRYBUT_TEKSTOWY = re.compile(
     r"(?:^|\.)(?:name|name_pl|\w+_name|\w+_name_pl|\w+_pl|oznaczenie|designation)$"
@@ -562,6 +573,8 @@ def _poza_komunikatem(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> bool:
                 return True  # dziennik serwera
         if isinstance(przodek, ast.keyword) and przodek.arg in _SLOWA_POZA_KOMUNIKATEM:
             return True
+        if isinstance(przodek, ast.keyword) and (przodek.arg or "").endswith(_SUFIKS_WZORU):
+            return True  # wzór LaTeX (``symbol_latex=``) — skład KaTeX, nie zdanie
         if isinstance(przodek, ast.Dict):
             for klucz, wartosc in zip(przodek.keys, przodek.values, strict=True):
                 if (
@@ -2126,7 +2139,7 @@ _WARUNKI_NN = {
     ("przekroj", "warunki", "oczekiwane"),
     [
         ("SN", {"set_name": "zestaw-nieznany"}, "Nieznany zestaw warunków ułożenia"),
-        ("SN", {"set_name": "wlasne", "f_grunt": 1.0}, "współczynników (gruntu, wiązki i grupy)"),
+        ("SN", {"set_name": "wlasne", "f_grunt": 1.0}, "współczynnik wiązki"),
         (
             "SN",
             {

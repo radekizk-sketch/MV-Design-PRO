@@ -412,7 +412,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     elif urzadzenie.conditional_sc_current_ka is None:
         zdanie_kombinacja = (
             "Nierozstrzygalne — obwód bez wkładki zainstalowanej (albo katalog nie "
-            "niesie prądu warunkowego kombinacji conditional_sc_current_ka) — brak "
+            "niesie prądu warunkowego zwarciowego kombinacji) — brak "
             "podstawy do oceny zdolności wyłączania kombinacji (zero fabrykacji)."
         )
         kombinacja_status = STATUS_NIEROZSTRZYGALNE
@@ -427,7 +427,9 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         )
         kombinacja_status = STATUS_NIEROZSTRZYGALNE
         kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
-        kombinacja_wniosek = "nierozstrzygalne — brak Ik″max w punkcie zabudowy"
+        kombinacja_wniosek = (
+            "nierozstrzygalne — brak największego początkowego prądu zwarciowego w punkcie zabudowy"
+        )
     else:
         kombinacja_spelnia_bool = urzadzenie.conditional_sc_current_ka >= ik_max_ka
         kombinacja_status = STATUS_SPELNIA if kombinacja_spelnia_bool else STATUS_NIE_SPELNIA
@@ -440,7 +442,8 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         zdanie_kombinacja = (
             "Kombinacja rozłącznik+wkładka: prąd warunkowy "
             f"{urzadzenie.conditional_sc_current_ka:g} kA "
-            f"{'>=' if kombinacja_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
+            f"{'nie mniejszy od' if kombinacja_spelnia_bool else 'mniejszy od'} największego "
+            f"początkowego prądu zwarciowego {ik_max_ka:g} kA w punkcie "
             f"zabudowy — {kombinacja_wniosek} (IEC 60947, prąd warunkowy kombinacji)."
         )
 
@@ -474,7 +477,9 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         )
         goly_status = STATUS_NIEROZSTRZYGALNE
         goly_wartosc = urzadzenie.wlasna_zdolnosc_ka
-        goly_wniosek = "nierozstrzygalne — brak Ik″max w punkcie zabudowy"
+        goly_wniosek = (
+            "nierozstrzygalne — brak największego początkowego prądu zwarciowego w punkcie zabudowy"
+        )
     else:
         etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
         goly_spelnia_bool = urzadzenie.wlasna_zdolnosc_ka >= ik_max_ka
@@ -489,7 +494,8 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
             f"Goły aparat ({NAZWY_RODZAJU_URZADZENIA_NN_PL[urzadzenie.kind]}): własna zdolność "
             f"{etykieta}="
             f"{urzadzenie.wlasna_zdolnosc_ka:g} kA "
-            f"{'>=' if goly_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
+            f"{'nie mniejsza od' if goly_spelnia_bool else 'mniejsza od'} największego "
+            f"początkowego prądu zwarciowego {ik_max_ka:g} kA w punkcie "
             f"zabudowy — {goly_wniosek}."
         )
 

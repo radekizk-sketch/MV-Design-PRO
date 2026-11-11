@@ -296,11 +296,11 @@ _OPISY_POL_CHARAKTERYSTYKI: tuple[tuple[str, str], ...] = (
     ("a_q", "udział części stałej impedancji Z w mocy biernej"),
     ("b_q", "udział części stałego prądu I w mocy biernej"),
     ("c_q", "udział części stałej mocy P w mocy biernej"),
-    ("k_pf", "czułość częstotliwościowa mocy czynnej k_pf"),
-    ("k_qf", "czułość częstotliwościowa mocy biernej k_qf"),
-    ("v0_pu", "napięcie odniesienia U₀ [pu]"),
-    ("f0_hz", "częstotliwość odniesienia f₀ [Hz]"),
-    ("u_min_pu", "napięcie przejścia na gałąź impedancyjną U_min [pu]"),
+    ("k_pf", "czułość częstotliwościowa mocy czynnej"),
+    ("k_qf", "czułość częstotliwościowa mocy biernej"),
+    ("v0_pu", "napięcie odniesienia [pu]"),
+    ("f0_hz", "częstotliwość odniesienia [Hz]"),
+    ("u_min_pu", "napięcie przejścia na gałąź impedancyjną [pu]"),
     ("t_pomiaru_czestotliwosci_s", "stała czasowa pomiaru częstotliwości [s]"),
 )
 _POLA_OPCJONALNE_CHARAKTERYSTYKI: frozenset[str] = frozenset(
@@ -544,8 +544,8 @@ class OdbiorDynamiki:
 
     def __post_init__(self) -> None:
         for nazwa, opis, wartosc in (
-            ("p_pu", "czynna P0", self.p_pu),
-            ("q_pu", "bierna Q0", self.q_pu),
+            ("p_pu", "czynna", self.p_pu),
+            ("q_pu", "bierna", self.q_pu),
         ):
             if not np.isfinite(wartosc):
                 raise _odmowa_charakterystyki(
@@ -936,7 +936,10 @@ class NastawySolvera:
         if not (self.dt_min_s <= self.dt_s <= self.dt_max_s):
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"krok czasowy {self.dt_s} s poza granicami [{self.dt_min_s}, {self.dt_max_s}] s",
+                (
+                    f"Krok całkowania {self.dt_s} s leży poza granicami od {self.dt_min_s} s "
+                    f"do {self.dt_max_s} s."
+                ),
                 dt_s=self.dt_s,
                 dt_min_s=self.dt_min_s,
                 dt_max_s=self.dt_max_s,

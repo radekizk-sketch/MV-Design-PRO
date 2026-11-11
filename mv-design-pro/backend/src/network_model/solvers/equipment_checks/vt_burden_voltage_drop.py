@@ -166,13 +166,13 @@ class VtBurdenResult:
 
 def _zalozenia(*, rezystywnosc: float, kategoria: str, limit: float) -> tuple[str, ...]:
     return (
-        "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
-        f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
-        "— zalozenie jawne, nie dane katalogu przekladnika.",
+        "Obwód wtórny DWUPRZEWODOWY: Rp = 2·ρ·L/s (długość L liczona w jedną stronę).",
+        f"Rezystywność żyły ρ = {rezystywnosc} Ω·mm²/m (miedź, 20 °C, IEC 60228) "
+        "— założenie jawne, nie dane katalogu przekładnika.",
         "Prąd obwodu wyprowadzony z mocy pozornej odbiorników podzielonej przez napięcie "
         "znamionowe wtórne.",
-        "Zmiana napiecia liczona na skladowej REZYSTANCYJNEJ przewodow "
-        "(reaktancja obwodu pomiarowego pomijalna przy tych dlugosciach).",
+        "Zmiana napięcia liczona na składowej REZYSTANCYJNEJ przewodów "
+        "(reaktancja obwodu pomiarowego pomijalna przy tych długościach).",
         f"Limit ΔU = {limit} % dla kategorii „{ETYKIETA_KATEGORII_PL[kategoria]}” "
         "— wyprowadzony z klasy dokładności uzwojenia, nie przyjęty domyślnie.",
     )

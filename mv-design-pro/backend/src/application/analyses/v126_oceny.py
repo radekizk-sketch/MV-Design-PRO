@@ -34,6 +34,7 @@ from typing import Any
 
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
 from network_model.nazwy import nazwa_nadana
+from network_model.solvers.v126_academic import METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     DanaPrzyjeta,
@@ -948,6 +949,14 @@ _ZAKRES_DETEKCJI = ZakresWaznosci(
 )
 
 
+def _nazwa_funkcji_detekcji_pl(kod: str) -> str:
+    """Nazwa polska funkcji detekcji ze słownika rdzenia; kod spoza słownika (dana projektanta
+    spoza listy ``METODY_DETEKCJI_KOMPLET``) zostaje cytatem zapisu, nie nazwą zgadniętą."""
+    if kod not in METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL:
+        return f"„{kod}” (funkcja spoza słownika)"
+    return METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL[kod]
+
+
 def oceny_detekcji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
     przedmiot = Przedmiot(
         element_ref=None,
@@ -971,9 +980,13 @@ def oceny_detekcji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
         wynik = WynikKryterium(
             wielkosc_pl=(
                 "przekaźnik ma każdą funkcję metody zalecanej ("
-                + ", ".join(wymagane)
+                + ", ".join(_nazwa_funkcji_detekcji_pl(f) for f in wymagane)
                 + ")"
-                + ("" if not brakujace else f"; brak: {', '.join(brakujace)}")
+                + (
+                    ""
+                    if not brakujace
+                    else f"; brak: {', '.join(_nazwa_funkcji_detekcji_pl(f) for f in brakujace)}"
+                )
             ),
             symbol_latex=r"\text{funkcje} \subseteq \text{przekaźnik}",
             wartosc=Wielkosc(wartosc=0.0 if brakujace else 1.0, jednostka="1"),
@@ -1008,8 +1021,10 @@ def oceny_detekcji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             zakres_waznosci=_ZAKRES_DETEKCJI,
             slad=bieg.slad(
                 "earth_fault_method_selection",
-                f"funkcje wymagane: {', '.join(wymagane) or 'brak'}; funkcje przekaźnika: "
-                f"{', '.join(sorted(dostepne)) or 'nie wskazano'}",
+                "funkcje wymagane: "
+                f"{', '.join(_nazwa_funkcji_detekcji_pl(f) for f in wymagane) or 'brak'}; "
+                "funkcje przekaźnika: "
+                f"{', '.join(_nazwa_funkcji_detekcji_pl(f) for f in sorted(dostepne)) or 'nie wskazano'}",
             ),
             braki_dodatkowe=braki,
         )

@@ -309,10 +309,10 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
-                    f"[{cfg.nazwa_pl}]; kotwy: "
-                    + ", ".join(f"{k}={_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
-                    + f"; VarCf={_round(var_cf)}"
+                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
+                    f"napięcie {_round(voltage)} kV [{cfg.nazwa_pl}]; kotwy: "
+                    + ", ".join(f"{k} = {_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
+                    + f"; współczynnik zmienności VarCf {_round(var_cf)}"
                 ),
                 result_pl=(
                     f"prąd łuku {_round(i_arc)} kA, prąd łuku minimalny {_round(i_arc_min)} kA "
@@ -451,9 +451,9 @@ class ArcFlashBuilder:
 
         why = (
             f"Arc Flash (konfiguracja {cfg.nazwa_pl}, IEEE 1584-2018): prąd łuku "
-            f"I_arc ≈ {_round(i_arc, 2)} kA (I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia "
-            f"incydentu E ≈ {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
-            f"granica łuku AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. "
+            f"{_round(i_arc, 2)} kA (minimalny {_round(i_arc_min, 2)} kA), energia "
+            f"incydentu {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
+            f"granica łuku {_round(afb, 1)} mm, kategoria ŚOI {ppe}. "
             f"{ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )
 
@@ -545,9 +545,10 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
-                    f"[{cfg.nazwa_pl}, ścieżka nN — U<=600 V, BEZ interpolacji kotew]; "
-                    f"I_arc,600(Eq.1)={_round(i_arc_600)} kA; VarCf={_round(var_cf)}"
+                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
+                    f"napięcie {_round(voltage)} kV [{cfg.nazwa_pl}, ścieżka nN — napięcie do 600 V, "
+                    f"BEZ interpolacji kotew]; prąd łuku kotwy 600 V (Eq.1) {_round(i_arc_600)} kA; "
+                    f"współczynnik zmienności VarCf {_round(var_cf)}"
                 ),
                 result_pl=(
                     f"prąd łuku {_round(i_arc)} kA (Eq.25, skorygowany do napięcia "
@@ -681,10 +682,10 @@ class ArcFlashBuilder:
         )
 
         why = (
-            f"Arc Flash nN (konfiguracja {cfg.nazwa_pl}, IEEE 1584-2018, U<=600 V — Eq.25): "
-            f"prąd łuku I_arc,600 (Eq.1) ≈ {_round(i_arc_600, 2)} kA skorygowany do U="
-            f"{_round(voltage, 2)} kV ⇒ I_arc ≈ {_round(i_arc, 2)} kA "
-            f"(I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia incydentu E ≈ "
+            f"Arc Flash nN (konfiguracja {cfg.nazwa_pl}, IEEE 1584-2018, napięcie do 600 V — "
+            f"Eq.25): prąd łuku kotwy 600 V (Eq.1) {_round(i_arc_600, 2)} kA skorygowany do "
+            f"napięcia {_round(voltage, 2)} kV ⇒ prąd łuku {_round(i_arc, 2)} kA "
+            f"(minimalny {_round(i_arc_min, 2)} kA), energia incydentu "
             f"{_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, granica łuku "
             f"{_round(afb, 1)} mm, kategoria ŚOI {ppe}. {ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )

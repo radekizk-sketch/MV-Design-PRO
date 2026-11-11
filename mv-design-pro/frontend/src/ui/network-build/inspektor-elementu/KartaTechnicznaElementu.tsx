@@ -51,7 +51,7 @@ function WierszDanych({
             type="button"
             className="mvd-kt-odnosnik mvd-kt-brak mvd-kt-brak-akcja"
             data-testid={`inspektor-karta-zmien-${wiersz.klucz}`}
-            aria-label={`Uzupełnij: ${wiersz.etykieta}`}
+            aria-label={`Uzupełnij: ${tekstBezWzorow(wiersz.etykieta)}`}
             onClick={() => onEdytuj?.(edycja)}
           >
             <span data-testid={`inspektor-karta-wartosc-${wiersz.klucz}`}>{tekstBraku}</span>

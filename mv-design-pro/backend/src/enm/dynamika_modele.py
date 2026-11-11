@@ -67,8 +67,8 @@ def _nazwa_parametru(model: BaseModel, klucz: str) -> str:
 def _mniejsze(model: BaseModel, rodzaj: str, dolny: str, gorny: str) -> str:
     """Odmowa pary granic: dolna granica musi być mniejsza niż górna."""
     return (
-        f"{rodzaj}: {_nazwa_parametru(model, dolny)} ({getattr(model, dolny):g}) musi być "
-        f"mniejszy niż {_nazwa_parametru(model, gorny)} ({getattr(model, gorny):g})."
+        f"{rodzaj}: {_nazwa_parametru(model, dolny)} ({getattr(model, dolny):g}) musi mieć "
+        f"wartość mniejszą niż {_nazwa_parametru(model, gorny)} ({getattr(model, gorny):g})."
     )
 
 

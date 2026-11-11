@@ -915,17 +915,17 @@ class TransformerBranch(Branch):
         """
         if self.rated_power_mva <= 0:
             raise OdmowaDanychError(
-                f"Transformator „{self.name}”: moc znamionowa S_n musi być dodatnia, "
+                f"Transformator „{self.name}”: moc znamionowa musi być dodatnia, "
                 f"otrzymano {self.rated_power_mva:g} MVA"
             )
         if self.uk_percent <= 0:
             raise OdmowaDanychError(
-                f"Transformator „{self.name}”: napięcie zwarcia u_k musi być dodatnie, "
+                f"Transformator „{self.name}”: napięcie zwarcia musi być dodatnie, "
                 f"otrzymano {self.uk_percent:g} %"
             )
         if self.pk_kw < 0:
             raise OdmowaDanychError(
-                f"Transformator „{self.name}”: straty obciążeniowe P_k nie mogą być ujemne, "
+                f"Transformator „{self.name}”: straty obciążeniowe nie mogą być ujemne, "
                 f"otrzymano {self.pk_kw:g} kW"
             )
         if self.voltage_lv_kv <= 0:

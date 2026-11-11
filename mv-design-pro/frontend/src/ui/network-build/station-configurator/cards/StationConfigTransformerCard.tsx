@@ -101,7 +101,7 @@ function selectTapChangersForTransformerByVoltage(
 
 function optionLabel(option: StationTransformerCatalogOption): string {
   const kva = Math.round(option.ratedPowerMva * 1000).toLocaleString('pl-PL');
-  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup ?? 'grupa połączeń: brak danych'}, uk ${option.ukPercent}%`;
+  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup ?? 'grupa połączeń: brak danych'}, napięcie zwarcia ${option.ukPercent}%`;
 }
 
 export function StationConfigTransformerCard(

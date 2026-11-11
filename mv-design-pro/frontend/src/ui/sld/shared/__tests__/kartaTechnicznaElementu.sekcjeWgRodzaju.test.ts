@@ -225,9 +225,9 @@ describe('tabela aparatów pola: Aparat · Uᵣ · Iᵣ · Iₖ, szczegóły w k
     const t = kartaPolaZAparatami().sekcje.flatMap((s) => s.tabele ?? []).find((x) => x.klucz === 'aparaty')!;
     expect(t.kolumny.map((c) => [c.etykieta, c.liczbowa ?? false])).toEqual([
       ['Aparat', false],
-      ['Uᵣ [kV]', true],
-      ['Iᵣ [A]', true],
-      ['Iₖ [kA]', true],
+      ['$U_r$ [kV]', true],
+      ['$I_r$ [A]', true],
+      ['$I_k$ [kA]', true],
     ]);
   });
 
@@ -377,9 +377,9 @@ describe('GPZ × zasilanie × transformator 110 kV/SN', () => {
     const zasilanie = gpz('przypisana', false).sekcje.find((s) => s.id === 'zasilanie')!.tabele![0];
     expect(zasilanie.kolumny.map((c) => [c.etykieta, c.liczbowa ?? false])).toEqual([
       ['Sieć', false],
-      ['Sₖ″ maks. [MVA]', true],
+      ["$S''_k$ maks. [MVA]", true],
       ['R/X maks.', true],
-      ['Sₖ″ min. [MVA]', true],
+      ["$S''_k$ min. [MVA]", true],
       ['R/X min.', true],
     ]);
   });

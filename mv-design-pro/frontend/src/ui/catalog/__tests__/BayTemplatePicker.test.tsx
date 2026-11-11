@@ -44,6 +44,7 @@ const RODZAJE = {
   napowietrzne: true,
   nop_lacznikowe: true,
   bateria_kondensatorow: true,
+  zespol_uziemiajacy: true,
 } as const satisfies Record<BayKind, true>;
 
 const RODZINY = new Map([['ABB__UNIGEAR_ZS1', 'UniGear ZS1']]);

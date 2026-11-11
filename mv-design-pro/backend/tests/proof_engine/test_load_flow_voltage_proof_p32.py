@@ -109,9 +109,9 @@ def test_p32_not_computed_propagation() -> None:
 
     assert proof.summary.warnings == (
         "element „Linia SN testowa”: nie obliczono — brak danych: moc czynna P, rezystancja R "
-        "gałęzi, napięcie międzyprzewodowe U z rozpływu mocy, napięcie znamionowe Un.",
+        "gałęzi, napięcie międzyprzewodowe U z rozpływu mocy, napięcie znamionowe.",
         "szyna „Szyna SN testowa”: nie obliczono — brak danych: napięcie międzyprzewodowe U z "
-        "rozpływu mocy, napięcie znamionowe Un.",
+        "rozpływu mocy, napięcie znamionowe.",
     )
     status = proof.summary.key_results["computed_status"]
     assert (status.value, status.formatted) == ("NOT COMPUTED", "nie obliczono — brak danych")

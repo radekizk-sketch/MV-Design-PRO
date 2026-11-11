@@ -296,8 +296,7 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             claim_kind=ClaimKind.STATIC_CALCULATION,
             rationale_pl=(
                 "Spadek napięcia odcinka i ciągu magistrali SN liczony przybliżeniem składowej "
-                "podłużnej spadku z sumą po odcinkach "
-                "(network_model/solvers/cable_voltage_drop.py) — obliczenie jest wykonywane, "
+                "podłużnej spadku napięcia z sumą po odcinkach — obliczenie jest wykonywane, "
                 "ale jego zgodności z rozpływem mocy na sieci referencyjnej nie wykazano, więc "
                 "wynik nie jest dowodem regulacyjnym; rzeczywisty profil napięcia daje rozpływ "
                 "zapisanego modelu."

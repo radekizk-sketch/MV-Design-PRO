@@ -819,7 +819,7 @@ function wierszeTabliczki(tr: Transformer, katalogi: KatalogiKarty, edytowalne: 
   const nazwaKat = tr.catalog_ref ? katalogi.transformatory.get(tr.catalog_ref)?.name ?? null : null;
   const z = (klucz: string) => nadpisanie(tr, klucz);
   const napiecia = liczba(tr.uhv_kv) !== null || liczba(tr.ulv_kv) !== null
-    ? `${zapisLiczby(tr.uhv_kv, 'kV') ?? 'bez Uₙ GN'} / ${zapisLiczby(tr.ulv_kv, 'kV') ?? 'bez Uₙ DN'}`
+    ? `${zapisLiczby(tr.uhv_kv, 'kV') ?? 'bez napięcia znamionowego GN'} / ${zapisLiczby(tr.ulv_kv, 'kV') ?? 'bez napięcia znamionowego DN'}`
     : null;
   // Brak wartości tabliczki: dane tabliczki pochodzą z typu katalogowego — transformator bez typu
   // mówi „przypisz typ katalogowy”, typ bez tej wartości — „brak w typie katalogowym”.
@@ -858,7 +858,7 @@ function wierszeSekcjiGpz(ix: IndeksModelu, sekcje: readonly GPZSection[]): Wier
       komorki: {
         nazwa: nazwaObiektuPl(sekcja.name, 'sekcja', { numer: i + 1, liczba: posortowane.length }),
         szyna: szyna ? nazwaObiektuPl(szyna.name, 'szyna', miejsceWKolekcji(ix.model.buses, szyna)) : nazwaObiektuPl(null, 'szyna', { spozaModelu: true }),
-        un: szyna ? zapisLiczby(szyna.voltage_kv, 'kV') ?? 'szyna bez Uₙ' : 'bez szyny',
+        un: szyna ? zapisLiczby(szyna.voltage_kv, 'kV') ?? 'szyna bez napięcia znamionowego' : 'bez szyny',
       },
     };
   });
@@ -867,7 +867,7 @@ function wierszeSekcjiGpz(ix: IndeksModelu, sekcje: readonly GPZSection[]): Wier
 const KOLUMNY_SEKCJI_GPZ: readonly KolumnaTabeli[] = [
   { klucz: 'nazwa', etykieta: 'Sekcja' },
   { klucz: 'szyna', etykieta: 'Szyna' },
-  { klucz: 'un', etykieta: 'Uₙ' },
+  { klucz: 'un', etykieta: '$U_n$' },
 ];
 
 /** „Sekcje szyn” GPZ: strona SN (`gpz_sections`) i strona 110 kV (`gpz_hv_sections`) z modelu —
@@ -951,9 +951,9 @@ function sekcjaZasilaniaGpz(ix: IndeksModelu, stacja: Substation, szynyWlasne: R
         // kreska w komórce liczbowej (decyzja architekta 2026-11-04 dla tej tabeli).
         kolumny: [
           { klucz: 'siec', etykieta: 'Sieć' },
-          { klucz: 'sk_max', etykieta: 'Sₖ″ maks. [MVA]', liczbowa: true },
+          { klucz: 'sk_max', etykieta: "$S''_k$ maks. [MVA]", liczbowa: true },
           { klucz: 'rx_max', etykieta: 'R/X maks.', liczbowa: true },
-          { klucz: 'sk_min', etykieta: 'Sₖ″ min. [MVA]', liczbowa: true },
+          { klucz: 'sk_min', etykieta: "$S''_k$ min. [MVA]", liczbowa: true },
           { klucz: 'rx_min', etykieta: 'R/X min.', liczbowa: true },
         ],
         wiersze: sieci.map((z) => ({
@@ -1484,7 +1484,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
 /** Zakres mocy biernej profilu operatora — udziały mocy znamionowej zapisane w procentach. */
 function zakresMocyBiernejPl(profil: NcRfgOperatorItem): string {
   const { q_range_pct_pn_min: min, q_range_pct_pn_max: max } = profil.reactive_power;
-  return `od ${zapisLiczby(min * 100, '%', 1)} do ${zapisLiczby(max * 100, '%', 1)} Pₙ`;
+  return `od ${zapisLiczby(min * 100, '%', 1)} do ${zapisLiczby(max * 100, '%', 1)} mocy znamionowej`;
 }
 
 /** Obwiednia FRT wskazana w modelu (`lvrt_curve_ref`/`hvrt_curve_ref` = profil operatora). */
@@ -1522,7 +1522,7 @@ function sekcjaZgodnosciNcRfg(g: Generator, katalogi: KatalogiKarty): SekcjaKart
         profil ? profil.operator_name_pl : ncRfgRef ? 'profil spoza katalogu profili operatorów' : null,
       ),
       wiersz('zakres_q', 'Zakres mocy biernej', profil ? zakresMocyBiernejPl(profil) : null),
-      wiersz('cos_phi_min', 'Minimalny cos φ', profil ? zapisLiczby(profil.reactive_power.cos_phi_min, '') : null),
+      wiersz('cos_phi_min', 'Minimalny współczynnik mocy $\\cos\\varphi$', profil ? zapisLiczby(profil.reactive_power.cos_phi_min, '') : null),
       wiersz(
         'krzywa_pf',
         'Charakterystyka P(f)',
@@ -1644,7 +1644,7 @@ function kartaZrodla(ix: IndeksModelu, g: Generator, katalogi: KatalogiKarty): K
 /** Model zastępczy sieci zasilającej (`Source.model`) — słownik zamknięty unii kontraktu. */
 const MODEL_ZASTEPCZY_SIECI_PL: Readonly<Record<Source['model'], string>> = {
   thevenin: 'impedancja Thevenina (R, X)',
-  short_circuit_power: 'moc zwarciowa Sₖ″ i stosunek R/X',
+  short_circuit_power: 'moc zwarciowa i stosunek R/X',
   external_grid: 'sieć zewnętrzna',
 };
 

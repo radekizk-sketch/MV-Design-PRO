@@ -675,7 +675,7 @@ class DeviceWithstandItem:
         if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
             odmowa_twarda(
                 "KAT-T-025",
-                f"Aparat {self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
+                f"Aparat {self.id}: prąd krótkotrwały {self.i_th_1s_ka} kA jest spoza znormalizowanego "
                 "szeregu IEC 62271-1 "
                 f"({', '.join(f'{x:g}' for x in IEC_62271_1_SZEREG_I_TH_KA)} kA).",
             )

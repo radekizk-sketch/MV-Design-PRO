@@ -148,7 +148,7 @@ def _status_danych(converter: ConverterType, pn_mw: float) -> StatusDanych:
         stan="UNVALIDATED_INPUT",
         dane_przyjete=(
             DanaPrzyjeta(
-                nazwa_pl="moc znamionowa czynna typu (pole `pmax_mw`) — moc odniesienia wymagania",
+                nazwa_pl="moc znamionowa czynna typu katalogowego — moc odniesienia wymagania",
                 wartosc=Wielkosc(wartosc=_round(pn_mw), jednostka="MW"),
                 powod_pl=f"jakość danej karty katalogowej: {status.quality.label_pl}",
                 jakosc=status.quality,

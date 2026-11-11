@@ -194,9 +194,13 @@ class BaseValues:
     def __post_init__(self) -> None:
         """Validate invariants."""
         if self.un_kv is None and self.source_un != BaseValueSourceUn.UNKNOWN:
-            raise ValueError("brak `un_kv` przy źródle `source_un` innym niż UNKNOWN")
+            raise ValueError(
+                "Wartość bazowa bez napięcia znamionowego nie może wskazywać źródła tej wartości"
+            )
         if self.in_a is None and self.source_in != BaseValueSourceIn.UNKNOWN:
-            raise ValueError("brak `in_a` przy źródle `source_in` innym niż UNKNOWN")
+            raise ValueError(
+                "Wartość bazowa bez prądu znamionowego nie może wskazywać źródła tej wartości"
+            )
 
     @property
     def un_v(self) -> float | None:
@@ -254,8 +258,8 @@ class ProtectionSetpointBasis(StrEnum):
 
 
 _NAZWY_BAZ_NASTAWY_PL: dict[ProtectionSetpointBasis, str] = {
-    ProtectionSetpointBasis.UN: "napięcia znamionowego Un",
-    ProtectionSetpointBasis.IN: "prądu znamionowego In",
+    ProtectionSetpointBasis.UN: "napięcia znamionowego",
+    ProtectionSetpointBasis.IN: "prądu znamionowego",
     ProtectionSetpointBasis.HZ: "częstotliwości znamionowej",
     ProtectionSetpointBasis.ABS: "wartości bezwzględnej",
 }
@@ -321,9 +325,7 @@ class ProtectionSetpoint:
                 )
         if self.basis == ProtectionSetpointBasis.ABS:
             if self.abs_value is None:
-                raise ValueError(
-                    "Dla bazy ABS wymagana jest wartość bezwzględna (pole `abs_value`)"
-                )
+                raise ValueError("Dla nastawy w wartościach bezwzględnych wymagana jest wartość")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""

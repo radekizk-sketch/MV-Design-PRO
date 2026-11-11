@@ -217,7 +217,12 @@ def test_detekcja_doziemna_podstawienie_i_wynik_po_polsku_bez_kodow() -> None:
     # z niezabezpieczonego `\t` w literale), a znaki sterujące nie trafiają do KaTeX.
     assert krok["substitution_latex"].startswith(r"\text{punkt neutralny: ")
     assert not any(ord(znak) < 32 for znak in krok["substitution_latex"])
-    assert oryginal["result_pl"] != krok["result_pl"], "opis wyniku nie został złożony"
+    # Krok śladu solvera nazywa metodę i funkcje słowami z tego samego słownika co widok API
+    # (`METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL` — jedno źródło w rdzeniu), więc oba zdania są
+    # wolne od kodów i zgodne (dawniej widok musiał składać zdanie od nowa).
+    for kod in kody:
+        assert kod not in oryginal["result_pl"], f"ślad solvera: kod {kod}"
+    assert oryginal["result_pl"] == krok["result_pl"]
 
 
 def test_detekcja_doziemna_kod_spoza_slownika_zostawia_zapis_solvera() -> None:

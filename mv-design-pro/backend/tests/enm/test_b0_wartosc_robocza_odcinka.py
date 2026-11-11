@@ -236,7 +236,11 @@ def test_galaz_reczna_bez_b1_czyni_prad_pojemnosciowy_niewyznaczonym() -> None:
     kabel["b_siemens_per_km"] = None
     enm = EnergyNetworkModel.model_validate(migawka)
     (siec,) = uziemienie_sieci(enm)
-    assert siec.galezie_bez_b0 == (kabel["ref_id"],)
+    assert [ref for ref, _ in siec.galezie_bez_b0] == [kabel["ref_id"]]
+    # Zdanie braku nazywa odcinek NAZWĄ z tej samej pary (ref, nazwa), dana API — identyfikatorem.
+    brak_b0 = siec.dane_doziemienia().brak_b0_pl
+    assert brak_b0 is not None and kabel["name"] in brak_b0 and kabel["ref_id"] not in brak_b0
+    assert siec.to_dict()["galezie_bez_b0"] == [kabel["ref_id"]]
     assert siec.b0_s > 0.0
     assert siec.prad_pojemnosciowy_a is None
     assert siec.rozstrojenie is None

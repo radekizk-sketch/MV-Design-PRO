@@ -47,7 +47,7 @@ export function skrotParametrowTypu(type: CatalogListItem, category: TypeCategor
     case 'HV_OVERHEAD_CONDUCTOR':
       return `${w(r.oznaczenie)} · ${k('przeznaczenie', r.przeznaczenie)} · $R_{20}$ = ${w(r.r20_dc_ohm_per_km)} Ohm/km · d=${w(r.srednica_mm)} mm`;
     case 'CABLE':
-      return `R=${w(r.r_ohm_per_km)} Ohm/km · X=${w(r.x_ohm_per_km)} Ohm/km · C=${w(r.c_nf_per_km)} nF/km · In=${w(r.rated_current_a)} A`;
+      return `R=${w(r.r_ohm_per_km)} Ohm/km · X=${w(r.x_ohm_per_km)} Ohm/km · C=${w(r.c_nf_per_km)} nF/km · $I_n$ = ${w(r.rated_current_a)} A`;
     case 'TRANSFORMER':
       return `${w(r.rated_power_mva)} MVA · ${w(r.voltage_hv_kv)}/${w(r.voltage_lv_kv)} kV · $u_k$ = ${w(r.uk_percent)}%`;
     case 'SWITCH_EQUIPMENT':

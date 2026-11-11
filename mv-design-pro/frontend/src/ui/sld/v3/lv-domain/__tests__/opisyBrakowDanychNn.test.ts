@@ -191,7 +191,7 @@ describe('kotwica SN — tożsamość i opis braku bez identyfikatorów', () => 
       } as unknown as UpstreamEquivalentSnapshot;
       const tekst = anchorDetailLabel(brak, (r) => nazwaElementuMigawki(model, r));
       expect(tekst).toBe(
-        'Sk″/Ik″ SN: brak danych — brak źródła zasilania sieci SN '
+        "$S_{k}''$/$I_{k}''$ SN: brak danych — brak źródła zasilania sieci SN "
           + `(${OCZEKIWANA[stan]('równoważnik sieci SN transformatora')})`,
       );
       expect(tekst).not.toContain(REF_TRANSFORMATORA);

@@ -581,7 +581,7 @@ def _i2t_dla_kabla(
     if ith_ka is None:
         return _brak(
             "Brak prądu zwarciowego zastępczego cieplnego — wymaga biegu zwarciowego "
-            "IEC 60909 (parametr żądania short_circuit_run_id)."
+            "IEC 60909 wskazanego w żądaniu karty obwodu."
         )
     if fault_duration_s is None:
         return _brak(
@@ -618,8 +618,8 @@ def _i2t_dla_kabla(
             "prad_dopuszczalny_a": wynik.admissible_current_a,
         },
         (
-            "IEC 60949 / IEC 60364-4-43 §434 (energia zwarcia wobec wytrzymałości cieplnej żyły, "
-            "`check_conductor_thermal_withstand`)"
+            "IEC 60949 / IEC 60364-4-43 §434 (energia zwarcia wobec wytrzymałości cieplnej "
+            "żyły, sprawdzenie wytrzymałości cieplnej przewodu)"
         ),
         dane_przyjete,
     )

@@ -390,7 +390,7 @@ NAZWY_WEJSC_DOWODU_LF_PL: dict[str, str] = {
     "x_ohm": "reaktancja X gałęzi",
     "p_mw": "moc czynna P",
     "q_mvar": "moc bierna Q",
-    "u_nom_kv": "napięcie znamionowe Un",
+    "u_nom_kv": "napięcie znamionowe",
     "u_ll_kv": "napięcie międzyprzewodowe U z rozpływu mocy",
 }
 

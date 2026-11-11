@@ -350,10 +350,10 @@ def test_znaczniki_tylko_dla_punktow_stref(biegi: dict[str, str]) -> None:
     wynik = _koordynuj(biegi)
     etykiety = sorted(m["label_pl"] for m in wynik["fault_markers"])
     assert etykiety == [
-        "prąd zwarciowy maksymalny 3F (Stacja S01)",
-        "prąd zwarciowy maksymalny 3F (Stacja S02)",
-        "prąd zwarciowy minimalny 3F (Stacja S01)",
-        "prąd zwarciowy minimalny 3F (Stacja S02)",
+        "prąd zwarcia trójfazowego maksymalny (Stacja S01)",
+        "prąd zwarcia trójfazowego maksymalny (Stacja S02)",
+        "prąd zwarcia trójfazowego minimalny (Stacja S01)",
+        "prąd zwarcia trójfazowego minimalny (Stacja S02)",
     ]
 
 

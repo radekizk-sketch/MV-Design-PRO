@@ -1074,8 +1074,9 @@ def _validate_protection_sc_reference(
     sc_run_id_raw = normalized_options.get("sc_run_id")
     if not sc_run_id_raw:
         raise OdmowaDanychError(
-            "Analiza zabezpieczeń wymaga `options.sc_run_id` (identyfikator "
-            "zakończonego biegu zwarciowego, którego początkowy prąd zwarciowy interpretuje ocena)"
+            "Analiza zabezpieczeń wymaga wskazania zakończonego biegu zwarciowego, "
+            "którego początkowy prąd zwarciowy interpretuje ocena — wybierz bieg zwarciowy "
+            "w ustawieniach analizy"
         )
     # Partia integracji 10: identyfikator biegu źródłowego w polu `dane` odmowy, nigdy
     # w treści (projektant wybiera bieg z listy, nie zna jego identyfikatora).

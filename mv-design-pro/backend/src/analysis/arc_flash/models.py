@@ -743,8 +743,8 @@ class ArcFlashContext:
 #: ``ArcFlashBuilder._missing_inputs`` i parytet przypina
 #: ``tests/analysis/test_arc_flash_nazwy_wejsc.py``.
 NAZWY_WEJSC_ARC_FLASH_PL: dict[str, str] = {
-    "i_bf_ka": "prąd zwarcia metalicznego I_bf (z obliczeń zwarciowych IEC 60909)",
-    "voltage_kv": "napięcie systemu U_oc",
+    "i_bf_ka": "prąd zwarcia metalicznego (z obliczeń zwarciowych IEC 60909)",
+    "voltage_kv": "napięcie międzyprzewodowe systemu w stanie jałowym",
     "arc_time_s": "czas trwania łuku T (czas wyłączenia z koordynacji zabezpieczeń)",
     "conductor_gap_mm": "odstęp elektrod G",
     "working_distance_mm": "odległość robocza D",

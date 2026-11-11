@@ -673,7 +673,7 @@ class TestKlasyfikacja:
 
     @pytest.mark.parametrize(
         ("nazwa", "nazwa_pl"),
-        [("p_max_kw", "moc maksymalna P_max [kW]"), ("napiecie_kv", "napięcie przyłączenia [kV]")],
+        [("p_max_kw", "moc maksymalna [kW]"), ("napiecie_kv", "napięcie przyłączenia [kV]")],
     )
     @pytest.mark.parametrize("wartosc", [math.nan, math.inf, -1.0])
     def test_wejscie_nieskonczone_albo_ujemne_odrzucone(

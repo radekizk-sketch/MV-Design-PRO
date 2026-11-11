@@ -1152,8 +1152,8 @@ def zloz_wejscie_zwarcia(
         tryb_wkladow = str(tryb_wkladow_surowy).strip().lower()
     if tryb_wkladow not in ("on_demand", "in_run"):
         raise OdmowaDanychError(
-            f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} "
-            "(oczekiwano `on_demand` albo `in_run`)"
+            f"Nieznany tryb wkładów gałęziowych: {tryb_wkladow_surowy!r} (dozwolone: "
+            "wkłady liczone na żądanie albo wkłady liczone w biegu)"
         )
     wklady_w_biegu = tryb_wkladow == "in_run"
 

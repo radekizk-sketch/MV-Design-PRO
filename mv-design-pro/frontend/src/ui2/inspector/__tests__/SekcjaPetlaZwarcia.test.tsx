@@ -172,7 +172,7 @@ describe('SekcjaPetlaZwarcia', () => {
     render(<SekcjaPetlaZwarcia stationRef="stn-1" />);
     await waitFor(() => expect(screen.getByTestId('mvd-insp-petla-brak')).toBeInTheDocument());
     const brak = screen.getByTestId('mvd-insp-petla-brak');
-    expect(brak).toHaveTextContent('„Napięcie zwarcia uk”');
+    expect(brak).toHaveTextContent('„Napięcie zwarcia”');
     expect(brak).toHaveTextContent(`brak wyłącznika różnicowoprądowego obwodu (${miejsce})`);
     expect(brak.textContent).not.toContain('uk_percent');
     expect(brak.textContent).not.toContain(':rcd');

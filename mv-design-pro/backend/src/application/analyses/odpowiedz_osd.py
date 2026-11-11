@@ -170,7 +170,7 @@ def _resolve_setpoint(
     if deadband_hz < 0.0:
         raise OdmowaDanychError("Strefa martwa LFSM nie może być ujemna [Hz].")
     if f0_hz <= 0.0:
-        raise OdmowaDanychError("Częstotliwość odniesienia f₀ musi być dodatnia [Hz].")
+        raise OdmowaDanychError("Częstotliwość odniesienia musi być dodatnia [Hz].")
     control = InverterControl(
         lfsm_droop_pct=droop_pct,
         lfsm_deadband_hz=deadband_hz,

@@ -562,7 +562,7 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     expect(w.get('typ')!.wartosc).toBe('PCS BESS 2,5 MW / 0,8 kV');
     expect(w.get('producent')!.wartosc).toBe('Producent PCS');
     expect(w.get('profil_ncrfg')!.wartosc).toBe('PSE — Polskie Sieci Elektroenergetyczne');
-    expect(w.get('zakres_q')!.wartosc).toBe('od -33 % do 33 % Pₙ');
+    expect(w.get('zakres_q')!.wartosc).toBe('od -33 % do 33 % mocy znamionowej');
     expect(w.get('cos_phi_min')!.wartosc).toBe('0,95');
     expect(w.get('krzywa_pf')!.wartosc).toBe('Charakterystyka P(f) operatora');
     expect(w.get('lvrt')!.wartosc).toBe('PSE — Polskie Sieci Elektroenergetyczne · liczba punktów obwiedni: 1');
@@ -612,7 +612,7 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
   it('sieć zasilająca: typ z katalogu sieci i model zastępczy nazwą ze słownika zamkniętego', () => {
     const w = wiersze(karta('siec_zasilajaca', 'pelne'));
     expect(w.get('typ')!.wartosc).toBe('Sieć 110 kV · Sₖ″ 250 MVA');
-    expect(w.get('model')!.wartosc).toBe('moc zwarciowa Sₖ″ i stosunek R/X');
+    expect(w.get('model')!.wartosc).toBe('moc zwarciowa i stosunek R/X');
     const nieznany = { ...model('pelne'), sources: [{ ...model('pelne').sources![0], model: 'toString' }] } as unknown as EnergyNetworkModel;
     const k = buildKartaTechniczna(nieznany, WSKAZANIE.siec_zasilajaca as DaneElementuKanwy, KATALOGI)!;
     expect(wiersze(k).get('model')!.wartosc).toBe('model zastępczy spoza słownika aplikacji');

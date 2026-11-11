@@ -155,12 +155,11 @@ export function resolveShortCircuitRowsForElement(
   return shortCircuit.rows.filter((row) => hasRefMatch(refSet, rowRefs(row)));
 }
 
+// Etykieta wyłącznie ze słownika (klucz spoza słownika → jawny stan „spoza słownika”, nigdy
+// klucz). Dawne podmiany `_`→spacja / `ohm`→Ω uczłowieczały SUROWY klucz; nałożone na etykietę
+// słownika psuły jej wzór LaTeX (`$Z_{1}$` → `$Z {1}$`).
 function traceLabel(key: string): string {
-  return etykietaZeSlownika(TRACE_VALUE_LABELS, key)
-    .replace(/_/g, ' ')
-    .replace(/\bohm\b/gi, 'Ω')
-    .replace(/\bka\b/gi, 'kA')
-    .replace(/\bmva\b/gi, 'MVA');
+  return etykietaZeSlownika(TRACE_VALUE_LABELS, key);
 }
 
 // Rozpakowanie surowej wartości kroku śladu WHITE BOX (skalar / {re,im} /

@@ -879,12 +879,17 @@ def wiersze_izolacji_projektanta(
     """
     wynik: list[V126InsulationInput] = []
     for wiersz in wiersze:
-        for klucz in ("network_neutral", "earth_fault_factor", "earth_fault_factor_zrodlo_pl"):
+        for klucz, nazwa_parametru in (
+            ("network_neutral", "sposób uziemienia sieci"),
+            ("earth_fault_factor", "współczynnik zwarcia doziemnego"),
+            ("earth_fault_factor_zrodlo_pl", "źródło współczynnika zwarcia doziemnego"),
+        ):
             if klucz in wiersz:
                 raise OdmowaDanychError(
                     "Sposób uziemienia sieci i współczynnik zwarcia doziemnego wiersza "
                     "koordynacji izolacji wynikają z modelu (zespół uziemiający albo punkt "
-                    f"neutralny uzwojenia) — parametr „{klucz}” nie jest przyjmowany."
+                    f"neutralny uzwojenia) — parametr „{nazwa_parametru}” podany w wierszu nie "
+                    "jest przyjmowany."
                 )
         bus_ref = str(wiersz.get("location_bus_ref", ""))
         doziemienie = _doziemienie_szyny_izolacji(enm, bus_ref)

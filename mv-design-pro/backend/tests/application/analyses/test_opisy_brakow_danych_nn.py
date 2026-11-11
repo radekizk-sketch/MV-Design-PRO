@@ -76,7 +76,7 @@ def test_przedrostek_nazywa_miejsce_braku_a_kod_nie_wraca() -> None:
     }
     kody = {
         "rcd": OPISY_BRAKOW_DANYCH_NN_PL["rcd"],
-        "uk_percent": "„Napięcie zwarcia uk”",
+        "uk_percent": "„Napięcie zwarcia”",
         "kod_nieznany_x": BRAK_SPOZA_SLOWNIKA_NN_PL,
     }
     for przedrostek, (ref, rodzaj) in miejsca.items():

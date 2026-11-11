@@ -107,7 +107,7 @@ class FastDecoupledOptions(PowerFlowOptions):
             )
         if self.rebuild_matrices_every < 0:
             raise ValueError(
-                f"Liczba iteracji między przebudowami macierzy B′ i B″ musi być nieujemna, "
+                f"Liczba iteracji między przebudowami macierzy susceptancyjnych musi być nieujemna, "
                 f"otrzymano: {self.rebuild_matrices_every}. "
                 f"Wartość 0 oznacza brak przebudowy macierzy."
             )

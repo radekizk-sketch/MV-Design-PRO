@@ -52,7 +52,7 @@ export const RODZAJE_APARATU_SN = [
 
 /** Tryb regulacji z karty przekształtnika (`ConverterType.control_mode`). */
 export const TRYB_REGULACJI_KATALOGU_PL: Readonly<Record<string, string>> = {
-  STALY_COS_PHI: 'stały współczynnik mocy cosφ',
+  STALY_COS_PHI: 'stały współczynnik mocy',
   Q_U_DROOP: 'regulacja Q(U) — charakterystyka opadająca',
   Q_OF_U: 'regulacja Q(U)',
   GRID_FORMING: 'praca formująca sieć (grid forming)',

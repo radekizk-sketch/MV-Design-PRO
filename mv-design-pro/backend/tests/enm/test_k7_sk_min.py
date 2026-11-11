@@ -416,7 +416,8 @@ def test_gotowosc_nazywa_brak_danych_min_bez_obnizania_statusu() -> None:
     # opisane słowami — kod `source.sk_min_missing` niesie ślad założeń biegu (pole maszynowe
     # `zalozenia` asemblera), nie zdanie gotowości.
     assert (
-        "impedancja Z_Q przyjęta z danych scenariusza MAX" in raport.recommended_action_pl
+        "impedancja sieci zasilającej przyjęta z danych scenariusza MAX"
+        in raport.recommended_action_pl
         and "(1: Grid)" in raport.recommended_action_pl
         and "s1" not in raport.recommended_action_pl
         and "source.sk_min_missing" not in raport.recommended_action_pl
@@ -426,8 +427,10 @@ def test_gotowosc_nazywa_brak_danych_min_bez_obnizania_statusu() -> None:
     raport = _check_short_circuit(_enm(15.0, r_ohm=0.09, x_ohm=0.9))
     assert raport.status == "ready" and raport.recommended_action_pl is None
     raport = _check_short_circuit(_enm(15.0, ik3_ka=9.6))
-    assert raport.status == "ready" and "impedancja Z_Q przyjęta z danych scenariusza MAX" in (
-        raport.recommended_action_pl or ""
+    assert (
+        raport.status == "ready"
+        and "impedancja sieci zasilającej przyjęta z danych scenariusza MAX"
+        in (raport.recommended_action_pl or "")
     )
 
 

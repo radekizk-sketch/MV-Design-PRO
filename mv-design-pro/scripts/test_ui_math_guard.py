@@ -690,15 +690,16 @@ def _drzewo_z_kopiami(monkeypatch, tmp_path: Path, wzgledne: list[str]) -> dict[
 @pytest.mark.parametrize(
     ("wzgledna", "przed", "po"),
     [
-        # Literal w `ui/**` (zakres rozszerzony decyzja architekta 2026-10-30).
+        # Literal w `ui/**` (zakres rozszerzony decyzja architekta 2026-10-30); etykiety pol
+        # karty katalogu zyja w jednym slowniku `etykietyPolKarty.ts` (karta BKR).
         (
-            "ui/catalog/TypeLibraryBrowser.tsx",
+            "ui/catalog/etykietyPolKarty.ts",
             "'Prąd wytrzymywany krótkotrwale $I_{th}$ [kA]'",
             "'Prąd wytrzymywany krótkotrwale I_th [kA]'",
         ),
         # Polecenie LaTeX z pojedynczym ukosnikiem (`\v` to znak sterujacy w literale).
         (
-            "ui/catalog/TypeLibraryBrowser.tsx",
+            "ui/catalog/etykietyPolKarty.ts",
             "'Współczynnik mocy $\\\\cos\\\\varphi$'",
             "'Współczynnik mocy $\\\\cos\\varphi$'",
         ),

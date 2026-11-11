@@ -460,7 +460,9 @@ class UziemienieSekcji:
     #: źródło ``enm.skladowa_zerowa_galezi``) i baterii kondensatorów w gwieździe uziemionej
     #: tej sieci [S]; gałęzie bez podstawy B′0 (B′1 nieznane) wymienione obok.
     b0_s: float
-    galezie_bez_b0: tuple[str, ...]
+    #: Odcinki bez podstawy B′0: (ref, nazwa) — JEDNO źródło dla danych API (identyfikatory)
+    #: i zdania dla projektanta (nazwy); dwie listy rozjechałyby się na danych brzegowych.
+    galezie_bez_b0: tuple[tuple[str, str], ...]
     ostrzezenia: tuple[str, ...] = field(default=())
     #: Baterie kondensatorów załączone na szynach tej sieci z drogą zerową (gwiazda uziemiona,
     #: Y0 = Y1) i ich B_0 [S] — składnik ``b0_s`` (karta UX-04/POLE-BKR-MODEL; przynależność
@@ -551,7 +553,8 @@ class UziemienieSekcji:
         z rdzenia IEC 60909 (tryby uziemione przez małą impedancję)."""
         brak_b0 = (
             "odcinki sieci bez susceptancji zerowej i bez podstawy wartości roboczej "
-            f"(susceptancja zgodna nieznana): {', '.join(self.galezie_bez_b0)}"
+            "(susceptancja zgodna nieznana): "
+            + ", ".join(nazwa_pl for _, nazwa_pl in self.galezie_bez_b0)
             if self.galezie_bez_b0
             else None
         )
@@ -661,7 +664,7 @@ class UziemienieSekcji:
             "typ_punktu_neutralnego": self.typ_punktu_neutralnego(stan_awsc),
             "punkty": [p.to_dict(stan_awsc) for p in self.punkty],
             "b0_s": self.b0_s,
-            "galezie_bez_b0": list(self.galezie_bez_b0),
+            "galezie_bez_b0": [ref for ref, _ in self.galezie_bez_b0],
             "baterie_b0": [{"ref": ref, "b0_s": b0} for ref, b0 in self.baterie_b0],
             "prad_pojemnosciowy_a": self.prad_pojemnosciowy_a,
             "dane_przyjete_pojemnosci": [
@@ -1133,12 +1136,12 @@ def baterie_sieci_sn(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[Sh
 
 def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[
     float,
-    tuple[str, ...],
+    tuple[tuple[str, str], ...],
     tuple[tuple[str, float], ...],
     tuple[tuple[str, str, float, str], ...],
 ]:
     b0 = 0.0
-    brak: list[str] = []
+    brak: list[tuple[str, str]] = []
     robocze: list[tuple[str, str, float, str]] = []
     napiecia = napiecia_szyn_kv(enm)
     for galaz in galezie_sieci_sn(enm, szyny):
@@ -1146,7 +1149,7 @@ def _b0_sieci(enm: EnergyNetworkModel, szyny: frozenset[str]) -> tuple[
         # pojemności w sieci zerowej zwarć (``enm.mapping``, warunek pkt 5.2 f)) i wejście V12.6.
         skladowa = skladowa_zerowa_galezi(galaz, napiecia.get(galaz.from_bus_ref))
         if skladowa.b0_s_per_km is None:
-            brak.append(galaz.ref_id)
+            brak.append((galaz.ref_id, nazwa_elementu(galaz, "branches")))
             continue
         b0 += skladowa.b0_s_per_km * galaz.length_km
         robocze.extend(

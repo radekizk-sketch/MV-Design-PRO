@@ -88,11 +88,11 @@ def validate_zip_coeffs(c: ZipCoeffs) -> None:
     """Validate the ZIP polynomial (Rule: no guessing — reject malformed input)."""
     if c.v0_pu <= 0.0:
         raise OdmowaDanychError(
-            f"Napięcie odniesienia modelu ZIP U₀ musi być > 0 p.u., otrzymano {c.v0_pu}."
+            f"Napięcie odniesienia modelu ZIP musi być dodatnie [p.u.], otrzymano {c.v0_pu}."
         )
     if c.f0_hz <= 0.0:
         raise OdmowaDanychError(
-            f"Częstotliwość odniesienia modelu ZIP f₀ musi być > 0 Hz, otrzymano {c.f0_hz}."
+            f"Częstotliwość odniesienia modelu ZIP musi być dodatnia [Hz], otrzymano {c.f0_hz}."
         )
     for label, a, b, k in (("P", c.a_p, c.b_p, c.c_p), ("Q", c.a_q, c.b_q, c.c_q)):
         for czesc, val in (
@@ -220,8 +220,8 @@ def split_zip_constant_part(
             # would ever add the constant part back. Refuse loudly instead of
             # dropping the generation of the bus (defect A1: never a silent loss).
             raise ValueError(
-                f"Podział ZIP zadeklarowany dla węzła {spec.node_id} bez `zip_coeffs`: "
-                "części stałej mocy nie da się odtworzyć"
+                f"Węzeł {spec.node_id} ma zadeklarowany podział odbioru ZIP bez "
+                "współczynników wielomianu — części stałej nie da się przywrócić."
             )
         p_spec[idx] = p_base_pu
         q_spec[idx] = q_base_pu

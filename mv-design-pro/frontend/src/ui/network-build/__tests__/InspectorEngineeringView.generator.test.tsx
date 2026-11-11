@@ -291,7 +291,7 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     expect(await screen.findByText('SUN2000-185KTL')).toBeInTheDocument();
     expect(screen.getByTestId('inspektor-karta-wartosc-producent')).toHaveTextContent('Huawei');
     expect(screen.getByTestId('inspektor-karta-wartosc-profil_ncrfg')).toHaveTextContent('PSE — Polskie Sieci Elektroenergetyczne');
-    expect(screen.getByTestId('inspektor-karta-wartosc-zakres_q')).toHaveTextContent('od -33 % do 33 % Pₙ');
+    expect(screen.getByTestId('inspektor-karta-wartosc-zakres_q')).toHaveTextContent('od -33 % do 33 % mocy znamionowej');
     expect(screen.getByTestId('inspektor-karta-wartosc-cos_phi_min')).toHaveTextContent('0,95');
     expect(screen.getByTestId('inspektor-karta-wartosc-krzywa_pf')).toHaveTextContent('Charakterystyka P(f) PSE 2024');
     expect(screen.getByTestId('inspektor-karta-wartosc-lvrt')).toHaveTextContent('liczba punktów obwiedni: 2');

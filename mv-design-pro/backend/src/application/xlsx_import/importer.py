@@ -1489,7 +1489,7 @@ class XlsxNetworkImporter:
                 )
             if zrodlo.get("RX_min") is not None and sk_min is None and ik_min is None:
                 ostrzezenia.append(
-                    f"Źródło '{zrodlo['id']}': kolumna `RX_min` podana bez `Sk_min_MVA` ani `Ik_min_kA` — "
+                    f"Źródło '{zrodlo['id']}': kolumna `RX_min` podana bez kolumn `Sk_min_MVA` ani `Ik_min_kA` — "
                     "stosunek R/X scenariusza minimalnego nie ma zastosowania bez własnej "
                     "mocy zwarciowej minimalnej tego źródła."
                 )

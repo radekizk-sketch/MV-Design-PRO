@@ -229,7 +229,9 @@ def test_sonda_typu_referencyjnego(katalog: CatalogRepository, przestrzen: str) 
     ]
     assert migotanie and migotanie[0].jakosc is not None
     assert migotanie[0].jakosc.value == "ESTIMATED"
-    assert "k_sc" in oceny["short_circuit"].powod_pl
+    # Brak udziału zwarciowego nazwany słowami (karty BKR i ZU: bez klucza pola i bez symbolu).
+    assert "udział zwarciowy" in oceny["short_circuit"].powod_pl
+    assert "k_sc" not in oceny["short_circuit"].powod_pl
     harmonic = {s.nazwa: s for s in oceny["harmonic"].skladniki}
     assert harmonic["emisja"].status == "UNKNOWN"
     assert "karty widmowej" in harmonic["emisja"].powod_pl

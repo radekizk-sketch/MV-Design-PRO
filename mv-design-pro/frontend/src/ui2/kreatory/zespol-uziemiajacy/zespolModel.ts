@@ -161,7 +161,7 @@ export function transformatoryWnSn(
         && pasmoNapieciowe(napiecia.get(t.lv_bus_ref)) === 'SN',
     )
     .slice()
-    .sort((a, b) => (a.name ?? a.ref_id).localeCompare(b.name ?? b.ref_id, 'pl'));
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pl') || a.ref_id.localeCompare(b.ref_id));
 }
 
 export function fmtLiczba(v: number | null | undefined, jednostka: string, cyfry = 1): string {

@@ -152,7 +152,7 @@ def validate_inverter_control(c: InverterControl) -> None:
     """Reject malformed control (no guessing — Rule: physics rejects bad input)."""
     if c.f0_hz <= 0.0:
         raise OdmowaDanychError(
-            f"Częstotliwość odniesienia falownika f₀ musi być > 0 Hz, otrzymano {c.f0_hz}."
+            f"Częstotliwość odniesienia falownika musi być dodatnia [Hz], otrzymano {c.f0_hz}."
         )
     if c.lfsm_droop_pct < 0.0:
         raise OdmowaDanychError(

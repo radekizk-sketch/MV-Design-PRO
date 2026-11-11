@@ -57,9 +57,9 @@ BRAKI_DANYCH_Q_PL: dict[str, str] = {
     "bus_voltages": "napięcia węzłów z rozpływu mocy",
     "controllable_sources": "źródło z regulacją mocy biernej",
     "q_actual_mvar": "aktualna moc bierna źródła (z rozpływu mocy)",
-    "q_min_mvar": "dolna granica mocy biernej regulatora (Q_min)",
-    "q_max_mvar": "górna granica mocy biernej regulatora (Q_max)",
-    "q_limits_inconsistent": "spójne granice regulatora (Q_min nie większa niż Q_max)",
+    "q_min_mvar": "dolna granica mocy biernej regulatora",
+    "q_max_mvar": "górna granica mocy biernej regulatora",
+    "q_limits_inconsistent": "spójne granice regulatora (dolna granica mocy biernej nie większa niż górna)",
 }
 
 

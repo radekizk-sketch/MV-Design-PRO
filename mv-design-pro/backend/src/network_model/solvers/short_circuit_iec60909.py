@@ -1254,7 +1254,7 @@ class ShortCircuitIEC60909Solver:
             # powstanie ślad. Jawny błąd programu zamiast cichego zera we wzorze śladu.
             raise ValueError(
                 f"Wzór pętli zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga "
-                "impedancji składowej zerowej Z0."
+                "impedancji składowej zerowej."
             )
         z0_val = z0
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:

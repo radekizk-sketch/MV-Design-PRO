@@ -5,7 +5,6 @@ import type { ReactElement } from 'react';
 
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
-import { poTekscieZWzorami } from '../../../test/tekstZWzorami';
 import { BRAK_DANYCH_PL } from '../../sld/shared/kartaTechnicznaElementu';
 
 /**

@@ -18,6 +18,7 @@ import {
   useNetworkBuildStore,
 } from '../../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../../ui/selection';
+import { miejsceWKolekcji, nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   KontrolaPrzedZapisem,
@@ -111,8 +112,12 @@ export function KreatorZespoluUziemiajacegoSn() {
   );
   const kontekst = useMemo(() => kontekstZOperacji(context, selected), [context, selected]);
   const hasMiejsce = maMiejsce(kontekst);
-  const miejsceLabel =
-    kontekst.bay_name || kontekst.bay_ref || kontekst.bus_name || kontekst.bus_ref || '—';
+  // Miejsce wpięcia nazwą z modelu; obiekt bez nazwy — rodzaj obiektu, nigdy identyfikator.
+  const miejsceLabel = kontekst.bay_ref
+    ? nazwaObiektuPl(kontekst.bay_name, 'pole')
+    : kontekst.bus_ref
+      ? nazwaObiektuPl(kontekst.bus_name, 'szyna')
+      : '—';
 
   const [dane, setDane] = useState<ZespolFormData>(() => ({ ...DANE_DOMYSLNE }));
   const [bledy, setBledy] = useState<BladPola[]>([]);
@@ -316,7 +321,7 @@ export function KreatorZespoluUziemiajacegoSn() {
             trafoWnSn.map((t) => (
               <PolePrzelacznikBinarny
                 key={t.ref_id}
-                etykieta={t.name ?? t.ref_id}
+                etykieta={nazwaObiektuPl(t.name, 'transformator', miejsceWKolekcji(trafoWnSn, t))}
                 wlaczone={dane.wylaczenie_od_transformatorow_refs.includes(t.ref_id)}
                 onZmiana={(v) =>
                   zmien(

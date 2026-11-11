@@ -619,7 +619,7 @@ function DetailField({
     <div data-testid={testId}>
       <dt className="text-xs font-medium uppercase tracking-wider text-gray-500"><TekstZWzorami tekst={label} /></dt>
       <dd className="mt-1 text-sm text-gray-900">
-        {value}
+        <TekstZWzorami tekst={value} />
         {unit ? <span className="ml-1 text-gray-500">{unit}</span> : null}
       </dd>
     </div>

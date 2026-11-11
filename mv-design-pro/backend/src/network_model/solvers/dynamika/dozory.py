@@ -221,8 +221,8 @@ class Dozor:
             if akcja.t_s != 0.0:
                 raise _odmowa(
                     self,
-                    f"akcja {type(akcja).__name__} ma chwilę {akcja.t_s} s — chwila akcji jest "
-                    "WZGLEDNA (0 = chwila wykonania dozoru)",
+                    f"akcja `{type(akcja).__name__}` ma chwilę {akcja.t_s} s — chwila akcji "
+                    "jest WZGLĘDNA (0 = chwila wykonania dozoru)",
                 )
 
     @property

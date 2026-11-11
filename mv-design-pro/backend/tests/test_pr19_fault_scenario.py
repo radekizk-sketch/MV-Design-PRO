@@ -409,7 +409,10 @@ class TestValidation:
 
     def test_zero_thermal_time_raises(self):
         """Zero thermal_time_seconds raises."""
-        with pytest.raises(FaultScenarioValidationError, match="Czas trwania zwarcia t_k"):
+        with pytest.raises(
+            FaultScenarioValidationError,
+            match=r"Czas trwania zwarcia \(do oceny cieplnej\) musi być dodatni",
+        ):
             new_fault_scenario(
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,

@@ -475,10 +475,10 @@ OPISY_BRAKOW_DANYCH_NN_PL: dict[str, str] = {
     "worst_point_bus_ref": "brak policzalnego najgorszego punktu odpływu",
     "breaker": "brak wyłącznika obwodu",
     "breaker_catalog_binding": "wyłącznik obwodu bez powiązania z katalogiem aparatów",
-    "lv_neutral.r_ohm": "brak rezystancji uziemienia roboczego R_B punktu neutralnego",
-    "earth_electrode_r_ohm": "brak rezystancji uziomu ochronnego R_A",
+    "lv_neutral.r_ohm": "brak rezystancji uziemienia roboczego punktu neutralnego",
+    "earth_electrode_r_ohm": "brak rezystancji uziomu ochronnego",
     "rcd": "brak wyłącznika różnicowoprądowego obwodu",
-    "b0_siemens_per_km": "brak pojemności doziemnej (susceptancji zerowej b_0) odcinka",
+    "b0_siemens_per_km": "brak pojemności doziemnej (jednostkowej susceptancji zerowej) odcinka",
     "header.defaults.frequency_hz": "brak częstotliwości znamionowej sieci w nagłówku modelu",
 }
 

@@ -53,6 +53,10 @@ from domain.protection_device import (
     SensitivityCheck,
     StanPary,
 )
+from network_model.solvers.short_circuit_core import (
+    NAZWY_RODZAJOW_ZWARCIA_PL,
+    ShortCircuitType,
+)
 
 from .models import (
     CoordinationAnalysisResult,
@@ -588,7 +592,11 @@ class OvercurrentCoordinationAnalyzer:
                     FaultMarker(
                         id=f"{punkt}_ik_{etykieta}",
                         # Etykieta linii wykresu TCC (tekst SVG, bez składu KaTeX) — słowami.
-                        label_pl=f"prąd zwarciowy {_RODZAJ_BIEGU_PL[etykieta]} {rodzaj} ({nazwa})",
+                        label_pl=(
+                            f"prąd zwarcia "
+                            f"{NAZWY_RODZAJOW_ZWARCIA_PL[ShortCircuitType(rodzaj)]} "
+                            f"{_RODZAJ_BIEGU_PL[etykieta]} ({nazwa})"
+                        ),
                         current_a=prad,
                         fault_type=rodzaj,
                         location=punkt,

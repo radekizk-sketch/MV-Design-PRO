@@ -119,6 +119,10 @@ const DOZWOLONE: Readonly<Record<string, string>> = {
   'ui/shared/fileNamingConvention.ts|POLISH_CHAR_MAP[c] ?? c':
     'Transliteracja znaków nazwy pliku: znak spoza mapy polskich liter jest SAM SOBĄ (litera '
     + 'łacińska, cyfra) — to nie kod, tylko znak tekstu.',
+  'ui/proof/latexTekst.ts|ZNAKI_POLECEN[polecenie] ?? polecenie':
+    'Odczyt tekstowy wzoru LaTeX (`tekstBezWzorow` — etykiety dostępności, eksport tekstu): '
+    + 'polecenie spoza mapy znaków (np. `\\lg`, `\\sin`) czyta się nazwą funkcji matematycznej — '
+    + 'to zapis wzoru, nie kod maszynowy.',
   'ui2/wyniki/dowod/dowodModel.ts|CYFRY_GORNE[znak] ?? znak':
     'Zamiana cyfr na indeks górny w zapisie wykładnika: znak spoza mapy (znak minus, kropka) '
     + 'jest sam sobą — to znak zapisu liczby, nie kod.',

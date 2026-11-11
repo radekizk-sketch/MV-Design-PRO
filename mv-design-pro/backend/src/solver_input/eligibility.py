@@ -66,8 +66,8 @@ def _check_transformer_no_load_params(
                 code="transformer.no_load_params_missing",
                 severity=SolverInputIssueSeverity.WARNING,
                 message=(
-                    f"Transformator „{branch.id}” nie ma prądu stanu jałowego i0 ani strat "
-                    "jałowych P0 — gałąź magnesująca nie jest odwzorowana w wejściu rozpływu "
+                    f"Transformator „{branch.id}” nie ma prądu stanu jałowego ani strat "
+                    "jałowych — gałąź magnesująca nie jest odwzorowana w wejściu rozpływu "
                     "mocy"
                 ),
                 element_ref=branch.id,
@@ -157,8 +157,8 @@ def _check_common_blockers(
                             severity=SolverInputIssueSeverity.BLOCKER,
                             message=(
                                 f"Transformator „{branch.id}” nie wskazuje typu katalogowego "
-                                "i ma niepoprawne dane znamionowe (moc S_n albo napięcie "
-                                "zwarcia u_k niedodatnie)"
+                                "i ma niepoprawne dane znamionowe (moc znamionowa albo napięcie "
+                                "zwarcia niedodatnie)"
                             ),
                             element_ref=branch.id,
                             field_path=f"transformers[ref_id={branch.id}].type_ref",

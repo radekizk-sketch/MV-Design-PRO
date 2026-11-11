@@ -4998,10 +4998,10 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "d261cdc7dca7e52af3d639e11aa8289b50e5507f8a049e55164c67eee1ef95b5",
-        "proof_id": "proof:v126:earth_fault_detection:c684cda7126b2862",
+        "proof_hash": "c82d258e81b71ad2853613d87defcab16fe044344c42e3dd4e61e76189c12cf7",
+        "proof_id": "proof:v126:earth_fault_detection:25bac922c3405d81",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
-        "source_result_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
+        "source_result_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
         "steps": [
           {
             "data": {
@@ -5034,7 +5034,7 @@
       "koperta": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "deterministic_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
+        "deterministic_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
@@ -5047,19 +5047,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "ed614e866f80febebf308d42ae56703065807b88816a549c0d5f94284f424036",
-        "report_id": "report:v126:earth_fault_detection:c684cda7126b2862",
+        "report_hash": "f50a532d8265fb66a5bf4794d17d837289ab37db78f5db0a0a9e11abda6bb914",
+        "report_id": "report:v126:earth_fault_detection:25bac922c3405d81",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earth_fault_detection:c684cda7126b2862"
+                "value": "proof:v126:earth_fault_detection:25bac922c3405d81"
               },
               {
                 "label": "proof_hash",
-                "value": "d261cdc7dca7e52af3d639e11aa8289b50e5507f8a049e55164c67eee1ef95b5"
+                "value": "c82d258e81b71ad2853613d87defcab16fe044344c42e3dd4e61e76189c12cf7"
               },
               {
                 "label": "trace_step_count",
@@ -5073,7 +5073,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc"
+                "value": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233"
               },
               {
                 "label": "solver_version",
@@ -5088,12 +5088,12 @@
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "d261cdc7dca7e52af3d639e11aa8289b50e5507f8a049e55164c67eee1ef95b5",
-        "source_result_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc"
+        "source_proof_hash": "c82d258e81b71ad2853613d87defcab16fe044344c42e3dd4e61e76189c12cf7",
+        "source_result_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233"
       },
       "slad": {
         "analysis_type": "earth_fault_detection",
-        "deterministic_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
+        "deterministic_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "steps": [
           {
@@ -5130,12 +5130,12 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earth_fault_detection:c684cda7126b2862",
-        "report_ref": "report:v126:earth_fault_detection:c684cda7126b2862",
+        "proof_ref": "proof:v126:earth_fault_detection:25bac922c3405d81",
+        "report_ref": "report:v126:earth_fault_detection:25bac922c3405d81",
         "result": {
           "analysis_type": "earth_fault_detection",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
+          "deterministic_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
           "input_hash": "efcf27ca8104870eee0b11f9c1adda5444a2431be140a22ba1d8d12054f7fbaf",
           "result": {
             "alternative_method": "fifth_harmonic",
@@ -5146,7 +5146,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "DEKLARACJA",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk c684cda7126b2862)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 25bac922c3405d81)",
                   "poziom": "DECLARATION",
                   "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
                   "status_danych": {
@@ -5212,7 +5212,7 @@
                 "slad": [
                   {
                     "krok": "earth_fault_method_selection",
-                    "opis_pl": "funkcje wymagane: wattmetric; funkcje przekaźnika: admittance, wattmetric",
+                    "opis_pl": "funkcje wymagane: watometryczna; funkcje przekaźnika: admitancyjna, watometryczna",
                     "run_id": null,
                     "wersja_silnika": "v126-academic-whitebox-1.5"
                   }
@@ -5235,7 +5235,7 @@
                     "Dana przyjęta bez walidacji: Kryterium dostępności metody detekcji doziemień (Z-8 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej.",
                     "Zakres ważności: Sieć SN jako całość: metoda detekcji zalecana dla sposobu pracy punktu neutralnego z modelu wobec funkcji przekaźnika wskazanych przez projektanta — wynik nie obejmuje: nastawy rozruchowe funkcji ziemnozwarciowych; selektywność czasowa."
                   ],
-                  "zdanie_pl": "Przekaźnik ma każdą funkcję metody detekcji zalecanej dla sposobu pracy punktu neutralnego sieci (Zabezpieczenie ziemnozwarciowe sieci SN) — kryterium spełnione. Przekaźnik ma każdą funkcję metody zalecanej (wattmetric): Zabezpieczenie ziemnozwarciowe sieci SN (stan wymagany wg § Z-8 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”)."
+                  "zdanie_pl": "Przekaźnik ma każdą funkcję metody detekcji zalecanej dla sposobu pracy punktu neutralnego sieci (Zabezpieczenie ziemnozwarciowe sieci SN) — kryterium spełnione. Przekaźnik ma każdą funkcję metody zalecanej (watometryczna): Zabezpieczenie ziemnozwarciowe sieci SN (stan wymagany wg § Z-8 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”)."
                 },
                 "wynik": {
                   "chwila_s": null,
@@ -5246,7 +5246,7 @@
                     "jednostka": "1",
                     "wartosc": 1.0
                   },
-                  "wielkosc_pl": "przekaźnik ma każdą funkcję metody zalecanej (wattmetric)"
+                  "wielkosc_pl": "przekaźnik ma każdą funkcję metody zalecanej (watometryczna)"
                 },
                 "zakres_waznosci": {
                   "model_urzadzenia": null,
@@ -5308,7 +5308,7 @@
                   "wattmetric"
                 ]
               },
-              "result_pl": "Metoda zalecana: wattmetric; funkcje wymagane w przekaźniku: wattmetric",
+              "result_pl": "Metoda zalecana: watometryczna; funkcje wymagane w przekaźniku: watometryczna",
               "step": 1,
               "substitution": "petersen_tuned -> wattmetric (wattmetric)",
               "unit_check": "Wybór metody jest decyzją logiczną — bez jednostek fizycznych."

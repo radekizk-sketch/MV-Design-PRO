@@ -183,12 +183,12 @@ class CtBurdenResult:
 
 def _zalozenia(*, rezystywnosc: float, wariant: str) -> tuple[str, ...]:
     podstawa = (
-        "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
-        f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
-        "— zalozenie jawne, nie dane katalogu przekladnika.",
+        "Obwód wtórny DWUPRZEWODOWY: Rp = 2·ρ·L/s (długość L liczona w jedną stronę).",
+        f"Rezystywność żyły ρ = {rezystywnosc} Ω·mm²/m (miedź, 20 °C, IEC 60228) "
+        "— założenie jawne, nie dane katalogu przekładnika.",
         "Moc przewodów (kwadrat prądu znamionowego wtórnego razy rezystancja przewodów) "
         "liczona RAZ (nie jest osobnym składnikiem obok siebie samej).",
-        "Moc stykow wchodzi do bilansu wylacznie wtedy, gdy podano ja jawnie.",
+        "Moc styków wchodzi do bilansu wyłącznie wtedy, gdy podano ją jawnie.",
     )
     if wariant == WARIANT_ALF_PELNY:
         return podstawa + (

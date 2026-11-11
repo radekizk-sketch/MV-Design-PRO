@@ -1060,18 +1060,18 @@ class OperatingScenario(BaseModel):
     @model_validator(mode="after")
     def _bez_duplikatow(self) -> OperatingScenario:
         if len(set(self.out_of_service)) != len(self.out_of_service):
-            raise ValueError("Lista elementów wyłączonych (`out_of_service`) ma powtórzony element")
+            raise ValueError("Scenariusz pracy: element wyłączony z pracy podany dwukrotnie")
         if any(not ref for ref in self.switch_states):
-            raise ValueError("Stany łączników (`switch_states`): pusty identyfikator łącznika")
+            raise ValueError("Scenariusz pracy: stan łącznika bez wskazania łącznika")
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
             raise ValueError(
-                "Wstrzyknięcia i sondy (`injections`, `probe_shunts`) mają powtórzony "
-                "identyfikator sondy"
+                "Scenariusz pracy: sonda wstrzyknięcia albo bocznika podana dwukrotnie dla tego "
+                "samego elementu"
             )
         for ref, mnoznik in self.gen_scaling.items():
             if not ref:
-                raise ValueError("Skalowanie generacji (`gen_scaling`): pusty identyfikator")
+                raise ValueError("Scenariusz pracy: skalowanie generacji bez wskazania wytwórcy")
             if mnoznik < 0.0:
                 raise ValueError(
                     f"Scenariusz pracy: mnożnik generacji wytwórcy jest ujemny ({mnoznik:g})"

@@ -110,8 +110,8 @@ def _entries_from_normative(
 ) -> list[SensitivityEntry]:
     entries: list[SensitivityEntry] = []
     mapping = {
-        "NR_P15_001": ("load_q", ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["Moc bierna odbioru"], "P20"),
-        "NR_P15_002": ("load_p", ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["Moc czynna odbioru"], "P20"),
+        "NR_P15_001": ("load_q", ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["load_q"], "P20"),
+        "NR_P15_002": ("load_p", ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["load_p"], "P20"),
     }
     for item in report.items:
         mapped = mapping.get(item.rule_id)

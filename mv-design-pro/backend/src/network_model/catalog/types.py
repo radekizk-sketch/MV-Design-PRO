@@ -2280,7 +2280,8 @@ class BESSBatteryType:
         if self.c_rate <= 0:
             odmowa_twarda(
                 "KAT-T-020",
-                f"{self.id}: krotność prądu ładowania magazynu musi być dodatnia (jest {self.c_rate}).",
+                f"Magazyn energii {self.id}: krotność prądu ładowania magazynu (moc względem "
+                f"pojemności) musi być dodatnia (jest {self.c_rate}).",
             )
 
     def to_dict(self) -> dict[str, Any]:
@@ -3775,11 +3776,11 @@ class LVApparatusType:
 
     def __post_init__(self) -> None:
         """Validate optional additive nastawialnosc ranges (P0.2)."""
-        _validate_float_range("nastawy długozwłocznej I_r", self.ir_range)
-        _validate_float_range("nastawy krótkozwłocznej I_sd", self.isd_range)
-        _validate_float_range("nastawy bezzwłocznej I_i", self.ii_range)
-        _validate_float_range("zwłoki długozwłocznej t_r", self.tr_range)
-        _validate_float_range("zwłoki krótkozwłocznej t_sd", self.tsd_range)
+        _validate_float_range("nastawy prądu członu długozwłocznego", self.ir_range)
+        _validate_float_range("nastawy prądu członu krótkozwłocznego", self.isd_range)
+        _validate_float_range("nastawy prądu członu bezzwłocznego", self.ii_range)
+        _validate_float_range("zwłoki członu długozwłocznego", self.tr_range)
+        _validate_float_range("zwłoki członu krótkozwłocznego", self.tsd_range)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3997,7 +3998,7 @@ class LVFuseLinkType:
             odmowa_twarda(
                 "KAT-T-022",
                 f"Wkładka topikowa '{self.id}' bez znamionowej zdolności wyłączania "
-                f"I_cn (otrzymano {self.breaking_capacity_ka!r} kA) — IEC 60269-1 "
+                f"(otrzymano {self.breaking_capacity_ka!r} kA) — IEC 60269-1 "
                 "wymaga tej wartości dla każdej wkładki; uzupełnij ją z karty "
                 "katalogowej albo z normy, podając źródło.",
             )
@@ -4118,9 +4119,9 @@ class LVRcdType:
                 f"typów IEC 60755 ({', '.join(RODZAJE_PRADU_ROZNICOWEGO_RCD)}).",
             )
         for nazwa, wartosc in (
-            ("prąd znamionowy I_n [A]", self.in_a),
-            ("znamionowy prąd różnicowy I_Δn [A]", self.i_delta_n_a),
-            ("czas zadziałania t_a [s]", self.t_a_s),
+            ("prąd znamionowy [A]", self.in_a),
+            ("znamionowy prąd różnicowy [A]", self.i_delta_n_a),
+            ("czas zadziałania przy znamionowym prądzie różnicowym [s]", self.t_a_s),
         ):
             if wartosc <= 0:
                 odmowa_twarda(

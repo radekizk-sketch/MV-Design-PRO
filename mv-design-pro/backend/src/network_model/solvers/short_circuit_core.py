@@ -173,7 +173,7 @@ def compute_equivalent_impedance(
     }:
         z0 = require_z0_bus(
             f"Obliczenie zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga macierzy "
-            "impedancji węzłowej składowej zerowej Z0."
+            "impedancji węzłowej składowej zerowej."
         )
     z_equiv = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0)
     if abs(z_equiv) == 0:
@@ -214,7 +214,7 @@ def impedancja_petli_zwarcia(
         if z0 is None:
             raise ValueError(
                 f"Obliczenie zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga "
-                "impedancji składowej zerowej Z0 w miejscu zwarcia."
+                "impedancji składowej zerowej w miejscu zwarcia."
             )
         z0_toru = z0 if z_f is None else z0 + 3.0 * z_f
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:

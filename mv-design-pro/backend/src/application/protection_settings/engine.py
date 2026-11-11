@@ -915,7 +915,7 @@ class ProtectionSettingsEngine:
                 recommendations.append(
                     "Możliwe rozwiązania: obniż współczynnik bezpieczeństwa, zwiększ zapas wobec "
                     "kolejnej strefy selektywności, lub przenieś punkt kolejnego "
-                    "zabezpieczenia (pole `next_bus_id`)."
+                    "zabezpieczenia (szynę kolejnej strefy)."
                 )
             else:
                 recommendations.append(

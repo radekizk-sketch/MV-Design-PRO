@@ -118,8 +118,8 @@ NAZWY_PARAMETROW_DOMENY_PL: dict[ParametrDomeny, str] = {
 }
 #: Baza mocy punktu pracy W TEKŚCIE.
 NAZWY_BAZ_MOCY_PL: dict[BazaMocyPunktuPracy, str] = {
-    "S_N_URZADZENIA": "moc pozorna znamionowa urządzenia S_n",
-    "P_N_URZADZENIA": "moc czynna znamionowa urządzenia P_n",
+    "S_N_URZADZENIA": "moc pozorna znamionowa urządzenia",
+    "P_N_URZADZENIA": "moc czynna znamionowa urządzenia",
 }
 #: Tryb pracy magazynu W TEKŚCIE.
 NAZWY_TRYBOW_MAGAZYNU_PL: dict[TrybPracyMagazynu, str] = {
@@ -771,7 +771,7 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.pomiar",
-                "pomiar w dziedzinie supraharmonicznej wymaga pasma rozdzielczości (pole `rbw_hz`)",
+                "pomiar w dziedzinie supraharmonicznej wymaga pasma rozdzielczości (RBW)",
             )
         )
 

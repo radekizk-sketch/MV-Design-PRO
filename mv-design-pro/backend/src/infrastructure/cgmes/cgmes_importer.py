@@ -685,8 +685,9 @@ def _rodzaj_generatora(
     rodzaje = sorted(set(klasy_jednostek))
     if len(rodzaje) != 1:
         ostrzezenia.append(
-            f"Przekształtnik {name}: jednostki {', '.join(rodzaje) or 'brak'} — rodzaj źródła "
-            "nieokreślony (pole `gen_type` puste), uzupełnij przed obliczeniami."
+            f"Przekształtnik {name}: klasy jednostek CIM {', '.join(rodzaje) or 'brak'} — rodzaj "
+            "źródła nieokreślony (pole rodzaju źródła w modelu puste), uzupełnij przed "
+            "obliczeniami."
         )
         return None
     if rodzaje[0] == "PowerElectronicsWindUnit":

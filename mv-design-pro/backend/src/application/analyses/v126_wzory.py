@@ -55,6 +55,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.solvers.v126_academic import (
+    METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL as _METODA_DETEKCJI_SOLVERA_PL,
+)
+
 JsonDict = dict[str, Any]
 
 #: Budowniczy podstawienia LaTeX: czyta WYŁĄCZNIE `step["data"]`/`step["result"]`
@@ -252,17 +256,9 @@ UZIEMIENIE_PUNKTU_NEUTRALNEGO_PL: dict[str, str] = {
     "solid": "uziemiony bezpośrednio",
 }
 
-METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL: dict[str, str] = {
-    "wattmetric": "watometryczna",
-    "admittance": "admitancyjna",
-    "transient_directional": "kierunkowa stanów przejściowych",
-    "fifth_harmonic": "piątej harmonicznej",
-    "51N+67N": "nadprądowa ziemnozwarciowa 51N z kierunkową 67N",
-    "51N/50N": "nadprądowa ziemnozwarciowa zwłoczna 51N i bezzwłoczna 50N",
-    "51N": "nadprądowa ziemnozwarciowa zwłoczna 51N",
-    "67N": "kierunkowa ziemnozwarciowa 67N",
-    "50N": "nadprądowa ziemnozwarciowa bezzwłoczna 50N",
-}
+#: Nazwy metod i funkcji detekcji — JEDNO źródło w rdzeniu solvera (tekst kroku śladu solvera
+#: i zdanie widoku API czytają ten sam słownik).
+METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL = _METODA_DETEKCJI_SOLVERA_PL
 
 
 def _metody_pl(kody: Any) -> str | None:

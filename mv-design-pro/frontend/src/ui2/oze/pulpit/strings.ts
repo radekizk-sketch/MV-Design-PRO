@@ -254,9 +254,9 @@ export const BRAKI_DANYCH_Q: Readonly<Record<BrakDanychQ, string>> = {
   bus_voltages: 'napięcia węzłów z rozpływu mocy',
   controllable_sources: 'źródło z regulacją mocy biernej',
   q_actual_mvar: 'aktualna moc bierna źródła (z rozpływu mocy)',
-  q_min_mvar: 'dolna granica mocy biernej regulatora ($Q_{\\min}$)',
-  q_max_mvar: 'górna granica mocy biernej regulatora ($Q_{\\max}$)',
-  q_limits_inconsistent: 'spójne granice regulatora ($Q_{\\min}$ nie większa niż $Q_{\\max}$)',
+  q_min_mvar: 'dolna granica mocy biernej regulatora',
+  q_max_mvar: 'górna granica mocy biernej regulatora',
+  q_limits_inconsistent: 'spójne granice regulatora (dolna granica mocy biernej nie większa niż górna)',
 };
 
 /** Werdykt adekwatności mocy biernej po polsku — wartość maszynowa backendu nie trafia na ekran. */

@@ -191,7 +191,7 @@ class KandydatAparatuNn:
             )
         if self.in_a <= 0:
             raise OdmowaDanychError(
-                f"Prąd znamionowy aparatu (`in_a`) musi być dodatni, otrzymano {self.in_a}."
+                f"Prąd znamionowy kandydata musi być dodatni, otrzymano {self.in_a:g} A."
             )
         if self.kind == KIND_MCB and not self.klasa_mcb:
             raise OdmowaDanychError(
@@ -402,7 +402,8 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
                 "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
                 "długozwłocznej (prąd i czas) w katalogu — prądu zadziałania nie da się wyznaczyć "
                 "bez fabrykacji "
-                "(ten rekord katalogu nie niesie `ir_range`/`tr_range`)."
+                "(ten rekord katalogu nie niesie zakresu nastaw prądu ani zwłoki członu "
+                "długozwłocznego)."
             ),
             wartosci={"limit_a": limit},
         )
@@ -635,13 +636,10 @@ def ocen_kandydatow_nn(
             ``ik1_min_a < 0``.
     """
     if ib_a < 0:
-        raise ValueError(
-            f"Prąd obliczeniowy obwodu (`ib_a`) nie może być ujemny, otrzymano {ib_a}."
-        )
+        raise ValueError(f"Prąd obliczeniowy obwodu nie może być ujemny, otrzymano {ib_a:g} A.")
     if iz_prime_a <= 0:
         raise ValueError(
-            f"Obciążalność skorygowana przewodu I_z' musi być dodatnia, otrzymano "
-            f"{iz_prime_a:g} A."
+            f"Obciążalność skorygowana przewodu musi być dodatnia, otrzymano " f"{iz_prime_a:g} A."
         )
     if ik1_min_a < 0:
         raise ValueError(

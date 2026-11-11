@@ -134,7 +134,7 @@ class TestTPozaHoryzontem:
         )
 
     def test_zdarzenie_poza_horyzontem_odrzucone(self):
-        with pytest.raises(ValidationError, match="wykracza poza horyzont symulacji"):
+        with pytest.raises(ValidationError, match="wykracza poza „Horyzont symulacji”"):
             ScenariuszDynamiczny(
                 horyzont_s=1.0,
                 krok_wyjscia_s=0.1,
@@ -142,7 +142,9 @@ class TestTPozaHoryzontem:
             )
 
     def test_zwarcie_usuniecie_poza_horyzontem_odrzucone(self):
-        with pytest.raises(ValidationError, match="chwilę usunięcia .* poza horyzontem symulacji"):
+        with pytest.raises(
+            ValidationError, match="ma „Chwila usunięcia zwarcia” .* poza „Horyzont symulacji”"
+        ):
             ScenariuszDynamiczny(
                 horyzont_s=1.0,
                 krok_wyjscia_s=0.1,

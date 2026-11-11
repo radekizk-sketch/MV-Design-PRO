@@ -472,5 +472,5 @@ def test_odmowa_rdzenia_b01_przez_realna_trase_klasyfikacji_modulu() -> None:
     )
     assert odpowiedz.status_code == 422, odpowiedz.text
     assert odpowiedz.json()["detail"] == (
-        "Klasyfikacja modułu: moc maksymalna P_max [kW] = inf — wymagana liczba skończona ≥ 0."
+        "Klasyfikacja modułu: moc maksymalna [kW] = inf — wymagana liczba skończona ≥ 0."
     )

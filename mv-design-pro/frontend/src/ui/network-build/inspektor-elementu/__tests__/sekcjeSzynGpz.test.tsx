@@ -86,7 +86,7 @@ describe('Model karty GPZ — sekcja „Sekcje szyn”', () => {
     expect(sekcja.tytul).toBe('Sekcje szyn');
     expect(sekcja.zrodloPl ?? null).toBeNull();
     expect(sekcja.tabele?.map((t) => t.klucz)).toEqual(['sekcje_sn', 'sekcje_wn']);
-    expect(sekcja.tabele?.[0].kolumny.map((k) => k.etykieta)).toEqual(['Sekcja', 'Szyna', 'Uₙ']);
+    expect(sekcja.tabele?.[0].kolumny.map((k) => k.etykieta)).toEqual(['Sekcja', 'Szyna', '$U_n$']);
     expect(sekcja.tabele?.[0].wiersze.map((w) => w.komorki)).toEqual([
       { nazwa: 'Sekcja I', szyna: 'Szyna SN I', un: '15 kV' },
       { nazwa: 'Sekcja szyn bez nazwy (2 z 2)', szyna: 'Szyna bez nazwy (2 z 3)', un: '15 kV' },
