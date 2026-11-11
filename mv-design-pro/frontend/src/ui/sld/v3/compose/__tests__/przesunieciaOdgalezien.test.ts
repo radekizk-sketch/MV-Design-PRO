@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta UX-04/POLE-LINIOWE-WZORZEC — `przesunieciaOdgalezien`: JEDNA reguła położenia poziomego
  * odgałęzień bocznych pola (plan `bayApparatusPlanFootprint`, stacja, GPZ).

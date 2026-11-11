@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * NAPĘD ŁĄCZNIKA NA SCHEMACIE (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta 2026-10-30:
  * napęd jest ATRYBUTEM łącznika `BayPrimaryDevice.naped`, nie osobnym aparatem).

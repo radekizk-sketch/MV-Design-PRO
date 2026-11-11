@@ -774,6 +774,13 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
  * stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × przesunięcie {0, −GRID} × LOD {1, 2}.
  */
 const WIERSZ_BLOKU_POLA = /#(protection-codes-full|zrodlo-u0)(-\d+)?$/;
+
+/** Kody funkcji na SYMBOLU bloku przekaźnika — pole `meta.protectionCodes` skasowane z kontraktu
+ *  sceny (kody są wierszami bloku); odczyt przez otwarty rekord sprawdza, że żadna droga nie
+ *  dopisuje go z powrotem w czasie wykonania (scalenie do drzewa integracji 2026-11-11). */
+function kodyNaSymbolu(symbol: { readonly meta?: object } | undefined): readonly string[] | undefined {
+  return (symbol?.meta as { readonly protectionCodes?: readonly string[] } | undefined)?.protectionCodes;
+}
 const odcinkiProstokaty = (punkty: readonly { x: number; y: number }[]): Rect[] =>
   punkty.slice(1).map((b, i) => {
     const a = punkty[i];
@@ -926,7 +933,7 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
         expect(p1, pole.ref).toBeDefined();
         expect({ x: p1!.x, y: p1!.y }, pole.ref).toEqual({ x: p2.x, y: p2.y });
         expect(p1!.meta?.ramkaBlokuPrzekaznika, `${pole.ref}: ramka LOD1 = LOD2`).toEqual(p2.meta?.ramkaBlokuPrzekaznika);
-        expect(p1!.meta?.protectionCodes, `${pole.ref}: bez kodów na LOD1`).toBeUndefined();
+        expect(kodyNaSymbolu(p1), `${pole.ref}: bez kodów na LOD1`).toBeUndefined();
         expect(l1.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#`) && WIERSZ_BLOKU_POLA.test(l.ownerRef ?? '')), `${pole.ref}: bez wierszy na LOD1`).toEqual([]);
         const w1 = l1.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`);
         const w2 = l2.segments.find((g) => g.meta?.ownerRef === `${pole.ref}#trip-line`)!;
@@ -1051,11 +1058,11 @@ function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): st
     }
     const wiersze = scena.labels.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`));
     const odniesienia = scena.labels.filter((l) => /#zrodlo-u0(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`));
-    const wBloku = [...(przekaznik.meta?.protectionCodes ?? []), ...wiersze.map((l) => l.text)];
+    const wBloku = [...(kodyNaSymbolu(przekaznik) ?? []), ...wiersze.map((l) => l.text)];
     if (new Set(wBloku).size !== wBloku.length) bledy.push(`${pole.ref}: funkcja powtórzona w bloku (${wBloku.join(', ')})`);
     if (wBloku.join() !== kodyModelu.join()) bledy.push(`${pole.ref}: blok ${wBloku.join(', ')} ≠ ${kodyModelu.join(', ')} (wszystkie kody pola w kolejności danych, bez „+n")`);
     if (wBloku.some((k) => /^\+\d/.test(k))) bledy.push(`${pole.ref}: licznik „+n" w bloku`);
-    if ((przekaznik.meta?.protectionCodes ?? []).length > 0) bledy.push(`${pole.ref}: symbol bloku niesie kody (${przekaznik.meta!.protectionCodes!.join(', ')})`);
+    if ((kodyNaSymbolu(przekaznik) ?? []).length > 0) bledy.push(`${pole.ref}: symbol bloku niesie kody (${kodyNaSymbolu(przekaznik)!.join(', ')})`);
     const rama = prostokatBloku(przekaznik);
     if (!rama) {
       bledy.push(`${pole.ref}: brak ramki bloku`);
@@ -1425,7 +1432,7 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
           for (const pole of pola) {
             expect(etykietyKodow(scena, pole.ref), `${pole.ref} · LOD${lod}`).toEqual([]);
             const p = przekaznikPola(scena, pole.ref);
-            expect(p?.meta?.protectionCodes, `${pole.ref} · LOD${lod}: symbol bez kodów`).toBeUndefined();
+            expect(kodyNaSymbolu(p), `${pole.ref} · LOD${lod}: symbol bez kodów`).toBeUndefined();
             if (lod === 0) expect(p, `${pole.ref} · LOD0: GPZ zwinięty`).toBeUndefined();
             if (lod === 1 && n > 0) {
               expect(p?.meta?.ramkaBlokuPrzekaznika, `${pole.ref} · LOD1: ramka`).toEqual(przekaznikPola(l2, pole.ref)!.meta?.ramkaBlokuPrzekaznika);

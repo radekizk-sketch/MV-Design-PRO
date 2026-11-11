@@ -40,6 +40,10 @@ vi.mock('../../../catalog/api', () => ({
   fetchSourceSystemTypes: () => odpowiedz([{ id: 'siec-1', name: 'Sieć 110 kV' }]),
   fetchSwitchgearFamilies: () => odpowiedz([{ switchgear_family_ref: 'rod-1', family_name: 'Rodzina A' }]),
   fetchCompleteBayTemplates: () => odpowiedz([]),
+  // Dziesiąty katalog karty (szablony kanoniczne rejestru wzorców pól, strona pola liniowego):
+  // brak atrapy dawał odrzucenie, katalog niekompletny i brak bufora drugiego zamontowania.
+  fetchSzablonyPolaKanoniczne: () =>
+    odpowiedz([{ template_ref: 'szablon-z10', template_name_pl: 'Pole liniowe kablowe' }]),
 }));
 vi.mock('../../station-der/audit2-api', () => ({
   fetchAudit2CatalogSnapshot: () =>
@@ -71,6 +75,7 @@ describe('katalogi karty K6 — odpowiedź spoza kontraktu', () => {
     await waitFor(() => expect(pierwszy.result.current.aparatySn.get('vd4')?.name).toBe('VD4 24 kV'));
     expect(pierwszy.result.current.przeksztaltniki.get('conv-1')).toEqual({ name: 'SUN2000', manufacturer: 'Huawei' });
     expect(pierwszy.result.current.krzywePf.get('pf-1')).toBe('P(f) PSE');
+    expect(pierwszy.result.current.szablonyKanoniczne.get('szablon-z10')).toBe('Pole liniowe kablowe');
     const poPierwszym = stan.wywolania;
     pierwszy.unmount();
     const drugi = await (async () => {
@@ -90,7 +95,7 @@ describe('katalogi karty K6 — odpowiedź spoza kontraktu', () => {
       process.on('unhandledRejection', lapacz);
       try {
         const pierwszy = await zamontuj();
-        await waitFor(() => expect(stan.wywolania).toBe(9));
+        await waitFor(() => expect(stan.wywolania).toBe(10));
         await new Promise((r) => setTimeout(r, 0));
         expect(pierwszy.result.current.aparatySn.size).toBe(0);
         expect(pierwszy.result.current.krzywePf.size).toBe(0);
@@ -103,7 +108,7 @@ describe('katalogi karty K6 — odpowiedź spoza kontraktu', () => {
         const { useKatalogiKarty } = await import('../katalogiKarty');
         const drugi = renderHook(() => useKatalogiKarty());
         await waitFor(() => expect(drugi.result.current.aparatySn.get('vd4')?.name).toBe('VD4 24 kV'));
-        expect(stan.wywolania).toBe(18);
+        expect(stan.wywolania).toBe(20);
         expect(odrzucenia).toEqual([]);
       } finally {
         process.off('unhandledRejection', lapacz);

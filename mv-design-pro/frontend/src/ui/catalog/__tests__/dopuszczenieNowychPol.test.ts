@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jedyny predykat pickerów aparatu SN (zakaz gazów fluorowanych w obiektach projektowanych) —
  * iloczyn cech: stan obiektu {ISTNIEJACY, PROJEKTOWANY, '', null, undefined} × pole backendu

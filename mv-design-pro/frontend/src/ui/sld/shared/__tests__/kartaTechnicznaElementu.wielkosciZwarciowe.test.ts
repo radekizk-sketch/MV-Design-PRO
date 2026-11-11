@@ -98,9 +98,6 @@ function katalogi(rodzaj: RodzajUrzadzenia, ik: number | null, ith: number | nul
         } as never,
       ],
     ]),
-    transformatory: new Map(),
-    szablonyPol: new Map(),
-    rodzinyRozdzielnic: new Map(),
   };
 }
 

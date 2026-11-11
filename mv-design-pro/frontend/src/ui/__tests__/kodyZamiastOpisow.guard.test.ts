@@ -58,9 +58,11 @@ const R2_MAPA = new RegExp(
   String.raw`\.get\(\s*(${KLUCZ})\s*\)\s*(?:\?\?|\|\|)\s*(?:String\(\s*)?\1(?![\w$?.])`,
   'g',
 );
-/** `switch (x) { … default: return x; }` — bez przechodzenia przez kolejny `switch`. */
+/** `switch (x) { … default: return x; }` — także przełącznik po wartości pochodnej kodu
+ *  (`switch (rodzaj(x)) { … default: return x; }`): w gałęzi domyślnej na ekran wraca ten sam kod.
+ *  Bez przechodzenia przez kolejny `switch`. */
 const R3 = new RegExp(
-  String.raw`switch\s*\(\s*(${KLUCZ})\s*\)\s*\{(?:(?!switch\s*\()[\s\S])*?default:\s*return\s+\1\s*;`,
+  String.raw`switch\s*\(\s*(?:${KLUCZ}\(\s*)?(${KLUCZ})\s*(?:\)\s*)?\)\s*\{(?:(?!switch\s*\()[\s\S])*?default:\s*return\s+\1\s*;`,
   'g',
 );
 /** Pole nazwy obiektu po lewej, identyfikator (lub jego składowa) po prawej `??` / `||`. */
@@ -224,6 +226,8 @@ describe('Strażnik: kod maszynowy nie trafia na ekran (R1 sklejenie braków, R2
       ['const t = SLOWNIK[e.typ] ?? e.typ.opis;', []],
       ["switch (rodzaj) {\n  case 'a':\n    return 'Opis A';\n  default:\n    return rodzaj;\n}", ['R3']],
       ["switch (x.tryb) {\n  case 'a':\n    return 'A';\n  default:\n    return x.tryb;\n}", ['R3']],
+      ["switch (rodzajSymbolu(symbol)) {\n  case 'a':\n    return 'A';\n  default:\n    return symbol;\n}", ['R3']],
+      ["switch (rodzajSymbolu(symbol)) {\n  case 'a':\n    return 'A';\n  default:\n    return 'symbol spoza słownika';\n}", []],
       ["switch (rodzaj) {\n  case 'a':\n    return 'Opis A';\n  default:\n    return 'rodzaj spoza słownika';\n}", []],
       ["switch (a) {\n  default:\n    return null;\n}\nswitch (b) {\n  default:\n    return a;\n}", []],
       ['const t = wynik.missing_fields_pl.join(" ");', []],

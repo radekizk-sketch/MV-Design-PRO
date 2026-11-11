@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KRAWĘDŹ ZACZEPU slotu etykiety zakotwiczonej (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja
  * §11.7 pkt 8; `prostokatEtykietyZakotwiczonej`).

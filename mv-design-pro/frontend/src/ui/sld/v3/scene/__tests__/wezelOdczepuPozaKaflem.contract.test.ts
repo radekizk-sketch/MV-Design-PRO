@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Kontrakt odbioru B-02 pola liniowego (UX04 §11.20, decyzja architekta 2026-11-04 pkt 2 i karta
  * POLE-LINIOWE ODBIÓR B-02): odczep z aparatu z kaflem stanu zaczyna się w WĘŹLE poza kaflem,

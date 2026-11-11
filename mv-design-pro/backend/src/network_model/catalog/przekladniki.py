@@ -149,7 +149,7 @@ PRZEZNACZENIA_ZABEZPIECZENIOWE: frozenset[str] = frozenset({"ZABEZPIECZENIA", "R
 #: pierwotny („400/5"), ukośnik i prąd wtórny; liczby z kropką albo przecinkiem, opcjonalne „A".
 _ZAPIS_PRZEKLADNI_CT = re.compile(
     r"^\s*(?P<pierwotne>\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)*)\s*/\s*"
-    r"(?P<wtorny>\d+(?:[.,]\d+)?)\s*(?:A)?\s*$"
+    r"(?P<prad_wt>\d+(?:[.,]\d+)?)\s*(?:A)?\s*$"
 )
 
 
@@ -172,7 +172,7 @@ def zaczepy_pierwotne_a(przekladnia: str) -> tuple[float, ...]:
         a >= b for a, b in zip(zaczepy, zaczepy[1:], strict=False)
     ):
         return ()
-    if _liczba_zapisu(dopasowanie.group("wtorny")) <= 0:
+    if _liczba_zapisu(dopasowanie.group("prad_wt")) <= 0:
         return ()
     return zaczepy
 

@@ -398,9 +398,11 @@ def test_walidator_portow_i_polozenia_uziemiony():
         "kind": "CB",
         "placement": "MIDSTREAM",
     }
-    with pytest.raises(ValidationError, match="nie ma portu"):
+    # Komunikat bez klucza przyłącza (strażnik `test_klucze_pol_w_komunikatach_src`): rodzaj
+    # aparatu słowami i liczność kompletu przyłączy zamiast identyfikatora portu.
+    with pytest.raises(ValidationError, match=r"\(wyłącznik\): przyłącze spoza kompletu"):
         BayPrimaryDevice.model_validate({**baza, "ports": [{"port_id": "przylacze"}]})
-    with pytest.raises(ValidationError, match="powtórzony port"):
+    with pytest.raises(ValidationError, match="powtórzone przyłącze aparatu"):
         BayPrimaryDevice.model_validate(
             {**baza, "ports": [{"port_id": "we"}, {"port_id": "we", "wezel": "w1"}]}
         )

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ODEJŚCIA-ZAGNIEŻDŻONE — kilka odgałęzień z pól JEDNEJ stacji (karta
  * UX-04/POLE-LINIOWE-WZORZEC, znalezisko „2. odgałęzienie tej samej stacji krzyżuje

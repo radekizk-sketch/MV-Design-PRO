@@ -342,7 +342,9 @@ def test_status_67n_wg_zrodla_u0(wymog, obecna, napowietrzna, potwierdzone, stat
     if status == "NIE_OCENIONO":
         assert ocena.wyjasnienie.czego_brakuje == zrodlo.czego_brakuje
         assert ocena.wyjasnienie.czego_brakuje
-        assert "3U₀" in ocena.wyjasnienie.przyczyna_pl
+        # Proza słowami (strażnik `backend_proza_symboli_guard`, karta ZU): „napięcia zerowego"
+        # zamiast symbolu z indeksem dolnym.
+        assert "źródło napięcia zerowego" in ocena.wyjasnienie.przyczyna_pl
         assert "Z.17" in ocena.dowod
 
 

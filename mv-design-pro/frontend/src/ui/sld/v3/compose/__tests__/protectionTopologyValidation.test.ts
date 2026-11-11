@@ -167,10 +167,10 @@ describe('F10.6 (DOMAIN, D5, V12K-036) — domainContext: ctZoneRefs (87T)', () 
 
   it('etykieta PL przyczyn (protectionTopologyGapLabel)', () => {
     expect(protectionTopologyGapLabel({ code: '67N', reason: 'missing_u0_source' })).toBe(
-      '67N: brak potwierdzonego źródła 3U₀',
+      '67N: brak potwierdzonego źródła napięcia zerowego',
     );
     expect(protectionTopologyGapLabel({ code: '67N', reason: 'missing_core_balance_ct' })).toBe(
-      '67N: brak przekładnika Ferrantiego (I0)',
+      '67N: brak przekładnika Ferrantiego (prąd zerowy)',
     );
     expect(protectionTopologyGapLabel({ code: '87T', reason: 'missing_second_ct' })).toBe(
       '87T: brak drugiego CT strefy',

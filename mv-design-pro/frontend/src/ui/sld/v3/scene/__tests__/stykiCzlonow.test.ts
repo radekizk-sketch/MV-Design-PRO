@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * STYK CZŁONÓW NA OBCYM PRZEWODZIE (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta
  * §11.7 pkt 1: każde skrzyżowanie bez węzła modelu dostaje mostek §22.1).

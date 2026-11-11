@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4) — źródło napięcia
  * zerowego 3U₀ funkcji 67N na schemacie (`zrodloU0Pola`, `zrodloU0WidokuPola`,

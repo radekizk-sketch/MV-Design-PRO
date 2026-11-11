@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Stan obiektu łącznika — lustro reguły backendu (`enm.gaz_fluorowany_pola.stan_obiektu_lacznika`).
  *

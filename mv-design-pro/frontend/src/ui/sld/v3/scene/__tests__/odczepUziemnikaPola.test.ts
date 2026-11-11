@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ODCZEP UZIEMNIKA POLA (Q8, Q51) I OZNACZENIA PRZEKŁADNIKA T1 — uwagi właściciela 2026-11-04
  * (odbiór B-02 pola liniowego Z.10, wzorzec synoptyki e²TANGO, pole „Bank 1"):

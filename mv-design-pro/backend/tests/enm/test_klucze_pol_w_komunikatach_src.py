@@ -112,6 +112,7 @@ ETYKIETA = "etykieta"
 KANALY_TRESCI: dict[str, str] = {
     "ability_pl": ETYKIETA,
     "akcja_naprawcza_pl": ZDANIE,
+    "akcja_pl": ZDANIE,
     "alias_pl": ETYKIETA,
     "analysis_label_pl": ETYKIETA,
     "aparat_pl": ETYKIETA,
@@ -164,6 +165,8 @@ KANALY_TRESCI: dict[str, str] = {
     "faza_nieznana_powod_pl": ZDANIE,
     "fix_hint_pl": ZDANIE,
     "function_label_pl": ETYKIETA,
+    "funkcja_pl": ETYKIETA,
+    "funkcje_eaz_pl": ETYKIETA,
     "goly_aparat_wniosek_pl": ETYKIETA,
     "granica_temperatury_pl": ZDANIE,
     "info_pl": ETYKIETA,
@@ -192,6 +195,7 @@ KANALY_TRESCI: dict[str, str] = {
     "missing_fields_pl": ZDANIE,
     "naglowek_pl": ETYKIETA,
     "name_pl": ETYKIETA,
+    "nazwa_aparatu_pl": ETYKIETA,
     "nazwa_operatora_pl": ETYKIETA,
     "nazwa_pl": ETYKIETA,
     "nazwa_punktu_pl": ETYKIETA,
@@ -203,6 +207,7 @@ KANALY_TRESCI: dict[str, str] = {
     "nosnik_pl": ZDANIE,
     "note_pl": ZDANIE,
     "notes_pl": ZDANIE,
+    "odbiornik_pl": ETYKIETA,
     "odeslanie_pl": ETYKIETA,
     "odmowa_pl": ZDANIE,
     "odniesienie_pl": ETYKIETA,
@@ -220,6 +225,7 @@ KANALY_TRESCI: dict[str, str] = {
     "opis_zrodla_pl": ZDANIE,
     "ostrzezenia": ZDANIE,
     "over_limit_label_pl": ETYKIETA,
+    "oznaczenie_pl": ETYKIETA,
     "parametry_robocze_pl": ZDANIE,
     "pasmo_brak_etykieta_pl": ETYKIETA,
     "pasmo_brak_powod_pl": ZDANIE,
@@ -235,8 +241,10 @@ KANALY_TRESCI: dict[str, str] = {
     "pokrycie_pl": ZDANIE,
     "pokrycie_programu_pl": ZDANIE,
     "pole_pl": ETYKIETA,
+    "pomiar_pl": ETYKIETA,
     "pominiete_pl": ZDANIE,
     "pominiete_zrodla_pl": ZDANIE,
+    "powod_blokady_nowych_pol_pl": ZDANIE,
     "powod_braku_niepewnosci_pl": ZDANIE,
     "powod_braku_pl": ZDANIE,
     "powod_decyzji_pl": ZDANIE,
@@ -291,6 +299,7 @@ KANALY_TRESCI: dict[str, str] = {
     "source_note_pl": ZDANIE,
     "source_pl": ETYKIETA,
     "stan_pl": ETYKIETA,
+    "stan_pomiaru_pl": ETYKIETA,
     "status_label_pl": ETYKIETA,
     "status_pl": ETYKIETA,
     "statystyka_pl": ETYKIETA,
@@ -318,6 +327,7 @@ KANALY_TRESCI: dict[str, str] = {
     "uwagi_metody_pl": ZDANIE,
     "uwagi_pl": ZDANIE,
     "uzasadnienie_pl": ZDANIE,
+    "uzwojenie_pl": ETYKIETA,
     "verdict_description_pl": ZDANIE,
     "verdict_pl": ETYKIETA,
     "voltage_level_pl": ETYKIETA,
@@ -325,6 +335,7 @@ KANALY_TRESCI: dict[str, str] = {
     "wartosc_pl": ETYKIETA,
     "warunek_pl": ETYKIETA,
     "warunek_wstepny_pl": ZDANIE,
+    "wejscia_pl": ETYKIETA,
     "werdykt_pl": ETYKIETA,
     "werdykt_sekwencji_pl": ZDANIE,
     "wezly_strefy_nazwy_pl": ETYKIETA,
@@ -340,6 +351,11 @@ KANALY_TRESCI: dict[str, str] = {
     "wplyw_pl": ZDANIE,
     "wscr_why_pl": ZDANIE,
     "wyjasnienie_pl": ZDANIE,
+    "wyjscia_pl": ETYKIETA,
+    "wykonanie_lacznikow_pl": ETYKIETA,
+    "wykonanie_pola_pl": ETYKIETA,
+    "wymagalnosc_pl": ETYKIETA,
+    "wymog_pl": ZDANIE,
     "wynik_pl": ETYKIETA,
     "wzor_opis_pl": ZDANIE,
     "z0_missing_reason_pl": ZDANIE,
@@ -355,6 +371,7 @@ KANALY_TRESCI: dict[str, str] = {
     "zdanie_pl": ZDANIE,
     "zdolnosc_4q_pl": ETYKIETA,
     "zdolnosc_gfm_pl": ETYKIETA,
+    "znaczenie_pl": ZDANIE,
     "zrodlo_k_pl": ETYKIETA,
     "zrodlo_liczb_pl": ZDANIE,
     "zrodlo_napiecia_pl": ZDANIE,
@@ -408,6 +425,11 @@ def zakres_src(sciezka: str, wywolania: frozenset[str] | None = None) -> ZakresM
 
 #: Klasy wyjątków oznaczające DEFEKT PROGRAMU (nie danych projektanta) — poza kanałem.
 BLEDY_PROGRAMU: dict[str, str] = {
+    "BladDefinicjiKanonu": (
+        "wzorce pól, obwody wtórne wzorca i plan aparatów celki referencyjnej powstają wyłącznie "
+        "w kodzie modułów kanonu i są sprawdzane przy ich imporcie — odmowa wskazuje programiście "
+        "miejsce w definicji (`network_model/catalog/niezmienniki_katalogu.py`)"
+    ),
     "BladRejestruNiezmiennikow": (
         "rejestr reguł katalogu sprawdza własną definicję przy imporcie modułu i wywołania "
         "bramki z kodem spoza rejestru — błąd programisty (docstring `regula`), nie odmowa "
@@ -1215,6 +1237,18 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
 #: albo oznaczeniem normowym — klucz ``moduł:wyrażenie kolekcji``; uzasadnienie wskazuje,
 #: skąd pochodzi tekst (żywotność: ``test_wylaczenia_sklejen_sa_zywe``).
 KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
+    "enm/zrodlo_napiecia_zerowego.py:zrodlo.czego_brakuje": (
+        "zdania braków źródła napięcia zerowego pola (`zrodlo_u0_pola`, ten sam moduł — opisy "
+        "aparatu i pola słowami)"
+    ),
+    "enm/zrodlo_napiecia_zerowego.py:funkcje": (
+        "kody funkcji zabezpieczeń pola (numery IEEE C37.2 słownika `funkcje_eaz`, np. 67N) — "
+        "oznaczenie normowe, nie kod wewnętrzny"
+    ),
+    "enm/pole_liniowe_gpz.py:nz.wyjscia": (
+        "nazwy sygnałów wyjściowych bloku z rysunku pola ENEA (`SygnalPola.nazwa`) — oznaczenia "
+        "rysunku cytowane w cudzysłowie"
+    ),
     "api/cloud_backup.py:result.errors": (
         "błędy `ProjectArchiveService.import_project`: zdania `verify_archive_integrity` "
         "(`domain/project_archive.py`) i treść błędu archiwum — oba w zakresie strażnika"
@@ -1392,6 +1426,10 @@ KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
     ),
     "domain/canonical_operations.py:aliases": "klucze zastępcze ładunku operacji API modelu",
     "enm/pola.py:nieznane": "cytat kluczy rekordu pola spoza kontraktu w pliku modelu",
+    "enm/pola.py:spoza": (
+        "cytat kodów funkcji zabezpieczeń wpisanych przez projektanta w polu, spoza słownika "
+        "funkcji EAZ — projektant poprawia dokładnie ten kod"
+    ),
     "enm/pola.py:zakazane": "cytat kluczy `meta` rekordu pola w pliku modelu",
     "enm/migrations/field_specs_promocja.py:nieznane": (
         "cytat kluczy dawnego wpisu pola stacji w pliku modelu przed migracją"
@@ -1819,6 +1857,17 @@ class _Sklejenia:
         if isinstance(rdzen, ast.Dict):
             return [w_tym_samym(k) for k in rdzen.keys if k is not None]
         if isinstance(rdzen, ast.GeneratorExp | ast.ListComp | ast.SetComp):
+            # Wyrażenie listowe po kolekcji zadeklarowanej jako tekst albo format danych
+            # projektanta (``KOLEKCJE_TEKSTOW_SRC``/``KOLEKCJE_FORMATU_DANYCH``) — ten sam wpis
+            # obejmuje elementy wyrażenia (``f"„{k}”" for k in nieznane``); predykat parami
+            # z ``naruszenie_sklejenia`` (scalenie do drzewa integracji 2026-11-11: cytat kluczy
+            # rekordu pola wracał jako „kod” przez wyrażenie listowe mimo wpisu kolekcji).
+            if any(
+                f"{kolekcja.sciezka}:{ast.unparse(g.iter)}" in KOLEKCJE_TEKSTOW_SRC
+                or f"{kolekcja.sciezka}:{ast.unparse(g.iter)}" in KOLEKCJE_FORMATU_DANYCH
+                for g in rdzen.generators
+            ):
+                return []
             srodowisko = list(kolekcja.srodowisko)
             for generator in rdzen.generators:
                 iterowane = _Element(generator.iter, kolekcja.sciezka, tuple(srodowisko))

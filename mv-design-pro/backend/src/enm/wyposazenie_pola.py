@@ -99,7 +99,7 @@ from .domain_operations import (
 )
 from .katalog_projektu import katalog_biezacy
 from .kopia_graniczna import kopia_graniczna_enm
-from .models import RODZAJE_GALEZI_APARATU, BayPrimaryDevice
+from .models import NAZWY_RODZAJOW_APARATU_POLA_PL, RODZAJE_GALEZI_APARATU, BayPrimaryDevice
 from .pola import aparaty_po_wymianie, czy_pole_nn, poziom_pol, zmien_pole
 from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
@@ -167,24 +167,8 @@ _UMIEJSCOWIENIA: frozenset[str] = frozenset(
     get_args(BayPrimaryDevice.model_fields["placement"].annotation)
 )
 
-#: Nazwa rodzaju aparatu w zdaniu dla projektanta.
-NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
-    "CB": "wyłącznik",
-    "LOAD_SWITCH": "rozłącznik",
-    "DS": "odłącznik",
-    "ES": "uziemnik",
-    "CT": "przekładnik prądowy",
-    "VT": "przekładnik napięciowy",
-    "SURGE_ARRESTER": "ogranicznik przepięć",
-    "FUSE": "bezpieczniki",
-    "CABLE_HEAD": "głowica kablowa",
-    "TRANSFORMER_DEVICE": "transformator pola",
-    RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: "łącznik trójpołożeniowy",
-    RODZAJ_WSKAZNIKA_NAPIECIA: "wskaźnik napięcia",
-    RODZAJ_PRZEKLADNIKA_FERRANTIEGO: "przekładnik Ferrantiego",
-    "UNBALANCE_CT": "przekładnik niezrównoważenia baterii",
-    "PHASE_TO_PHASE_VT": "przekładnik napięciowy międzyfazowy",
-}
+#: Nazwa rodzaju aparatu w zdaniu dla projektanta — jedno źródło w `enm.models` (walidator
+#: aparatu pola nazywa rodzaj słowem, nie kodem; scalenie do drzewa integracji 2026-11-11).
 
 
 def stan_danych_aparatu(aparat: Mapping[str, Any] | BayPrimaryDevice) -> StanDanychAparatu:

@@ -190,6 +190,30 @@ ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
 ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA = (
     "c97fa1019b48feb4772bcc7986b36de201c1ab875e32fc55a522401e5bb98e4b"
 )
+#: Scalenie do drzewa integracji (2026-11-11), proza słowami (strażnik
+#: `backend_proza_symboli_guard` karty ZU nad tekstami karty pola liniowego): `source_reference`
+#: dwóch typów ogólnych OSD przekładnika prądowego pola liniowego mówi „prąd znamionowy
+#: krótkotrwały wytrzymywany 20 kA przez 1 s" zamiast symbolu „Ith 20 kA/1 s". POMIAR: zrzut po
+#: cofnięciu tych 2 liści (``_cofnij_proze_slowami``) daje DOKŁADNIE
+#: ``ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA`` — żadna liczba katalogu się nie zmieniła.
+#: Pełny odcisk katalogu domyślnego:
+#: 3a2a8c591017a64036d818d714398bbca65df93c339571664be04d0804d62a36.
+ODCISK_PO_PROZIE_SLOWAMI = "8ca1f31cdb677174f57b648c542ab4ca38943e64edfd3719837311218e1b323c"
+_PROZA_ITH_SLOWAMI = ("prąd znamionowy krótkotrwały wytrzymywany 20 kA przez 1 s", "Ith 20 kA/1 s")
+
+
+def _cofnij_proze_slowami(zrzut: dict[str, object]) -> int:
+    """Cofa zapis słowami w `source_reference` typów CT (liczba cofniętych liści)."""
+    nowy, dawny = _PROZA_ITH_SLOWAMI
+    liczba = 0
+    for postac in zrzut["ct_types"].values():  # type: ignore[attr-defined]
+        zrodlo = postac.get("source_reference")
+        if isinstance(zrodlo, str) and nowy in zrodlo:
+            postac["source_reference"] = zrodlo.replace(nowy, dawny)
+            liczba += 1
+    return liczba
+
+
 ROZLACZNIKI_BEZ_GAZU_F = ("sw-ls-ogolny-prozniowy-12kv-630a", "sw-ls-ogolny-prozniowy-24kv-630a")
 #: Ta sama karta: dwa typy ogólne OSD przekładnika prądowego pola liniowego GPZ (Z.10/Z.11.1
 #: jednordzeniowy, Z.11 trójrdzeniowy) z jawną listą rdzeni.
@@ -359,6 +383,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_PROZIE_SLOWAMI
+    assert _cofnij_proze_slowami(zrzut) == 2
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA
     # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: cofnięcie zmian katalogu
     # karty pola liniowego daje odcisk strony integracji (po karcie ZU), dalej łańcuch ZU.

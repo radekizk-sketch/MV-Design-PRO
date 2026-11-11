@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Słownik funkcji EAZ i blok przekaźnika układu powiązań pola GPZ (odbiór B-02 właściciela
  * 2026-11-04, korekta wiążąca: „WSZYSTKIE kody funkcji … bez ukrywania żadnej, bez licznika”;

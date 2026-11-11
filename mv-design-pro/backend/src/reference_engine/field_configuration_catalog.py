@@ -29,6 +29,7 @@ from network_model.catalog.bay_templates import (
     FIELD_TYPES_WITHOUT_TEMPLATE,
     enumerate_canonical_configurations,
 )
+from network_model.catalog.niezmienniki_katalogu import BladDefinicjiKanonu
 from network_model.catalog.rodzaje_aparatury import porty_toru_pola
 
 from .registry import list_reference_packs
@@ -167,7 +168,7 @@ def producer_cell_primary_devices(
     if remaining:
         # Rodzaj spoza toru głównego i aparatów bocznych — celka opisuje aparat, którego most
         # nie umie umieścić; jawna odmowa zamiast cichego pominięcia.
-        raise ValueError(
+        raise BladDefinicjiKanonu(
             f"Celka {config_ref}: rodzaje aparatów bez miejsca w polu: {sorted(set(remaining))}"
         )
 

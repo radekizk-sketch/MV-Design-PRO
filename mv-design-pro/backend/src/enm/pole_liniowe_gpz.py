@@ -31,7 +31,7 @@ dowodu ``NIEPELNY`` — dowodem jest deklaracja funkcji pola, nie nastawy przeka
 przyłączenia, których model nie niesie), nieobecna → ``NIEJEDNOZNACZNY`` — nigdy ``SPELNIA``;
 funkcja dopuszczalna → ``NIE_DOTYCZY``; zakazana obecna → ``NIE_SPELNIA``, nieobecna →
 ``SPELNIA``; SPZ w linii kablowej → ``NIE_DOTYCZY`` (wymóg dotyczy linii napowietrznych).
-Funkcja WARUNKOWA (`bay_templates.WARUNKI_FUNKCJI_EAZ` — 67N: źródło napięcia zerowego 3U₀
+Funkcja WARUNKOWA (`bay_templates.WARUNKI_FUNKCJI_EAZ` — 67N: źródło napięcia zerowego
 i kryterium prądowe I0, decyzja właściciela 2026-10-29) wymagana klasą przy warunku
 niespełnionym w modelu → ``NIE_OCENIONO`` z listą braków (`enm.zrodlo_napiecia_zerowego`) —
 obecna czy nie: bez źródła U0 funkcja niczego nie mierzy, a brak funkcji nie jest naruszeniem,
@@ -349,11 +349,11 @@ def _ocena_funkcji(
         stan_funkcji = (
             "funkcja zadeklarowana w polu bez wejścia napięcia zerowego"
             if obecna
-            else "funkcja nieprzypisana — przypisanie wymaga źródła 3U₀"
+            else "funkcja nieprzypisana — przypisanie wymaga źródła napięcia zerowego"
         )
         przyczyna = f"{zrodlo_u0.przyczyna_pl}; {stan_funkcji} — {AKCJA_NAPRAWCZA_ZRODLA_U0_PL}"
         czego_brakuje = zrodlo_u0.czego_brakuje
-        dowod = f"{_DOWOD_DEKLARACJI}; źródło 3U₀: {PODSTAWA_ZRODLA_U0}"
+        dowod = f"{_DOWOD_DEKLARACJI}; źródło napięcia zerowego: {PODSTAWA_ZRODLA_U0}"
     elif wymog == "NAPOWIETRZNA" and not linia_napowietrzna:
         status, przyczyna = (
             "NIE_DOTYCZY",

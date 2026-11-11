@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Kolumny opisów pola przy lewej krawędzi (wzorzec właściciela 2026-11-05: „Opisy pól po lewej
  * dzięki temu pole robi się czytelniejsze i węższe”) — `pasyOpisowPola` i `wierszeOpisowPola`.

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Łącznik na torze — przycięcie odcinków do portów glifu (`scene/elementyToru.ts`).
  *

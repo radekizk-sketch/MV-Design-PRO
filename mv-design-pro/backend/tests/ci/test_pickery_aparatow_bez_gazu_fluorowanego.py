@@ -29,9 +29,21 @@ PROJEKT = Path(__file__).resolve().parents[3]
 FRONT_SRC = PROJEKT / "frontend" / "src"
 PREDYKAT = FRONT_SRC / "ui" / "catalog" / "dopuszczenieNowychPol.ts"
 
+# Odwołanie do funkcji pobrania — wywołanie ALBO przekazanie jako wartość (scalenie do drzewa
+# integracji 2026-11-11: `katalogiKarty.ts` przekazuje `fetchMvApparatusTypes` do pomocnika
+# `sprobuj(...)` i wzorzec samego wywołania „…(" uznał go za nieaktualny wpis listy). Szukane
+# w kodzie bez komentarzy i bez deklaracji `import`/`export … from` (`_pobiera_katalog`).
 _POBRANIE = re.compile(
-    r"\b(fetchMvApparatusTypes|fetchSwitchEquipmentTypes|fetchTypesByCategory)\("
+    r"\b(fetchMvApparatusTypes|fetchSwitchEquipmentTypes|fetchTypesByCategory)\b"
 )
+_KOMENTARZ = re.compile(r"/\*[\s\S]*?\*/|//[^\n]*")
+_DEKLARACJA_MODULU = re.compile(r"\b(?:import|export)\s+(?:type\s+)?\{[^}]*\}\s*from\s*'[^']*'")
+
+
+def _pobiera_katalog(tekst: str) -> bool:
+    return _POBRANIE.search(_DEKLARACJA_MODULU.sub("", _KOMENTARZ.sub("", tekst))) is not None
+
+
 _WYWOLANIE_PREDYKATU = "pozycjeDoWyboru("
 _IMPORT_PREDYKATU = re.compile(
     r"from '[./]*(?:ui/)?catalog/dopuszczenieNowychPol'|from '\./dopuszczenieNowychPol'"
@@ -104,7 +116,7 @@ def _konsumenci() -> dict[str, str]:
         if sciezka == "ui/catalog/api.ts":
             continue
         tekst = plik.read_text(encoding="utf-8")
-        if _POBRANIE.search(tekst):
+        if _pobiera_katalog(tekst):
             wynik[sciezka] = tekst
     return wynik
 
@@ -188,9 +200,14 @@ def test_front_nie_rozstrzyga_gazu_z_medium() -> None:
 
 
 def test_detektory_lapia_wzorce() -> None:
-    assert _POBRANIE.search("fetchMvApparatusTypes()")
-    assert _POBRANIE.search("Promise.all([fetchSwitchEquipmentTypes(), x])")
-    assert not _POBRANIE.search("import { fetchMvApparatusTypes } from")
+    assert _pobiera_katalog("fetchMvApparatusTypes()")
+    assert _pobiera_katalog("Promise.all([fetchSwitchEquipmentTypes(), x])")
+    assert _pobiera_katalog("Promise.allSettled([sprobuj(fetchMvApparatusTypes), x])")
+    assert not _pobiera_katalog("import { fetchMvApparatusTypes } from '../catalog/api';")
+    assert not _pobiera_katalog("import {\n  fetchTypesByCategory,\n  x,\n} from './api';")
+    assert not _pobiera_katalog("export {\n  fetchSwitchEquipmentTypes,\n} from './catalog';")
+    assert not _pobiera_katalog("// Kategoria złożona (`fetchTypesByCategory`)")
+    assert not _pobiera_katalog("/* fetchMvApparatusTypes */ const a = 1;")
     assert _IMPORT_PREDYKATU.search("from '../../../ui/catalog/dopuszczenieNowychPol'")
     assert _IMPORT_PREDYKATU.search("from '../catalog/dopuszczenieNowychPol'")
     assert _IMPORT_PREDYKATU.search("from './dopuszczenieNowychPol'")

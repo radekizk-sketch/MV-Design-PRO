@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * TABELA POSUWÓW KROJU — jedno źródło szerokości tekstu schematu (karta UX-04/POLE-LINIOWE-WZORZEC,
  * decyzja architekta §11.7 pkt 7).

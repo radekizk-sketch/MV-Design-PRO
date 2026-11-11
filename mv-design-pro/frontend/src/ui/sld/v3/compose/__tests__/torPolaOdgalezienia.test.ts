@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta UX-04/POLE-LINIOWE-WZORZEC, rozszerzenie 4 — odgałęzienie toru pola z portów
  * (`torPolaZPortow`, `rekordyToruPola`, `planApparatusSymbolIds`, `bayApparatusPlanFootprint`).

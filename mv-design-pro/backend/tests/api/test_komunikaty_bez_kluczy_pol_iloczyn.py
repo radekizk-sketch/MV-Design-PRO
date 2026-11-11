@@ -371,11 +371,28 @@ def _harmonogram(klient: TestClient, **dynamika: object) -> str:
 
 
 _MODEL_ENM = [
+    # Scalenie do drzewa integracji 2026-11-11: liczba `ct_cores` skasowana kartą
+    # UX-04/POLE-LINIOWE-WZORZEC — rdzenie przekładnika prądowego to lista `rdzenie`
+    # (przekładnia, moc, klasa, przeznaczenie). Intencja bez zmian: dana przekładnika prądowego
+    # na przekładniku napięciowym — odmowa nazywa wielkość, nie klucz.
     Przypadek(
         "model_enm",
-        "ct_cores",
-        lambda: _nazwa("ct_cores"),
-        lambda _k: _opis_modelu("Measurement", _przekladnik("VT", ct_cores=2)),
+        "rdzenie",
+        lambda: _nazwa("rdzenie"),
+        lambda _k: _opis_modelu(
+            "Measurement",
+            _przekladnik(
+                "VT",
+                rdzenie=[
+                    {
+                        "przekladnia": "200-400/5",
+                        "moc_va": 15.0,
+                        "klasa": "5P20",
+                        "przeznaczenie": ["ZABEZPIECZENIA"],
+                    }
+                ],
+            ),
+        ),
     ),
     Przypadek(
         "model_enm",

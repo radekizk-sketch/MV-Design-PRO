@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Karta UX-04/POLE-LINIOWE-WZORZEC (§0 pkt 5, reguła KLASA) — TOR POLA Z PORTÓW ENM w OBU
  * kompozytorach pól SN: pole stacji (`compose/station.ts::buildBayStack`) i pole GPZ

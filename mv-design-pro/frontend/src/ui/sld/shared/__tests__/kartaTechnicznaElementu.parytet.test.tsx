@@ -57,6 +57,9 @@ const RODZAJE_REKORDU = {
   PCS: true,
   BATTERY: true,
   SURGE_ARRESTER: true,
+  THREE_POSITION_SWITCH: true,
+  CORE_BALANCE_CT: true,
+  VOLTAGE_INDICATOR: true,
   UNBALANCE_CT: true,
   PHASE_TO_PHASE_VT: true,
 } as const satisfies Record<BayPrimaryDeviceKind, true>;

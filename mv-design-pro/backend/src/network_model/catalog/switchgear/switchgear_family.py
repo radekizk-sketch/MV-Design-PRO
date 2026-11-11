@@ -4,8 +4,8 @@ Goal §11A.2: rodzina to konkretna seria produktów producenta (np. "Rotoblok",
 "Safevap", "UniGear ZS1", "8DJH"). Każda ma:
 - konstrukcję (RMU / jednoczłonowa / wysuwna / GIS / kontenerowa),
 - układ szyn (single / sectionalized / double / ring main),
-- izolację (powietrzna / stało-powietrzna / gazowa bez gazów fluorowanych / SF₆) i medium
-  łączników (SF₆ / próżnia / powietrze / aparat z katalogu aparatów) — z obu osi wynika gaz
+- izolację (powietrzna / stało-powietrzna / gazowa bez gazów fluorowanych / SF6) i medium
+  łączników (SF6 / próżnia / powietrze / aparat z katalogu aparatów) — z obu osi wynika gaz
   fluorowany rodziny (`gaz_fluorowany`, dyrektywa właściciela 2026-10-28),
 - listę dopuszczonych napięć i prądów,
 - listę dopuszczonych typów pól (`allowed_bay_kinds`).
@@ -35,19 +35,19 @@ from pydantic import BaseModel, Field, computed_field
 #: `Bay.switchgear_family_ref`; szablony pól NIE niosą medium): ``air`` — izolacja powietrzna
 #: (AIS), ``ssis`` — izolacja stało-powietrzna (aparaty w osłonach z izolacji stałej),
 #: ``gaz_bez_f`` — izolacja gazowa bez gazów fluorowanych (suche powietrze albo azot pod
-#: nadciśnieniem), ``sf6`` — izolacja gazowa SF₆, ``unknown`` — karta nie rozstrzyga.
+#: nadciśnieniem), ``sf6`` — izolacja gazowa SF6, ``unknown`` — karta nie rozstrzyga.
 InsulationType = Literal["air", "ssis", "gaz_bez_f", "sf6", "unknown"]
 
 NAZWY_IZOLACJI_RODZINY_PL: dict[str, str] = {
     "air": "izolacja powietrzna",
     "ssis": "izolacja stało-powietrzna",
     "gaz_bez_f": "izolacja gazowa bez gazów fluorowanych",
-    "sf6": "izolacja gazowa SF₆",
+    "sf6": "izolacja gazowa SF6",
     "unknown": "izolacja nieustalona",
 }
 
 #: Medium gaszenia łuku w aparatach łączeniowych rodziny (druga oś gazu fluorowanego, obok
-#: izolacji): ``SF6`` — łączniki w SF₆ (także w rozdzielnicy powietrznej, np. SM6, Rotoblok),
+#: izolacji): ``SF6`` — łączniki w SF6 (także w rozdzielnicy powietrznej, np. SM6, Rotoblok),
 #: ``PROZNIA`` — łączniki próżniowe, ``POWIETRZE`` — łączniki powietrzne, ``KATALOG_APARATOW``
 #: — rodzina nie ma własnych łączników: aparat jest pozycją katalogu aparatów (człon wysuwny,
 #: wyłącznik stały), więc medium rozstrzyga aparat (`SwitchEquipmentType.medium`). ``None`` —
@@ -55,7 +55,7 @@ NAZWY_IZOLACJI_RODZINY_PL: dict[str, str] = {
 MediumLacznikowRodziny = Literal["SF6", "PROZNIA", "POWIETRZE", "KATALOG_APARATOW"]
 
 NAZWY_MEDIUM_LACZNIKOW_PL: dict[str, str] = {
-    "SF6": "łączniki w SF₆",
+    "SF6": "łączniki w SF6",
     "PROZNIA": "łączniki próżniowe",
     "POWIETRZE": "łączniki powietrzne",
     "KATALOG_APARATOW": "aparat łączeniowy z katalogu aparatów",
@@ -114,6 +114,7 @@ NAZWY_TOROW_KONFIGURACJI_PL: dict[str, str] = {
 ETYKIETA_STATUSU_RODZINY_PL: dict[str, str] = {
     "verified": "zweryfikowana w oficjalnym katalogu producenta",
     "repo_verified": "weryfikacja na danych publicznych",
+    "standard_osd": "typ ogólny wg standardu operatora — wymagania operatora, nie karta wyrobu",
     "user_defined": "definicja użytkownika",
     "requires_catalog": "wymaga katalogu producenta",
     "deprecated": "rodzina wycofana z oferty producenta",
@@ -253,7 +254,7 @@ class SwitchgearFamily(BaseModel):
     def gaz_fluorowany(self) -> bool | None:
         """Czy rodzina wykorzystuje gaz fluorowany — WYPROWADZONE z izolacji i medium łączników.
 
-        ``True`` — izolacja SF₆ albo łączniki w SF₆; ``False`` — izolacja i łączniki bez gazu
+        ``True`` — izolacja SF6 albo łączniki w SF6; ``False`` — izolacja i łączniki bez gazu
         fluorowanego (łączniki z katalogu aparatów: rozstrzyga aparat, nie rodzina);
         ``None`` — karta nie rozstrzyga którejś z osi (brak potwierdzenia ≠ brak gazu)."""
         if self.insulation_type == "sf6" or self.medium_lacznikow == "SF6":

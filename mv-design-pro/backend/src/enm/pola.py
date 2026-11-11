@@ -394,7 +394,11 @@ def waliduj_rekord_pola(rekord: Mapping[str, Any]) -> dict[str, Any]:
         if spoza:
             raise BladPola(
                 f"pole {rekord.get('ref_id')!r}: kody funkcji EAZ spoza słownika: "
-                f"{', '.join(spoza)}"
+                f"{', '.join(spoza)}",
+                przyczyna_pl=(
+                    "kody funkcji zabezpieczeń spoza słownika funkcji EAZ: "
+                    + ", ".join(f"„{kod}”" for kod in spoza)
+                ),
             )
     try:
         model = Bay.model_validate(dict(rekord))

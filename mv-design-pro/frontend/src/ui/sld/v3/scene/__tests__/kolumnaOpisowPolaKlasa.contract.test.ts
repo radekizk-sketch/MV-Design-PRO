@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Kontrakt KLASY wzorca pola (karta RAMKA-PRZEKAZNIKA, następca 2026-11-11; decyzje właściciela
  * 2026-11-05: „tak ma być ramka we wszystkich tak samo” i „Opisy pól po lewej dzięki temu pole

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ZACISKI P1/P2 I TABLICZKA PRZEKŁADNIKA PRĄDOWEGO NA SCENIE POLA GPZ (karta
  * UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta §11.7 pkt 6): „T1 dostaje P1 od strony szyny,

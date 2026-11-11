@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Rozstrzygnięcia architekta z 2026-10-30 (S7-P2 i KD-5, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`
  * §12) — warunek odbioru rysunku toru mocy na WSZYSTKICH fiksturach modelu ENM.

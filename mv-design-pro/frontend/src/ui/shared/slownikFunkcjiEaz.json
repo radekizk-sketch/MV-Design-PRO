@@ -92,7 +92,7 @@
     },
     "67N": {
       "ansi": "67N",
-      "nazwa_pl": "ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+      "nazwa_pl": "ziemnozwarciowe kierunkowe (wejścia prądu zerowego i napięcia zerowego)",
       "oznaczenie_pl": "Io> kierunkowe",
       "rodzaj": "ZABEZPIECZENIE"
     },

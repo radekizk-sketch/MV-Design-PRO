@@ -122,6 +122,20 @@ class BladRejestruNiezmiennikow(ValueError):
     """
 
 
+class BladDefinicjiKanonu(ValueError):
+    """Definicja wzorca kanonu zapisana w kodzie jest niespójna — błąd programu, nie danych.
+
+    Wzorce pól (`bay_templates.BayTemplate`), obwody wtórne wzorca
+    (`obwody_wtorne_pola.ObwodyWtornePola`, `WejscieFunkcjiEaz`) i plan aparatów celki
+    referencyjnej (`reference_engine.field_configuration_catalog`) powstają wyłącznie w kodzie
+    modułów kanonu i są sprawdzane przy ich imporcie albo budowie planu z rekordu kanonu —
+    odmowa wskazuje programiście miejsce w definicji (oznaczenie aparatu, kod funkcji), więc
+    nie jest komunikatem dla projektanta. Podklasa `ValueError`: pydantic zamienia ją
+    w `ValidationError` jak każdą odmowę walidatora (scalenie do drzewa integracji
+    2026-11-11 — strażnik kluczy pól w komunikatach całego `src`).
+    """
+
+
 class OdmowaKatalogu(OdmowaDanychError):
     """Twarda odmowa rekordu katalogu z NAZWANA regula (`.kod`).
 

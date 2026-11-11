@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
+import { buildSceneV3 } from '../../scene/buildScene';
 import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
 
 import { rectsOverlap, type V3Rect } from '../../core/grid';

@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import { SZABLON_SPOZA_KATALOGU_PL } from '../../../catalog/BayTemplatePicker';
-import type { CompleteMvBayTemplateSummary } from '../../../catalog/types';
+import type { CompleteMvBayTemplateSummary } from '../../../catalog/BayTemplatePicker';
 import { buildKartaTechniczna, KATALOGI_PUSTE, type KatalogiKarty, type WierszKarty } from '../kartaTechnicznaElementu';
 
 const SZABLON = 'bay_template_gpz_line_enea_z10_trojpolozeniowy';

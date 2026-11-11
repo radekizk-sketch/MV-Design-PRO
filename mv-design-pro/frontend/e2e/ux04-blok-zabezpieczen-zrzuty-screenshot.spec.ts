@@ -184,7 +184,6 @@ async function zbudujSiec(request: APIRequestContext): Promise<Siec> {
         primary_voltage_kv: 15.0,
         secondary_voltage_kv: 0.4,
         lv_voltage_tolerance: 'PLUS_6',
-        catalog_ref: TRAFO_BLOKOWY,
         catalog_binding: katalog('TRAFO_SN_NN', TRAFO_BLOKOWY),
       },
       mv_bus_ref: szynaSn!.ref_id,

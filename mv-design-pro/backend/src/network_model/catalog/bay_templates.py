@@ -25,6 +25,7 @@ from network_model.catalog.funkcje_eaz import (
     kody_spoza_slownika,
     opis_funkcji_eaz_pl,
 )
+from network_model.catalog.niezmienniki_katalogu import BladDefinicjiKanonu
 from network_model.catalog.obwody_wtorne_pola import (
     OBWODY_WTORNE_WYKONANIA_POLA,
     RODZAJ_APARATU_WEJSCIA,
@@ -176,7 +177,7 @@ class BayTemplate(BaseModel):
     def _funkcje_ze_slownika(self) -> BayTemplate:
         nieznane = kody_spoza_slownika(self.funkcje_eaz)
         if nieznane:
-            raise ValueError(
+            raise BladDefinicjiKanonu(
                 f"Szablon {self.template_id}: kody funkcji EAZ spoza słownika: {nieznane}."
             )
         if self.obwody_wtorne is not None:
@@ -197,7 +198,7 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
     aparaty = {d.designation_q: d for d in szablon.devices}
     powiazane = [p.funkcja for p in obwody.powiazania]
     if sorted(powiazane) != sorted(szablon.funkcje_eaz):
-        raise ValueError(
+        raise BladDefinicjiKanonu(
             f"Szablon {nazwa}: powiązania obwodów wtórnych {sorted(powiazane)} ≠ funkcje EAZ "
             f"szablonu {sorted(szablon.funkcje_eaz)}."
         )
@@ -207,14 +208,20 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
     def _obwod(oznaczenie: str, rodzaj: str, numer: int | None, kto: str) -> None:
         aparat = aparaty.get(oznaczenie)
         if aparat is None or aparat.kind != rodzaj:
-            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie jest aparatem {rodzaj}.")
+            raise BladDefinicjiKanonu(
+                f"Szablon {nazwa}, {kto}: {oznaczenie} nie jest aparatem {rodzaj}."
+            )
         if numer is not None and numer > len(getattr(aparat, liczba_obwodow[rodzaj])):
-            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie ma obwodu nr {numer}.")
+            raise BladDefinicjiKanonu(
+                f"Szablon {nazwa}, {kto}: {oznaczenie} nie ma obwodu nr {numer}."
+            )
 
     obwody_eaz: set[tuple[str, int]] = set()
     for p in obwody.powiazania:
         if p.wylacznik is not None and getattr(aparaty.get(p.wylacznik), "kind", None) != "CB":
-            raise ValueError(f"Szablon {nazwa}, {p.funkcja}: {p.wylacznik} nie jest wyłącznikiem.")
+            raise BladDefinicjiKanonu(
+                f"Szablon {nazwa}, {p.funkcja}: {p.wylacznik} nie jest wyłącznikiem."
+            )
         for w in p.wejscia:
             if w.aparat is None:
                 continue
@@ -226,10 +233,12 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
         klucz = (przypisanie.aparat, przypisanie.numer)
         rodzaj = getattr(aparaty.get(przypisanie.aparat), "kind", "")
         if rodzaj not in liczba_obwodow:
-            raise ValueError(f"Szablon {nazwa}: {przypisanie.aparat} nie jest przekładnikiem.")
+            raise BladDefinicjiKanonu(
+                f"Szablon {nazwa}: {przypisanie.aparat} nie jest przekładnikiem."
+            )
         _obwod(przypisanie.aparat, rodzaj, przypisanie.numer, "przypisanie obwodu")
         if klucz in obwody_eaz or klucz in obwody_poza:
-            raise ValueError(f"Szablon {nazwa}: obwód {klucz} ma dwa przeznaczenia.")
+            raise BladDefinicjiKanonu(f"Szablon {nazwa}: obwód {klucz} ma dwa przeznaczenia.")
         obwody_poza.add(klucz)
     wszystkie = {
         (d.designation_q, n)
@@ -238,7 +247,7 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
         for n in range(1, len(getattr(d, liczba_obwodow[d.kind])) + 1)
     }
     if wszystkie != obwody_eaz | obwody_poza:
-        raise ValueError(
+        raise BladDefinicjiKanonu(
             f"Szablon {nazwa}: obwody przekładników bez przeznaczenia na rysunku: "
             f"{sorted(wszystkie - obwody_eaz - obwody_poza)}."
         )
@@ -411,14 +420,14 @@ def odmowa_wykonania_lacznikow_w_izolacji(
 # pola) — `bez_niespelnionych_warunkow`.
 # ---------------------------------------------------------------------------
 
-#: Warunek przypisania funkcji 67N: źródło 3U₀ i kryterium prądowe I0 potwierdzone w modelu.
+#: Warunek przypisania funkcji 67N: źródło napięcia zerowego i kryterium prądowe I0 potwierdzone w modelu.
 WARUNEK_ZRODLA_U0 = "ZRODLO_U0"
 #: Funkcja warunkowa → warunek jej przypisania (lista ZAMKNIĘTA, przypięta testem
 #: `tests/enm/test_zrodlo_napiecia_zerowego.py`).
 WARUNKI_FUNKCJI_EAZ: dict[str, str] = {"67N": WARUNEK_ZRODLA_U0}
 OPIS_WARUNKU_FUNKCJI_EAZ_PL: dict[str, str] = {
     WARUNEK_ZRODLA_U0: (
-        "przypisana wyłącznie przy źródle napięcia zerowego 3U₀ powiązanym w modelu — uzwojeniu "
+        "przypisana wyłącznie przy źródle napięcia zerowego powiązanym w modelu — uzwojeniu "
         "otwartego trójkąta przekładnika napięciowego pola pomiaru napięcia szyn tej samej sekcji "
         "(ENEA Zeszyt 1, Z.17 s.97, obwód okrężny „Z, Zz”) albo tego pola — i kryterium prądowym "
         "z przekładnika Ferrantiego pola"
@@ -443,8 +452,8 @@ def bez_niespelnionych_warunkow(kody: Iterable[str], warunki: Collection[str]) -
 #: ziemnozwarciowe" rysunku ma wejście Io z przekładnika Ferrantiego (czerwona linia z zacisku 2
 #: przekładnika 1/100) i wejście U0 z obwodu okrężnego „Z, Zz" pod znakiem kierunku „↦" nad
 #: członami t1, t2 — zestaw rozdziela go na kryterium prądowe Io> (51N, z samego przekładnika
-#: Ferrantiego pola, BEZ warunku) i kierunkowe (67N, warunkowe — źródło 3U₀ spoza pola, decyzja
-#: właściciela 2026-10-29). Pole bez potwierdzonego źródła 3U₀ ma więc zabezpieczenie
+#: Ferrantiego pola, BEZ warunku) i kierunkowe (67N, warunkowe — źródło napięcia zerowego spoza pola, decyzja
+#: właściciela 2026-10-29). Pole bez potwierdzonego źródła napięcia zerowego ma więc zabezpieczenie
 #: ziemnozwarciowe prądowe z przekładnika Ferrantiego, a nie żadnego. Z.11/Z.11.1:
 #: I>, I> kierunkowe (ZS), I>>, ziemnozwarciowe, U>, U<, f<, f>, df/dt, ZS, LRW, SPZ, SPZE,
 #: wyłączenie od zabezpieczeń transformatora (OWG), automatyka blokowania od napięcia
@@ -932,7 +941,7 @@ def funkcje_eaz_pola_liniowego(
     """Funkcje EAZ pola liniowego GPZ: zestaw rysunku wykonania (Z.10/Z.11.1/Z.11) skorygowany
     klasą pola, bez funkcji warunkowych o niespełnionym warunku (``warunki`` — warunki spełnione
     w modelu, `enm.zrodlo_napiecia_zerowego.warunki_funkcji_eaz_pola`; domyślnie żaden — 67N nie
-    trafia do pola bez potwierdzonego źródła 3U₀). Klasa nieustalona (`None`) — zestaw rysunku bez
+    trafia do pola bez potwierdzonego źródła napięcia zerowego). Klasa nieustalona (`None`) — zestaw rysunku bez
     korekty klasy. Kolejność rysunku; kod dopisany klasą stoi za wskazanym kodem rysunku (na
     początku, gdy rysunek go nie ma)."""
     zestaw = list(_FUNKCJE_EAZ_WYKONANIA_POLA[wykonanie_pola])
@@ -1178,7 +1187,7 @@ BAY_TEMPLATE_AUX = BayTemplate(
 
 # ---------------------------------------------------------------------------
 # Decyzja właściciela 2026-10-29 (karta UX-04/POLE-LINIOWE-WZORZEC): pole pomiaru napięcia SN
-# rozdzielni GPZ wg ENEA Zeszyt 1, Z.17 (s.97) — źródło napięcia zerowego 3U₀ funkcji 67N pól
+# rozdzielni GPZ wg ENEA Zeszyt 1, Z.17 (s.97) — źródło napięcia zerowego funkcji 67N pól
 # liniowych sekcji (obwód okrężny „Z,Zz”, `enm.zrodlo_napiecia_zerowego`).
 # ---------------------------------------------------------------------------
 
@@ -1240,7 +1249,7 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
     description=(
         "Pole pomiaru napięcia SN rozdzielni GPZ (ENEA Z.17) — łącznik trójpołożeniowy z napędem, "
         "wskaźnik napięcia, przekładnik napięciowy wtykowy z uzwojeniem otwartego trójkąta "
-        "(źródło napięcia zerowego 3U₀ sekcji)."
+        "(źródło napięcia zerowego sekcji)."
     ),
     podstawa=PODSTAWA_POLA_POMIARU_NAPIECIA_Z17,
     render_variant="qet_en60617",
@@ -1527,8 +1536,18 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
 #: IRiESD II.4.5.4.7.1 pkt 3). Blokowanie zabezpieczenia szyn od I> i sterowanie zegarem nie
 #: mają kodu ANSI funkcji — są automatyką rozdzielni, nie funkcją zabezpieczeniową pola. Szablon
 #: kanoniczny pola BKR (z odłącznikiem pola) przeniesie ten zestaw do ``BayTemplate.funkcje_eaz``.
+#:
+#: Pole zespołu uziemiającego ``ZU`` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA; ENEA Operator,
+#: Stacje 110 kV, Zeszyt 1, Z.13 s.93 i Z.14 s.94) — zestaw to dokładnie te funkcje słownika
+#: `funkcje_eaz`, których podstawa cytuje rysunek pola ZU (Z.13): ziemnozwarciowe zwłoczne
+#: i bezzwłoczne z prądu zerowego (51N, 50N), automatyka wymuszania składowej czynnej (ZAWSC)
+#: oraz technologiczne transformatora uziemiającego (BT) i dławika gaszącego (BD). Scalenie do
+#: drzewa integracji 2026-11-11: rola weszła do modelu bez wpisu w tablicach funkcji ról, więc
+#: pole ZU budowane operacją dostawało pustą listę funkcji. Parytet zestawu z podstawami
+#: słownika przypina `test_funkcje_eaz_roli.py`.
 FUNKCJE_EAZ_ROLI_BEZ_SZABLONU: dict[str, tuple[str, ...]] = {
     "BKR": ("51", "50", "51N", "60N", "59", "50BF"),
+    "ZU": ("51N", "50N", "ZAWSC", "BT", "BD"),
 }
 
 

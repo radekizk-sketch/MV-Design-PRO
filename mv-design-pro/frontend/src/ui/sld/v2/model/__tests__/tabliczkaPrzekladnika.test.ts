@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PRZEKŁADNIA PRZEKŁADNIKA NA SCHEMACIE (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6; odbiór
  * B-02 właściciela 2026-11-04 pkt 6): KRÓTKA przekładnia z `BayPrimaryDevice.rdzenie`

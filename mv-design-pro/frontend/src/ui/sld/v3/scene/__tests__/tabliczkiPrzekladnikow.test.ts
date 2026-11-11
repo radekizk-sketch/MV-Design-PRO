@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Opisy przekładników bezpośrednio przy symbolach (karta UX-04/POLE-LINIOWE-WZORZEC: „opisy
  * przekładników (przekładnia, klasa) bezpośrednio przy symbolach, z testami kolizji

@@ -83,6 +83,7 @@ Granica opisana jest granicą; granica przemilczana jest dziurą.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -624,6 +625,7 @@ def zmierz_dlug() -> tuple[int, int, str]:
             capture_output=True,
             text=True,
             check=False,
+            env=_srodowisko_tsc(),
         )
 
     wyjscie = wynik.stdout + wynik.stderr
@@ -651,6 +653,22 @@ def zmierz_dlug() -> tuple[int, int, str]:
     globals()["_BLEDY_W_BRAMCE"] = w_bramce_bledy
     globals()["_BLEDY_POZA_BRAMKA"] = poza_bramka_bledy
     return len(w_bramce_bledy), len(poza_bramka_bledy), wyjscie
+
+
+#: Sterta procesu `tsc` zbioru pomiarowego — ta sama co krok testów frontendu w CI
+#: (`frontend-checks.yml`, `NODE_OPTIONS: --max-old-space-size=6144`). Zbiór pomiarowy (kod,
+#: testy, e2e, skrypty) jest większy niż projekt `tsconfig.json`: po scaleniu kart do drzewa
+#: integracji 2026-11-11 `tsc` przekroczył domyślny limit sterty Node (~2 GB) i kończył bieg
+#: kodem 134 bez pomiaru. Limit podany jawnie, nie zgadywany przez wersję Node.
+STERTA_TSC_MB = 6144
+
+
+def _srodowisko_tsc() -> dict[str, str]:
+    srodowisko = dict(os.environ)
+    opcje = srodowisko.get("NODE_OPTIONS", "")
+    if "--max-old-space-size" not in opcje:
+        srodowisko["NODE_OPTIONS"] = f"{opcje} --max-old-space-size={STERTA_TSC_MB}".strip()
+    return srodowisko
 
 
 def zmierz_projekt_node() -> tuple[int, str]:

@@ -1,4 +1,4 @@
-"""Źródło napięcia zerowego 3U₀ funkcji 67N pola SN — JEDNA reguła przypisania i oceny.
+"""Źródło napięcia zerowego funkcji 67N pola SN — JEDNA reguła przypisania i oceny.
 
 PO CO (decyzja właściciela 2026-10-29, karta UX-04/POLE-LINIOWE-WZORZEC). Zabezpieczenie
 kierunkowe ziemnozwarciowe (67N) mierzy składową zerową prądu I0 i napięcia U0 (ENEA Operator,
@@ -108,7 +108,7 @@ class KandydatZrodlaU0:
 
 @dataclass(frozen=True)
 class ZrodloU0Pola:
-    """Rozstrzygnięcie źródła 3U₀ i kryterium I0 jednego pola — rekord wyjaśnialny.
+    """Rozstrzygnięcie źródła napięcia zerowego i kryterium I0 jednego pola — rekord wyjaśnialny.
 
     ``potwierdzone`` — oba składniki warunku spełnione. ``vt_ref`` / ``pole_zrodla_ref`` —
     przekładnik źródła i jego pole (gdy powiązanie wskazuje poprawne źródło), ``uzwojenie_pl`` —
@@ -215,7 +215,7 @@ def zrodlo_u0_pola(
         braki_i0.append(
             (
                 "BRAK_FERRANTIEGO",
-                "przekładnik Ferrantiego w polu — kryterium prądowe I0 zabezpieczenia "
+                "przekładnik Ferrantiego w polu — kryterium prądowe (prąd zerowy) zabezpieczenia "
                 "ziemnozwarciowego (ENEA Z.10 s.89, Z.11.1 s.91)",
             )
         )
@@ -248,7 +248,7 @@ def zrodlo_u0_pola(
             braki.append(
                 (
                     "APARAT_NIEOBECNY",
-                    "przekładnik napięciowy wskazany jako źródło 3U₀ — nie ma go w modelu "
+                    "przekładnik napięciowy wskazany jako źródło napięcia zerowego — nie ma go w modelu "
                     "(pole pomiaru napięcia usunięte albo przebudowane)",
                 )
             )
@@ -260,7 +260,7 @@ def zrodlo_u0_pola(
                 braki.append(
                     (
                         "APARAT_NIE_JEST_VT",
-                        "źródło 3U₀ wskazujące przekładnik napięciowy — wskazany aparat nim nie "
+                        "źródło napięcia zerowego wskazujące przekładnik napięciowy — wskazany aparat nim nie "
                         "jest",
                     )
                 )
@@ -269,14 +269,14 @@ def zrodlo_u0_pola(
                     (
                         "BRAK_OTWARTEGO_TROJKATA",
                         "uzwojenie otwartego trójkąta (0,1/3) we wskazanym przekładniku "
-                        "napięciowym — bez niego przekładnik nie mierzy napięcia zerowego 3U₀",
+                        "napięciowym — bez niego przekładnik nie mierzy napięcia zerowego",
                     )
                 )
             elif not to_samo_pole and not _czy_pole_pomiaru_napiecia_szyn(pole_zrodla):
                 braki.append(
                     (
                         "POLE_NIE_MIERZY_SZYN",
-                        "źródło 3U₀ w polu pomiaru napięcia szyn — wskazany przekładnik leży "
+                        "źródło napięcia zerowego w polu pomiaru napięcia szyn — wskazany przekładnik leży "
                         f"w {opis_elementu(dict(enm), pole_zrodla.get('ref_id'), 'polu')}, "
                         "które nie mierzy napięcia szyn",
                     )
@@ -285,7 +285,7 @@ def zrodlo_u0_pola(
                 braki.append(
                     (
                         "INNA_SEKCJA",
-                        "źródło 3U₀ w tej samej sekcji szyn — obwód okrężny „Z, Zz” nie "
+                        "źródło napięcia zerowego w tej samej sekcji szyn — obwód okrężny „Z, Zz” nie "
                         "przechodzi między sekcjami, a wskazane pole pomiaru napięcia leży na "
                         "innej szynie",
                     )
@@ -297,14 +297,14 @@ def zrodlo_u0_pola(
     potwierdzone = not braki and not braki_i0
     if potwierdzone:
         przyczyna = (
-            f"źródło 3U₀ {opis_pola} potwierdzone: przekładnik "
+            f"źródło napięcia zerowego {opis_pola} potwierdzone: przekładnik "
             f"{_oznaczenie(enm, vt_ref)} w "
             f"{opis_elementu(dict(enm), pole_zrodla_ref, 'polu')} ({uzwojenie_pl}); "
             "kryterium prądowe — przekładnik Ferrantiego pola"
         )
     else:
         przyczyna = (
-            f"źródło 3U₀ {opis_pola} niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego "
+            f"źródło napięcia zerowego {opis_pola} niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego "
             f"bez tego źródła ({PODSTAWA_ZRODLA_U0})"
         )
     return ZrodloU0Pola(
@@ -343,7 +343,7 @@ def warunki_funkcji_eaz_pola(enm: Mapping[str, Any], pole: Mapping[str, Any]) ->
 
 
 def funkcje_warunkowe_szablonu_pola(pole: Mapping[str, Any]) -> tuple[str, ...]:
-    """Funkcje warunkowe (źródło 3U₀), które szablon pola przypisałby przy spełnionym warunku —
+    """Funkcje warunkowe (źródło napięcia zerowego), które szablon pola przypisałby przy spełnionym warunku —
     ten sam resolver co zapis wyposażenia (producent → szablon → rola), z kompletem warunków.
     Puste — pole, którego szablon żadnej funkcji warunkowej nie niesie (powiązanie źródła
     niczego by nie zmieniło, więc karta pola go nie proponuje)."""
@@ -361,7 +361,7 @@ def funkcje_warunkowe_szablonu_pola(pole: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def funkcje_bez_zrodla_u0(kody: Iterable[object]) -> tuple[str, ...]:
-    """Kody funkcji pola, których warunkiem jest źródło 3U₀ (w kolejności zestawu)."""
+    """Kody funkcji pola, których warunkiem jest źródło napięcia zerowego (w kolejności zestawu)."""
     return tuple(str(kod) for kod in kody if WARUNKI_FUNKCJI_EAZ.get(str(kod)) == WARUNEK_ZRODLA_U0)
 
 
@@ -378,7 +378,7 @@ class NaruszenieZrodlaU0:
 
 
 def naruszenia_zrodla_u0(enm: Mapping[str, Any]) -> list[NaruszenieZrodlaU0]:
-    """Pola z funkcją 67N zapisaną bez potwierdzonego źródła 3U₀ — w kolejności pól modelu."""
+    """Pola z funkcją 67N zapisaną bez potwierdzonego źródła napięcia zerowego — w kolejności pól modelu."""
     wynik: list[NaruszenieZrodlaU0] = []
     for pole in _lista(enm, "bays"):
         funkcje = funkcje_bez_zrodla_u0(pole.get("protection_codes") or [])
@@ -395,8 +395,8 @@ def naruszenia_zrodla_u0(enm: Mapping[str, Any]) -> list[NaruszenieZrodlaU0]:
                 czego_brakuje=zrodlo.czego_brakuje,
                 komunikat_pl=(
                     f"{opis} ma funkcję {', '.join(funkcje)} (zabezpieczenie ziemnozwarciowe "
-                    "kierunkowe) bez potwierdzonego źródła napięcia zerowego 3U₀ — brakuje: "
-                    f"{'; '.join(zrodlo.czego_brakuje)}. Funkcja bez wejścia U0 niczego nie mierzy "
+                    "kierunkowe) bez potwierdzonego źródła napięcia zerowego — brakuje: "
+                    f"{'; '.join(zrodlo.czego_brakuje)}. Funkcja bez wejścia napięcia zerowego niczego nie mierzy "
                     f"({PODSTAWA_ZRODLA_U0})."
                 ),
             )
