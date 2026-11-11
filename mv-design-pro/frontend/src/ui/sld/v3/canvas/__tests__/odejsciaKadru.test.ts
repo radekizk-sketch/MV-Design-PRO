@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
-import { buildSceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 import { MIN_READABLE_LABEL_SCREEN_PX } from '../../core/text';
 import { prostokatRefowWScenie } from '../viewAnchor';
 import {
@@ -26,7 +26,9 @@ import {
   odejsciaKadru,
   pismoOpisuOdejscia,
   prostokatyZakresu,
+  ulozOdejscia,
   zakresCelu,
+  type OdejscieKadru,
   type ZakresKadru,
 } from '../zakresKadru';
 
@@ -99,6 +101,10 @@ function oczekiwane(st: string): Map<string, string> {
   return out;
 }
 
+type Prost = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+/** Nachodzenie wnętrz (styk krawędzi nie jest kolizją). */
+const nachodza = (a: Prost, b: Prost) =>
+  a.x < b.x + b.width - 1e-6 && a.x + a.width > b.x + 1e-6 && a.y < b.y + b.height - 1e-6 && a.y + a.height > b.y + 1e-6;
 const zawiera = (zew: { minX: number; minY: number; maxX: number; maxY: number }, w: typeof zew) =>
   w.minX >= zew.minX - 1e-6 && w.minY >= zew.minY - 1e-6 && w.maxX <= zew.maxX + 1e-6 && w.maxY <= zew.maxY + 1e-6;
 
@@ -158,11 +164,15 @@ describe('odejścia kadru stacji — iloczyn stacja × poziom × skala', () => {
     for (const lod of [1, 2] as const) {
       for (const st of stacje) {
         const z = zakresStacji(st);
-        const { tuszEtykiet } = prostokatyZakresu(sceny, z, (b) => b, enm);
-        const cel = tuszEtykiet(lod, skala).cel!;
+        const zakres = prostokatyZakresu(sceny, z, (b) => b, enm);
+        const cel = zakres.tuszEtykiet(lod, skala).cel!;
         const baza = prostokatRefowWScenie(sceny[lod], z.refy)!;
-        for (const o of odejsciaKadru(enm, sceny[lod], new Set(z.refy), baza)) {
-          expect(zawiera(cel, obrysOdejscia(o, pismoOpisuOdejscia(skala))), `${st} ${o.tekst}`).toBe(true);
+        const ulozone = zakres.odejscia(lod, skala);
+        // Te same odejścia co wyrocznia modelu (mechanizm odejść niczego nie gubi).
+        expect(ulozone.map((u) => u.odejscie)).toEqual(odejsciaKadru(enm, sceny[lod], new Set(z.refy), baza));
+        for (const u of ulozone) {
+          expect(zawiera(cel, obrysOdejscia(u)), `${st} ${u.odejscie.tekst}`).toBe(true);
+          expect(u.opis.height).toBeCloseTo(pismoOpisuOdejscia(skala) + 6, 9);
           sprawdzonych += 1;
         }
       }
@@ -172,14 +182,93 @@ describe('odejścia kadru stacji — iloczyn stacja × poziom × skala', () => {
     expect(OPIS_ODEJSCIA_PX).toBeGreaterThanOrEqual(MIN_READABLE_LABEL_SCREEN_PX);
   });
 
+  it.each([0.51, 0.8, 1.2])('skala %s: opis w ramce nie zachodzi na symbol, przewód, etykietę planu ani inny opis; iloczyn {w ramce, za znakiem} niepusty', (skala) => {
+    const tryby = new Set<boolean>();
+    for (const lod of [1, 2] as const) {
+      const przeszkodySceny = sceneObstacleRects(sceny[lod]);
+      for (const st of stacje) {
+        const z = zakresStacji(st);
+        const zakres = prostokatyZakresu(sceny, z, (b) => b, enm);
+        const narysowane = zakres.tuszEtykiet(lod, skala);
+        expect(narysowane.cel).not.toBeNull();
+        const ulozone = zakres.odejscia(lod, skala);
+        const baza = prostokatRefowWScenie(sceny[lod], z.refy)!;
+        for (const [i, u] of ulozone.entries()) {
+          tryby.add(u.wewnatrz);
+          for (const [j, v] of ulozone.entries()) {
+            if (i !== j) expect(nachodza(u.opis, v.opis), `${st} ${u.odejscie.tekst} / ${v.odejscie.tekst}`).toBe(false);
+          }
+          if (!u.wewnatrz) continue;
+          for (const q of przeszkodySceny) expect(nachodza(u.opis, q), `${st} ${u.odejscie.tekst}`).toBe(false);
+          // Opis w ramce nie poszerza kadru w osi wyjścia: leży po wewnętrznej stronie znaku.
+          const o = u.odejscie;
+          if (o.kierunek === 'prawo') expect(u.opis.x + u.opis.width).toBeLessThanOrEqual(o.punkt.x);
+          if (o.kierunek === 'lewo') expect(u.opis.x).toBeGreaterThanOrEqual(o.punkt.x);
+          if (o.kierunek === 'dol') expect(u.opis.y + u.opis.height).toBeLessThanOrEqual(o.punkt.y);
+          if (o.kierunek === 'gora') expect(u.opis.y).toBeGreaterThanOrEqual(o.punkt.y);
+          expect(o.punkt.x >= baza.minX - 1e-6 && o.punkt.x <= baza.maxX + 1e-6).toBe(true);
+        }
+      }
+    }
+    expect(tryby.has(true)).toBe(true);
+  });
+
+  it('ułożenie: wolne miejsce → opis w ramce; przeszkoda albo wcześniejszy opis → za znakiem, poza ramką (każdy kierunek)', () => {
+    const kierunki = ['prawo', 'lewo', 'dol', 'gora'] as const;
+    for (const kierunek of kierunki) {
+      const o: OdejscieKadru = {
+        segmentRef: `s-${kierunek}`, galazRef: 'g', cel: 'Stacja X', tekst: 'dalej: Stacja X',
+        punkt: { x: 500, y: 500 }, kierunek, kreski: [],
+      };
+      const [wolny] = ulozOdejscia([o], 10, []);
+      expect(wolny.wewnatrz).toBe(true);
+      const [zajety] = ulozOdejscia([o], 10, [wolny.opis]);
+      expect(zajety.wewnatrz).toBe(false);
+      expect(nachodza(zajety.opis, wolny.opis)).toBe(false);
+      // Na zewnątrz: po stronie wyjścia trasy.
+      if (kierunek === 'prawo') expect(zajety.opis.x).toBeGreaterThan(o.punkt.x);
+      if (kierunek === 'lewo') expect(zajety.opis.x + zajety.opis.width).toBeLessThan(o.punkt.x);
+      if (kierunek === 'dol') expect(zajety.opis.y).toBeGreaterThan(o.punkt.y);
+      if (kierunek === 'gora') expect(zajety.opis.y + zajety.opis.height).toBeLessThan(o.punkt.y);
+      // Dwa odejścia w tym samym punkcie: drugie nie wejdzie na miejsce pierwszego.
+      const [a, b] = ulozOdejscia([o, { ...o, segmentRef: `t-${kierunek}` }], 10, []);
+      expect(a.wewnatrz).toBe(true);
+      expect(b.wewnatrz).toBe(false);
+    }
+  });
+
+  it.each(['prawo', 'lewo', 'dol', 'gora'] as const)('tory gęstsze od pisma (%s): trzy opisy za znakiem nie zachodzą na siebie; przy dwóch torach oba stykają się z własnym torem', (kierunek) => {
+    const poziomy = kierunek === 'prawo' || kierunek === 'lewo';
+    const odejscia: OdejscieKadru[] = [0, 1, 2].map((i) => ({
+      segmentRef: `s${i}`, galazRef: `g${i}`, cel: `Stacja ${i}`, tekst: `dalej: Stacja ${i}`,
+      punkt: poziomy ? { x: 500, y: 500 + 16 * i } : { x: 500 + 16 * i, y: 500 }, kierunek, kreski: [],
+    }));
+    // Wnętrze ramki zajęte (przeszkoda pokrywa całe otoczenie znaków od strony ramki).
+    const sciana = poziomy
+      ? { x: kierunek === 'prawo' ? 0 : 500, y: 0, width: 500, height: 2000 }
+      : { x: 0, y: kierunek === 'dol' ? 0 : 500, width: 2000, height: 500 };
+    const ulozone = ulozOdejscia(odejscia, 22, [sciana]);
+    for (const u of ulozone) expect(u.wewnatrz).toBe(false);
+    for (const [i, a] of ulozone.entries()) {
+      for (const [j, b] of ulozone.entries()) if (i < j) expect(nachodza(a.opis, b.opis)).toBe(false);
+      // Piętro przylegające istnieje po obu stronach toru, więc dwa sąsiednie tory mają
+      // opisy stykające się z własnym torem; trzeci opis idzie na dalsze piętro.
+      if (poziomy && i < 2) {
+        expect(a.opis.y).toBeLessThanOrEqual(a.odejscie.punkt.y + 1 + 1e-6);
+        expect(a.opis.y + a.opis.height).toBeGreaterThanOrEqual(a.odejscie.punkt.y - 1 - 1e-6);
+      }
+    }
+  });
+
   it('bez migawki (sonda dostępności) ramka nie obejmuje odejść — obejmuje je wyłącznie mechanizm odejść', () => {
     let wystaje = 0;
     for (const st of stacje) {
       const z = zakresStacji(st);
-      const bez = prostokatyZakresu(sceny, z).tuszEtykiet(1, 0.8).cel!;
-      const baza = prostokatRefowWScenie(sceny[1], z.refy)!;
-      for (const o of odejsciaKadru(enm, sceny[1], new Set(z.refy), baza)) {
-        if (!zawiera(bez, obrysOdejscia(o, pismoOpisuOdejscia(0.8)))) wystaje += 1;
+      const bez = prostokatyZakresu(sceny, z);
+      expect(bez.odejscia(1, 0.8)).toEqual([]);
+      const ulozone = prostokatyZakresu(sceny, z, (b) => b, enm).odejscia(1, 0.8);
+      for (const u of ulozone) {
+        if (!zawiera(bez.tuszEtykiet(1, 0.8).cel!, obrysOdejscia(u))) wystaje += 1;
       }
     }
     expect(wystaje).toBeGreaterThan(0);

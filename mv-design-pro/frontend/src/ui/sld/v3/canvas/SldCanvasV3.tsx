@@ -92,8 +92,8 @@ import {
   odejsciaKadru,
   pismoOpisuOdejscia,
   podlogaOpisowCelu,
-  prostokatOpisuOdejscia,
   prostokatyZakresu,
+  ulozOdejscia,
   type ZakresKadru,
 } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
@@ -2894,6 +2894,18 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
     [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu, effectiveLod],
   );
+  // Ułożenie opisów odejść: ta sama funkcja i te same przeszkody co ramka kadru
+  // (`prostokatyZakresu` → `tuszEtykiet`): symbole i przewody sceny + narysowany plan etykiet.
+  const ulozoneOdejscia = useMemo(
+    () =>
+      odejscia.length === 0
+        ? []
+        : ulozOdejscia(odejscia, pismoOpisuOdejscia(camera.transform.scale), [
+            ...labelObstacles,
+            ...labelPlan.drawn.map((d) => d.rect),
+          ]),
+    [odejscia, camera.transform.scale, labelObstacles, labelPlan],
+  );
   // K2b §0.2 (b): opisy CELU ukryte przez plan (próg czytelności, sufit
   // proporcji, brak miejsca) i najmniejsza wysokość narysowanego opisu celu na
   // ekranie — kanał audytu (`data-ukryte-opisy-celu`, `data-min-opis-celu-px`)
@@ -3675,10 +3687,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         </g>
         {/* SLD-CZYTELNOSC-STACJI: odejścia kadru (znak kontynuacji + „dalej: <cel>") —
          *  pełna nieprzezroczystość nad kurtyną; pismo stałe na ekranie. */}
-        <g data-testid="sld-v3-odejscia-kadru" data-liczba-odejsc={odejscia.length}>
-          {odejscia.map((o) => {
+        <g data-testid="sld-v3-odejscia-kadru" data-liczba-odejsc={ulozoneOdejscia.length}>
+          {ulozoneOdejscia.map(({ odejscie: o, opis: r, wewnatrz }) => {
             const fontSize = pismoOpisuOdejscia(camera.transform.scale);
-            const r = prostokatOpisuOdejscia(o, fontSize);
             return (
               <g
                 key={`odejscie-${o.segmentRef}`}
@@ -3686,6 +3697,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 data-odejscie-galaz={o.galazRef}
                 data-odejscie-cel={o.cel}
                 data-odejscie-kierunek={o.kierunek}
+                data-odejscie-opis={wewnatrz ? 'w-ramce' : 'za-znakiem'}
               >
                 {o.kreski.map(([a, b], i) => (
                   <line

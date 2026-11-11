@@ -772,6 +772,9 @@ export interface ProstokatyZakresu {
    *  na tym poziomie nic z zakresu nie jest narysowane. */
   readonly celByLod: Readonly<Record<SceneLod, BoundingBox | null>>;
   readonly przeszkodyByLod: Readonly<Record<SceneLod, readonly BoundingBox[]>>;
+  /** Odejścia kadru ułożone przy skali `scale` (układ SCENY) — te, które `tuszEtykiet`
+   *  dołącza do ramki celu; puste bez migawki modelu. */
+  readonly odejscia: (lod: SceneLod, scale: number) => readonly UlozoneOdejscie[];
   /**
    * Tusz ETYKIET celu i każdej przeszkody przy skali kamery `scale` — z TEGO
    * SAMEGO planu etykiet, który rysuje kanwa (`planSceneLabels` na całej scenie
@@ -800,14 +803,22 @@ export function prostokatyZakresu(
 ): ProstokatyZakresu {
   const refyCeluZbior = new Set(zakresKadru.refy);
   /** Obrys odejść przy skali `scale` (pismo opisu stałe na ekranie), w układzie SCENY. */
-  const obrysOdejsc = (lod: SceneLod, scale: number): BoundingBox | null => {
-    if (!snapshot || refyCeluZbior.size === 0) return null;
+  const ulozoneNaPoziomie = (
+    lod: SceneLod,
+    scale: number,
+    etykiety: readonly { readonly x: number; readonly y: number; readonly width: number; readonly height: number }[],
+  ): readonly UlozoneOdejscie[] => {
+    if (!snapshot || refyCeluZbior.size === 0) return [];
     const scena = sceneByLod[lod];
     const baza = prostokatRefowWScenie(scena, zakresKadru.refy);
-    if (!baza) return null;
+    if (!baza) return [];
+    const przeszkody = [...sceneObstacleRects(scena), ...etykiety];
+    return ulozOdejscia(odejsciaKadru(snapshot, scena, refyCeluZbior, baza), pismoOpisuOdejscia(scale), przeszkody);
+  };
+  const obrysOdejsc = (ulozone: readonly UlozoneOdejscie[]): BoundingBox | null => {
     let box: BoundingBox | null = null;
-    for (const o of odejsciaKadru(snapshot, scena, refyCeluZbior, baza)) {
-      const b = obrysOdejscia(o, pismoOpisuOdejscia(scale));
+    for (const u of ulozone) {
+      const b = obrysOdejscia(u);
       box = box
         ? { minX: Math.min(box.minX, b.minX), minY: Math.min(box.minY, b.minY), maxX: Math.max(box.maxX, b.maxX), maxY: Math.max(box.maxY, b.maxY) }
         : b;
@@ -819,7 +830,7 @@ export function prostokatyZakresu(
     if (!box) return null;
     // Skala 1 — punkt wyjścia iteracji kadru; dokładny obrys przy skali końcowej
     // dokłada `tuszEtykiet` (ta sama funkcja `obrysOdejsc`).
-    const odejscia = obrysOdejsc(lod, 1);
+    const odejscia = obrysOdejsc(ulozoneNaPoziomie(lod, 1, sceneByLod[lod].labels.map((l) => l.rect)));
     return przelicz(
       odejscia
         ? { minX: Math.min(box.minX, odejscia.minX), minY: Math.min(box.minY, odejscia.minY), maxX: Math.max(box.maxX, odejscia.maxX), maxY: Math.max(box.maxY, odejscia.maxY) }
@@ -839,6 +850,7 @@ export function prostokatyZakresu(
   // warunek stosuje kanwa (`SldCanvasV3`, `refyKadru` puste ⇒ brak podłogi).
   const podloga = refyCelu.size > 0 ? podlogaOpisowCelu(refyCelu) : undefined;
   const pamiec = new Map<string, TuszEtykietKadru>();
+  const pamiecOdejsc = new Map<string, readonly UlozoneOdejscie[]>();
   const tuszEtykiet = (lod: SceneLod, scale: number): TuszEtykietKadru => {
     const klucz = `${lod}|${scale}`;
     const zapamietany = pamiec.get(klucz);
@@ -869,7 +881,9 @@ export function prostokatyZakresu(
         if (i !== undefined) tuszPrzeszkod[i] = dolacz(tuszPrzeszkod[i], narysowana.rect);
       }
     }
-    const odejscia = obrysOdejsc(lod, scale);
+    const ulozone = ulozoneNaPoziomie(lod, scale, plan.drawn.map((d) => d.rect));
+    pamiecOdejsc.set(klucz, ulozone);
+    const odejscia = obrysOdejsc(ulozone);
     if (odejscia) cel = dolacz(cel, { x: odejscia.minX, y: odejscia.minY, width: odejscia.maxX - odejscia.minX, height: odejscia.maxY - odejscia.minY });
     const wynik: TuszEtykietKadru = {
       cel: cel ? przelicz(cel) : null,
@@ -882,6 +896,10 @@ export function prostokatyZakresu(
     celByLod: { 0: naPoziomie(0), 1: naPoziomie(1), 2: naPoziomie(2) },
     przeszkodyByLod: { 0: przeszkody(0), 1: przeszkody(1), 2: przeszkody(2) },
     tuszEtykiet,
+    odejscia: (lod, scale) => {
+      tuszEtykiet(lod, scale);
+      return pamiecOdejsc.get(`${lod}|${scale}`) ?? [];
+    },
   };
 }
 
@@ -1110,12 +1128,10 @@ export function pismoOpisuOdejscia(scale: number): number {
   return OPIS_ODEJSCIA_PX / (Number.isFinite(scale) && scale > 0 ? scale : 1);
 }
 
-/**
- * Prostokąt opisu odejścia przy piśmie `fontSize` [j.św.] — za znakiem, w kierunku
- * wyjścia trasy (poziomo) albo z prawej strony toru na wysokości znaku (pionowo).
- * Ta sama funkcja daje kotwicę tekstu w kanwie i prostokąt do ramki kadru.
- */
-export function prostokatOpisuOdejscia(o: OdejscieKadru, fontSize: number): { x: number; y: number; width: number; height: number } {
+type ProstokatOpisu = { x: number; y: number; width: number; height: number };
+
+/** Opis ZA znakiem, poza ramką (w kierunku wyjścia trasy; przy pionie — z prawej strony toru). */
+function opisZewnetrzny(o: OdejscieKadru, fontSize: number): ProstokatOpisu {
   const width = measureTextWidth(o.tekst, fontSize);
   const height = fontSize + 6;
   const dalej = 3 * ODEJSCIE_KRESKA_ODSTEP;
@@ -1131,9 +1147,95 @@ export function prostokatOpisuOdejscia(o: OdejscieKadru, fontSize: number): { x:
   }
 }
 
-/** Prostokąt całego odejścia (znak + opis) przy piśmie `fontSize`, jako `BoundingBox`. */
-export function obrysOdejscia(o: OdejscieKadru, fontSize: number): BoundingBox {
-  const r = prostokatOpisuOdejscia(o, fontSize);
+/** Opis WEWNĄTRZ ramki, nad torem (wyjście poziome) albo obok toru (pionowe), przy krawędzi —
+ *  nie poszerza kadru. */
+function opisWewnetrzny(o: OdejscieKadru, fontSize: number): ProstokatOpisu {
+  const width = measureTextWidth(o.tekst, fontSize);
+  const height = fontSize + 6;
+  const nadTorem = o.punkt.y - ODEJSCIE_PRZESWIT_TORU - height;
+  switch (o.kierunek) {
+    case 'prawo':
+      return { x: o.punkt.x - GRID / 2 - width, y: nadTorem, width, height };
+    case 'lewo':
+      return { x: o.punkt.x + GRID / 2, y: nadTorem, width, height };
+    case 'dol':
+      return { x: o.punkt.x + ODEJSCIE_PRZESWIT_TORU, y: o.punkt.y - GRID / 2 - height, width, height };
+    case 'gora':
+      return { x: o.punkt.x + ODEJSCIE_PRZESWIT_TORU, y: o.punkt.y + GRID / 2, width, height };
+  }
+}
+
+/** Prześwit opisu od toru [j.św.] — większy od półgrubości sondy przewodu. */
+const ODEJSCIE_PRZESWIT_TORU = GRID / 2;
+
+export interface UlozoneOdejscie {
+  readonly odejscie: OdejscieKadru;
+  readonly opis: ProstokatOpisu;
+  /** `true`: opis w ramce (wolne miejsce przy krawędzi), `false`: za znakiem, poza ramką. */
+  readonly wewnatrz: boolean;
+}
+
+/**
+ * Ułożenie opisów odejść przy piśmie `fontSize` [j.św.]. Opis stoi WEWNĄTRZ ramki przy
+ * jej krawędzi, gdy to miejsce jest wolne od `przeszkody` (symbole i przewody sceny,
+ * narysowane etykiety planu przy tej samej skali) i od opisów ułożonych wcześniej —
+ * wtedy nie poszerza kadru i nie obniża jego skali; w przeciwnym razie ZA znakiem, poza
+ * ramką (ramka kadru go obejmuje). Kolejność stała (`odejsciaKadru` — po refie odcinka),
+ * więc ułożenie jest deterministyczne; ta sama funkcja służy kanwie i ramce kadru.
+ */
+export function ulozOdejscia(
+  odejscia: readonly OdejscieKadru[],
+  fontSize: number,
+  przeszkody: readonly { readonly x: number; readonly y: number; readonly width: number; readonly height: number }[],
+): readonly UlozoneOdejscie[] {
+  const zajete: ProstokatOpisu[] = [];
+  const koliduje = (r: ProstokatOpisu) =>
+    przeszkody.some((q) => r.x < q.x + q.width && r.x + r.width > q.x && r.y < q.y + q.height && r.y + r.height > q.y)
+    || zajete.some((q) => r.x < q.x + q.width && r.x + r.width > q.x && r.y < q.y + q.height && r.y + r.height > q.y);
+  const kolidujeZOpisem = (r: ProstokatOpisu) =>
+    zajete.some((q) => r.x < q.x + q.width && r.x + r.width > q.x && r.y < q.y + q.height && r.y + r.height > q.y);
+  return odejscia.map((o) => {
+    const w = opisWewnetrzny(o, fontSize);
+    const wewnatrz = !koliduje(w);
+    let opis = w;
+    if (!wewnatrz) {
+      // Za znakiem: pierwszy wariant wolny od przeszkód i opisów; inaczej pierwszy wolny
+      // od innych opisów (opis nie zasłania opisu sąsiedniego odpływu); inaczej bazowy.
+      const warianty = wariantyZewnetrzne(o, fontSize);
+      opis = warianty.find((r) => !koliduje(r)) ?? warianty.find((r) => !kolidujeZOpisem(r)) ?? warianty[0];
+    }
+    zajete.push(opis);
+    return { odejscie: o, opis, wewnatrz };
+  });
+}
+
+/** Liczba przesunięć opisu zewnętrznego w każdą stronę (wysokość opisu na krok). */
+const ODEJSCIE_WARIANTY_PRZESUNIEC = 4;
+
+/**
+ * Warianty opisu za znakiem, w stałej kolejności: na osi toru, potem przyległy do toru
+ * od strony ujemnej/dodatniej osi poprzecznej (dolna/górna krawędź opisu na torze), potem
+ * dalsze piętra o wysokość opisu. Warianty przylegające stykają się z własnym torem, więc dwa
+ * sąsiednie odpływy gęstsze od pisma mają opisy jednoznacznie przy swoich torach; dalsze
+ * piętra (trzeci i kolejny opis w paczce) odsuwają się od toru o pełną wysokość opisu.
+ */
+function wariantyZewnetrzne(o: OdejscieKadru, fontSize: number): readonly ProstokatOpisu[] {
+  const baza = opisZewnetrzny(o, fontSize);
+  // Wyjście poziome: pierwsze piętro przylega do toru (przesunięcie o pół wysokości + 1);
+  // wyjście pionowe: opis stoi obok toru, piętra co pełną wysokość wzdłuż toru.
+  const poziomy = o.kierunek === 'prawo' || o.kierunek === 'lewo';
+  const pierwsze = poziomy ? baza.height / 2 + 1 : baza.height;
+  const wynik: ProstokatOpisu[] = [baza];
+  for (let k = 0; k < ODEJSCIE_WARIANTY_PRZESUNIEC; k += 1) {
+    for (const znak of [-1, 1]) wynik.push({ ...baza, y: baza.y + znak * (pierwsze + k * baza.height) });
+  }
+  return wynik;
+}
+
+/** Prostokąt całego odejścia (znak + opis ułożony), jako `BoundingBox`. */
+export function obrysOdejscia(u: UlozoneOdejscie): BoundingBox {
+  const o = u.odejscie;
+  const r = u.opis;
   let minX = r.x;
   let minY = r.y;
   let maxX = r.x + r.width;
