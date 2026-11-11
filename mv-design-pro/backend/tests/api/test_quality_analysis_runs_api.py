@@ -564,7 +564,16 @@ def test_conductor_thermal_exposes_time_source_per_branch(app_client) -> None:
     for pozycja in body["ocena"]["items"]:
         czas = pozycja["czas_wylaczenia"]
         assert czas is not None
-        assert czas["zrodlo"] in {"nastawa_zabezpieczenia", "zalozenie_przypadku"}
+        # Cztery źródła czasu (karta KD6, jedno rozstrzygnięcie czasu trwania zwarcia): nastawa
+        # zabezpieczenia, czas projektanta, założenie przypadku, wartość robocza (Zasada nr 4 —
+        # obliczenie biegnie, wartość robocza jest daną przyjętą, nigdy daną potwierdzoną).
+        assert czas["zrodlo"] in {
+            "nastawa_zabezpieczenia",
+            "projektant",
+            "zalozenie_przypadku",
+            "wartosc_robocza",
+        }
+        assert (czas.get("dana_przyjeta") is not None) is (czas["zrodlo"] == "wartosc_robocza")
         assert czas["powod_pl"]
 
 
@@ -727,7 +736,9 @@ def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_c
     # (NIEPELNY, kontrakt werdyktu §3); element na danych projektu — dokładnie zbiór pinu.
     # Złota sieć ma generator synchroniczny bez tabliczki (x″d, cos φ_r i S_rG z propozycji
     # rejestru), więc I″k każdego punktu jej wyspy — a z nim wytrzymałość zwarciowa przewodów —
-    # stoi na wartościach roboczych maszyny; ten fakt jest przypięty niżej.
+    # stoi na wartościach roboczych maszyny; ten fakt jest przypięty niżej. Karta KD6: przewody
+    # SN bez czasu z nastaw zabezpieczeń i bez czasu przypadku mają czas trwania zwarcia jako
+    # wartość roboczą — druga dana przyjęta tej samej oceny.
     co_najmniej_jeden_element = False
     elementy_na_danych_przyjetych: set[str] = set()
     for pozycja in data["pozycje"]:
@@ -744,7 +755,12 @@ def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_c
             if dane:
                 assert element["kompletnosc_dowodu"] == "NIEPELNY", pozycja["kryterium_id"]
                 assert all(d["jakosc"] == "ESTIMATED" for d in dane), pozycja["kryterium_id"]
-                assert all("„Generator synchroniczny”" in d["nazwa_pl"] for d in dane)
+                assert all(
+                    "„Generator synchroniczny”" in d["nazwa_pl"]
+                    or d["nazwa_pl"].startswith("czas trwania zwarcia")
+                    for d in dane
+                ), [d["nazwa_pl"] for d in dane]
+                assert any("„Generator synchroniczny”" in d["nazwa_pl"] for d in dane)
                 elementy_na_danych_przyjetych.add(pozycja["kryterium_id"])
     assert co_najmniej_jeden_element, "złota sieć z PF+SC musi dać co najmniej jeden element"
     assert elementy_na_danych_przyjetych == {"przewod.wytrzymalosc_zwarciowa"}

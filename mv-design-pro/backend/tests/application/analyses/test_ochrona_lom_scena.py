@@ -7,8 +7,9 @@ SN). Fikstura `lom_scena_wynik.json` straciła jedyne pole z nastawami, a spec
 `e2e/dowody-oze-screenshot.spec.ts` padał przy ładowaniu modułu i zatrzymywał cały bieg e2e.
 
 Iloczyn cech na realnej ścieżce operacji domenowych (`execute_domain_operation`):
-pole przekaźnika {pole wytwórcy z relacji `Generator.meta.field_ref` (scena), pole liniowe
-wyjściowe na tej samej szynie SN} × funkcja {81R, 81U, 81O}. Przekaźnik w polu wytwórcy daje
+pole sterownika (`ProtectionAssignment.bay_ref`) {pole wytwórcy z relacji
+`Generator.meta.field_ref` (scena), pole liniowe wyjściowe na tej samej szynie SN} × funkcja
+{81R, 81U, 81O}. Przekaźnik w polu wytwórcy daje
 ocenę każdej nastawy z wartością; przekaźnik w polu liniowym nie jest oceną modułu — pole
 wytwórcy zostaje z jawnym „brak funkcji LoM" (reguła W5-B, nie fałszywe przypisanie).
 """
@@ -25,11 +26,9 @@ from enm.pola import ref_pola_wytworcy
 
 from scripts.eksport_fixtur_harnessu import _NASTAWY_LOM_SCENY, _enm_sceny_lom
 
-_WARTOSC_NASTAWY = {
-    "81R": ("rocof_81R", "threshold_hz_s"),
-    "81U": ("underfrequency_81U", "threshold_hz"),
-    "81O": ("overfrequency_81O", "threshold_hz"),
-}
+#: Klucz progu nastawy funkcji w schemacie rejestru funkcji EAZ (jedna struktura sterownika
+#: pola, ADR-022): nastawy sceny to słownik kod funkcji → nastawy grupy 1.
+_KLUCZ_PROGU = {"81R": "prog_hz_s", "81U": "prog_hz", "81O": "prog_hz"}
 
 
 @pytest.fixture(scope="module")
@@ -44,30 +43,32 @@ def _pole_wytworcy(model: EnergyNetworkModel) -> str:
     return ref
 
 
-@pytest.mark.parametrize("ansi", sorted(_WARTOSC_NASTAWY))
+@pytest.mark.parametrize("ansi", sorted(_KLUCZ_PROGU))
 def test_nastawa_lom_sceny_oceniona_w_polu_wytworcy(scena: EnergyNetworkModel, ansi: str) -> None:
     widok = build_ochrona_lom_view(scena)
     pole_wytworcy = _pole_wytworcy(scena)
     (pole,) = (p for p in widok["fields"] if p["bay_ref"] == pole_wytworcy)
-    typ, klucz = _WARTOSC_NASTAWY[ansi]
-    (nastawa,) = (n for n in _NASTAWY_LOM_SCENY if n["function_type"] == typ)
     (sprawdzenie,) = (c for c in pole["checks"] if c["function_ansi"] == ansi)
-    assert sprawdzenie["value"] == nastawa[klucz]
+    assert sprawdzenie["value"] == _NASTAWY_LOM_SCENY[ansi][_KLUCZ_PROGU[ansi]]
     assert widok["modules_without_field"] == []
 
 
 def test_przekaznik_w_polu_liniowym_nie_jest_ochrona_modulu(scena: EnergyNetworkModel) -> None:
     dane: dict[str, Any] = copy.deepcopy(scena.model_dump(mode="json"))
     pole_wytworcy = _pole_wytworcy(scena)
-    (przypisanie,) = dane["protection_assignments"]
     szyna_sn = next(p["bus_ref"] for p in dane["bays"] if p["ref_id"] == pole_wytworcy)
     pole_liniowe = next(
         p for p in dane["bays"] if p.get("bay_role") == "OUT" and p.get("bus_ref") == szyna_sn
     )
-    for pole in dane["bays"]:
-        if pole["ref_id"] == pole_wytworcy:
-            pole["protection_ref"] = None
-    pole_liniowe["protection_ref"] = przypisanie["ref_id"]
+    # Sterownik z funkcjami LoM przeniesiony do pola liniowego (`bay_ref`); pole ma JEDEN
+    # sterownik, więc sterownik szablonu pola liniowego schodzi z modelu.
+    (sterownik_lom,) = (
+        pa for pa in dane["protection_assignments"] if pa.get("bay_ref") == pole_wytworcy
+    )
+    dane["protection_assignments"] = [
+        pa for pa in dane["protection_assignments"] if pa.get("bay_ref") != pole_liniowe["ref_id"]
+    ]
+    sterownik_lom["bay_ref"] = pole_liniowe["ref_id"]
 
     widok = build_ochrona_lom_view(EnergyNetworkModel.model_validate(dane))
 

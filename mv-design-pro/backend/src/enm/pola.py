@@ -748,8 +748,10 @@ def zapisz_sterownik_pola(
         return
     try:
         ProtectionAssignment.model_validate(sterownik)
-    except ValueError as blad:
-        raise BladPola(f"pole {rekord['ref_id']!r}: sterownik zabezpieczeń — {blad}") from blad
+    except ValidationError as blad:
+        # Treść po polsku z jednego mapowania (surowy tekst pydantic nie trafia do odmowy).
+        przyczyna = f"sterownik zabezpieczeń — {opis_bledu_walidacji(blad)}"
+        raise BladPola(f"pole {rekord['ref_id']!r}: {przyczyna}", przyczyna_pl=przyczyna) from blad
 
 
 def dodaj_pole(enm: dict[str, Any], rekord: Mapping[str, Any]) -> dict[str, Any]:

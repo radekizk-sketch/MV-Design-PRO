@@ -64,8 +64,8 @@ const KODY_EAZ = ['50', '51', '51N'] as const;
 const LODY = [0, 1, 2] as const;
 
 const RODZAJE: readonly (readonly [string, (kody: readonly string[]) => PrzypadekPola, { readonly tabliczki: boolean; readonly przekladnik: boolean }])[] = [
-  ['GPZ z powiązaniami obwodów wtórnych', (k) => poleGpz(Z10, zasilane, k), { tabliczki: true, przekladnik: true }],
-  ['GPZ bez powiązań', (k) => poleGpz(SCIEZKA_DANYCH, (b) => b.bay_role === 'OUT' && !zasilane(b), k), { tabliczki: true, przekladnik: true }],
+  ['GPZ z powiązaniami obwodów wtórnych', (k) => poleGpz(Z10, zasilane(Z10), k), { tabliczki: true, przekladnik: true }],
+  ['GPZ bez powiązań', (k) => poleGpz(SCIEZKA_DANYCH, (b) => b.bay_role === 'OUT', k, { bezPowiazan: true }), { tabliczki: true, przekladnik: true }],
   ['pole źródła OZE w GPZ', (k) => poleOzeGpz(k), { tabliczki: false, przekladnik: true }],
   ['pole toru transformatora GPZ', (k) => poleTorTransformatoraGpz(k), { tabliczki: true, przekladnik: true }],
   ['pole liniowe stacji SN', (k) => poleStacji('kanoniczny:bay_template_line_out', k), { tabliczki: false, przekladnik: true }],

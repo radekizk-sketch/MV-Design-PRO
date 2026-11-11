@@ -259,9 +259,13 @@ class TestGoldenFixture:
         _seed_valid_enm(CASE_ID)
         scenario = _create_scenario(name="Golden 1F", fault_type="SC_1F", element_ref="bus-main")
         sid = scenario["scenario_id"]
-        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+        eligibility = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/eligibility"
+        ).json()
         assert eligibility["status"] == "ELIGIBLE", eligibility
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 201, response.text
 
     def test_golden_sc1f_model_bez_z0_ta_sama_blokada_w_kwalifikowalnosci_i_biegu(self):

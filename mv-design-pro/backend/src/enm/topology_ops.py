@@ -38,12 +38,14 @@ from typing import Any, Literal
 
 from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
 from network_model.nazwy import jest_nazwa
+from pydantic import ValidationError
 
 from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
 from .models import RODZAJE_GALEZI_LACZNIKA
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
+    opis_bledu_walidacji,
     opis_elementu,
     opis_obiektu,
 )
@@ -1087,8 +1089,9 @@ def _bledy_sterownika_w_modelu(
     issues: list[OpIssue] = []
     try:
         ProtectionAssignment.model_validate(rekord)
-    except ValueError as blad:
-        return [OpIssue("OP_SETTINGS_INVALID", "BLOCKER", str(blad), ref_id)]
+    except ValidationError as blad:
+        # Treść po polsku z jednego mapowania (`opis_bledu_walidacji`), bez tekstu biblioteki.
+        return [OpIssue("OP_SETTINGS_INVALID", "BLOCKER", opis_bledu_walidacji(blad), ref_id)]
     kody = {
         NARUSZENIE_POLE: "OP_BAY_NOT_FOUND",
         NARUSZENIE_DRUGI_STEROWNIK: "OP_BAY_HAS_PROTECTION",

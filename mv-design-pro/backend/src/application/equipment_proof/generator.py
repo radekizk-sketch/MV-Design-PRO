@@ -227,9 +227,9 @@ class EquipmentProofGenerator:
             # Treść nazywa porównane wielkości, wartości i podstawę; status niesie pole
             # `status` (kontrakt werdyktu wyjaśnialnego: tekst nie składa kodu werdyktu).
             message_pl=(
-                f"Znamię aparatu ({wielkosc.nazwa_znamienia_pl}) {device_val:.4f} kA wobec "
-                f"{wielkosc.opis_pl} {required_val:.4f} kA (warunek: znamię aparatu nie "
-                f"mniejsze od wartości wymaganej; {wielkosc.norma})."
+                f"Zdolność wyłączania zwarciowa aparatu ({wielkosc.nazwa_znamienia_pl}) "
+                f"{device_val:.4f} kA wobec {wielkosc.opis_pl} {required_val:.4f} kA (warunek: "
+                f"zdolność wyłączania nie mniejsza od wartości wymaganej; {wielkosc.norma})."
             ),
             notes=notes,
         )

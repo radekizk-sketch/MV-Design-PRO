@@ -539,8 +539,18 @@ def test_znacznik_bezpiecznika_nie_zmienia_odcisku_innych_aparatow() -> None:
             "FAIL",
             ("Napięcie najwyższe aparatu 15.0000 kV", "17.5000 kV", "znamionowego 15 kV"),
         ),
-        ("Icu", {"i_cu_ka": 20.0}, "PASS", ("zwarciowa aparatu 20.0000 kA", "15.5000 kA")),
-        ("Icu", {"i_cu_ka": 10.0}, "FAIL", ("zwarciowa aparatu 10.0000 kA", "15.5000 kA")),
+        (
+            "Icu",
+            {"i_cu_ka": 20.0},
+            "PASS",
+            ("zwarciowa aparatu (znamionowy prąd wyłączalny zwarciowy) 20.0000 kA", "15.5000 kA"),
+        ),
+        (
+            "Icu",
+            {"i_cu_ka": 10.0},
+            "FAIL",
+            ("zwarciowa aparatu (znamionowy prąd wyłączalny zwarciowy) 10.0000 kA", "15.5000 kA"),
+        ),
         (
             "Idyn",
             {"i_dyn_ka": 50.0},

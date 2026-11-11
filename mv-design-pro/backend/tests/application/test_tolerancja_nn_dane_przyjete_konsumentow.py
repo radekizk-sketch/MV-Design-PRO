@@ -362,6 +362,19 @@ def test_wytrzymalosc_aparatury_dana_przyjeta_per_pole(oznaczona: str) -> None:
 # 5. Pętla zwarcia nN: SWZ TN, dobór aparatu, arkusz obwodów, dowód obwodu, TT/IT
 # =============================================================================
 
+
+def _z_zadeklarowanym_rodzajem_obwodu(enm: Any) -> Any:
+    """Aparat obwodu `ap1` z rodzajem obwodu nN nadanym przez projektanta (odbiorczy)."""
+    return enm.model_copy(
+        update={
+            "branches": [
+                g.model_copy(update={"rodzaj_obwodu_nn": "odbiorczy"}) if g.ref_id == "ap1" else g
+                for g in enm.branches
+            ]
+        }
+    )
+
+
 #: Deklaracja pętli → czy liczona na wartości roboczej (sprzeczna: dwie różne deklaracje).
 DEKLARACJE_PETLI = {"PLUS_6": False, "PLUS_10": False, "brak": True, "sprzeczna": True}
 
@@ -369,7 +382,10 @@ DEKLARACJE_PETLI = {"PLUS_6": False, "PLUS_10": False, "brak": True, "sprzeczna"
 @pytest.mark.parametrize("deklaracja", sorted(DEKLARACJE_PETLI))
 def test_swz_tn_i_dobor_aparatu(deklaracja: str) -> None:
     robocza = DEKLARACJE_PETLI[deklaracja]
-    enm = _enm_petli_z(deklaracja)
+    # Rodzaj obwodu aparatu zadeklarowany przez projektanta: bez deklaracji rodzaj jest wartością
+    # roboczą z prądu znamionowego aparatu (`rozstrzygnij_rodzaj_obwodu_nn`, Zasada nr 4) i sam
+    # oznacza SWZ jako wynik na danych przyjętych — ten test izoluje cechę tolerancji sieci nN.
+    enm = _z_zadeklarowanym_rodzajem_obwodu(_enm_petli_z(deklaracja))
     swz = build_swz_view(enm, "stn", "b1", "ap1")["swz"]
     assert (swz.get("status_danych") == "UNVALIDATED_INPUT") is robocza
     assert (_ile(swz.get("dane_przyjete", [])) == 1) is robocza
@@ -378,7 +394,13 @@ def test_swz_tn_i_dobor_aparatu(deklaracja: str) -> None:
     # Ik″max podany przez projektanta (parametr wejścia, nie bieg) — bez danej przyjętej;
     # Ik1_min z pętli tej sieci — z daną przyjętą wyłącznie przy wartości roboczej.
     dobor = wybierz_aparat_dla_obwodu_nn(
-        enm=enm, station_ref="stn", bus_ref="b1", ib_a=50.0, iz_prime_a=80.0, ik_max_ka=12.0
+        enm=enm,
+        station_ref="stn",
+        bus_ref="b1",
+        ib_a=50.0,
+        iz_prime_a=80.0,
+        ik_max_ka=12.0,
+        rodzaj_obwodu="odbiorczy",
     )
     assert dobor["status"] == "OK"
     assert (_ile(dobor["dobor"].get("dane_przyjete_ik1_min", [])) == 1) is robocza

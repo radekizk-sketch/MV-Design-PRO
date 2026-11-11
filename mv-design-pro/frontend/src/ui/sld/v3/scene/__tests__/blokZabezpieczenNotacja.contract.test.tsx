@@ -52,11 +52,13 @@ import { dolRamkiBlokuPolaStacji } from '../../compose/blokZabezpieczenPola';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import {
   BAZA_STACJI,
+  kodyPola,
   poleGpz,
   poleOzeGpz,
   poleStacji,
   poleTorTransformatoraGpz,
   SCIEZKA_DANYCH,
+  ustawFunkcjePola,
   Z10,
   zasilane,
   type PrzypadekPola,
@@ -85,8 +87,8 @@ type RodzajPola =
   | 'pole toru transformatora GPZ';
 
 const RODZAJE: readonly (readonly [RodzajPola, (kody: readonly string[]) => PrzypadekPola])[] = [
-  ['GPZ z powiązaniami obwodów wtórnych', (k) => poleGpz(Z10, zasilane, k)],
-  ['GPZ bez powiązań', (k) => poleGpz(SCIEZKA_DANYCH, (b) => b.bay_role === 'OUT' && !zasilane(b), k)],
+  ['GPZ z powiązaniami obwodów wtórnych', (k) => poleGpz(Z10, zasilane(Z10), k)],
+  ['GPZ bez powiązań', (k) => poleGpz(SCIEZKA_DANYCH, (b) => b.bay_role === 'OUT', k, { bezPowiazan: true })],
   ['pole liniowe stacji SN', (k) => poleStacji('kanoniczny:bay_template_line_out', k)],
   ['sprzęgło', (k) => poleStacji('kanoniczny:bay_template_coupler', k)],
   ['pole transformatorowe', (k) => poleStacji('kanoniczny:bay_template_transformer', k)],
@@ -284,11 +286,10 @@ describe('fikstura 52 stacji — każdy blok stacji × LOD 1/2', () => {
       const bloki = scena.symbols.filter((s) => s.symbolId === 'protectionRelay');
       // Warunek wstępny: fikstura niesie bloki stacji (pola z kodami funkcji w modelu).
       expect(bloki.length).toBeGreaterThan(100);
-      const pola = new Map((BAZA_STACJI.bays ?? []).map((b) => [b.ref_id, b] as const));
       const n: string[] = [];
       for (const blok of bloki) {
         const bayRef = blok.meta!.ownerRef!;
-        n.push(...naruszenia(scena, bayRef, pola.get(bayRef)?.protection_codes ?? []));
+        n.push(...naruszenia(scena, bayRef, kodyPola(BAZA_STACJI, bayRef)));
       }
       expect([...new Set(n)]).toEqual([]);
       expect(rozjazdyRezerwacjiWysokosci(BAZA_STACJI, scena)).toEqual([]);
@@ -395,18 +396,11 @@ describe('wyrocznie kontraktu gryzą — iniekcje na realnej scenie', () => {
 
 describe('UX04 §11.20 — pole bez wskazania łącznika wyłączanego w modelu', () => {
   it('blok stoi przy pierwszym łączniku pola, bez linii wyłączania, z brakiem danych „trip_link_unresolved"', () => {
-    // Celka liniowa stacji bez przypisania zabezpieczenia (kody pola bez `protection_ref`) i bez
-    // powiązań obwodów wtórnych: model nie wskazuje łącznika wyłączanego.
+    // Celka liniowa stacji, której sterownik pola niesie kody funkcji bez macierzy wyzwoleń i bez
+    // wejść przekładników (karta OCHRONA-JEDNO-ZRODLO: łącznik wyłączany wskazuje wyłącznie
+    // macierz wyzwoleń sterownika) — model nie wskazuje łącznika wyłączanego.
     const { enm, bayRef } = poleStacji('kanoniczny:bay_template_line_out', KODY[2]);
-    const bay = (enm.bays ?? []).find((b) => b.ref_id === bayRef)!;
-    // Przypisanie zabezpieczenia pola rozstrzyga JEDNA funkcja (`ui/shared/zabezpieczeniePola`):
-    // `protection_ref` pola albo przypisanie, którego `breaker_ref` jest aparatem pola. Model „bez
-    // wskazania łącznika wyłączanego" nie ma więc ani wskazania, ani przypisania celującego
-    // w wyłącznik tej celki (scalenie z kartą BKR 2026-11-11 — samo `protection_ref = null`
-    // zostawiało przypisanie fikstury, które ta funkcja znajduje po wyłączniku).
-    const przypisanie = bay.protection_ref;
-    bay.protection_ref = null;
-    enm.protection_assignments = (enm.protection_assignments ?? []).filter((z) => z.ref_id !== przypisanie);
+    ustawFunkcjePola(enm, bayRef, KODY[2], { bezPowiazan: true });
     const scena = buildSceneV3(enm, 2);
     expect(scena.segments.filter((g) => g.meta?.ownerRef === `${bayRef}#trip-line`)).toHaveLength(0);
     expect(scena.segments.filter((g) => (g.meta?.ownerRef ?? '').startsWith(`${bayRef}#measurement-link`))).toHaveLength(0);

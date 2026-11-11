@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jedyny formater liczb sekcji aparatury (karta APARATURA-TABELA, wymaganie 9): prądy i zapasy
  * 2 miejsca, czasy 3, wartość całkowita bez zbędnych zer, przecinek dziesiętny, zapas ze

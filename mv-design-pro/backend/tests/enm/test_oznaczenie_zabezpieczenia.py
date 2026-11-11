@@ -1,10 +1,12 @@
 """Oznaczenie zabezpieczenia w zdaniu (karta KD6) — ``enm.nazwy_elementow``.
 
-Domyślna nazwa przypisania „Zabezpieczenie pola <pole>” po rzeczowniku „zabezpieczenie”
+Domyślna nazwa sterownika „Zabezpieczenie pola <pole>” po rzeczowniku „zabezpieczenie”
 dawała „zabezpieczenia Zabezpieczenie pola …”. Zabezpieczenie nazywa się przez miejsce,
-które chroni. Iloczyn: nośnik powiązania z polem (``Bay.protection_ref``, ``meta.field_ref``
-przypisania, ``meta.bay_ref`` wyłącznika, brak pola) × liczba zabezpieczeń w miejscu (1, 2)
-× postać migawki (słownik, model).
+które chroni. Iloczyn: nośnik powiązania z polem w jednej strukturze sterownika (ADR-022,
+karta OCHRONA-JEDNO-ZRODLO: ``bay_ref`` sterownika, ``meta.bay_ref`` wyłącznika z macierzy
+wyzwoleń, brak pola) × liczba sterowników w miejscu (1, 2) × postać migawki (słownik, model).
+Dawne nośniki ``Bay.protection_ref`` i ``meta.field_ref`` przypisania skasowała karta
+jednej struktury sterownika; intencja testu (miejsce zamiast nazwy) bez zmian.
 """
 
 from __future__ import annotations
@@ -21,10 +23,10 @@ def _migawka(nosnik: str, liczba: int) -> dict[str, Any]:
         {
             "ref_id": f"prot/{i}",
             "name": f"Zabezpieczenie pola Pole liniowe {i}",
-            "breaker_ref": "q1",
-            "meta": {"field_ref": "pole/1"} if nosnik == "meta_przypisania" else {},
-            "device_type": "overcurrent",
-            "settings": [],
+            # Jeden sterownik pola na pole: `bay_ref` niesie wyłącznie pierwszy sterownik.
+            **({"bay_ref": "pole/1"} if nosnik == "bay_ref" and i == 1 else {}),
+            "funkcje": [{"ref": "51", "kod": "51"}],
+            "macierz_wyzwolen": [{"funkcja_ref": "51", "aparat_refs": ["q1"]}],
         }
         for i in range(1, liczba + 1)
     ]
@@ -48,7 +50,6 @@ def _migawka(nosnik: str, liczba: int) -> dict[str, Any]:
                 "bay_role": "IN",
                 "substation_ref": "stn",
                 "bus_ref": "sn",
-                "protection_ref": "prot/1" if nosnik == "protection_ref" else None,
             }
         ],
         "protection_assignments": przypisania,
@@ -56,9 +57,7 @@ def _migawka(nosnik: str, liczba: int) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("postac", ["slownik", "model"])
-@pytest.mark.parametrize(
-    "nosnik", ["protection_ref", "meta_przypisania", "meta_wylacznika", "brak_pola"]
-)
+@pytest.mark.parametrize("nosnik", ["bay_ref", "meta_wylacznika", "brak_pola"])
 @pytest.mark.parametrize("liczba", [1, 2])
 def test_oznaczenie_przez_miejsce_albo_nazwe(postac: str, nosnik: str, liczba: int) -> None:
     dane = _migawka(nosnik, liczba)
@@ -70,9 +69,9 @@ def test_oznaczenie_przez_miejsce_albo_nazwe(postac: str, nosnik: str, liczba: i
     )
     oznaczenie = oznaczenie_zabezpieczenia(model, przypisanie)
 
-    if nosnik == "protection_ref" and liczba == 2:
-        # Drugie przypisanie nie wskazuje pola żadnym nośnikiem — pole ma jedno
-        # zabezpieczenie, a wyłącznik dwa: pierwsze nazywa się przez pole.
+    if nosnik == "bay_ref" and liczba == 2:
+        # Drugi sterownik nie wskazuje pola żadnym nośnikiem — pole ma jeden sterownik,
+        # a wyłącznik dwa: pierwszy nazywa się przez pole.
         assert oznaczenie == "pola „Pole liniowe wejściowe 1”"
     elif liczba == 2:
         # Dwa zabezpieczenia w tym samym miejscu — miejsce ich nie rozróżnia: nazwa w cudzysłowie.

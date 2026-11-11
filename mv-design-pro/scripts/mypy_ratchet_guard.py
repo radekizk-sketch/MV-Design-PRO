@@ -269,8 +269,15 @@ BACKEND = ROOT / "backend"
 # integracja minus scalone = dokladnie 1 blad `assignment` w `enm/pole_katalogowe.py`
 # (`CompleteMvBayTemplate | None` w zmiennej bez `None`) — zdjety przez karte (wynik wyszukania
 # pola katalogowego w osobnej zmiennej, opis wyzej); plik bez bledow. Zero nowych.
-BASELINE_ERRORS = 162
-BASELINE_FILES = 20
+# Scalenie karty delt scenariusza zabezpieczeń (jeden sterownik pola, ADR-022) do drzewa
+# integracji (2026-11-11): 162/20 -> 159/19. POMIAR `mypy src --no-incremental` (mypy 1.19.1)
+# na stronie integracji (`git archive` pierwszego rodzica scalenia: 162/20) i na drzewie
+# scalonym (159/19); multizbior (plik, komunikat): scalone minus integracja = 0, integracja minus
+# scalone = dokladnie 3 bledy `arg-type` w `application/protection_read_model.py`
+# (`ProtectionFunctionSummary` z `Sequence[str]`) — modul przepisany na sterownik pola
+# (`ProtectionAssignment.funkcje`, karta OCHRONA-JEDNO-ZRODLO); plik bez bledow. Zero nowych.
+BASELINE_ERRORS = 159
+BASELINE_FILES = 19
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

@@ -98,7 +98,9 @@ def test_czas_pola_ustalony_zastepuje_tk_biegu_z_pochodzeniem() -> None:
     wynik = _dowod(wymagane)
     (ith,) = (c for c in wynik.result.checks if c.name == "Ith")
     assert any(n.startswith("Czas trwania zwarcia pola:") for n in ith.notes)
-    assert any("I_th = I″k·√(m + n)" in n for n in ith.notes)
+    assert any(
+        n.startswith("Prąd zastępczy cieplny przy czasie wyłączenia pola") for n in ith.notes
+    )
     assert ith.required_value == wymagane["ith_ka"]
     assert any("Czas trwania zwarcia pola:" in w for w in wynik.proof_document.summary.warnings)
 

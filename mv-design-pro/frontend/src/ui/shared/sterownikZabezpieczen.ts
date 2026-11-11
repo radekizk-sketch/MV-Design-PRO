@@ -28,13 +28,21 @@ export function sterowniki(enm: Partial<ModelZeSterownikami> | null | undefined)
   return [...(enm?.protection_assignments ?? [])].sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0));
 }
 
-/** Sterownik pola (najwyżej jeden — walidator modelu odrzuca drugi) albo `null`. */
+/** Sterownik pola (najwyżej jeden — walidator modelu odrzuca drugi) albo `null`. Przy dwóch
+ *  sterownikach jednego pola (model sprzed walidacji) — ten o najmniejszym identyfikatorze, jak
+ *  w kolejności `sterowniki`. Jedno przejście listy bez sortowania: akcesor woła adapter schematu
+ *  dla każdego pola i każdego aparatu, a sortowanie całej listy przy każdym wołaniu dawało
+ *  koszt kwadratowy z logarytmem (budżet czasu sceny rodziny H ~530 stacji: 11 s → 29 s). */
 export function sterownikPola(
   enm: Partial<ModelZeSterownikami> | null | undefined,
   bayRef: string | null | undefined,
 ): ProtectionAssignment | null {
   if (!bayRef) return null;
-  return sterowniki(enm).find((s) => s.bay_ref === bayRef) ?? null;
+  let wynik: ProtectionAssignment | null = null;
+  for (const s of enm?.protection_assignments ?? []) {
+    if (s.bay_ref === bayRef && (wynik === null || s.ref_id < wynik.ref_id)) wynik = s;
+  }
+  return wynik;
 }
 
 /** Kody funkcji sterownika w kolejności zapisu, bez powtórzeń (dwa stopnie jednej funkcji —

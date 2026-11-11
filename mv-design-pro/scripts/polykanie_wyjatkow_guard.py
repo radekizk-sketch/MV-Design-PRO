@@ -292,7 +292,11 @@ def ocen(
 #: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 (2026-10-30): 80 -> 79 — POMIAR guardem na
 #: drzewie b1e677ced (80) i na drzewie commitu (79): -1 `proof_engine/equation_registry.py`
 #: (kontrola zamrożonych identyfikatorów równań pakietu P19 skasowana razem z pakietem).
-PIN_RAISE_VALUEERROR_APLIKACJA = 79
+#: Integracja 2026-11, scalenie karty delt zabezpieczeń (2026-11-11): 79 -> 78 — POMIAR guardem
+#: na drzewie scalonym, porównanie per plik z obiema stronami scalenia (po 79): -1
+#: `analyses/swz/werdykt.py` (skasowane opakowanie `rodzaj_obwodu_dla_aparatu`; oba werdykty SWZ
+#: wołają jedno rozstrzygnięcie `rozstrzygnij_rodzaj_obwodu_nn`).
+PIN_RAISE_VALUEERROR_APLIKACJA = 78
 
 #: Wywołania dozwolone w bloku `try` parsowania wejścia trasy (poza konstruktorami typów).
 PARSERY_WBUDOWANE = frozenset({"int", "float", "str", "Decimal"})

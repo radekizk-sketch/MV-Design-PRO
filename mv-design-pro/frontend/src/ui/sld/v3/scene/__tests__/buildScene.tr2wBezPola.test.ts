@@ -384,7 +384,9 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
     const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id && s.symbolId !== 'protectionRelay');
     expect(symbolePolaTr.map((s) => s.symbolId).sort()).toEqual(['breaker', 'transformer2W']);
     const bloki = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id && s.symbolId === 'protectionRelay');
-    expect(bloki).toHaveLength((poleTr.protection_codes ?? []).length > 0 ? 1 : 0);
+    // Kody funkcji pola niesie wyłącznie sterownik pola (`bay_ref`, ADR-022).
+    const sterownikTr = (enmZPolem.protection_assignments ?? []).find((pa) => pa.bay_ref === poleTr.ref_id);
+    expect(bloki).toHaveLength((sterownikTr?.funkcje ?? []).some((f) => f.wlaczona !== false) ? 1 : 0);
     expect(symbolePolaTr.find((s) => s.symbolId === 'breaker')?.meta?.deviceRef).toBe(
       poleTr.equipment_refs.find((ref) => (enmZPolem.branches ?? []).some((g) => g.ref_id === ref && g.type === 'breaker')),
     );

@@ -84,7 +84,14 @@ def test_dane_zgodne_w_tolerancji_przy_granicy_rozjazd_werdyktow_daje_odmowe() -
     assert wynik.status == STATUS_UNAVAILABLE
     assert wynik.readiness_codes == (READINESS_CONDUCTOR_THERMAL_DATA_INCONSISTENT,)
     zdanie = wynik.decision_reason_pl or ""
-    assert "FAIL, PASS" in zdanie and "1002 A" in zdanie and "1000 A" in zdanie
+    # Werdykty kryteriów cząstkowych nazwane słowami przy nazwie kryterium (kanon komunikatów:
+    # bez kodów statusu w zdaniu), z liczbami granicy.
+    assert "niespełnione kryterium „Prąd zwarciowy wobec dopuszczalnego dla czasu t”" in zdanie
+    assert "spełnione kryterium „Przekrój zastosowany wobec minimalnego z warunku cieplnego”" in (
+        zdanie
+    )
+    assert "FAIL" not in zdanie and "PASS" not in zdanie
+    assert "1002 A" in zdanie and "1000 A" in zdanie
 
 
 def test_tolerancja_jest_granica_ostra() -> None:

@@ -52,11 +52,6 @@ function sterownik(
   };
 }
 
-/** Pole bez aparatów — powiązanie ze sterownikiem wyłącznie przez `protection_ref`. */
-function poleZRef(protectionRef: string | null): Bay {
-  return { ref_id: `pole-${protectionRef}`, protection_ref: protectionRef, equipment_refs: [], primary_devices: [] } as unknown as Bay;
-}
-
 describe('przekaznikiStacji', () => {
   it('pole → sterownik pola po bay_ref; kolejność pól; pole bez sterownika pominięte', () => {
     const model = {

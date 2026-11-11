@@ -46,6 +46,7 @@ from network_model.solvers.wytrzymalosc_cieplna_pola import (
     prad_cieplny_zastepczy,
 )
 from werdykt import DanaPrzyjeta, Wielkosc
+from werdykt.etykiety import zdanie_rozstrzygniecia
 from werdykt.proweniencja import FieldQuality
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
@@ -418,10 +419,15 @@ def check_conductor_thermal_withstand(
             zalozenie_kappa=data.zalozenie_kappa,
             dane_przyjete=dane_przyjete,
             powod_pl=(
-                "Kryteria cząstkowe danych cieplnych przewodu dały sprzeczne werdykty przy "
-                f"prądzie zastępczym cieplnym {_liczba_pl(ith, 0)} A wobec prądu dopuszczalnego "
-                f"{_liczba_pl(admissible, 0)} A — wynik leży na granicy kryterium, w obrębie "
-                "niepewności danych cieplnych."
+                "Kryteria cząstkowe danych cieplnych przewodu dały sprzeczne werdykty ("
+                + "; ".join(
+                    _rozstrzygniecie_kryterium_pl(poz["status"], poz["nazwa_pl"])
+                    for poz in criteria
+                    if poz["status"] != STATUS_UNAVAILABLE
+                )
+                + f") przy prądzie zastępczym cieplnym {_liczba_pl(ith, 0)} A wobec prądu "
+                f"dopuszczalnego {_liczba_pl(admissible, 0)} A — wynik leży na granicy "
+                "kryterium, w obrębie niepewności danych cieplnych."
             ),
         )
 
@@ -970,6 +976,16 @@ def _build_criteria(
     # Zgodność werdyktów sprawdza wołający (`check_conductor_thermal_withstand`): rozjazd
     # kończy się jawną odmową z liczbami, nie asercją.
     return tuple(pozycje)
+
+
+def _rozstrzygniecie_kryterium_pl(status: str, nazwa_pl: str) -> str:
+    """Rozstrzygnięcie kryterium cząstkowego słowem słownika werdyktu
+    (`werdykt.etykiety.zdanie_rozstrzygniecia`) przy nazwie kryterium — bez kodu statusu."""
+    zdanie = zdanie_rozstrzygniecia(
+        "SPELNIA" if status == STATUS_PASS else "NIE_SPELNIA", f"kryterium „{nazwa_pl}”"
+    )
+    assert zdanie is not None  # status rozstrzygnięty: słownik ma słowo dla obu
+    return zdanie[0].lower() + zdanie[1:]
 
 
 def _odmowa_sprzecznych_danych(

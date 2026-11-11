@@ -146,7 +146,8 @@ describe('funkcja tylko w rejestrze — karta pola, edytor nastaw, blok przekaź
     const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === POLE && s.symbolId === 'protectionRelay');
     expect(przekaznik, 'przekaźnik pola na scenie').toBeDefined();
     const wiersze = scena.labels.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${POLE}#`));
-    const wBloku = [...(przekaznik!.meta?.protectionCodes ?? []), ...wiersze.flatMap((l) => l.text.split(' · '))];
+    // Jedna notacja bloku (ramka bez okręgu): kody funkcji wyłącznie w wierszach bloku.
+    const wBloku = wiersze.flatMap((l) => l.text.split(' · '));
     expect(wBloku.includes(KOD)).toBe(wlaczona);
   });
 

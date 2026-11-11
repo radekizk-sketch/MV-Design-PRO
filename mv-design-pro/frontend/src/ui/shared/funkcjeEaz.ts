@@ -12,7 +12,10 @@
  * rysuje WSZYSTKIE kody pola bez klasyfikacji i bez licznika (odbiór B-02 właściciela 2026-11-04,
  * korekta: „napis +3 ma zniknąć całkowicie"; `compose/protectionMarking.ts`).
  */
-import slownik from './slownikFunkcjiEaz.json';
+// Atrybut importu JSON: moduł czytają też speki e2e (ESM Node'a przez Playwrighta — łańcuch
+// `canvas/overlay` → adapter ENM → sterownik zabezpieczeń), gdzie import JSON bez atrybutu
+// `type: 'json'` pada przy ładowaniu (`src/test/__tests__/ladowanieSpecowE2e.test.ts`).
+import slownik from './slownikFunkcjiEaz.json' with { type: 'json' };
 
 export type RodzajFunkcjiEaz = 'ZABEZPIECZENIE' | 'AUTOMATYKA' | 'BLOKADA' | 'TECHNOLOGICZNE';
 

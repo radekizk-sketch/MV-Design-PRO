@@ -549,6 +549,10 @@ export interface ElementyBlokuPola {
   readonly missingData: readonly string[];
 }
 
+/** Prześwit numeru urządzenia „52” nad linią wyłączania [j.św.] — dolna krawędź napisu nad
+ *  kreską linii (grubość kreski ≤ 2 j.św.), przyciąganie do siatki od linii w górę. */
+const ODSTEP_NUMERU_URZADZENIA_OD_LINII = 2;
+
 /**
  * Elementy bloku na poziomie szczegółu: `'full'` (LOD2) — ramka, wiersze, linia wyłączania,
  * „52", linie pomiarowe i braki danych; `'circle-only'` (LOD1) — ramka tego samego kształtu
@@ -584,7 +588,11 @@ export function elementyBlokuZabezpieczen(
       missingData.push('bay.protection.measurement_link_unresolved');
     }
     // Numer urządzenia „52" (§17.1) przy wyłączniku — WYŁĄCZNIE gdy linia wyłączania kończy się
-    // na porcie toru łącznika; linia do cewki wyłączającej sama wskazuje aparat.
+    // na porcie toru łącznika; linia do cewki wyłączającej sama wskazuje aparat. Napis stoi NAD
+    // linią wyłączania przy wyłączniku (strona `above`: pismo powiększane rośnie w górę, od
+    // linii) — kotwica na wysokości linii ze stroną `right` centrowała napis na linii, więc
+    // linia przekreślała numer z konstrukcji (plan etykiet: kolizja napis↔tor na każdym polu
+    // z linią wyłączania do portu toru).
     if (wylacznik && uklad.liniaWylaczania && !uklad.liniaDoCewki) {
       numerUrzadzenia = {
         ownerRef: `${w.bayRef}#device-number`,
@@ -592,7 +600,8 @@ export function elementyBlokuZabezpieczen(
         text: '52',
         labelClass: 't4',
         anchor: { x: wylacznik.x + SYMBOL_DEFS[wylacznik.symbolId].width, y: uklad.liniaWylaczania[0].y },
-        placement: 'right',
+        placement: 'above',
+        clearance: ODSTEP_NUMERU_URZADZENIA_OD_LINII,
         wyrownanieTekstu: 'poczatek',
       };
     }

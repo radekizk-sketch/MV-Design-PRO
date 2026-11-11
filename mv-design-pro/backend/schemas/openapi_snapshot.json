@@ -17113,7 +17113,7 @@
        "minimum": 1.0,
        "type": "integer"
       },
-      "description": "Sterownik zabezpieczeń (ref_id) → grupa nastaw 1–4 wybrana w przypadku",
+      "description": "Sterownik zabezpieczeń (identyfikator) → grupa nastaw 1–4 wybrana w przypadku",
       "title": "Protection Groups",
       "type": "object"
      },
@@ -17140,7 +17140,7 @@
        },
        "type": "object"
       },
-      "description": "Delta nastaw przypadku: sterownik (ref_id) → funkcja (ref) → nastawa ze schematu rejestru funkcji → wartość (null zdejmuje nastawę)",
+      "description": "Delta nastaw przypadku: sterownik (identyfikator) → funkcja (identyfikator) → nastawa ze schematu rejestru funkcji → wartość (wartość pusta zdejmuje nastawę)",
       "title": "Protection Overrides",
       "type": "object"
      },
@@ -17184,7 +17184,7 @@
        "minimum": 1.0,
        "type": "integer"
       },
-      "description": "Sterownik zabezpieczeń (ref_id) → grupa nastaw 1–4 wybrana w przypadku",
+      "description": "Sterownik zabezpieczeń (identyfikator) → grupa nastaw 1–4 wybrana w przypadku",
       "title": "Protection Groups",
       "type": "object"
      },
@@ -17211,7 +17211,7 @@
        },
        "type": "object"
       },
-      "description": "Nadpisania nastaw w przypadku: sterownik (ref_id) → funkcja (ref) → nastawa ze schematu rejestru funkcji → wartość w grupie efektywnej przypadku",
+      "description": "Nadpisania nastaw w przypadku: sterownik (identyfikator) → funkcja (identyfikator) → nastawa ze schematu rejestru funkcji → wartość w grupie efektywnej przypadku",
       "title": "Protection Overrides",
       "type": "object"
      }

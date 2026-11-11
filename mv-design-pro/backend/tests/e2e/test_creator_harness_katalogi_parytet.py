@@ -541,11 +541,18 @@ class TestE2eSpecyPickeryKatalogu:
         (TR 2,5 MVA, I_TR 96,2 A, 50 mm² -> 70 mm² po korekcie warunkow ulozenia).
         """
         from api.catalog import list_pv_inverter_types
-        from api.grid_source_preview import (
-            CableLayingConditionsRequest,
-            DerSelectionPreviewRequest,
-            preview_der_selection,
-        )
+        from api.main import app
+        from fastapi.testclient import TestClient
+
+        # Ścieżka użytkownika: końcówka HTTP podglądu doboru (ta sama, którą woła kreator),
+        # nie wywołanie funkcji trasy z pominięciem zapytania.
+        klient = TestClient(app)
+
+        def podglad(cialo: dict[str, Any]) -> dict[str, Any]:
+            odpowiedz = klient.post("/api/solver/der-selection-preview", json=cialo)
+            assert odpowiedz.status_code == 200, odpowiedz.text
+            wynik: dict[str, Any] = odpowiedz.json()
+            return wynik
 
         source = _tekst(_E2E_DIR / "fk7-dobor-screenshot.spec.ts")
         konwerter = _wartosci_select(source, "mvd-kreator-oze-konwerter")
@@ -574,22 +581,17 @@ class TestE2eSpecyPickeryKatalogu:
             "reactive_character": "inductive",
         }
 
-        katalogowe = preview_der_selection(DerSelectionPreviewRequest(**wejscie))
-        assert katalogowe.transformer.proposal is not None
-        assert katalogowe.transformer.proposal.sn_mva == pytest.approx(2.5)
-        assert katalogowe.cable.proposal is not None
-        assert katalogowe.cable.proposal.cross_section_mm2 == pytest.approx(50.0)
+        katalogowe = podglad(wejscie)
+        assert katalogowe["transformer"]["proposal"] is not None
+        assert katalogowe["transformer"]["proposal"]["sn_mva"] == pytest.approx(2.5)
+        assert katalogowe["cable"]["proposal"] is not None
+        assert katalogowe["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(50.0)
 
-        skorygowane = preview_der_selection(
-            DerSelectionPreviewRequest(
-                **wejscie,
-                laying_conditions=CableLayingConditionsRequest(
-                    set_name="ziemia_3_kable_warstwa_200mm"
-                ),
-            )
+        skorygowane = podglad(
+            {**wejscie, "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"}}
         )
-        assert skorygowane.cable.proposal is not None
-        assert skorygowane.cable.proposal.cross_section_mm2 == pytest.approx(70.0), (
+        assert skorygowane["cable"]["proposal"] is not None
+        assert skorygowane["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(70.0), (
             "Korekta obciazalnosci (ziemia/3 kable/200 mm) MUSI podniesc przekroj "
             "wzgledem warunkow katalogowych — to jedyny powod istnienia sceny F-K7."
         )

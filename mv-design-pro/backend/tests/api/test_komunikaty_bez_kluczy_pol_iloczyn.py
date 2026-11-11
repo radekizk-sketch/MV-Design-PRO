@@ -247,7 +247,11 @@ _IDENTYFIKATORY = [
         "identyfikator_api",
         "scenario_id",
         lambda: _nazwa("scenario_id"),
-        lambda k: _detal(k.get("/api/execution/fault-scenarios/nie-uuid"), 400),
+        # Scenariusz zwarciowy żyje w przestrzeni przypadku (trasa w zakresie przypadku).
+        lambda k: _detal(
+            k.get(f"/api/execution/study-cases/{_nowy_przypadek(k)}/fault-scenarios/nie-uuid"),
+            400,
+        ),
     ),
     Przypadek(
         "identyfikator_api",

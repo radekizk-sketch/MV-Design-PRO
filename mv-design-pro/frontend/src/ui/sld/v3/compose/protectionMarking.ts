@@ -181,14 +181,15 @@ export function vtMountingAnnotationLabelText(
 interface AparatZPowiazaniamiObwodow {
   readonly funkcjeEazZasilane?: readonly string[];
   readonly funkcjeEazWylaczajace?: readonly string[];
-  /** Porty aparatu w modelu — układ powiązań prowadzi linie z zacisków wtórnych aparatów. */
-  readonly ports?: readonly unknown[];
 }
 
 /**
  * Czy pole rysuje przekaźnik w układzie POWIĄZAŃ OBWODÓW WTÓRNYCH (karta UX-04/POLE-LINIOWE-
- * WZORZEC, korekta P0 pkt 6): aparaty pola niosą porty w modelu i co najmniej jeden niesie
- * powiązanie (`funkcje_eaz_zasilane` albo `funkcje_eaz_wylaczajace`) z funkcją EAZ pola. JEDEN predykat
+ * WZORZEC, korekta P0 pkt 6): co najmniej jeden aparat pola niesie powiązanie z funkcją EAZ
+ * pola — zasila jej wejście albo jest wyłączany przez nią (wejścia i macierz wyzwoleń
+ * sterownika pola, karta OCHRONA-JEDNO-ZRODLO; widok `funkcjeEazZasilane`/
+ * `funkcjeEazWylaczajace`). Jedna notacja bloku bez okręgu (korekta v2, odbiór B-02
+ * 2026-11-04) nie ma drugiej ścieżki dla pól bez portów aparatów. JEDEN predykat
  * rezerwacji szerokości kolumny (`szerokoscPrzekaznikaZPowiazaniami`) i rysunku (`compose/
  * gpz.ts`) — oba czytają te same rekordy modelu, nie narysowany stos.
  */
@@ -197,13 +198,6 @@ export function czyPrzekaznikZPowiazaniamiObwodow(
   aparaty: readonly AparatZPowiazaniamiObwodow[] | undefined,
 ): boolean {
   if (codes.length === 0) return false;
-  // Układ powiązań rysuje linie pomiarowe i linię wyłączania z ZACISKÓW WTÓRNYCH aparatów toru
-  // (porty modelu). Pole, którego aparaty nie niosą portów (`gpz.bay.ports.absent`), nie ma
-  // zacisków — zostaje przy adnotacji przekaźnika z kotwicą przekładnika (okrąg, tor wyzwalania,
-  // linia pomiarowa), zamiast układu powiązań z nazwanym brakiem każdego odejścia. Od karty
-  // OCHRONA-JEDNO-ZRODLO powiązania wynikają z wejść i macierzy wyzwoleń sterownika pola, więc
-  // mają je także pola bez wzorca producenta (bez geometrii portów).
-  if (!(aparaty ?? []).some((a) => (a.ports?.length ?? 0) > 0)) return false;
   const funkcjePola = new Set(codes);
   return (aparaty ?? []).some(
     (a) => czyPowiazany(a.funkcjeEazZasilane, funkcjePola) || czyPowiazany(a.funkcjeEazWylaczajace, funkcjePola),

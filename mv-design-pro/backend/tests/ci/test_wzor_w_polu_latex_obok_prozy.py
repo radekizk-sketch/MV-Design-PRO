@@ -90,7 +90,10 @@ def test_podglad_kompensatora_slowami_wzor_w_formula_latex() -> None:
 
 def _wejscie_cieplne(**over: Any) -> ConductorThermalInput:
     dane: dict[str, Any] = {
-        "ith_a": 9200.0,
+        # Wejście z biegu: I″k i κ (I_th liczy jedna funkcja normy); κ = 1 przy t = 1 s daje
+        # I_th = I″k (m = 0, n = 1), więc liczby kryteriów są wprost czytelne.
+        "ikss_a": 9200.0,
+        "kappa": 1.0,
         "fault_duration_s": 1.0,
         "ith_1s_a": 8050.0,
         "jth_1s_a_per_mm2": 115.0,
@@ -109,7 +112,7 @@ def _wejscie_cieplne(**over: Any) -> ConductorThermalInput:
     ("over", "status", "kryteria_przekroju"),
     [
         ({}, "FAIL", 1),  # naruszenie, przekrój zastosowany podany
-        ({"ith_a": 4000.0}, "PASS", 1),  # spełnione, przekrój podany
+        ({"ikss_a": 4000.0}, "PASS", 1),  # spełnione, przekrój podany
         ({"cross_section_mm2": None}, "FAIL", 1),  # przekrój nieobecny — gałąź `elif`
     ],
 )

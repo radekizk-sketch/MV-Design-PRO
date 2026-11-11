@@ -22,7 +22,7 @@ import {
 import { computeBands, type StationBandHeights } from '../../layout/bands';
 import { computeColumns, type ComputeColumnsInput } from '../../layout/columns';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../../layout/segments';
-import { resolveLabels } from '../../layout/labels';
+import { prostokatEtykietyZakotwiczonej, resolveLabels } from '../../layout/labels';
 import {
   allCompositionSymbolsOnGrid,
   composeStation,
@@ -1164,9 +1164,15 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
       const prawe = etykiety.filter((l) => l.ownerRef.includes('#ct-rating-') || l.ownerRef.endsWith('#device-number'));
       expect(prawe.map((l) => l.ownerRef.split('#')[1].replace(/-.*$/, '')).sort()).toEqual(['ct', 'device']);
       for (const l of prawe) {
-        expect(l.placement, l.ownerRef).toBe('right');
+        // Adnotacja CT na prawo od kotwicy; numer urządzenia „52” NAD linią wyłączania (strona
+        // `above`) — kotwica na wysokości linii ze stroną `right` centrowała napis na linii.
+        expect(l.placement, l.ownerRef).toBe(l.ownerRef.endsWith('#device-number') ? 'above' : 'right');
         expect(l.wyrownanieTekstu, l.ownerRef).toBe('poczatek');
       }
+      const numer = prawe.find((l) => l.ownerRef.endsWith('#device-number'))!;
+      const linia = composition.protectionSegments.find((g) => g.ownerRef.endsWith('#trip-line'))!;
+      const ramkaNumeru = prostokatEtykietyZakotwiczonej(numer);
+      expect(ramkaNumeru.y + ramkaNumeru.height, 'numer „52” nad linią wyłączania').toBeLessThan(linia.points[0].y);
       // Wyrównanie przechodzi przez resolver etykiet 1:1 (scena niesie je do renderu).
       const resolved = resolveLabels({ simpleAnchored: etykiety });
       for (const l of etykiety) {

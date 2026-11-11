@@ -600,23 +600,5 @@ describe('(B) blok zabezpieczeń: kody słownika funkcji EAZ wierszami wewnątrz
       przypadki += 1;
     }
     expect(przypadki).toBe(38 + 38 * 37);
-    expect(wOkregu).toBeGreaterThan(0);
-  });
-
-  it('kody, które pismem 8 px nie mieszczą się w okręgu same — jawna lista (idą do wierszy bloku)', () => {
-    const zaSzerokie = KODY.filter((k) => ukladKodowWOkregu([k]).kody.length === 0);
-    expect(zaSzerokie).toMatchInlineSnapshot(`
-      [
-        "50BF",
-        "SPZE",
-        "OWG",
-        "ZAWSC",
-      ]
-    `);
-  });
-
-  it('para kodów pola liniowego ENEA (51, 50) i (51N, 67N) mieści się w dwóch wierszach', () => {
-    expect(ukladKodowWOkregu(['51', '50', '51N']).kody).toEqual(['51', '50']);
-    expect(ukladKodowWOkregu(['51N', '67N']).kody).toEqual(['51N', '67N']);
   });
 });

@@ -1,4 +1,3 @@
-// @vitest-environment node
 /**
  * Fault Scenarios Store Tests — PR-24
  * Determinism, sort order, basic operations.

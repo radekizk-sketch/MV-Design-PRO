@@ -308,7 +308,10 @@ describe('GEOMETRIA-STACJI — aparat {z modelu, brak danych} (tożsamość ze z
           // Blok zabezpieczeń pola (kody funkcji z modelu) to adnotacja pola, nie aparat — dane
           // zabezpieczeń są, choć wyposażenia brak (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ).
           if (s.symbolId === 'protectionRelay') {
-            expect(pole.protection_codes?.length ?? 0, `${pole.ref_id}: blok tylko z kodami w modelu`).toBeGreaterThan(0);
+            // Kody funkcji pola niesie wyłącznie sterownik pola (`bay_ref`, ADR-022).
+            const sterownik = (snapshot.protection_assignments ?? []).find((pa) => pa.bay_ref === pole.ref_id);
+            const kody = (sterownik?.funkcje ?? []).filter((f) => f.wlaczona !== false);
+            expect(kody.length, `${pole.ref_id}: blok tylko z kodami w modelu`).toBeGreaterThan(0);
             continue;
           }
           expect(['bayNoEquipment', 'bayReserve', 'transformer2W'], `${pole.ref_id} ${s.symbolId}`).toContain(s.symbolId);

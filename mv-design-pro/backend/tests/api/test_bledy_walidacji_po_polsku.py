@@ -449,7 +449,11 @@ def test_warunki_ulozenia_kabla_nn_po_polsku(warunki, tresc: str) -> None:
 @pytest.mark.parametrize(
     ("parametry", "tresc"),
     [
-        ({"protection_codes": "50/51"}, "„Kody zabezpieczeń pola” musi być listą"),
+        # Lista w miejscu tekstu (kształt niezgodny z kontraktem). Dawny przypadek listy kodów
+        # zabezpieczeń pola zniknął z kontraktem (ADR-022: funkcje należą do sterownika pola,
+        # pisarz `update_protection_settings`); odmowę skasowanego klucza przypina
+        # `test_skasowany_klucz_kodow_zabezpieczen_pola_odmowa_po_polsku`.
+        ({"feeder_short_name": ["L1"]}, "wartość musi być tekstem"),
         ({"bay_number": {"x": 1}}, "wartość musi być tekstem"),
         ({"meta": {"__klucz_meta__": 1}}, "adnotacje powielające parametry pola"),
     ],
@@ -471,6 +475,27 @@ def test_parametry_pola_rozdzielnicy_po_polsku(parametry, tresc: str) -> None:
 
     assert odpowiedz["error_code"] == "params.invalid_value", odpowiedz
     assert tresc in odpowiedz["error"], odpowiedz["error"]
+    assert pole_ref not in odpowiedz["error"]
+    _bez_tekstu_biblioteki([odpowiedz["error"]])
+
+
+def test_skasowany_klucz_kodow_zabezpieczen_pola_odmowa_po_polsku() -> None:
+    """Klucz `protection_codes` skasowanej struktury zabezpieczeń pola nie jest parametrem pola:
+    odmowa nazwana (`params.key_not_allowed`) bez skutku w modelu i bez tekstu biblioteki."""
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_110kv
+    from tests.reference_networks.sceny_zajetosci_pol import op
+
+    enm = zbuduj_gpz_110kv()
+    pole_ref = enm["bays"][0]["ref_id"]
+
+    odpowiedz = op(
+        enm,
+        "update_element_parameters",
+        {"element_ref": pole_ref, "parameters": {"protection_codes": ["50", "51"]}},
+    )
+
+    assert odpowiedz["error_code"] == "params.key_not_allowed", odpowiedz
+    assert "nie można zmieniać w polu rozdzielnicy" in odpowiedz["error"], odpowiedz["error"]
     assert pole_ref not in odpowiedz["error"]
     _bez_tekstu_biblioteki([odpowiedz["error"]])
 

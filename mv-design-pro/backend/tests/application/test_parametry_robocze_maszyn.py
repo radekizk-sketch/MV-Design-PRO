@@ -1014,6 +1014,22 @@ def test_petla_i_swz_niosa_dane_przyjete_maszyny_sieci_zasilajacej(
     wpis maszyny, który zmienia Z_M (wszystkie poza wpisem „tylko I_b”), jest daną przyjętą
     I_k pętli; maszyna SN 2 MW: p zmienia wiersz R_M/X_M, więc też."""
     enm = _enm_petli_z_maszyna(maszyna, dane)
+    if widok == "swz":
+        # Rodzaj obwodu aparatu zadeklarowany przez projektanta — bez deklaracji jest wartością
+        # roboczą (`rozstrzygnij_rodzaj_obwodu_nn`, Zasada nr 4) i sam oznacza SWZ jako wynik na
+        # danych przyjętych; ten test izoluje dane przyjęte maszyny sieci zasilającej.
+        enm = enm.model_copy(
+            update={
+                "branches": [
+                    (
+                        g.model_copy(update={"rodzaj_obwodu_nn": "odbiorczy"})
+                        if g.ref_id == "ap1"
+                        else g
+                    )
+                    for g in enm.branches
+                ]
+            }
+        )
     wynik = _WIDOKI_PETLI[widok](enm)
     n = len(_wyrocznia(MASZYNY[maszyna][1], dane))
     if widok == "swz":

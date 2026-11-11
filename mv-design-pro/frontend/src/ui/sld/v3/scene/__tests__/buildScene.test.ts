@@ -1564,17 +1564,22 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
   });
 });
 
-describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixturze REALNEJ (sldSubstrate52s: pola stacji z kodami funkcji, 0 protection_assignments, 0 measurements)', () => {
-  it('§17.2 na REALNEJ fixturze: blok zabezpieczeń DOKŁADNIE przy polach z kodami funkcji (L1/L2), zero na L0; bez przypisania zabezpieczenia — zero torów wyzwalania; bez pomiarów — zero mierników; sonda bez luk', () => {
+describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixturze REALNEJ (sldSubstrate52s: sterowniki pól stacji z funkcjami, bez macierzy wyzwoleń i wejść, 0 measurements)', () => {
+  it('§17.2 na REALNEJ fixturze: blok zabezpieczeń DOKŁADNIE przy polach z funkcjami sterownika (L1/L2), zero na L0; bez macierzy wyzwoleń — zero torów wyzwalania; bez pomiarów — zero mierników; sonda bez luk', () => {
     // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela 2026-11-05): pola stacji
-    // rzutują kody funkcji `Bay.protection_codes` jak pola GPZ. Dawniej blok stacji kodów nie
-    // rzutował (W5-B), a ten test twierdził, że fikstura nie niesie pól — twierdzenie było
-    // fałszywe (fikstura niesie pola stacji z kodami; „zero" wynikało z braku projekcji).
+    // rzutują kody funkcji jak pola GPZ. Dawniej blok stacji kodów nie rzutował (W5-B), a ten
+    // test twierdził, że fikstura nie niesie pól — twierdzenie było fałszywe (fikstura niesie
+    // pola stacji z kodami; „zero" wynikało z braku projekcji). Od karty OCHRONA-JEDNO-ZRODLO
+    // (ADR-022) kody funkcji pola niesie wyłącznie sterownik pola (`bay_ref`), a łącznik
+    // wyłączany — wyłącznie jego macierz wyzwoleń (w tej fiksturze pusta).
+    const polaStacji = new Set((enm.bays ?? []).filter((b) => b.substation_ref).map((b) => b.ref_id));
+    const sterownikiPol = (enm.protection_assignments ?? []).filter((pa) => pa.bay_ref && polaStacji.has(pa.bay_ref));
     const zKodami = new Set(
-      (enm.bays ?? []).filter((b) => (b.protection_codes ?? []).length > 0 && b.substation_ref).map((b) => b.ref_id),
+      sterownikiPol.filter((pa) => pa.funkcje.some((f) => f.wlaczona !== false)).map((pa) => pa.bay_ref!),
     );
     expect(zKodami.size).toBeGreaterThan(100);
-    expect(enm.protection_assignments ?? []).toHaveLength(0);
+    expect(sterownikiPol.flatMap((pa) => pa.macierz_wyzwolen)).toHaveLength(0);
+    expect(sterownikiPol.filter((pa) => Object.values(pa.wejscia).some((v) => (Array.isArray(v) ? v.length > 0 : v)))).toHaveLength(0);
     for (const lod of LODS) {
       const scene = buildSceneV3(enm, lod);
       const bloki = scene.symbols.filter((s) => s.symbolId === 'protectionRelay').map((s) => s.meta?.ownerRef ?? '');

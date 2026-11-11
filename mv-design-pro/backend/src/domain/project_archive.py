@@ -788,7 +788,7 @@ NAZWY_SEKCJI_ARCHIWUM_PL: dict[str, str] = {
     "interpretations": "interpretacje wyników",
     "issues": "problemy i walidacje modelu",
     "enm": "model sieci",
-    "scenariusze": "scenariusze projektu",
+    "scenariusze": "zestaw scenariuszy projektu",
 }
 
 

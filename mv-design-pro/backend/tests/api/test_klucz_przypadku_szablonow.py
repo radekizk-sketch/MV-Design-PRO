@@ -308,6 +308,10 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # — trasa deklaruje `case_id: str` (Pydantic body) i przekazuje `payload.
     # case_id` do `get_enm` bajt w bajt, bez `UUID(...)`/`str(...)` pomiędzy.
     "nn_proof.py": KLUCZ_SUROWY,
+    # Karta KD6 (wytrzymałość zwarciowa kabla toru DER w podglądzie doboru): I″k i κ szyny
+    # przyłączenia z biegu przypadku — `case_id: str | None` w ciele zapytania przekazany do
+    # jedynego tłumacza `klucz_twin_z_sciezki` bajt w bajt, bez `UUID(...)`/`str(...)` pomiędzy.
+    "grid_source_preview.py": KLUCZ_SUROWY,
     "fault_scenarios.py": KLUCZ_Z_REKORDU,
     "ncrfg_ptpiree_tests.py": KLUCZ_UUID_Z_TRASY,
     "v126_academic.py": KLUCZ_UUID_Z_TRASY,

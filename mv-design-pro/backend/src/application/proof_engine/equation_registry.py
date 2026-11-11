@@ -476,7 +476,7 @@ EQ_SC3F_011 = EquationDefinition(
         SymbolDefinition(
             symbol="t_{min}",
             unit="s",
-            description_pl="Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia",
+            description_pl="Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia",
             mapping_key="t_min_s",
         ),
     ),
@@ -518,7 +518,7 @@ EQ_SC3F_012 = EquationDefinition(
         SymbolDefinition(
             symbol="t_{min}",
             unit="s",
-            description_pl="Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia",
+            description_pl="Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia",
             mapping_key="t_min_s",
         ),
     ),
