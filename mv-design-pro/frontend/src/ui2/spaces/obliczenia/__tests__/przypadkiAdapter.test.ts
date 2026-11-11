@@ -74,6 +74,24 @@ describe('rozniceKonfiguracji — tabela różnic', () => {
     expect(rozne[0].pole).toBe('base_mva');
     expect(rozne[0].wartosci).toEqual(['100', '75']);
   });
+
+  // Liczby tym samym formatem co tabela źródeł wymagań ekranu EAZ (jednostka „1”, 2 miejsca).
+  // Pole złożone (wymagania EAZ projektanta): {równe treścią w osobnych obiektach, różne
+  // wartością, puste vs ustawione} — porównanie po treści, nie po referencji obiektu.
+  it.each([
+    [{ k_b: 1.5 }, { k_b: 1.5 }, false, ['k_b = 1,50', 'k_b = 1,50']],
+    [{ k_c: 2 }, { k_c: 2.5 }, true, ['k_c = 2,00', 'k_c = 2,50']],
+    [{}, { k_b: 1.2, k_c_opor: 1.4 }, true, ['z tabeli źródeł wymagań', 'k_b = 1,20; k_c,opor = 1,40']],
+  ])('wymagania EAZ %j vs %j → różne=%s', (a, b, rozneOczekiwane, wartosci) => {
+    const wiersze = rozniceKonfiguracji([
+      studyCaseFixture('K1', 'A', { config: { wymagania_eaz: a } }),
+      studyCaseFixture('K2', 'B', { config: { wymagania_eaz: b } }),
+    ]);
+    const wiersz = wiersze.find((w) => w.pole === 'wymagania_eaz')!;
+    expect(wiersz.rozne).toBe(rozneOczekiwane);
+    expect(wiersz.wartosci).toEqual(wartosci);
+    expect(wiersze.filter((w) => w.rozne).map((w) => w.pole)).toEqual(rozneOczekiwane ? ['wymagania_eaz'] : []);
+  });
 });
 
 const WIERSZ: PrzypadekWiersz = {

@@ -40,8 +40,16 @@ import {
 import { KOORDYNACJA_STRINGS as T } from './strings';
 import { TabelaUziemienStacji } from './TabelaUziemienStacji';
 import { WykresWskazowy67N } from './WykresWskazowy67N';
+import { EdytorWymaganEaz } from './EdytorWymaganEaz';
+import type { WymaganiaEaz } from '../../../ui/study-cases/types';
 
 /** Cel akcji „Uzupełnij”: sterownik i funkcja, których nastawę trzeba podać. */
+/** Edycja wymagań projektanta w przypadku obliczeniowym (ekran z przypadkiem i biegiem). */
+export interface EdycjaWymagan {
+  readonly wymagania: WymaganiaEaz;
+  readonly onZapisz: (wymagania: WymaganiaEaz) => Promise<void>;
+}
+
 export interface CelUzupelnienia {
   readonly urzadzenieRef: string;
   readonly funkcjaRef: string;
@@ -151,7 +159,15 @@ function LiczbaWarunku({ wartosc, jednostka }: { wartosc: number | null; jednost
 
 /** Tabela źródeł wymagań z backendu (`zrodla_wymagan`) — wartość, stan i odwołanie bez
  *  przekształceń; ekran nie nadaje stanu i nie zmienia liczby. */
-function ZrodlaWymagan({ zrodla, testid }: { zrodla: readonly ZrodloWymagania[]; testid: string }) {
+function ZrodlaWymagan({
+  zrodla,
+  edycja,
+  testid,
+}: {
+  zrodla: readonly ZrodloWymagania[];
+  edycja: EdycjaWymagan | undefined;
+  testid: string;
+}) {
   if (zrodla.length === 0) return null;
   return (
     <details className="mvd-eaz-zrodla" data-testid={`${testid}-zrodla`}>
@@ -170,7 +186,10 @@ function ZrodlaWymagan({ zrodla, testid }: { zrodla: readonly ZrodloWymagania[];
             <tr key={z.klucz} data-testid={`${testid}-zrodlo`} data-klucz={z.klucz} data-stan={z.stan}>
               <td title={z.opis_pl}>{z.symbol}</td>
               <td className="mvd-num mvd-eaz-liczba">
-                {z.wartosc === null ? '—' : `${formatWgJednostki(z.wartosc, z.jednostka)} ${z.jednostka}`}
+                {z.wartosc === null
+                  ? '—'
+                  : // Jednostka „1" (współczynnik bezwymiarowy) nie jest dopisywana do liczby.
+                    `${formatWgJednostki(z.wartosc, z.jednostka)}${z.jednostka === '1' ? '' : ` ${z.jednostka}`}`}
               </td>
               <td>{z.stan_pl}</td>
               <td className="mvd-eaz-przypis">{z.odwolanie_pl}</td>
@@ -178,6 +197,14 @@ function ZrodlaWymagan({ zrodla, testid }: { zrodla: readonly ZrodloWymagania[];
           ))}
         </tbody>
       </table>
+      {edycja ? (
+        <EdytorWymaganEaz
+          wymagania={edycja.wymagania}
+          zrodla={zrodla}
+          onZapisz={edycja.onZapisz}
+          testid={testid}
+        />
+      ) : null}
     </details>
   );
 }
@@ -415,6 +442,7 @@ export function TabelaOcenyZiemnozwarciowej({
   wynik,
   urzadzenieRef,
   onUzupelnij,
+  edycjaWymagan,
   testid = 'mvd-ocena-ziemnozwarciowa',
   bezNaglowka = false,
 }: {
@@ -423,6 +451,8 @@ export function TabelaOcenyZiemnozwarciowej({
   urzadzenieRef?: string;
   /** Otwarcie edytora nastaw wskazanej funkcji (natywny klik w „Uzupełnij”). */
   onUzupelnij?: (cel: CelUzupelnienia) => void;
+  /** Edytor wartości projektanta w sekcji źródeł wymagań (brak — tabela tylko do odczytu). */
+  edycjaWymagan?: EdycjaWymagan;
   testid?: string;
   bezNaglowka?: boolean;
 }) {
@@ -468,7 +498,7 @@ export function TabelaOcenyZiemnozwarciowej({
         />
       ) : null}
       {urzadzenieRef === undefined && wiersze.length > 0 ? (
-        <ZrodlaWymagan zrodla={wynik.zrodla_wymagan ?? []} testid={testid} />
+        <ZrodlaWymagan zrodla={wynik.zrodla_wymagan ?? []} edycja={edycjaWymagan} testid={testid} />
       ) : null}
     </div>
   );

@@ -68,7 +68,17 @@ export interface StudyCaseConfig {
   // Used only when sc_input_mode === 'simplified'
   sc_simplified_sk_mva: number | null;
   sc_simplified_r_x_ratio: number;
+
+  // Wymagania zabezpieczeń ziemnozwarciowych nadpisane przez projektanta (backend
+  // `StudyCaseConfig.wymagania_eaz`, lista kluczy zamknięta `KLUCZE_WYMAGAN_EAZ` w
+  // `domain/study_case.py`). Puste — wymagania z tabeli źródeł (IRiESD ENEA / założenia).
+  wymagania_eaz: WymaganiaEaz;
 }
+
+/** Klucze wymagań EAZ, które projektant może nadpisać (lustro `KLUCZE_WYMAGAN_EAZ`). */
+export const KLUCZE_WYMAGAN_EAZ = ['k_b', 'k_c', 'k_c_opor'] as const;
+export type KluczWymaganiaEaz = (typeof KLUCZE_WYMAGAN_EAZ)[number];
+export type WymaganiaEaz = Partial<Record<KluczWymaganiaEaz, number>>;
 
 /**
  * Jedna rewizja modelu powstała PO rewizji wyniku — to ona go unieważniła.
@@ -181,6 +191,7 @@ export const DEFAULT_STUDY_CASE_CONFIG: StudyCaseConfig = {
   sc_input_mode: 'simplified',
   sc_simplified_sk_mva: null,
   sc_simplified_r_x_ratio: 0.1,
+  wymagania_eaz: {},
 };
 
 /**
@@ -214,6 +225,7 @@ export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
   sc_input_mode: 'Parametry zwarciowe (tryb)',
   sc_simplified_sk_mva: 'Moc zwarciowa S″k po stronie SN [MVA]',
   sc_simplified_r_x_ratio: 'R/X po stronie SN',
+  wymagania_eaz: 'Wymagania zabezpieczeń ziemnozwarciowych (wartości projektanta)',
 };
 
 // =============================================================================

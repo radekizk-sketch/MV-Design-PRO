@@ -15,8 +15,10 @@ import type {
   ScInputMode,
   StudyCaseConfig,
   StudyCaseResultStatus,
+  WymaganiaEaz,
 } from '../../../ui/study-cases/types';
-import { OPERATOR_PROFILES } from '../../../ui/study-cases/types';
+import { KLUCZE_WYMAGAN_EAZ, OPERATOR_PROFILES } from '../../../ui/study-cases/types';
+import { formatWgJednostki } from '../../../ui/shared/formatPolishValue';
 
 export const PRZYPADKI_STRINGS = {
   // Nagłówek przestrzeni
@@ -112,6 +114,8 @@ export const PRZYPADKI_STRINGS = {
   tak: 'tak',
   nie: 'nie',
   brakWartosci: '—',
+  // Wymagania EAZ przypadku puste — ocena czyta tabelę źródeł wymagań (IRiESD / założenia).
+  wymaganiaZTabeli: 'z tabeli źródeł wymagań',
 } as const;
 
 /** Etykieta PL statusu wyników przypadku (tag) — spójna z E15.2 / przestrzenią „Projekt". */
@@ -143,6 +147,21 @@ export function formatLiczba(n: number): string {
   return String(n);
 }
 
+/** Symbol wymagania EAZ (k_c,opor — doziemienie oporowe). */
+export const SYMBOL_WYMAGANIA_EAZ: Record<(typeof KLUCZE_WYMAGAN_EAZ)[number], string> = {
+  k_b: 'k_b',
+  k_c: 'k_c',
+  k_c_opor: 'k_c,opor',
+};
+
+/** „k_b = 1,5; k_c = 2" w kolejności listy kluczy; puste — tabela źródeł. */
+export function formatWymaganiaEaz(w: WymaganiaEaz): string {
+  const czesci = KLUCZE_WYMAGAN_EAZ.filter((k) => w[k] !== undefined).map(
+    (k) => `${SYMBOL_WYMAGANIA_EAZ[k]} = ${formatWgJednostki(w[k] as number, '1')}`,
+  );
+  return czesci.length ? czesci.join('; ') : PRZYPADKI_STRINGS.wymaganiaZTabeli;
+}
+
 /** Etykieta PL profilu operatora (OSD) z tablicy `OPERATOR_PROFILES` (types.ts:28). */
 export function etykietaOperatora(id: OperatorProfileId): string {
   return OPERATOR_PROFILES.find((p) => p.id === id)?.label_pl ?? id;
@@ -166,6 +185,8 @@ export function formatWartoscKonfiguracji(
       return SC_INPUT_MODE_LABEL[wartosc as ScInputMode];
     case 'sc_simplified_sk_mva':
       return wartosc === null ? PRZYPADKI_STRINGS.brakWartosci : formatLiczba(wartosc as number);
+    case 'wymagania_eaz':
+      return formatWymaganiaEaz(wartosc as WymaganiaEaz);
     default:
       return formatLiczba(wartosc as number);
   }

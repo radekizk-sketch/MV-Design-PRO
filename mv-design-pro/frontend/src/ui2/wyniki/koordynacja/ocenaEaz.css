@@ -229,3 +229,32 @@
   cursor: pointer;
   color: var(--mvd-muted);
 }
+.mvd-eaz-wymagania {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
+}
+.mvd-eaz-wymagania-tytul {
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-eaz-wymagania-pola {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.mvd-eaz-wymagania-pola label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.mvd-eaz-wymagania-pola input {
+  width: 9rem;
+}
+.mvd-eaz-wymagania-pola input[aria-invalid='true'] {
+  outline: 1px solid var(--mvd-warn-ink);
+}
+.mvd-eaz-wymagania-akcje {
+  display: flex;
+  gap: 0.5rem;
+}

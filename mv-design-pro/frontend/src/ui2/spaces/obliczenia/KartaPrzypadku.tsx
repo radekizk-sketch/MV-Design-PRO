@@ -45,7 +45,7 @@ const POLA_OPCJE: Array<keyof StudyCaseConfig> = [
   'include_motor_contribution',
   'include_inverter_contribution',
 ];
-const POLA_OPERATOR: Array<keyof StudyCaseConfig> = ['operator_profile_id'];
+const POLA_OPERATOR: Array<keyof StudyCaseConfig> = ['operator_profile_id', 'wymagania_eaz'];
 
 interface KartaPrzypadkuProps {
   przypadek: StudyCase | null;

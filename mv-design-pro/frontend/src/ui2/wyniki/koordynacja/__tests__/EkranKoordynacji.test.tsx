@@ -21,6 +21,7 @@ import type {
 import type { WynikOcenyZabezpieczen } from '../ocenaZabezpieczenApi';
 import wynikKoordynacjiSceny from '../../../../harness-fixtures/generated/koordynacja_scena_wynik.json';
 import wynikOcenySceny from '../../../../harness-fixtures/generated/koordynacja_scena_ocena.json';
+import przypadekSceny from '../../../../harness-fixtures/generated/przypadek_scena_karta.json';
 import { EkranKoordynacji } from '../EkranKoordynacji';
 import { useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
 import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
@@ -78,6 +79,10 @@ function odpowiedzTla(url: string): Response {
   }
   if (url.includes('/api/catalog/protection/device-types')) {
     return { ok: true, status: 200, json: async () => [] } as Response;
+  }
+  // Przypadek obliczeniowy (wymagania EAZ projektanta) — rekord realnego backendu.
+  if (url === '/api/study-cases/case-1') {
+    return { ok: true, status: 200, json: async () => ({ ...przypadekSceny, id: 'case-1' }) } as Response;
   }
   throw new Error(`Niespodziewane wywołanie fetch: ${url}`);
 }
@@ -268,7 +273,10 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
   function mockOceny(opcje: {
     wynik?: unknown;
     statusWykonania?: string;
+    /** Odpowiedź serwera na PATCH przypadku (domyślnie przyjęcie i scalenie konfiguracji). */
+    odmowaPatch?: string;
   }) {
+    let config = { ...przypadekSceny.config } as Record<string, unknown>;
     // Rejestr biegów przypadku po stronie serwera: utworzenie oceny dokłada jej bieg.
     const rejestr: unknown[] = [...useExecutionRunsStore.getState().runs];
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -278,6 +286,22 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
           biegOceny('ocena-1', '2026-07-18T11:00:00Z', opcje.statusWykonania === 'FAILED' ? 'FAILED' : 'DONE'),
         );
         return { ok: true, status: 201, json: async () => ({ id: 'ocena-1', status: 'CREATED' }) } as Response;
+      }
+      if (url === '/api/study-cases/case-1' && init?.method === 'PATCH') {
+        if (opcje.odmowaPatch) {
+          return {
+            ok: false,
+            status: 422,
+            statusText: 'Unprocessable Entity',
+            json: async () => ({ detail: opcje.odmowaPatch }),
+          } as Response;
+        }
+        // Backend scala podane pola z bieżącą konfiguracją (PATCH częściowy).
+        config = { ...config, ...(JSON.parse(init.body as string).config as Record<string, unknown>) };
+        return { ok: true, status: 200, json: async () => ({ ...przypadekSceny, id: 'case-1', config }) } as Response;
+      }
+      if (url === '/api/study-cases/case-1') {
+        return { ok: true, status: 200, json: async () => ({ ...przypadekSceny, id: 'case-1', config }) } as Response;
       }
       if (url === '/api/execution/study-cases/case-1/runs') {
         return {
@@ -494,6 +518,115 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
       entityRef: cel.urzadzenie_ref,
       payload: { funkcja_ref: cel.funkcja_ref },
     });
+  });
+
+  describe('wartości projektanta wymagań EAZ w przypadku', () => {
+  // Iloczyn: {zapis wartości → PATCH tylko pola + nowy bieg oceny, powrót do tabeli → PATCH {},
+  // odmowa serwera → komunikat bez nowego biegu, zła liczba → bez żądania}. Kliki natywne.
+  function przygotuj() {
+    ustawKompletnyKontekst();
+    useExecutionRunsStore.setState({
+      runs: [DONE_SC_RUN, DONE_SC_RUN_MIN, {
+        id: 'ocena-stara', study_case_id: 'case-1', analysis_type: 'PROTECTION', status: 'DONE',
+        started_at: '2026-09-01T10:00:00Z', finished_at: '2026-09-01T10:00:00Z',
+      }] as never,
+    });
+  }
+
+  const patche = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls
+      .filter(([u, i]) => String(u) === '/api/study-cases/case-1' && (i as RequestInit | undefined)?.method === 'PATCH')
+      .map(([, i]) => JSON.parse((i as RequestInit).body as string));
+  const biegiOceny = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls.filter(
+      ([u, i]) => String(u) === '/api/projects/project-1/protection-runs' && (i as RequestInit | undefined)?.method === 'POST',
+    ).length;
+
+  async function otworzEdytor(user: ReturnType<typeof userEvent.setup>) {
+    const tabela = await screen.findByTestId('mvd-ocena-zabezpieczen-ziemne');
+    await user.click(within(tabela).getByText(T.ziemneZrodlaWymagan));
+    return within(tabela).findByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta');
+  }
+
+  it('zapis k_b i k_c,opor: PATCH tylko wymagań, potem nowy bieg oceny; pola niosą wartości serwera', async () => {
+    const user = userEvent.setup();
+    przygotuj();
+    const fetchMock = mockOceny({});
+    render(<EkranKoordynacji />);
+    const edytor = await otworzEdytor(user);
+    await waitFor(() => expect(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom')).not.toBeDisabled());
+    await user.type(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_b'), '1,5');
+    await user.type(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_c_opor'), '1.4');
+    await user.click(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-zapisz'));
+    await waitFor(() => expect(biegiOceny(fetchMock)).toBe(1));
+    expect(patche(fetchMock)).toEqual([{ config: { wymagania_eaz: { k_b: 1.5, k_c_opor: 1.4 } } }]);
+    await waitFor(() => expect(screen.getByTestId('mvd-ocena-zabezpieczen')).toHaveAttribute('data-run-id', 'ocena-1'));
+    const poZapisie = await otworzEdytorPoNowymBiegu(user);
+    expect(within(poZapisie).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_b')).toHaveValue('1,5');
+    expect(within(poZapisie).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_c')).toHaveValue('');
+
+    // Powrót do tabeli źródeł: PATCH pustych wymagań i kolejny bieg.
+    await user.click(within(poZapisie).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-wyczysc'));
+    await waitFor(() => expect(biegiOceny(fetchMock)).toBe(2));
+    expect(patche(fetchMock)[1]).toEqual({ config: { wymagania_eaz: {} } });
+  });
+
+  async function otworzEdytorPoNowymBiegu(user: ReturnType<typeof userEvent.setup>) {
+    const tabela = await screen.findByTestId('mvd-ocena-zabezpieczen-ziemne');
+    const istniejacy = within(tabela).queryByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta');
+    if (istniejacy && istniejacy.closest('details')?.open) return istniejacy;
+    await user.click(within(tabela).getByText(T.ziemneZrodlaWymagan));
+    return within(tabela).findByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta');
+  }
+
+  it('odmowa serwera: komunikat pod formularzem, bez nowego biegu oceny', async () => {
+    const user = userEvent.setup();
+    przygotuj();
+    const fetchMock = mockOceny({ odmowaPatch: 'Wymaganie k_b = 0 musi być liczbą skończoną większą od zera' });
+    render(<EkranKoordynacji />);
+    const edytor = await otworzEdytor(user);
+    await user.type(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_b'), '2');
+    await user.click(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-zapisz'));
+    expect(await within(edytor).findByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-blad-zapisu')).toHaveTextContent(
+      'musi być liczbą skończoną',
+    );
+    expect(patche(fetchMock)).toHaveLength(1);
+    expect(biegiOceny(fetchMock)).toBe(0);
+  });
+
+  it.each(['0', '-1', 'abc', '1,2,3'])('zła liczba %s: komunikat, bez żądania do serwera', async (zla) => {
+    const user = userEvent.setup();
+    przygotuj();
+    const fetchMock = mockOceny({});
+    render(<EkranKoordynacji />);
+    const edytor = await otworzEdytor(user);
+    await user.type(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_c'), zla);
+    await user.click(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-zapisz'));
+    expect(await within(edytor).findByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-blad')).toHaveTextContent(
+      T.ziemneWymaganiaZlaLiczba,
+    );
+    expect(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymaganie-k_c')).toHaveAttribute('aria-invalid', 'true');
+    expect(patche(fetchMock)).toHaveLength(0);
+  });
+
+  it('pola podpowiadają wartość z tabeli źródeł wyniku (bez przeliczenia na ekranie)', async () => {
+    const user = userEvent.setup();
+    przygotuj();
+    mockOceny({});
+    render(<EkranKoordynacji />);
+    const edytor = await otworzEdytor(user);
+    // Parytet edytor ↔ tabela źródeł: podpowiedź = liczba z wiersza tabeli tego samego klucza.
+    const wierszeZrodel = screen.getAllByTestId('mvd-ocena-zabezpieczen-ziemne-zrodlo');
+    for (const k of ['k_b', 'k_c', 'k_c_opor']) {
+      const wiersz = wierszeZrodel.find((w) => w.dataset.klucz === k || w.dataset.klucz!.startsWith(`${k}.`))!;
+      const [symbol, wartosc] = Array.from(wiersz.querySelectorAll('td')).map((td) => td.textContent!.trim());
+      const pole = within(edytor).getByTestId(`mvd-ocena-zabezpieczen-ziemne-wymaganie-${k}`);
+      expect(pole).toHaveAttribute('placeholder', T.ziemneWymaganiaZTabeli(wartosc.trim()));
+      expect(pole.closest('label')).toHaveTextContent(symbol);
+    }
+    // Bez wartości projektanta przycisk powrotu do tabeli jest nieaktywny.
+    expect(within(edytor).getByTestId('mvd-ocena-zabezpieczen-ziemne-wymagania-projektanta-wyczysc')).toBeDisabled();
+  });
   });
 });
 

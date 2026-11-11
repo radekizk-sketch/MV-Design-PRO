@@ -41,6 +41,15 @@ vi.mock('../api', () => ({
   getExportDocxUrl: () => 'about:blank',
 }));
 
+// Przypadek obliczeniowy (wymagania EAZ projektanta): odczyt i PATCH na granicy klienta API.
+const getStudyCase = vi.fn();
+const updateStudyCase = vi.fn();
+vi.mock('../../study-cases/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../study-cases/api')>()),
+  getStudyCase: (...args: unknown[]) => getStudyCase(...args),
+  updateStudyCase: (...args: unknown[]) => updateStudyCase(...args),
+}));
+
 const WYNIK = wynikSceny as unknown as CoordinationResult;
 
 function bieg(id: string, analysis_type: string, finished_at: string) {
@@ -73,6 +82,11 @@ beforeEach(() => {
     return { run_id: id, rows: [], konfiguracja_biegu: { scenariusz: SCENARIUSZ[id] } };
   });
   runAnalysis.mockResolvedValue({ run_id: 'run-koordynacja' });
+  getStudyCase.mockResolvedValue({ id: 'case-1', config: { wymagania_eaz: {} } });
+  updateStudyCase.mockImplementation(async (id: string, req: { config: Record<string, unknown> }) => ({
+    id,
+    config: { wymagania_eaz: req.config.wymagania_eaz },
+  }));
   getResult.mockResolvedValue(WYNIK);
 });
 
@@ -314,6 +328,27 @@ describe('wynik i odmowy', () => {
         payload: { funkcja_ref: cel.funkcja_ref },
       });
     }
+  });
+
+  // Wartości projektanta wymagań EAZ: biegi koordynacji są z aktywnego przypadku, więc zapis
+  // idzie do niego (tylko pole `wymagania_eaz`), po czym koordynacja liczy się od nowa i ekran
+  // zostaje na zakładce zwarć doziemnych. Klik natywny.
+  it('zakładka zwarć doziemnych: zapis k_c projektanta w przypadku i ponowna koordynacja', async () => {
+    const user = userEvent.setup();
+    zBiegami();
+    await uruchom();
+    await user.click(await screen.findByTestId('tab-ziemne'));
+    const tabela = screen.getByTestId('coordination-ziemne');
+    await user.click(within(tabela).getByText('Źródła wymagań'));
+    const edytor = await within(tabela).findByTestId('coordination-ziemne-wymagania-projektanta');
+    await user.type(within(edytor).getByTestId('coordination-ziemne-wymaganie-k_c'), '2');
+    await user.click(within(edytor).getByTestId('coordination-ziemne-wymagania-projektanta-zapisz'));
+    await waitFor(() => expect(runAnalysis).toHaveBeenCalledTimes(2));
+    expect(getStudyCase).toHaveBeenCalledWith('case-1');
+    expect(updateStudyCase).toHaveBeenCalledWith('case-1', { config: { wymagania_eaz: { k_c: 2 } } });
+    expect(runAnalysis.mock.calls[1]).toEqual(runAnalysis.mock.calls[0]);
+    expect(await screen.findByTestId('coordination-ziemne')).toBeInTheDocument();
+    expect(screen.getByTestId('coordination-ziemne-wymaganie-k_c')).toHaveValue('2');
   });
 
   it('wynik bez pola ziemnozwarciowego (sieć bez funkcji doziemnych) — uczciwy stan zerowy zakładki', async () => {

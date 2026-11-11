@@ -212,6 +212,15 @@ export const KOORDYNACJA_STRINGS = {
   ziemneKolSymbol: 'Wielkość',
   ziemneKolStanZrodla: 'Stan źródła',
   ziemneKolOdwolanie: 'Odwołanie',
+  // Edytor wymagań projektanta (StudyCaseConfig.wymagania_eaz) w sekcji źródeł wymagań.
+  ziemneWymaganiaProjektanta: 'Wartości projektanta w tym przypadku obliczeniowym',
+  ziemneWymaganiaProjektantaOpis:
+    'Wpisana wartość zastępuje wymaganie z tabeli w tym przypadku obliczeniowym; wiersze oceny pokażą stan „wartość projektanta”. Puste pole — wymaganie z tabeli.',
+  ziemneWymaganiaZapisz: 'Zapisz w przypadku i przelicz',
+  ziemneWymaganiaZapisWToku: 'Zapisywanie…',
+  ziemneWymaganiaWyczysc: 'Wróć do tabeli źródeł',
+  ziemneWymaganiaZlaLiczba: 'Podaj liczbę większą od zera albo zostaw pole puste.',
+  ziemneWymaganiaZTabeli: (wartosc: string) => `z tabeli: ${wartosc}`,
   ziemneWarunki67n: 'Warunki działania 67N (koniunkcja)',
   ziemneWarunekRola: (rola: string) => (rola === 'W_POLU' ? 'doziemienie w polu' : 'doziemienie poza polem'),
   ziemneKolWarunek: 'Warunek',

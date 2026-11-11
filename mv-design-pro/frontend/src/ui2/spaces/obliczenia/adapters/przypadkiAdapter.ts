@@ -125,7 +125,8 @@ const POLA_KONFIGURACJI = Object.keys(CONFIG_FIELD_LABELS) as Array<keyof StudyC
 export function rozniceKonfiguracji(przypadki: StudyCase[]): WierszRoznicy[] {
   if (przypadki.length < 2) return [];
   return POLA_KONFIGURACJI.map((pole) => {
-    const surowe = przypadki.map((p) => p.config[pole]);
+    // Porównanie po surowej wartości; pole złożone (wymagania EAZ) — po treści, nie referencji.
+    const surowe = przypadki.map((p) => JSON.stringify(p.config[pole]));
     const rozne = surowe.some((w) => w !== surowe[0]);
     return {
       pole,

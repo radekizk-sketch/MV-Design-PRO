@@ -351,8 +351,16 @@ describe('źródła wymagań — ekran nie zmienia wartości ani stanu (wymagani
       expect(el.dataset.stan).toBe(z.stan);
       expect(el).toHaveTextContent(z.stan_pl);
       expect(el).toHaveTextContent(z.odwolanie_pl);
-      if (z.wartosc !== null) expect(el).toHaveTextContent(formatWgJednostki(z.wartosc, z.jednostka));
+      // Komórka wartości: liczba z jednostką, współczynnik bezwymiarowy („1") bez dopisku.
+      const komorka = el.querySelectorAll('td')[1].textContent;
+      expect(komorka).toBe(
+        z.wartosc === null
+          ? '—'
+          : `${formatWgJednostki(z.wartosc, z.jednostka)}${z.jednostka === '1' ? '' : ` ${z.jednostka}`}`,
+      );
     });
+    // Bez przypadku obliczeniowego (sama tabela) — edytora wartości projektanta nie ma.
+    expect(within(zrodla).queryByTestId(`${TID}-wymagania-projektanta`)).not.toBeInTheDocument();
     // Stany ENEA / założenie / niezweryfikowane — wszystkie trzy obecne, bez scalania.
     expect(new Set(wiersze.map((w) => w.dataset.stan))).toEqual(
       new Set(['ENEA_ZWERYFIKOWANE', 'ZALOZENIE_INZYNIERSKIE', 'NIEZWERYFIKOWANE']),

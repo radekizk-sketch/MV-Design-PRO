@@ -191,7 +191,8 @@ class StudyCaseService:
             case_id: Case ID
             name: New name (optional)
             description: New description (optional)
-            config: New configuration (optional) — marks case as OUTDATED
+            config: Pola konfiguracji do nadpisania (pominięte zostają); status wyników
+                wynika z biegów (`input_hash`), nie z flagi przestawianej tutaj
 
         Returns:
             Updated StudyCase
@@ -214,7 +215,9 @@ class StudyCaseService:
             if description is not None:
                 updated = updated.with_description(description)
             if config is not None:
-                new_config = StudyCaseConfig.from_dict(config)
+                # PATCH: podane pola nadpisują bieżącą konfigurację, pominięte zostają
+                # (dawniej brak pola resetował je do wartości domyślnej).
+                new_config = StudyCaseConfig.from_dict({**case.config.to_dict(), **config})
                 updated = updated.with_updated_config(new_config)
 
             repo.update_study_case(updated)

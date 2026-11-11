@@ -28,6 +28,7 @@ import {
 import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
 import { wierszeRodzin } from '../../ui2/wyniki/koordynacja/ocenaZiemnozwarciowa';
 import { TabelaOcenyZiemnozwarciowej } from '../../ui2/wyniki/koordynacja/TabelaOcenyZiemnozwarciowej';
+import { useEdycjaWymaganEaz } from '../../ui2/wyniki/koordynacja/wymaganiaPrzypadku';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
@@ -380,6 +381,14 @@ export function ProtectionCoordinationPage() {
     }
   }, [biegi, projectId]);
 
+  // Biegi koordynacji pochodzą z aktywnego przypadku (rejestr biegów przypadku), więc wartości
+  // projektanta edytujemy w nim; po zapisie koordynacja liczy się od nowa.
+  const caseId = useAppStateStore((state) => state.activeCaseId);
+  const { edycja: edycjaWymagan } = useEdycjaWymaganEaz(caseId, async () => {
+    await handleRun();
+    setActiveTab('ziemne');
+  });
+
   const statusText = useMemo(() => {
     if (status === 'RUNNING') return LABELS.status.running;
     if (status === 'SUCCESS') return LABELS.status.success;
@@ -463,6 +472,7 @@ export function ProtectionCoordinationPage() {
                           payload: { funkcja_ref: cel.funkcjaRef },
                         })
                       }
+                      edycjaWymagan={edycjaWymagan}
                       testid="coordination-ziemne"
                     />
                   </div>

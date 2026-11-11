@@ -723,6 +723,11 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return jsonOK(min ? koordynacjaScenyZwarciaMin : koordynacjaScenyZwarciaMax);
     }
     if (url.includes('/enm')) return jsonOK(koordynacjaScenyMigawka);
+    // Przypadek sceny (wymagania EAZ projektanta w sekcji źródeł wymagań): rekord domeny
+    // backendu (`przypadek_scena_karta`) pod identyfikatorem aktywnego przypadku sceny.
+    if (url.endsWith('/api/study-cases/case-demo')) {
+      return jsonOK({ ...PRZYPADEK_KARTY_SCENY, id: 'case-demo' });
+    }
     // Ocena zabezpieczen na biegu zwarciowym: utworzenie + wykonanie biegu i jego wynik
     // (`koordynacja_scena_ocena.json` — bieg na biegu MAKSYMALNYM sceny). Utworzenie z innym
     // biegiem zwarciowym albo innym przypadkiem atrapa odrzuca nazwanym bledem.

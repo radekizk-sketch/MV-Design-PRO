@@ -45,11 +45,15 @@ def _bieg(
     assert przypadek.status_code == 201
     case_id = str(przypadek.json()["id"])
     if wymagania_eaz is not None:
-        # Ścieżka projektanta: zmiana konfiguracji przypadku (PATCH, pełna konfiguracja).
-        config = {**przypadek.json()["config"], "wymagania_eaz": wymagania_eaz}
-        zmiana = app_client.patch(f"/api/study-cases/{case_id}", json={"config": config})
+        # Ścieżka projektanta (edytor wymagań ekranu E-28): PATCH tylko pola wymagań.
+        zmiana = app_client.patch(
+            f"/api/study-cases/{case_id}", json={"config": {"wymagania_eaz": wymagania_eaz}}
+        )
         assert zmiana.status_code == 200, zmiana.text
-        assert zmiana.json()["config"]["wymagania_eaz"] == wymagania_eaz
+        assert zmiana.json()["config"] == {
+            **przypadek.json()["config"],
+            "wymagania_eaz": wymagania_eaz,
+        }
     model = EnergyNetworkModel.model_validate(scena_z_nastawami(sposob))
     set_enm(_klucz_modelu(case_id), model)
     sc = app_client.post(
@@ -163,3 +167,27 @@ def test_wymaganie_spoza_listy_odrzucone(app_client: Any):
             json={"config": {**przypadek["config"], "wymagania_eaz": zle}},
         )
         assert odp.status_code in (400, 422), (zle, odp.status_code, odp.text)
+    # Odmowa nie zostawia skutku: konfiguracja przypadku bez zmian.
+    stan = app_client.get(f"/api/study-cases/{przypadek['id']}").json()
+    assert stan["config"] == przypadek["config"]
+
+
+def test_patch_konfiguracji_zachowuje_pominiete_pola(app_client: Any):
+    """PATCH części konfiguracji × {pole proste, wymagania EAZ, ponowne wyczyszczenie}: pola
+    pominięte zostają (dawniej wracały do wartości domyślnych)."""
+    projekt = app_client.post("/api/projects", json={"name": "PATCH częściowy"}).json()
+    przypadek = app_client.post(
+        "/api/study-cases",
+        json={
+            "project_id": projekt["id"],
+            "name": "P",
+            "config": {"base_mva": 50.0, "sc_simplified_sk_mva": 250.0},
+        },
+    ).json()
+    oczekiwana = dict(przypadek["config"])
+    for zmiana in ({"max_iterations": 77}, {"wymagania_eaz": {"k_c": 1.8}}, {"wymagania_eaz": {}}):
+        odp = app_client.patch(f"/api/study-cases/{przypadek['id']}", json={"config": zmiana})
+        assert odp.status_code == 200, odp.text
+        oczekiwana.update(zmiana)
+        assert odp.json()["config"] == oczekiwana
+    assert oczekiwana["base_mva"] == 50.0 and oczekiwana["sc_simplified_sk_mva"] == 250.0

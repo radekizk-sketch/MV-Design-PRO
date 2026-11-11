@@ -253,3 +253,15 @@ export function formatWgJednostki(
 ): string {
   return formatPolishValue(value, { decimals: MIEJSCA_DZIESIETNE_JEDNOSTKI[jednostka] ?? 2 });
 }
+
+/**
+ * Parsuje liczbę wpisaną z przecinkiem dziesiętnym PL (kropka też przyjęta). Zwraca `'pusto'`
+ * dla pustego tekstu, `'blad'` dla wartości nieliczbowej albo nieskończonej, inaczej liczbę.
+ * Jedno źródło parsowania pól liczbowych ekranów (dawniej dwie kopie: odbiór i estymacja).
+ */
+export function parsujLiczbaPL(surowy: string): number | 'pusto' | 'blad' {
+  const tekst = surowy.trim();
+  if (tekst === '') return 'pusto';
+  const liczba = Number(tekst.replace(',', '.'));
+  return Number.isFinite(liczba) ? liczba : 'blad';
+}

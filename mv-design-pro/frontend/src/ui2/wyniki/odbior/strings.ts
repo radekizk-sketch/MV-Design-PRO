@@ -190,13 +190,5 @@ export function fmtProcent(n: number): string {
   return fmtLiczba(n, 2);
 }
 
-/**
- * Parsuje liczbę z przecinkiem dziesiętnym PL. Zwraca `'pusto'` dla pustego
- * tekstu, `'blad'` dla wartości nieliczbowej, inaczej liczbę.
- */
-export function parsujLiczbaPL(surowy: string): number | 'pusto' | 'blad' {
-  const tekst = surowy.trim();
-  if (tekst === '') return 'pusto';
-  const liczba = Number(tekst.replace(',', '.'));
-  return Number.isFinite(liczba) ? liczba : 'blad';
-}
+// `parsujLiczbaPL` — jedno źródło w `ui/shared/formatPolishValue.ts` (re-eksport dla modułu).
+export { parsujLiczbaPL } from '../../../ui/shared/formatPolishValue';

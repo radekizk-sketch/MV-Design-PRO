@@ -78,6 +78,7 @@ const configFixture: StudyCaseConfig = {
   sc_input_mode: 'simplified',
   sc_simplified_sk_mva: null,
   sc_simplified_r_x_ratio: 0.1,
+  wymagania_eaz: {},
 };
 
 export function caseListItem(

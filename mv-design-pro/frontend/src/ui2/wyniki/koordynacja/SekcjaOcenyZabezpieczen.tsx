@@ -41,6 +41,7 @@ import {
 } from './ocenaZabezpieczenApi';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 import { TabelaOcenyZiemnozwarciowej, type CelUzupelnienia } from './TabelaOcenyZiemnozwarciowej';
+import { useEdycjaWymaganEaz } from './wymaganiaPrzypadku';
 
 type Wariant = 'max' | 'min';
 type Stan = 'wczytywanie' | 'bezczynny' | 'wToku' | 'blad';
@@ -124,6 +125,10 @@ export function SekcjaOcenyZabezpieczen({
     }
   }, [caseId, projectId, scRunId, wybierzBieg]);
 
+  // Wartości projektanta w przypadku (PATCH `wymagania_eaz`), potem nowy bieg oceny na tym samym
+  // biegu zwarciowym — wiersze dostają stan i liczby z serwera.
+  const { edycja: edycjaWymagan, blad: bladWymagan } = useEdycjaWymaganEaz(caseId, uruchom);
+
   const doEdycji = () => openRouteSurface('E-27');
   // „Uzupełnij” z wiersza oceny ziemnozwarciowej: karta nastaw E-27 otwarta na TYM sterowniku,
   // z kursorem w nastawie TEJ funkcji (ten sam pisarz nastaw co edycja ręczna).
@@ -168,9 +173,9 @@ export function SekcjaOcenyZabezpieczen({
         </p>
       ) : null}
       {stan === 'wczytywanie' ? <p>{T.ocenaWczytywanie}</p> : null}
-      {blad ? (
+      {blad || bladWymagan ? (
         <p className="mvd-koordynacja-ocena-blad" role="alert" data-testid="mvd-ocena-zabezpieczen-blad">
-          {blad}
+          {blad ?? bladWymagan}
         </p>
       ) : null}
       {stan !== 'wczytywanie' && !wynik && !blad ? (
@@ -255,6 +260,7 @@ export function SekcjaOcenyZabezpieczen({
           <TabelaOcenyZiemnozwarciowej
             wynik={wynik.ziemnozwarciowe}
             onUzupelnij={doNastawFunkcji}
+            edycjaWymagan={edycjaWymagan}
             testid="mvd-ocena-zabezpieczen-ziemne"
           />
           {wynik.pominiete.length > 0 ? (
