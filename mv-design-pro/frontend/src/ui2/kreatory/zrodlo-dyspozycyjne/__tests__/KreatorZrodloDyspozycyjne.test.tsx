@@ -7,6 +7,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorZrodloDyspozycyjne } from '../KreatorZrodloDyspozycyjne';
+import { useSelectionStore as sklepSelekcji } from '../../../../ui/selection/store';
+
+// Karta SLD-SKALA-I-NAWIGACJA: zaznaczenie po zapisie idzie jedyną drogą
+// (`zaznaczElementModelu`) do REALNEGO sklepu selekcji — asercje czytają sklep.
+afterEach(() => {
+  sklepSelekcji.getState().clearSelection();
+});
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -19,13 +26,18 @@ let activeForm: { op: string; context: Record<string, unknown> } | null = { op: 
 const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock, snapshot: {} };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
@@ -131,7 +143,7 @@ describe('KreatorZrodloDyspozycyjne — realna ścieżka (agregat)', () => {
     expect(ladunek.genset_spec).not.toHaveProperty('catalog_item_id');
     expect(fetchSourceSystemTypesMock).not.toHaveBeenCalled();
     expect(closeFormMock).toHaveBeenCalled();
-    expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'gen/3', type: 'Generator' }));
+    expect(sklepSelekcji.getState().selectedElement).toEqual(expect.objectContaining({ id: 'gen/3', type: 'Generator' }));
   });
 
   it('panel teorii (wkład zwarciowy maszyny synchronicznej) renderuje wzory przez KaTeX', async () => {

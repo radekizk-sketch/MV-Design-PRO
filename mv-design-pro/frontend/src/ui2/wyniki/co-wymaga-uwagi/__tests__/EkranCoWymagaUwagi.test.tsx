@@ -15,6 +15,8 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 
 describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
   beforeEach(() => {
@@ -23,6 +25,7 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki' });
     useAppStateStore.setState({ activeCaseId: null } as never);
+    useSnapshotStore.setState({ snapshot: null });
   });
 
   it('brak przebiegu → uczciwy stan zerowy z następnym krokiem (nie „sieć w normie")', () => {
@@ -107,6 +110,8 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
   });
 
   it('„Popraw w modelu" prowadzi do decyzji: zaznacza element i przechodzi do „Schemat"', async () => {
+    // Szyna przekroczenia istnieje w modelu (akcja tylko dla elementu na schemacie).
+    ustawMigawkeZElementami([{ kolekcja: 'buses', id: 'SZ-ST2' }]);
     usePowerFlowResultsStore.setState({
       results: powerFlowResultFixture({ bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.941 })] }),
     });

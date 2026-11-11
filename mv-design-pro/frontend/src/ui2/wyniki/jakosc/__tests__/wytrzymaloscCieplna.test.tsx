@@ -11,6 +11,8 @@ import { SekcjaWytrzymaloscCieplna } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { przebiegTestowy } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection/store';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type {
   DowodCieplnyResponse,
   PozycjaCieplna,
@@ -171,10 +173,15 @@ beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
   useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
+  // Gałąź z fixtury istnieje w modelu pod NAZWĄ (nazwa z migawki ≠ identyfikator).
+  ustawMigawkeZElementami([
+    { kolekcja: 'branches', id: 'cable_A', name: 'Magistrala L-01', pola: { type: 'cable' } },
+  ]);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  useSnapshotStore.setState({ snapshot: null });
 });
 
 describe('SekcjaWytrzymaloscCieplna — realna ścieżka', () => {

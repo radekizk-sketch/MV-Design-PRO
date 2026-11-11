@@ -321,7 +321,10 @@ export function TabelaWynikow({
           // zaznaczenie; kadr rusza się tylko, gdy kanwa jest na ekranie. Dawne
           // `selectFromResults` zostawiało ODŁOŻONE wskazanie kamery, które
           // kadrowało schemat przy późniejszym, niezwiązanym wejściu.
-          if (!zaznaczElementModelu(elementId, 'tabela-wynikow')) selectElement(cel);
+          // Ref KANONICZNY (`cel.id` — ref modelu), nie identyfikator wyniku: wiersz
+          // rozpływu niesie identyfikator GRAFU, którego migawka nie zna, więc kamera
+          // nie ruszała się nigdy dla takich wierszy.
+          if (!zaznaczElementModelu(cel.id, 'tabela-wynikow')) selectElement(cel);
         }
       }
     };

@@ -14,6 +14,9 @@ import { StationConfigTopologyCard } from '../cards/StationConfigTopologyCard';
 import { StationConfigTransformerCard } from '../cards/StationConfigTransformerCard';
 import { StationConfigurator } from '../StationConfigurator';
 import { FIELD_ROLE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSelectionStore } from '../../../selection/store';
+import { useSnapshotStore } from '../../../topology/snapshotStore';
 
 const minimalProps = {
   basic: {
@@ -249,9 +252,10 @@ describe('StationConfigSnSwitchgearCard', () => {
 });
 
 describe('StationConfigBaysCard', () => {
-  it('lista pól z akcjami otwórz/SLD/kopiuj/usuń', () => {
-    const onOpen = vi.fn();
-    const onShow = vi.fn();
+  it('lista pól: rola z kanonu, „Pokaż na schemacie" dla pola w modelu (jedna droga wejścia)', () => {
+    // Dawne „otwórz/SLD/kopiuj/usuń" nie miały produkcyjnego dostawcy wywołań —
+    // skasowane (karta SLD-SKALA-I-NAWIGACJA); wejście na schemat — wspólny przycisk.
+    ustawMigawkeZElementami([{ kolekcja: 'bays', id: 'b1', name: 'Pole F-01', pola: { bus_ref: 'bus-1' } }]);
     render(
       <StationConfigBaysCard
         bays={[
@@ -267,8 +271,6 @@ describe('StationConfigBaysCard', () => {
           },
         ]}
         hvFuses={[]}
-        onOpenBay={onOpen}
-        onShowOnSld={onShow}
       />,
     );
     expect(screen.getByTestId('station-config-bay-row-b1')).toBeInTheDocument();
@@ -276,10 +278,13 @@ describe('StationConfigBaysCard', () => {
     expect(screen.getByTestId('station-config-bay-row-b1').textContent).toContain(
       FIELD_ROLE_LABEL_PL.LINIA_IN,
     );
-    fireEvent.click(screen.getByTestId('bay-open-b1'));
-    expect(onOpen).toHaveBeenCalledWith('b1');
-    fireEvent.click(screen.getByTestId('bay-show-sld-b1'));
-    expect(onShow).toHaveBeenCalledWith('b1');
+    const przycisk = screen.getByTestId('bay-show-sld-b1');
+    expect(przycisk).toHaveTextContent('Pokaż na schemacie');
+    fireEvent.click(przycisk);
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('b1');
+    expect(useSelectionStore.getState().sldWskazanie).toMatchObject({ ref: 'b1', tryb: 'kadruj' });
+    useSnapshotStore.setState({ snapshot: null });
+    useSelectionStore.getState().clearSelection();
   });
 });
 

@@ -6,9 +6,11 @@
 
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { useSelectionStore } from '../../../../ui/selection/store';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
 import { SzczegolWerdyktu, nazwaRodzajuTwierdzenia } from '../SzczegolWerdyktu';
 import { mapujMacierz, zbudujModuly, type KomorkaMacierzy } from '../macierzModel';
 import { MACIERZ_STRINGS } from '../strings';
@@ -28,6 +30,12 @@ const WIERSZE = mapujMacierz(BIEG.test_catalog, BIEG, MODULY);
 function komorka(indeksWiersza: number, derRef: string): KomorkaMacierzy {
   return WIERSZE[indeksWiersza].komorki.find((k) => k.derRef === derRef)!;
 }
+
+
+afterEach(() => {
+  useSnapshotStore.setState({ snapshot: null });
+  useSelectionStore.getState().clearSelection();
+});
 
 describe('SzczegolWerdyktu', () => {
   it('bez wybranej komórki → podpowiedź wyboru', () => {
@@ -92,10 +100,18 @@ describe('SzczegolWerdyktu', () => {
     );
     const k = komorka(indeks, pv.der_ref);
     if (k.stan !== 'wynik') throw new Error('oczekiwano rekordu');
+    const ref = k.wynik.ocena.przedmiot.element_ref as string;
+    // Bez elementu w modelu akcji nie ma (jeden predykat z akcją: `elementNaSchemacie`).
+    const { unmount } = render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={[]} wzoryLatex={{}} jednostkiSladu={{}} szczegolyAudytowe={false} />);
+    expect(screen.queryByTestId('mvd-oze-szczegol-pokaz-element')).toBeNull();
+    unmount();
+    // Przedmiot oceny modułu wytwórczego istnieje w migawce modelu.
+    ustawMigawkeZElementami([{ kolekcja: 'generators', id: ref }]);
     const uzytkownik = userEvent.setup();
     render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={[]} wzoryLatex={{}} jednostkiSladu={{}} szczegolyAudytowe={false} />);
     await uzytkownik.click(screen.getByTestId('mvd-oze-szczegol-pokaz-element'));
-    expect(useSelectionStore.getState().selectedElement?.id).toBe(k.wynik.ocena.przedmiot.element_ref);
+    expect(useSelectionStore.getState().selectedElement?.id).toBe(ref);
+    expect(useSelectionStore.getState().sldWskazanie).toMatchObject({ ref, tryb: 'kadruj' });
   });
 
   it('ślad: przycisk rozwija kroki TEGO testu', async () => {

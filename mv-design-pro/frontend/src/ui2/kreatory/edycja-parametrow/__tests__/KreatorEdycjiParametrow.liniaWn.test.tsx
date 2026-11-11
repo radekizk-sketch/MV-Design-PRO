@@ -26,7 +26,9 @@ const snapshotState = {
 };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
 vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {

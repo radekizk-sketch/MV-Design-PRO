@@ -129,13 +129,20 @@ export function pokazElementNaSchemacie(ref: string, zrodlo: string, opcje: Opcj
   selekcja.centerSldOnElement(element.id, opcje.tryb ?? 'kadruj');
   emituj({ typ: 'selekcja', obiektId: ref, zrodlo });
   if (wPowierzchni) {
-    useNetworkBuildStore.getState().openRouteSurface('E-01', {
+    // Kanwa jako POTOMEK bieżącej powierzchni (rodzic + poziom > 1): stos zachowuje
+    // powierzchnię wołającą, okruszki prowadzą z powrotem. Poziom domyślny (1)
+    // zerowałby stos — konfigurator znikał bez drogi powrotu.
+    const budowa = useNetworkBuildStore.getState();
+    const rodzic = budowa.activeSurface;
+    budowa.openRouteSurface('E-01', {
       titlePl: 'Schemat i topologia',
       entityRef: element.id,
       subjectKind: 'entity',
       subjectRef: element.id,
       route: 'sld',
       supportsMiniSld: true,
+      parentSurfaceId: rodzic?.surfaceId ?? null,
+      stackLevel: rodzic ? (Math.min(3, Math.max(2, rodzic.stackLevel + 1)) as 2 | 3) : 1,
     });
   } else if (!naKanwie) {
     przejdzDoPrzestrzeni('schemat');

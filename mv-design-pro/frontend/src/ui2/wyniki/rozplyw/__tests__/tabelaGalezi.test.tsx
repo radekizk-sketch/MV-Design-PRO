@@ -18,6 +18,7 @@ import { useShellStore } from '../../../shell/useShellStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { identyfikatorGrafu } from '../../../../ui/topology/identyfikatorGrafu';
 import type { EnergyNetworkModel } from '../../../../types/enm';
+import { ustawMigawkeZElementami, zamontujKanweSchematu } from '../../../../test/schematTestowy';
 import {
   branchResultFixture,
   powerFlowResultFixture,
@@ -144,7 +145,18 @@ describe('TabelaGalezi — stan pusty uczciwy (wynik obecny, brak gałęzi)', ()
 });
 
 describe('TabelaGalezi — werdykt obciążalności z walidacji energetycznej (R3-A / K1-G2)', () => {
-  beforeEach(() => ustawWynik());
+  beforeEach(() => {
+    ustawWynik();
+    // Gałęzie z fixtury istnieją w modelu (decyzja prowadzi tylko do elementu na schemacie).
+    ustawMigawkeZElementami([
+      { kolekcja: 'branches', id: 'L-1', pola: { type: 'cable' } },
+      { kolekcja: 'branches', id: 'L-2', pola: { type: 'cable' } },
+      { kolekcja: 'transformers', id: 'T-1', name: 'Transformator T-1' },
+    ]);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null } as never);
+  });
 
   it('pobiera walidację energetyczną dla przebiegu z nagłówka (run_id z store)', async () => {
     mockedWalidacja.mockResolvedValue(walidacjaResponseFixture());
@@ -309,7 +321,8 @@ describe('TabelaGalezi — wiersz rozpływu z identyfikatorem GRAFU zaznacza ele
 
   beforeEach(() => {
     useSnapshotStore.setState({
-      snapshot: { branches: [{ ref_id: REF, id: 'galaz-1', name: 'Odcinek 1' }] } as unknown as EnergyNetworkModel,
+      // Realny odcinek migawki niesie rodzaj gałęzi (`cable`) — z niego rozwiązywacz bierze typ.
+      snapshot: { branches: [{ ref_id: REF, id: 'galaz-1', name: 'Odcinek 1', type: 'cable' }] } as unknown as EnergyNetworkModel,
     } as never);
     ustawWynik({ branch_results: [branchResultFixture({ branch_id: UUID })] });
     mockedWalidacja.mockResolvedValue(
@@ -325,10 +338,26 @@ describe('TabelaGalezi — wiersz rozpływu z identyfikatorem GRAFU zaznacza ele
     render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
     await screen.findByText('92,0');
 
+    // Klik wiersza to PRZEGLĄDANIE: wskazanie kamery idzie tylko do zamontowanej kanwy
+    // (np. tabela w panelu dolnym nad schematem), bez zmiany skali.
+    const odmontuj = zamontujKanweSchematu();
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+    odmontuj();
 
     const stan = useSelectionStore.getState();
     expect(stan.selectedElement).toMatchObject({ id: REF, type: 'LineBranch', name: 'Odcinek 1' });
-    expect(stan.sldWskazanie?.ref).toBe(REF);
+    expect(stan.sldWskazanie).toMatchObject({ ref: REF, tryb: 'kotwicz' });
+  });
+
+  it('klik wiersza bez kanwy na ekranie: zaznaczenie bez wskazania kamery (nic nie skacze)', async () => {
+    render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
+    await screen.findByText('92,0');
+
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+
+    const stan = useSelectionStore.getState();
+    expect(stan.selectedElement?.id).toBe(REF);
+    expect(stan.sldWskazanie).toBeNull();
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
   });
 });

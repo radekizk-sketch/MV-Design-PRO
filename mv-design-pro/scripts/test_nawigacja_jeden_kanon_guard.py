@@ -67,6 +67,32 @@ export function usePoprawWModelu() {
 """
 
 
+JEDNA_DROGA_TS = """
+export function pokazElementNaSchemacie(ref) {
+  useSelectionStore.getState().centerSldOnElement(ref, 'kadruj');
+}
+"""
+
+PRZEJSCIA_TS = """
+export function przejdzDoPrzestrzeni(space) {
+  if (space === 'schemat') navigateToSld();
+}
+"""
+
+KANWA_TSX = """
+export function KanwaSchematu(props) {
+  useRejestracjaKanwySchematu();
+  return <SldCanvasV3Workspace {...props} />;
+}
+"""
+
+STORE_SELEKCJI_TS = """
+export const useSelectionStore = create((set) => ({
+  centerSldOnElement: (elementId, tryb = 'kadruj') => set({}),
+}));
+"""
+
+
 def zbuduj_front(tmp_path: Path) -> Path:
     """Minimalne, POPRAWNE drzewo frontu — punkt wyjscia kazdego przypadku."""
     src = tmp_path / "frontend" / "src"
@@ -88,6 +114,12 @@ def zbuduj_front(tmp_path: Path) -> Path:
     (src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts").write_text(
         PETLA_TS, encoding="utf-8"
     )
+    (src / "ui2" / "shell").mkdir(parents=True)
+    (src / "ui2" / "shell" / "zaznaczElementModelu.ts").write_text(JEDNA_DROGA_TS, encoding="utf-8")
+    (src / "ui2" / "shell" / "przejsciaPrzestrzeni.ts").write_text(PRZEJSCIA_TS, encoding="utf-8")
+    (src / "ui2" / "legacy" / "KanwaSchematu.tsx").write_text(KANWA_TSX, encoding="utf-8")
+    (src / "ui" / "selection").mkdir(parents=True)
+    (src / "ui" / "selection" / "store.ts").write_text(STORE_SELEKCJI_TS, encoding="utf-8")
     return src
 
 
@@ -107,6 +139,13 @@ def przypnij(monkeypatch, src: Path) -> None:
         src / "ui2" / "wyniki" / "wzorzec" / "usePoprawWModelu.ts",
     )
     monkeypatch.setattr(
+        guard, "PLIK_JEDNEJ_DROGI", src / "ui2" / "shell" / "zaznaczElementModelu.ts"
+    )
+    monkeypatch.setattr(guard, "PLIK_PRZEJSC", src / "ui2" / "shell" / "przejsciaPrzestrzeni.ts")
+    monkeypatch.setattr(guard, "PLIK_KANWY", src / "ui2" / "legacy" / "KanwaSchematu.tsx")
+    monkeypatch.setattr(guard, "PLIK_STORE_SELEKCJI", src / "ui" / "selection" / "store.ts")
+    monkeypatch.setattr(guard, "KATALOG_INFRASTRUKTURY_TESTOW", src / "test")
+    monkeypatch.setattr(
         guard,
         "SCIEZKA_REJESTRU_OBSZAROW",
         src / "ui" / "navigation" / "areaRegistry.ts",
@@ -120,7 +159,6 @@ def przypnij(monkeypatch, src: Path) -> None:
 
 def test_regula_a_czysto_gdy_trasy_tylko_w_routes(tmp_path, monkeypatch) -> None:
     src = zbuduj_front(tmp_path)
-    (src / "ui2" / "shell").mkdir(parents=True)
     (src / "ui2" / "shell" / "most.ts").write_text(
         "import { ROUTES } from '../../ui/navigation';\nconst a = ROUTES.SLD.hash;\n",
         encoding="utf-8",
@@ -428,6 +466,117 @@ def test_regula_f_lapie_drugiego_wolajacego_wykonawce(tmp_path, monkeypatch) -> 
     przypnij(monkeypatch, src)
 
     assert any("[naprawa-wolajacy]" in w for w in guard.regula_f_akcja_naprawcza())
+
+
+# --------------------------------------------------------------------------
+# REGULA G — jedna droga wejscia na schemat
+# --------------------------------------------------------------------------
+
+
+def test_regula_g_czysto_na_minimalnym_drzewie(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Komponent.tsx").write_text(
+        "// dawniej: dispatchEvent('sld:center-on-element') — komentarz to nie kod\n"
+        "export const x = () => pokazElementNaSchemacie(ref, 'tabela');\n",
+        encoding="utf-8",
+    )
+    (src / "test").mkdir()
+    (src / "test" / "schematTestowy.ts").write_text(
+        "export const z = () => renderHook(() => useRejestracjaKanwySchematu());\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_g_jedna_droga_na_schemat() == []
+
+
+def test_regula_g_lapie_martwe_zdarzenie_takze_w_tescie(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "x" / "__tests__").mkdir(parents=True)
+    (src / "ui" / "x" / "__tests__" / "a.test.tsx").write_text(
+        "window.dispatchEvent(new CustomEvent('sld:center-on-element', { detail }));\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[schemat-martwe-zdarzenie]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_lapie_wlasna_nawigacje_na_schemat(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "Wiersz.tsx").write_text(
+        "export const klik = () => { selectElement(e); navigateToSld(); };\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[schemat-wlasna-nawigacja]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_przepuszcza_definicje_nawigacji_w_routes(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "navigation" / "routes.ts").write_text(
+        ROUTES_TS + "\nexport function navigateToSld(): void {}\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_g_jedna_droga_na_schemat() == []
+
+
+def test_regula_g_lapie_gole_wskazanie_kamery(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui" / "Drzewo.tsx").write_text(
+        "export const klik = () => useSelectionStore.getState().centerSldOnElement(id);\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[schemat-gole-wskazanie]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_lapie_montaz_kanwy_poza_rejestrem(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Warsztat.tsx").write_text(
+        'export const W = () => <SldCanvasV3Workspace mode="edit" />;\n', encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-montaz-poza-rejestrem]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_druga_rejestracje_montazu(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "InnaKanwa.tsx").write_text(
+        "export const K = () => { useRejestracjaKanwySchematu(); return null; };\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[schemat-druga-rejestracja]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_lapie_kanwe_bez_rejestracji(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "legacy" / "KanwaSchematu.tsx").write_text(
+        "export const K = (p) => <SldCanvasV3Workspace {...p} />;\n", encoding="utf-8"
+    )
+    przypnij(monkeypatch, src)
+
+    assert any(
+        "[schemat-kanwa-bez-rejestracji]" in w for w in guard.regula_g_jedna_droga_na_schemat()
+    )
+
+
+def test_regula_g_lapie_droge_bez_kamery(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "shell" / "zaznaczElementModelu.ts").write_text(
+        "export function pokazElementNaSchemacie(ref) { selectElement(ref); }\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[schemat-droga-pusta]" in w for w in guard.regula_g_jedna_droga_na_schemat())
 
 
 def test_guard_zielony_na_repozytorium() -> None:

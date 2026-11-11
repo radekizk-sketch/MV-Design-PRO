@@ -17,6 +17,7 @@ import { subskrybuj } from '../../events';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../../ui/selection/store';
 import type { EnergyNetworkModel } from '../../../types/enm';
+import { zamontujKanweSchematu } from '../../../test/schematTestowy';
 
 function model(): EnergyNetworkModel {
   return {
@@ -108,11 +109,21 @@ describe('zaznaczElementModelu — ref × obecność w migawce', () => {
     useSnapshotStore.setState(initialSnapshot, true);
   });
 
-  it('ref w migawce: zaznaczenie, centrowanie schematu i zdarzenie z prawdziwym źródłem', () => {
+  it('ref w migawce, kanwa zamontowana: zaznaczenie, kotwiczenie kadru (bez zmiany skali) i zdarzenie', () => {
+    const odmontuj = zamontujKanweSchematu();
     zaznaczElementModelu('BUS-1', 'panel-dolny');
     const stan = useSelectionStore.getState();
     expect(stan.selectedElement?.id).toBe('BUS-1');
-    expect(stan.sldWskazanie?.ref).toBe('BUS-1');
+    expect(stan.sldWskazanie).toMatchObject({ ref: 'BUS-1', tryb: 'kotwicz' });
+    expect(zdarzenia).toEqual([{ obiektId: 'BUS-1', zrodlo: 'panel-dolny' }]);
+    odmontuj();
+  });
+
+  it('ref w migawce, kanwa NIEzamontowana: samo zaznaczenie — bez odłożonego wskazania kamery', () => {
+    zaznaczElementModelu('BUS-1', 'panel-dolny');
+    const stan = useSelectionStore.getState();
+    expect(stan.selectedElement?.id).toBe('BUS-1');
+    expect(stan.sldWskazanie).toBeNull();
     expect(zdarzenia).toEqual([{ obiektId: 'BUS-1', zrodlo: 'panel-dolny' }]);
   });
 

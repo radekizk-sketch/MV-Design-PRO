@@ -39,6 +39,22 @@ REGULA F — akcja naprawcza jest WYKONAWCA jedna nawigacja (C-12, decyzja K-12)
     Wykonawca `executeFixActionSurface` ma JEDNEGO wolajacego i nie wraca do
     warstwy `ui/` (dawna wyspa z jednym konsumentem legacy).
 
+REGULA G — jedna droga „pokaz element na schemacie" (karta SLD-SKALA-I-NAWIGACJA).
+    Pomiar przed karta: osiem miejsc wysylalo zdarzenie DOM `sld:center-on-element`,
+    ktorego NIKT nie sluchal (klik bez skutku), komponenty wolaly gole
+    `centerSldOnElement` i wlasne `navigateToSld()`, a wskazanie kamery odkladane
+    bez kanwy kadrowalo schemat przy pozniejszym, niezwiazanym wejsciu. Odtad:
+    - literal zdarzenia `sld:center-on-element` nie wystepuje w kodzie (takze w
+      testach — test wysylajacy martwe zdarzenie maskuje martwy klik);
+    - `navigateToSld(` wola wylacznie most przestrzeni `ui2/shell/przejsciaPrzestrzeni.ts`
+      (definicja w `routes.ts`);
+    - `centerSldOnElement(` wola wylacznie `ui2/shell/zaznaczElementModelu.ts`
+      (definicja w store selekcji);
+    - kanwe `<SldCanvasV3Workspace` montuje wylacznie `ui2/legacy/KanwaSchematu.tsx`,
+      i tylko on rejestruje montaz (`useRejestracjaKanwySchematu(`) — rejestr jest
+      predykatem PARY z konsumentem wskazania kamery, wiec druga sciezka montazu
+      bez rejestracji rozjechalaby „kanwa widoczna" z „wskazanie obsluzone".
+
 Uruchomienie:
     python scripts/nawigacja_jeden_kanon_guard.py
 
@@ -322,6 +338,92 @@ def regula_f_akcja_naprawcza() -> list[str]:
     return naruszenia
 
 
+#: Regula G (karta SLD-SKALA-I-NAWIGACJA) — jedna droga wejscia na schemat.
+PLIK_JEDNEJ_DROGI = FRONTEND_SRC / "ui2" / "shell" / "zaznaczElementModelu.ts"
+PLIK_PRZEJSC = FRONTEND_SRC / "ui2" / "shell" / "przejsciaPrzestrzeni.ts"
+PLIK_KANWY = FRONTEND_SRC / "ui2" / "legacy" / "KanwaSchematu.tsx"
+PLIK_STORE_SELEKCJI = FRONTEND_SRC / "ui" / "selection" / "store.ts"
+ZDARZENIE_MARTWE = re.compile(r"sld:center-on-element")
+WYWOLANIE_NAWIGACJI_SLD = re.compile(r"\bnavigateToSld\s*\(")
+DEFINICJA_NAWIGACJI_SLD = re.compile(r"\bfunction\s+navigateToSld\s*\(")
+WYWOLANIE_WSKAZANIA = re.compile(r"\bcenterSldOnElement\s*\(")
+MONTAZ_KANWY = re.compile(r"<SldCanvasV3Workspace\b")
+REJESTRACJA_KANWY = re.compile(r"\buseRejestracjaKanwySchematu\s*\(")
+DEFINICJA_REJESTRACJI = re.compile(r"\bfunction\s+useRejestracjaKanwySchematu\s*\(")
+#: Infrastruktura testow (`src/test/`) rejestruje montaz kanwy TA SAMA funkcja co
+#: produkcja (pomocnik `schematTestowy.ts`) — to nie druga sciezka montazu.
+KATALOG_INFRASTRUKTURY_TESTOW = FRONTEND_SRC / "test"
+
+
+def regula_g_jedna_droga_na_schemat() -> list[str]:
+    naruszenia: list[str] = []
+    for sciezka in pliki_frontu(z_testami=True):
+        tresc = bez_komentarzy(sciezka.read_text(encoding="utf-8"))
+        for numer, linia in enumerate(tresc.splitlines(), start=1):
+            if ZDARZENIE_MARTWE.search(linia):
+                naruszenia.append(
+                    f"[schemat-martwe-zdarzenie] {sciezka.relative_to(REPO_ROOT)}:{numer} "
+                    "zdarzenie DOM sld:center-on-element nie ma odbiorcy — uzyj "
+                    "zaznaczElementModelu / pokazElementNaSchemacie"
+                )
+
+    for sciezka in pliki_frontu():
+        if sciezka.is_relative_to(KATALOG_INFRASTRUKTURY_TESTOW):
+            continue
+        tresc = bez_komentarzy(sciezka.read_text(encoding="utf-8"))
+        for numer, linia in enumerate(tresc.splitlines(), start=1):
+            miejsce = f"{sciezka.relative_to(REPO_ROOT)}:{numer}"
+            if (
+                WYWOLANIE_NAWIGACJI_SLD.search(linia)
+                and not DEFINICJA_NAWIGACJI_SLD.search(linia)
+                and sciezka != PLIK_PRZEJSC
+            ):
+                naruszenia.append(
+                    f"[schemat-wlasna-nawigacja] {miejsce} navigateToSld() poza mostem "
+                    "przestrzeni — wejscie na schemat idzie pokazElementNaSchemacie"
+                )
+            if WYWOLANIE_WSKAZANIA.search(linia) and sciezka not in (
+                PLIK_JEDNEJ_DROGI,
+                PLIK_STORE_SELEKCJI,
+            ):
+                naruszenia.append(
+                    f"[schemat-gole-wskazanie] {miejsce} centerSldOnElement() poza "
+                    "zaznaczElementModelu.ts — uzyj jednej drogi wejscia na schemat"
+                )
+            if MONTAZ_KANWY.search(linia) and sciezka != PLIK_KANWY:
+                naruszenia.append(
+                    f"[schemat-montaz-poza-rejestrem] {miejsce} kanwa montowana poza "
+                    "KanwaSchematu.tsx — rejestr widocznosci kanwy nie zobaczy montazu"
+                )
+            if (
+                REJESTRACJA_KANWY.search(linia)
+                and not DEFINICJA_REJESTRACJI.search(linia)
+                and sciezka != PLIK_KANWY
+            ):
+                naruszenia.append(
+                    f"[schemat-druga-rejestracja] {miejsce} rejestracja montazu kanwy "
+                    "poza KanwaSchematu.tsx"
+                )
+
+    if PLIK_JEDNEJ_DROGI.is_file():
+        tresc = bez_komentarzy(PLIK_JEDNEJ_DROGI.read_text(encoding="utf-8"))
+        if not WYWOLANIE_WSKAZANIA.search(tresc):
+            naruszenia.append(
+                "[schemat-droga-pusta] zaznaczElementModelu.ts nie wola centerSldOnElement — "
+                "jedna droga wejscia na schemat nie rusza kamery"
+            )
+    else:
+        naruszenia.append(f"[schemat-brak-drogi] brak {PLIK_JEDNEJ_DROGI.relative_to(REPO_ROOT)}")
+    if not PLIK_KANWY.is_file() or not REJESTRACJA_KANWY.search(
+        bez_komentarzy(PLIK_KANWY.read_text(encoding="utf-8"))
+    ):
+        naruszenia.append(
+            f"[schemat-kanwa-bez-rejestracji] {PLIK_KANWY.relative_to(REPO_ROOT)} nie "
+            "rejestruje montazu kanwy (useRejestracjaKanwySchematu)"
+        )
+    return naruszenia
+
+
 def main() -> int:
     if not FRONTEND_SRC.is_dir():
         print(f"BLAD: brak katalogu {FRONTEND_SRC}", file=sys.stderr)
@@ -334,6 +436,7 @@ def main() -> int:
     naruszenia += regula_d_jedna_paleta()
     naruszenia += regula_e_wiazanie_pulpitu()
     naruszenia += regula_f_akcja_naprawcza()
+    naruszenia += regula_g_jedna_droga_na_schemat()
 
     if naruszenia:
         print("NAWIGACJA-JEDEN-KANON: NARUSZENIA")
@@ -343,7 +446,8 @@ def main() -> int:
         return 1
 
     print(
-        "NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu, akcja naprawcza)"
+        "NAWIGACJA-JEDEN-KANON: czysto (trasy, obszary, flaga V3, paleta, wiazanie pulpitu, "
+        "akcja naprawcza, jedna droga na schemat)"
     )
     return 0
 

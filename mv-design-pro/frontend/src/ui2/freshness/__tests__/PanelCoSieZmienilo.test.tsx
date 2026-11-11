@@ -16,6 +16,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { PanelCoSieZmienilo } from '../PanelCoSieZmienilo';
+import { ustawMigawkeZElementami } from '../../../test/schematTestowy';
+import { useSelectionStore } from '../../../ui/selection/store';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { useShellStore } from '../../shell/useShellStore';
 
 const ODPOWIEDZ = {
   case_id: 'case-1',
@@ -87,21 +91,23 @@ describe('PanelCoSieZmienilo — przyczyna unieważnienia, nie sama para rewizji
     expect(p.textContent).toContain('4 elementy');
   });
 
-  it('klik w element prowadzi DO NIEGO — ostatnie ogniwo drogi od werdyktu', async () => {
-    const pokaz = vi.fn();
+  it('„Pokaż na schemacie" przy elemencie prowadzi DO NIEGO — ostatnie ogniwo drogi od werdyktu', async () => {
+    ustawMigawkeZElementami([{ kolekcja: 'branches', id: 'lin/gpz_s02', name: 'Linia GPZ–S02', pola: { type: 'cable' } }]);
+    useShellStore.setState({ activeSpace: 'wyniki' });
     const user = userEvent.setup();
-    render(
-      <PanelCoSieZmienilo caseId="case-1" rewizjaDanych={4} onPokazElement={pokaz} />,
-    );
+    render(<PanelCoSieZmienilo caseId="case-1" rewizjaDanych={4} />);
 
-    await user.click(await screen.findByTestId('mvd-zmiana-element-lin/gpz_s02'));
-    expect(pokaz).toHaveBeenCalledWith('lin/gpz_s02');
+    await user.click(await screen.findByTestId('mvd-zmiana-pokaz-lin/gpz_s02'));
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('lin/gpz_s02');
+    expect(useSelectionStore.getState().sldWskazanie?.ref).toBe('lin/gpz_s02');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    useSnapshotStore.setState({ snapshot: null });
+    useSelectionStore.getState().clearSelection();
   });
 
-  it('element USUNIĘTY nie jest klikalny — nie ma dokąd prowadzić', async () => {
-    render(
-      <PanelCoSieZmienilo caseId="case-1" rewizjaDanych={4} onPokazElement={vi.fn()} />,
-    );
+  it('element USUNIĘTY albo nieobecny w modelu nie ma akcji — nie ma dokąd prowadzić', async () => {
+    ustawMigawkeZElementami([{ kolekcja: 'branches', id: 'lin/gpz_s02', pola: { type: 'cable' } }]);
+    render(<PanelCoSieZmienilo caseId="case-1" rewizjaDanych={4} />);
     await screen.findByTestId('mvd-co-sie-zmienilo');
 
     // Element usunięty jest WIDOCZNY (to część przyczyny), ale bez przycisku —
@@ -110,7 +116,11 @@ describe('PanelCoSieZmienilo — przyczyna unieważnienia, nie sama para rewizji
     // etykieta z członów referencji), nigdy surową referencją.
     expect(screen.getByText('usunięto: lin · stara')).toBeTruthy();
     expect(screen.queryByText(/lin\/stara/)).toBeNull();
-    expect(screen.queryByTestId('mvd-zmiana-element-lin/stara')).toBeNull();
+    expect(screen.queryByTestId('mvd-zmiana-pokaz-lin/stara')).toBeNull();
+    // Zmieniony, ale nieobecny w migawce sklepu — ten sam predykat obecności.
+    expect(screen.queryByTestId('mvd-zmiana-pokaz-lin/s02_s03')).toBeNull();
+    expect(screen.getByTestId('mvd-zmiana-pokaz-lin/gpz_s02')).toBeTruthy();
+    useSnapshotStore.setState({ snapshot: null });
   });
 });
 

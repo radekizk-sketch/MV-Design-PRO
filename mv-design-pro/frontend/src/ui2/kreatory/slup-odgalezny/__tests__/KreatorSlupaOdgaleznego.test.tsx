@@ -12,6 +12,13 @@ import type { BranchPointCatalogType } from '../../../../ui/catalog/types';
 import { KreatorSlupaOdgaleznego } from '../KreatorSlupaOdgaleznego';
 import { nazwaWartosciKodowej } from '../../../../ui/catalog/wartosciKodoweKarty';
 import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec/strings';
+import { useSelectionStore as sklepSelekcji } from '../../../../ui/selection/store';
+
+// Karta SLD-SKALA-I-NAWIGACJA: zaznaczenie po zapisie idzie jedyną drogą
+// (`zaznaczElementModelu`) do REALNEGO sklepu selekcji — asercje czytają sklep.
+afterEach(() => {
+  sklepSelekcji.getState().clearSelection();
+});
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -21,24 +28,33 @@ const centerMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = { segment_id: 'seg-1', segmentLabel: 'Linia A' };
-const snapshot = {
+const snapshot: { branches: unknown[]; branch_points: unknown[] } = {
   branches: [{ id: 'seg-1', ref_id: 'seg-1', type: 'line_overhead', name: 'Linia A' }],
+  branch_points: [],
 };
 const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock, snapshot };
 
 vi.mock('../../../../ui/app-state', () => ({
-  useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
+  useAppStateStore: Object.assign((selector: (s: typeof appState) => unknown) => selector(appState), {
+    getState: () => appState,
+  }),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  const oryginal = await importOriginal<Record<string, unknown>>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return {
+    ...oryginal,
+    useSnapshotStore };
 });
 
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
-  useNetworkBuildStore: (selector: (s: { closeOperationForm: typeof closeFormMock }) => unknown) =>
-    selector({ closeOperationForm: closeFormMock }),
+  useNetworkBuildStore: Object.assign(
+    (selector: (s: { closeOperationForm: typeof closeFormMock }) => unknown) => selector({ closeOperationForm: closeFormMock }),
+    // Jedyna droga wejścia na schemat pyta o rozwiniętą powierzchnię (brak — kreator w oknie).
+    { getState: () => ({ activeSurface: null, closeOperationForm: closeFormMock }) },
+  ),
   useActiveOperationContext: () => context,
 }));
 
@@ -93,9 +109,10 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
   afterEach(() => cleanup());
 
   it('wstawia słup na linii i wiąże selekcję po operacji', async () => {
-    executeDomainOperationMock.mockResolvedValue({
-      error: null,
-      selection_hint: { element_id: 'bp/9', element_type: 'branch_point' },
+    // Jak `executeDomainOperation`: migawka sklepu ma nowy słup PRZED zwrotem do kreatora.
+    executeDomainOperationMock.mockImplementation(async () => {
+      snapshot.branch_points = [{ id: 'bp/9', ref_id: 'bp/9', name: 'Słup odgałęźny', branch_point_type: 'pole' }];
+      return { error: null, selection_hint: { element_id: 'bp/9', element_type: 'branch_point' } };
     });
     render(<KreatorSlupaOdgaleznego />);
     await pick();
@@ -114,10 +131,11 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
       );
     });
     expect(closeFormMock).toHaveBeenCalled();
-    expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'bp/9', type: 'BranchPole' }));
+    expect(sklepSelekcji.getState().selectedElement).toEqual(expect.objectContaining({ id: 'bp/9', type: 'BranchPole' }));
     // K2: operacja kreatora KOTWICZY kamerę przy utworzonym obiekcie (tryb 'kotwicz' —
     // kamera zostaje przy pracy projektanta), a nie kadruje go jak wskazanie z wyników.
-    expect(centerMock).toHaveBeenCalledWith('bp/9', 'kotwicz');
+    expect(sklepSelekcji.getState().sldWskazanie).toMatchObject({ ref: 'bp/9', tryb: 'kotwicz' });
+    snapshot.branch_points = [];
   });
 
   // Iloczyn: każdy rekord serwera rodzaju BRANCH_POLE × odczyt parametrów kreatora. Odczyt

@@ -12,6 +12,7 @@ import { identyfikatorGrafu } from '../../../../ui/topology/identyfikatorGrafu';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { KontekstBieguEkranu, useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
 import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
+import { zamontujKanweSchematu } from '../../../../test/schematTestowy';
 
 // Karta TODO-UI2 p.9: znacznik świeżości nagłówka (`useSwiezoscNaglowka`, V12K-264)
 // czyta `analysisCaseContext.rewizjaModelu` z kontraktu przebiegu — mockowany tu
@@ -199,7 +200,18 @@ describe('TabelaSzyn — klik wiersza: rodzaj szyny × identyfikator wyniku (kar
     wyczyscKontekstWyniku();
   });
 
-  it.each(PRZYPADKI)('%s', (_opis, busId, nazwa, zaznacza) => {
+  // Iloczyn: rodzaj szyny × identyfikator wyniku × kanwa schematu na ekranie. Klik
+  // wiersza to PRZEGLĄDANIE — wskazanie kamery („kotwicz", bez zmiany skali) idzie
+  // wyłącznie do zamontowanej kanwy; bez niej zostaje samo zaznaczenie.
+  const ILOCZYN = PRZYPADKI.flatMap(
+    ([opis, busId, nazwa, zaznacza]) =>
+      [
+        [`${opis}, kanwa na ekranie`, busId, nazwa, zaznacza, true],
+        [`${opis}, bez kanwy`, busId, nazwa, zaznacza, false],
+      ] as const,
+  );
+
+  it.each(ILOCZYN)('%s', (_opis, busId, nazwa, zaznacza, kanwa) => {
     usePowerFlowResultsStore.setState({
       results: powerFlowResultFixture({ bus_results: [busResultFixture({ bus_id: busId })] }),
       runHeader: runHeaderFixture(),
@@ -210,13 +222,16 @@ describe('TabelaSzyn — klik wiersza: rodzaj szyny × identyfikator wyniku (kar
       </KontekstBieguEkranu.Provider>,
     );
 
+    const odmontuj = kanwa ? zamontujKanweSchematu() : () => undefined;
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+    odmontuj();
 
     const stan = useSelectionStore.getState();
     const kontekst = useKontekstWynikuStore.getState();
     if (zaznacza) {
       expect(stan.selectedElement).toMatchObject({ id: REF_ROBOCZEJ, type: 'Bus', name: nazwa });
-      expect(stan.sldWskazanie?.ref).toBe(REF_ROBOCZEJ);
+      if (kanwa) expect(stan.sldWskazanie).toMatchObject({ ref: REF_ROBOCZEJ, tryb: 'kotwicz' });
+      else expect(stan.sldWskazanie).toBeNull();
       // Bieg ekranu nieznany jeszcze rejestrowi → wybór oczekujący, źródło „ekran".
       expect(kontekst.oczekujacy).toEqual({ runId: 'bieg-ekranu', zrodlo: 'ekran' });
     } else {

@@ -408,9 +408,11 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
       return !/readinessUstalona|gotowoscUstalona/.test(tresc);
     });
 
-    // Test miałby wartość zerową, gdyby nie znalazł żadnego czytelnika.
+    // Test miałby wartość zerową, gdyby nie znalazł żadnego czytelnika. Po kasacji
+    // martwego paska kontekstu budowy (`TopContextBar`, karta SLD-SKALA-I-NAWIGACJA)
+    // czytelnikiem w module zostaje panel procesu — skan ma go znaleźć.
     const czytelnicy = pliki.filter((s) => readFileSync(s, 'utf-8').includes('blockersByCategory'));
-    expect(czytelnicy.length).toBeGreaterThanOrEqual(2);
+    expect(czytelnicy.map((s) => s.split('/').pop())).toContain('ProcessPanel.tsx');
     expect(bezOslony).toEqual([]);
   });
 });

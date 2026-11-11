@@ -3,7 +3,7 @@
  * ZERO fabrykacji: ref i typ elementu pochodzą z `selection_hint`/`changes` backendu.
  */
 import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 
 import type { DomainOpResponseV1, EnergyNetworkModel } from '../../../../types/enm';
 import {
@@ -12,24 +12,15 @@ import {
   refZOperacji,
   useSelekcjaPoOperacji,
 } from '../selekcjaPoOperacji';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { useShellStore } from '../../../shell/useShellStore';
+import { usePowrotZeSchematu } from '../../../shell/powrotZeSchematu';
+import { ustawMigawkeZElementami, zamontujKanweSchematu } from '../../../../test/schematTestowy';
 
-const navigateToSldMock = vi.fn();
-const selectElementMock = vi.fn();
-const centerSldOnElementMock = vi.fn();
-
-vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
-  ...(await importOriginal<Record<string, unknown>>()),
-  navigateToSld: () => navigateToSldMock(),
-}));
-
-vi.mock('../../../../ui/selection', () => ({
-  useSelectionStore: (
-    selector: (s: {
-      selectElement: typeof selectElementMock;
-      centerSldOnElement: typeof centerSldOnElementMock;
-    }) => unknown,
-  ) => selector({ selectElement: selectElementMock, centerSldOnElement: centerSldOnElementMock }),
-}));
+// Realne sklepy (karta SLD-SKALA-I-NAWIGACJA): zaznaczenie po zapisie idzie jedyną
+// drogą `zaznaczElementModelu`/`pokazElementNaSchemacie`, więc test czyta stan
+// sklepów selekcji, migawki i powłoki zamiast podmieniać moduły.
 
 function odpowiedz(overrides: Partial<DomainOpResponseV1>): DomainOpResponseV1 {
   return {
@@ -146,48 +137,72 @@ describe('kanonicznyRefZOperacji', () => {
 
 describe('useSelekcjaPoOperacji', () => {
   beforeEach(() => {
-    navigateToSldMock.mockReset();
-    selectElementMock.mockReset();
-    centerSldOnElementMock.mockReset();
+    useSelectionStore.getState().clearSelection();
+    useShellStore.setState({ activeSpace: 'model' });
+    usePowrotZeSchematu.setState({ wpis: null, doOdebrania: null });
+    // Sklep migawki ma już odpowiedź operacji (executeDomainOperation zapisuje ją
+    // PRZED zwrotem do kreatora) — nowy transformator jest w modelu.
+    ustawMigawkeZElementami([{ kolekcja: 'transformers', id: 'tr-1', name: 'TR SN/nN' }]);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null });
   });
 
-  it('zaznacza nowy element (typ z backendu), centruje SLD i nawiguje', () => {
+  it('zaznacza nowy element (typ z migawki), wskazuje go kamerze (kotwicz) i przechodzi na schemat z powrotem', () => {
     const { result } = renderHook(() => useSelekcjaPoOperacji());
     const r = odpowiedz({
       selection_hint: { element_id: 'tr-1', element_type: 'transformer', zoom_to: true },
     });
     result.current(r, { type: 'Bus', name: 'TR SN/nN' });
 
-    expect(selectElementMock).toHaveBeenCalledWith({
-      id: 'tr-1',
-      type: 'TransformerBranch',
-      name: 'TR SN/nN',
-    });
-    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-1', 'kotwicz');
-    expect(navigateToSldMock).toHaveBeenCalled();
+    const sel = useSelectionStore.getState();
+    expect(sel.selectedElement).toEqual({ id: 'tr-1', type: 'TransformerBranch', name: 'TR SN/nN' });
+    expect(sel.sldWskazanie).toMatchObject({ ref: 'tr-1', tryb: 'kotwicz' });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    expect(usePowrotZeSchematu.getState().wpis?.przestrzen).toBe('model');
   });
 
-  it('używa fallbacku typu/nazwy przy braku hintu (ref z created_ids)', () => {
+  it('kreator nad zamontowaną kanwą: wskazanie bez przejścia i bez wpisu powrotu', () => {
+    useShellStore.setState({ activeSpace: 'schemat' });
+    const odmontuj = zamontujKanweSchematu();
+    const { result } = renderHook(() => useSelekcjaPoOperacji());
+    result.current(odpowiedz({ selection_hint: { element_id: 'tr-1', element_type: 'transformer', zoom_to: true } }), {
+      type: 'Bus',
+      name: 'x',
+    });
+    expect(useSelectionStore.getState().sldWskazanie).toMatchObject({ ref: 'tr-1', tryb: 'kotwicz' });
+    expect(usePowrotZeSchematu.getState().wpis).toBeNull();
+    odmontuj();
+  });
+
+  it('ref spoza migawki sklepu: opis zastępczy kreatora, bez wskazania kamery; przejście na schemat zostaje', () => {
     const { result } = renderHook(() => useSelekcjaPoOperacji());
     const r = odpowiedz({
       changes: { created_element_ids: ['load-3'], updated_element_ids: [], deleted_element_ids: [] },
     });
     result.current(r, { type: 'LoadNN', name: 'Odbiór nN' });
 
-    expect(selectElementMock).toHaveBeenCalledWith({
-      id: 'load-3',
-      type: 'LoadNN',
-      name: 'Odbiór nN',
-    });
-    expect(navigateToSldMock).toHaveBeenCalled();
+    expect(useSelectionStore.getState().selectedElement).toEqual({ id: 'load-3', type: 'LoadNN', name: 'Odbiór nN' });
+    expect(useSelectionStore.getState().sldWskazanie).toBeNull();
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
-  it('bez elementu — nawiguje do SLD, nic nie zaznacza', () => {
+  it('selection_hint.zoom_to = false: samo zaznaczenie, bez wskazania kamery', () => {
+    const { result } = renderHook(() => useSelekcjaPoOperacji());
+    result.current(odpowiedz({ selection_hint: { element_id: 'tr-1', element_type: 'transformer', zoom_to: false } }), {
+      type: 'Bus',
+      name: 'x',
+    });
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('tr-1');
+    expect(useSelectionStore.getState().sldWskazanie).toBeNull();
+  });
+
+  it('bez elementu — przejście na schemat, nic nie zaznacza', () => {
     const { result } = renderHook(() => useSelekcjaPoOperacji());
     result.current(null, { type: 'Bus', name: 'x' });
 
-    expect(selectElementMock).not.toHaveBeenCalled();
-    expect(centerSldOnElementMock).not.toHaveBeenCalled();
-    expect(navigateToSldMock).toHaveBeenCalled();
+    expect(useSelectionStore.getState().selectedElement).toBeNull();
+    expect(useSelectionStore.getState().sldWskazanie).toBeNull();
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });

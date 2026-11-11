@@ -28,6 +28,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { ReadinessInfo } from '../../../types/enm';
+import { migawkaZElementami } from '../../../test/schematTestowy';
 
 const CASE_ID = 'case-dolny';
 
@@ -228,16 +229,27 @@ describe('Zakładka Problemy — stan gotowości × akcja wiersza', () => {
     const user = userEvent.setup();
     const readiness: ReadinessInfo = {
       ready: false,
-      blockers: [{ code: 'E005', message_pl: 'Szyna bez napięcia znamionowego.', element_ref: 'BUS-7', severity: 'BLOCKER' }],
+      blockers: [
+        { code: 'E005', message_pl: 'Szyna bez napięcia znamionowego.', element_ref: 'BUS-7', severity: 'BLOCKER' },
+        { code: 'E006', message_pl: 'Element spoza modelu.', element_ref: 'USUNIETY-1', severity: 'BLOCKER' },
+      ],
       warnings: [{ code: 'W002', message_pl: 'Brak długości odcinka.', element_ref: null, severity: 'WARNING' }],
     };
-    useSnapshotStore.setState({ readiness, fixActions: [] });
+    // Wiersz jest akcją wyłącznie dla elementu obecnego na schemacie (karta
+    // SLD-SKALA-I-NAWIGACJA — ten sam predykat co jedyna droga wejścia).
+    useSnapshotStore.setState({
+      readiness,
+      fixActions: [],
+      snapshot: migawkaZElementami([{ kolekcja: 'buses', id: 'BUS-7', pola: { voltage_kv: 15 } }]),
+    });
     const p = renderPanel('problemy');
     const blokada = screen.getByTestId('mvd-problem-0');
     expect(blokada.tagName).toBe('BUTTON');
     expect(blokada).toHaveTextContent('Blokada');
     expect(blokada).toHaveTextContent('Szyna bez napięcia znamionowego.');
-    const ostrzezenie = screen.getByTestId('mvd-problem-1');
+    // Blokada z refem nieobecnym w modelu: tekst bez akcji (brak martwego kliku).
+    expect(screen.getByTestId('mvd-problem-1').tagName).toBe('DIV');
+    const ostrzezenie = screen.getByTestId('mvd-problem-2');
     expect(ostrzezenie.tagName).toBe('DIV');
     expect(ostrzezenie).toHaveTextContent('Ostrzeżenie');
     await user.click(blokada);
@@ -306,15 +318,24 @@ describe('Zakładka Dziennik — odczyt z serwera × stan × akcja', () => {
         rewizja_biezaca: 3,
         od_rewizji: 0,
         aktualny: false,
-        wpisy: [wpis(1, [], ['BUS-1', 'BUS-2']), wpis(3, ['LIN-4']), wpis(2, [])],
+        wpisy: [wpis(1, [], ['BUS-1', 'BUS-2']), wpis(3, ['LIN-4']), wpis(2, []), wpis(4, ['USUNIETY-2'])],
       },
+    });
+    useSnapshotStore.setState({
+      snapshot: migawkaZElementami([
+        { kolekcja: 'buses', id: 'BUS-1', pola: { voltage_kv: 15 } },
+        { kolekcja: 'branches', id: 'LIN-4', pola: { type: 'cable' } },
+      ]),
     });
     const p = renderPanel('dziennik');
     expect(screen.getByTestId('mvd-dziennik-wczytywanie')).toBeInTheDocument();
     const lista = await screen.findByTestId('mvd-dziennik');
     expect(String(fetchMock.mock.calls[0][0])).toBe(`/api/cases/${CASE_ID}/enm/dziennik-zmian?od_rewizji=0`);
     const wiersze = [...lista.querySelectorAll('li')].map((li) => li.getAttribute('data-testid'));
-    expect(wiersze).toEqual(['mvd-dziennik-3', 'mvd-dziennik-2', 'mvd-dziennik-1']);
+    expect(wiersze).toEqual(['mvd-dziennik-4', 'mvd-dziennik-3', 'mvd-dziennik-2', 'mvd-dziennik-1']);
+    // Element wpisu usunięty z modelu: bez akcji; etykieta akcji wspólna dla aplikacji.
+    expect(screen.queryByTestId('mvd-dziennik-pokaz-4')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mvd-dziennik-pokaz-3')).toHaveTextContent('Pokaż na schemacie');
     expect(screen.getByTestId('mvd-dziennik-1')).toHaveTextContent('+2 / ~0 / −0');
     // Wpis bez elementów nie ma akcji (zero martwego kliku).
     expect(screen.queryByTestId('mvd-dziennik-pokaz-2')).not.toBeInTheDocument();

@@ -206,7 +206,10 @@ describe('ModelGapsSurface (E-04) — przegląd techniczny układu', () => {
       type: 'PVInverter',
       name: 'Blok PV',
     });
-    expect(useSelectionStore.getState().sldWskazanie?.ref).toBe('gen_pv_1');
+    // Karta SLD-SKALA-I-NAWIGACJA: kanwa nie jest zamontowana (okno przeglądu
+    // wypełnia warsztat), więc wskazanie kamery NIE zostaje odłożone — dawne
+    // odłożone wskazanie kadrowało schemat przy późniejszym, niezwiązanym wejściu.
+    expect(useSelectionStore.getState().sldWskazanie).toBeNull();
     expect(useNetworkBuildStore.getState().activeSurface?.routeState.payload).toMatchObject({
       delegate: 'operation_form',
       operation: 'add_transformer_sn_nn',

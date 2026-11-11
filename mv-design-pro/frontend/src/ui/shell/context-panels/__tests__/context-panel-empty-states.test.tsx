@@ -180,10 +180,12 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
 
     await userEvent.click(screen.getByTestId('schemat-action-show-normal-open-points'));
 
+    // Jedna droga zaznaczenia (karta SLD-SKALA-I-NAWIGACJA): opis elementu z
+    // rozwiązywacza migawki — ten sam, który daje klik na kanwie (pole w stacji).
     expect(useSelectionStore.getState().selectedElement).toMatchObject({
       id: 'gpz/1/bay/001',
       type: 'BaySN',
-      name: 'Pole odpływowe 1',
+      name: 'GPZ 1 - Pole SN stacji',
     });
     expect(networkBuildMocks.openOperationForm).toHaveBeenCalledWith('continue_trunk_segment_sn', expect.objectContaining({
       element_ref: 'gpz/1/bay/001',

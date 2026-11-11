@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { SekcjaWalidacji, SekcjaWiarygodnosci } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { WalidacjaResponse } from '../api';
 
 vi.mock('../api', () => ({
@@ -37,6 +39,20 @@ function propsWalidacja(over = {}) {
 beforeEach(() => {
   mockedWiarygodnosc.mockReset();
   mockedWalidacja.mockReset();
+  // Elementy z fixtur istnieją w modelu pod tymi samymi nazwami; agregat „siec" — nie (to nie element).
+  ustawMigawkeZElementami([
+    { kolekcja: 'buses', id: 'bus-A', name: 'Szyna A' },
+    { kolekcja: 'buses', id: 'bus-B', name: 'Szyna B' },
+    { kolekcja: 'buses', id: 'bus-C', name: 'Szyna C' },
+    { kolekcja: 'branches', id: 'line-1', name: 'Linia 1', pola: { type: 'line_overhead' } },
+    { kolekcja: 'branches', id: 'cable-2', name: 'Kabel 2', pola: { type: 'cable' } },
+    { kolekcja: 'transformers', id: 'tr-1', name: 'Transformator 1' },
+    { kolekcja: 'sources', id: 'slack', name: 'Węzeł bilansujący' },
+  ]);
+});
+
+afterEach(() => {
+  useSnapshotStore.setState({ snapshot: null });
 });
 
 describe('SekcjaWiarygodnosci — stany', () => {
@@ -303,6 +319,9 @@ describe('SekcjaWalidacji — klik NATYWNY na wierszu (karta TODO-UI2 p.6, popra
       ...WALIDACJA_FIXTURE,
       items: [{ ...WALIDACJA_FIXTURE.items[1], target_name: null }],
     };
+    // Bez migawki modelu nazwy nie ma skąd wziąć — zostaje identyfikator (gdy model
+    // jest, nazwa pochodzi z modelu; to sprawdza test wyżej).
+    useSnapshotStore.setState({ snapshot: null });
     mockedWalidacja.mockResolvedValue(fixtura);
     render(<SekcjaWalidacji {...propsWalidacja()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());

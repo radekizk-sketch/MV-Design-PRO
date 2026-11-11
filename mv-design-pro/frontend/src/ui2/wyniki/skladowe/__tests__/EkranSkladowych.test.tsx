@@ -14,6 +14,8 @@ import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildS
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { WZORZEC_STRINGS } from '../../wzorzec';
 import { STAN_WYBORU_PUSTY, useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
 import { EkranSkladowych } from '../EkranSkladowych';
@@ -368,6 +370,14 @@ describe('EkranSkladowych — wskazanie elementu (F-K4, znalezisko Z4)', () => {
     useExecutionRunsStore.setState({ runs: [RUN_1F, RUN_3F] });
     useKontekstWynikuStore.getState().wybierzBieg('run-1f', 'ekran');
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
+    // Punkty zwarcia istnieją w modelu (wskazanie tylko dla elementu na schemacie).
+    ustawMigawkeZElementami([
+      { kolekcja: 'buses', id: 'bus/gpz/sn', name: 'Szyna GPZ' },
+      { kolekcja: 'sources', id: 'src/gpz' },
+    ]);
+  });
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null });
   });
 
   it('akcja jest INSPEKCYJNA („Pokaż na schemacie"), bo ekran nie ma kryterium naruszenia', async () => {

@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { KatalogPanel } from '../KatalogPanel';
 import { FIXTURE_UZYCIA, stubLoader } from './fixtures';
 import { poTekscieZWzorami } from '../../../../../test/tekstZWzorami';
+import { ustawMigawkeZElementami } from '../../../../../test/schematTestowy';
+import { useSelectionStore } from '../../../../../ui/selection/store';
+import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
 
 describe('KatalogPanel', () => {
   it('renderuje wszystkie kategorie katalogu', async () => {
@@ -72,19 +75,14 @@ describe('KatalogPanel', () => {
     expect(screen.getByText('0,13 s')).toBeInTheDocument();
   });
 
-  it('integruje „Gdzie użyty" ze snapshotu i nawiguje przez callback', async () => {
-    const onPokaz = vi.fn();
-    render(
-      <KatalogPanel
-        zaladujTypy={stubLoader}
-        uzyciaSnapshot={FIXTURE_UZYCIA}
-        onPokazElement={onPokaz}
-      />,
-    );
+  it('integruje „Gdzie użyty" ze snapshotu i prowadzi na schemat jedyną drogą wejścia', async () => {
+    ustawMigawkeZElementami([{ kolekcja: 'branches', id: 'branch-1', name: 'Linia L1', pola: { type: 'line_overhead' } }]);
+    render(<KatalogPanel zaladujTypy={stubLoader} uzyciaSnapshot={FIXTURE_UZYCIA} />);
     fireEvent.click(await screen.findByRole('button', { name: /AFL-6 120/ }));
-    const link = await screen.findByRole('button', { name: /Linia L1/ });
-    fireEvent.click(link);
-    expect(onPokaz).toHaveBeenCalledWith('branch-1');
+    fireEvent.click(await screen.findByRole('button', { name: 'Pokaż na schemacie' }));
+    expect(useSelectionStore.getState().selectedElement?.id).toBe('branch-1');
+    useSnapshotStore.setState({ snapshot: null });
+    useSelectionStore.getState().clearSelection();
   });
 
   it('używa domyślnego loadera (realny klient katalogu), gdy nie wstrzyknięto', async () => {
