@@ -41,7 +41,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from .pola import pola_sn_stacji, poziom_pol
+from .pola import napis_lub_none, pola_sn_stacji, poziom_pol
 from .slownik_komunikatow import NAZWY_RODZAJOW_STACJI_PL
 from .tor_pola import szyny_stacji
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO
@@ -177,10 +177,6 @@ def _slownik(value: object) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
-def _napis(value: object) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
-
-
 def liczba_pol_pl(liczba: int, przymiotnik: str = "liniowe") -> str:
     """„1 pole liniowe", „2 pola liniowe", „5 pól liniowych" (odmiana liczebnika)."""
     if liczba == 1:
@@ -224,7 +220,7 @@ def rodzaj_z_topologii(pola_liniowe: int, sprzeglo: bool, wyprowadzenia_polaczon
 
 
 def _rola_rozpoznana(wartosc: object) -> str | None:
-    rola = _napis(wartosc)
+    rola = napis_lub_none(wartosc)
     if rola is None:
         return None
     rola = rola.upper()
@@ -244,7 +240,7 @@ def kategoria_pola(spec: Mapping[str, Any]) -> str | None:
         spec.get("bay_kind"),
         _slownik(spec.get("metadane_pochodzenia")).get("bay_kind"),
     ):
-        wartosc = _napis(rodzaj)
+        wartosc = napis_lub_none(rodzaj)
         if wartosc is not None and wartosc.lower() in KATEGORIA_RODZAJU_POLA:
             return KATEGORIA_RODZAJU_POLA[wartosc.lower()]
     rola = rola_pola(spec)
@@ -264,7 +260,7 @@ def _wyprowadzenia_polaczone(
     """
     sasiedzi: dict[str, set[str]] = {}
     for galaz in galezie:
-        a, b = _napis(galaz.get("from_bus_ref")), _napis(galaz.get("to_bus_ref"))
+        a, b = napis_lub_none(galaz.get("from_bus_ref")), napis_lub_none(galaz.get("to_bus_ref"))
         if a and b and a != b:
             sasiedzi.setdefault(a, set()).add(b)
             sasiedzi.setdefault(b, set()).add(a)
@@ -286,7 +282,7 @@ def _wyprowadzenia_polaczone(
     for galaz in galezie:
         if galaz.get("type") not in TYPY_ODCINKA_TERENOWEGO:
             continue
-        a, b = _napis(galaz.get("from_bus_ref")), _napis(galaz.get("to_bus_ref"))
+        a, b = napis_lub_none(galaz.get("from_bus_ref")), napis_lub_none(galaz.get("to_bus_ref"))
         if a in wlasne and b and b not in wlasne:
             polaczone += prowadzi_do_innej_stacji(b)
         elif b in wlasne and a and a not in wlasne:
@@ -300,13 +296,13 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
     galezie = [g for g in enm.get("branches") or [] if isinstance(g, Mapping)]
     poziom = poziom_pol(enm)
     szyny: dict[str, frozenset[str]] = {
-        str(_napis(s.get("ref_id"))): szyny_stacji(enm, s, poziom)
+        str(napis_lub_none(s.get("ref_id"))): szyny_stacji(enm, s, poziom)
         for s in stacje
-        if _napis(s.get("ref_id"))
+        if napis_lub_none(s.get("ref_id"))
     }
     wynik: dict[str, RodzajStacji] = {}
     for stacja in stacje:
-        ref = _napis(stacja.get("ref_id"))
+        ref = napis_lub_none(stacja.get("ref_id"))
         if ref is None or stacja.get("station_type") in TYPY_STACJI_BEZ_RODZAJU:
             continue
         liniowe = 0
@@ -317,10 +313,12 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
             if kategoria is None:
                 nierozpoznane.append(
                     PoleNierozpoznane(
-                        field_ref=str(_napis(pole.get("ref_id"))),
-                        nazwa=_napis(pole.get("name")),
+                        field_ref=str(napis_lub_none(pole.get("ref_id"))),
+                        nazwa=napis_lub_none(pole.get("name")),
                         rola=str(
-                            _napis(pole.get("field_role")) or _napis(pole.get("bay_role")) or ""
+                            napis_lub_none(pole.get("field_role"))
+                            or napis_lub_none(pole.get("bay_role"))
+                            or ""
                         ),
                     )
                 )
@@ -335,7 +333,7 @@ def rodzaje_stacji(enm: Mapping[str, Any]) -> dict[str, RodzajStacji]:
         deklaracja = stacja.get("station_type")
         wynik[ref] = RodzajStacji(
             station_ref=ref,
-            station_name=_napis(stacja.get("name")),
+            station_name=napis_lub_none(stacja.get("name")),
             rodzaj=rodzaj_z_topologii(liniowe, sprzeglo, polaczone),
             pola_liniowe=liniowe,
             sprzeglo=sprzeglo,
@@ -360,7 +358,7 @@ def rodzaj_ze_skladu_pol(role_pol: Sequence[object], *, polaczone_wyprowadzenia:
     liniowe = 0
     sprzeglo = False
     for wartosc in role_pol:
-        tekst = _napis(wartosc)
+        tekst = napis_lub_none(wartosc)
         kategoria = (
             KATEGORIA_RODZAJU_POLA.get(tekst.lower())
             if tekst is not None and tekst.lower() in KATEGORIA_RODZAJU_POLA

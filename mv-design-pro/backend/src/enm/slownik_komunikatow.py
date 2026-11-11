@@ -107,7 +107,8 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_nn_load:cos_phi": "Współczynnik mocy",  # odbior/strings.ts cosPhi
     "ct_catalog_ref": "Przekładnik prądowy (CT)",  # zrodlo-oze/strings.ts aparaturaCt
     "ct_arrangement": "Układ przekładników prądowych",  # przekładnik CT (bez pola kreatora)
-    "ct_cores": "Liczba rdzeni przekładnika prądowego",  # przekładnik CT (bez pola kreatora)
+    "rdzenie": "Rdzenie przekładnika prądowego",  # przekładnik CT (lista rdzeni, bez pola kreatora)
+    "uzwojenia": "Uzwojenia przekładnika napięciowego",  # przekładnik VT (lista uzwojeń, bez pola kreatora)
     "vt_arrangement": "Układ połączeń przekładników napięciowych",  # przekładnik VT (bez pola kreatora)
     "vt_mounting": "Miejsce montażu przekładnika napięciowego",  # przekładnik VT (bez pola kreatora)
     "vt_uzwojenie": "Uzwojenie przekładnika napięciowego",  # przekładnik VT (etykieta edytora obwodu wtórnego pola)
@@ -237,6 +238,18 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_bay_equipment:mode": "Sposób wyposażenia pola",
     "set_bay_equipment:devices": "Aparaty pola",
     "set_bay_equipment:bay_template_ref": "Szablon pola",
+    "set_bay_equipment:klasa_pola": "Klasa pola liniowego",
+    # Decyzja właściciela 2026-10-29: powiązanie źródła napięcia zerowego 3U₀ pola (ENEA Z.17).
+    "set_bay_equipment:zrodlo_u0_ref": "Źródło napięcia zerowego",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (istniejący/projektowany).
+    "set_object_state:bay_ref": "Pole rozdzielnicy",
+    "set_object_state:stan_obiektu": "Stan obiektu",
+    "set_object_state:device_ref": "Aparat pola",
+    "set_object_state:switch_ref": "Łącznik",
+    "set_bay_apparatus_position:bay_ref": "Pole rozdzielnicy",
+    "set_bay_apparatus_position:device_ref": "Łącznik pola",
+    "set_bay_apparatus_position:actual_state": "Położenie łącznika",
+    "assign_catalog_to_element:stan_obiektu": "Stan obiektu łącznika",
     "tap_changer.control_mode": "Tryb sterowania",  # zrodlo/strings.ts oltcTryb
     "tap_changer.regulated_winding": "Regulowane uzwojenie",  # zrodlo/strings.ts oltcUzwojenie
     "tap_changer.regulation_type": "Rodzaj regulacji",  # zrodlo/strings.ts oltcTyp; transformator regTyp

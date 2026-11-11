@@ -35,6 +35,8 @@ import type {
 } from '../../../../../types/enm';
 import { pole } from '../../../../../test/pola';
 import { polaSnStacji } from '../../../../shared/polaStacji';
+import { ctRatingLabelText } from '../../../v3/compose/protectionMarking';
+import { zrodloU0Deskryptora } from '../../model/zrodloNapieciaZerowego';
 
 function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
   return {
@@ -1960,7 +1962,8 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
         name: 'Odgałęzienie ze słupa',
         run_kind: 'branch',
         starting_bay_ref: 'bp-1',
-        starting_port_ref: 'bp-1.BRANCH',
+        // Port startu w jedynej postaci: zacisk portu odgałęźnego (backend `_rozwiaz_port_startu`).
+        starting_port_ref: 'bp/branch_bus',
         parent_run_ref: 'run-main',
         branch_origin_station_ref: 'bp-1',
         segments: [{ segment_ref: 'seg-branch', order: 1 }],
@@ -2095,7 +2098,7 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     expect(devices?.map((d) => d.kind)).toEqual(['DS', 'CT', 'CB', 'CABLE_HEAD']);
   });
 
-  it('mapuje switch_state.actual_state na uproszczony słownik closed/open/unknown (mirror cbState/dsState/esState)', () => {
+  it('mapuje switch_state.actual_state na uproszczony słownik closed/open/bad (mirror cbState/dsState/esState)', () => {
     const snap = makeStationOnlySnapshot('ST-1');
     const primaryDevices: BayPrimaryDevice[] = [
       makePrimaryDevice({
@@ -2125,7 +2128,9 @@ describe('F9.2 — projekcja Bay.primary_devices (SLD_CAD_SPEC_V3 §12.1)', () =
     const byRef = new Map(devices.map((d) => [d.deviceRef, d.switchState]));
     expect(byRef.get('ds-open')).toBe('open');
     expect(byRef.get('cb-closed')).toBe('closed');
-    expect(byRef.get('es-fault')).toBe('unknown');
+    // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: rekord „awaria" = położenie niewiarygodne
+    // (`bad`, własny kafel stanu), nie „nieznany" (`stanAparatowPola.ts::stanRekordu`).
+    expect(byRef.get('es-fault')).toBe('bad');
     expect(byRef.get('ct-no-state')).toBeUndefined();
   });
 
@@ -2200,37 +2205,38 @@ describe('F10.6 — designation per-aparat (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035
 
 /**
  * F10.6 / CTVT-RENDER — projekcje adnotacji pola (CT, VT, strefa 87T) liczone wprost z rekordu
- * pola i migawki (`resolveBay*`, te same funkcje rzutuje blok GPZ). Karta W5-B: blok STACJI ich
- * nie rzutuje (przypięte niżej — decyzja wyglądu SLD oczekuje werdyktu właściciela B-02).
+ * pola i migawki (`resolveBay*`, te same funkcje rzutuje blok GPZ). Blok STACJI rzutuje blok
+ * zabezpieczeń (karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ), tabliczek CT/VT i miernika nie (W5-B).
  */
 describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3/D4/D5, V12K-036)', () => {
-  it('ctRatingAnnotations niesie arrangement z Measurement.ct_arrangement, undefined gdy dana niedostarczona', () => {
-    const snap = makeStationOnlySnapshot('ST-1');
-    snap.bays = [
-      {
-        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
-        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-      } as never,
-    ];
-    snap.measurements = [
-      {
-        id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 300, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection', ct_arrangement: '3xCT',
-      },
-      {
-        id: 'm2', ref_id: 'ct-2', name: 'CT2', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 150, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection',
-      },
-    ] as never;
-
-    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
-    const byRef = new Map(annotations.map((a) => [a.measurementRef, a.arrangement]));
-    expect(byRef.get('ct-1')).toBe('3xCT');
-    expect(byRef.get('ct-2')).toBeUndefined();
+  it('odbiór B-02 (pkt 6): adnotacja pomiaru CT = nazwa · przekładnia — układ 3×CT i rdzenie poza schematem', () => {
+    // Iloczyn: układ {3xCT, ferranti, brak} × rdzenie {3, brak}. Każda kombinacja daje TĘ SAMĄ
+    // etykietę; układ i liczba rdzeni są w inspektorze pomiaru (`ui2/adapters/inspectorAdapter.ts`).
+    const rdzen = (klasa: string) => ({ przekladnia: '300/5', moc_va: 10, klasa, przeznaczenie: ['POMIAR'] });
+    for (const uklad of ['3xCT', 'ferranti', undefined] as const) {
+      for (const rdzenie of [[rdzen('0,5'), rdzen('5P20'), rdzen('5P20')], undefined]) {
+        const snap = makeStationOnlySnapshot('ST-1');
+        snap.bays = [
+          {
+            id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+            bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+          } as never,
+        ];
+        snap.measurements = [
+          {
+            id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},
+            measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+            rating: { ratio_primary: 300, ratio_secondary: 5 },
+            connection: 'star', purpose: 'protection',
+            ...(uklad ? { ct_arrangement: uklad } : {}),
+            ...(rdzenie ? { rdzenie } : {}),
+          },
+        ] as never;
+        const [a] = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
+        expect(Object.keys(a).sort(), `${uklad} × ${rdzenie?.length}`).toEqual(['identifier', 'measurementRef', 'purpose', 'ratioText']);
+        expect(ctRatingLabelText(a)).toBe('CT1 · 300/5');
+      }
+    }
   });
 
   it('W5 (§12–15/uwaga 7): ctRatingAnnotations niesie purpose z Measurement.purpose (wariant CT z danych)', () => {
@@ -2298,35 +2304,6 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('bay-2')).toBeUndefined();
   });
 
-  it('CTVT-RENDER (V12K-176): ctRatingAnnotations niesie cores z Measurement.ct_cores, undefined gdy dana niedostarczona', () => {
-    const snap = makeStationOnlySnapshot('ST-1');
-    snap.bays = [
-      {
-        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
-        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-      } as never,
-    ];
-    snap.measurements = [
-      {
-        id: 'm1', ref_id: 'ct-3rdz', name: 'CT1', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 300, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection', ct_cores: 3,
-      },
-      {
-        id: 'm2', ref_id: 'ct-brak', name: 'CT2', tags: [], meta: {},
-        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
-        rating: { ratio_primary: 150, ratio_secondary: 5 },
-        connection: 'star', purpose: 'protection',
-      },
-    ] as never;
-
-    const annotations = resolveBayCtRatingAnnotations(snap.bays[0], snap) ?? [];
-    const byRef = new Map(annotations.map((a) => [a.measurementRef, a.cores]));
-    expect(byRef.get('ct-3rdz')).toBe(3);
-    expect(byRef.get('ct-brak')).toBeUndefined();
-  });
-
   it('CTVT-RENDER (V12K-176): vtMountingAnnotations niesie montaż z Measurement.vt_mounting, undefined gdy ŻADEN VT pola nie niesie danej', () => {
     const snap = makeStationOnlySnapshot('ST-1');
     snap.bays = [
@@ -2361,13 +2338,21 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('bay-2')).toBeUndefined();
   });
 
-  it('W5-B: blok STACJI nie rzutuje adnotacji pola mimo danych (zabezpieczenia, CT, VT) — rysunek bez zmian wyglądu', () => {
+  it('JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok STACJI rzutuje blok zabezpieczeń pola tak jak GPZ (kody, przypisanie, źródło 3U₀), tabliczek CT/VT i miernika nie', () => {
+    // Decyzja właściciela 2026-11-05 („tak ma być ramka we wszystkich tak samo”) odwraca dawną
+    // decyzję karty W5-B dla BLOKU ZABEZPIECZEŃ: pole stacji z zabezpieczeniem w modelu rysuje
+    // blok jak pole GPZ — ta sama funkcja projekcji (`resolveBayProtectionMarking`,
+    // `zrodloU0Deskryptora`). Tabliczki CT/VT i miernik to notacje odrębne od bloku; zostają
+    // poza blokiem stacji (decyzja W5-B bez zmian) — para przypięta tu, żeby żadna z dwóch
+    // projekcji nie przesunęła się bez decyzji.
     const snap = makeStationOnlySnapshot('ST-1');
     snap.bays = [
       pole({
         ref_id: 'bay-1', bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn',
-        protection_codes: ['87T'], protection_ref: 'prot-1',
+        protection_codes: ['87T', '67N'], protection_ref: 'prot-1',
+        zrodlo_u0_ref: 'vt-z17',
       }),
+      pole({ ref_id: 'bay-2', bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn' }),
     ];
     snap.protection_assignments = [
       {
@@ -2383,16 +2368,22 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
       },
     ] as never;
 
-    const bay = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays?.[0];
+    const polaStacji = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
+    const bay = polaStacji.find((b) => b.bayRef === 'bay-1');
+    const bezKodow = polaStacji.find((b) => b.bayRef === 'bay-2');
     expect(bay?.bayRef).toBe('bay-1');
-    // Dane są (resolver je widzi)…
-    expect(resolveBayProtectionMarking(snap.bays[0], snap)?.codes).toEqual(['87T']);
+    // Blok zabezpieczeń: TA SAMA projekcja co pole GPZ.
+    expect(bay?.protectionMarking).toEqual(resolveBayProtectionMarking(snap.bays[0], snap));
+    expect(bay?.protectionMarking?.codes).toEqual(['87T', '67N']);
+    expect(bay?.protectionMarking?.breakerRef).toBe('cb-1');
+    expect(bay?.zrodloU0).toEqual(zrodloU0Deskryptora(snap, snap.bays[0]).zrodloU0);
+    // Pole bez kodów funkcji: brak bloku (§17.2 „brak danych = brak oznaczenia").
+    expect(bezKodow).toBeDefined();
+    expect(bezKodow).not.toHaveProperty('protectionMarking');
+    // Tabliczki CT/VT i miernik: dane są (resolver je widzi), blok stacji ich nie rzutuje.
     expect(resolveBayCtRatingAnnotations(snap.bays[0], snap)).toHaveLength(1);
-    // …a blok stacji ich nie rzutuje.
-    expect(bay?.protectionMarking).toBeUndefined();
     expect(bay?.ctRatingAnnotations).toBeUndefined();
     expect(bay?.meteringMeasurementRef).toBeUndefined();
-    expect(bay?.vtArrangements).toBeUndefined();
     expect(bay?.vtMountingAnnotations).toBeUndefined();
   });
 });
@@ -2604,7 +2595,7 @@ describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
     }
   });
 
-  it('aparat powiązany z gałęzią łączeniową: stan z `status` gałęzi; rekord sprzeczny → nieustalony', () => {
+  it('aparat powiązany z gałęzią łączeniową: stan z `status` gałęzi; rekord sprzeczny → nieustalony; awaria → bad', () => {
     const zPowiazaniem = (switchState: Record<string, unknown> | undefined) => {
       const snap = snapshotZAparatemPola(switchState);
       const aparaty = snap.bays[0].primary_devices ?? [];
@@ -2614,7 +2605,9 @@ describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
     expect(stanAparatu(zPowiazaniem(undefined))).toBe('closed');
     expect(stanAparatu(zPowiazaniem({ actual_state: 'zamkniety' }))).toBe('closed');
     expect(stanAparatu(zPowiazaniem({ actual_state: 'otwarty' }))).toBe('unknown');
-    expect(stanAparatu(zPowiazaniem({ actual_state: 'awaria' }))).toBe('unknown');
+    // Awaria zgłoszona rekordem ma pierwszeństwo przed `status` gałęzi (położenie niewiarygodne
+    // niezależnie od pozycji w modelu) — rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC.
+    expect(stanAparatu(zPowiazaniem({ actual_state: 'awaria' }))).toBe('bad');
   });
 });
 

@@ -133,7 +133,7 @@ class TestNoDefaultLengthBranch:
             enm_dict=snapshot,
             op_name="start_branch_segment_sn",
             payload={
-                "from_ref": f"{sub_ref}.BRANCH",
+                "from_ref": sub_ref,
                 "segment": {"rodzaj": "KABEL"},  # NO dlugosc_m
             },
         )

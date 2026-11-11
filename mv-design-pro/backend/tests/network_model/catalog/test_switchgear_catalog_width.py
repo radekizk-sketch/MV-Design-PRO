@@ -13,15 +13,19 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
 
     Karta KATALOG-APARATURA-WN (pomiar 2026-10-22, decyzja właściciela: 110 kV to granica
     zasilania GPZ): + 2 typy minimalne łączników topologii 110 kV — wyłącznik i odłącznik
-    (status REFERENCYJNY, bez producenta, bez danych wytrzymałościowych) = 50."""
+    (status REFERENCYJNY, bez producenta, bez danych wytrzymałościowych) = 50.
+
+    Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-28): + 2 rozłączniki próżniowe typu ogólnego
+    bez gazów fluorowanych (12 kV i 24 kV) — jedyne rozłączniki dopuszczone w polu
+    projektowanym (rozporządzenie (UE) 2024/573, art. 13 ust. 9) = 52."""
     stats = get_switch_catalog_statistics()
     all_types = get_all_switch_equipment_types()
 
-    assert stats["liczba_aparatury_ogolem"] == 50
+    assert stats["liczba_aparatury_ogolem"] == 52
     # CB: 12 baseline + 8 Polish (4 ZPUE + 4 Elektrometal) + 1 typ minimalny 110 kV = 21
     assert stats["liczba_wylacznikow"] == 21
-    # LS: 7 baseline + 2 ZPUE NAL = 9
-    assert stats["liczba_rozlacznikow"] == 9
+    # LS: 7 baseline + 2 ZPUE NAL + 2 próżniowe typu ogólnego = 11
+    assert stats["liczba_rozlacznikow"] == 11
     # DS: 4 baseline + 2 Elektrometal + 1 typ minimalny 110 kV = 7
     assert stats["liczba_odlacznikow"] == 7
     assert stats["liczba_reklozerow"] == 4
@@ -55,7 +59,8 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert stats["liczba_zweryfikowanych"] == 33
     assert stats["liczba_czesciowo_zweryfikowanych"] == 3
     assert stats["liczba_nieweryfikowanych"] == 12
-    assert stats["liczba_referencyjnych"] == 2
+    # 2 typy minimalne 110 kV + 2 rozłączniki próżniowe typu ogólnego (UX-04).
+    assert stats["liczba_referencyjnych"] == 4
     assert len({item["params"]["un_kv"] for item in all_types}) == 5  # + 123 kV (U_m sieci 110 kV)
     # 7 baseline + 2 Polish = 9 manufacturers
     assert (

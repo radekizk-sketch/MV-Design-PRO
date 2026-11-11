@@ -452,9 +452,12 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy").
     Pomiar 2026-10-15: 7851 = 7829 + 18 transformatorów blokowych 0,65 kV + 4 warianty
     Vestas V112 (karta KATALOG-TURBINY-TOR-V112). Pomiar 2026-10-22: 7853 = 7851 + 2 typy
-    minimalne łączników 110 kV karty KATALOG-APARATURA-WN (wyłącznik, odłącznik)."""
+    minimalne łączników 110 kV karty KATALOG-APARATURA-WN (wyłącznik, odłącznik). Pomiar
+    2026-10-28: 7855 = 7853 + 2 rozłączniki próżniowe typu ogólnego karty
+    UX-04/POLE-LINIOWE-WZORZEC. Pomiar 2026-10-29: 7857 = 7855 + 2 przekładniki prądowe typu
+    ogólnego OSD pól liniowych GPZ (ENEA Z.10/Z.11.1 i Z.11) tej samej karty."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7853
+    assert len(rekordy) == 7857
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

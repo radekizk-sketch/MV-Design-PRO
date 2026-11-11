@@ -3,7 +3,7 @@
 Decyzja architekta: odcinek przyłączany do szyny sekcji bez wskazania pola przechodzi przez pole
 liniowe; gdy takiego pola nie ma albo wszystkie są zajęte, operacja tworzy je w tej samej
 operacji, wyposażone jak wzorzec sekcji. Odmowa wyłącznie z przyczyny modelowej (nazwany kod).
-Jeden predykat `enm.zajetosc_pol.odcinki_bez_pola` czytają operacje, walidator (`W049`) i akcja
+Jeden predykat `enm.zajetosc_pol.odcinki_bez_pola` czytają operacje, walidator (`W058`) i akcja
 naprawcza `przepnij_element_na_pole`.
 
 Iloczyn cech: operacja {ciąg z szyny, odgałęzienie z szyny (`from_bus_ref`), odgałęzienie
@@ -92,7 +92,11 @@ def _wykonaj(enm: dict[str, Any], operacja: str, rodzaj: str, szyna: str) -> dic
         return op(enm, "start_branch_segment_sn", {"from_bus_ref": szyna, "segment": odcinek(155)})
     if operacja == "odgalezienie_port":
         return op(
-            enm, "start_branch_segment_sn", {"from_ref": f"{szyna}.BRANCH", "segment": odcinek(156)}
+            # Port startu wskazany zaciskiem szyny sekcji w `from_ref` — jedna postać portu
+            # (`_rozwiaz_port_startu`, rozstrzygnięcie architekta 2026-10-30), bez `.BRANCH`.
+            enm,
+            "start_branch_segment_sn",
+            {"from_ref": szyna, "segment": odcinek(156)},
         )
     return op(
         enm,
@@ -241,7 +245,10 @@ def test_pole_wskazane_wolne_jest_uzyte_a_zajete_stacji_odmawia(rodzaj: str) -> 
     # Odgałęzienie ze wskazanego zajętego pola: stacja SN/nN odmawia, GPZ przydziela nowe pole
     # kanonem pól GPZ — z tym samym komunikatem dla projektanta co przy szynie sekcji.
     wynik = op(
-        enm, "start_branch_segment_sn", {"from_ref": f"{zajete[0]}.BRANCH", "segment": odcinek(157)}
+        # Port startu z pola = `ref_id` pola (jedna postać portu, bez dawnego `.BRANCH`).
+        enm,
+        "start_branch_segment_sn",
+        {"from_ref": zajete[0], "segment": odcinek(157)},
     )
     if rodzaj in ("stacja_na_odcinku", "stacja_koncowa"):
         assert wynik.get("error_code") == "field.line_field_occupied"
@@ -359,7 +366,7 @@ def test_odmowa_modelowa_sekcja_gpz_nieopisana() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Model zastany: walidator W049 i akcja naprawcza (ten sam predykat)
+# Model zastany: walidator W058 i akcja naprawcza (ten sam predykat)
 # ---------------------------------------------------------------------------
 
 

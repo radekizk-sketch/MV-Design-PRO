@@ -17,7 +17,7 @@ import logging
 import math
 import re
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, cast, get_args
 
@@ -28,8 +28,19 @@ from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
     tap_changer_fields_from_catalog,
 )
-from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+from network_model.catalog.bay_templates import (
+    BAY_TEMPLATE_TRANSFORMER,
+    funkcje_eaz_szablonu,
+    szablon_domyslny_pola_liniowego_gpz,
+)
+from network_model.catalog.gazy_fluorowane import (
+    AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL,
+    KOD_ODMOWY_GAZU_FLUOROWANEGO,
+    STANY_OBIEKTU,
+)
 from network_model.catalog.materialization import materialize_catalog_binding
+from network_model.catalog.rodzaje_aparatury import RODZAJ_UZIEMNIKA, RODZAJE_LACZNIKOW_POLA
+from network_model.catalog.switchgear.errors import kod_odmowy_konfiguracji
 from network_model.catalog.types import CatalogBinding
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
@@ -66,6 +77,11 @@ from .bateria_kondensatorow import (
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
+from .gaz_fluorowany_pola import (
+    RODZAJE_GALEZI_LACZENIOWYCH,
+    aparat_lacznika,
+    nowe_naruszenia_gazu_fluorowanego,
+)
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
 from .katalog_projektu_karty import BladKartWidmowych, materializuj_karty_generatora
@@ -102,8 +118,10 @@ from .parametry_linii_wn import (
 )
 from .pola import (
     BladPola,
+    aparaty_ze_stanem_pola,
     czy_pole_nn,
     dodaj_pole,
+    napis_lub_none,
     pola,
     pola_stacji,
     pola_wg_szyny,
@@ -125,7 +143,12 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
 )
 from .rodzaj_stacji import TYPY_STACJI_SN_NN
-from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
+from .rola_pola_sn import (
+    ROLA_MODELU_Z_ROLI_KANONICZNEJ,
+    kanoniczna_rola_pola_sn,
+    nazwa_roli_pola_sn,
+    rola_modelu_pola_sn,
+)
 from .slownik_komunikatow import (
     NAZWY_FUNKCJI_POMIARU_PL,
     NAZWY_KOLEKCJI_PL,
@@ -182,6 +205,7 @@ from .zajetosc_pol import (
     zajetosc_pol,
     zajetosc_pola,
 )
+from .zgodnosc_szablonu_pola import AKCJA_NAPRAWCZA_SZABLONU_PL, nowe_niezgodnosci_szablonu
 from .zrodlo_zwarcie import (
     PASMO_U_SET_PU,
     klucz_mocy_zwarciowej,
@@ -1372,6 +1396,101 @@ def _aparaty_i_konfiguracja_pola(
     return aparaty, _konfiguracja_pola(bay_template_ref)
 
 
+#: Rodzaj aparatu pierwotnego pola wskazującego gałąź aparatu pola liniowego GPZ — wg typu
+#: gałęzi (`_gpz_line_field_branch_type`). Lustro `field_read_model.BRANCH_KIND_MAP`.
+_RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ: dict[str, str] = {
+    "breaker": "CB",
+    "switch": "LOAD_SWITCH",
+    "disconnector": "DS",
+}
+
+
+def _aparaty_pola_liniowego_gpz(
+    *,
+    field_ref: str,
+    bay_role: str,
+    bay_template_ref: str | None,
+    switchgear_family_ref: str | None,
+    napiecie_szyny_kv: float | None,
+    galaz_aparatu: Mapping[str, Any] | None,
+) -> tuple[list[dict[str, Any]], str | None, str | None]:
+    """Aparaty pierwotne pola liniowego GPZ — JEDNA reguła dla pól tworzonych z GPZ i pól
+    dokładanych przydziałem odgałęzienia (`_allocate_gpz_line_field_for_branch`).
+
+    Karta UX-04/POLE-LINIOWE-WZORZEC: aparaty materializuje resolver pola (szablon ENEA Z.10
+    wg izolacji rodziny `szablon_domyslny_pola_liniowego_gpz` albo wskazany szablon / pole
+    rodziny) z aparatem głównym
+    wg rodzaju aparatu pola (`gpz_line_field_apparatus.apparatus_kind`). Aparat główny pola
+    (wyłącznik, rozłącznik, odłącznik toru) WSKAZUJE gałąź aparatu modelu (`linked_ref`) i jej
+    pozycję katalogu — stan aparatu na rysunku jest stanem tej gałęzi. Łączniki pola bez
+    własnej gałęzi (łącznik trójpołożeniowy, odłącznik szynowy, uziemnik) dostają położenie
+    zgodne z pracą pola zadeklarowaną przez operację: gałąź toru zamknięta = pole w ruchu,
+    więc łączniki toru „zamknięty", uziemnik „otwarty". Gałąź otwarta — położenie nieustalone
+    (brak rekordu; operacja nie zgaduje, którym łącznikiem pole odstawiono).
+
+    Szablon: pole linii odpływowej (`OUT`) z gałęzią aparatu i bez wskazanego szablonu =
+    wzorzec ENEA Zeszyt 1, Z.10 z pierwszym wykonaniem łączników dopuszczonym w izolacji rodziny
+    (§13: łącznik trójpołożeniowy, w izolacji powietrznej wyłącznik stały z odłącznikiem
+    szynowym; medium wg rodziny — bez gazów fluorowanych w polu projektowanym). Wykonania
+    Z.11/Z.11.1, wyłącznik wysuwny i pola rodzin producentów — wyłącznie jawnym
+    `bay_template_ref`. Zwraca (aparaty, konfiguracja pola,
+    szablon pola zapisywany na rekordzie).
+    """
+    if not bay_template_ref and galaz_aparatu is not None and bay_role == "OUT":
+        # Wykonanie łączników wg izolacji rodziny pola (§13) — jedno źródło medium izolacyjnego
+        # (`SwitchgearFamily.insulation_type`), ta sama tablica co odmowa W050.
+        from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
+
+        rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(switchgear_family_ref or "")
+        bay_template_ref = szablon_domyslny_pola_liniowego_gpz(
+            rodzina.insulation_type if rodzina is not None else None
+        ).template_id
+    if not bay_template_ref:
+        return [], None, None
+    wybor: dict[str, Any] = {"bay_template_ref": bay_template_ref}
+    if switchgear_family_ref:
+        wybor["switchgear_family_ref"] = switchgear_family_ref
+    brama_napieciowa_wyboru(wybor, napiecie_szyny_kv)
+    rodzaj_aparatu = (galaz_aparatu or {}).get("meta", {}).get("apparatus_kind")
+    aparaty = rozwiaz_aparaty_pola(
+        wybor,
+        field_ref=field_ref,
+        bay_template_ref=bay_template_ref,
+        main_apparatus_kind=rodzaj_aparatu if isinstance(rodzaj_aparatu, str) else None,
+    )
+    if galaz_aparatu is not None:
+        aparaty = _powiaz_aparaty_pola_z_galezia(aparaty, galaz_aparatu)
+    return aparaty, _konfiguracja_pola(bay_template_ref), bay_template_ref
+
+
+def _powiaz_aparaty_pola_z_galezia(
+    aparaty: list[dict[str, Any]], galaz: Mapping[str, Any], *, z_polozeniem: bool = True
+) -> list[dict[str, Any]]:
+    """Aparat główny pola → `linked_ref` gałęzi aparatu; łączniki bez gałęzi → położenie
+    zgodne ze stanem gałęzi (patrz `_aparaty_pola_liniowego_gpz`). `z_polozeniem=False` —
+    WYŁĄCZNIE wskazanie gałęzi aparatu głównego (operacja wyposażenia pola nie ustawia stanu
+    łącznika, `enm.wyposazenie_pola`)."""
+    rodzaj = _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ.get(str(galaz.get("type")))
+    kandydaci = [a for a in aparaty if a.get("kind") == rodzaj]
+    glowny = next((a for a in kandydaci if a.get("placement") == "MIDSTREAM"), None) or next(
+        iter(kandydaci), None
+    )
+    zamknieta = galaz.get("status") == "closed"
+    wynik: list[dict[str, Any]] = []
+    for aparat in aparaty:
+        kopia = copy.deepcopy(aparat)
+        if aparat is glowny:
+            kopia["linked_ref"] = galaz.get("ref_id")
+            if not kopia.get("catalog_ref") and galaz.get("catalog_ref"):
+                kopia["catalog_ref"] = galaz.get("catalog_ref")
+        elif z_polozeniem and zamknieta and kopia.get("kind") in RODZAJE_LACZNIKOW_POLA:
+            kopia["switch_state"] = {
+                "actual_state": "otwarty" if kopia["kind"] == RODZAJ_UZIEMNIKA else "zamkniety"
+            }
+        wynik.append(kopia)
+    return wynik
+
+
 def _konfiguracja_pola(bay_template_ref: str | None) -> str | None:
     """Identyfikator KONFIGURACJI pola wyprowadzony z referencji szablonu (W1c) — `None`
     bez szablonu."""
@@ -1425,12 +1544,8 @@ def _pole_liniowe_zajete(enm: dict[str, Any], rekord: dict[str, Any]) -> bool:
     indeks 0 migawek sprzed przydziałów) opisuje moduł `zajetosc_pol` — karta POLE-ZAJĘTE
     przeniosła je tam, żeby operacje, walidator i widoki logiczne czytały jedną funkcję.
     """
-    zajetosc = zajetosc_pola(enm, _napis_lub_none(rekord.get("ref_id")))
+    zajetosc = zajetosc_pola(enm, napis_lub_none(rekord.get("ref_id")))
     return bool(zajetosc and zajetosc.zajete)
-
-
-def _napis_lub_none(value: object) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
 
 
 def _nazwa_pola_w_modelu(enm: dict[str, Any], field_ref: object, field_role: object = None) -> str:
@@ -1545,21 +1660,37 @@ def _allocate_gpz_line_field_for_branch(
         ]
 
     # Samonaprawa zajętości dziedziczonej: pole 0 zasilające niepustą
-    # magistralę dostaje JAWNY przydział (dalej liczy się już relacją).
+    # magistralę dostaje JAWNY przydział (dalej liczy się już relacją). „Zasilające" — wg
+    # TEJ SAMEJ reguły co zajętość (`enm.zajetosc_pol`, predykaty parami): pierwszy odcinek
+    # magistrali GPZ jest przyłączony do pola fizycznie (R1/R2) albo pole zasila ją wg R4.
+    # Dawniej przydział dostawało pole 0 KAŻDEJ sekcji, gdy JAKAKOLWIEK magistrala GPZ miała
+    # odcinki — pole 2.1 przejmowało magistralę zasilaną z pola 1.1, przydział nowego ciągu z
+    # pola 2.1 szedł do pola 2.2 (kabel fizycznie na zacisku 2.1, przydział na 2.2), a pole
+    # 2.2 stawało się „zajęte" bez kabla.
+    zajetosc_przed = zajetosc_pol(enm)
     for rekord in _pola_liniowe_sekcji():
         rekord_meta = rekord.get("meta") or {}
         if rekord_meta.get("gpz_line_field_index") == 0 and not rekord_meta.get(
             "assigned_corridor_ref"
         ):
             field_ref = str(rekord.get("ref_id") or "")
+            stan_pola = zajetosc_przed.get(field_ref)
+            if stan_pola is None:
+                continue
             gpz_prefix = "/".join(field_ref.split("/")[:2])
             trunk = next(
                 (
                     c
-                    for c in enm.get("corridors", [])
-                    if isinstance(c, dict)
-                    and str(c.get("ref_id") or "").startswith(f"{gpz_prefix}/corridor_")
+                    for c in sorted(
+                        (c for c in enm.get("corridors", []) if isinstance(c, dict)),
+                        key=lambda c: str(c.get("ref_id") or ""),
+                    )
+                    if str(c.get("ref_id") or "").startswith(f"{gpz_prefix}/corridor_")
                     and c.get("ordered_segment_refs")
+                    and (
+                        c["ordered_segment_refs"][0] in stan_pola.odcinki_fizyczne
+                        or c.get("ref_id") in stan_pola.korytarze
+                    )
                 ),
                 None,
             )
@@ -1614,6 +1745,7 @@ def _allocate_gpz_line_field_for_branch(
                 "source_field_kind": "FEEDER",
                 "field_status": "READY_FOR_TRUNK",
             },
+            stan_obiektu="PROJEKTOWANY",
         )
         blad_aparatu = _wyposaz_nowe_pole_gpz_jak_wzorzec(enm, nowe_pole, origin)
         if blad_aparatu is not None:
@@ -1702,11 +1834,40 @@ def _wyposaz_nowe_pole_gpz_jak_wzorzec(
         }
     )
     aparat.pop("id", None)
+    # Kopia aparatu wzorca to NOWA instancja — obiekt projektowany (UX-04), nie stan wzorca.
+    aparat["stan_obiektu"] = "PROJEKTOWANY"
     enm.setdefault("branches", []).append(aparat)
     meta_wzorca = wzorzec.get("meta") or {}
     nowe_pole["bay_role"] = str(wzorzec.get("bay_role") or nowe_pole.get("bay_role"))
     nowe_pole["equipment_refs"] = [aparat_ref]
     nowe_pole["terminal_bus_ref"] = zacisk_ref
+    # Aparaty pierwotne TYM SAMYM wzorcem pola liniowego GPZ co pole wzorcowe (karta
+    # UX-04/POLE-LINIOWE-WZORZEC): ten sam szablon i rodzina, aparat główny wskazuje gałąź
+    # nowego pola.
+    try:
+        aparaty, konfiguracja, szablon = _aparaty_pola_liniowego_gpz(
+            field_ref=field_ref,
+            bay_role=nowe_pole["bay_role"],
+            bay_template_ref=wzorzec.get("bay_template_ref"),
+            switchgear_family_ref=wzorzec.get("switchgear_family_ref"),
+            napiecie_szyny_kv=szyna_wzorca.get("voltage_kv"),
+            galaz_aparatu=aparat,
+        )
+    except NiezgodnoscKonfiguracjiError as blad:
+        return _error_response(str(blad), KOD_BLEDU_POLA_KATALOGOWEGO)
+    # Aparaty powstają RAZEM z nowym polem — dziedziczą jego stan obiektu (projektowany).
+    nowe_pole["primary_devices"] = aparaty_ze_stanem_pola(aparaty, nowe_pole["stan_obiektu"])
+    nowe_pole["bay_template_ref"] = szablon
+    nowe_pole["config_id"] = konfiguracja
+    nowe_pole["switchgear_family_ref"] = wzorzec.get("switchgear_family_ref")
+    nowe_pole["manufacturer_ref"] = wzorzec.get("manufacturer_ref")
+    # Funkcje EAZ pola z jego szablonu — TEN SAM resolver co każda operacja tworząca pole
+    # (`_resolve_bay_template_protection_codes`: producent → szablon → rola).
+    from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
+
+    nowe_pole["protection_codes"] = _resolve_bay_template_protection_codes(
+        wzorzec.get("manufacturer_ref"), szablon, nowe_pole["bay_role"]
+    )
     nowe_pole.setdefault("meta", {}).update(
         {
             "apparatus_kind": meta_wzorca.get("apparatus_kind"),
@@ -1826,6 +1987,9 @@ def _nowe_pole_liniowe_stacji(
         substation_ref=station_ref,
         tags=["station_sn_field"],
         meta={"requires_catalog_binding": True, "utworzone_przy_przylaczeniu_odcinka": True},
+        # Pole powstaje w operacji projektowej — obiekt projektowany (UX-04, zakaz gazów
+        # fluorowanych w nowych polach czyta ten stan).
+        stan_obiektu="PROJEKTOWANY",
     )
     nowe: list[str] = [field_ref]
     wzorzec = _wzorzec_pola_sekcji(enm, szyna_ref)
@@ -1863,6 +2027,9 @@ def _nowe_pole_liniowe_stacji(
             )
         aparat = copy.deepcopy(aparat_wzorca)
         aparat.pop("id", None)
+        # Kopia aparatu wzorca to NOWA instancja — obiekt projektowany, nie stan wzorca (ta sama
+        # reguła co `_wyposaz_nowe_pole_gpz_jak_wzorzec`).
+        aparat["stan_obiektu"] = "PROJEKTOWANY"
         aparat.update(
             {
                 "ref_id": aparat_ref,
@@ -1940,6 +2107,8 @@ def _pierwsze_pole_liniowe_gpz(
                 "source_field_kind": "FEEDER",
                 "field_status": "READY_FOR_TRUNK",
             },
+            # Pole dodane operacją projektową do sekcji zastanego modelu — obiekt projektowany.
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
     return field_ref
@@ -2067,7 +2236,112 @@ def _find_corridor_by_ref(enm: dict[str, Any], corridor_ref: str | None) -> dict
     return None
 
 
-def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> tuple[str | None, str | None]:
+def _stacja_szyny(enm: dict[str, Any], bus_ref: str | None) -> str | None:
+    """Stacja (GPZ albo SN/nN), do której należy szyna: przez pole, którego własnym zaciskiem
+    jest szyna (`pole_dla_zacisku` → `stacja_pola`), albo przez szyny zbiorcze stacji
+    (`Substation.bus_refs`). `None` — szyna poza stacją (zacisk końcowy odcinka, punkt
+    techniczny)."""
+    if not isinstance(bus_ref, str) or not bus_ref:
+        return None
+    pole_zacisku = pole_dla_zacisku(enm, bus_ref)
+    if pole_zacisku is not None:
+        stacja = stacja_pola(enm, pole_zacisku)
+        ref = stacja.get("ref_id") if isinstance(stacja, dict) else None
+        if isinstance(ref, str) and ref:
+            return ref
+    for stacja in enm.get("substations", []):
+        if isinstance(stacja, dict) and bus_ref in (stacja.get("bus_refs") or []):
+            ref = stacja.get("ref_id")
+            return ref if isinstance(ref, str) and ref else None
+    return None
+
+
+def _ciag_kontynuowany_z(enm: dict[str, Any], corridor: dict[str, Any], start_bus: str) -> bool:
+    """JEDYNA reguła ciągłości magistrali (karta UX-04/POLE-LINIOWE-WZORZEC): odcinek
+    zaczynający się na szynie `start_bus` KONTYNUUJE ciąg, gdy ciąg jest pusty (pierwszy odcinek
+    magistrali GPZ), gdy szyna jest końcem ostatniego odcinka ciągu, albo gdy leży w tej samej
+    stacji co ten koniec (stacja na końcu ciągu: kabel wchodzi polem wejściowym, wychodzi polem
+    wyjściowym). Każdy inny start — drugie pole GPZ, wolne pole stacji w środku ciągu, szyna
+    w środku ciągu — zaczyna NOWY ciąg: doklejenie do cudzej magistrali dawało ciąg z odcinków
+    rozłącznych fizycznie (widok logiczny gubił koniec pierwszego kabla, schemat rysował kabel
+    drugiego pola jako przedłużenie pierwszego, a drugie pole — bez kabla)."""
+    odcinki = [ref for ref in corridor.get("ordered_segment_refs") or [] if isinstance(ref, str)]
+    if not odcinki:
+        return True
+    ostatni = _find_branch(enm, odcinki[-1])
+    koniec = ostatni.get("to_bus_ref") if isinstance(ostatni, dict) else None
+    if not isinstance(koniec, str) or not koniec:
+        return False
+    if start_bus == koniec:
+        return True
+    stacja_startu = _stacja_szyny(enm, start_bus)
+    return stacja_startu is not None and stacja_startu == _stacja_szyny(enm, koniec)
+
+
+def _ciag_dla_startu(enm: dict[str, Any], start_bus: str) -> str | None:
+    """Ciąg, który kontynuuje odcinek ze startu `start_bus` bez wskazanego ciągu: pierwszy
+    (w kolejności modelu) NIEPUSTY ciąg kończący się na tym starcie (`_ciag_kontynuowany_z`),
+    inaczej pierwszy ciąg pusty, inaczej `None` (odcinek zaczyna nowy ciąg). Deterministycznie."""
+    korytarze = [c for c in enm.get("corridors", []) if isinstance(c, dict)]
+    for korytarz in korytarze:
+        if korytarz.get("ordered_segment_refs") and _ciag_kontynuowany_z(enm, korytarz, start_bus):
+            return str(korytarz.get("ref_id"))
+    pusty = next((c for c in korytarze if not c.get("ordered_segment_refs")), None)
+    return str(pusty.get("ref_id")) if pusty is not None else None
+
+
+def _zapisz_ciag_z_portu(
+    enm: dict[str, Any],
+    *,
+    corridor_ref: str,
+    nazwa: str,
+    from_ref: str,
+    origin_element_ref: str,
+    segment_ref: str,
+    parent_run_ref: str | None,
+    gpz_field_ref: str | None,
+) -> bool:
+    """JEDEN zapis nowego ciągu wychodzącego z portu (pola GPZ, pola stacji, punktu
+    odgałęźnego): korytarz promieniowy z pierwszym odcinkiem, przydziałem pola GPZ
+    (`meta.gpz_field_ref` — schemat rysuje ciąg z JEGO pola) i ciąg liniowy rodzaju `branch` z
+    pochodzeniem. Wołają go `start_branch_segment_sn` i `continue_trunk_segment_sn` (start, który
+    nie kontynuuje żadnego ciągu) — ta sama postać ciągu niezależnie od operacji. Zwraca `True`,
+    gdy korytarz powstał (identyfikator nowy)."""
+    korytarze = enm.setdefault("corridors", [])
+    nowy = not any(c.get("ref_id") == corridor_ref for c in korytarze if isinstance(c, dict))
+    if nowy:
+        korytarz: dict[str, Any] = {
+            "ref_id": corridor_ref,
+            "name": nazwa,
+            "corridor_type": "radial",
+            "ordered_segment_refs": [segment_ref],
+            "parent_run_ref": parent_run_ref,
+            "branch_origin_station_ref": origin_element_ref,
+            "branch_origin_port_ref": from_ref,
+            "starting_port_ref": from_ref,
+            "meta": {},
+        }
+        if gpz_field_ref:
+            korytarz["meta"]["gpz_field_ref"] = gpz_field_ref
+        korytarze.append(korytarz)
+    ciag = _ensure_line_run_for_corridor(
+        enm,
+        corridor_ref,
+        starting_bay_ref=origin_element_ref,
+        starting_port_ref=from_ref,
+        run_kind="branch",
+    )
+    if ciag is not None:
+        ciag["parent_run_ref"] = parent_run_ref
+        ciag["branch_origin_station_ref"] = origin_element_ref
+        ciag["starting_port_ref"] = from_ref
+        _append_line_run_segment(ciag, segment_ref)
+    return nowy
+
+
+def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> str | None:
+    """Pierwsze pole liniowe GPZ (rola OUT/FEEDER) — pole startu ciągu bez wskazanego pola;
+    pierwszeństwo ma pole z zaciskiem (kabel ma z czego wyjść)."""
     candidates: list[dict[str, Any]] = []
     for substation in enm.get("substations", []):
         if not isinstance(substation, dict) or substation.get("station_type") != "gpz":
@@ -2077,14 +2351,9 @@ def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> tuple[str | None, str 
                 continue
             candidates.append(rekord)
 
-    for rekord in candidates:
-        terminal_ref = zacisk_pola(rekord)
-        if terminal_ref:
-            return str(rekord.get("ref_id")), terminal_ref
-
-    for rekord in candidates:
-        return str(rekord.get("ref_id")), zacisk_pola(rekord)
-    return None, None
+    for rekord in [*(r for r in candidates if zacisk_pola(r)), *candidates]:
+        return str(rekord.get("ref_id"))
+    return None
 
 
 def _ensure_line_run_for_corridor(
@@ -2103,11 +2372,11 @@ def _ensure_line_run_for_corridor(
             return line_run
 
     corridor = _find_corridor_by_ref(enm, corridor_ref) or {}
-    gpz_line_bay_ref, gpz_line_port_ref = _first_gpz_line_field_for_run(enm)
-    start_bay = starting_bay_ref or corridor.get("starting_bay_ref") or gpz_line_bay_ref
-    start_port = (
-        starting_port_ref or corridor.get("starting_port_ref") or gpz_line_port_ref or start_bay
+    start_bay = (
+        starting_bay_ref or corridor.get("starting_bay_ref") or _first_gpz_line_field_for_run(enm)
     )
+    # Port startu w JEDNEJ postaci (`_rozwiaz_port_startu`): ciąg z pola — `ref_id` pola.
+    start_port = starting_port_ref or corridor.get("starting_port_ref") or start_bay
     if (
         not isinstance(start_bay, str)
         or not start_bay
@@ -3007,109 +3276,102 @@ def _terminal_status(kontekst: _KontekstTerminali, bus_ref: str, corridor_ref: s
     return "OTWARTY"
 
 
-def _resolve_branch_from_ref(enm: dict[str, Any], from_ref: str) -> tuple[str | None, str | None]:
-    """Rozwiąż from_ref (station/branch_pole/zksn) na szynę źródłową.
+@dataclass(frozen=True)
+class _PortStartu:
+    """Rozwiązany port startu ciągu odgałęzienia (`_rozwiaz_port_startu`)."""
 
-    Obsługiwane:
-    - bay.BRANCH (pole liniowe stacji albo GPZ)
-    - branch_pole.BRANCH
-    - zksn.BRANCH_1, zksn.BRANCH_2
+    #: Szyna, z której wychodzi odcinek (zacisk pola, zacisk portu punktu, szyna terminalna).
+    bus_ref: str
+    #: Element pochodzenia: pole, punkt odgałęźny albo szyna terminalna.
+    element_ref: str
+    #: Identyfikator portu punktu odgałęźnego (`BRANCH` słupa, `BRANCH_n` ZKSN) — klucz
+    #: zajętości `branch_occupied`; `None` poza punktem odgałęźnym.
+    port_id: str | None
+
+
+def _rozwiaz_port_startu(enm: dict[str, Any], from_ref: str) -> _PortStartu | str:
+    """Port startu odgałęzienia w JEDNEJ postaci (rozstrzygnięcie architekta 2026-10-30, karta
+    UX-04/POLE-LINIOWE-WZORZEC): `ref_id` pola liniowego SN (stacji albo GPZ), gdy ciąg
+    startuje z pola, inaczej ZACISK — szyna portu odgałęźnego punktu (`ports.BRANCH[i]` słupa
+    rozgałęźnego albo ZKSN) albo szyna z tagiem `topology_terminal`. Dawna postać
+    `⟨element⟩.BRANCH[_n]` nie jest rozpoznawana (bez warstwy zgodności).
+
+    Wynik: rozwiązany port ALBO kod odmowy z rejestru (napis) — jeden typ sumy, więc wywołujący
+    nie ma stanu „ani portu, ani kodu" i nie potrzebuje zapasu kodu.
     """
-    if "." not in from_ref:
-        return None, "branch_connection.invalid_source_port"
-    element_ref, port_id = from_ref.split(".", 1)
-
     # Pole stacji (rekord `bays`) — odcinek wychodzi z ZACISKU pola (aparat pola w torze,
     # POLA-W-TORZE), a bez zacisku z szyny pola; tylko z pola liniowego SN (rola OUT/FEEDER).
-    if pole_modelu(enm, element_ref) is not None:
-        if port_id != "BRANCH" or not _czy_pole_liniowe_sn(enm, element_ref):
-            return None, "branch_connection.invalid_source_port"
-        bus_ref = _punkt_przylaczenia(enm, element_ref)
+    if pole_modelu(enm, from_ref) is not None:
+        if not _czy_pole_liniowe_sn(enm, from_ref):
+            return "branch_connection.invalid_source_port"
+        bus_ref = _punkt_przylaczenia(enm, from_ref)
         if not bus_ref:
-            return None, "branch_connection.source_not_branch_capable"
-        return bus_ref, None
+            return "branch_connection.source_not_branch_capable"
+        return _PortStartu(bus_ref=bus_ref, element_ref=from_ref, port_id=None)
 
-    if element_ref.startswith("stn/"):
-        if port_id != "BRANCH":
-            return None, "branch_connection.invalid_source_port"
-        return None, "branch_connection.source_not_branch_capable"
+    for bp in enm.get("branch_points", []):
+        if not isinstance(bp, dict):
+            continue
+        bp_ref = bp.get("ref_id")
+        ports = bp.get("ports") or {}
+        porty_branch = ports.get("BRANCH")
+        porty_odgalezne: list[Any] = porty_branch if isinstance(porty_branch, list) else []
+        typ = bp.get("branch_point_type")
+        if bp_ref == from_ref:
+            # Punkt odgałęźny wskazany bez portu — start wymaga zacisku konkretnego portu.
+            if typ == "branch_pole" and not porty_odgalezne:
+                return "branch_point.required_port_missing"
+            return "branch_connection.invalid_source_port"
+        if from_ref not in porty_odgalezne or not isinstance(bp_ref, str):
+            continue
+        if typ == "branch_pole":
+            port_id = "BRANCH"
+        elif typ == "zksn":
+            port_id = f"BRANCH_{porty_odgalezne.index(from_ref) + 1}"
+        else:
+            return "branch_connection.source_not_branch_capable"
+        if (bp.get("branch_occupied") or {}).get(port_id):
+            return "branch_point.branch_port_occupied"
+        return _PortStartu(bus_ref=from_ref, element_ref=bp_ref, port_id=port_id)
 
-    if element_ref.startswith("bus/"):
-        if port_id != "BRANCH":
-            return None, "branch_connection.invalid_source_port"
-        bus = next(
-            (
-                candidate
-                for candidate in enm.get("buses", [])
-                if isinstance(candidate, dict) and candidate.get("ref_id") == element_ref
-            ),
-            None,
-        )
-        tags = bus.get("tags", []) if isinstance(bus, dict) else []
-        if isinstance(tags, list) and "topology_terminal" in tags:
-            return element_ref, None
-        return None, "branch_connection.source_not_branch_capable"
+    if from_ref.startswith("stn/"):
+        return "branch_connection.source_not_branch_capable"
 
-    bp = next((b for b in enm.get("branch_points", []) if b.get("ref_id") == element_ref), None)
-    if not bp:
-        return None, "branch_connection.source_not_branch_capable"
-
-    ports = bp.get("ports", {})
-    if bp.get("branch_point_type") == "branch_pole":
-        if port_id != "BRANCH":
-            return None, "branch_connection.invalid_source_port"
-        if bp.get("branch_occupied", {}).get(port_id):
-            return None, "branch_point.branch_port_occupied"
-        bus_ref = ports.get("BRANCH", [None])[0] if isinstance(ports.get("BRANCH"), list) else None
-        if not bus_ref:
-            return None, "branch_point.required_port_missing"
-        return bus_ref, None
-
-    if bp.get("branch_point_type") == "zksn":
-        if not port_id.startswith("BRANCH_"):
-            return None, "branch_connection.invalid_source_port"
-        try:
-            idx = int(port_id.split("_", 1)[1]) - 1
-        except ValueError:  # „BRANCH_x" z nieliczbowym numerem portu
-            return None, "branch_connection.invalid_source_port"
-        branch_ports = ports.get("BRANCH", [])
-        if idx < 0 or idx >= len(branch_ports):
-            return None, "branch_connection.invalid_source_port"
-        if bp.get("branch_occupied", {}).get(port_id):
-            return None, "branch_point.branch_port_occupied"
-        return branch_ports[idx], None
-
-    return None, "branch_connection.source_not_branch_capable"
+    bus = next(
+        (
+            candidate
+            for candidate in enm.get("buses", [])
+            if isinstance(candidate, dict) and candidate.get("ref_id") == from_ref
+        ),
+        None,
+    )
+    tags = bus.get("tags", []) if isinstance(bus, dict) else []
+    if isinstance(tags, list) and "topology_terminal" in tags:
+        return _PortStartu(bus_ref=from_ref, element_ref=from_ref, port_id=None)
+    return "branch_connection.source_not_branch_capable"
 
 
-def _lookup_branch_from_ref_for_bus(
+def _port_startu_dla_szyny(
     enm: dict[str, Any],
     from_bus_ref: str,
 ) -> tuple[str | None, str | None]:
-    """Legacy lookup: wyznacz from_ref na podstawie from_bus_ref.
+    """Port startu (postać `_rozwiaz_port_startu`) wyznaczony z samej szyny `from_bus_ref`.
 
-    Dopuszcza wyłącznie źródła branch-capable:
-    - station.BRANCH (bay_role=FEEDER)
-    - branch_pole.BRANCH
-    - zksn.BRANCH_n
+    Dopuszcza wyłącznie źródła odgałęźne: zacisk portu słupa rozgałęźnego albo ZKSN, pole
+    liniowe SN tej szyny (`ref_id` pola), szynę terminalną (`topology_terminal`).
     """
     structured_candidates: list[str] = []
 
     for bp in enm.get("branch_points", []):
-        bp_ref = bp.get("ref_id")
-        ports = bp.get("ports", {})
-        if not bp_ref:
+        ports = bp.get("ports", {}) if isinstance(bp, dict) else {}
+        if not isinstance(bp, dict) or not bp.get("ref_id"):
             continue
-        if bp.get("branch_point_type") == "branch_pole":
-            branch_bus = (
-                ports.get("BRANCH", [None])[0] if isinstance(ports.get("BRANCH"), list) else None
-            )
-            if branch_bus == from_bus_ref:
-                structured_candidates.append(f"{bp_ref}.BRANCH")
-        if bp.get("branch_point_type") == "zksn":
-            for idx, bus_ref in enumerate(ports.get("BRANCH", []), start=1):
-                if bus_ref == from_bus_ref:
-                    structured_candidates.append(f"{bp_ref}.BRANCH_{idx}")
+        if bp.get("branch_point_type") not in {"branch_pole", "zksn"}:
+            continue
+        porty_branch = ports.get("BRANCH")
+        porty_odgalezne: list[Any] = porty_branch if isinstance(porty_branch, list) else []
+        if from_bus_ref in porty_odgalezne:
+            structured_candidates.append(from_bus_ref)
 
     unique_structured = sorted(set(structured_candidates))
     if len(unique_structured) == 1:
@@ -3130,7 +3392,7 @@ def _lookup_branch_from_ref_for_bus(
             and _czy_pole_liniowe_sn(enm, field_ref)
             and (not _pole_liniowe_zajete(enm, rekord) or _czy_pole_gpz(enm, field_ref))
         ):
-            structured_candidates.append(f"{field_ref}.BRANCH")
+            structured_candidates.append(field_ref)
 
     unique_structured = sorted(set(structured_candidates))
     if len(unique_structured) == 1:
@@ -3148,7 +3410,7 @@ def _lookup_branch_from_ref_for_bus(
     )
     tags = bus.get("tags", []) if isinstance(bus, dict) else []
     if isinstance(tags, list) and "topology_terminal" in tags:
-        return f"{from_bus_ref}.BRANCH", None
+        return from_bus_ref, None
 
     return None, "branch_connection.source_not_branch_capable"
 
@@ -4076,7 +4338,11 @@ def _response(
 
 
 def _error_response(
-    message: str, code: str, *, kod_reguly_katalogu: str | None = None
+    message: str,
+    code: str,
+    *,
+    kod_reguly_katalogu: str | None = None,
+    fix_actions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Odpowiedź błędu operacji.
 
@@ -4089,6 +4355,10 @@ def _error_response(
     ``kod_reguly_katalogu`` — kod twardej reguły katalogu (``KAT-T-…``), gdy odmowę zgłosiła
     brama rekordu katalogu: należy do maszynowej części odpowiedzi (obok ``error_code``),
     nie do zdania dla projektanta (karta #142). Bez kodu reguły odpowiedź nie niesie klucza.
+
+    ``fix_actions`` — akcje naprawcze odmowy (kształt akcji gotowości: ``code``,
+    ``action_type``, ``element_ref``, ``panel``, ``step``, ``focus``, ``message_pl``); bez akcji
+    lista jest pusta.
     """
     assert code.strip(), "odmowa operacji domenowej bez kodu"
     odpowiedz: dict[str, Any] = {
@@ -4097,7 +4367,7 @@ def _error_response(
         "snapshot": None,
         "logical_views": {},
         "readiness": {"ready": False, "blockers": [], "warnings": []},
-        "fix_actions": [],
+        "fix_actions": list(fix_actions or []),
         "changes": {
             "created_element_ids": [],
             "updated_element_ids": [],
@@ -4458,6 +4728,8 @@ def _resolve_manual_source_equivalent(
 
 def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj źródło zasilania (GPZ) — pierwszy krok budowy sieci SN."""
+    from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
+
     odmowa = _odmowa_typu_ladunku(
         payload, "add_grid_source_sn", {"voltage_kv": "liczba", "sections_count": "calkowita"}
     )
@@ -5176,6 +5448,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "from_bus_ref": left_section["bus_ref"],
                 "to_bus_ref": right_section["bus_ref"],
                 "status": "closed",
+                # Zapis z pominięciem `create_branch` — stan obiektu jak u jedynego pisarza
+                # gałęzi: łącznik utworzony operacją jest PROJEKTOWANY (UX-04).
+                "stan_obiektu": "PROJEKTOWANY",
                 "catalog_ref": None,
                 "catalog_namespace": None,
                 "parameter_source": None,
@@ -5226,6 +5501,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             bay_protection_ref = bay_spec.get("protection_ref")
             section["line_field_refs"].append(bay_ref)
             equipment_refs: list[str] = []
+            galaz_aparatu_pola: dict[str, Any] | None = None
             field_meta: dict[str, Any] = {
                 "gpz_section_order": section["order"],
                 "gpz_line_field_index": field_index,
@@ -5324,6 +5600,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     }
                 )
                 equipment_refs = [apparatus_ref]
+                galaz_aparatu_pola = apparatus_data
                 zacisk_pola_gpz = terminal_bus_ref
                 field_meta.update(
                     {
@@ -5348,7 +5625,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     bay_role_pola = "OZE"
                 else:
                     rola_kanoniczna_pola = kanoniczna_rola_pola_sn(rola_payloadu)
-                    bay_role_pola = _SN_FIELD_ROLE_TO_BAY_ROLE.get(rola_kanoniczna_pola, "")
+                    bay_role_pola = rola_modelu_pola_sn(rola_kanoniczna_pola) or ""
                 if not bay_role_pola:
                     return _error_response(
                         f"{bay_name}: nieznana rola pola „{rola_payloadu}” — dozwolone role pól "
@@ -5357,12 +5634,13 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     )
             else:
                 bay_role_pola = default_bay_role
-            aparaty_pola, konfiguracja_pola = _aparaty_i_konfiguracja_pola(
+            aparaty_pola, konfiguracja_pola, bay_template_ref = _aparaty_pola_liniowego_gpz(
                 field_ref=bay_ref,
+                bay_role=bay_role_pola,
                 bay_template_ref=bay_template_ref,
                 switchgear_family_ref=gpz_switchgear_family_ref,
-                wybor_bloku=None,
                 napiecie_szyny_kv=float(voltage_kv),
+                galaz_aparatu=galaz_aparatu_pola,
             )
             pola_gpz.append(
                 dodaj_pole(
@@ -5378,6 +5656,18 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         gpz_section_id=section["section_id"],
                         equipment_refs=equipment_refs,
                         protection_ref=bay_protection_ref,
+                        # Funkcje EAZ pola z jego szablonu — TEN SAM resolver co operacje
+                        # dodające pole (producent → szablon → rola). Pole GPZ bez szablonu
+                        # i bez aparatu (brak pozycji katalogowej aparatu pola) nie ma czym
+                        # wyłączyć — funkcje EAZ byłyby fabrykacją (kanon resolvera: pole bez
+                        # wyłącznika = puste).
+                        protection_codes=(
+                            _resolve_bay_template_protection_codes(
+                                gpz_manufacturer_ref, bay_template_ref, bay_role_pola
+                            )
+                            if bay_template_ref or equipment_refs
+                            else []
+                        ),
                         bay_template_ref=bay_template_ref,
                         switchgear_family_ref=gpz_switchgear_family_ref,
                         manufacturer_ref=gpz_manufacturer_ref,
@@ -5385,6 +5675,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         config_id=konfiguracja_pola,
                         tags=["gpz_line_field"],
                         meta=field_meta,
+                        stan_obiektu="PROJEKTOWANY",
                     ),
                 )
             )
@@ -5452,7 +5743,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         new_enm,
         corridor_ref,
         starting_bay_ref=first_line_field.get("ref_id") if first_line_field else None,
-        starting_port_ref=zacisk_pola(first_line_field) if first_line_field else None,
+        # Port startu ciągu z pola = `ref_id` pola (postać `_rozwiaz_port_startu`).
+        starting_port_ref=first_line_field.get("ref_id") if first_line_field else None,
     )
 
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie punktu neutralnego sekcji SN GPZ —
@@ -5626,6 +5918,25 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "Wybierz wolne pole liniowe albo port ZK SN.",
             "trunk.source_requires_line_bay",
         )
+    # Ciąg odcinka — JEDNA reguła ciągłości (`_ciag_kontynuowany_z`). Ciąg wskazany jawnie,
+    # którego start nie kontynuuje, to sprzeczny kontekst wołającego (nazwana odmowa, nie
+    # doklejenie). Bez wskazania: ciąg kończący się na starcie, inaczej pusty, inaczej NOWY
+    # ciąg z tego startu (`_zapisz_ciag_z_portu` niżej). Wskazanie ciągu nieistniejącego —
+    # jak brak wskazania (nieaktualny kontekst nie przekierowuje odcinka do cudzego ciągu).
+    jawny_ciag = _find_corridor_by_ref(enm, trunk_id) if isinstance(trunk_id, str) else None
+    if jawny_ciag is not None and not _ciag_kontynuowany_z(enm, jawny_ciag, from_terminal_id):
+        return _error_response(
+            "Odcinek nie może kontynuować ciągu "
+            f"{opis_nazwy(jawny_ciag.get('name'), 'wskazanego na schemacie')} — start odcinka "
+            "nie jest końcem tego ciągu. Wybierz koniec ciągu na schemacie albo wyprowadź nowy "
+            "ciąg z wolnego pola liniowego bez wskazania ciągu.",
+            "trunk.start_not_at_trunk_end",
+        )
+    ciag_odcinka = (
+        str(jawny_ciag.get("ref_id"))
+        if jawny_ciag is not None
+        else _ciag_dla_startu(enm, from_terminal_id)
+    )
 
     rodzaj = segment.get("rodzaj", "KABEL")
     dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
@@ -5816,15 +6127,50 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         {"step": ev_seq, "action": "Utworzono odcinek magistrali", "element_id": branch_ref}
     )
 
-    # Update corridor (auto-detect if not specified)
-    effective_trunk_id = trunk_id
-    corridors = new_enm.get("corridors", [])
-    if effective_trunk_id and not any(c.get("ref_id") == effective_trunk_id for c in corridors):
-        effective_trunk_id = None
-    if not effective_trunk_id and corridors:
-        effective_trunk_id = corridors[0].get("ref_id")
-
-    if effective_trunk_id:
+    # Ciąg odcinka (rozstrzygnięty wyżej): kontynuowany albo NOWY. Model bez ciągów (migawka
+    # sprzed magistral) — odcinek poza ciągiem, jak dotąd.
+    effective_trunk_id: str | None = ciag_odcinka
+    if effective_trunk_id is None and new_enm.get("corridors"):
+        # Start, który nie kontynuuje żadnego ciągu (drugie pole GPZ, wolne pole stacji
+        # w środku ciągu) — nowy ciąg z TEGO portu, ta sama postać co odgałęzienie
+        # (`_zapisz_ciag_z_portu`); pole GPZ dostaje przydział ciągu (`gpz_field_ref`).
+        effective_trunk_id = _make_id(
+            "corridor",
+            _compute_seed({"op": "continue_trunk_new_run", "segment_ref": branch_ref}),
+            "run",
+        )
+        pochodzenie = field_ref or from_terminal_id
+        # Pole GPZ startu jest wolne (sprawdzone wyżej) i odcinek wychodzi z jego punktu
+        # przyłączenia — przydział ciągu temu polu zapisany DWUSTRONNIE jak w kanonie pól GPZ
+        # (`_allocate_gpz_line_field_for_branch`: `meta.assigned_corridor_ref` pola i
+        # `corridor.meta.gpz_field_ref`), bez szukania innego pola (odcinek już stoi na tym).
+        gpz_field_ref = field_ref if field_ref and _czy_pole_gpz(enm, field_ref) else None
+        if gpz_field_ref:
+            _zmien_meta_pola(new_enm, gpz_field_ref, assigned_corridor_ref=effective_trunk_id)
+        nazwa_ciagu = (
+            f"Magistrala {len(new_enm.get('corridors') or []) + 1:02d}"
+            if gpz_field_ref
+            else (
+                "Odgałęzienie SN kablowe"
+                if branch_type == "cable"
+                else "Odgałęzienie SN napowietrzne"
+            )
+        )
+        _zapisz_ciag_z_portu(
+            new_enm,
+            corridor_ref=effective_trunk_id,
+            nazwa=nazwa_ciagu,
+            # Port startu w JEDNEJ postaci (`_rozwiaz_port_startu`): pole startu, a bez pola —
+            # zacisk, z którego wychodzi odcinek.
+            from_ref=field_ref or from_terminal_id,
+            origin_element_ref=pochodzenie,
+            segment_ref=branch_ref,
+            parent_run_ref=None,
+            gpz_field_ref=gpz_field_ref,
+        )
+        created.append(effective_trunk_id)
+        line_run = _ensure_line_run_for_corridor(new_enm, effective_trunk_id)
+    elif effective_trunk_id:
         for c in new_enm.get("corridors", []):
             if c.get("ref_id") == effective_trunk_id:
                 c.setdefault("ordered_segment_refs", []).append(branch_ref)
@@ -5833,9 +6179,10 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             new_enm,
             effective_trunk_id,
             starting_bay_ref=field_ref,
-            starting_port_ref=from_terminal_id,
+            starting_port_ref=field_ref or from_terminal_id,
         )
         _append_line_run_segment(line_run, branch_ref)
+    if effective_trunk_id:
         if nazwa_odcinka is None:
             nowy_odcinek = _find_branch(new_enm, branch_ref)
             if nowy_odcinek is not None:
@@ -6718,6 +7065,7 @@ def _zbuduj_pola_nn(
             substation_ref=substation_ref,
             tags=["nn_main_breaker"],
             meta={"transformer_ref": transformer_ref} if transformer_ref else None,
+            stan_obiektu="PROJEKTOWANY",
         )
     ]
     for idx in range(max(feeder_count, len(feeders))):
@@ -6739,6 +7087,7 @@ def _zbuduj_pola_nn(
                 substation_ref=substation_ref,
                 catalog_bindings=wiazania if isinstance(wiazania, dict) else None,
                 meta=feeder_meta,
+                stan_obiektu="PROJEKTOWANY",
             )
         )
     return pola_nn_stacji
@@ -7067,9 +7416,7 @@ def _materialize_nn_source(
 #: Kanoniczna rola pola (`field_role`) → rola pola w modelu (`Bay.bay_role`): dokładna odwrotność
 #: aliasów modelu z kanonu (`ROLA_POLA_SN_Z_ALIASU`), z którego read-model wyprowadza
 #: `application.field_read_model.CANONICAL_BAY_ROLE_MAP` — jedna tablica w obie strony.
-_SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = {
-    rola: alias for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
-}
+_SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = ROLA_MODELU_Z_ROLI_KANONICZNEJ
 
 
 def _odmowa_roli_pola_spoza_slownika(
@@ -7982,6 +8329,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                         "section_a_bus_ref": sn_bus_id,
                         "section_b_bus_ref": sn_bus_b_id,
                     },
+                    stan_obiektu="PROJEKTOWANY",
                 ),
             )
             continue
@@ -8096,6 +8444,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 # wyłącznie na polu POMIAROWYM po `rozstrzygnij_pomiary_pol`.
                 funkcja_pomiaru=field_spec.get("funkcja_pomiaru"),
                 rodzaj_pomiaru=field_spec.get("rodzaj_pomiaru"),
+                stan_obiektu="PROJEKTOWANY",
             ),
         )
 
@@ -8956,6 +9305,7 @@ def _insert_branch_point_on_segment_sn(
             branch_point_ref=bp_ref,
             bus_ref=bp_bus_ref,
             branch_ports_count=branch_ports_count,
+            stan_obiektu="PROJEKTOWANY",
         ):
             dodaj_pole(new_enm, rekord_pola)
             created.append(rekord_pola["ref_id"])
@@ -8996,9 +9346,10 @@ def insert_zksn_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj odgałęzienie SN z istniejącej szyny.
 
-    Wymaga jawnego from_ref (port BRANCH na stacji lub branch-poincie).
-    from_bus_ref jest obsługiwane wyłącznie jako pole kompatybilności
-    i musi mapować się 1:1 do bus_ref rozwiązanego z from_ref.
+    Port startu `from_ref` w jednej postaci (`_rozwiaz_port_startu`): `ref_id` pola liniowego
+    SN albo zacisk — szyna portu odgałęźnego słupa rozgałęźnego / ZKSN albo szyna terminalna.
+    Bez `from_ref` port wyznacza `from_bus_ref` (`_port_startu_dla_szyny`); podane razem muszą
+    wskazywać tę samą szynę.
     """
     odmowa = _odmowa_typu_segmentu(payload, "start_branch_segment_sn")
     if odmowa is not None:
@@ -9027,15 +9378,15 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         return branch_catalog_ref
 
     # INSPEKTOR-POLA-DOMKNIECIE: start wskazany SZYNĄ SEKCJI SN stacji (`from_bus_ref` bez
-    # `from_ref` albo `from_ref` będące szyną, z portem `BRANCH` lub bez) — odgałęzienie wychodzi
+    # `from_ref` albo `from_ref` będące zaciskiem szyny sekcji) — odgałęzienie wychodzi
     # z wolnego pola liniowego tej szyny, a bez wolnego pola z pola utworzonego w tej operacji
     # (`_przylacz_koniec_przez_pole`); dawniej szyna dawała odmowę „brak portu odgałęźnego".
+    # Port startu przekazywany dalej ma JEDNĄ postać `_rozwiaz_port_startu` (rozstrzygnięcie
+    # architekta 2026-10-30): `ref_id` pola, bez dawnego przyrostka `.BRANCH` — scalenie obu
+    # kart 2026-11-11 zdjęło stąd zdejmowanie i doklejanie przyrostka (warstwa zgodności, której
+    # rozstrzygnięcie zakazuje).
     pole_przylaczenia: _PrzylaczeniePrzezPole | None = None
-    szyna_startu = (
-        from_ref.removesuffix(".BRANCH")
-        if isinstance(from_ref, str) and from_ref.strip()
-        else from_bus_ref
-    )
+    szyna_startu = from_ref if isinstance(from_ref, str) and from_ref.strip() else from_bus_ref
     if isinstance(szyna_startu, str) and szyna_startu in szyny_sekcji_sn(enm):
         model_z_polem = kopia_graniczna_enm(enm)
         przylaczenie = _przylacz_koniec_przez_pole(
@@ -9046,7 +9397,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         if przylaczenie is not None:
             pole_przylaczenia = przylaczenie
             enm = model_z_polem
-            from_ref = f"{przylaczenie.field_ref}.BRANCH"
+            from_ref = przylaczenie.field_ref
             from_bus_ref = None
     inferred_from_bus_ref = bool(not from_ref and from_bus_ref)
     if inferred_from_bus_ref:
@@ -9055,7 +9406,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         # blad mypy na HEAD, naprawiony przy okazji karty P0.6, zero zmiany
         # zachowania w runtime).
         assert from_bus_ref is not None
-        inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, from_bus_ref)
+        inferred_from_ref, lookup_err = _port_startu_dla_szyny(enm, from_bus_ref)
         if lookup_err:
             # Szyna stacji z polami liniowymi, z których każde jest zajęte — nazwana odmowa
             # z akcją naprawczą (dodaj pole w rozdzielnicy), nie „brak portu odgałęźnego".
@@ -9089,10 +9440,10 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             "branch.from_ref_required",
         )
 
-    resolved_bus_ref, err_code = _resolve_branch_from_ref(enm, from_ref)
-    if err_code:
-        return _error_response("Nieprawidłowe źródło odgałęzienia.", err_code)
-    from_bus_ref = resolved_bus_ref
+    port_startu = _rozwiaz_port_startu(enm, from_ref)
+    if isinstance(port_startu, str):
+        return _error_response("Nieprawidłowe źródło odgałęzienia.", port_startu)
+    from_bus_ref = port_startu.bus_ref
 
     if (
         payload.get("from_bus_ref")
@@ -9120,7 +9471,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     # Karta POLE-ZAJĘTE: odgałęzienie z pola stacji wychodzi tylko z WOLNEGO pola (jedno
     # źródło prawdy `enm.zajetosc_pol`). Pole GPZ zajęte nie jest odmową: kanon GPZ przydziela
     # feederowi inne wolne albo nowe pole (`_allocate_gpz_line_field_for_branch` niżej).
-    origin_element_ref = from_ref.split(".", 1)[0]
+    origin_element_ref = port_startu.element_ref
     pole_zrodlowe = origin_element_ref if pole_modelu(enm, origin_element_ref) else None
     pole_zrodlowe_gpz = _czy_pole_gpz(enm, pole_zrodlowe)
     if pole_zrodlowe and not pole_zrodlowe_gpz:
@@ -9185,7 +9536,6 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": new_bus_ref})
 
     branch_type = "cable" if rodzaj == "KABEL" else "line_overhead"
-    origin_element_ref, origin_port_id = from_ref.split(".", 1)
 
     # Kanon dedykowanych pól (dyrektywa właściciela, 2026-07-17): feeder wyprowadzany z GPZ
     # dostaje WŁASNE pole liniowe — wskazane w `from_ref`, jeśli wolne, inaczej pierwsze wolne,
@@ -9276,10 +9626,10 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     created.append(branch_ref)
 
     parent_run_ref = None
-    if from_ref and from_ref.startswith("bp/"):
+    if port_startu.port_id is not None:
         for bp in new_enm.get("branch_points", []):
             if bp.get("ref_id") == origin_element_ref:
-                bp.setdefault("branch_occupied", {})[origin_port_id] = branch_ref
+                bp.setdefault("branch_occupied", {})[port_startu.port_id] = branch_ref
                 main_segment_refs = _branch_point_main_segment_refs(new_enm, bp)
                 runtime_inputs = bp.get("runtime_inputs")
                 parent_run_ref = _line_run_ref_for_segments(new_enm, main_segment_refs) or (
@@ -9291,20 +9641,8 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     branch_type_label = "kablowe" if branch_type == "cable" else "napowietrzne"
     if not any(c.get("ref_id") == branch_corridor_ref for c in new_enm.setdefault("corridors", [])):
-        new_corridor: dict[str, Any] = {
-            "ref_id": branch_corridor_ref,
-            "name": f"Odgałęzienie SN {branch_type_label}",
-            "corridor_type": "radial",
-            "ordered_segment_refs": [branch_ref],
-            "parent_run_ref": parent_run_ref,
-            "branch_origin_station_ref": origin_element_ref,
-            "branch_origin_port_ref": from_ref,
-            "starting_port_ref": from_ref,
-            "meta": {},
-        }
         # Przydział pola GPZ policzony wyżej (przed utworzeniem odcinka).
         if gpz_field_ref:
-            new_corridor["meta"]["gpz_field_ref"] = gpz_field_ref
             if created_gpz_field is not None:
                 created.append(str(created_gpz_field.get("ref_id")))
                 meta_nowego_pola = created_gpz_field.get("meta") or {}
@@ -9322,20 +9660,19 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
                         "element_id": str(created_gpz_field.get("ref_id")),
                     }
                 )
-        new_enm["corridors"].append(new_corridor)
-        created.append(branch_corridor_ref)
-    branch_line_run = _ensure_line_run_for_corridor(
+    # Port startu ciągu w JEDNEJ postaci (`_rozwiaz_port_startu`): pole, z którego odcinek
+    # FAKTYCZNIE wychodzi (przydzielone pole GPZ bywa inne niż wskazane), inaczej zacisk portu.
+    if _zapisz_ciag_z_portu(
         new_enm,
-        branch_corridor_ref,
-        starting_bay_ref=origin_element_ref,
-        starting_port_ref=from_ref,
-        run_kind="branch",
-    )
-    if branch_line_run is not None:
-        branch_line_run["parent_run_ref"] = parent_run_ref
-        branch_line_run["branch_origin_station_ref"] = origin_element_ref
-        branch_line_run["starting_port_ref"] = from_ref
-        _append_line_run_segment(branch_line_run, branch_ref)
+        corridor_ref=branch_corridor_ref,
+        nazwa=f"Odgałęzienie SN {branch_type_label}",
+        from_ref=pole_zrodlowe or port_startu.bus_ref,
+        origin_element_ref=pole_zrodlowe or origin_element_ref,
+        segment_ref=branch_ref,
+        parent_run_ref=parent_run_ref,
+        gpz_field_ref=gpz_field_ref,
+    ):
+        created.append(branch_corridor_ref)
 
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": branch_ref})
@@ -9810,7 +10147,7 @@ def przepnij_element_na_pole(enm: dict[str, Any], payload: dict[str, Any]) -> di
     koniec elementu leżący na szynie pola na zacisk pola — aparat pola wchodzi w tor prądowy.
 
     Payload: `element_ref` (odcinek terenowy SN albo transformator), `field_ref` (pole —
-    opcjonalne; bez niego pole wskazane przez walidator). Akcja naprawcza ostrzeżenia `W049`
+    opcjonalne; bez niego pole wskazane przez walidator). Akcja naprawcza ostrzeżenia `W058`
     (odcinek na szynie sekcji bez pola, `enm.zajetosc_pol.odcinki_bez_pola`): bez wolnego pola
     operacja TWORZY pole liniowe wyposażone jak wzorzec sekcji (`_przylacz_koniec_przez_pole`),
     a pole bez własnego zacisku przyłącza odcinek wskazaniem w meta odcinka (reguła R1).
@@ -9822,7 +10159,7 @@ def przepnij_element_na_pole(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
     if odmowa is not None:
         return odmowa
-    element_ref = _napis_lub_none(payload.get("element_ref"))
+    element_ref = napis_lub_none(payload.get("element_ref"))
     if element_ref is None:
         return _error_response(
             "Nie wskazano elementu do przepięcia na pole stacji.",
@@ -9839,7 +10176,7 @@ def przepnij_element_na_pole(enm: dict[str, Any], payload: dict[str, Any]) -> di
     created: list[str] = []
     events: list[dict[str, Any]] = []
     audit: list[dict[str, Any]] = []
-    field_ref = _napis_lub_none(payload.get("field_ref")) or naruszenia[0].field_ref
+    field_ref = napis_lub_none(payload.get("field_ref")) or naruszenia[0].field_ref
     if field_ref is None and naruszenia[0].rodzaj_elementu == "odcinek":
         # INSPEKTOR-POLA-DOMKNIECIE: odcinek na szynie sekcji bez wolnego pola — akcja naprawcza
         # tworzy pole liniowe w tej samej operacji (wyposażone jak wzorzec sekcji), zamiast
@@ -10520,6 +10857,45 @@ def _przypisz_katalog_pola(
     )
 
 
+def _stan_lacznika_po_przypisaniu(
+    enm: dict[str, Any],
+    galaz: dict[str, Any],
+    *,
+    zmiana_pozycji: bool,
+    stan_jawny: object,
+) -> None:
+    """Stan instancji łącznika po przypisaniu pozycji katalogu (korekta właściciela 2026-10-28).
+
+    Ta sama reguła co wymiana aparatu pola (`enm.pola.aparaty_po_wymianie`): nowa pozycja =
+    WYMIANA aparatu — nowa instancja, ``PROJEKTOWANY``; stan podany JAWNIE (inwentaryzacja
+    aparatu zastanego w sieci) zostaje; ta sama pozycja — stan bez zmian. Instancję niesie
+    aparat pola wskazujący gałąź (`linked_ref` — dostaje też nową pozycję, jedna prawda
+    katalogu fizycznego aparatu), inaczej sama gałąź (`SwitchBranch.stan_obiektu`). MUTUJE
+    ``enm`` (prywatną kopię operacji)."""
+    if stan_jawny in STANY_OBIEKTU:
+        stan = str(stan_jawny)
+    elif zmiana_pozycji:
+        stan = "PROJEKTOWANY"
+    else:
+        return
+    ref = str(galaz.get("ref_id"))
+    galaz["stan_obiektu"] = stan
+    aparat = aparat_lacznika(enm, ref)
+    if aparat is None:
+        return
+    rekord_pola = next(
+        p for p in enm.get("bays") or [] if aparat in (p.get("primary_devices") or [])
+    )
+    aparaty = []
+    for a in rekord_pola.get("primary_devices") or []:
+        kopia = dict(a)
+        if a is aparat:
+            kopia["catalog_ref"] = galaz.get("catalog_ref")
+            kopia["stan_obiektu"] = stan
+        aparaty.append(kopia)
+    zmien_pole(enm, str(rekord_pola["ref_id"]), primary_devices=aparaty)
+
+
 def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Przypisz katalog do elementu."""
     element_ref = payload.get("element_ref")
@@ -10553,6 +10929,25 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         return _error_response(
             "Wskazany element nie istnieje w modelu sieci.", "catalog.element_not_found"
         )
+    stan_jawny = payload.get("stan_obiektu")
+    if stan_jawny is not None:
+        cel = enm[loc[0]][loc[1]] if loc[0] != "bays" else None
+        if not (
+            isinstance(cel, dict)
+            and loc[0] == "branches"
+            and cel.get("type") in RODZAJE_GALEZI_LACZENIOWYCH
+        ):
+            return _error_response(
+                f"Pole {pole('stan_obiektu', 'assign_catalog_to_element')} dotyczy wyłącznie "
+                "łącznika — pomiń je dla tego elementu (stan pola ustawia karta pola).",
+                "catalog.object_state_not_applicable",
+            )
+        if stan_jawny not in STANY_OBIEKTU or clear_catalog:
+            return _error_response(
+                f"Pole {pole('stan_obiektu', 'assign_catalog_to_element')} — wskaż stan "
+                "istniejący albo projektowany razem z pozycją katalogu łącznika.",
+                "catalog.object_state_invalid",
+            )
     if loc[0] == "bays":
         return _przypisz_katalog_pola(
             enm,
@@ -10642,7 +11037,15 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         # element JEST katalogowy, a bez niej operacja kończy się wyżej błędem.
         # `source_mode` z payloadu pozwalał wcześniej opisać pochodzenie inaczej,
         # niż wynika ze stanu faktycznego (kable i transformatory i tak je gubiły).
+        poprzednia_pozycja = target_element.get("catalog_ref")
         target_element["catalog_ref"] = catalog_item_id
+        if coll == "branches" and target_element.get("type") in RODZAJE_GALEZI_LACZENIOWYCH:
+            _stan_lacznika_po_przypisaniu(
+                new_enm,
+                target_element,
+                zmiana_pozycji=poprzednia_pozycja != catalog_item_id,
+                stan_jawny=stan_jawny,
+            )
         # Wartości projektanta (`overrides`) należą do ELEMENTU, nie do pozycji katalogu —
         # zmiana pozycji ich nie kasuje, więc znacznik zostaje OVERRIDE (E010: niepuste
         # nadpisania bez OVERRIDE są blokadą walidatora).
@@ -12406,6 +12809,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 wybor_bloku=field_wybor_bloku,
                 metadane_pochodzenia=field_metadane,
                 meta={"created_by": "append_station_on_endpoint"},
+                stan_obiektu="PROJEKTOWANY",
             )
         )
 
@@ -12438,6 +12842,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                     POLE_STATUSU_ZRODLA: STATUS_POLA_DOMYKANEGO,
                 },
                 meta={"created_by": "append_station_on_endpoint"},
+                stan_obiektu="PROJEKTOWANY",
             )
         )
         return field_ref
@@ -12795,8 +13200,10 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         )
 
         # Pole TR: transformator należy do pola, na którego zacisku leży. Wymagane funkcje
-        # zabezpieczeniowe pola: z szablonu pola producenta, a bez szablonu — zestaw pola
-        # transformatorowego (`TRANSFORMER_BAY_PROTECTION_CODES`).
+        # zabezpieczeniowe pola: z szablonu pola producenta, a bez szablonu — zestaw szablonu
+        # pola transformatorowego przez TEN SAM odczyt co resolver operacji
+        # (`funkcje_eaz_szablonu` — bez funkcji warunkowych o niespełnionym warunku, decyzja
+        # właściciela 2026-10-29: 67N tylko z potwierdzonym źródłem 3U₀).
         rekord_tr = pole_modelu(new_enm, ref_pola_tr) or {}
         meta_tr = dict(rekord_tr.get("meta") or {})
         meta_tr.setdefault("created_by", "append_station_on_endpoint")
@@ -12806,7 +13213,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             ref_pola_tr,
             equipment_refs=[*(rekord_tr.get("equipment_refs") or []), transformer_ref],
             protection_codes=list(rekord_tr.get("protection_codes") or [])
-            or list(TRANSFORMER_BAY_PROTECTION_CODES),
+            or list(funkcje_eaz_szablonu(BAY_TEMPLATE_TRANSFORMER.template_id) or []),
             meta=meta_tr,
         )
         created.append(ref_pola_tr)
@@ -13094,6 +13501,90 @@ def _nowe_zdublowane_identyfikatory(przed: dict[str, Any], po: Any) -> list[str]
     )
 
 
+def _odmowa_gazu_fluorowanego(przed: dict[str, Any], wynik: object) -> dict[str, Any] | None:
+    """Strażnik zakazu gazów fluorowanych KAŻDEJ operacji (dyrektywa właściciela 2026-10-28):
+    model po operacji nie może mieć nośnika gazu fluorowanego w obiekcie nieistniejącym,
+    którego nie miał przed nią (`enm.gaz_fluorowany_pola.nowe_naruszenia_gazu_fluorowanego` —
+    ta sama reguła co walidator modelu i filtr pickerów). Odmowa niesie kod, zdanie z podstawą
+    i akcję naprawczą; model wejściowy zostaje bez zmian (odpowiedź bez migawki)."""
+    if not isinstance(wynik, dict) or wynik.get("error"):
+        return None
+    po = wynik.get("snapshot")
+    if not isinstance(po, dict):
+        return None
+    nowe = nowe_naruszenia_gazu_fluorowanego(przed, po)
+    if not nowe:
+        return None
+    return _error_response(
+        " ".join(dict.fromkeys(n.komunikat_pl for n in nowe)),
+        KOD_ODMOWY_GAZU_FLUOROWANEGO,
+        fix_actions=[
+            {
+                "code": KOD_ODMOWY_GAZU_FLUOROWANEGO,
+                "action_type": "SELECT_CATALOG",
+                "element_ref": n.bay_ref or n.element_ref,
+                "panel": "inspector",
+                "step": None,
+                "focus": n.element_ref,
+                "message_pl": AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL,
+            }
+            for n in nowe
+        ],
+    )
+
+
+def _odmowa_szablonu_pola(przed: dict[str, Any], wynik: object) -> dict[str, Any] | None:
+    """Strażnik zgodności szablonu pola KAŻDEJ operacji (`enm.zgodnosc_szablonu_pola`):
+    wykonanie łączników × izolacja rodziny (ENEA Zeszyt 1, §13), szablon GPZ poza GPZ, klasa
+    pola × wykonanie (IRiESD II.4.5.4.2). Model po operacji nie może mieć niezgodności, której
+    nie miał przed nią — ta sama reguła co walidator (W050–W052) i filtr szablonów API. Kod
+    odmowy = kod pierwszej nowej niezgodności; model wejściowy zostaje bez zmian."""
+    if not isinstance(wynik, dict) or wynik.get("error"):
+        return None
+    po = wynik.get("snapshot")
+    if not isinstance(po, dict):
+        return None
+    nowe = nowe_niezgodnosci_szablonu(przed, po)
+    if not nowe:
+        return None
+    return _error_response(
+        " ".join(dict.fromkeys(n.komunikat_pl for n in nowe)),
+        nowe[0].kod,
+        fix_actions=[
+            {
+                "code": n.kod,
+                "action_type": "SELECT_CATALOG",
+                "element_ref": n.bay_ref,
+                "panel": "inspector",
+                "step": None,
+                "focus": n.bay_ref,
+                "message_pl": AKCJA_NAPRAWCZA_SZABLONU_PL[n.kod],
+            }
+            for n in nowe
+        ],
+    )
+
+
+def _wynik_zapisu_proby(
+    handler: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]],
+    enm_dict: dict[str, Any],
+    payload: object,
+    wynik: object,
+) -> object:
+    """Wynik, na którym strażnik gazu fluorowanego ocenia operację.
+
+    Tryb próby (`dry_run`) nie oddaje migawki (brak migawki = brak zapisu), więc strażnik nie
+    miałby modelu „po". Próba bez oceny gazu mówiłaby „konfiguracja poprawna", a zapis tej
+    samej operacji odmówiłby — dwa werdykty jednej operacji. Dlatego dla próby handler jest
+    wykonany drugi raz bez `dry_run` na tym samym (niezmienianym) modelu wejściowym, a
+    strażnik ocenia ten wynik; odpowiedź próby zostaje odpowiedzią próby."""
+    if not isinstance(payload, dict) or not payload.get("dry_run"):
+        return wynik
+    if not isinstance(wynik, dict) or wynik.get("error"):
+        return wynik
+    return handler(enm_dict, {k: v for k, v in payload.items() if k != "dry_run"})
+
+
 def execute_domain_operation(
     enm_dict: dict[str, Any],
     op_name: str,
@@ -13148,6 +13639,20 @@ def execute_domain_operation(
         # resolver dla każdego miejsca rozstrzygania `catalog_ref` w handlerach).
         with kontekst_katalogu(enm_dict):
             result = handler(enm_dict, payload)
+            wynik_oceny = _wynik_zapisu_proby(handler, enm_dict, payload, result)
+            odmowa_reguly_pola = _odmowa_gazu_fluorowanego(
+                enm_dict, wynik_oceny
+            ) or _odmowa_szablonu_pola(enm_dict, wynik_oceny)
+        if odmowa_reguly_pola is not None:
+            if isinstance(payload, dict) and payload.get("dry_run"):
+                # Próba odpowiada TYM SAMYM werdyktem, co zapis (predykaty parami): ten sam
+                # kształt co niezgodność katalogowa w trybie próby.
+                odmowa_reguly_pola["dry_run"] = True
+                odmowa_reguly_pola["preview"] = {
+                    "werdykt": "INVALID",
+                    "komunikat_pl": odmowa_reguly_pola["error"],
+                }
+            return odmowa_reguly_pola
     except BladKataloguProjektu as blad:
         return _error_response(
             str(blad), "katalog_projektu.invalid", kod_reguly_katalogu=blad.kod_reguly
@@ -13163,7 +13668,9 @@ def execute_domain_operation(
         # katalogowy — kreator czyta tę niezgodność jednakowo NIEZALEŻNIE od
         # operacji, która ją wykryła. Bez tego przejścia wyjątek wpadłby niżej
         # i wrócił jako bezradne „nieobsłużony wyjątek".
-        return _error_response(str(blad), KOD_BLEDU_POLA_KATALOGOWEGO)
+        return _error_response(
+            str(blad), kod_odmowy_konfiguracji(blad, KOD_BLEDU_POLA_KATALOGOWEGO)
+        )
     # Karta #151: dawne `except Exception` → `dispatcher.unhandled_exception` połykało
     # KAŻDY błąd programu jako odpowiedź 200 „błąd wewnętrzny systemu". Odmowy danych
     # handlery zwracają same (`_error_response`, także `payload.invalid_type` dla pola o

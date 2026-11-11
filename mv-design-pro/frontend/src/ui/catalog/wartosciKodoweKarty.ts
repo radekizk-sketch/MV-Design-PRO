@@ -108,6 +108,17 @@ export const UKLAD_POLACZEN_BATERII_PL: Readonly<Record<string, string>> = {
   TROJKAT: 'trójkąt',
 };
 
+/** Przeznaczenie rdzenia CT / uzwojenia VT (tabliczka `rdzenie` / `uzwojenia` pozycji przekładnika)
+ *  — backend `network_model/catalog/przekladniki.py::NAZWY_PRZEZNACZENIA_PL`. */
+export const NAZWA_PRZEZNACZENIA_RDZENIA_PL: Readonly<Record<string, string>> = {
+  JAKOSC_ENERGII: 'analizator jakości energii elektrycznej',
+  POMIAR: 'pomiar techniczny i telemechanika',
+  REGULACJA: 'regulacja napięcia',
+  ROZLICZENIE: 'pomiar rozliczeniowy energii',
+  ROZNICOWE: 'zabezpieczenie różnicowe',
+  ZABEZPIECZENIA: 'zabezpieczenia',
+};
+
 /** Symbol materiału przewodu w zwięzłym opisie odcinka („Al 120 mm²”) — z tego samego
  *  słownika co pełna nazwa. */
 export const SYMBOL_MATERIALU_PRZEWODU: Readonly<Record<string, string>> = {
@@ -196,7 +207,13 @@ export const POLA_KODOWE_KARTY: Readonly<Record<string, OpisPolaKodowego>> = {
     OVERHEAD_BRANCH_POLE: 'słup rozgałęźny linii napowietrznej',
   }),
   operator_name: nazwy({ OSD: 'operator systemu dystrybucyjnego (OSD)' }),
-  przeznaczenie: nazwy({ FAZOWY: 'przewód fazowy', ODGROMOWY: 'przewód odgromowy' }),
+  // Jeden klucz serializacji, dwie dziedziny bez wspólnych kodów: funkcja przewodu linii WN
+  // (`params.przeznaczenie`) i przeznaczenie rdzenia/uzwojenia tabliczki przekładnika.
+  przeznaczenie: nazwy({
+    FAZOWY: 'przewód fazowy',
+    ODGROMOWY: 'przewód odgromowy',
+    ...NAZWA_PRZEZNACZENIA_RDZENIA_PL,
+  }),
   ptpiree_status: nazwy({
     POWIAZANY: 'powiązany z wykazem PTPiREE',
     NIEPOWIAZANY: 'bez powiązania z wykazem PTPiREE',

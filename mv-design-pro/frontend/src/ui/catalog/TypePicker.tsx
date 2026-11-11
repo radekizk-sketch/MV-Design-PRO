@@ -6,6 +6,11 @@ import type { TypeCategory } from './types';
 import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 import { skrotParametrowTypu } from './skrotTypuKatalogu';
 import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
+import {
+  KATEGORIE_Z_DOPUSZCZENIEM_NOWYCH_POL,
+  notaPozycjiUkrytych,
+  pozycjeDoWyboru,
+} from './dopuszczenieNowychPol';
 
 interface TypePickerProps {
   category: TypeCategory;
@@ -51,12 +56,25 @@ export function TypePicker({
     loadTypes();
   }, [isOpen, loadTypes]);
 
+  // Przypisanie typu łącznika (`assign_catalog_to_element` bez jawnego stanu) czyni obiekt
+  // projektowanym — picker aparatury SN pokazuje wyłącznie pozycje dopuszczone przez backend
+  // (zakaz gazów fluorowanych) i pozycję już przypisaną (`ui/catalog/dopuszczenieNowychPol`).
+  const zDopuszczeniem = KATEGORIE_Z_DOPUSZCZENIEM_NOWYCH_POL.has(category);
+  const dopuszczoneTypes = useMemo(
+    () => (zDopuszczeniem ? pozycjeDoWyboru(types, 'PROJEKTOWANY', currentTypeId) : types),
+    [currentTypeId, types, zDopuszczeniem],
+  );
+  const notaUkrytych = useMemo(
+    () => (zDopuszczeniem ? notaPozycjiUkrytych(types, 'PROJEKTOWANY', currentTypeId) : null),
+    [currentTypeId, types, zDopuszczeniem],
+  );
+
   const filteredTypes = useMemo(() => {
     if (!searchQuery.trim()) {
-      return types;
+      return dopuszczoneTypes;
     }
     const query = searchQuery.toLowerCase();
-    return types.filter((type) => {
+    return dopuszczoneTypes.filter((type) => {
       const manufacturer =
         (type as unknown as Record<string, unknown>).manufacturer
         ?? (type as unknown as Record<string, unknown>).vendor;
@@ -66,7 +84,7 @@ export function TypePicker({
         || (typeof manufacturer === 'string' && manufacturer.toLowerCase().includes(query))
       );
     });
-  }, [searchQuery, types]);
+  }, [dopuszczoneTypes, searchQuery]);
 
   if (!isOpen) {
     return null;
@@ -125,6 +143,12 @@ export function TypePicker({
                 </button>
               </div>
             </div>
+          ) : null}
+
+          {!loading && !error && notaUkrytych ? (
+            <p className="pb-3 text-xs text-scada-muted" data-testid="type-picker-nota-ukrytych">
+              {notaUkrytych}
+            </p>
           ) : null}
 
           {!loading && !error && filteredTypes.length === 0 ? (

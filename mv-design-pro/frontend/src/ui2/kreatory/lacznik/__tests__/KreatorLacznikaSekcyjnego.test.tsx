@@ -48,7 +48,7 @@ vi.mock('../../../../ui/navigation/routes', () => ({
 const { fetchMvApparatusTypesMock } = vi.hoisted(() => ({
   fetchMvApparatusTypesMock: vi.fn(() =>
     Promise.resolve([
-      { id: 'app-1', name: 'Rozłącznik SN', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+      { id: 'app-1', name: 'Rozłącznik SN', device_kind: 'ROZLACZNIK', dopuszczony_do_nowych_pol: true, u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
     ]),
   ),
 }));
@@ -169,6 +169,24 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-lacznik')).toHaveAttribute('data-status', 'ladowanie');
     expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it('aparat z gazem fluorowanym: pozycja ukryta w wyborze, nota cytuje powód backendu', async () => {
+    const powod = 'Aparat Rozłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+    fetchMvApparatusTypesMock.mockReturnValueOnce(
+      Promise.resolve([
+        { id: 'app-sf6', name: 'Rozłącznik SF6', device_kind: 'ROZLACZNIK', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: powod, u_n_kv: 24, i_n_a: 630, breaking_capacity_ka: 20 },
+        { id: 'app-1', name: 'Rozłącznik SN', device_kind: 'ROZLACZNIK', medium: 'VACUUM', dopuszczony_do_nowych_pol: true, u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
+      ] as never),
+    );
+    render(<KreatorLacznikaSekcyjnego />);
+    await pick();
+    const wybor = screen.getByTestId('mvd-kreator-lacznik-katalog');
+    expect(wybor.querySelector('option[value="app-sf6"]')).toBeNull();
+    expect(wybor.querySelector('option[value="app-1"]')?.textContent).toContain('próżnia');
+    expect(screen.getByTestId('mvd-kreator-lacznik-katalog-nota').textContent).toBe(
+      `Ukryto pozycje niedopuszczone do obiektu projektowanego: 1. Przykład: ${powod}`,
+    );
   });
 
   it.each([

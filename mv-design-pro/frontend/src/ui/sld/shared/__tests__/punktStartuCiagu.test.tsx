@@ -602,25 +602,31 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
   }
 
   /**
-   * Kanon rysunku (`compose/apparatusSequence.ts::czyGlowicaRezerwy`): pole wolne nie rysuje
-   * głowicy — kończy się symbolem `bayReserve`, choć rekord pola ma głowicę; pole zajęte
-   * rysuje głowicę. Punktem wyprowadzenia ciągu jest więc zakończenie pola wolnego
-   * (`jestPunktemWyprowadzeniaCiagu`) — predykaty parami: scena i bramka menu z jednego kanonu.
+   * Kanon rysunku (`compose/apparatusSequence.ts::rekordyToruPola`): każdy rekord aparatu pola
+   * jest rysowany — pole wolne rysuje głowicę z rekordu i kończy się symbolem `bayReserve`,
+   * pole zajęte rysuje głowicę bez zakończenia rezerwy. Intencja testu (scalenie do drzewa
+   * integracji 2026-11-11): scena i bramka menu z jednego kanonu. Strona BKR przyjęła wariant
+   * (B) — punkt wyprowadzenia na `bayReserve`, „rysunek bez zmian", bo dorysowanie głowicy
+   * wymagało bramki B-02; strona pola liniowego wniosła właśnie tę zmianę rysunku jako korektę
+   * po odrzuceniu B-02 (korekta P0 pkt 1: odcięcie głowicy pola wolnego usuwało z rysunku
+   * aparat, który model niesie). Predykat `jestPunktemWyprowadzeniaCiagu` obejmuje obie drogi.
    */
-  it('kanon rysunku: pole wolne kończy się zakończeniem pola, pole zajęte — głowicą', () => {
+  it('kanon rysunku: pole wolne rysuje głowicę i zakończenie pola, pole zajęte — głowicę', () => {
     useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
     const uchwyt = (pole: string, symbol: string) =>
       container.querySelector(
         `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(pole)}"][${HIT_ATTR.for}*="${symbol}"]`,
       );
-    expect(uchwyt(POLE_GPZ_WOLNE, 'cableHead')).toBeNull();
+    expect(uchwyt(POLE_GPZ_WOLNE, 'cableHead')).toBeTruthy();
     expect(uchwyt(POLE_GPZ_WOLNE, 'bayReserve')).toBeTruthy();
     expect(uchwyt(POLE_GPZ_ZAJETE, 'cableHead')).toBeTruthy();
+    expect(uchwyt(POLE_GPZ_ZAJETE, 'bayReserve')).toBeNull();
   });
 
   it.each([
     { nazwa: 'zakończenie wolnego pola z głowicą', pole: POLE_GPZ_WOLNE, symbol: 'bayReserve', aktywna: true },
+    { nazwa: 'głowica wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'cableHead', aktywna: true },
     { nazwa: 'głowica zajętego pola', pole: POLE_GPZ_ZAJETE, symbol: 'cableHead', aktywna: false },
     { nazwa: 'wyłącznik wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'breaker', aktywna: false },
   ])('$nazwa: prawy klik → pozycja menu → kreator z polem startu', async ({ pole, symbol, aktywna }) => {

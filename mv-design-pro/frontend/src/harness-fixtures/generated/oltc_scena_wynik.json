@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "e218b7145052e26ea06ce7ac4910922de71208f9fcc4795143d9b672d1240e40",
+  "deterministic_signature": "16b571262c1bed70d05e4fee658148e4970fd6011f3560ba78c030bcc5eeb5c6",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -703,7 +703,7 @@
         "wizard_step_hint": "K5"
       },
       {
-        "code": "W049",
+        "code": "W058",
         "element_refs": [
           "cab_main_b",
           "sub_b"
@@ -723,7 +723,7 @@
         "wizard_step_hint": "K3"
       },
       {
-        "code": "W049",
+        "code": "W058",
         "element_refs": [
           "cab_main_b",
           "sub_gpz"
@@ -743,7 +743,7 @@
         "wizard_step_hint": "K3"
       },
       {
-        "code": "W049",
+        "code": "W058",
         "element_refs": [
           "line_b_c",
           "sub_b"

@@ -494,7 +494,7 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
     wr('Układ połączenia', el.connection),
     wr('Przeznaczenie', etykietaZeSlownika(ETYKIETA_PRZEZNACZENIA_POMIARU, el.purpose)),
     w('Układ CT', el.ct_arrangement ?? null),
-    w('Liczba rdzeni CT', el.ct_cores ?? null),
+    w('Liczba rdzeni CT', el.rdzenie?.length ?? null),
     w('Układ VT', el.vt_arrangement ?? null),
     w('Montaż VT', el.vt_mounting ?? null),
   ]);

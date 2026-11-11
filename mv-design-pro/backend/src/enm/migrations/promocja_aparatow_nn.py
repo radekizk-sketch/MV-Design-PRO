@@ -341,6 +341,10 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
                 to_bus_ref=downstream_bus_ref,
                 status="closed",
                 source_mode="MIGRACJA",
+                # Aparat promowany jest częścią pola nN — dziedziczy jego stan obiektu (karta
+                # UX-04/POLE-LINIOWE-WZORZEC: aparat bez własnego stanu dziedziczy stan pola;
+                # pole zastanego zapisu bez stanu — stan nieustalony, bez domysłu).
+                stan_obiektu=bay.stan_obiektu,
                 meta={
                     META_KLUCZ_GALAZ_ZRODLO_FIELD_REF: field_ref,
                     META_KLUCZ_GALAZ_ROLA_POLA: bay.bay_role,

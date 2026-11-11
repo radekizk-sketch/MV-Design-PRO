@@ -257,6 +257,7 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
         </ul>
         <p className="mvd-ark-opis">{T.formatOpcjonalne}</p>
         <p className="mvd-ark-opis">{T.formatTyp}</p>
+        <p className="mvd-ark-opis">{T.formatStan}</p>
       </section>
 
       <section className="mvd-ark-sekcja" aria-label={T.wyborEyebrow}>

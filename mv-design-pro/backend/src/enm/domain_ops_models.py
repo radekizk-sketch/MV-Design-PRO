@@ -974,7 +974,7 @@ class ConnectSecondaryRingSNPayload(_FrozenBase):
 
 class PrzepnijElementNaPolePayload(_FrozenBase):
     """Payload operacji: przepnij_element_na_pole (karta POLA-W-TORZE, akcja naprawcza W042
-    i W049).
+    i W058).
 
     Przepina element z szyny głównej stacji na zacisk pola, które mu służy; odcinek bez
     wolnego pola dostaje pole liniowe utworzone w tej operacji (karta INSPEKTOR-POLA-DOMKNIECIE).
@@ -1372,6 +1372,7 @@ class AddNNLoadPayload(_FrozenBase):
 
 DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "AUX_LOAD_CREATED",
+    "BAY_APPARATUS_POSITION_SET",
     "BAY_EQUIPMENT_SET",
     "BESS_INVERTER_CREATED",
     "BESS_SOURCE_CREATED",
@@ -1415,6 +1416,7 @@ DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "NN_SWITCH_DEVICE_CREATED",
     "NOP_CLEARED",
     "NOP_SET",
+    "OBJECT_STATE_SET",
     "PARAMETERS_UPDATED",
     "PORTS_CREATED",
     "PROTECTION_CREATED",

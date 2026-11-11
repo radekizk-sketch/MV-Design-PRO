@@ -31,7 +31,7 @@ const KNOWN_FIX_ACTIONS = [
   },
   // Walidator wskazuje akcję NAZWĄ operacji kanonicznej (backend `enm/validator.py`):
   // W041 — transformator bez pola TR → dodaj pole; W042 — transformator z pominięciem pola →
-  // przepięcie na zacisk pola (karta POLA-W-TORZE); W049 — odcinek na szynie sekcji bez pola
+  // przepięcie na zacisk pola (karta POLA-W-TORZE); W058 — odcinek na szynie sekcji bez pola
   // liniowego → przepięcie, które tworzy pole, gdy wolnego brak (INSPEKTOR-POLA-DOMKNIECIE).
   // Dawniej W041/W042 były martwe („nie przypisano karty konfiguracyjnej").
   {
@@ -47,7 +47,7 @@ const KNOWN_FIX_ACTIONS = [
     expected: 'przepnij_element_na_pole',
   },
   {
-    code: 'W049',
+    code: 'W058',
     action_type: 'OPEN_MODAL',
     modal_type: 'przepnij_element_na_pole',
     expected: 'przepnij_element_na_pole',

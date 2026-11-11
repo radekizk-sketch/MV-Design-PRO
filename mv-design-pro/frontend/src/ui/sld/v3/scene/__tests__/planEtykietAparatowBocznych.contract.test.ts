@@ -206,8 +206,14 @@ describe('W2C-PLAN-ETYKIET — rola pola × aparaty boczne × kolejność danych
               // Jedna kotwica: wszystkie aparaty boczne pola wiszą na tym samym węźle toru.
               expect(new Set(boczne.map((b) => b.y)).size, 'aparaty boczne na jednej kotwicy').toBe(1);
               expect(lateralIdRefs.length, 'identyfikator każdego aparatu bocznego').toBe(s.lateralCount);
+            } else if (lod === 1) {
+              // §6 SLD_LOD_SPEC: identyfikatory aparatów należą do PEŁNEGO detalu — z wyjątkiem
+              // oznaczeń przekładników, które są na rysunku od LOD1 (odbiór B-02 właściciela
+              // 2026-11-04 pkt 6: „LOD1 — oznaczenia (T1, T2, T3)”; ta sama reguła w polu GPZ
+              // i w polu stacji, `compose/kolumnaOpisowPola.ts` `RODZAJE_PRZEKLADNIKOW_OD_LOD1`).
+              expect(lateralIdRefs.filter((ref) => !ref.includes('#apparatus-id-voltageTransformer-'))).toEqual([]);
+              expect(lateralIdRefs.length, 'oznaczenie bocznego przekładnika napięciowego na LOD1').toBe(laterals.includes('VT') ? 1 : 0);
             } else {
-              // §6 SLD_LOD_SPEC: identyfikatory aparatów należą do PEŁNEGO detalu.
               expect(lateralIdRefs).toEqual([]);
             }
             for (const scale of LABEL_PLAN_PRODUCTION_SCALES[lod]) {

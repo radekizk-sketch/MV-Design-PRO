@@ -32,7 +32,7 @@ from enm.rola_pola_sn import RolaPolaModelu, nazwa_roli_pola_sn_z_okresleniem
 from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
-from ..bay_templates import BayTemplate
+from ..bay_templates import BayTemplate, postac_odcisku_szablonu
 from .device_instance import BayDeviceInstanceTemplate
 from .port_definition import PortDefinitionTemplate
 
@@ -164,12 +164,13 @@ class CompleteMvBayTemplate(BaseModel):
     def compute_hash(self) -> str:
         """Deterministyczny content hash (do invalidacji wyników).
 
-        Hash zawiera: base_template (model_dump), manufacturer_ref,
-        family_ref, bay_kind, bay_role, source_status. NIE zawiera
-        source_refs ani version (te się zmieniają niezależnie).
+        Hash zawiera: base_template (model_dump bez pól addytywnych o wartości `None` —
+        `bay_templates.postac_odcisku_szablonu`), manufacturer_ref, family_ref, bay_kind,
+        bay_role, source_status. NIE zawiera source_refs ani version (te się zmieniają
+        niezależnie).
         """
         payload = {
-            "base_template": self.base_template.model_dump(mode="json"),
+            "base_template": postac_odcisku_szablonu(self.base_template),
             "manufacturer_ref": self.manufacturer_ref,
             "switchgear_family_ref": self.switchgear_family_ref,
             "bay_kind": self.bay_kind,

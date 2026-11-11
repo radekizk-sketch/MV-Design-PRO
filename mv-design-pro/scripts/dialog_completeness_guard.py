@@ -82,6 +82,9 @@ _SEKCJE_GPZ = BezOkna(
 KLASYFIKACJA_BEZ_FORMULARZA: dict[str, BezOkna | SciezkaMenu] = {
     "open_switch": SciezkaMenu(("open-switch",), _WYKONAWCA_MENU),
     "close_switch": SciezkaMenu(("close-switch",), _WYKONAWCA_MENU),
+    "set_bay_apparatus_position": SciezkaMenu(
+        ("open-switch", "close-switch", "earth-switch"), _WYKONAWCA_MENU
+    ),
     "delete_element": SciezkaMenu(
         (
             "delete-bay",

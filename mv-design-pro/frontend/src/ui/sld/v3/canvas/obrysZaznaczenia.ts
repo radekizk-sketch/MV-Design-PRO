@@ -14,7 +14,7 @@
  */
 import { GRID, type V3Rect } from '../core/grid';
 import type { PreviewComposition } from '../compose/preview';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 
 export interface ObrysZaznaczenia {
   readonly ref: string;
@@ -37,11 +37,12 @@ export function obrysyZaznaczenia(
     let maxY = -Infinity;
     for (const symbol of scene.symbols) {
       if (symbol.meta?.ownerRef !== ref && symbol.meta?.deviceRef !== ref) continue;
-      const def = SYMBOL_DEFS[symbol.symbolId];
-      minX = Math.min(minX, symbol.x);
-      minY = Math.min(minY, symbol.y);
-      maxX = Math.max(maxX, symbol.x + def.width);
-      maxY = Math.max(maxY, symbol.y + def.height);
+      // Gabaryt z jednego źródła: blok zabezpieczeń pola = cała ramka (`gabarytSymbolu`).
+      const g = gabarytSymbolu(symbol);
+      minX = Math.min(minX, g.x);
+      minY = Math.min(minY, g.y);
+      maxX = Math.max(maxX, g.x + g.width);
+      maxY = Math.max(maxY, g.y + g.height);
     }
     for (const segment of scene.segments) {
       if (segment.meta?.ownerRef !== ref) continue;

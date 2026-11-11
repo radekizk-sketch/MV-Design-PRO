@@ -189,5 +189,6 @@ Obserwacja do oceny: blok pola BKR jest szerszy od sąsiednich pól.
 - **CGMES** nie ma atrybutu dławika ograniczającego; eksport/import niesie układ i stopnie.
 - **v126** sumuje b0 wszystkich linii, nie sieci galwanicznej — obserwacja dla architekta (B-01).
 - **Odłącznik pola** nie jest w scenie generatora (wymaga drugiej gałęzi łącznika — buduje ją
-  szablon pola BKR sesji głównej). Porty `PORTY_APARATOW_POLA_BKR` czekają na scalenie wzorca pola
-  liniowego (wt-pole).
+  szablon pola BKR sesji głównej). Porty przekładników pola BKR (`obwod`; `A`, `B`) są wpisami
+  jednej listy portów aparatów pola `PORTY_APARATU_POLA` (`rodzaje_aparatury.py`, scalenie ze
+  wzorcem pola liniowego).

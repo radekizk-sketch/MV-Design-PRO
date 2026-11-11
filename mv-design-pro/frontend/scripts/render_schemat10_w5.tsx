@@ -45,7 +45,7 @@ function glyph(id: 'currentTransformer' | 'voltageTransformer', x: number, y: nu
 }
 
 // --- Panel A: CT ≠ VT + wariant CT z danych --------------------------------
-const ctRatio = ctRatingLabelText({ identifier: 'T1', ratioText: '300/5', arrangement: '3xCT' });
+const ctRatio = ctRatingLabelText({ identifier: 'T1', ratioText: '300/5' });
 const ctW = SYMBOL_DEFS.currentTransformer.width;
 const ctH = SYMBOL_DEFS.currentTransformer.height;
 const vtW = SYMBOL_DEFS.voltageTransformer.width;
@@ -101,7 +101,7 @@ const panelC =
   `<text x="40" y="480" font-family="Inter, sans-serif" font-size="15" font-weight="700" fill="${ACC}">C · Czytelność symboli — punkty zrealizowane vs dług geometryczny</text>` +
   `<text x="40" y="510" font-family="Inter, sans-serif" font-size="12.5" fill="${INK}">✓ CT/VT jednoznacznie odróżnialne biblioteką (1 vs 2 okręgi, IEC 60617) — bez zmiany geometrii/kotwic.</text>` +
   `<text x="40" y="534" font-family="Inter, sans-serif" font-size="12.5" fill="${INK}">✓ CT szeregowo w torze / VT odgałęźnie (lateral) — semantyka toru z LATERAL_APPARATUS_SYMBOLS.</text>` +
-  `<text x="40" y="558" font-family="Inter, sans-serif" font-size="12.5" fill="${INK}">✓ Wariant CT z DANYCH: przekładnia (F10.4) + układ 3×CT/Ferranti (F10.6) + przeznaczenie purpose (W5, data-ct-purpose).</text>` +
+  `<text x="40" y="558" font-family="Inter, sans-serif" font-size="12.5" fill="${INK}">✓ Wariant CT z DANYCH: przekładnia (F10.4; układ pomiarowy — w inspektorze pola) + przeznaczenie purpose (W5, data-ct-purpose).</text>` +
   `<text x="40" y="588" font-family="Inter, sans-serif" font-size="12.5" fill="${DIM}">Dług jawny (geometria — poza zakresem „bez dryfu", jak prefiks pola Z3/V12K-171):</text>` +
   `<text x="60" y="610" font-family="Inter, sans-serif" font-size="11.5" fill="${DIM}">• przekładnia/typ VT jako adnotacja (brak ścieżki adnotacji VT; wymaga rezerwacji szerokości = dryf).</text>` +
   `<text x="60" y="630" font-family="Inter, sans-serif" font-size="11.5" fill="${DIM}">• liczba rdzeni CT — brak pola w ENM (Measurement niesie ct_arrangement/accuracy_class, nie liczbę rdzeni).</text>` +

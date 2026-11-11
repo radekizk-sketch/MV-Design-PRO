@@ -2154,7 +2154,57 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `protection_ready`, `short_circuit_ready`, `sld_ready`, `snapshot_fingerprint`; dodane
     # (+5): `goly_aparat_wniosek_pl`, `kombinacja_wniosek_pl`, `koniec`, `nowe_elementy`,
     # `punkt`. Dawny pin 4504 z rozwiazania konfliktu nie byl pomiarem. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4501." in wyjscie, wyjscie
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 4387 -> 4418 — POMIAR `contract_fields()`
+    # na drzewie bazy karty `f44e042f6` (4387, pin zgodny) i na drzewie karty (4418). Roznica
+    # zbiorow +32, -1. Plus: ocena pola liniowego GPZ (`enm/pole_liniowe_gpz.py`: `klasa_oceny`,
+    # `klasa_przyjeta`, `klasa_z_sieci`, `klasa_zadeklarowana`, `moduly`, `niezgodnosci`,
+    # `oceny_funkcji`, `obecna`, `wymog`, `funkcja_pl`, `co_oceniono`, `akcja_pl`,
+    # `linia_napowietrzna`, `ajee_wymagany`, `ajee_rdzen_obecny`, `ajee_przyczyna`), klasa i stan
+    # obiektu pola (`klasa_pola`, `stan_obiektu`), tabliczki przekladnikow (`rdzenie`,
+    # `uzwojenia`, `fs`, `otwarty_trojkat`), szablony pol (`funkcje_eaz`, `wykonanie_pola`,
+    # `wykonanie_lacznikow`, `medium_lacznikow`, `odgalezienie`, `oznaczenie_pl`, `tylko_gpz`,
+    # `nosnik`), slownik etykiet werdyktu (`kompletnosc` z `werdykt/etykiety.py`, decyzja „do
+    # mapy" w `CONTRACT_SOURCES`) i opcjonalne kolumny arkusza szyn importu XLSX
+    # (`BUS_OPTIONAL_COLUMNS` — stan obiektu szyny). Minus: `ct_cores` (liczba rdzeni zastapiona
+    # lista `rdzenie` z tabliczki). PASS niezmieniony (zero podstawien; podstawienie pozycji
+    # `zestaw.index(...) + 1 if ... else 0` w `bay_templates.funkcje_eaz_pola_liniowego` wykryte
+    # guardem i przepisane na jawne galezie).
+    # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC z galezia UI/UX (2026-10-29): 4394 + 31 = 4425
+    # — POMIAR `contract_fields()` na drzewie scalonym; zbiory obu kart rozlaczne.
+    # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC i kompletny wzorzec pola (2026-10-29):
+    # 4425 + 33 = 4458 — POMIAR `contract_fields()` (drzewo karty minus suma zbiorow rodzicow
+    # scalenia): obwody wtorne wzorca pola (`obwody_wtorne_pola.py`: powiazania, wejscia,
+    # wyjscia, sygnaly, naped, przeznaczenie rdzeni), profil EAZ (`wymagalnosc`, `wymogi`,
+    # `wymog_pl`, `na_rysunku`), ocena pola (obwody funkcji, napiecie zwrotne, stan pomiaru),
+    # oznaczenia aparatow (`device_refs`). Zero nowych podstawien (PASS).
+    # Decyzje wlasciciela 2026-10-29 karty UX-04/POLE-LINIOWE-WZORZEC (zrodlo 3U0 z pola Z.17,
+    # 67N warunkowa, powiazania funkcji z aparatami): 4458 -> 4469 — POMIAR `contract_fields()`
+    # na drzewie bazy `dbe7c130b` (`git archive`: 4458, pin zgodny) i na drzewie karty (4469).
+    # Roznica zbiorow +11, -0: aparat pola (`enm/models.py`: `naped`, `funkcje_eaz_zasilane`,
+    # `funkcje_eaz_wylaczajace`), pole (`zrodlo_u0_ref`) i ocena zrodla napiecia zerowego
+    # (`enm/zrodlo_napiecia_zerowego.py`: `potwierdzone`, `pole_zrodla_ref`, `uzwojenie_pl`,
+    # `ferranti`, `braki_zrodla`, `kody_brakow`, `funkcje`). PASS niezmieniony (zero podstawien).
+    # Decyzje architekta 2026-10-30 karty UX-04/POLE-LINIOWE-WZORZEC (pkt A: naped lacznika jako
+    # atrybut aparatu): 4469 -> 4468 — POMIAR `contract_fields()` na drzewie bazy `e41837b4e`
+    # (`git archive`: 4469, pin zgodny) i na drzewie karty (4468). Roznica zbiorow +1, -2:
+    # `ObwodyWtornePola` (`network_model/catalog/obwody_wtorne_pola.py`) niesie liste `napedy`
+    # (naped kazdego lacznika pola z rysunku: Q0 silnikowy, Q1 zasobnikowy z obsluga reczna)
+    # zamiast pary `naped_wylacznika` + `naped_weryfikacja` (naped tylko wylacznika). PASS
+    # niezmieniony (zero podstawien).
+    # Rozstrzygniecie architekta 2026-10-30 pkt 3 (`ea8404b02`, czlon wysuwny: pole
+    # `BayPrimaryDevice.wykonanie`) podnioslo zbior do 4469 bez podniesienia pinu — POMIAR
+    # `contract_fields()` na drzewie `git archive 85bd2aadf`: 4469. Zaczep przekladnika
+    # wieloprzekladniowego karty UX-04/POLE-LINIOWE-WZORZEC (§11.15): 4469 -> 4472, roznica
+    # zbiorow +3, -0: rekord aparatu pola (`enm/models.py`: `zaczep_pierwotny_a`,
+    # `zrodlo_zaczepu`) i rozstrzygniecie zaczepu (`wartosci_robocze.py::ZaczepRozstrzygniety`:
+    # `zaczepy`). PASS niezmieniony (zero podstawien).
+    # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): 4501 -> 4579
+    # — POMIAR zbiorow `contract_fields()` (`git archive`): baza scalenia `687a2ef65` 4394,
+    # strona integracji 4501, strona karty 4472, drzewo scalone 4579 = (integracja ∪ dodane
+    # karty) − skasowane karty, roznica zbiorow zero w obie strony. Karta dodala 79 nazw
+    # (ocena pola liniowego, stan obiektu, tabliczki przekladnikow, obwody wtorne wzorca,
+    # zrodlo 3U0, zaczep przekladnika) i skasowala 1 (`ct_cores`). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4579." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2490,7 +2540,22 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta kanalow tekstu dla projektanta (2026-10-30): 600 -> 599 (-1: opis rodzaju i stanu
         # przebiegu przeniesiony z `application/analyses/opis_przebiegu.py` do `domain/` —
         # poza korzeniami skanu, bo czyta go takze warstwa domeny). POMIAR guardem.
-        "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 598 -> 605 (+7 nowych plikow:
+        # `enm/{gaz_fluorowany_pola,pole_liniowe_gpz,stan_obiektu_pola,zgodnosc_szablonu_pola}.py`,
+        # `network_model/catalog/{funkcje_eaz,gazy_fluorowane,przekladniki}.py`; zero plikow
+        # skasowanych). Dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC z galezia UI/UX: 599 + 7 = 606. POMIAR guardem
+        # na drzewie scalonym.
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 606 -> 609 (+3 nowych
+        # plikow: `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`,
+        # `network_model/catalog/obwody_wtorne_pola.py`). Dlug i wykluczenia BEZ ZMIAN. POMIAR.
+        # Decyzje wlasciciela 2026-10-29 karty UX-04/POLE-LINIOWE-WZORZEC: 609 -> 610 (+1
+        # `enm/zrodlo_napiecia_zerowego.py` — zrodlo 3U0 pola i warunek 67N). Dlug i wykluczenia
+        # BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): 606 + 11
+        # = 617 — POMIAR guardem na bazie scalenia (599), stronie karty (610), stronie integracji
+        # (606) i drzewie scalonym (617); dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 617 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2709,7 +2774,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
         # Odcinek 2 karty ZU (2026-10-29): 195 -> 196 (+1 `solvers/doziemienie_sn.py`), dlug
         # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
-        "  network_model: pliki_skanowane=196, dlug=10 plikow/suma 65, "
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: 191 -> 194 (+3 `catalog/{funkcje_eaz,gazy_fluorowane,
+        # przekladniki}.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Scalenie obu kart: 191 + 2 + 3 = 196. POMIAR guardem na drzewie scalonym.
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: 196 -> 197 (+1
+        # `catalog/obwody_wtorne_pola.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: 196 + 4 = 200 (baza
+        # 193, karta 197); dlug 10/65 strony integracji (karta ZU zdjela 2 wpisy). POMIAR guardem.
+        "  network_model: pliki_skanowane=200, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2803,7 +2875,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # galezi.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Odcinek 2 karty ZU (2026-10-29): enm 78 -> 79 (+1 `enm/doziemienie_sieci.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `0344668a0` i na drzewie karty.
-        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Karta UX-04/POLE-LINIOWE-WZORZEC: enm 75 -> 79 (+4 `enm/{gaz_fluorowany_pola,
+        # pole_liniowe_gpz,stan_obiektu_pola,zgodnosc_szablonu_pola}.py`); dlug 7/64 BEZ ZMIAN.
+        # POMIAR guardem.
+        # Scalenie obu kart: 75 + 1 + 4 = 80. POMIAR guardem na drzewie scalonym.
+        # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: enm 80 -> 82 (+2
+        # `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`); dlug 7/64 BEZ ZMIAN. POMIAR.
+        # Decyzje wlasciciela 2026-10-29 (zrodlo 3U0 z pola Z.17): enm 82 -> 83 (+1
+        # `enm/zrodlo_napiecia_zerowego.py`); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: enm 79 + 7 = 86 (baza
+        # 76, karta 83); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
+        "  enm: pliki_skanowane=86, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

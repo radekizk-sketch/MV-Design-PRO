@@ -294,7 +294,12 @@ export function appendLateralBranch(
   newField.meta = { ...(newField.meta ?? {}), default_device_ref: newBreakerRef };
   newField.terminal_bus_ref = newTerminalRef;
   out.bays = [...(out.bays ?? []), newField];
-  hostSubstation.bus_refs = [...(hostSubstation.bus_refs ?? []), newTerminalRef];
+  // Zacisk techniczny pola NIE jest szyną stacji: operacja domenowa dodania pola
+  // (`backend/src/enm/domain_operations.py`, `sn_field_terminal`) nie wpisuje go do
+  // `Substation.bus_refs`, a żadna z 54 stacji fixtury `sldSubstrate52s` go tam nie ma.
+  // Dawny dopisek robił ze stacji rozdzielnicę DWUSEKCYJNĄ (zacisk jako druga sekcja
+  // szyny, rysowana w szczelinie za blokiem) — scena „+1 odgałęzienie" ćwiczyła wtedy
+  // model, którego użytkownik nie może zbudować.
 
   const newTerminalBus = clone(templateTerminalBus);
   newTerminalBus.id = newTerminalRef;
@@ -322,7 +327,7 @@ export function appendLateralBranch(
     name: 'Odgałęzienie SN (test lokalności)',
     run_kind: 'branch',
     starting_bay_ref: newFieldRef,
-    starting_port_ref: `${newFieldRef}.BRANCH`,
+    starting_port_ref: newFieldRef,
     segments: ct.segments.map((s: any) => ({ segment_ref: s.segment_ref, order: s.order })),
     stations: [],
     parent_run_ref: null,

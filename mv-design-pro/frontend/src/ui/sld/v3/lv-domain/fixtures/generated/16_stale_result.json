@@ -504,12 +504,12 @@
         "burden_va": null,
         "bus_ref": "T1_zacisk",
         "ct_arrangement": null,
-        "ct_cores": null,
         "measurement_type": "CT",
         "name": "CT-T1",
         "purpose": "protection",
         "ratio_primary": 2300.0,
         "ratio_secondary": 5.0,
+        "rdzenie": null,
         "ref_id": "CT-T1"
       }
     ],
@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "c9ecba639703b52fb3d0a6e742e828b0a7c83c3763ff84153aff140c074da4be",
+  "projection_hash": "a947a7198cc135129eda593f2ffb30d6f0fb43507747d17f9083a5db2a40353d",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {

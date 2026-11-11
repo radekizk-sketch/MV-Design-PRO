@@ -52,6 +52,8 @@ import {
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
+import type { ObslugaAkcjiKarty } from './KartaTechnicznaElementu';
+import type { CelAkcjiKarty } from '../../sld/shared/kartaTechnicznaElementu';
 
 /** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
 interface ZrodloWynikowElementu {
@@ -128,7 +130,7 @@ export function kontekstEfektywny(
  * (właściciel symbolu) z typem `elementTypeForKind('apparatus')`, kontekst z rodzajem
  * `'apparatus'`, refem pola i refem urządzenia, temat z `resolveCanvasMenuSubject` z symbolem
  * aparatu tej samej sekwencji co rysunek (`projectBayPrimaryDevices` →
- * `symbolIdForPrimaryDeviceKind`). Dzięki temu karta aparatu i jej pasek działań są te same,
+ * `symbolIdForPrimaryDeviceKind`) i z refem urządzenia (`deviceRef`, jak trafienie symbolu). Dzięki temu karta aparatu i jej pasek działań są te same,
  * co po kliknięciu symbolu. Rodzaj bez symbolu toru (np. przekładnik niezrównoważenia) — temat
  * pola bez symbolu aparatu (bez domysłu rodzaju, jak napis pola na kanwie).
  */
@@ -140,9 +142,12 @@ export function wskazanieAparatuPola(
 ): { readonly zaznaczenie: SelectedElement; readonly kontekst: KontekstElementuKanwy } {
   const pole = (snapshot?.bays ?? []).find((b) => b.ref_id === cel.poleRef) ?? null;
   const galezie = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
-  const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
+  const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie, snapshot?.bays)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
   const symbolId = urzadzenie ? symbolIdForPrimaryDeviceKind(urzadzenie.kind) ?? undefined : undefined;
-  const wynik = resolveCanvasMenuSubject({ ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId }, index);
+  const wynik = resolveCanvasMenuSubject(
+    { ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId, deviceRef: cel.aparatRef },
+    index,
+  );
   const typ = elementTypeForKind('apparatus');
   return {
     zaznaczenie: typ
@@ -184,6 +189,15 @@ export interface StanPaneluElementu {
   /** Operacja usuwająca brak z wiersza karty (kreator `add_relay` z `bay_ref`); `null` poza
    *  trybem edycji modelu — jak `edytuj`. */
   readonly wykonajAkcjeWiersza: ((akcja: AkcjaWiersza) => void) | null;
+  /** Akcja wiersza tabeli karty (przejście do nastaw): ekran E-27 zawsze, formularz operacji
+   *  modelu wyłącznie przy dozwolonej edycji — inaczej `null` i przycisku nie ma. */
+  readonly akcjaKarty: ObslugaAkcjiKarty;
+  /** Sekcja karty, do której prowadzi kliknięty obiekt rysunku (`KontekstElementuKanwy.sekcja`). */
+  readonly sekcjaWyrozniona: string | null;
+  /** Obiekt, którego stan (istniejący / projektowany) inspektor zmienia operacją
+   *  `set_object_state` — pole, aparat pola albo łącznik (`ui/field/EdytorStanuObiektuPola`);
+   *  `null` poza trybem edycji modelu i dla rodzaju bez stanu obiektu — jak `edytuj`. */
+  readonly stanObiektuRef: string | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -265,6 +279,14 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     [index, snapshot, tylkoOdczytKontekstu],
   );
 
+  const akcjaKarty = useCallback<ObslugaAkcjiKarty>(
+    (cel: CelAkcjiKarty) => {
+      if (cel.rodzaj === 'ekran') return () => openRouteSurface(cel.kodEkranu);
+      return edycjaDozwolona ? () => openOperationForm(cel.operacja, { ...cel.kontekst }) : null;
+    },
+    [edycjaDozwolona, openOperationForm, openRouteSurface],
+  );
+
   const temat = kontekst?.temat ?? null;
   const akcje = useMemo(
     () => (temat ? akcjeElementu(snapshot, logicalViews, temat, status) : []),
@@ -273,8 +295,9 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   const wykonajAkcje = useCallback(
     (actionId: string) => {
       if (!temat) return;
-      // Ten sam ref operacji co menu kanwy — aparat pola jako `${bayRef}#${SymbolId}`.
-      wykonawca(actionId, temat.menuKind, refOperacjiTematu(temat));
+      // Ten sam ref operacji co menu kanwy — aparat pola jako `${bayRef}#${SymbolId}` — i ten sam
+      // rekord aparatu (`deviceRef`), gdy temat go zna (stan łącznika wskazanego urządzenia).
+      wykonawca(actionId, temat.menuKind, refOperacjiTematu(temat), undefined, temat.deviceRef);
     },
     [temat, wykonawca],
   );
@@ -336,5 +359,9 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     edytuj: edycjaDozwolona ? edytuj : null,
     wykonajAkcjeWiersza: edycjaDozwolona ? wykonajAkcjeWiersza : null,
     otworzAparat,
+    akcjaKarty,
+    sekcjaWyrozniona: kontekst?.sekcja ?? null,
+    stanObiektuRef:
+      edycjaDozwolona && (dane?.kind === 'bay' || dane?.kind === 'apparatus') ? dane.elementId : null,
   };
 }

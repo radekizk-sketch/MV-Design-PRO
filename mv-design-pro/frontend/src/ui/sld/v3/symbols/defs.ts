@@ -9,7 +9,8 @@
  * centralny 12px nie leży na siatce GRID=8 — wyrocznia siatki jest nadrzędna.
  */
 
-import { GRID, isOnGrid, type SymbolPort } from '../core/grid';
+import { GRID, isOnGrid, type SymbolPort, type V3Rect } from '../core/grid';
+import { QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
 
 export type SymbolId =
   | 'breaker'          // wyłącznik (CB)
@@ -40,11 +41,10 @@ export type SymbolId =
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
   | 'derUnknown'       // źródło nieokreślone (rodzaj nierozstrzygnięty w modelu)
   | 'bayNoEquipment'   // brak danych wyposażenia pola (sylwetka bez stanu, karta GEOMETRIA-STACJI)
-  | 'bayReserve'       // zakończenie pola rezerwowego/wolnego (bez głowicy i odejścia)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
-  | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
+  | 'protectionRelay'  // F9.9: blok zabezpieczeń pola (ramka + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
   | 'loadArrow'        // odbiór (strzałka IEC 60617) — projekcja nN (`lv-domain/`)
   | 'capacitorBank'    // bateria kondensatorów równoległych SN (UX-04/POLE-BKR-MODEL)
@@ -63,7 +63,12 @@ export type SymbolId =
   // projekcji nN, zakotwiczone na ZACISKU nN transformatora(-ów) stacji. Nie jest
   // aparatem toru mocy — jeden port `top`; za nim w projekcji SN nie ma nic,
   // tor ciągnie dalej projekcja nN.
-  | 'lvPortal';
+  | 'lvPortal'
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: symbole pola liniowego SN wg EN 60617 z kolekcji
+  // QElectroTech (wariant rysunku `render_variant = 'qet_en60617'` rekordu aparatu ENM).
+  // Geometria i gabaryty WYŁĄCZNIE z pliku generowanego importerem
+  // (`cad/qet/qetPoleSn.ts`, `scripts/import_qet_pole_sn.py`).
+  | QetSymbolPolaSnId;
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -72,6 +77,11 @@ export interface SymbolDef {
   readonly ports: readonly SymbolPort[];
   /** Polska nazwa dla inspektora/tooltipa (spec §9 — zero enumów w UI). */
   readonly labelPl: string;
+  /** Porty OBWODU WTÓRNEGO (zacisk uzwojenia wtórnego przekładnika, cewka wyłączająca
+   *  i napęd wyłącznika) — zaczepienie linii pomiarowych i linii wyłączania przekaźnika.
+   *  Osobno od `ports`: nie są portami toru pola (tor pierwotny łączy się wyłącznie
+   *  przez `ports`). Puste dla symboli bez obwodu wtórnego. */
+  readonly secondaryPorts: readonly SymbolPort[];
 }
 
 function def(
@@ -80,8 +90,9 @@ function def(
   height: number,
   ports: readonly SymbolPort[],
   labelPl: string,
+  secondaryPorts: readonly SymbolPort[] = [],
 ): SymbolDef {
-  return { id, width, height, ports, labelPl };
+  return { id, width, height, ports, labelPl, secondaryPorts };
 }
 
 export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
@@ -154,7 +165,12 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'hv', x: 16, y: 0, dir: 'N' },
     { name: 'lv', x: 16, y: 40, dir: 'S' },
   ], 'Transformator dwuuzwojeniowy'),
+  // UX-04/POLE-LINIOWE-WZORZEC: głowica jest aparatem dwuzaciskowym toru pola — zacisk
+  // przewodu od strony aparatów (`top`, wierzchołek trójkąta) i zacisk kabla (`line`). Bez
+  // zacisku górnego przewód port → port z portów ENM nie miał gdzie dojść i tor pola z portami
+  // urywał się nad głowicą kanoniczną (głowica QET ma oba zaciski z importera).
   cableHead: def('cableHead', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'line', x: 8, y: 16, dir: 'S' },
   ], 'Głowica kablowa'),
   jointSleeve: def('jointSleeve', 16, 16, [
@@ -268,13 +284,6 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 32, dir: 'S' },
   ], 'Brak danych wyposażenia pola'),
-  // GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola REZERWOWEGO (`bay_kind` „rezerwowe",
-  // ten sam predykat co backend `enm/rodzaj_stacji.py`) albo pola WOLNEGO (pole liniowe,
-  // do którego zacisku model nie przyłącza żadnego odcinka). Bez głowicy kablowej
-  // i bez odejścia — JEDEN port N; za nim nic się nie przyłącza.
-  bayReserve: def('bayReserve', 16, 16, [
-    { name: 'top', x: 8, y: 0, dir: 'N' },
-  ], 'Pole rezerwowe (bez odejścia)'),
   // UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN (`ShuntCapacitor` ENM) na
   // końcu toru pola — element MODELU, którego pole jest nośnikiem (jak transformator pola TR),
   // nie aparat pola. JEDEN port N (za baterią nic się nie przyłącza). Gabaryt 32×40
@@ -333,19 +342,20 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'e', x: 128, y: 64, dir: 'E' },
     { name: 'w', x: 0, y: 64, dir: 'W' },
   ], 'Rozdzielnia zasilająca GPZ (widok zbiorczy)'),
-  // F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg 24×24
-  // (3×GRID) w kolumnie adnotacji pola. Element ADNOTACJI (NIE aparat toru
-  // mocy, §17.1: „nie uczestniczy w ciągłości elektrycznej ani w wyroczniach
-  // toru") — port `link` WYŁĄCZNIE geometryczny (zaczep TORU WYZWALANIA
-  // przerywanego, §17.1), nie oznacza udziału w routingu elektrycznym.
-  // Port `link` na y=8 (NIE geometryczny środek y=12 — 24/2=12 NIE jest
-  // wielokrotnością GRID=8, złamałoby grid_probe §11.2; y=8 jest najbliższą
-  // wielokrotnością GRID w bboxie 24×24, wybór wizualnie równoważny).
-  protectionRelay: def('protectionRelay', 24, 24, [
-    { name: 'link', x: 0, y: 8, dir: 'W' },
-  ], 'Przekaźnik zabezpieczeniowy'),
-  // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), TA SAMA średnica co
-  // przekaźnik (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
+  // F9.9 (spec §17.1/§17.3), karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela
+  // 2026-11-05: „tak ma być ramka we wszystkich tak samo”): przekaźnik/sterownik pola to BLOK
+  // ZABEZPIECZEŃ — prostokątna ramka bez okręgu w kolumnie adnotacji pola. Element ADNOTACJI
+  // (NIE aparat toru mocy, §17.1: „nie uczestniczy w ciągłości elektrycznej ani w wyroczniach
+  // toru"). Gabaryt 24×24 (3×GRID) to ramka bloku bez kodów (`RAMKA_BLOKU_BEZ_KODOW`,
+  // `symbols/blokZabezpieczen.ts` — podgląd składu pola w kreatorze, katalog symboli); na
+  // schemacie ramkę i jej wejścia (linia wyłączania, linie pomiarowe — na krawędziach ramki,
+  // zależne od danych pola) niesie meta sceny (`ramkaBlokuPrzekaznika`,
+  // `wejsciaBlokuPrzekaznika`), więc definicja symbolu NIE ma portów. Dawny port `link` okręgu
+  // i zaciski wtórne okręgu (`wylacz`, `pomiar-gorny`, `pomiar-lewy`, `pomiar`) skasowane
+  // razem z okręgiem.
+  protectionRelay: def('protectionRelay', 24, 24, [], 'Blok zabezpieczeń pola'),
+  // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), ten sam gabaryt co ramka bloku
+  // zabezpieczeń bez kodów (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
   // linii do miernika (kotwiczenie WYŁĄCZNIE pozycją, §17.2 „okrąg M przy
   // przekładniku pomiarowym") — port `anchor` WYŁĄCZNIE dla spójności z
   // biblioteką (każdy symbol ma ≥1 port, `symbols/__tests__/symbols.test.tsx`
@@ -383,7 +393,76 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   lvPortal: def('lvPortal', 32, 24, [
     { name: 'top', x: 16, y: 0, dir: 'N' },
   ], 'Portal domeny nN'),
+  ...definicjeSymboliQet(),
 };
+
+/** Definicje symboli QET pola liniowego SN — gabaryt i porty z pliku generowanego (bez
+ *  ręcznego przepisania liczb: zmiana źródła QET zmienia definicję przez importer). */
+function definicjeSymboliQet(): Record<QetSymbolPolaSnId, SymbolDef> {
+  const wynik = {} as Record<QetSymbolPolaSnId, SymbolDef>;
+  for (const id of Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]) {
+    const q = QET_SYMBOLE_POLA_SN[id];
+    wynik[id] = def(id, q.szerokosc, q.wysokosc, q.porty, `${q.namePl} (EN 60617)`, q.portyWtorne);
+  }
+  return wynik;
+}
+
+/** Identyfikatory symboli QET pola liniowego SN (wariant rysunku `qet_en60617`). */
+export const QET_SYMBOL_IDS: readonly QetSymbolPolaSnId[] = Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[];
+
+export function czySymbolQet(id: SymbolId): id is QetSymbolPolaSnId {
+  return Object.prototype.hasOwnProperty.call(QET_SYMBOLE_POLA_SN, id);
+}
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC — RODZAJ SEMANTYCZNY symbolu: symbol QET to INNY RYSUNEK
+ * tego samego aparatu co symbol kanoniczny (wyłącznik QET jest wyłącznikiem), więc każda
+ * reguła zależna od rodzaju aparatu (klucze parytetu, zbiory łączników, sondy CT/głowicy,
+ * oznaczenia Q/QE/T) pyta o `rodzajSymbolu(id)`, a nie o sam identyfikator rysunku. Symbole
+ * bez odpowiednika kanonicznego (łącznik trójpołożeniowy, przekładnik Ferrantiego) są
+ * rodzajem samym w sobie. JEDNA tabela — reguła KLASA §3 (predykaty z jednego źródła).
+ */
+const RODZAJ_SEMANTYCZNY_QET: Readonly<Record<QetSymbolPolaSnId, SymbolId>> = {
+  qetBreaker: 'breaker',
+  qetBreakerZNapedem: 'breaker',
+  // Wyłącznik w wykonaniu wysuwnym (`BayPrimaryDevice.wykonanie` = WYSUWNE) — ten sam rodzaj.
+  qetBreakerWysuwny: 'breaker',
+  qetBreakerWysuwnyZNapedem: 'breaker',
+  qetDisconnector: 'disconnector',
+  qetLoadBreakSwitch: 'loadBreakSwitch',
+  qetFuseSwitch: 'fuseSwitch',
+  qetEarthSwitch: 'earthSwitch',
+  qetThreePositionSwitch: 'qetThreePositionSwitch',
+  // Ten sam łącznik trójpołożeniowy ze znakiem napędu z modelu (`BayPrimaryDevice.naped`).
+  qetThreePositionSwitchZNapedem: 'qetThreePositionSwitch',
+  qetCurrentTransformer: 'currentTransformer',
+  qetVoltageTransformer: 'voltageTransformer',
+  qetVoltageTransformer2: 'voltageTransformer',
+  qetVoltageTransformer3: 'voltageTransformer',
+  qetCoreBalanceCt: 'qetCoreBalanceCt',
+  qetCableHead: 'cableHead',
+  qetVoltageIndicator: 'voltageIndicator',
+  // Zakończenie toru pola bez kabla w modelu (kabel 03-01-14 kreskowany + grot 02-05-01 w dół,
+  // decyzja właściciela 2026-10-30) — jedyny rysunek tego
+  // rodzaju (rysunek kanoniczny poprzeczek czytał się jak uziemienie, usunięty).
+  bayReserve: 'bayReserve',
+};
+
+export function rodzajSymbolu(id: SymbolId): SymbolId {
+  return czySymbolQet(id) ? RODZAJ_SEMANTYCZNY_QET[id] : id;
+}
+
+/**
+ * Obrys RYSUNKU symbolu względem lewego górnego rogu gabarytu — dla symboli QET obwiednia
+ * wszystkich położeń noża i portów z importera (`obrys`), dla pozostałych pełny gabaryt.
+ * Kafel stanu łącznika (`prostokatKaflaStanu`) i sondy kolizji kafli liczą się z TEGO
+ * obrysu (jedno źródło).
+ */
+export function obrysSymbolu(id: SymbolId): V3Rect {
+  if (czySymbolQet(id)) return QET_SYMBOLE_POLA_SN[id].obrys;
+  const d = SYMBOL_DEFS[id];
+  return { x: 0, y: 0, width: d.width, height: d.height };
+}
 
 /**
  * K11-B (karta K11-B §0.2, dyrektywa właściciela z oceny ekranu 2/10 —
@@ -446,11 +525,56 @@ export function makeBusbarDef(length: number): BusbarDef {
  * rysunku jest utratą informacji, nie uproszczeniem.
  */
 export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: rysunek QET tego samego łącznika stoi TUŻ za
+  // kanonicznym (kolejność = pierwszeństwo aparatu ciągłości pola na L0: wyłącznik przed
+  // rozłącznikiem i odłącznikiem); łącznik trójpołożeniowy toru po wszystkich
+  // dwupołożeniowych (pole z wyłącznikiem pokazuje na L0 wyłącznik).
   'breaker',
+  'qetBreaker',
+  'qetBreakerZNapedem',
+  'qetBreakerWysuwny',
+  'qetBreakerWysuwnyZNapedem',
   'disconnector',
+  'qetDisconnector',
   'loadBreakSwitch',
+  'qetLoadBreakSwitch',
   'fuseSwitch',
+  'qetFuseSwitch',
+  'qetThreePositionSwitch',
+  'qetThreePositionSwitchZNapedem',
   'noPoint',
   'lineSwitch',
   'lineBreaker',
 ];
+
+/**
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (referencja HMI 2026-10-29) — ŁĄCZNIKI
+ * Z POŁOŻENIEM: każdy symbol, którego geometria styku wyraża położenie (zamknięty / otwarty /
+ * nieustalony, a dla łącznika trójpołożeniowego także uziemiony). Tylko te symbole dostają
+ * KAFEL STANU (`symbols/glyphs.tsx` `KafelStanu`) — kolor kafla nigdy nie jest jedynym
+ * nośnikiem stanu, więc symbol bez geometrii położenia kafla nie dostaje.
+ *
+ * Skład: aparaty ciągłości (`CONTINUITY_APPARATUS_SYMBOL_IDS`, łącznie z punktem normalnie
+ * otwartym `noPoint`, który rysuje położenie łącznika NOP) + uziemniki (`earthSwitch`,
+ * `qetEarthSwitch` — boczna gałąź do ziemi, poza torem ciągłości) + reklozer i wyłącznik nN
+ * (korpus wyłącznika z wypełnieniem = położeniem).
+ *
+ * Świadomie POZA zbiorem: `fuse` (bezpiecznik sam — nie jest łącznikiem sterowanym, glif
+ * celowo nie ma położenia) i `nnFuseSwitch` (podstawa bezpiecznikowa nN bez noża — glif nie
+ * ma geometrii położenia; żadna scena go dziś nie emituje). Przypina to test parytetu
+ * `symbols/__tests__/kafelStanu.test.tsx`.
+ */
+export const SYMBOLE_LACZNIKOW_Z_POLOZENIEM: readonly SymbolId[] = [
+  ...CONTINUITY_APPARATUS_SYMBOL_IDS,
+  'earthSwitch',
+  'qetEarthSwitch',
+  'recloser',
+  'nnBreaker',
+];
+
+const ZBIOR_LACZNIKOW_Z_POLOZENIEM: ReadonlySet<SymbolId> = new Set(SYMBOLE_LACZNIKOW_Z_POLOZENIEM);
+
+/** Czy symbol rysuje położenie łącznika (patrz `SYMBOLE_LACZNIKOW_Z_POLOZENIEM`). */
+export function czyLacznikZPolozeniem(id: SymbolId): boolean {
+  return ZBIOR_LACZNIKOW_Z_POLOZENIEM.has(id);
+}

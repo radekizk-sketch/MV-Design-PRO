@@ -320,6 +320,17 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'identyfikacja',
   ),
   entry(
+    'set_object_state',
+    'FormularzStanuObiektu',
+    'Ustaw stan obiektu (istniejący / projektowany)',
+    'E-11',
+    'A',
+    'transactional',
+    'replace_right_panel',
+    false,
+    null,
+  ),
+  entry(
     'add_ct',
     'KreatorPomiaru',
     'Dodaj przekładnik prądowy',

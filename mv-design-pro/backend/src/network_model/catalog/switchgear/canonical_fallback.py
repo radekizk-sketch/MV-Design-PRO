@@ -39,18 +39,17 @@ from .apparatus_vocabulary import (
 )
 from .complete_mv_bay_template import BayKind, CompleteMvBayTemplate, SourceStatus
 from .families import (
-    POTWIERDZONE_STATUSY_RODZINY,
     list_families_for_manufacturer,
     list_offered_switchgear_families,
 )
-from .switchgear_family import SwitchgearFamily
+from .switchgear_family import POTWIERDZONE_STATUSY_RODZINY, SwitchgearFamily
 
 #: Status źródła szablonu WYPROWADZONY ze statusu rodziny — szablon nie może
 #: deklarować lepszej proweniencji niż rodzina, z której powstał (przed
 #: scaleniem kanonu 2026-08-14 builder wpisywał `repo_verified` na sztywno,
 #: więc rodzina bez karty katalogowej wyprodukowałaby „zweryfikowane" pola).
-#: Klucze = dokładnie statusy rodzin dopuszczonych do oferty; rodzina spoza
-#: tego zbioru nie trafia do buildera (filtr `list_offered_switchgear_families`).
+#: Klucze = dokładnie statusy rodzin z kartą producenta; rodzina spoza tego zbioru (także typ
+#: ogólny wg standardu OSD, `standard_osd`) nie trafia do buildera szablonów rodziny.
 _SOURCE_STATUS_WG_STATUSU_RODZINY: dict[str, SourceStatus] = {
     "verified": "official_catalog",
     "repo_verified": "repo_verified",
@@ -217,7 +216,14 @@ def list_switchgear_solution_templates_for_manufacturer(
     zbudowane na rodzinie bez potwierdzonej karty byłyby ofertą katalogową bez
     pokrycia. Filtr i status źródła szablonu czerpią z jednego zbioru statusów.
     """
-    oferowane = {f.switchgear_family_ref for f in list_offered_switchgear_families()}
+    # Szablony pól rodziny buduje WYŁĄCZNIE rodzina z kartą producenta (status potwierdzony):
+    # typ ogólny wg standardu OSD (`standard_osd`) nie ma celek producenta — jego pola budują
+    # szablony kanoniczne, a rodzina niesie tylko medium izolacyjne pola.
+    oferowane = {
+        f.switchgear_family_ref
+        for f in list_offered_switchgear_families()
+        if f.status in POTWIERDZONE_STATUSY_RODZINY
+    }
     families = [
         family
         for family in (

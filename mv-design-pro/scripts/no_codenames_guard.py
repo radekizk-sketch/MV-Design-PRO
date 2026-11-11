@@ -58,6 +58,18 @@ niezależnie od zakresu tokenu (naprawione tą kartą w
 `wizard_step_hint`/`wizard_step` już niosą identyfikator maszynowo, tekst PL
 nazywa krok po polsku).
 
+WYJĄTEK ZACISKÓW PRZEKŁADNIKA (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta §11.7
+pkt 6, 2026-10-30). PN-EN 61869-2 oznacza zaciski pierwotne przekładnika prądowego P1/P2,
+a wtórne S1/S2; rysunek ENEA Z.10/Z.11.1 opisuje nimi T1 pola liniowego. „P1"/„P2" pasują do
+wzorca kryptonimu `P<cyfry>`, więc wyjątek jest WĄSKI w trzech wymiarach naraz: (1) jeden plik
+(`PLIK_ZACISKOW_PRZEKLADNIKA`), (2) jeden wiersz — deklaracja stałej oznaczeń
+(`KONTEKST_ZACISKOW_PRZEKLADNIKA`), (3) literał RÓWNY oznaczeniu zacisku (`P1`, `P2`; „P1
+rozpływ" albo „P3" w tym samym wierszu nadal są naruszeniem). Każde inne miejsce czyta
+oznaczenia z tej stałej. S1/S2 nie pasują do wzorca (litera S), więc nie potrzebują wyjątku —
+zbiór oznaczeń wymienia je dla kompletu normy, self-test przypina, że są przepuszczane także
+poza kontekstem. Zapadka świeżości `check_wyjatek_zaciskow_przekladnika` czerwieni wyjątek,
+który przestał być potrzebny (plik albo wiersz zniknął, wiersz nie niesie już „P1"/„P2").
+
 Usage:
   python scripts/no_codenames_guard.py
   # Or via npm script in frontend/package.json
@@ -181,6 +193,12 @@ def is_test_path(file_path: Path) -> bool:
 
 ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
 
+#: Wyjątek zacisków przekładnika (patrz docstring modułu, „WYJĄTEK ZACISKÓW PRZEKŁADNIKA").
+PLIK_ZACISKOW_PRZEKLADNIKA = "frontend/src/ui/sld/v3/compose/zaciskiPrzekladnika.ts"
+KONTEKST_ZACISKOW_PRZEKLADNIKA = re.compile(r"^export const ZACISKI_PRZEKLADNIKA_PRADOWEGO\b")
+#: Oznaczenia zacisków przekładnika prądowego wg PN-EN 61869-2 (pierwotne, wtórne).
+OZNACZENIA_ZACISKOW_PRZEKLADNIKA = frozenset({"P1", "P2", "S1", "S2"})
+
 #: Cytowania kart/bramek w OPISACH TESTÓW (`describe`/`it`/`test`) — patrz
 #: uzasadnienie „WYKLUCZENIE GATE_CITATION_TOKENS" w docstringu modułu.
 #: Zbiór ZAMKNIĘTY i zmierzony (2026-09-05): K1..K13. Rozszerzenie wymaga
@@ -228,7 +246,11 @@ def is_comment_line(line: str) -> bool:
 
 
 def find_codenames_in_strings(
-    line: str, *, exempt_gate_citations: bool = False, karta_scan: bool = True
+    line: str,
+    *,
+    exempt_gate_citations: bool = False,
+    karta_scan: bool = True,
+    zaciski_przekladnika: bool = False,
 ) -> list[str]:
     """Find codenames inside string literals in a line.
 
@@ -238,10 +260,16 @@ def find_codenames_in_strings(
     backendu (`scan_backend_file`) NIE dostaje tego wykluczenia — pole `_pl`
     to tekst czytany przez projektanta, gdzie identyfikator kroku (nawet
     z zakresu K1..K13) jest zawsze błędem, nie cytatem.
+
+    `zaciski_przekladnika` — wiersz deklaracji oznaczeń zacisków przekładnika
+    (`czy_kontekst_zaciskow_przekladnika`): pomija literał RÓWNY oznaczeniu zacisku
+    (`OZNACZENIA_ZACISKOW_PRZEKLADNIKA`); każdy inny literał wiersza jest skanowany.
     """
     matches = []
     for string_match in STRING_LITERAL_PATTERN.finditer(line):
         string_content = string_match.group("string")
+        if zaciski_przekladnika and string_content[1:-1] in OZNACZENIA_ZACISKOW_PRZEKLADNIKA:
+            continue
         for codename_match in CODENAME_PATTERN.finditer(string_content):
             token = codename_match.group()
             lowered = token.lower()
@@ -264,6 +292,13 @@ def format_violation_path(file_path: Path) -> str:
         return str(file_path.relative_to(REPO_ROOT)).replace("\\", "/")
     except ValueError:
         return str(file_path)
+
+
+def czy_kontekst_zaciskow_przekladnika(file_path: Path, line: str) -> bool:
+    """Wiersz deklaracji oznaczeń zacisków przekładnika w jedynym pliku wyjątku."""
+    return format_violation_path(file_path) == PLIK_ZACISKOW_PRZEKLADNIKA and bool(
+        KONTEKST_ZACISKOW_PRZEKLADNIKA.match(line)
+    )
 
 
 def scan_file(file_path: Path) -> list[Violation]:
@@ -298,7 +333,10 @@ def scan_file(file_path: Path) -> list[Violation]:
 
         # Find codenames in string literals (frontend: gate-citation exemption applies)
         codenames = find_codenames_in_strings(
-            line, exempt_gate_citations=True, karta_scan=not is_test_path(file_path)
+            line,
+            exempt_gate_citations=True,
+            karta_scan=not is_test_path(file_path),
+            zaciski_przekladnika=czy_kontekst_zaciskow_przekladnika(file_path, line),
         )
         for codename in codenames:
             violations.append(
@@ -386,6 +424,32 @@ def check_excluded_relative_files_freshness(root: Path) -> list[str]:
     return violations
 
 
+def check_wyjatek_zaciskow_przekladnika(root: Path) -> list[str]:
+    """Zapadka świeżości wyjątku zacisków przekładnika: plik istnieje, ma DOKŁADNIE jeden wiersz
+    kontekstu, a ten wiersz bez wyjątku produkuje trafienie (niesie „P1"/„P2") — inaczej wyjątek
+    jest martwy albo rozmyty i poszerzałby się po cichu na przyszłą treść pliku."""
+    plik = root / PLIK_ZACISKOW_PRZEKLADNIKA
+    znacznik = "[no-codenames-wyjatek-zaciskow-osierocony]"
+    if not plik.is_file():
+        return [f"{znacznik} brak pliku {PLIK_ZACISKOW_PRZEKLADNIKA!r} — usuń wyjątek"]
+    wiersze = [
+        w
+        for w in plik.read_text(encoding="utf-8").split("\n")
+        if KONTEKST_ZACISKOW_PRZEKLADNIKA.match(w)
+    ]
+    if len(wiersze) != 1:
+        return [
+            f"{znacznik} {PLIK_ZACISKOW_PRZEKLADNIKA!r} ma {len(wiersze)} wierszy deklaracji "
+            "oznaczeń zacisków (wymagany dokładnie jeden)"
+        ]
+    if not find_codenames_in_strings(wiersze[0]):
+        return [
+            f"{znacznik} wiersz deklaracji w {PLIK_ZACISKOW_PRZEKLADNIKA!r} nie niesie już "
+            "oznaczeń P1/P2 — usuń wyjątek"
+        ]
+    return []
+
+
 def iter_files(root: Path) -> list[Path]:
     """Iterate over files to scan."""
     files = []
@@ -414,6 +478,7 @@ def main() -> int:
         violations.extend(scan_backend_file(file_path))
 
     freshness_violations = check_excluded_relative_files_freshness(REPO_ROOT)
+    freshness_violations += check_wyjatek_zaciskow_przekladnika(REPO_ROOT)
     if freshness_violations:
         print("=" * 70, file=sys.stderr)
         print("NO-CODENAMES GUARD: WYKLUCZENIA OSIEROCONE", file=sys.stderr)

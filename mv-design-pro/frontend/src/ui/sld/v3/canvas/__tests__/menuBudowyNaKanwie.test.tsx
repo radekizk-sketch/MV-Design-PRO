@@ -751,7 +751,8 @@ describe('S9-10 — „Rozpocznij odgałęzienie": predykat menu SPAROWANY z res
     // formularz — `from_ref` operacji wskazuje wstrzyknięte pole.
     const operacja = buildSldOperationContext('start-branch', 'station', stationRef, zPolem, widoki);
     expect(operacja?.op).toBe('start_branch_segment_sn');
-    expect(String(operacja?.context.from_ref ?? '')).toBe(`${fieldRef}.BRANCH`); // ui-terminology-ignore
+    // Port startu w jedynej postaci (backend `_rozwiaz_port_startu`): `ref_id` pola liniowego.
+    expect(String(operacja?.context.from_ref ?? '')).toBe(fieldRef);
   });
 
   it('NATYWNY prawy klik w etykietę stacji BEZ wolnego pola: pozycja ZABLOKOWANA z powodem', async () => {
@@ -909,7 +910,7 @@ describe('S9-5 E — ciąg 15 stacji budowany ogniwo po ogniwie z kanwy (scena W
         expect(openOperationForm.mock.calls[1][0]).toBe('start_branch_segment_sn');
         const poleOdgalezienia = wolnePole(stacjaRef, 'FEEDER');
         expect(String((openOperationForm.mock.calls[1][1] as Record<string, unknown>).from_ref ?? ''))
-          .toBe(`${poleOdgalezienia}.BRANCH`); // ui-terminology-ignore
+          .toBe(poleOdgalezienia);
       }
       await zamknijMenu();
     },

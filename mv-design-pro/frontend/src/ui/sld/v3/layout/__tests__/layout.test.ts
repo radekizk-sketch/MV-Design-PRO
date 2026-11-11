@@ -12,7 +12,6 @@ import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../../v2/model/widokPolStacji';
 import {
-  apparatusIdentifierLeftReserve,
   bayColumnFootprint,
   bayColumnRequiredWidth,
   entryDescentCaptionInset,
@@ -25,6 +24,7 @@ import {
   type StationMeasureInput,
 } from '../measure';
 import { fieldCaptionAt } from '../../compose/directions';
+import { pasyOpisowPolaStacji } from '../../compose/kolumnaOpisowPola';
 import { BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, computeBands, noBandsOverlap, type StationBandHeights } from '../bands';
 import { allColumnsOnGrid, computeColumns, type ComputeColumnsInput } from '../columns';
 import {
@@ -201,8 +201,9 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     // F10.2 (spec §19.1, V12K-035): `designation` PRZESTAŁ być czytany —
     // sidecar jest ZAWSZE `fieldFunctionalDesignation(fieldRole)` („pole
     // liniowe" dla RMU_LINE, nigdy pusty); DODATKOWO rezerwacja PO LEWEJ
-    // stosu na identyfikatory per-aparat Q/QE/T (`apparatusIdentifierLeftReserve`).
-    const leftReserve = apparatusIdentifierLeftReserve(bay);
+    // stosu na kolumny opisów pola: oznaczenia Q/QE/T i przekładnie (`pasyOpisowPolaStacji`,
+    // wzorzec właściciela 2026-11-05 — opisy pola po lewej).
+    const leftReserve = pasyOpisowPolaStacji(bay).szerokosc;
     // PROPORCJE (2026-08-07): sidecar niesie OZNACZNIK pola przed rolą
     // („F01 · liniowe") — bez niego trzy pola liniowe jednej rozdzielnicy mają
     // identyczny opis, a cztery „Q1" nie mają po czym być rozróżnione.

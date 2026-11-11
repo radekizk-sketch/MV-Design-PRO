@@ -11,13 +11,15 @@
  * Zmiana wartości wyłącznie operacją domenową (kreator edycji parametrów),
  * a przycisk „Zmień" pojawia się tylko w trybie edycji modelu.
  */
-import type { JSX } from 'react';
+import { useEffect, useRef, type JSX } from 'react';
 
 import { TekstZWzorami, tekstBezWzorow } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import {
   BRAK_DANYCH_PL,
   type AkcjaWiersza,
+  type AkcjaWierszaKarty,
+  type CelAkcjiKarty,
   type CelWierszaTabeli,
   type EdycjaWiersza,
   type KartaTechniczna,
@@ -99,17 +101,23 @@ function WierszDanych({
   );
 }
 
+/** Obsługa akcji wiersza tabeli: `null` — akcja tego celu niedostępna (np. operacja modelu poza
+ *  trybem edycji) i przycisku nie ma (bez atrapy). */
+export type ObslugaAkcjiKarty = (cel: CelAkcjiKarty) => (() => void) | null;
+
 function TabelaDanych({
   tabela,
   idTytuluSekcji,
   zPodpisem,
   onOtworz,
+  onAkcjaKarty,
 }: {
   readonly tabela: TabelaKarty;
   /** Tytuł sekcji nazywa tabelę, gdy podpisu nie ma (jedyna tabela sekcji). */
   readonly idTytuluSekcji: string;
   readonly zPodpisem: boolean;
   readonly onOtworz: ((cel: CelWierszaTabeli) => void) | null;
+  readonly onAkcjaKarty: ObslugaAkcjiKarty | null;
 }): JSX.Element {
   if (tabela.wiersze.length === 0) {
     return (
@@ -119,6 +127,8 @@ function TabelaDanych({
     );
   }
   const idPodpisu = zPodpisem ? `inspektor-karta-tabela-${tabela.klucz}-podpis` : idTytuluSekcji;
+  const kolumnaAkcji =
+    onAkcjaKarty !== null && tabela.wiersze.some((w) => w.akcja && onAkcjaKarty(w.akcja.cel) !== null);
   return (
     <div className="mvd-kt-tabela-ramka">
       {zPodpisem && (
@@ -148,6 +158,11 @@ function TabelaDanych({
                   <TekstZWzorami tekst={k.etykieta} />
                 </th>
               ))}
+              {kolumnaAkcji && (
+                <th scope="col">
+                  <span className="sr-only">Przejście</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -185,6 +200,11 @@ function TabelaDanych({
                     </td>
                   );
                 })}
+                {kolumnaAkcji && (
+                  <td data-kolumna="akcja">
+                    <PrzyciskAkcji akcja={w.akcja} onAkcja={onAkcjaKarty} opisWiersza={w.komorki[tabela.kolumny[0]?.klucz ?? ''] ?? w.klucz} />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -220,20 +240,64 @@ function PrzyciskKonfiguratoraGpz({ zrodloGpzRef }: { readonly zrodloGpzRef: str
   );
 }
 
+function PrzyciskAkcji({
+  akcja,
+  onAkcja,
+  opisWiersza,
+}: {
+  readonly akcja: AkcjaWierszaKarty | undefined;
+  readonly onAkcja: ObslugaAkcjiKarty | null;
+  readonly opisWiersza: string;
+}): JSX.Element | null {
+  const wykonaj = akcja && onAkcja ? onAkcja(akcja.cel) : null;
+  if (!akcja || !wykonaj) return null;
+  return (
+    <button
+      type="button"
+      className="mvd-btn mvd-kt-zmien"
+      data-testid="inspektor-karta-akcja-wiersza"
+      data-cel={akcja.cel.rodzaj === 'ekran' ? akcja.cel.kodEkranu : akcja.cel.operacja}
+      aria-label={`${akcja.etykietaPl}: ${opisWiersza}`}
+      onClick={wykonaj}
+    >
+      {akcja.etykietaPl}
+    </button>
+  );
+}
+
 function Sekcja({
   sekcja,
   onEdytuj,
   onOtworz,
   onAkcja,
+  onAkcjaKarty,
+  wyrozniona,
 }: {
   readonly sekcja: SekcjaKarty;
   readonly onEdytuj: ((edycja: EdycjaWiersza) => void) | null;
   readonly onOtworz: ((cel: CelWierszaTabeli) => void) | null;
   readonly onAkcja: ((akcja: AkcjaWiersza) => void) | null;
+  readonly onAkcjaKarty: ObslugaAkcjiKarty | null;
+  readonly wyrozniona: boolean;
 }): JSX.Element {
   const idNaglowka = `inspektor-karta-${sekcja.id}-tytul`;
+  const ref = useRef<HTMLElement>(null);
+  // Wejście z obiektu rysunku przypisanego do sekcji (blok przekaźnika → „Zabezpieczenia
+  // i automatyka"): sekcja przewinięta do widoku i oznaczona; fokus na nagłówku sekcji.
+  useEffect(() => {
+    if (!wyrozniona || !ref.current) return;
+    ref.current.scrollIntoView?.({ block: 'start' });
+    ref.current.focus({ preventScroll: true });
+  }, [wyrozniona]);
   return (
-    <section className="mvd-kt-sekcja" data-testid={`inspektor-karta-${sekcja.id}`} aria-labelledby={idNaglowka}>
+    <section
+      ref={ref}
+      className="mvd-kt-sekcja"
+      data-testid={`inspektor-karta-${sekcja.id}`}
+      data-wyrozniona={wyrozniona ? 'true' : undefined}
+      tabIndex={wyrozniona ? -1 : undefined}
+      aria-labelledby={idNaglowka}
+    >
       {sekcja.konfiguratorGpzRef && onEdytuj ? (
         <div className="mvd-kt-naglowek-sekcji">
           <h4 id={idNaglowka} className="mvd-kt-tytul">
@@ -260,7 +324,14 @@ function Sekcja({
             </dl>
           )}
           {(sekcja.tabele ?? []).map((t, _i, tabele) => (
-            <TabelaDanych key={t.klucz} tabela={t} idTytuluSekcji={idNaglowka} zPodpisem={tabele.length > 1} onOtworz={onOtworz} />
+            <TabelaDanych
+              key={t.klucz}
+              tabela={t}
+              idTytuluSekcji={idNaglowka}
+              zPodpisem={tabele.length > 1}
+              onOtworz={onOtworz}
+              onAkcjaKarty={onAkcjaKarty}
+            />
           ))}
           {sekcja.zrodloPl && (
             <p className="mvd-kt-zrodlo" data-testid={`inspektor-karta-${sekcja.id}-zrodlo`}>
@@ -278,6 +349,8 @@ export function KartaTechnicznaElementu({
   onEdytuj,
   onOtworz,
   onAkcja,
+  onAkcjaKarty = null,
+  sekcjaWyrozniona = null,
 }: {
   readonly karta: KartaTechniczna;
   /** `null` — tryb bez edycji modelu (wyniki, tylko do odczytu): przyciski „Zmień" ukryte. */
@@ -286,11 +359,24 @@ export function KartaTechnicznaElementu({
   readonly onOtworz?: ((cel: CelWierszaTabeli) => void) | null;
   /** Operacja usuwająca brak (np. „dodaj zabezpieczenie”) — tylko w trybie edycji modelu. */
   readonly onAkcja?: ((akcja: AkcjaWiersza) => void) | null;
+  /** Akcje wierszy tabel (przejście do nastaw: ekran E-27 albo operacja modelu); `null` — bez
+   *  przycisków. */
+  readonly onAkcjaKarty?: ObslugaAkcjiKarty | null;
+  /** Id sekcji, do której prowadzi kliknięty obiekt rysunku (`null` — żadna). */
+  readonly sekcjaWyrozniona?: string | null;
 }): JSX.Element {
   return (
     <div className="mvd-kt" data-testid="inspektor-karta" data-rodzaj-karty={karta.rodzaj}>
       {karta.sekcje.map((s) => (
-        <Sekcja key={s.id} sekcja={s} onEdytuj={onEdytuj} onOtworz={onOtworz ?? null} onAkcja={onEdytuj ? onAkcja ?? null : null} />
+        <Sekcja
+          key={s.id}
+          sekcja={s}
+          onEdytuj={onEdytuj}
+          onOtworz={onOtworz ?? null}
+          onAkcja={onEdytuj ? onAkcja ?? null : null}
+          onAkcjaKarty={onAkcjaKarty}
+          wyrozniona={s.id === sekcjaWyrozniona}
+        />
       ))}
     </div>
   );

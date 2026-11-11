@@ -64,6 +64,7 @@ from tests.reference_networks.budowa_przez_api import (
     KlientBudowy,
     normalizuj_migawke,
     pole_gpz,
+    port_odgalezny,
     segmenty_korytarza,
     wiazanie,
 )
@@ -106,7 +107,7 @@ def _open_branch(b: KlientBudowy) -> dict[str, Any]:
     b.gpz_110kv(1)
     b.odcinek_magistrali(1200, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja B", nn_odplywy=1)
-    b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 140)
+    b.odgalezienie(pole_gpz(b.migawka(), 0), 140)
     return b.migawka()
 
 
@@ -122,7 +123,7 @@ def _gpz_feeder(b: KlientBudowy) -> dict[str, Any]:
     b.gpz_110kv(1)
     b.odcinek_magistrali(800, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja S01", nn_odplywy=1)
-    b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 600)
+    b.odgalezienie(pole_gpz(b.migawka(), 0), 600)
     b.stacja_b(segmenty_korytarza(b.migawka(), 1)[0], "Stacja S02", nn_odplywy=1)
     return b.migawka()
 
@@ -158,7 +159,9 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
     rezystorze 57,7 Ω — k = 7,5 ≥ 1,5). Pola GPZ z aparatami pierwotnymi, przekładniki i
     przypisania zabezpieczeń są dopisane W MODELU (walidacja Pydantic w
     ``normalizuj_migawke``) — żadna operacja domenowa nie buduje pola GPZ z listą aparatów
-    pierwotnych, a tę ścieżkę danych kontrakty SLD muszą mieć na czym sprawdzić.
+    pierwotnych, a tę ścieżkę danych kontrakty SLD muszą mieć na czym sprawdzić. Wynik to
+    zrzut modelu (pełny kształt kontraktu), przypięty testem
+    ``tests/ci/test_fikstury_enm_sld_ksztalt.py``.
     """
     enm = _gpz_feeder(b)
     gpz = next(s for s in enm["substations"] if s.get("station_type") == "gpz")
@@ -337,7 +340,13 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
                     ],
                 }
             )
-    return enm
+    # Rekordy dopisane powyżej przechodzą przez model (zrzut Pydantic), żeby fikstura niosła
+    # PEŁNY kształt kontraktu jak migawka z API (m.in. wymagane `Bay.equipment_refs`) — sama
+    # walidacja w ``normalizuj_migawke`` przepuszczała rekordy bez pól domyślnych, a konsumenci
+    # frontu (inspektor pola) czytają je jako obecne.
+    from enm.models import EnergyNetworkModel
+
+    return EnergyNetworkModel.model_validate(enm).model_dump(mode="json")
 
 
 def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
@@ -384,7 +393,7 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
     b.gpz_110kv(1)
     b.odcinek_magistrali(1200, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja B", nn_odplywy=4)
-    b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 140)
+    b.odgalezienie(pole_gpz(b.migawka(), 0), 140)
     enm = b.migawka()
     stacja = next(s for s in enm["substations"] if s.get("station_type") == "inline")
     szyna_nn = next(r for r in stacja["bus_refs"] if r.endswith("/nn_bus"))
@@ -573,7 +582,7 @@ def _b2_drogi(klient: TestClient) -> tuple[dict[str, dict[str, Any]], dict[str, 
         for f in pola_sn_stacji(b.migawka(), stacja["ref_id"])
         if f.get("bay_role") == "FEEDER"
     )
-    zapisz("start_branch_segment_sn", b.odgalezienie(f"{pole_odg}.BRANCH", 180))
+    zapisz("start_branch_segment_sn", b.odgalezienie(pole_odg, 180))
     gpz = next(s for s in b.migawka()["substations"] if s.get("station_type") == "gpz")
     szyna_gpz = next(r for r in gpz["bus_refs"] if r.endswith("/bus_sn"))
     zapisz(
@@ -686,8 +695,7 @@ def _elementy_ciagu(b: KlientBudowy, rodzaj: str) -> dict[str, Any]:
         for indeks, opis in POLOZENIA_NA_CIAGU:
             nazwa = f"{'ZKSN' if rodzaj == 'zksn' else 'Słup rozgałęźny'} {opis}"
             punkt = b.punkt_odgalezny(odcinki[indeks], rodzaj, nazwa)
-            port = "BRANCH_1" if rodzaj == "zksn" else "BRANCH"
-            b.odgalezienie(f"{punkt}.{port}", 150, napowietrzny=napowietrzny)
+            b.odgalezienie(port_odgalezny(b.migawka(), punkt), 150, napowietrzny=napowietrzny)
             odgalezienie = [
                 g
                 for g in b.migawka()["branches"]

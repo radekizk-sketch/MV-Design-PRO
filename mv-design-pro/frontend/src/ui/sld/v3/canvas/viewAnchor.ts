@@ -42,7 +42,7 @@
  */
 import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { SceneLod, SceneV3 } from '../scene/buildScene';
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 
 /** Prostokąty kotwicy dla wszystkich trzech poziomów szczegółu. */
 export type AnchorBoxByLod = Readonly<Record<SceneLod, BoundingBox>>;
@@ -109,8 +109,9 @@ export function indeksPrzynaleznosci(scene: SceneV3): IndeksPrzynaleznosci {
     }
   };
   for (const symbol of scene.symbols) {
-    const def = SYMBOL_DEFS[symbol.symbolId];
-    obejmij(symbol.meta?.ownerRef, symbol.x, symbol.y, symbol.x + def.width, symbol.y + def.height);
+    // Gabaryt z jednego źródła: blok zabezpieczeń pola = cała ramka (`gabarytSymbolu`).
+    const g = gabarytSymbolu(symbol);
+    obejmij(symbol.meta?.ownerRef, g.x, g.y, g.x + g.width, g.y + g.height);
   }
   for (const segment of scene.segments) {
     for (const punkt of segment.points) obejmij(segment.meta?.ownerRef, punkt.x, punkt.y, punkt.x, punkt.y);

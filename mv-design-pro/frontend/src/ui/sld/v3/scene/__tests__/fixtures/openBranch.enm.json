@@ -17,6 +17,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
         "id": "d31902c7-6b3e-54c1-b1fc-15393a93a5a2",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "assigned_corridor_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
@@ -36,6 +37,7 @@
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -43,7 +45,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -63,6 +66,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
         "id": "cc2a5bdb-31b3-5ce2-a1df-101eda305c57",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "default_device_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_breaker/000",
@@ -82,6 +86,7 @@
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -89,7 +94,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -109,6 +115,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
         "id": "a7f9d0d1-199a-5bc1-bafd-c15e293ba4c0",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "default_device_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_breaker/001",
@@ -122,13 +129,13 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -136,7 +143,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -157,6 +165,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
         "id": "38ba6f2e-8014-5d28-9ce1-4d43b5dade32",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "default_device_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_breaker/002",
@@ -172,14 +181,15 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -187,7 +197,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -207,6 +218,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
         "id": "d04aec85-b13f-537b-a012-cad1f49199ad",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "transformer_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/transformer"
@@ -221,6 +233,7 @@
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/nn_main_breaker",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -228,7 +241,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/04dab34c3ac8dc7c3d093d0d00d7d094/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -248,6 +262,7 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
         "id": "83026c97-40f1-584b-b7e7-666b3a849576",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "feeder_role": "ODPLYW_NN"
@@ -262,12 +277,14 @@
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/nn_feeder/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/3fa4134488b26e9ee5517936a2315653/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -285,9 +302,10 @@
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
         "id": "10cf59c5-5e3f-5418-9642-f2cfee5d162c",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
-          "assigned_corridor_ref": "corridor/3d48ba2479ed1bd998d1a2d142114dfb/branch",
+          "assigned_corridor_ref": "corridor/349c0f6ee3c193ed1ca0aee44ab85eee/branch",
           "field_status": "READY_FOR_TRUNK",
           "gpz_line_field_index": 1,
           "gpz_line_fields_count": 2,
@@ -304,6 +322,7 @@
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -311,7 +330,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -344,6 +364,7 @@
         "r_ohm": 0.0,
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_breaker/000",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "station_field_device"
@@ -380,6 +401,7 @@
         "r_ohm": 0.0,
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_breaker/001",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "station_field_device"
@@ -416,6 +438,7 @@
         "r_ohm": 0.0,
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_breaker/002",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "station_field_device"
@@ -613,6 +636,7 @@
         "r_ohm": null,
         "ref_id": "nn/04dab34c3ac8dc7c3d093d0d00d7d094/feeder_device",
         "source_mode": "MIGRACJA",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/04dab34c3ac8dc7c3d093d0d00d7d094/feeder_bus",
@@ -637,6 +661,7 @@
         "r_ohm": null,
         "ref_id": "nn/3fa4134488b26e9ee5517936a2315653/feeder_device",
         "source_mode": "MIGRACJA",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [],
         "to_bus_ref": "nn/3fa4134488b26e9ee5517936a2315653/feeder_bus",
@@ -936,7 +961,7 @@
       },
       {
         "corridor_type": "radial",
-        "id": "28c7653f-fc13-56de-822e-dfd461ed07b6",
+        "id": "23ec6a51-a293-5d55-a8b3-409c3ec7ee11",
         "meta": {
           "gpz_field_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002"
         },
@@ -944,7 +969,7 @@
         "ordered_segment_refs": [
           "seg/72ce0e434a74b654e882b35c70e3e454/branch_segment"
         ],
-        "ref_id": "corridor/3d48ba2479ed1bd998d1a2d142114dfb/branch",
+        "ref_id": "corridor/349c0f6ee3c193ed1ca0aee44ab85eee/branch",
         "tags": []
       }
     ],
@@ -959,7 +984,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "7d3dcd9f94b4b1b78fc160eea0efcc37558763a87660c85b8d57474ed759d480",
+      "hash_sha256": "d2ef496db8b8b059659d5f3577974ea21ed40067182b5c95e117c2d57979a5c1",
       "name": "Odgałęzienie z pola GPZ",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -988,8 +1013,8 @@
         "stations": []
       },
       {
-        "branch_origin_station_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
-        "id": "corridor/3d48ba2479ed1bd998d1a2d142114dfb/branch",
+        "branch_origin_station_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
+        "id": "corridor/349c0f6ee3c193ed1ca0aee44ab85eee/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": null,
         "run_kind": "branch",
@@ -999,8 +1024,8 @@
             "segment_ref": "seg/72ce0e434a74b654e882b35c70e3e454/branch_segment"
           }
         ],
-        "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
-        "starting_port_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001.BRANCH",
+        "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
+        "starting_port_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
         "stations": []
       }
     ],

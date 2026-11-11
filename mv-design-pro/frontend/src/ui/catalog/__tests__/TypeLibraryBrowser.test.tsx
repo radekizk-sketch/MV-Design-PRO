@@ -539,7 +539,9 @@ describe('TypeLibraryBrowser', () => {
     });
 
     // Podsumowanie listy: pozycja z danymi niesie liczbę, pozycja bez danej — „brak danych”.
-    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik 25 kA' })).toBeInTheDocument();
+    // Pozycja z medium gaszenia łuku niesie je w skrócie (karta UX-04/POLE-LINIOWE-WZORZEC —
+    // zakaz gazów fluorowanych: medium na widoku każdej listy aparatury łączeniowej SN).
+    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik 25 kA · medium próżnia' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '123 kV · 3150 A · Ik brak danych' })).toBeInTheDocument();
 
     await user.click(screen.getByText('Wyłącznik 110 kV (typ minimalny topologii zasilania)'));
@@ -691,16 +693,16 @@ describe('TypeLibraryBrowser', () => {
     });
   });
 
-  it('calls onSelectType with the active category', async () => {
+  it('wybór wiersza pokazuje szczegóły pozycji (przeglądarka nie przypisuje typu)', async () => {
     const user = userEvent.setup();
-    const onSelectType = vi.fn();
-    render(<TypeLibraryBrowser initialTab="PROTECTION_DEVICE" onSelectType={onSelectType} />);
+    render(<TypeLibraryBrowser initialTab="PROTECTION_DEVICE" />);
 
     expect(await screen.findByText('Przekaźnik pola liniowego')).toBeInTheDocument();
+    expect(screen.getByText('Wybierz typ z listy, aby zobaczyć szczegóły')).toBeInTheDocument();
 
     await user.click(screen.getByText('Przekaźnik pola liniowego'));
 
-    expect(onSelectType).toHaveBeenCalledWith('prot-001', 'PROTECTION_DEVICE');
+    expect(screen.queryByText('Wybierz typ z listy, aby zobaczyć szczegóły')).not.toBeInTheDocument();
   });
 
   it('shows loading state', async () => {

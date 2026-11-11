@@ -117,8 +117,14 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5: 167/21 → 163/21 — pomiar `mypy src` na HEAD
     # karty i na drzewie commitu; zniknęły dokładnie 4 błędy `arg-type` skasowanego pakietu
     # dowodowego P19 (opis przy `BASELINE_*` w guardzie), zero nowych.
-    assert modul.BASELINE_ERRORS == 163
-    assert modul.BASELINE_FILES == 21
+    # Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z UX-04/POLE-BKR-MODEL: 167/21 → 166/20 —
+    # pomiar `mypy_ratchet_guard` na pierwszym rodzicu (171/22, 4 błędy karty) i na drzewie
+    # scalonym; zdjęte 4 błędy karty i 1 z `api/catalog.py`, zero nowych.
+    # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: 163/21 → 162/20 — pomiar
+    # `mypy src` na stronie integracji i na drzewie scalonym; zdjęty 1 błąd `assignment`
+    # w `enm/pole_katalogowe.py` (opis przy `BASELINE_*` w guardzie), zero nowych.
+    assert modul.BASELINE_ERRORS == 162
+    assert modul.BASELINE_FILES == 20
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

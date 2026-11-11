@@ -19,8 +19,9 @@
  *  - Kotwica: `ProtectionAssignment.ct_ref` rozwiązany na CT stosu pola, gdy
  *    brak CT — przy wyłączniku (§17.2). Gdy ANI CT ANI wyłącznik nie
  *    rozwiązują się (dane niespójne) — kotwica geometryczna spada na
- *    pierwszy aparat stosu (WYŁĄCZNIE pozycjonowanie okręgu, NIE asercja
- *    połączenia — tor wyzwalania pozostaje nierozwiązany niezależnie).
+ *    pierwszy aparat stosu (WYŁĄCZNIE kotwica geometryczna, NIE asercja
+ *    połączenia — tor wyzwalania pozostaje nierozwiązany niezależnie). Wysokość
+ *    bloku zabezpieczeń wyznacza `lacznikOsiBloku` (`./blokZabezpieczenPola`).
  *  - Miernik: `Measurement.purpose==='metering'` z `bay_ref` — adapter
  *    projektuje `meteringMeasurementRef` (ref pomiaru), TU dopasowywany na
  *    aparat CT/VT stosu przez `BayPrimaryDevice.linked_ref` (wzorzec
@@ -34,20 +35,23 @@
  * ctRatingAnnotations`, jedna pozycja per CT z ratingiem — `resolveBayCtRating
  * Annotations`, `v2/canvas/enmToSldAdapter.ts`). Dopasowanie na aparat
  * NARYSOWANEGO stosu — TA SAMA reguła co miernik: `measurementRef ===
- * linked_ref`. F10.6 (D3, DOMAIN): układ pomiarowy (3×CT fazowe / przekładnik
- * sumujący Ferranti-I0, `Measurement.ct_arrangement`) dokleja TRZECI człon do
- * etykiety (`ctArrangementLabelText` niżej), GDY dane obecne — glif
- * `currentTransformer` sam pozostaje jeden niezależnie od danych (spec §18.3
- * dopuszcza „wariant symbolu LUB adnotacji"; wybrano adnotację — zero nowego
- * glifu).
+ * linked_ref`. Układ pomiarowy, liczba rdzeni i klasy NIE są doklejane do etykiety
+ * (odbiór B-02 2026-11-04) — opis pełny w inspektorze pola.
  */
 
-import { GRID, snapUp } from '../core/grid';
+import { GRID } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
-import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import type { CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../../v2/model/widokPolStacji';
+import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import type {
+  CtRatingAnnotationView,
+  MiniBlockBayDescriptor,
+  RodzajPrzekladnikaTabliczki,
+  VtMountingAnnotationView,
+} from '../../v2/model/widokPolStacji';
+import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego';
 
-/** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
+/** Średnica okręgu miernika „M" — spec §17.3: 24px = 3×GRID (przekaźnik pola rysuje blok
+ *  zabezpieczeń — ramkę, `./blokZabezpieczenPola`). */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
 
 /**
@@ -55,10 +59,13 @@ export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
  * recenzji F9.9) — JEDNA prawda dla `compose/station.ts` i `compose/gpz.ts`
  * (wołający `scene/buildScene.ts` wywodzi wartość z LOD sceny przez
  * `protectionAnnotationDetailForLod` niżej):
- *  - `'full'`        (L2): okrąg + kody + tor wyzwalania + „52" + „M" + pełna
- *                     lista kodów (>2, §17.3 zd. 2).
- *  - `'circle-only'` (L1): SAM okrąg przekaźnika BEZ kodów; tor wyzwalania
- *                     ukryty; „52"/„M"/pełna lista nieobecne (§17.4 dosłownie).
+ *  - `'full'`        (L2): ramka bloku zabezpieczeń z kodami funkcji, linia
+ *                     wyłączania, linie pomiarowe, „52", „M", odniesienia.
+ *  - `'circle-only'` (L1, nazwa historyczna): SAMA ramka bloku tego samego
+ *                     kształtu BEZ kodów i linia wyłączania; linie pomiarowe,
+ *                     „52"/„M" i wiersze nieobecne (§17.4, odbiór B-02 2026-11-04).
+ *                     Przekaźnik NIE jest okręgiem (karta JEDNA NOTACJA BLOKU
+ *                     ZABEZPIECZEŃ).
  *  - `'none'`        (L0): warstwa adnotacji nieobecna (plan sieci).
  */
 export type ProtectionAnnotationDetail = 'full' | 'circle-only' | 'none';
@@ -69,24 +76,57 @@ export function protectionAnnotationDetailForLod(lod: 0 | 1 | 2): ProtectionAnno
   return 'none';
 }
 
-/**
- * Tekst PEŁNEJ listy kodów (spec §17.3 zdanie 2: „większa liczba funkcji →
- * w okręgu dwie najważniejsze..., pełna lista w etykiecie slotu pola") —
- * `null` gdy kodów ≤2 (okrąg niesie je w całości, slot zbędny — R-2
- * rozstrzygnięcia recenzji F9.9). Separator „·" jak w etykietach przepływu
- * F9.5 (spójna typografia adnotacji).
- */
-export function fullCodesListText(codes: readonly string[]): string | null {
-  return codes.length > 2 ? codes.join(' · ') : null;
-}
+/** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4
+ *  przyciągane do siatki nie nachodzą na siebie. */
+export const ODSTEP_WIERSZY_KODOW_EAZ = 2 * GRID;
 
 /** Klasa typograficzna pełnej listy kodów — t4 (8px, „adnotacje",
  *  `core/text.ts`), ta sama co „52" (§17.3 „etykieta 8 px"). */
 export const PROTECTION_FULL_LIST_LABEL_CLASS = 't4' as const;
 
+/**
+ * Odniesienia obwodów spoza pola w bloku zabezpieczeń — dziś źródło napięcia zerowego 3U₀
+ * funkcji 67N: obwód okrężny „Z, Zz" z przekładnika pola pomiaru napięcia (ENEA Z.10 s.89,
+ * Z.11.1 s.91, Z.17 s.97), potwierdzony w modelu (`MiniBlockBayDescriptor.zrodloU0`). Na
+ * schemacie głównym odniesienie TEKSTOWE, nie przewód przez rozdzielnicę (decyzja właściciela
+ * 2026-10-29 pkt 4). JEDNA lista dla rezerwacji kolumny i rysunku (GPZ i stacje); puste, gdy
+ * pole nie rysuje przekaźnika (brak kodów funkcji).
+ */
+export function odniesieniaPrzekaznikaPola(
+  bay: Pick<MiniBlockBayDescriptor, 'zrodloU0'>,
+  codes: readonly string[],
+): readonly string[] {
+  if (codes.length === 0) return [];
+  const tekst = tekstOdniesieniaZrodlaU0(bay.zrodloU0);
+  return tekst ? [tekst] : [];
+}
+
+/**
+ * Kody funkcji BLOKU ZABEZPIECZEŃ pola (GPZ i stacje, z powiązaniami obwodów wtórnych i bez), w DWÓCH
+ * KOLUMNACH pionowych wewnątrz prostokątnej ramki — odbiór właściciela 2026-11-04 (wizualizacja
+ * zaakceptowana, korekta v2): blok BEZ okręgu przekaźnika, wewnątrz ramki WSZYSTKIE kody funkcji
+ * pola (bez ukrywania, bez licznika) w kolejności danych (`Bay.protection_codes`), wypełnienie
+ * kolumnami (najpierw lewa, z góry w dół): lewa ma ⌈n/2⌉ kodów, prawa resztę, liczba wierszy
+ * ⌈n/2⌉. Kody są wyłącznie na LOD2 (`ProtectionAnnotationDetail` `'full'`); na LOD1 zostaje
+ * ramka tego samego kształtu bez kodów, na LOD0 bloku nie ma. Nastawy i opis funkcji — inspektor
+ * pola („Zabezpieczenia i automatyka”).
+ */
+export function kolumnyKodowBloku(codes: readonly string[]): readonly [readonly string[], readonly string[]] {
+  const wLewej = Math.ceil(codes.length / 2);
+  return [codes.slice(0, wLewej), codes.slice(wLewej)];
+}
+
+/** Odstęp kolumn kodów bloku zabezpieczeń [px świata] — oczko między tuszem kolumn. */
+export const ODSTEP_KOLUMN_KODOW_EAZ = GRID;
+
+/** Szerokość kolumny kodów pismem listy (najszerszy kod); 0 = kolumna pusta. */
+export function szerokoscKolumnyKodow(kolumna: readonly string[]): number {
+  return kolumna.length > 0 ? Math.max(...kolumna.map((k) => measureLabelWidth(k, PROTECTION_FULL_LIST_LABEL_CLASS))) : 0;
+}
+
 type ProtectionAwareBay = Pick<
   MiniBlockBayDescriptor,
-  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations' | 'vtMountingAnnotations'
+  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations' | 'vtMountingAnnotations' | 'zrodloU0'
 >;
 
 /**
@@ -105,45 +145,16 @@ export function bayHasProtectionAnnotation(bay: ProtectionAwareBay): boolean {
   );
 }
 
-/** Etykieta PL układu pomiarowego CT (§18.3, F10.6, D3) — `null` gdy dana
- *  niedostarczona (adnotacja pozostaje bez członu układu, zero zgadywania). */
-export function ctArrangementLabelText(
-  arrangement: CtRatingAnnotationView['arrangement'] | null | undefined,
-): string | null {
-  if (arrangement === '3xCT') return '3×CT';
-  if (arrangement === 'ferranti') return 'Ferranti-I0';
-  return null;
-}
-
-/** Etykieta PL liczby rdzeni CT (§20.2, CTVT-RENDER) — `null` gdy dana
- *  niedostarczona LUB niepoprawna (≤0). „N rdz." = N rdzeni (uzwojeń wtórnych,
- *  IEC 61869-2). Zero zgadywania: człon dokleja się WYŁĄCZNIE dla realnej danej
- *  `Measurement.ct_cores`. */
-export function ctCoresLabelText(cores: number | null | undefined): string | null {
-  if (cores == null || !Number.isFinite(cores) || cores <= 0) return null;
-  return `${cores} rdz.`;
-}
-
 /**
- * Tekst etykiety adnotacji CT (§18.3: „identyfikator aparatu i przekładnię,
- * np. «T1 · 300/5»") — separator „·" jak w pełnej liście kodów §17.3/podpisie
- * linii §19.2 (spójna typografia adnotacji). F10.6 (D3): gdy `arrangement`
- * obecny, doklejony jako trzeci człon („T1 · 300/5 · 3×CT"). CTVT-RENDER
- * (CTVT-MODEL/V12K-176): gdy `cores` obecne, doklejone jako KOLEJNY człon
- * („T1 · 300/5 · 3×CT · 2 rdz.") — brak `cores` pozostawia tekst F10.4/F10.6
- * bez zmian (zero dryfu bez danych). JEDNA funkcja dla rezerwacji szerokości
- * (`ctRatingAnnotationsWidth` niżej) i rysunku (`resolveCtRatingAnnotations`
- * niżej) — zero rozjazdu tekst↔szerokość.
+ * Tekst etykiety adnotacji przekładnika (§18.3: „identyfikator aparatu i przekładnię, np.
+ * «T1 · 300/5»”). Odbiór B-02 właściciela 2026-11-04 (pkt 6 i 8): na schemacie WYŁĄCZNIE krótka
+ * przekładnia („200–400/5”, „15/√3 / 0,1/√3 kV”); klasy dokładności, wybrany zaczep, układ
+ * pomiarowy i liczba rdzeni są w inspektorze pola, nie poszerzają pola na schemacie. JEDNA
+ * funkcja dla rezerwacji kolumny przekładni (`tekstyOpisowPrzekladnika` niżej →
+ * `./kolumnaOpisowPola`) i rysunku (`resolveCtRatingAnnotations` niżej) — zero rozjazdu tekst↔szerokość.
  */
-export function ctRatingLabelText(
-  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores'>,
-): string {
-  const members = [`${entry.identifier} · ${entry.ratioText}`];
-  const arrangementLabel = ctArrangementLabelText(entry.arrangement);
-  if (arrangementLabel) members.push(arrangementLabel);
-  const coresLabel = ctCoresLabelText(entry.cores);
-  if (coresLabel) members.push(coresLabel);
-  return members.join(' · ');
+export function ctRatingLabelText(entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText'>): string {
+  return entry.identifier ? `${entry.identifier} · ${entry.ratioText}` : entry.ratioText;
 }
 
 /** Etykieta PL montażu VT (§20.2, CTVT-RENDER) — `bus`⇒„szynowy",
@@ -157,7 +168,7 @@ export function vtMountingLabelText(
 /**
  * Tekst etykiety adnotacji montażu VT (§20.2, CTVT-RENDER) — „identyfikator ·
  * montaż" (np. „V1 · kablowy"), separator „·" spójny z etykietą CT. JEDNA
- * funkcja dla rezerwacji szerokości (`vtMountingAnnotationsWidth` niżej) i
+ * funkcja dla rezerwacji kolumny przekładni (`tekstyOpisowPrzekladnika` niżej) i
  * rysunku (`resolveVtMountingAnnotations` niżej).
  */
 export function vtMountingAnnotationLabelText(
@@ -166,77 +177,39 @@ export function vtMountingAnnotationLabelText(
   return `${entry.identifier} · ${vtMountingLabelText(entry.mounting)}`;
 }
 
-/**
- * Szerokość DODATKOWA na adnotacje przekładni CT (§18.3, F10.4) — 0, gdy
- * pole nie niesie żadnego `ctRatingAnnotations` (zero zmian geometrii dla
- * pól bez danych). Inaczej `GRID` (prześwit od toru głównego) + najszerszy
- * pojedynczy tekst „identyfikator · przekładnia" spośród adnotacji pola
- * (zwykle jedna pozycja — jeden CT toru głównego; wiele pozycji to defensywa
- * na przyszłość, np. strefa 87T z 2×CT, F10.6). DODAWANA (nie max()owana) do
- * `protectionAnnotationColumnWidth` niżej — adnotacja CT zajmuje WŁASNE pasmo
- * tuż za torem głównym (`compose/station.ts`, zaczep
- * `stackLeftX+planFootprint.width`, TA SAMA krawędź co sidecar oznaczenia
- * funkcyjnego pola), podczas gdy okrąg przekaźnika/miernik/pełna lista kodów
- * są PRAWO-wyrównane do końca CAŁEJ rezerwacji — dwa różne pasma tej samej
- * kolumny, oba muszą się zmieścić jednocześnie (SUMA, nie MAX).
- */
-export function ctRatingAnnotationsWidth(bay: ProtectionAwareBay): number {
-  const entries = bay.ctRatingAnnotations ?? [];
-  if (entries.length === 0) return 0;
-  const maxWidth = Math.max(
-    ...entries.map((entry) => measureLabelWidth(ctRatingLabelText(entry), PROTECTION_FULL_LIST_LABEL_CLASS)),
-  );
-  return GRID + maxWidth;
+/** Rekord aparatu pola niosący powiązania obwodów wtórnych (podzbiór `BayPrimaryDeviceView`). */
+interface AparatZPowiazaniamiObwodow {
+  readonly funkcjeEazZasilane?: readonly string[];
+  readonly funkcjeEazWylaczajace?: readonly string[];
 }
 
 /**
- * Szerokość DODATKOWA na adnotacje montażu VT (§20.2, CTVT-RENDER) — 0, gdy
- * pole nie niesie żadnego `vtMountingAnnotations` (zero zmian geometrii dla pól
- * bez danych). Inaczej `GRID` (prześwit) + najszerszy tekst „identyfikator ·
- * montaż" pola. Etykieta VT leży w TYM SAMYM lewym paśmie co adnotacja CT
- * (zaczep `stackLeftX+planFootprint.width`, placement 'right') — VT i CT
- * kotwiczą na RÓŻNYCH aparatach (różne Y), więc pasmo musi zmieścić SZERSZY z
- * dwóch (`Math.max` w `protectionAnnotationColumnWidth` niżej, nie suma).
+ * Czy pole rysuje przekaźnik w układzie POWIĄZAŃ OBWODÓW WTÓRNYCH (karta UX-04/POLE-LINIOWE-
+ * WZORZEC, korekta P0 pkt 6): co najmniej jeden aparat pola niesie w modelu powiązanie
+ * (`funkcje_eaz_zasilane` albo `funkcje_eaz_wylaczajace`) z funkcją EAZ pola. JEDEN predykat
+ * rezerwacji szerokości kolumny (`szerokoscPrzekaznikaZPowiazaniami`) i rysunku (`compose/
+ * gpz.ts`) — oba czytają te same rekordy modelu, nie narysowany stos.
  */
-export function vtMountingAnnotationsWidth(bay: ProtectionAwareBay): number {
-  const entries = bay.vtMountingAnnotations ?? [];
-  if (entries.length === 0) return 0;
-  const maxWidth = Math.max(
-    ...entries.map((entry) => measureLabelWidth(vtMountingAnnotationLabelText(entry), PROTECTION_FULL_LIST_LABEL_CLASS)),
+export function czyPrzekaznikZPowiazaniamiObwodow(
+  codes: readonly string[],
+  aparaty: readonly AparatZPowiazaniamiObwodow[] | undefined,
+): boolean {
+  if (codes.length === 0) return false;
+  const funkcjePola = new Set(codes);
+  return (aparaty ?? []).some(
+    (a) => czyPowiazany(a.funkcjeEazZasilane, funkcjePola) || czyPowiazany(a.funkcjeEazWylaczajace, funkcjePola),
   );
-  return GRID + maxWidth;
 }
 
-/**
- * Szerokość DODATKOWA kolumny pola (spec §5.1, §17.3) — GRID (prześwit od
- * stosu/oznacznika) + max(gabaryt okręgu, szerokość pełnej listy kodów gdy
- * >2 funkcji — R-2: pełna lista MUSI być na rysunku, więc measure MUSI ją
- * zarezerwować; `snapUp + GRID` = zapas na `snapToGrid` pozycji etykiety,
- * żeby prostokąt nigdy nie wystawał poza rezerwację) + (F10.4, §18.3)
- * `ctRatingAnnotationsWidth` (pasmo ODRĘBNE, zsumowane — patrz docstring
- * wyżej). TYLKO gdy pole niesie dane (§17.2/§18.3). Zero, gdy brak danych
- * (zero zmian geometrii dla pól bez adnotacji — zgodne z „brak danych = brak
- * oznaczenia"; fixtura referencyjna: 0 `measurements` ⇒ ta gałąź bez zmian).
- *
- * UWAGA (LOD): rezerwacja jest funkcją DANYCH, nie LOD — measure nie zna
- * LOD (kontrakt F2); na L1 (`'circle-only'`) kolumna jest zarezerwowana w
- * pełnej szerokości mimo że rysuje się sam okrąg — nadmiar to pusta
- * przestrzeń (bez kolizji z konstrukcji), nie defekt.
- */
-export function protectionAnnotationColumnWidth(bay: ProtectionAwareBay): number {
-  if (!bayHasProtectionAnnotation(bay)) return 0;
-  const fullList = fullCodesListText(bay.protectionMarking?.codes ?? []);
-  const fullListWidth = fullList
-    ? snapUp(measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS)) + GRID
-    : 0;
-  const hasRelayOrMeter = (bay.protectionMarking?.codes.length ?? 0) > 0 || bay.meteringMeasurementRef != null;
-  const relayMeterWidth = hasRelayOrMeter ? GRID + Math.max(PROTECTION_ANNOTATION_DIAMETER, fullListWidth) : 0;
-  // CTVT-RENDER (§20.2): adnotacja CT i VT leżą w TYM SAMYM lewym paśmie
-  // (różne Y — różne aparaty), więc pasmo = SZERSZA z dwóch (max, nie suma);
-  // dla pola bez VT `vtMountingAnnotationsWidth===0` ⇒ max = szerokość CT
-  // (zero regresji dla pól CT-only, baseline'y nietknięte).
-  const leftBandWidth = Math.max(ctRatingAnnotationsWidth(bay), vtMountingAnnotationsWidth(bay));
-  return relayMeterWidth + leftBandWidth;
+/** Liczba źródeł pomiaru przekaźnika pola wg rekordów modelu — aparaty z powiązaniem
+ *  `funkcje_eaz_zasilane` z funkcją pola; TEN SAM predykat co źródła linii pomiarowych
+ *  (`resolveStationProtectionMarking::zrodlaPomiaru`). Wejście rezerwacji szerokości. */
+export function liczbaZrodelPomiaruPola(
+  codes: readonly string[],
+  aparaty: readonly AparatZPowiazaniamiObwodow[] | undefined,
+): number {
+  const funkcjePola = new Set(codes);
+  return (aparaty ?? []).filter((a) => czyPowiazany(a.funkcjeEazZasilane, funkcjePola)).length;
 }
 
 /**
@@ -251,6 +224,12 @@ export interface PlacedStackDevice {
   readonly linkedRef?: string;
   readonly x: number;
   readonly y: number;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): kody funkcji EAZ zasilanych z aparatu
+   *  (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródło linii pomiarowej. */
+  readonly funkcjeEazZasilane?: readonly string[];
+  /** Kody funkcji EAZ wyłączających aparat (`BayPrimaryDevice.funkcje_eaz_wylaczajace`) —
+   *  cel linii wyłączania. */
+  readonly funkcjeEazWylaczajace?: readonly string[];
 }
 
 function centerOf(device: PlacedStackDevice): { readonly x: number; readonly y: number } {
@@ -271,7 +250,7 @@ export interface ResolvedProtectionMarking {
   readonly tripTarget: PlacedStackDevice | null;
   /** F10.5 (spec §20.1): aparat CT, do którego prowadzi linia POMIAROWA
    *  (sygnał prądowy CT→przekaźnik) — ODDZIELNE od `anchor` (ten opisuje
-   *  WYŁĄCZNIE pozycjonowanie geometryczne okręgu, `anchor === ctAnchor`
+   *  WYŁĄCZNIE kotwicę geometryczną, `anchor === ctAnchor`
    *  gdy `ctAnchor` niepusty, ale `anchor` MOŻE spaść na `tripTarget`/
    *  fallback gdy `ct_ref` nierozwiązywalny — patrz `fallbackAnchor` niżej).
    *  `null` gdy `ProtectionAssignment.ct_ref` nierozwiązywalny na aparat
@@ -279,6 +258,17 @@ export interface ResolvedProtectionMarking {
    *  pomiarowej i zgłasza `bay.protection.measurement_link_unresolved`
    *  (wzorzec `tripTarget`/`bay.protection.trip_link_unresolved` wyżej). */
   readonly ctAnchor: PlacedStackDevice | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): aparaty NARYSOWANEGO stosu, które
+   *  zasilają funkcje EAZ pola (`funkcjeEazZasilane` ∩ `codes` ≠ ∅ — rdzeń przekładnika
+   *  prądowego, uzwojenie przekładnika napięciowego, przekładnik Ferrantiego), w kolejności
+   *  stosu. Źródła linii pomiarowych do wejścia pomiarowego przekaźnika; puste = model nie
+   *  niesie powiązań (pole bez obwodów wtórnych szablonu). */
+  readonly zrodlaPomiaru: readonly PlacedStackDevice[];
+}
+
+/** Czy aparat niesie powiązanie z którąkolwiek funkcją pola. */
+function czyPowiazany(kody: readonly string[] | undefined, funkcjePola: ReadonlySet<string>): boolean {
+  return (kody ?? []).some((kod) => funkcjePola.has(kod));
 }
 
 /**
@@ -296,23 +286,31 @@ export function resolveStationProtectionMarking(
   const breakerRef = bay.protectionMarking?.breakerRef;
   const ctRef = bay.protectionMarking?.ctRef;
 
+  // Cel linii wyłączania: wyłącznik wskazany przez `ProtectionAssignment.breaker_ref`, a gdy
+  // pole go nie niesie — wyłącznik, który model wiąże z funkcjami EAZ pola
+  // (`funkcje_eaz_wylaczajace`, materializowane z obwodów wtórnych szablonu). Nigdy wyłącznik
+  // domyślny (§17.2): bez powiązania w modelu linia nie powstaje.
+  const funkcjePola = new Set(codes);
   const tripTarget =
-    (breakerRef && stack.find((d) => d.symbolId === 'breaker' && d.deviceRef === breakerRef)) || null;
+    (breakerRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker' && d.deviceRef === breakerRef))
+    || stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker' && czyPowiazany(d.funkcjeEazWylaczajace, funkcjePola))
+    || null;
+  const zrodlaPomiaru = stack.filter((d) => czyPowiazany(d.funkcjeEazZasilane, funkcjePola));
   const ctAnchor =
-    (ctRef && stack.find((d) => d.symbolId === 'currentTransformer' && d.deviceRef === ctRef)) || null;
+    (ctRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'currentTransformer' && d.deviceRef === ctRef)) || null;
 
   // §17.2: kotwica przy CT (rozwiązanym), gdy brak CT — przy wyłączniku.
   // Gdy ŻADNE z dwóch nie rozwiązuje się na aparat stosu (dane niespójne —
   // protection_ref wskazuje na assignment którego refy nie pasują do TEGO
-  // pola), okrąg NADAL musi się gdzieś narysować (kody SĄ, §17.2 „brak danych
+  // pola), blok NADAL musi się gdzieś narysować (kody SĄ, §17.2 „brak danych
   // = brak oznaczenia" nie dotyczy tego przypadku — dane SĄ, tylko link jest
   // złamany) — pada na pierwszy aparat WYŁĄCZNIKA stosu jeśli istnieje,
   // inaczej pierwszy element stosu. To WYŁĄCZNIE pozycjonowanie geometryczne
   // (nie asercja połączenia) — `tripTarget` pozostaje `null` niezależnie.
-  const fallbackAnchor = stack.find((d) => d.symbolId === 'breaker') ?? stack[0];
+  const fallbackAnchor = stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker') ?? stack[0];
   const anchor = ctAnchor ?? tripTarget ?? fallbackAnchor;
 
-  return { codes, anchor, tripTarget, ctAnchor };
+  return { codes, anchor, tripTarget, ctAnchor, zrodlaPomiaru };
 }
 
 /**
@@ -330,7 +328,7 @@ export function resolveMeterAnchor(
   return (
     stack.find(
       (d) =>
-        (d.symbolId === 'currentTransformer' || d.symbolId === 'voltageTransformer') &&
+        (rodzajSymbolu(d.symbolId) === 'currentTransformer' || rodzajSymbolu(d.symbolId) === 'voltageTransformer') &&
         d.linkedRef === meteringMeasurementRef,
     ) ?? null
   );
@@ -347,13 +345,72 @@ export interface ResolvedCtRatingAnnotation {
    *  przenoszony na `OwnedLabel.ctPurpose` → `data-ct-purpose`. `undefined`
    *  gdy dana niedostarczona (uczciwy brak). */
   readonly purpose?: 'protection' | 'metering' | 'combined';
+  /** Przyrostek refu etykiety (`#<przyrostek>-<deviceRef>`) — `przyrostekTabliczkiPrzekladnika`. */
+  readonly przyrostek: string;
+}
+
+/** Symbol stosu (rodzaj semantyczny), na którym kotwiczy tabliczka przekładnika danego rodzaju —
+ *  jedno źródło dla rozstrzygnięcia kotwicy i sondy sceny (`ctAnnotationGaps`). */
+export const SYMBOL_TABLICZKI_PRZEKLADNIKA: Readonly<Record<RodzajPrzekladnikaTabliczki, SymbolId>> = {
+  CT: 'currentTransformer',
+  VT: 'voltageTransformer',
+  CORE_BALANCE_CT: 'qetCoreBalanceCt',
+};
+
+/** Przyrostek refu etykiety tabliczki przekładnika: `ct-rating` (prądowy i pomiar CT),
+ *  `vt-rating` (napięciowy), `cbct-rating` (Ferrantiego). */
+export const PRZYROSTEK_TABLICZKI_PRZEKLADNIKA: Readonly<Record<RodzajPrzekladnikaTabliczki, string>> = {
+  CT: 'ct-rating',
+  VT: 'vt-rating',
+  CORE_BALANCE_CT: 'cbct-rating',
+};
+
+/** Aparat pola w dopasowaniu opisów przekładnika (rekord stosu albo specyfikacji pola). */
+type AparatOpisuPrzekladnika = Pick<PlacedStackDevice, 'symbolId' | 'deviceRef' | 'linkedRef'>;
+
+/** Tabliczka przekładnika `entry` należy do aparatu `d` — rodzaj symbolu przekładnika
+ *  (`SYMBOL_TABLICZKI_PRZEKLADNIKA`) i klucz: `deviceRef` wpisu z tabliczki aparatu albo
+ *  `measurementRef` = `linked_ref` aparatu. JEDEN predykat rysunku (`resolveCtRatingAnnotations`)
+ *  i rezerwacji kolumny przekładni (`tekstyOpisowPrzekladnika`). */
+function czyTabliczkaAparatu(entry: CtRatingAnnotationView, d: AparatOpisuPrzekladnika): boolean {
+  return (
+    rodzajSymbolu(d.symbolId) === SYMBOL_TABLICZKI_PRZEKLADNIKA[entry.rodzajPrzekladnika ?? 'CT']
+    && (entry.deviceRef !== undefined
+      ? d.deviceRef === entry.deviceRef
+      : entry.measurementRef !== null && d.linkedRef === entry.measurementRef)
+  );
+}
+
+/** Montaż VT `entry` należy do aparatu `d` (przekładnik napięciowy, `linked_ref` = pomiar). JEDEN
+ *  predykat rysunku (`resolveVtMountingAnnotations`) i rezerwacji (`tekstyOpisowPrzekladnika`). */
+function czyMontazVtAparatu(entry: VtMountingAnnotationView, d: AparatOpisuPrzekladnika): boolean {
+  return rodzajSymbolu(d.symbolId) === 'voltageTransformer' && d.linkedRef === entry.measurementRef;
+}
+
+/**
+ * Teksty opisów przekładnika na kolumnę przekładni pola (wzorzec właściciela 2026-11-05,
+ * `./kolumnaOpisowPola`): tabliczki (`ctRatingLabelText`) i montaż VT
+ * (`vtMountingAnnotationLabelText`) wpisów pola, które należą do aparatu `aparat` — te same
+ * predykaty co rysunek (`resolveCtRatingAnnotations`, `resolveVtMountingAnnotations`), więc
+ * kolumna mieści każdy opis, który rysunek postawi.
+ */
+export function tekstyOpisowPrzekladnika(
+  bay: Pick<ProtectionAwareBay, 'ctRatingAnnotations' | 'vtMountingAnnotations'>,
+  aparat: AparatOpisuPrzekladnika,
+): readonly string[] {
+  return [
+    ...(bay.ctRatingAnnotations ?? []).filter((e) => czyTabliczkaAparatu(e, aparat)).map(ctRatingLabelText),
+    ...(bay.vtMountingAnnotations ?? []).filter((e) => czyMontazVtAparatu(e, aparat)).map(vtMountingAnnotationLabelText),
+  ];
 }
 
 /**
  * Rozstrzyga adnotacje przekładni CT (§18.3, F10.4) na już zbudowanym stosie —
- * dopasowanie KAŻDEJ pozycji `ctRatingAnnotations` na aparat
- * `symbolId==='currentTransformer'` przez `measurementRef === linked_ref`
- * (TA SAMA reguła co `resolveMeterAnchor`). Pozycje bez dopasowania w stosie
+ * dopasowanie KAŻDEJ pozycji `ctRatingAnnotations` na aparat rodzaju
+ * `currentTransformer`: adnotacja z pomiaru przez `measurementRef === linked_ref`
+ * (TA SAMA reguła co `resolveMeterAnchor`), adnotacja z tabliczki aparatu (karta
+ * UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6) przez `deviceRef` tego aparatu; pozycja bez
+ * żadnego z dwóch kluczy nie dopasowuje się nigdzie. Pozycje bez dopasowania w stosie
  * są POMIJANE (zero zgadywania — adnotacja NIE jest rysowana bez
  * jednoznacznej kotwicy geometrycznej; symetryczne do `resolveMeterAnchor`
  * zwracającego `null`, tu zbiorczo przez filtrację).
@@ -365,11 +422,16 @@ export function resolveCtRatingAnnotations(
   if (!ctRatingAnnotations || ctRatingAnnotations.length === 0) return [];
   const result: ResolvedCtRatingAnnotation[] = [];
   for (const entry of ctRatingAnnotations) {
-    const device = stack.find(
-      (d) => d.symbolId === 'currentTransformer' && d.linkedRef === entry.measurementRef,
-    );
+    // Adnotacja z tabliczki aparatu (§11.7 pkt 6) kotwiczy na TYM aparacie (`deviceRef`),
+    // adnotacja z pomiaru — na aparacie wskazującym pomiar (`linked_ref`).
+    const device = stack.find((d) => czyTabliczkaAparatu(entry, d));
     if (!device) continue;
-    result.push({ device, text: ctRatingLabelText(entry), purpose: entry.purpose });
+    result.push({
+      device,
+      text: ctRatingLabelText(entry),
+      purpose: entry.purpose,
+      przyrostek: PRZYROSTEK_TABLICZKI_PRZEKLADNIKA[entry.rodzajPrzekladnika ?? 'CT'],
+    });
   }
   return result;
 }
@@ -399,9 +461,7 @@ export function resolveVtMountingAnnotations(
   if (!vtMountingAnnotations || vtMountingAnnotations.length === 0) return [];
   const result: ResolvedVtMountingAnnotation[] = [];
   for (const entry of vtMountingAnnotations) {
-    const device = stack.find(
-      (d) => d.symbolId === 'voltageTransformer' && d.linkedRef === entry.measurementRef,
-    );
+    const device = stack.find((d) => czyMontazVtAparatu(entry, d));
     if (!device) continue;
     result.push({ device, text: vtMountingAnnotationLabelText(entry) });
   }

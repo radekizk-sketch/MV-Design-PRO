@@ -8,6 +8,10 @@
  */
 
 import type { BayCanonicalRole, BayModelRole } from '../../types/enm';
+import type {
+  RdzenPrzekladnikaPradowego,
+  UzwojeniePrzekladnikaNapieciowego,
+} from '../../types/przekladniki';
 import { FIELD_ROLE_LABEL_PL } from '../sld/v2/station-rozdzielnia/contract';
 
 export type BayKind =
@@ -51,10 +55,13 @@ export type BayRole = BayModelRole;
  * i dlatego rysunek pola nie miał z czego pokazać składu rozdzielnicy.
  */
 export interface BayDeviceTemplateWire {
+  // Lustro `BayDeviceTemplate.kind` (`network_model/catalog/bay_templates.py`); równość zbiorów
+  // przypina `backend/tests/ci/test_parytet_rodzajow_aparatu_pola.py`.
   readonly kind:
     | 'CB'
     | 'DS_BUS'
     | 'DS_LINE'
+    | 'DS_BRANCH'
     | 'ES'
     | 'CT'
     | 'VT'
@@ -62,12 +69,25 @@ export interface BayDeviceTemplateWire {
     | 'SURGE_ARRESTER'
     | 'CABLE_HEAD'
     | 'TRANSFORMER_DEVICE'
+    | 'THREE_POSITION_SWITCH'
+    | 'VOLTAGE_INDICATOR'
+    | 'CORE_BALANCE_CT'
     | 'UNBALANCE_CT'
     | 'PHASE_TO_PHASE_VT';
   readonly designation_q: string;
   readonly position: number;
   readonly placement: 'UPSTREAM' | 'MIDSTREAM' | 'DOWNSTREAM' | 'OFF_PATH' | 'GROUND_BRANCH';
   readonly optional?: boolean;
+  /** Podstawa pozycji w szablonie (rysunek/punkt standardu); `null` = szablon bez podstawy. */
+  readonly podstawa?: string | null;
+  /** Pozycja katalogowa aparatu wskazana przez szablon; `null` = wartość robocza. */
+  readonly catalog_ref?: string | null;
+  /** Odgałęzienie toru, w którym aparat leży (Z.11/Z.11.1: przekładnik napięciowy za
+   *  wyłącznikiem); `null` = tor główny. */
+  readonly odgalezienie?: string | null;
+  /** Tabliczka przekładnika wg rysunku standardu: rdzenie CT, uzwojenia VT. */
+  readonly rdzenie?: readonly RdzenPrzekladnikaPradowego[];
+  readonly uzwojenia?: readonly UzwojeniePrzekladnikaNapieciowego[];
 }
 
 /** Port pola — `BayPortTemplate` backendu (`base_template.ports`). */
@@ -99,6 +119,7 @@ export interface BayDeviceInstanceWire {
     | 'switch_disconnector'
     | 'disconnector_busbar'
     | 'disconnector_line'
+    | 'disconnector_branch'
     | 'earthing_switch'
     | 'fuse_set'
     | 'current_transformer'
@@ -110,6 +131,8 @@ export interface BayDeviceInstanceWire {
     | 'busbar'
     | 'bus_coupler'
     | 'voltage_indicator'
+    | 'three_position_switch'
+    | 'core_balance_ct'
     | 'protection_relay'
     | 'meter'
     | 'transformer'

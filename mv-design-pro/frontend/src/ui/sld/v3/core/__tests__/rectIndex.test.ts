@@ -20,7 +20,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { rectsOverlap, type V3Rect } from '../grid';
-import { buildRectIndex, createRectIndex } from '../rectIndex';
+import { buildRectIndex, createRectIndex, createRectItemIndex } from '../rectIndex';
 
 /** Wyrocznia odniesienia: przegląd liniowy — dokładnie kod sprzed karty S9-9. */
 function anyOverlapLiniowo(probe: V3Rect, rects: readonly V3Rect[]): boolean {
@@ -158,5 +158,74 @@ describe('rectIndex — równoważność z przeglądem liniowym', () => {
     const rownolegly = r(80, 10, 0, 100);
     expect(anyOverlapLiniowo(rownolegly, [odcinekPionowy])).toBe(false);
     expect(buildRectIndex([odcinekPionowy]).anyOverlap(rownolegly)).toBe(false);
+  });
+});
+
+/**
+ * Indeks z elementem (`createRectItemIndex`, plan etykiet: krawędzie ramek bloków i napisy
+ * zaplanowane z cechą bloku) — `someCandidate(probe, test)` ≡
+ * `wpisy.some(([r, e]) => rectsOverlap(probe, r) && test(e, r))`.
+ * Iloczyn cech: rozmiar × położenie wpisu (także wpisy rozległe i poza zakresem klucza —
+ * kubełek „zawsze") × próbnik przesunięty × predykat elementu {zawsze, nigdy, parzystość
+ * elementu, zawężenie do mniejszego prostokąta wewnątrz próbnika}, a także ten sam element
+ * pod dwoma prostokątami (tusz i zasięg ramki) i wpis pokrywający wiele komórek.
+ */
+describe('rectItemIndex — równoważność z przeglądem liniowym', () => {
+  it('iloczyn cech: wpis × próbnik × predykat elementu', () => {
+    const wpisy: (readonly [V3Rect, number])[] = [];
+    let n = 0;
+    for (const [, w, h] of ROZMIARY) {
+      for (const [, x, y] of POLOZENIA) {
+        const rect = r(x, y, w, h);
+        wpisy.push([rect, n]);
+        // Ten sam element pod drugim prostokątem (zasięg ramki wiersza bloku).
+        wpisy.push([r(x - 3, y - 3, w + 6, h + 6), n]);
+        n += 1;
+      }
+    }
+    const index = createRectItemIndex<number>();
+    for (const [rect, e] of wpisy) index.add(rect, e);
+    const PREDYKATY: readonly (readonly [string, (probe: V3Rect) => (e: number, rect: V3Rect) => boolean])[] = [
+      ['zawsze', () => () => true],
+      ['nigdy', () => () => false],
+      ['parzysty element', () => (e) => e % 2 === 0],
+      ['zawężenie do wnętrza próbnika', (probe) => (_e, rect) => rectsOverlap(r(probe.x + 1, probe.y + 1, Math.max(0, probe.width - 2), Math.max(0, probe.height - 2)), rect)],
+    ];
+    const rozbieznosci: string[] = [];
+    let prawd = 0;
+    let falsz = 0;
+    for (const [nazwaR, w, h] of ROZMIARY) {
+      for (const [nazwaP, x, y] of POLOZENIA) {
+        for (const dx of [0, 0.5, 128, -128]) {
+          for (const dy of [0, 0.5, 128, -128]) {
+            const probe = r(x + dx, y + dy, w, h);
+            for (const [nazwaT, budujTest] of PREDYKATY) {
+              const test = budujTest(probe);
+              const oczekiwane = wpisy.some(([rect, e]) => rectsOverlap(probe, rect) && test(e, rect));
+              const wynik = index.someCandidate(probe, test);
+              if (wynik !== oczekiwane) rozbieznosci.push(`${nazwaR} @ ${nazwaP} + (${dx},${dy}) × ${nazwaT}`);
+              if (oczekiwane) prawd += 1;
+              else falsz += 1;
+            }
+          }
+        }
+      }
+    }
+    expect(rozbieznosci).toEqual([]);
+    expect(prawd).toBeGreaterThan(0);
+    expect(falsz).toBeGreaterThan(0);
+  });
+
+  it('element pod kilkoma komórkami i dwoma prostokątami testowany raz na zapytanie', () => {
+    const index = createRectItemIndex<string>();
+    index.add(r(0, 0, 600, 600), 'a');
+    index.add(r(-10, -10, 620, 620), 'a');
+    let wywolan = 0;
+    expect(index.someCandidate(r(100, 100, 400, 400), () => {
+      wywolan += 1;
+      return false;
+    })).toBe(false);
+    // Dwa wpisy tego samego elementu (dwa prostokąty) — każdy wpis raz, mimo 16+ komórek.
+    expect(wywolan).toBe(2);
   });
 });

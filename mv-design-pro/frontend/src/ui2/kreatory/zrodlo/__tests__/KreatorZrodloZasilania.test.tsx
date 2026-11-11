@@ -69,6 +69,12 @@ const DOMYSLNY_KATALOG_ZRODEL = [
 ];
 // Katalog transformatorów 110/SN: domyślnie jeden typ 110/15 kV; testy reguły napięcia dolnego
 // podają własną listę jednorazowo (`mockResolvedValueOnce` — montaż pobiera katalog raz).
+// Katalog aparatów SN: domyślnie jeden wyłącznik dopuszczony; test filtra gazu fluorowanego podaje
+// własną listę jednorazowo (SF₆ na pierwszym miejscu — auto-dobór nie może go wybrać).
+const { fetchMvApparatusTypesMock, APARAT_DOMYSLNY } = vi.hoisted(() => {
+  const aparat = { id: 'APP-001', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', dopuszczony_do_nowych_pol: true, u_n_kv: 17.5, i_n_a: 630 };
+  return { fetchMvApparatusTypesMock: vi.fn(() => Promise.resolve([aparat] as Record<string, unknown>[])), APARAT_DOMYSLNY: aparat };
+});
 const { fetchSourceSystemTypesMock, fetchTransformerTypesMock, TR_110_15, TR_110_20 } = vi.hoisted(() => {
   const tr15 = { id: 'TR-110-15-25', name: 'TR 110/15 25 MVA', rated_power_mva: 25, voltage_hv_kv: 110, voltage_lv_kv: 15, uk_percent: 12.5, pk_kw: 120, i0_percent: 0.2, p0_kw: 25, vector_group: 'YNd11', tap_min: -9, tap_max: 9 };
   return {
@@ -82,15 +88,19 @@ const { fetchSourceSystemTypesMock, fetchTransformerTypesMock, TR_110_15, TR_110
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchSourceSystemTypes: () => fetchSourceSystemTypesMock(),
-  fetchMvApparatusTypes: () =>
-    Promise.resolve([
-      { id: 'APP-001', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
-    ]),
+  fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
   fetchSwitchgearFamilies: () =>
     Promise.resolve([
-      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
-      // Rodzina blokowa (RMU) — pola z pojedynczego szablonu backend nie złoży; nie jest opcją.
-      { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', series_name: 'SafePlus', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', status: 'repo_verified', source_refs: [] },
+      // Rodziny w kształcie odpowiedzi katalogu — z polami wyliczanymi backendu
+      // `dopuszczona_do_budowania` / `dopuszczona_do_nowych_pol` (jedyny predykat frontu
+      // `czyRodzinaDoBudowania`). Iloczyn: {modułowa bez gazów fluorowanych, blokowa (RMU) bez
+      // gazów, blokowa z SF6} — opcją jest wyłącznie pierwsza: blokowej backend nie złoży
+      // z pojedynczego szablonu, rodzina z SF6 nie jest dopuszczona do pola projektowanego
+      // (scalenie z kartą UX-04/POLE-LINIOWE-WZORZEC 2026-11-11 — dawna fikstura oferowała SafeRing,
+      // rodzinę z SF6, której reguła zakazu gazów fluorowanych nie dopuszcza do nowego pola).
+      { switchgear_family_ref: 'ABB__UNIGEAR_ZS1', manufacturer_ref: 'ABB', family_name: 'UniGear ZS1', series_name: 'UniGear ZS1', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'air', construction_type: 'wnetrzowa', tor_konfiguracji: 'MODULARNY', status: 'verified', dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: true, powod_blokady_nowych_pol_pl: null, source_refs: [] },
+      { switchgear_family_ref: 'ZPUE__TPM_AIR', manufacturer_ref: 'ZPUE', family_name: 'TPM Air', series_name: 'TPM Air', network_voltages_kv: [], um_classes_kv: [17.5, 24], insulation_type: 'air', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', status: 'repo_verified', dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: true, powod_blokady_nowych_pol_pl: null, source_refs: [] },
+      { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', series_name: 'SafePlus', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', status: 'repo_verified', dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: false, powod_blokady_nowych_pol_pl: 'Rodzina SafePlus wykorzystuje gaz fluorowany (SF6).', source_refs: [] },
     ]),
   // Katalog producentów (`GET /api/catalog/manufacturers`) — źródło NAZW producentów.
   fetchManufacturers: () =>
@@ -101,7 +111,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
   // kontraktu `BayTemplateSourceStatus`.
   fetchCompleteBayTemplates: () =>
     Promise.resolve([
-      { template_ref: 'ABB__SAFERING__LINE_OUT', template_name_pl: null, manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__SAFERING', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'repo_verified', source_refs: [], version: '1', hash: 'x', notes_pl: null },
+      { template_ref: 'ABB__UNIGEAR_ZS1__LINE_OUT', template_name_pl: null, manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__UNIGEAR_ZS1', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'repo_verified', source_refs: [], version: '1', hash: 'x', notes_pl: null },
     ]),
   fetchTransformerTypes: () => fetchTransformerTypesMock(),
   // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający sekcji — te same trzy przestrzenie
@@ -335,6 +345,27 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.queryByTestId('mvd-kreator-zrodlo-katalog-select')).toBeNull();
   });
 
+  it('aparat pól liniowych GPZ: pozycja z SF₆ ukryta i nie dobierana automatycznie, nota mówi dlaczego (klik natywny)', async () => {
+    const powod = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+    fetchMvApparatusTypesMock.mockResolvedValueOnce([
+      { id: 'APP-SF6', name: 'Wyłącznik SF6', device_kind: 'WYLACZNIK', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: powod, u_n_kv: 24, i_n_a: 630 },
+      APARAT_DOMYSLNY,
+    ]);
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-sekcje"]') as HTMLElement);
+    const wybor = await screen.findByTestId('mvd-kreator-zrodlo-aparat-katalog');
+    await waitFor(() => expect(wybor.querySelector('option[value="APP-001"]')).not.toBeNull());
+    expect(wybor.querySelector('option[value="APP-SF6"]')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-aparat-katalog-nota').textContent).toBe(
+      `Ukryto pozycje niedopuszczone do obiektu projektowanego: 1. Przykład: ${powod}`,
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const ladunek = executeDomainOperationMock.mock.calls[0][2] as Record<string, { catalog_binding: { catalog_item_id: string } }>;
+    expect(ladunek.gpz_line_field_apparatus.catalog_binding.catalog_item_id).toBe('APP-001');
+  });
+
   it('krok Sekcje i pola pozwala edytować per sekcję (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
@@ -350,14 +381,15 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     await user.click(screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-sekcje"]') as HTMLElement);
     const rodzina = screen.getByTestId('mvd-kreator-zrodlo-rodzina-select') as HTMLSelectElement;
     await waitFor(() =>
-      expect(rodzina.querySelector('option[value="ABB__SAFERING"]')?.textContent).toBe('SafeRing · ABB Ltd.'),
+      expect(rodzina.querySelector('option[value="ABB__UNIGEAR_ZS1"]')?.textContent).toBe('UniGear ZS1 · ABB Ltd.'),
     );
+    expect(rodzina.querySelector('option[value="ZPUE__TPM_AIR"]')).toBeNull();
     expect(rodzina.querySelector('option[value="ABB__SAFEPLUS"]')).toBeNull();
-    await user.selectOptions(rodzina, 'ABB__SAFERING');
+    await user.selectOptions(rodzina, 'ABB__UNIGEAR_ZS1');
     const szablon = (await screen.findByTestId('mvd-kreator-zrodlo-sekcja-szablon-0')) as HTMLSelectElement;
     await waitFor(() =>
-      expect(szablon.querySelector('option[value="ABB__SAFERING__LINE_OUT"]')?.textContent).toBe(
-        `${bayKindLabelPl('liniowe_odplywowe')} · SafeRing`,
+      expect(szablon.querySelector('option[value="ABB__UNIGEAR_ZS1__LINE_OUT"]')?.textContent).toBe(
+        `${bayKindLabelPl('liniowe_odplywowe')} · UniGear ZS1`,
       ),
     );
     for (const o of [...Array.from(rodzina.options), ...Array.from(szablon.options)]) {

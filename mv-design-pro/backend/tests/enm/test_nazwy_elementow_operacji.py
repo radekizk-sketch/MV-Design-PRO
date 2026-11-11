@@ -635,6 +635,7 @@ def _model_z_polem(nazwa_pola: str | None, poziom_nn: bool, rola: str) -> dict[s
         enm["substations"][0]["bus_refs"].append("b_nn")
     enm["bays"] = [
         zbuduj_pole(
+            stan_obiektu="PROJEKTOWANY",
             ref_id="field_in_1",
             name=nazwa_pola,
             bay_role=rola,

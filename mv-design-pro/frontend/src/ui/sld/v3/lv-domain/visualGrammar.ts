@@ -35,6 +35,7 @@
  */
 import { tekstBezWzorow, wyrazyPozaWzorami } from '../../../proof/latexTekst';
 import { CAD_SYMBOL_STROKE_PX } from '../cad/CadSymbol';
+import { measureTextWidth, type KrojSchematu } from '../core/text';
 import { sldPaletteForTheme } from '../theme/palette';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import type { LvEnergizationState } from './types';
@@ -206,31 +207,56 @@ export const SLD_LABEL = {
 /** Odstęp linii dla etykiet wieloliniowych [× rozmiar pisma]. */
 export const LINE_HEIGHT = 1.25;
 
-/** §30 / R2 §17: długie nazwy — zawijanie do `maxChars` znaków w linii po
- *  SŁOWACH, maks. `maxLines` linii; ostatnia linia z „…", gdy reszta się nie
+/** Miara szerokości tekstu [px EKRANU] dla zawijania — z tabeli posuwów kroju
+ *  (`core/text.ts::measureTextWidth`, `core/metrykiKroju.json`), nie z liczby znaków. */
+export type MiaraTekstu = (tekst: string) => number;
+
+/** Miara pisma widoku domeny nN: rozmiar [px ekranu], waga CSS i krój (`sans` — tekst
+ *  schematu `SLD_FONT_FAMILY`, `mono` — wartości liczbowe `SLD_FONT_FAMILY_MONO`).
+ *  Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja §11.7 pkt 7): dawny limit znaków
+ *  z szacunku 0,55/0,60 em na znak liczył wielkie litery („W” = 0,94 em) za wąsko,
+ *  a pismo generyczne `sans-serif`/`monospace` zależało od systemu. */
+export function miaraPisma(fontPx: number, fontWeight: number, kroj: KrojSchematu = 'sans'): MiaraTekstu {
+  return (tekst) => measureTextWidth(tekst, fontPx, fontWeight, kroj);
+}
+
+/** Najdłuższy przedrostek `tekst` (≥ 1 znak) z „…" mieszczący się w `maxSzerokosc`;
+ *  `doPelnej` dopuszcza cały tekst z „…" (sygnał uciętej reszty w ostatnim wierszu). */
+function zWielokropkiem(tekst: string, maxSzerokosc: number, miara: MiaraTekstu, doPelnej: boolean): string {
+  const znaki = Array.from(tekst);
+  for (let n = doPelnej ? znaki.length : znaki.length - 1; n >= 1; n--) {
+    const kandydat = `${znaki.slice(0, n).join('').trimEnd()}…`;
+    if (miara(kandydat) <= maxSzerokosc) return kandydat;
+  }
+  return `${znaki[0] ?? ''}…`;
+}
+
+/** §30 / R2 §17: długie nazwy — zawijanie do szerokości `maxSzerokosc` [px ekranu]
+ *  po SŁOWACH, maks. `maxLines` linii; ostatnia linia z „…", gdy reszta się nie
  *  zmieściła. ZAKAZ łamania w środku wyrazu (także technicznego z dywizem,
- *  np. „grid-following"): wyraz dłuższy niż linia zostaje w całości i jest
+ *  np. „grid-following"): wyraz szerszy niż linia zostaje w całości i jest
  *  uczciwie skrócony wielokropkiem — pełna nazwa żyje w podpowiedzi i w
- *  inspektorze, nie w połamanej etykiecie. Czysta funkcja, deterministyczna.
+ *  inspektorze, nie w połamanej etykiecie. Szerokość wiersza mierzy `miara`
+ *  (posuwy kroju), więc wiersz z wielkimi literami nie wystaje poza pas.
+ *  Wiersz, w którym nie mieści się nawet jeden znak z „…", niesie pierwszy znak
+ *  i „…" (etykieta nie znika). Czysta funkcja, deterministyczna.
  *
  *  Wzór `$…$` (symbol renderowany `<tspan>`-ami przez `TekstSvgZWzorami`) jest
- *  wyrazem niepodzielnym, także gdy zawiera spacje, a jego długość to długość
- *  ODCZYTU (`tekstBezWzorow`: `$I_{k3}''$` → „Ik3″", 4 znaki), nie zapisu LaTeX.
- *  Wyraz ze wzorem, który trzeba skrócić, traci zapis wzoru na rzecz odczytu —
- *  ucięty zapis LaTeX nie dałby się złożyć. */
-export function zawinNazwe(text: string, maxChars: number, maxLines: number): readonly string[] {
-  const limit = Math.max(2, Math.floor(maxChars));
+ *  wyrazem niepodzielnym, także gdy zawiera spacje, a jego szerokość to szerokość
+ *  ODCZYTU (`measureTextWidth` mierzy `tekstBezWzorow`: `$I_{k3}''$` → „Ik3″"), nie
+ *  zapisu LaTeX. Wyraz ze wzorem, który trzeba skrócić, traci zapis wzoru na rzecz
+ *  odczytu — ucięty zapis LaTeX nie dałby się złożyć. */
+export function zawinNazwe(text: string, maxSzerokosc: number, maxLines: number, miara: MiaraTekstu): readonly string[] {
   const slowa = wyrazyPozaWzorami(text);
   if (slowa.length === 0) return [''];
-  const dlugosc = (s: string): number => tekstBezWzorow(s).length;
-  const utnij = (s: string): string =>
-    `${tekstBezWzorow(s).slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
-  const skroc = (s: string): string => (dlugosc(s) <= limit ? s : utnij(s));
+  const miesci = (t: string): boolean => miara(t) <= maxSzerokosc;
+  const skroc = (t: string): string =>
+    miesci(t) ? t : zWielokropkiem(tekstBezWzorow(t), maxSzerokosc, miara, false);
   const linie: string[] = [];
   let biezaca = '';
   for (const slowo of slowa) {
     const kandydat = biezaca ? `${biezaca} ${slowo}` : slowo;
-    if (dlugosc(kandydat) <= limit || biezaca === '') {
+    if (miesci(kandydat) || biezaca === '') {
       biezaca = kandydat;
     } else {
       linie.push(biezaca);
@@ -242,23 +268,10 @@ export function zawinNazwe(text: string, maxChars: number, maxLines: number): re
   if (zLimitem.length <= maxLines) return zLimitem;
   const skrocone = zLimitem.slice(0, maxLines);
   const ostatnia = skrocone[maxLines - 1];
-  skrocone[maxLines - 1] = ostatnia.endsWith('…') ? ostatnia : utnij(ostatnia);
+  skrocone[maxLines - 1] = ostatnia.endsWith('…')
+    ? ostatnia
+    : zWielokropkiem(tekstBezWzorow(ostatnia), maxSzerokosc, miara, true);
   return skrocone;
-}
-
-/** Szacunek szerokości znaku [em] dla pisma bezszeryfowego — do wyliczania
- *  limitu znaków w slocie (nie do pikselowego układu). Pismo półgrube jest
- *  szersze — osobny współczynnik, bo etykiety główne są pogrubione. */
-/** Zmierzone na zrzutach kanwy (Liberation Sans): 0,50–0,54 em regular,
- *  0,54–0,58 em bold (wersaliki szersze) — wartości z zapasem w górę. */
-export const CHAR_WIDTH_RATIO = 0.55;
-export const CHAR_WIDTH_RATIO_BOLD = 0.6;
-/** Pismo monospace (wyniki): stała szerokość znaku. */
-export const CHAR_WIDTH_RATIO_MONO = 0.6;
-
-/** Limit znaków w linii etykiety dla szerokości [px EKRANU] i rozmiaru pisma. */
-export function limitZnakow(screenWidthPx: number, fontPx: number, ratio: number = CHAR_WIDTH_RATIO): number {
-  return Math.max(4, Math.floor(screenWidthPx / (ratio * fontPx)));
 }
 
 // ===========================================================================

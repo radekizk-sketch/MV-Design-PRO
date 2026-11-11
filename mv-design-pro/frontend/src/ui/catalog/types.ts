@@ -1,3 +1,4 @@
+import type { RdzenPrzekladnikaPradowego, UzwojeniePrzekladnikaNapieciowego } from '../../types/przekladniki';
 /**
  * Type Catalog Types
  *
@@ -290,6 +291,14 @@ export interface SwitchEquipmentType extends CatalogType, MetadaneKatalogu {
   medium?: string | null;
   /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
   card_field_status?: StatusPolKarty;
+  /**
+   * Filtr pickera z backendu (`GET /api/catalog/switch-equipment-types` — to samo wyliczenie co
+   * `mv-apparatus-types`): pozycja z gazem fluorowanym nie jest dopuszczona do obiektu
+   * projektowanego; powód — zdanie backendu z podstawą (`ui/catalog/dopuszczenieNowychPol`).
+   */
+  gaz_fluorowany?: boolean;
+  dopuszczony_do_nowych_pol?: boolean;
+  powod_blokady_nowych_pol_pl?: string | null;
 }
 
 /**
@@ -488,6 +497,16 @@ export interface MVApparatusType extends CatalogType, MetadaneKatalogu {
   wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
   /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
   card_field_status?: StatusPolKarty;
+  /** Medium gaszenia łuku / izolacji pozycji (dana karty; `null` = aparat bez komory). */
+  medium?: string | null;
+  /**
+   * Filtr pickera z backendu (`GET /api/catalog/mv-apparatus-types`, reguła
+   * `gazy_fluorowane.odmowa_gazu_fluorowanego_pl`): pozycja z gazem fluorowanym nie jest
+   * dopuszczona do obiektu projektowanego; powód — zdanie backendu z podstawą.
+   */
+  gaz_fluorowany?: boolean;
+  dopuszczony_do_nowych_pol?: boolean;
+  powod_blokady_nowych_pol_pl?: string | null;
 }
 
 /** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */
@@ -668,6 +687,11 @@ export interface CTCatalogType extends CatalogType, MetadaneKatalogu {
    * literze P — IEC 61869-2 § 3.4.201). Rdzeń pomiarowy jej nie ma (`null`).
    */
   accuracy_limit_factor?: number | null;
+  /** Rdzenie z tabliczki pozycji (`CTType.to_dict()["rdzenie"]`, IEC 61869-2) — z nich formularz
+   *  wyposażenia pola wyprowadza zaczepy przekładnika wieloprzekładniowego. */
+  rdzenie?: RdzenPrzekladnikaPradowego[];
+  /** Liczba rdzeni tabliczki (`CTType.to_dict()["liczba_rdzeni"]` = długość `rdzenie`). */
+  liczba_rdzeni?: number;
 }
 
 /**
@@ -688,6 +712,10 @@ export interface VTCatalogType extends CatalogType, MetadaneKatalogu {
   burden_va?: number | null;
   /** Czy przekładnik ma uzwojenie resztkowe do pomiaru napięcia zerowego. */
   has_residual_winding?: boolean | null;
+  /** Uzwojenia wtórne z tabliczki pozycji (`VTType.to_dict()["uzwojenia"]`, IEC 61869-3). */
+  uzwojenia?: UzwojeniePrzekladnikaNapieciowego[];
+  /** Liczba uzwojeń tabliczki (`VTType.to_dict()["liczba_uzwojen"]` = długość `uzwojenia`). */
+  liczba_uzwojen?: number;
 }
 
 /**

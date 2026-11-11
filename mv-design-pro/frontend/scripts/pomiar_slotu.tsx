@@ -23,8 +23,8 @@
  *       pokrywa kawałek w całości. Wyrocznią jest więc NADMIAR PONAD TO
  *       MINIMUM, a nie samo wystawanie — i on ma być zerowy.
  *
- * Obie miary liczone wobec polilinii NIOSĄCEJ REF podpisu (z kawałkami
- * `#tee-N`, patrz `refBazowy`), NIE wobec rodziny `seg/<hash>/…`: jedna
+ * Obie miary liczone wobec polilinii NIOSĄCEJ REF podpisu (kabel ENM jest jedną
+ * polilinią sceny), NIE wobec rodziny `seg/<hash>/…`: jedna
  * rodzina bywa na tej fixturze WSPÓLNA dla 2–3 SĄSIEDNICH przęseł (np.
  * `seg/6c75…` niesie i „S08 ↔ S09", i „S09 ↔ S10"), więc mieszczenie się w
  * jej zakresie pozwalałoby napisowi usiąść na CUDZYM przęśle. Zero progów w
@@ -92,18 +92,6 @@ function refOpisywanego(ownerRef: string): string {
   return ownerRef.replace(/#segment-label$/, '').replace(/#[a-z-]+$/, '');
 }
 
-/**
- * Ref BAZOWY polilinii — z odciętym sufiksem `#tee-N`. `resolveTeeJunctions`
- * (`scene/buildScene.ts`) rozcina narysowany kabel w węzłach T i nadaje
- * kawałkom ZA pierwszym sufiks `#tee-N`, deklarując wprost, że to
- * „kontynuacja TEGO SAMEGO kabla ENM za kropką węzłową". Pomiar, który by
- * tego nie sklejał, meldowałby dryf wszędzie tam, gdzie przęsło ma odczep —
- * czyli mierzyłby własną konwencję nazewniczą, nie położenie podpisu.
- */
-function refBazowy(ownerRef: string): string {
-  return ownerRef.replace(/#tee-\d+$/, '');
-}
-
 interface WpisDryfu {
   readonly ownerRef: string;
   readonly tekst: string;
@@ -119,7 +107,7 @@ interface WpisDryfu {
 function zmierzDryf(scene: SceneV3, rodzaje: ReadonlySet<OwnerKind>): WpisDryfu[] {
   const poRefie = new Map<string, { x: Zakres; y: Zakres }>();
   for (const g of scene.segments) {
-    const ref = g.meta?.ownerRef != null ? refBazowy(g.meta.ownerRef) : null;
+    const ref = g.meta?.ownerRef ?? null;
     if (!ref) continue;
     const xs = g.points.map((p) => p.x);
     const ys = g.points.map((p) => p.y);
@@ -204,10 +192,10 @@ function torySpojne(scene: SceneV3): { readonly refy: ReadonlySet<string>; reado
     const xs = k.pts.map((p) => p.x);
     const biezacy = grupy.get(r);
     if (biezacy) {
-      biezacy.refy.add(refBazowy(k.ref));
+      biezacy.refy.add(k.ref);
       biezacy.x = { min: Math.min(biezacy.x.min, ...xs), max: Math.max(biezacy.x.max, ...xs) };
     } else {
-      grupy.set(r, { refy: new Set([refBazowy(k.ref)]), x: { min: Math.min(...xs), max: Math.max(...xs) } });
+      grupy.set(r, { refy: new Set([k.ref]), x: { min: Math.min(...xs), max: Math.max(...xs) } });
     }
   });
   return [...grupy.values()];

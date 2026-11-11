@@ -169,6 +169,53 @@ ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b
 ODCISK_PO_SCALENIU_APARATURY_I_LINII_110 = (
     "f717d81d61ee7f8d1b78d577730c5585defa7fdb4bcd802ba8cfabd23a3342af"
 )
+#: Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-28, zakaz gazów fluorowanych w polach
+#: projektowanych): + 2 rozłączniki próżniowe typu ogólnego (`switch_equipment_types` i ich
+#: projekcje `mv_apparatus_types`), pole ``medium`` w każdej projekcji aparatu SN (50
+#: pozycji) oraz 2 typy ogólne OSD przekładnika prądowego pola liniowego z listą rdzeni
+#: (`ct_types`; lista pusta jest poza odciskiem). Dowód w teście niżej: zrzut bez tych pozycji
+#: i bez pola ``medium`` daje
+#: DOKŁADNIE ``ODCISK_PO_SCALENIU_APARATURY_I_LINII_110`` — żadna inna liczba katalogu się nie
+#: zmieniła. Pełny odcisk katalogu domyślnego po karcie:
+#: 179c98a7c33b3b79321978aa3ea1afefb8ad2636d5efca674424606ae251f035 (pomiar po korekcie
+#: pochodzenia przekładników pola liniowego — `source_reference` typów ogólnych OSD).
+#: (Odcisk zrzutu po samej karcie, na jej drzewie: 4d6c88a2ac72db91f224c06af7425475110c661b544488524654f0128d2070de;
+#: po scaleniu z kartą UX-04/POLE-BKR-MODEL na gałęzi karty:
+#: 81dfb57d7cd3f67208936e556097c2e37328a1ed48b70af34bd5122e1f245e5e.)
+#: Scalenie karty do drzewa integracji (2026-11-11, po kartach ZU i BKR): zmiany katalogu karty
+#: pola liniowego są rozłączne z kartą ZU — POMIAR: zrzut drzewa scalonego po
+#: ``_cofnij_karte_pola_liniowego`` daje DOKŁADNIE ``ODCISK_PO_KARCIE_ZU`` (strona integracji).
+#: Pełny odcisk katalogu domyślnego po scaleniu:
+#: 12a624f182d5415b5cb36e50f00ad78663a2aa7f7d68f86889fa05982225cc93.
+ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA = (
+    "c97fa1019b48feb4772bcc7986b36de201c1ab875e32fc55a522401e5bb98e4b"
+)
+ROZLACZNIKI_BEZ_GAZU_F = ("sw-ls-ogolny-prozniowy-12kv-630a", "sw-ls-ogolny-prozniowy-24kv-630a")
+#: Ta sama karta: dwa typy ogólne OSD przekładnika prądowego pola liniowego GPZ (Z.10/Z.11.1
+#: jednordzeniowy, Z.11 trójrdzeniowy) z jawną listą rdzeni.
+PRZEKLADNIKI_POLA_LINIOWEGO = (
+    "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+    "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+)
+
+
+def _cofnij_karte_pola_liniowego(zrzut: dict[str, object]) -> None:
+    """Usuwa zmiany katalogu karty UX-04/POLE-LINIOWE-WZORZEC (cztery pozycje, pole medium)."""
+    for identyfikator in PRZEKLADNIKI_POLA_LINIOWEGO:
+        postac = zrzut["ct_types"].pop(identyfikator)  # type: ignore[attr-defined]
+        assert postac["rdzenie"], identyfikator
+    # Pozostałe typy CT/VT nie niosą listy (pusta lista poza odciskiem).
+    for przestrzen, pole in (("ct_types", "rdzenie"), ("vt_types", "uzwojenia")):
+        assert all(pole not in p for p in zrzut[przestrzen].values())  # type: ignore[attr-defined]
+    for przestrzen in ("switch_equipment_types", "mv_apparatus_types"):
+        for identyfikator in ROZLACZNIKI_BEZ_GAZU_F:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
+    aparaty = zrzut["mv_apparatus_types"].values()  # type: ignore[attr-defined]
+    assert len(aparaty) == 50
+    for postac in aparaty:
+        postac.pop("medium")
+
+
 #: Karta UX-04/POLE-BKR-MODEL (2026-10-28): typ baterii kondensatorów niesie pola karty
 #: (układ połączeń, stopnie, tolerancja, dławik, rezystory rozładowcze), a pozycje referencyjne
 #: — układ z ENEA Zeszyt 1 §17 s. 32 i Zał. 16 w źródle. Dowód liść po liściu (zrzut bazy
@@ -312,6 +359,10 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_SCALENIU_POLA_LINIOWEGO_Z_INTEGRACJA
+    # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: cofnięcie zmian katalogu
+    # karty pola liniowego daje odcisk strony integracji (po karcie ZU), dalej łańcuch ZU.
+    _cofnij_karte_pola_liniowego(zrzut)
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_KARCIE_ZU
     assert _cofnij_teksty_karty_zu(zrzut) == LICZBA_TEKSTOW_KARTY_ZU
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ZESPOLE_UZIEMIAJACYM

@@ -67,6 +67,30 @@ import {
 } from '../buildScene';
 import { buildCanvasHitAreas } from '../../canvas/hitAreas';
 import { sceneSignature } from './syntheticNetworks';
+import { podpowiedzStanuObiektuPl } from '../../../../shared/stanObiektu';
+
+/** Podpowiedź poza zdaniem o braku pola TR: portal nN albo stan obiektu — liczba podpowiedzi
+ *  stanu = liczba symboli niosących `meta.stanObiektu` (bez transformatora z luką pola i portali). */
+function obszaryBezObcychPodpowiedzi(
+  obszary: ReturnType<typeof buildCanvasHitAreas>,
+  scene: ReturnType<typeof buildSceneV3>,
+): boolean {
+  const stany = new Set(
+    (['ISTNIEJACY', 'PROJEKTOWANY', null] as const).map((s) => podpowiedzStanuObiektuPl(s)),
+  );
+  const zPodpowiedzia = obszary.filter((a) => a.tytul != null);
+  const obce = zPodpowiedzia.filter(
+    (a) => a.tytul !== STATION_TR_FIELD_GAP_TEXT && a.tytul !== LV_PORTAL_TITLE_TEXT && !stany.has(a.tytul),
+  );
+  const symboleStanu = scene.symbols.filter(
+    (sym) =>
+      sym.meta?.stanObiektu !== undefined &&
+      sym.meta?.transformerFieldGap !== true &&
+      sym.meta?.elementKind !== 'lvPortal',
+  ).length;
+  const podpowiedziStanu = zPodpowiedzia.filter((a) => stany.has(a.tytul)).length;
+  return obce.length === 0 && podpowiedziStanu === symboleStanu;
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -280,15 +304,65 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
   //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
   //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
+  // AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, 2026-10-28): przedłużenie szyny WN do
+  // zaczepu źródła systemowego kończy się NA zejściu źródła, nie GRID za nim (dawny kikut
+  // 8 jednostek, którego wyrocznia `gpzInternalSegmentsEndAtPortsOrBus` nie umiała przyjąć).
+  // DOWÓD (sonda 2×2: ta fikstura, kod karty z dawnym końcem przedłużenia vs kod karty,
+  // sygnatura `sceneSignature` element po elemencie): na L1 i L2 różni się WYŁĄCZNIE jeden
+  // odcinek `…/substation#hv-bus-source-extension` — `200,320;240,320` → `200,320;232,320`;
+  // symbole, pozostałe odcinki, etykiety i skrzyżowania identyczne (49 / 57 pozycji).
+  // AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, decyzje architekta §11.7, 2026-10-30):
+  // odcisk niezależny od regeneracji fikstur (sonda: kod karty na fiksturze sprzed i po
+  // regeneracji daje ten sam odcisk). Zmiana wyłącznie z kodu, trzy przyczyny rozdzielone sondą
+  // sygnatury:
+  //  · tablica szerokości znaków kroju zamiast 0,62 em (decyzja 7) — węższe etykiety
+  //    („Pole liniowe GPZ 1.1" 112 → 89, „Sekcja 1 · 15 kV" 110 → 83), więc węższy GPZ (szyna WN
+  //    128–200 → 112–176, źródło x 224 → 200) i stacja przesunięta w lewo (528 → 440);
+  //  · szerokości kolumn pola zaokrąglane w górę do rastru (`snapUp` w `layout/measure.ts`,
+  //    +8/+16 — widoczne także w wariancie z dawną szerokością 0,62 em);
+  //  · etykiety po lewej kotwiczone prawą krawędzią (decyzja 8): podpis łącznika Q1 o 2 w lewo.
+  // AKTUALIZACJA ŚWIADOMA (JEDNA NOTACJA BLOKU ZABEZPIECZEŃ, decyzja właściciela 2026-11-05:
+  // „tak ma być ramka we wszystkich tak samo"). Sonda sygnatury element po elemencie, kod karty
+  // vs baza `9dafb6083`, ta fikstura (L1: 25 pozycji ubyło / 28 doszło; L2: 30 / 46):
+  //  · +3 bloki `protectionRelay` — pola z kodami w modelu (IN 51/50/51N, OUT 51/50/51N,
+  //    TR 87T/51/50/51N/63/26/63P); pole pomiarowe (bez kodów) bez bloku. Na L2 +13 wierszy
+  //    kodów w dwóch kolumnach ramki; L1 sama ramka, bez wierszy;
+  //  · kolumny pól z blokiem poszerzone o ramkę obok toru: zejścia pól 001/002/003
+  //    x 560/672/816 → 624/800/944 (L1), szyna SN do x 944, bbox 984×790 → 1184×806;
+  //  · strona nN pola TR pod dołem ramki bloku (`lvColumnBottoms`): szyna nN y 608 → 624,
+  //    portal nN 624 → 640, wiersze nazwy stacji +16, pętla kabla pod stacją 672 → 688.
+  // AKTUALIZACJA ŚWIADOMA (wzorzec właściciela 2026-11-05: „Opisy pól po lewej dzięki temu pole
+  // robi się czytelniejsze i węższe”). L1 bez zmian (oznaczenia aparatów stacji są od L2). Na L2
+  // zmieniają się WYŁĄCZNIE oznaczenia aparatów: stoją w jednej kolumnie oznaczeń od lewej
+  // krawędzi pola, tekst od lewej (dawniej każde dosunięte prawą krawędzią do swojego symbolu).
+  // Sonda sygnatury vs baza `9dafb6083`, L2 (75 vs 59 pozycji): oznaczenia Q1 pól 000…003
+  // x 421/565/677/813 (baza) → 416/624/800/936 (przesunięcia kolumn pól — blok ramki, jak wyżej),
+  // T1 pola transformatorowego 814 → 936 — ta sama lewa krawędź co Q1 tego pola (dawniej 813
+  // i 814 — dwie krawędzie); symbole, odcinki i pozostałe etykiety jak w poprzednim punkcie.
   // AKTUALIZACJA ŚWIADOMA (karta UX-04/ZU, punkt 2 — symbole etykiet rysunku jako wzory
   // `$…$`, `304ae743f`; pin poprawiony 2026-11-05 w następcy punktu 4). DOWÓD: sonda
   // podmieniająca tekst każdej etykiety na jej odczyt (`tekstBezWzorow`) daje DOKŁADNIE
   // poprzednie odciski (L1 8f135f30…, L2 6de64cfc…) — geometria, położenia etykiet i zbiór
   // etykiet bez zmian; różnią się wyłącznie teksty „$u_{k}$ 11% · $P_{k}$ 120 kW",
   // „$S_{k}''$ 3000 MVA · 110 kV" i (L2) „… · $U_{n}$=20 kV · l = 40 m".
+  // AKTUALIZACJA ŚWIADOMA (scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji,
+  // 2026-11-11): L1 4cb0397a… → 52598908…, L2 6a731eee… → 9b30e827…. DOWÓD — sonda 2×2
+  // {kod strony integracji `ffbd81d15`, kod scalony} × {fikstura strony integracji, fikstura
+  // scalona}, sygnatura `sceneSignature` element po elemencie:
+  //  · kod strony integracji na OBU fiksturach daje dokładnie poprzednie piny (4cb0397a…,
+  //    6a731eee…) — zmiana fikstury bez zmiany kodu nie rusza odcisku;
+  //  · efekt KODU (fikstura strony integracji): wyłącznie przesunięcia z tablicy szerokości
+  //    znaków kroju zamiast 0,62 em (decyzja 7 architekta, wpis 2026-10-30 wyżej, który ta karta
+  //    wnosi do drzewa): szyna WN 128–200 → 112–176, źródło x 224 → 200, pola i stacja
+  //    w lewo (wyłączniki 528/656/784 → 440/616/792 na L1); L1 19/19 odcinków i 19/19 etykiet,
+  //    symbole 9 → 12 pozycji zmienionych; zbiór obiektów ten sam;
+  //  · efekt FIKSTURY (kod scalony): etykiety stacji S01 o 8 w lewo (L1: 6/6 etykiet), a na L2
+  //    dodatkowo blok zabezpieczeń pola wyjściowego bez 67N (decyzja właściciela 2026-10-29 —
+  //    67N wyłącznie przy potwierdzonym źródle 3U₀) i kody technologiczne pola TR
+  //    „Buchholz/temp/ciśnienie" → „63/26/63P" (IEEE C37.2, jedna nomenklatura funkcji EAZ).
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '4cb0397a11165fc008104bbbda5030b1',
-    2: '6a731eeed8e60da2ffbc33d4fe142c7f',
+    1: '52598908cb7dfc885fad4ee2496aebeb',
+    2: '9b30e827fb77dd95b2e25577760c1f48',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
@@ -305,8 +379,12 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   it('L2: aparatura pola TR z modelu (wyłącznik z gałęzi pola) i transformator NADAL na rysunku', () => {
     const scene = buildSceneV3(enmZPolem, 2);
     const poleTr = (enmZPolem.bays ?? []).find((b) => b.bay_role === 'TR' && b.ref_id.includes('/sn_field/'))!;
-    const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id);
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok zabezpieczeń pola (kody funkcji z modelu) to
+    // adnotacja obok toru, nie aparat — aparatura toru porównywana bez niego, blok osobno.
+    const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id && s.symbolId !== 'protectionRelay');
     expect(symbolePolaTr.map((s) => s.symbolId).sort()).toEqual(['breaker', 'transformer2W']);
+    const bloki = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id && s.symbolId === 'protectionRelay');
+    expect(bloki).toHaveLength((poleTr.protection_codes ?? []).length > 0 ? 1 : 0);
     expect(symbolePolaTr.find((s) => s.symbolId === 'breaker')?.meta?.deviceRef).toBe(
       poleTr.equipment_refs.find((ref) => (enmZPolem.branches ?? []).some((g) => g.ref_id === ref && g.type === 'breaker')),
     );
@@ -451,10 +529,12 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       expect(zPodpowiedzia[0].ownerRef).toBe(trRef);
       // Kontrola negatywna: poza zdaniem stanu TR podpowiedź niesie WYŁĄCZNIE
       // portal domeny nN (LV Domain Projection po B-02, `LV_PORTAL_TITLE_TEXT`
-      // na KAŻDYM symbolu `lvPortal`) — zero pustych/fałszywych `<title>`.
-      const inne = obszary.filter((a) => a.tytul != null && a.tytul !== STATION_TR_FIELD_GAP_TEXT);
-      expect(inne.every((a) => a.tytul === LV_PORTAL_TITLE_TEXT && a.klasa === 'portal-nn')).toBe(true);
-      expect(inne.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
+      // na KAŻDYM symbolu `lvPortal`) albo stan obiektu aparatu z rekordem (karta
+      // UX-04: istniejący / projektowany) — zero pustych/fałszywych `<title>`.
+      const portale = obszary.filter((a) => a.tytul === LV_PORTAL_TITLE_TEXT);
+      expect(portale.every((a) => a.klasa === 'portal-nn')).toBe(true);
+      expect(portale.length).toBe(scene.symbols.filter((sym) => sym.symbolId === 'lvPortal').length);
+      expect(obszaryBezObcychPodpowiedzi(obszary, scene)).toBe(true);
     });
   }
 
@@ -468,8 +548,9 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
       scale: 1,
     });
     expect(obszary.filter((a) => a.tytul === STATION_TR_FIELD_GAP_TEXT)).toHaveLength(0);
-    // Jedyne podpowiedzi na kanwie: portal domeny nN (LV Domain Projection).
-    expect(obszary.filter((a) => a.tytul != null).every((a) => a.tytul === LV_PORTAL_TITLE_TEXT)).toBe(true);
+    // Jedyne podpowiedzi na kanwie: portal domeny nN (LV Domain Projection) i stan obiektu
+    // aparatu z rekordem (karta UX-04).
+    expect(obszaryBezObcychPodpowiedzi(obszary, scene)).toBe(true);
   });
 
   // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (inspektor

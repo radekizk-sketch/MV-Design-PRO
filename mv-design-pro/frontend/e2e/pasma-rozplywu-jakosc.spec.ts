@@ -225,7 +225,7 @@ async function zbudujGotowaSiec(request: APIRequestContext, caseId: string): Pro
   expect(branchField?.ref_id).toBeTruthy();
 
   op = await executeDomainOp(request, caseId, 'start_branch_segment_sn', {
-    from_ref: `${branchField!.ref_id}.BRANCH`,
+    from_ref: branchField!.ref_id,
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 180,

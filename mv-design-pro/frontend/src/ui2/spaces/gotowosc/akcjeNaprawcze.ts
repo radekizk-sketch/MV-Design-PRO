@@ -88,6 +88,10 @@ const POWOD_CZAS_TB =
   'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
   'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy $I_{b}$ przy maszynach ' +
   'wirujących i składowa nieokresowa $i_{DC}$ (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
+const POWOD_KARTA_POLA =
+  'Klasę pola, wykonanie z szablonu, stan obiektu i funkcje zabezpieczeniowe pola ustawia się na ' +
+  'karcie pola — na schemacie kliknij pole prawym przyciskiem i wybierz „Otwórz kartę pola”; ' +
+  'karta pokazuje ocenę pola z akcją naprawczą.';
 const POWOD_WYPOSAZENIE_POLA_BKR =
   'Aparaty pola baterii kondensatorów (przekładnik niezrównoważenia w połączeniu ' +
   'międzygwiazdowym, dwa przekładniki napięciowe międzyfazowe do rozładowania) ustawia się na ' +
@@ -97,8 +101,10 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (184 kody, stan rejestru po scaleniu kart zespołu uziemiającego
- * SN i UX-04/POLE-BKR-MODEL — pomiar `len(READINESS_CODES)` 2026-10-29). Brak wpisu dla kodu
+ * KOMPLETNA tabela kodów kanonu (196 kodów — pomiar `len(READINESS_CODES)` 2026-11-11 na drzewie
+ * integracji po scaleniu karty UX-04/POLE-LINIOWE-WZORZEC: 183 kody strony integracji (karty zespołu
+ * uziemiającego SN i UX-04/POLE-BKR-MODEL) + 13 kodów karty pola liniowego (11 kodów `bay.*`
+ * i 2 kody stanu obiektu w katalogu); po stronie karty 187 = 174 bazy + 13). Brak wpisu dla kodu
  * z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
@@ -178,6 +184,26 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'station.line_field_multiple_segments': formularz('przepnij_element_na_pole'),
   'station.element_bypasses_field': formularz('przepnij_element_na_pole'),
   'station.segment_without_field': formularz('przepnij_element_na_pole'),
+  // Pole liniowe GPZ i wyposażenie pola (karta UX-04/POLE-LINIOWE-WZORZEC, W049–W057): klasę,
+  // wykonanie, stan obiektu i funkcje EAZ edytuje formularz INLINE karty pola (E-11,
+  // `set_bay_equipment` bez okna w `OPERATION_FORM_REGISTRY`, `set_object_state` — edytor
+  // `ui/field/EdytorStanuObiektuPola` na karcie pola, w inspektorze schematu i w rejestrze
+  // formularzy) — droga przez schemat i menu pola, z oceną pola i akcją naprawczą na karcie.
+  'bay.fluorinated_gas_not_existing': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.switching_execution_insulation_mismatch': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.gpz_template_outside_gpz': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.line_class_execution_mismatch': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.generation_fed_from_load_bay': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.loads_behind_dedicated_generation_bay': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.ufls_in_bay_with_generation': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.reclosing_in_dedicated_generation_bay': przestrzen('schemat', POWOD_KARTA_POLA),
+  'bay.settlement_core_missing': przestrzen('schemat', POWOD_KARTA_POLA),
+  // Rozszerzenie 5 karty: oznaczenia aparatów pola (W063) edytuje to samo wyposażenie pola na
+  // karcie pola (pole „Oznaczenie aparatu", `set_bay_equipment`).
+  'bay.apparatus_designation_duplicate': przestrzen('schemat', POWOD_KARTA_POLA),
+  // Decyzja właściciela 2026-10-29: źródło 3U₀ funkcji 67N (W064) wiąże karta pola (pole
+  // „Źródło napięcia zerowego 3U₀" edytora wyposażenia, `set_bay_equipment`).
+  'bay.earth_fault_u0_source_unconfirmed': przestrzen('schemat', POWOD_KARTA_POLA),
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),
@@ -429,6 +455,8 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'Wskazany element nie istnieje w modelu — zaznacz istniejący element na schemacie i przypisz mu typ.',
   ),
   'catalog.clear_forbidden': KATALOG,
+  'catalog.object_state_not_applicable': KATALOG,
+  'catalog.object_state_invalid': KATALOG,
   'catalog.materialization_required': KATALOG,
   'catalog.materialization_incomplete': KATALOG,
   'catalog.nameplate_mismatch': KATALOG,

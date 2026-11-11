@@ -17,6 +17,7 @@ import {
   pradKaLubBrakDanych,
   pradLacznikaKatalogu,
 } from './pradZwarciowyKatalogu';
+import { nazwaMediumPl } from './dopuszczenieNowychPol';
 import { nazwaWartosciKodowej } from './wartosciKodoweKarty';
 import { formatNumber } from './wierszeKartyKatalogu';
 import { MISSING_DASH } from '../shared/formatPolishValue';
@@ -32,6 +33,12 @@ function w(value: unknown): string {
 /** Wartość pola kodowego skrótu: kod — nazwa z jednego słownika; inna wartość jak `w`. */
 function k(pole: string, value: unknown): string {
   return typeof value === 'string' && value.trim() !== '' ? nazwaWartosciKodowej(pole, value) : w(value);
+}
+
+/** Medium gaszenia łuku pozycji aparatury (` · medium próżnia`); brak danej — bez członu. */
+function medium(r: Record<string, unknown>): string {
+  const nazwa = nazwaMediumPl(typeof r.medium === 'string' ? r.medium : null);
+  return nazwa ? ` · medium ${nazwa}` : '';
 }
 
 function liczba(value: unknown): number {
@@ -51,11 +58,11 @@ export function skrotParametrowTypu(type: CatalogListItem, category: TypeCategor
     case 'TRANSFORMER':
       return `${w(r.rated_power_mva)} MVA · ${w(r.voltage_hv_kv)}/${w(r.voltage_lv_kv)} kV · $u_k$ = ${w(r.uk_percent)}%`;
     case 'SWITCH_EQUIPMENT':
-      return `${w(r.un_kv)} kV · ${w(r.in_a)} A · $I_k$ ${pradLacznikaKatalogu(r, 'ik_ka')}`;
+      return `${w(r.un_kv)} kV · ${w(r.in_a)} A · $I_k$ ${pradLacznikaKatalogu(r, 'ik_ka')}${medium(r)}`;
     case 'SYSTEM_SOURCE':
       return `${w(r.voltage_rating_kv)} kV · $S''_{k3}$ = ${w(r.sk3_mva)} MVA · R/X=${w(r.rx_ratio)}`;
     case 'MV_APPARATUS':
-      return `${w(r.u_n_kv)} kV · ${w(r.i_n_a)} A · $I_k$ ${pradAparatuSnKatalogu(r, 'breaking_capacity_ka')}`;
+      return `${w(r.u_n_kv)} kV · ${w(r.i_n_a)} A · $I_k$ ${pradAparatuSnKatalogu(r, 'breaking_capacity_ka')}${medium(r)}`;
     case 'LV_APPARATUS':
       return `${w(r.u_n_kv)} kV · ${w(r.i_n_a)} A · $I_k$ ${pradKaLubBrakDanych(r.breaking_capacity_ka)}`;
     case 'LV_RCD':

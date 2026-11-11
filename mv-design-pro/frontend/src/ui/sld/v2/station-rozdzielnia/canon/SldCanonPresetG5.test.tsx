@@ -48,6 +48,17 @@ describe('SldCanonPresetG5 — canonical wind Type 4 (G5)', () => {
     expect(txt).toContain('~/=');
   });
 
+  it('interface protection label DERIVED from the companion — each function once (no "AI"/"df/dt" duplicates)', () => {
+    // Decyzja architekta 2026-10-30 (`funkcje_eaz`): dawny napis na sztywno
+    // „67/67N·81·27/59·df/dt·AI" mieszał nomenklatury i dublował kryteria LoM agregatem „AI".
+    const iface = G5.fields.find((f) => f.interface_protection)?.protection_codes ?? [];
+    expect(iface).toEqual(expect.arrayContaining(['67', '67N', '27', '59', '81U', '81O', '81R']));
+    const txt = renderG5().container.textContent ?? '';
+    expect(txt).toContain(iface.join('·'));
+    expect(txt).not.toContain('·AI');
+    expect(txt).not.toContain('df/dt');
+  });
+
   it('readouts bound to the FROZEN solver; metering = boundary (no ⊟ marker, no PCC)', () => {
     const txt = renderG5().container.textContent ?? '';
     const snSc = G5.short_circuit.buses['SN_PCC'];

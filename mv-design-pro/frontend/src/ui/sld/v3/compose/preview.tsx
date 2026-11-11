@@ -38,12 +38,14 @@ import {
 import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
-import { LABEL_TYPOGRAPHY } from '../core/text';
-import type { OwnedLabel } from '../layout/labels';
+import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, SLD_TEXT_STYLE } from '../core/text';
+import { wyrownanieEtykiety, zaczepTekstuEtykiety, type OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
 import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
+import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
+import { atrybutStanuObiektu } from '../../../shared/stanObiektu';
 
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
  *  (WN/SN, primary/reserve/ring-closure) — spec nie różnicuje grubości szyn
@@ -318,6 +320,22 @@ export interface PreviewElementMeta {
    *  elementów nie-aparatowych. `ownerRef` NIETKNIĘTY (nadal ref pola —
    *  nakładka energizacji i temat menu kluczują po polu). */
   readonly deviceRef?: string;
+  /** UX-04/POLE-LINIOWE-WZORZEC: rodzaj aparatu ENM (`BayPrimaryDevice.kind`) pozycji
+   *  stosu (audytor DOM `data-apparatus-kind`). Kafel stanu NIE zależy od rodzaju, tylko od
+   *  symbolu (`czyLacznikZPolozeniem`) — każdy łącznik z położeniem, także łącznik toru
+   *  i punkt NOP. `undefined` = symbol bez rekordu aparatu. */
+  readonly apparatusKind?: BayPrimaryDeviceKind;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): numer odgałęzienia toru pola
+   *  (przekładnik napięciowy od strony linii), w którym stoi aparat; `undefined` = tor główny
+   *  pola. Audytor DOM: `data-odgalezienie-toru`. */
+  readonly odgalezienieToru?: number;
+  /** Rozstrzygnięcie architekta S7-P2 (2026-10-30, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`
+   *  §12): ref ENM WĘZŁA MODELU, który oznacza kropka węzłowa (`junction`) — `Bus.ref_id`
+   *  węzła nazwanego toru albo ref pola (`Bay.ref_id`), w którego węźle odchodzi odczep
+   *  aparatu bocznego lub odgałęzienie toru pola. Kropka bez tego pola jest fikcją (rysuje
+   *  połączenie, którego w sieci nie ma) — wyrocznia `junctionDotGaps` (`scene/crossings.ts`).
+   *  `undefined` dla wszystkich symboli, które nie są kropką węzłową. */
+  readonly wezelModelu?: string;
   /** Jawna klasa napięcia elementu (V12K-217) — nadawana przez kompozycję tam,
    *  gdzie referencja domenowa strony napięciowej NIE zdradza (aparaty pola WN
    *  transformatora GPZ: `transformerRef`/`bayRef` są opaque). Czytana przez
@@ -338,6 +356,10 @@ export interface PreviewElementMeta {
   /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu (`catalog_ref`); DOM
    *  `data-apparatus-type`. Brak = model nie niesie typu. */
   readonly apparatusTypeRef?: string;
+  /** Karta UX-04 (stan obiektu): stan istniejący / projektowany rekordu aparatu; DOM
+   *  `data-stan-obiektu` (`NIEUSTALONY` dla `null`) i podpowiedź na symbolu
+   *  (`canvas/hitAreas.ts`). Brak = symbol bez rekordu aparatu. */
+  readonly stanObiektu?: StanObiektu | null;
   /** GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe/wolne, do którego należy symbol; DOM
    *  `data-bay-reserve`. */
   readonly bayReserve?: 'rezerwowe' | 'wolne';
@@ -386,10 +408,6 @@ export interface PreviewElementMeta {
    *  DANYMI (uwaga 10). Konsument: audytor DOM (`data-config-id`) i generator
    *  macierzy W1c. `undefined` dla DER i pól bez szablonu kanonicznego. */
   readonly configId?: string;
-  /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla symboli
-   *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
-   *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
-  readonly protectionCodes?: readonly string[];
   /** F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń
    *  (`protectionFunctionTopologyGaps`, `./protectionTopologyValidation`) —
    *  WYŁĄCZNIE dla symboli `protectionRelay`. Obecność (długość > 0) steruje
@@ -397,6 +415,18 @@ export interface PreviewElementMeta {
    *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
    *  scenie jako osobna etykieta tekstowa. */
   readonly topologyGaps?: readonly ProtectionTopologyGap[];
+  /** Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: ramka BLOKU ZABEZPIECZEŃ pola (GPZ i stacji, z
+   *  powiązaniami obwodów wtórnych i bez nich — prostokąt bez okręgu; wewnątrz wiersze kodów
+   *  funkcji i odniesienie źródła 3U₀), względem symbolu — każdy symbol `protectionRelay` sceny
+   *  ją niesie; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. Ramka jest gabarytem
+   *  symbolu (`symbols/blokZabezpieczen.ts`). */
+  readonly ramkaBlokuPrzekaznika?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** Wejścia linii bloku zabezpieczeń (linia wyłączania, linie pomiarowe) na krawędziach ramki,
+   *  względem symbolu — porty bloku dla wyroczni sceny (`symbols/blokZabezpieczen.ts`). */
+  readonly wejsciaBlokuPrzekaznika?: readonly { readonly x: number; readonly y: number }[];
+  /** `ownerRef` wierszy bloku objętych `ramkaBlokuPrzekaznika` (`ComposedGpzProtectionSymbol.wierszeBloku`)
+   *  — kanwa liczy z nich ramkę wg NARYSOWANYCH prostokątów planu etykiet (`canvas/obrysyWgPlanu.ts`). */
+  readonly wierszeBlokuPrzekaznika?: readonly string[];
   /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości miernika
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
@@ -422,7 +452,7 @@ export interface PreviewElementMeta {
   /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): podsumowanie sylwetki stacji dla
    *  glifu mini-RMU na L0 — WYŁĄCZNIE dla symboli `stationCollapsed`. Steruje
    *  markerami typu/TR/DER/NO w `StationCollapsedGlyph` (`symbols/glyphs.tsx`),
-   *  przekazane 1:1 do `GlyphProps` (wzór `protectionCodes`/`meterQuantity`).
+   *  przekazane 1:1 do `GlyphProps` (wzór `meterQuantity`).
    *  Rodzaj stacji WYPROWADZONY z TYPU elementów (topologia/sprzęgło/TR/DER/NO),
    *  nie z nazw (spec §19.3, macierz §3). */
   readonly stationGlyph?: StationCompactGlyphSummary;
@@ -433,6 +463,14 @@ export interface PreviewElementMeta {
    *  `stationGlyph`). Liczby WYPROWADZONE z realnej kompozycji GPZ
    *  (`GpzComposition.sections`/`transformers` + pola liniowe SN), nie z nazw. */
   readonly gpzGlyph?: GpzCompactGlyphSummary;
+  /** Rozstrzygnięcie architekta KD-5 (2026-10-30): porty ZEJŚĆ bloku zwiniętego na L0
+   *  (współrzędne świata) — WYŁĄCZNIE dla `gpzCollapsed` i `stationCollapsed`. Zejście
+   *  każdego pola liniowego GPZ (wachlarz) i każdego pola odgałęźnego stacji wychodzi
+   *  z WŁASNEGO punktu dolnej (albo bocznej) krawędzi bloku, bez wspólnego pionu. Kompozycja
+   *  wylicza punkty raz i deklaruje je tutaj; wyrocznia końców odcinków
+   *  (`sceneSegmentEndpointGaps`) przyjmuje je jako porty bloku tylko, gdy leżą na jego
+   *  krawędzi dolnej albo bocznej. */
+  readonly portyZejscBloku?: readonly { readonly x: number; readonly y: number }[];
 }
 
 /** KD-5: kompaktowe cechy bloku GPZ rysowane sylwetką na L0. Wszystkie pola
@@ -512,8 +550,8 @@ export function daneGlifuSymbolu(
     earthingKind: symbol.earthingKind,
     uzwojenia: symbol.uzwojenia,
     bateria: symbol.bateria,
-    labelLines: meta?.protectionCodes,
     hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
+    ramkaBloku: meta?.ramkaBlokuPrzekaznika,
     // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
     // bez skonfigurowanego pola SN.
     hasFieldGapWarning: meta?.transformerFieldGap === true,
@@ -573,8 +611,14 @@ export function pointsToPath(points: readonly RouteVertex[]): string {
   return points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 }
 
-function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly stroke: string }): JSX.Element {
-  const { symbol, stroke } = props;
+/** Węzeł symbolu podglądu — eksportowany dla kadru pola (`ui/field/SchematPolaSn.tsx`).
+ *  `kafleStanu` = kolory kafla stanu łącznika (`SldPalette.state`); brak = harness mono bez kafla. */
+export function PreviewSymbolNode(props: {
+  readonly symbol: PreviewSymbol;
+  readonly stroke: string;
+  readonly kafleStanu?: GlyphProps['kafleStanu'];
+}): JSX.Element {
+  const { symbol, stroke, kafleStanu } = props;
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   // F11.3 (spec §13.3): nakładka stanu źródła = WYŁĄCZNIE kolor kreski glifu
   // (tabela `SOURCE_STATE_OVERLAY_COLOR`) + atrybut `data-source-state` —
@@ -592,14 +636,18 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-apparatus-origin={symbol.meta?.apparatusOrigin}
       data-apparatus-type={symbol.meta?.apparatusTypeRef}
+      data-stan-obiektu={atrybutStanuObiektu(symbol.meta?.stanObiektu)}
       data-bay-reserve={symbol.meta?.bayReserve}
       data-track-role={symbol.meta?.trackRole}
       data-config-id={symbol.meta?.configId}
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
       data-source-state={state}
+      data-device-ref={symbol.meta?.deviceRef}
+      data-apparatus-kind={symbol.meta?.apparatusKind}
+      data-odgalezienie-toru={symbol.meta?.odgalezienieToru}
     >
-      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} />
+      <Glyph x={symbol.x} y={symbol.y} stroke={effectiveStroke} {...daneGlifuSymbolu(symbol)} kafleStanu={kafleStanu} />
     </g>
   );
 }
@@ -631,7 +679,7 @@ export function segmentDasharray(segment: PreviewSegment): string | undefined {
   return undefined;
 }
 
-function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
+export function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
   const { segment, stroke } = props;
   if (segment.points.length < 2) return null;
   const strokeWidth = SEGMENT_STROKE_WIDTH[klasaWagiOdcinka(segment.meta)];
@@ -649,12 +697,13 @@ function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly 
   );
 }
 
-function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly stroke: string }): JSX.Element {
+export function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly stroke: string }): JSX.Element {
   const { label, stroke } = props;
   const typo = LABEL_TYPOGRAPHY[label.labelClass];
   const cx = label.rect.x + label.rect.width / 2;
   const cy = label.rect.y + label.rect.height / 2;
   const textTransform = label.rotated ? `rotate(-90, ${cx}, ${cy})` : undefined;
+  const zaczep = zaczepTekstuEtykiety(label.rect, wyrownanieEtykiety(label), label.rotated === true);
   return (
     <g data-owner-ref={label.ownerRef} data-owner-kind={label.ownerKind} data-slot-index={label.slotIndex}>
       {label.leader && (
@@ -668,13 +717,13 @@ function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly stroke: 
         />
       )}
       <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
+        x={zaczep.x}
+        y={zaczep.y}
+        textAnchor={zaczep.textAnchor}
         dominantBaseline="middle"
         transform={textTransform}
         fill={stroke}
-        fontFamily="sans-serif"
+        fontFamily={SLD_FONT_FAMILY}
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
       >
@@ -697,6 +746,8 @@ export function CompositionPreview(props: CompositionPreviewProps): JSX.Element 
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       data-testid="sld-v3-composition-preview"
+      fontFamily={SLD_FONT_FAMILY}
+      style={SLD_TEXT_STYLE}
     >
       <rect x={0} y={0} width={width} height={height} fill={background} />
       <g data-preview-layer="segments">

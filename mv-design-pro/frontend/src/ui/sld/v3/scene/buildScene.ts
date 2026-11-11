@@ -112,22 +112,28 @@ import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter
 import { czyPoleKabloweGpz, type CanonicalGpzProps } from '../../v2/canvas/canonicalGpzModel';
 import type { StationOnRunViewModel } from '../../v2/model/widokSld';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
+import { stanStatusuGalezi } from '../../v2/model/stanAparatowPola';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
-import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { gabarytSymbolu, przeszkodySymbolu, ramkaBlokuSymbolu, wejsciaBlokuSymbolu } from '../symbols/blokZabezpieczen';
 import {
   classifyRouteNodes,
+  dedupeVertices,
   type RouteGeometry,
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
-import { symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { czyZakonczenieToruKablowego, symboleRodzajuAparatu, zwisAparatuBocznego } from '../compose/apparatusSequence';
+import { RODZAJE_LACZNIKOW_POLA, RODZAJE_LACZNIKOW_TORU } from '../compose/rodzajeAparatuPola';
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
+import { ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../compose/zaciskiPrzekladnika';
 import {
   bayMainPathHeight,
+  bayStackCenterX,
   findLineBayIndices,
   stationBlockHeight,
   stationBusbarLabelHeight,
@@ -135,7 +141,14 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
-import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
+import {
+  computeBands,
+  BUS_AXIS_BAND_HEIGHT,
+  DESCENT_STRIP_HEIGHT,
+  departureStripExtraHeight,
+  type BandsResult,
+  type StationBandHeights,
+} from '../layout/bands';
 import { computeColumns, insertColumnChannels, type ColumnsResult, type ColumnResult } from '../layout/columns';
 import {
   computeSegmentLabelSlotX,
@@ -180,16 +193,19 @@ import {
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
-import { junctionDotGaps, interiorCrossings } from './crossings';
+import { crossingBusGaps, junctionDotGaps, odczepyWezlowModelu, przecieciaBezMostka } from './crossings';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
 import { punktyPodzialu } from '../../../shared/stanLacznika';
 import { elementyToru } from './elementyToru';
+import { odsunStykiCzlonow } from './stykiCzlonow';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
+  PRZYROSTEK_TABLICZKI_PRZEKLADNIKA,
+  SYMBOL_TABLICZKI_PRZEKLADNIKA,
 } from '../compose/protectionMarking';
 import {
-  protectionFunctionTopologyGaps,
+  brakiTopologiiFunkcjiPola,
   protectionTopologyGapLabel,
 } from '../compose/protectionTopologyValidation';
 import type {
@@ -395,6 +411,51 @@ const LATERAL_SUBTREE_CLEARANCE = Math.max(MIN_SUBTREE_CLEARANCE, MIN_PARALLEL_C
 const OPEN_RUN_PIECE_SPAN = 6 * GRID;
 /** §16-v3: połowa długości słupka terminalnego (kreska prostopadła ±GRID). */
 const OPEN_TERMINAL_TICK_HALF = GRID;
+/** §16-v3: rezerwacja pionowa biegu otwartego POD jego poziomem — słupek
+ *  terminalny i etykieta „koniec otwarty" (L2) mieszczą się w 4×GRID. JEDNO
+ *  źródło dla KAŻDEGO biegu otwartego (ciąg główny bez stacji, feeder z pola
+ *  GPZ bez stacji, odgałęzienie bez stacji): kolejna treść pakowana pod biegiem
+ *  startuje dopiero za tą rezerwacją, więc dwa biegi nigdy nie leżą na jednej
+ *  kresce (defekt karty UX-04: bieg ciągu głównego i feeder z pola drugiej
+ *  sekcji na tym samym poziomie pod GPZ — dwa kable jedną linią). */
+const OPEN_RUN_BAND_BELOW = 4 * GRID;
+/** Odstęp poziomów sąsiednich biegów otwartych z pól GPZ: 2×GRID światła nad
+ *  biegiem + rezerwacja `OPEN_RUN_BAND_BELOW` pod nim (ta sama reguła, co odstęp
+ *  dwóch kolejnych biegów pakowanych kursorem). */
+const OPEN_RUN_LEVEL_STEP = 2 * GRID + OPEN_RUN_BAND_BELOW;
+/** Klucz ciągu głównego w planie biegów otwartych z pól GPZ (feedery mają klucz = id ciągu). */
+const KLUCZ_CIAGU_GLOWNEGO_GPZ = '#ciag-glowny';
+
+/** Bieg otwarty wychodzący z pola GPZ — wejście planu poziomów. */
+interface BiegOtwartyZPolaGpz {
+  /** `KLUCZ_CIAGU_GLOWNEGO_GPZ` albo id ciągu feedera. */
+  readonly klucz: string;
+  /** X dolnego portu pola GPZ, z którego bieg schodzi. */
+  readonly portX: number;
+}
+
+/**
+ * Karta UX-04 (pole liniowe GPZ): poziomy biegów OTWARTYCH wychodzących z pól GPZ
+ * (ciąg główny bez stacji i feedery bez stacji) — układ ZAGNIEŻDŻONY. Każdy bieg
+ * schodzi pionem z portu swojego pola i skręca W PRAWO na swoim poziomie. Bieg z pola
+ * leżącego bardziej na prawo dostaje poziom WYŻSZY, więc jego poziom zaczyna się na
+ * prawo od pionów wszystkich biegów niższych, a jego pion kończy się nad ich
+ * poziomami: zero przecięć i zero nakładań między kablami różnych pól. Dawniej
+ * kolejność poziomów wynikała z kolejności rysowania (ciąg główny zawsze tuż pod
+ * GPZ), a pion feedera z pola prawego przecinał poziom ciągu głównego — węzeł T
+ * (`resolveTeeJunctions`) zamieniał to przecięcie w KROPKĘ, czyli fikcyjne połączenie
+ * dwóch kabli z dwóch różnych pól. Determinizm: remis X (nie występuje — każde pole
+ * ma własny port) rozstrzyga klucz.
+ */
+function poziomyBiegowOtwartychZPolGpz(
+  poziomBazowy: number,
+  biegi: readonly BiegOtwartyZPolaGpz[],
+): ReadonlyMap<string, number> {
+  const kolejnosc = [...biegi].sort(
+    (a, b) => b.portX - a.portX || (a.klucz < b.klucz ? -1 : a.klucz > b.klucz ? 1 : 0),
+  );
+  return new Map(kolejnosc.map((bieg, i) => [bieg.klucz, poziomBazowy + i * OPEN_RUN_LEVEL_STEP]));
+}
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 /** Obrys symbolu `noPoint` wyśrodkowanego w punkcie (cx, cy) — JEDNO źródło dla
@@ -702,29 +763,16 @@ function splitPolylineIntoPieces(
 }
 
 // ---------------------------------------------------------------------------
-// SCHEMAT-10 S7-P2 (V12K-137, spec §22.1) — węzeł T: „skrzyżowanie ≠ połączenie".
+// Cięcie polilinii toru w punktach leżących na jej krawędziach poziomych.
 // ---------------------------------------------------------------------------
 
 /**
- * SCHEMAT-10 S7-P2 (V12K-137, spec §22.1, ROZSTRZYGNIĘCIE ZARZĄDCY w
- * `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`): rozcięcie kabla POZIOMEGO
- * (przęsło magistrali `segment*` — Rodzina A; kabel-wiersz PŁYTSZEGO lateralu
- * `branch_segment_R_*` — Rodzina B) DOKŁADNIE w punkcie, w którym dotyka go pion
- * ZEJŚCIA lateralu (`branch_segment_L`). Skutek: dotyk staje się STYKIEM KOŃCEM
- * (koniec połówki poziomej ląduje we WNĘTRZU pionu = T-węzeł), a NIE
- * przecięciem wnętrz — `interiorCrossings` (sn×sn) spada do zera, a każdy nowy
- * T-węzeł jest realnym węzłem rozgałęzienia tras (`externalBranchNodes`) i
- * dostaje kropkę węzłową (`junction`, `junction_dot_probe`).
- *
- * Niezmienniki: sumy długości pionów/poziomów i liczba załamań NIEZMIENIONE
- * (wierzchołek cięcia jest WSPÓŁLINIOWY — dzieli kabel bez ruchu geometrii,
- * `orthogonalBendCount` liczy tylko rogi), więc kompaktyzacja P1
- * (`vertical_length_probe`/`sheet_fill_probe`) nie może się cofnąć. Elektrycznie
- * to WYŁĄCZNIE reprezentacja styku: obie połówki poziome niosą TEN SAM
- * `ownerRef` (jeden kabel ENM narysowany z jawnym odczepem T), zero zmiany
- * modelu. Dopasowanie kabla do rozcięcia jest GEOMETRYCZNE (krawędź pozioma
- * zawierająca punkt we wnętrzu) — jedno przecięcie trafia w dokładnie jeden
- * kabel na danej rzędnej.
+ * Cięcie toru POZIOMEGO w punktach leżących we wnętrzu jego krawędzi poziomych —
+ * wyłącznie tam, gdzie w modelu kończy się jeden człon i zaczyna następny (punkt
+ * odgałęźny na przęśle, `splitChainAtBranchPoints`). Przecięcie dwóch kabli BEZ
+ * węzła modelu nigdy nie jest cięciem: zostaje skrzyżowaniem z mostkiem §22.1
+ * (rozstrzygnięcie architekta S7-P2 z 2026-10-30, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`
+ * §12) — kropka i rozcięcie w takim miejscu rysowałyby połączenie, którego w sieci nie ma.
  */
 function horizontalEdgeContains(a: RouteVertex, b: RouteVertex, p: RouteVertex): boolean {
   return a.y === b.y && a.y === p.y && p.x > Math.min(a.x, b.x) && p.x < Math.max(a.x, b.x);
@@ -868,74 +916,6 @@ function splitChainAtBranchPoints(
     from = to;
   }
   return out.length === chain.length ? out : null;
-}
-
-interface TeeJunctionResult {
-  readonly segments: readonly PreviewSegment[];
-  readonly dots: readonly RouteVertex[];
-}
-
-function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionResult {
-  const crossings = interiorCrossings(segments).filter((c) => !c.involvesBus);
-  if (crossings.length === 0) return { segments, dots: [] };
-  const cutsBySeg = new Map<number, RouteVertex[]>();
-  const dotKeys = new Set<string>();
-  const dots: RouteVertex[] = [];
-  for (const c of crossings) {
-    const pt: RouteVertex = { x: c.x, y: c.y };
-    for (let si = 0; si < segments.length; si++) {
-      const pts = segments[si].points;
-      for (let i = 0; i + 1 < pts.length; i++) {
-        if (horizontalEdgeContains(pts[i], pts[i + 1], pt)) {
-          const list = cutsBySeg.get(si) ?? [];
-          list.push(pt);
-          cutsBySeg.set(si, list);
-          break;
-        }
-      }
-    }
-    const key = `${pt.x},${pt.y}`;
-    if (!dotKeys.has(key)) {
-      dotKeys.add(key);
-      dots.push(pt);
-    }
-  }
-  const out: PreviewSegment[] = [];
-  segments.forEach((seg, si) => {
-    const cuts = cutsBySeg.get(si);
-    if (!cuts || cuts.length === 0) {
-      out.push(seg);
-      return;
-    }
-    const pieces = splitPolylineAtPoints(seg.points, cuts);
-    pieces.forEach((piecePoints, pi) => {
-      const isLast = pi === pieces.length - 1;
-      if (pi === 0) {
-        // PIERWSZY kawałek zachowuje realny `ownerRef` przęsła — `points[0]`
-        // pozostaje stroną `fromTerminal` (kontrakt kierunku nakładki F-1,
-        // `overlay.ts`), a bramka `orientedSegmentRefs`/licznik przęseł
-        // (`overlay.ts`, kawałki `seg/` bez `#`) widzą DOKŁADNIE jeden odcinek
-        // na realny ref. `openTerminal` (jeśli był) należy do OSTATNIEGO
-        // kawałka, więc przy podziale (>1 kawałek) zdejmujemy go z pierwszego.
-        const baseMeta =
-          seg.meta && seg.meta.openTerminal && !isLast ? { ...seg.meta, openTerminal: false } : seg.meta;
-        out.push({ points: piecePoints, meta: baseMeta });
-        return;
-      }
-      // KOLEJNE kawałki (za odczepem T) to element WYŁĄCZNIE rysunkowy —
-      // kontynuacja TEGO SAMEGO kabla ENM za kropką węzłową. Sufiks `#tee-N`
-      // (konwencja kompozytu `#…`, patrz `PreviewElementMeta.ownerRef`) wyklucza
-      // je z bramki kierunku/licznika przęseł (jeden ref = jedna strzałka), a
-      // `seg/…` w prefiksie utrzymuje je w `externalBranchNodes` (styk końcem z
-      // pionem = realny węzeł T, kropka uzasadniona). Ostatni kawałek nosi
-      // ewentualny `openTerminal`.
-      const teeMeta = seg.meta
-        ? { ...seg.meta, ownerRef: seg.meta.ownerRef ? `${seg.meta.ownerRef}#tee-${pi}` : undefined }
-        : undefined;
-      out.push({ points: piecePoints, meta: teeMeta });
-    });
-  });
-  return { segments: out, dots };
 }
 
 /**
@@ -1326,6 +1306,9 @@ function buildRowLayout(
     portCaptionHeight: stationPortCaptionHeight(m) + stationBusbarLabelHeight(m),
     stationBlockHeight: stationBlockHeight(m),
     nameBandHeight: stationNameBandHeight(m),
+    // ODEJŚCIA-ZAGNIEŻDŻONE: tyle poziomów odejścia, ile pól odgałęźnych (ta sama
+    // lista `branchIndices`, z której `composeRowStation` wystawia `branchPort`).
+    departureLevelCount: Math.max(1, findLineBayIndices(m.snBays).branchIndices.length),
   }));
   const bandsResult = computeBands(stationBandHeights, rows.rowCount);
   const columnsResult = computeColumns({
@@ -1402,6 +1385,60 @@ interface ComposedRowStation {
   /** Port odgałęzienia (lateral) N-tego pola branch tej stacji (0-indeks w
    *  kolejności `branchIndices`) — `null` gdy stacja nie ma tylu odgałęzień. */
   readonly branchPort: (branchPos: number) => { readonly x: number; readonly y: number } | null;
+  /** ODEJŚCIA-ZAGNIEŻDŻONE: `Bay.ref_id` pól odgałęźnych w kolejności `branchIndices`
+   *  (ta sama lista, z której `branchPort` bierze indeks). Odgałęzienie dostaje port
+   *  pola, w którym się ZACZYNA (`SldTopologyRun.startingBayRef`) — nie kolejny wolny
+   *  w kolejności ciągów, która nie jest tożsamością pola. Długość listy = liczba
+   *  poziomów odejścia stacji (`departureLevelYOf`). */
+  readonly branchBayRefs: readonly string[];
+  /** Przyłącza magistrali BEZ pola liniowego (§9: brak pola „poprzednik"/„następnik") —
+   *  port trasy przy krawędzi kolumny stacji na osi szyny SN i koniec szyny, do którego
+   *  przewód dochodzi poziomo (`dociagnijPrzylaczaBezPola`). Puste, gdy stacja ma oba pola. */
+  readonly przylaczaBezPola: readonly PrzylaczeBezPola[];
+}
+
+/** Przyłącze magistrali bez pola liniowego — patrz `ComposedRowStation.przylaczaBezPola`. */
+interface PrzylaczeBezPola {
+  readonly port: { readonly x: number; readonly y: number };
+  readonly koniecSzyny: { readonly x: number; readonly y: number };
+}
+
+/**
+ * Przewód magistrali kończący się (zaczynający się) w porcie przyłącza bez pola dochodzi
+ * poziomo, na osi szyny, do KOŃCA szyny SN stacji — JEDNO dociągnięcie po wszystkich trasach
+ * (trasy kończą się w porcie zwróconym przez `composeRowStation`, ten sam obiekt punktu, więc
+ * dopasowanie końca jest dokładne). Port bez trasy (np. stacja końcowa bez pola „następnik")
+ * nie rysuje niczego — szyna nie jest wydłużana na zapas.
+ */
+function dociagnijPrzylaczaBezPola(
+  segments: PreviewSegment[],
+  przylacza: readonly PrzylaczeBezPola[],
+): void {
+  for (const { port, koniecSzyny } of przylacza) {
+    for (let i = 0; i < segments.length; i += 1) {
+      const seg = segments[i]!;
+      if (seg.meta?.elementKind !== 'segment' || seg.points.length < 2) continue;
+      const first = seg.points[0]!;
+      const last = seg.points[seg.points.length - 1]!;
+      if (last.x === port.x && last.y === port.y) {
+        segments[i] = { ...seg, points: [...seg.points, koniecSzyny] };
+      } else if (first.x === port.x && first.y === port.y) {
+        segments[i] = { ...seg, points: [koniecSzyny, ...seg.points] };
+      }
+    }
+  }
+}
+
+/**
+ * ODEJŚCIA-ZAGNIEŻDŻONE (L0): symbol zbiorczy stacji nie ma pól, więc porty odejść
+ * odgałęzień leżą na osi magistrali w obrysie symbolu, krok `GRID`, rozstawione
+ * symetrycznie wokół zaczepu (`tapX`) — rosnąco z `branchPos`, jak porty pól na
+ * L1/L2. Jedno pole odgałęźne = port na `tapX` (geometria sprzed zmiany). Wspólny
+ * port wszystkich odejść dawał wspólny pion: dwa kable na jednej kresce, a punkt,
+ * w którym pierwszy skręcał do kanału, leżał na pionie drugiego (skrzyżowanie).
+ */
+function collapsedBranchPortX(tapX: number, branchPos: number, branchCount: number): number {
+  return tapX + (branchPos - Math.floor(Math.max(0, branchCount - 1) / 2)) * GRID;
 }
 
 /**
@@ -1436,14 +1473,6 @@ function classifyStationSegmentKind(
   // dekoracja jak `#lv-drop-N` (nie jest gałęzią ENM).
   if (ownerRef.endsWith('#lv-portal-drop')) return 'lv';
   return 'sn';
-}
-
-function findSegmentPointX(
-  segments: readonly { readonly ownerRef: string; readonly points: readonly RouteVertex[] }[],
-  ownerRef: string,
-  pointIndex: number,
-): number | null {
-  return segments.find((s) => s.ownerRef === ownerRef)?.points[pointIndex]?.x ?? null;
 }
 
 /**
@@ -1485,6 +1514,21 @@ function composeRowStation(
   edgeDomainByRef: ReadonlyMap<string, 'lv' | 'sn'>,
 ): ComposedRowStation {
   if (lod === 0) {
+    // L0 nie mierzy pól (`buildMeasureInput`: `snBays: []`), więc lista pól
+    // odgałęźnych pochodzi z widoku stacji — tego samego, z którego geometria L2
+    // (`buildRowLayout`, `geometryInputs`) liczy poziomy odejścia.
+    const collapsedBays = props.snBays ?? [];
+    const collapsedBranchBayRefs = findLineBayIndices(collapsedBays).branchIndices.map(
+      (index) => collapsedBays[index].bayRef,
+    );
+    const halfBox = COLLECTIVE_BOX_SIZE / 2;
+    const portSpread = Math.floor(Math.max(0, collapsedBranchBayRefs.length - 1) / 2) * GRID;
+    if (portSpread > halfBox || (collapsedBranchBayRefs.length - 1) * GRID - portSpread > halfBox) {
+      stopNotes.push(
+        `Stacja „${measureInput.id}": ${collapsedBranchBayRefs.length} pól odgałęźnych — porty odejść na L0 `
+          + `wychodzą poza obrys symbolu zbiorczego (krok siatki ${GRID}, obrys ${COLLECTIVE_BOX_SIZE}).`,
+      );
+    }
     const boxX = snapToGrid(column.tapX - COLLECTIVE_BOX_SIZE / 2);
     const boxY = snapToGrid(busAxisY - COLLECTIVE_BOX_SIZE / 2);
     // L0 (sylwetka mini-RMU): CAŁA geometria strony nN (zacisk, portal) znika
@@ -1505,6 +1549,12 @@ function composeRowStation(
             elementKind: 'station',
             // GS-1 (V12K-137, GAP §10.4): sylwetka mini-RMU — typ/TR/DER/NO.
             stationGlyph: measureInput.compactGlyph,
+            // KD-5: porty odejść pól odgałęźnych na dolnej krawędzi (ta sama funkcja co
+            // `branchPort` niżej — jedno źródło położenia).
+            portyZejscBloku: collapsedBranchBayRefs.map((_, branchPos) => ({
+              x: collapsedBranchPortX(column.tapX, branchPos, collapsedBranchBayRefs.length),
+              y: boxY + COLLECTIVE_BOX_SIZE,
+            })),
           },
         },
       ],
@@ -1523,7 +1573,19 @@ function composeRowStation(
       busbarOwners: [],
       entryPort: { x: column.tapX, y: busAxisY },
       exitPort: { x: column.tapX, y: busAxisY },
-      branchPort: () => ({ x: column.tapX, y: busAxisY }),
+      // Porty odejść na DOLNEJ krawędzi symbolu zbiorczego (KD-5, rozstrzygnięcie architekta
+      // 2026-10-30): tor ciągu przechodzi przez środek symbolu (wejście i wyjście w osi), więc
+      // port odejścia w osi kładł początek kabla odgałęzienia na wnętrzu kabla ciągu — styk
+      // dwóch różnych kabli bez węzła modelu (sonda: `punkt_startu_stacja_na_odcinku_…`, L0).
+      branchPort: (branchPos: number) =>
+        branchPos >= 0 && branchPos < collapsedBranchBayRefs.length
+          ? {
+              x: collapsedBranchPortX(column.tapX, branchPos, collapsedBranchBayRefs.length),
+              y: boxY + COLLECTIVE_BOX_SIZE,
+            }
+          : null,
+      branchBayRefs: collapsedBranchBayRefs,
+      przylaczaBezPola: [],
     };
   }
 
@@ -1586,6 +1648,15 @@ function composeRowStation(
       );
     }
   }
+  // UX-04/POLE-LINIOWE-WZORZEC: braki przyłączeń aparatów pól SN stacji (porty ENM) — przyczyna
+  // pełnym zdaniem, ta sama postać co w polu GPZ.
+  for (const brak of composition.brakiPrzylaczy) {
+    stopNotes.push(
+      brak.deviceRef
+        ? `Stacja „${measureInput.id}": pole „${brak.bayRef}", aparat „${brak.deviceRef}" — ${brak.przyczyna}; przewód do aparatu nie jest rysowany.`
+        : `Stacja „${measureInput.id}": pole „${brak.bayRef}" — ${brak.przyczyna}.`,
+    );
+  }
   if (composition.missingData.includes('station.transformer.refMissing')) {
     stopNotes.push(
       `Stacja „${measureInput.id}": model deklaruje transformator SN/nN, ale migawka nie niesie ` +
@@ -1614,8 +1685,8 @@ function composeRowStation(
       .map((bay) => bay.bayRef)
       .join(', ') || 'brak id';
     stopNotes.push(
-      `Stacja „${measureInput.id}": okrąg przekaźnika narysowany bez toru wyzwalania — ` +
-        `„ProtectionAssignment.breaker_ref" nierozwiązywalny na aparat stosu pola (spec §17.2): ${affected}.`,
+      `Stacja „${measureInput.id}": blok zabezpieczeń narysowany bez linii wyłączania — ` +
+        `model nie wskazuje wyłącznika wyłączanego przez zabezpieczenie pola („ProtectionAssignment.breaker_ref" ani „funkcje_eaz_wylaczajace" aparatu stosu, spec §17.2): ${affected}.`,
     );
   }
   if (composition.missingData.includes('bay.protection.meter_anchor_unresolved')) {
@@ -1625,28 +1696,30 @@ function composeRowStation(
   }
   // F10.5 (spec §20.1): wzorzec `bay.protection.trip_link_unresolved` wyżej —
   // brak `ProtectionAssignment.ct_ref` rozwiązywalnego na aparat
-  // `currentTransformer` stosu pola = okrąg BEZ linii pomiarowej.
+  // `currentTransformer` stosu pola (albo — pole z powiązaniami obwodów wtórnych — żaden aparat
+  // stosu nie zasila funkcji pola) = blok zabezpieczeń BEZ linii pomiarowej.
   if (composition.missingData.includes('bay.protection.measurement_link_unresolved')) {
     const affected = measureInput.snBays
       .filter((bay) => bayHasProtectionAnnotation(bay) && (bay.protectionMarking?.codes.length ?? 0) > 0)
       .map((bay) => bay.bayRef)
       .join(', ') || 'brak id';
     stopNotes.push(
-      `Stacja „${measureInput.id}": okrąg przekaźnika narysowany bez linii pomiarowej — ` +
-        `„ProtectionAssignment.ct_ref" nierozwiązywalny na aparat currentTransformer stosu pola (spec §20.1): ${affected}.`,
+      `Stacja „${measureInput.id}": blok zabezpieczeń narysowany bez linii pomiarowej — ` +
+        `model nie wiąże przekładnika stosu pola z funkcjami zabezpieczenia („ProtectionAssignment.ct_ref" ani „funkcje_eaz_zasilane", spec §20.1): ${affected}.`,
     );
   }
   // F10.5 (spec §20.2): walidacja topologiczna funkcji zabezpieczeń — kody
   // `protection.topology.*` niosą WYŁĄCZNIE „obecność ostrzeżenia" w
   // `missingData` (jeden kod per gap, `protectionTopologyGapCode`); TEKST
   // odtworzony tu przez PONOWNE wywołanie TEJ SAMEJ czystej funkcji
-  // (`protectionFunctionTopologyGaps`) na `measureInput.snBays` — wzorzec
+  // (`brakiTopologiiFunkcjiPola` — ten sam kontekst domenowy co kompozycja) na
+  // `measureInput.snBays` — wzorzec
   // `bay.protection.trip_link_unresolved` wyżej (żaden per-bay szczegół nie
   // jest przenoszony przez surowy string kod, WHITE BOX).
   if (composition.missingData.some((code) => code.startsWith('protection.topology.'))) {
     const affected: string[] = [];
     measureInput.snBays.forEach((bay) => {
-      const gaps = protectionFunctionTopologyGaps(bay.protectionMarking?.codes ?? [], bay.primaryDevices);
+      const gaps = brakiTopologiiFunkcjiPola(bay, bay.protectionMarking?.codes ?? []);
       gaps.forEach((gap) => affected.push(`${bay.bayRef} (${protectionTopologyGapLabel(gap)})`));
     });
     stopNotes.push(
@@ -1656,22 +1729,20 @@ function composeRowStation(
   }
 
   const { previousIndex, nextIndex, branchIndices } = findLineBayIndices(measureInput.snBays);
-  const tapXOfBay = (index: number | null): number | null => {
-    if (index == null) return null;
-    const bayRef = measureInput.snBays[index]?.bayRef;
-    if (!bayRef) return null;
-    return findSegmentPointX(composition.segments, `${bayRef}#descent`, 0);
-  };
+  // UX-04/POLE-LINIOWE-WZORZEC: oś STOSU pola (port kabla u dołu toru) z JEDNEGO źródła
+  // (`bayStackCenterX`, ta sama funkcja co kompozycja stacji i rezerwacja slotu przęsła
+  // `layout/segments.ts`) — nie z zejścia, które stoi w osi portu szynowego (łącznik
+  // trójpołożeniowy QET ma zacisk szynowy obok osi toru).
+  const tapXOfBay = (index: number | null): number | null => bayStackCenterX(measureInput, index, column.x);
 
   if (previousIndex == null) {
     stopNotes.push(
-      `Stacja „${measureInput.id}": brak pola liniowego „poprzednik" (§9) — port wejścia magistrali domyślny (środek bloku).`,
+      `Stacja „${measureInput.id}": brak pola liniowego „poprzednik" (§9) — kabel magistrali dochodzi do końca szyny SN bez pola (dane niekompletne).`,
     );
   }
   // F9.3 (FIX-1): port POŁĄCZENIA kabla = dolny port głowicy tego pola
   // (`y = blockTopY + footprint.height`, wzorzec `branchPort` niżej) — X
-  // NIEZMIENIONE (`tapXOfBay`, centerX stosu, ta sama wartość co punkt 0 i 1
-  // zejścia, bo `#descent` jest odcinkiem WYŁĄCZNIE pionowym). Fallback (brak
+  // = oś stosu (`tapXOfBay` → `bayStackCenterX`). Fallback (brak
   // pola liniowego) wraca do starego zachowania — środek bloku NA OSI.
   const portOfBay = (index: number | null): { readonly x: number; readonly y: number } | null => {
     if (index == null) return null;
@@ -1682,8 +1753,25 @@ function composeRowStation(
     // głowicy), nie dno pełnego gabarytu — lateral ES może zwisać niżej.
     return { x, y: blockTopY + bayMainPathHeight(bay) };
   };
-  const entryPort = portOfBay(previousIndex) ?? { x: column.tapX, y: busAxisY };
-  const exitPort = portOfBay(nextIndex) ?? { x: column.tapX, y: busAxisY };
+  // Przyłącze magistrali BEZ pola liniowego (dane niekompletne): kabel dochodzi do KOŃCA
+  // szyny SN stacji poziomo na osi szyny, z pionu przy krawędzi kolumny stacji
+  // (`dociagnijPrzylaczaBezPola`). Dawniej port = zaczep środka bloku na osi szyny — kabel
+  // wchodził od dołu przez kolumnę pola stojącego w tym zaczepie (pomiar: migawki sieci
+  // złotej, kabel magistrali na zejściu, transformatorze i portalu nN stacji bez pól). Stacja
+  // bez szyny SN (zero zaczepów) zachowuje zaczep osi bloku — nie ma końca szyny do dojścia.
+  const zaczepySzynySn = composition.segments
+    .filter((s) => s.ownerRef.endsWith('#sn-bus'))
+    .flatMap((s) => s.points.map((p) => p.x));
+  const przylaczaBezPola: PrzylaczeBezPola[] = [];
+  const przylaczeBezPola = (strona: 'wejscie' | 'wyjscie'): { readonly x: number; readonly y: number } => {
+    if (zaczepySzynySn.length === 0) return { x: column.tapX, y: busAxisY };
+    const port = { x: snapToGrid(strona === 'wejscie' ? column.x : column.x + column.width), y: busAxisY };
+    const koniecX = strona === 'wejscie' ? Math.min(...zaczepySzynySn) : Math.max(...zaczepySzynySn);
+    przylaczaBezPola.push({ port, koniecSzyny: { x: koniecX, y: busAxisY } });
+    return port;
+  };
+  const entryPort = portOfBay(previousIndex) ?? przylaczeBezPola('wejscie');
+  const exitPort = portOfBay(nextIndex) ?? przylaczeBezPola('wyjscie');
 
   // S9-10 (karta następcza S9-4, klasa „tożsamość obiektu z samego symbolId"):
   // pole z DWOMA aparatami tego samego rodzaju (norma: odłącznik szynowy +
@@ -1744,7 +1832,12 @@ function composeRowStation(
       // GEOMETRIA-STACJI §0 pkt 4a/5: rekord aparatu, typ z modelu, rezerwa pola.
       apparatusOrigin: s.apparatusOrigin,
       apparatusTypeRef: s.apparatusTypeRef,
+      // Karta UX-04 (stan obiektu): stan rekordu aparatu — podpowiedź i `data-stan-obiektu`.
+      stanObiektu: s.stanObiektu,
       bayReserve: s.bayReserve,
+      // UX-04 (rozszerzenie 4): numer odgałęzienia toru pola — oś odgałęzienia dla wyroczni
+      // aparatów bocznych (`lateralApparatusGapsForKinds`).
+      odgalezienieToru: s.odgalezienieToru,
       trackRole: s.bayRef ? rolaToru.get(s.bayRef) : undefined,
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): `deviceRef` (WHITE BOX §12.1)
       // przepisany 1:1 z kompozycji — realny `BayPrimaryDevice.device_ref`
@@ -1806,7 +1899,17 @@ function composeRowStation(
       testId: unikalnyTestId(`${s.bayRef}#${s.symbolId}`),
       ownerRef: s.bayRef,
       elementKind: 'protectionAnnotation',
-      protectionCodes: s.protectionCodes,
+      // GEOMETRIA-STACJI §0 pkt 5: rezerwa pola przepisana 1:1 — blok pola wolnego jest rezerwą.
+      bayReserve: s.bayReserve,
+      // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: ramka bloku zabezpieczeń pola stacji — ta sama
+      // meta co pole GPZ (`./blokZabezpieczenPola`), rysuje ją `ProtectionRelayGlyph`.
+      ...(s.ramkaBloku
+        ? {
+            ramkaBlokuPrzekaznika: s.ramkaBloku,
+            wierszeBlokuPrzekaznika: s.wierszeBloku ?? [],
+            wejsciaBlokuPrzekaznika: s.wejsciaBloku ?? [],
+          }
+        : {}),
       // F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń —
       // przepisane 1:1, `ProtectionRelayGlyph` (`symbols/glyphs.tsx`) czyta
       // WYŁĄCZNIE obecność/pustkę (adnotacja „!"), treść żyje w
@@ -1849,6 +1952,8 @@ function composeRowStation(
       const y = blockTopY + bayMainPathHeight(measureInput.snBays[idx]);
       return { x, y };
     },
+    branchBayRefs: branchIndices.map((index) => measureInput.snBays[index].bayRef),
+    przylaczaBezPola,
   };
 }
 
@@ -1911,7 +2016,25 @@ function openRunCorridorY(gpzGeometry: { readonly bbox: V3Rect }): number {
 }
 
 function stripTopYOf(layout: RowLayout): number {
-  return layout.blockTopY + layout.bandsResult.bands.B4.height - DESCENT_STRIP_HEIGHT;
+  return (
+    layout.blockTopY
+    + layout.bandsResult.bands.B4.height
+    - DESCENT_STRIP_HEIGHT
+    - departureStripExtraHeight(layout.bandsResult.departureLevels)
+  );
+}
+
+/**
+ * ODEJŚCIA-ZAGNIEŻDŻONE (`departureStripExtraHeight`, `layout/bands.ts`): poziom
+ * poziomego odcinka odejścia odgałęzienia z pola `branchPos` stacji, która ma
+ * `branchCount` pól odgałęźnych. Pole najbliżej szczeliny kanałów (najwyższy
+ * `branchPos`) idzie najwyżej, na `stripTopYOf`; każde wcześniejsze o `GRID`
+ * niżej. Kanały rosną w prawo z `branchPos` (`computeLateralChannelX`), więc
+ * odejście bliższe szczeliny ma i wyższy poziom, i dalszy kanał — żaden pion
+ * nie przecina cudzego poziomu, a poziomy nie leżą na jednej kresce.
+ */
+function departureLevelYOf(layout: RowLayout, branchPos: number, branchCount: number): number {
+  return stripTopYOf(layout) + Math.max(0, branchCount - 1 - branchPos) * GRID;
 }
 
 /**
@@ -1924,7 +2047,9 @@ function stripTopYOf(layout: RowLayout): number {
  * się (co router już wspiera, `route.ts` `classifyRouteNodes`).
  */
 function trunkCorridorYOf(layout: RowLayout): number {
-  return stripTopYOf(layout) + GRID;
+  // ODEJŚCIA-ZAGNIEŻDŻONE: korytarz POD ostatnim poziomem odejścia wiersza
+  // (`departureLevelYOf`); dla wiersza z jednym poziomem — `stripTopY + GRID`.
+  return stripTopYOf(layout) + layout.bandsResult.departureLevels * GRID;
 }
 
 /**
@@ -2093,8 +2218,15 @@ function resolveBranchOrigin(
   if (originOwnerRef != null) {
     const originRow = mainRowById.get(originOwnerRef);
     if (!originRow) return null;
-    const branchPos = branchOriginUsage.get(originOwnerRef) ?? 0;
-    branchOriginUsage.set(originOwnerRef, branchPos + 1);
+    // ODEJŚCIA-ZAGNIEŻDŻONE: port = pole, w którym ciąg się ZACZYNA
+    // (`startingBayRef`), nie „kolejny wolny" w kolejności ciągów — kolejność
+    // `topologyRuns` nie jest tożsamością pola, a dwa ciągi tej samej stacji
+    // w odwrotnej kolejności niż pola rysowałyby kabel z cudzego pola.
+    // `branchOriginUsage` niesie dalej liczbę ZAJĘTYCH pozycji kanału w szczelinie
+    // stacji (max+1), od której punkty odgałęźne tej szczeliny biorą kolejne.
+    const branchPos = run.startingBayRef != null ? originRow.composed.branchBayRefs.indexOf(run.startingBayRef) : -1;
+    if (branchPos < 0) return null;
+    branchOriginUsage.set(originOwnerRef, Math.max(branchOriginUsage.get(originOwnerRef) ?? 0, branchPos + 1));
     const originPort = originRow.composed.branchPort(branchPos);
     if (!originPort) return null;
     return {
@@ -2201,6 +2333,10 @@ interface RowChannelPlan {
   readonly byBranchPointRef: ReadonlyMap<string, number>;
   /** Pozycja w szczelinie per punkt — wejście `resolveBranchOrigin`. */
   readonly branchPosByBranchPointRef: ReadonlyMap<string, number>;
+  /** ODEJŚCIA-ZAGNIEŻDŻONE: właściciel SZCZELINY kanału per `topologyRun.id` (stacja
+   *  albo GPZ, w której szczelinie leży kanał — `channelOwnerRef`). Laterale o tym
+   *  samym właścicielu dzielą szczelinę; patrz `kolejnoscKompozycjiLateralow`. */
+  readonly gapOwnerByRunId: ReadonlyMap<string, string>;
 }
 
 /** Karta SLD-SUBSTRAT (kontynuacja): liczba kanałów zejść w szczelinie GPZ —
@@ -2239,6 +2375,7 @@ function computeRowChannelPlan(
   const byRunId = new Map<string, number>();
   const byBranchPointRef = new Map<string, number>();
   const branchPosByBranchPointRef = new Map<string, number>();
+  const gapOwnerByRunId = new Map<string, string>();
   const usage = new Map<string, number>();
 
   // (1) Laterale z PÓL stacji — zachowanie sprzed karty, bit w bit.
@@ -2248,6 +2385,7 @@ function computeRowChannelPlan(
     const channelX = computeLateralChannelX(mainColumns, origin.channelOwnerRef, origin.branchPos);
     if (channelX == null) continue;
     byRunId.set(run.id, channelX);
+    gapOwnerByRunId.set(run.id, origin.channelOwnerRef);
   }
 
   // (2) Punkty odgałęźne tego wiersza — w kolejności ciągu, w szczelinie stacji
@@ -2273,15 +2411,77 @@ function computeRowChannelPlan(
     usedByPoint.set(bp.refId, nth + 1);
     if (nth === 0) {
       byRunId.set(run.id, byBranchPointRef.get(bp.refId)!);
+      gapOwnerByRunId.set(run.id, bp.upstreamNodeRef);
       continue;
     }
     const branchPos = usage.get(bp.upstreamNodeRef) ?? 0;
     usage.set(bp.upstreamNodeRef, branchPos + 1);
     const channelX = computeLateralChannelX(mainColumns, bp.upstreamNodeRef, branchPos, gpzSlot);
-    if (channelX != null) byRunId.set(run.id, channelX);
+    if (channelX != null) {
+      byRunId.set(run.id, channelX);
+      gapOwnerByRunId.set(run.id, bp.upstreamNodeRef);
+    }
   }
 
-  return { byRunId, byBranchPointRef, branchPosByBranchPointRef };
+  return { byRunId, byBranchPointRef, branchPosByBranchPointRef, gapOwnerByRunId };
+}
+
+/**
+ * ODEJŚCIA-ZAGNIEŻDŻONE (znalezisko „2. odgałęzienie tej samej stacji krzyżuje się",
+ * `buildScene.p1Recenzja.test.ts`): KOLEJNOŚĆ KOMPOZYCJI lateralów wiersza arkusza.
+ * Kanały jednej szczeliny leżą co `LATERAL_CHANNEL_STEP` (8 px), a wiersz lateralu
+ * wisi pod WŁASNYM kanałem (wejście stacji 0 na `channelX`, kolumna 0 kilka siatek w
+ * lewo od kanału). Pion lateralu komponowanego PÓŹNIEJ (głębszego — packer nie sadza
+ * go wyżej) przechodzi przez pas wiersza wcześniejszego; gdy leży w tej samej
+ * szczelinie, wypadał wewnątrz kolumny 0 tego wiersza (degeneracja c
+ * `insertColumnChannels`) — przez szynę SN pierwszej stacji. Ruch w prawo, który
+ * wyprowadza kolumnę 0 poza głębsze kanały (`przesuniecieZaGlebszymiKanalami`), jest
+ * bezkolizyjny tylko wtedy, gdy WSZYSTKIE głębsze kanały szczeliny leżą NA LEWO od
+ * kanału własnego (jog wiersza biegnie od kanału w prawo, do rynny kolumny 0). Stąd
+ * reguła: w obrębie jednej szczeliny laterale komponujemy w MALEJĄCYM `channelX` —
+ * płytszy zajmuje kanał skrajny prawy. Kanały się nie zmieniają (tożsamość pola
+ * odgałęźnego, `resolveBranchOrigin`), zmienia się tylko, który z lateralów szczeliny
+ * zajmuje które miejsce kolejności; laterale innych szczelin zostają na swoich
+ * pozycjach, więc wiersz bez wielu lateralów w jednej szczelinie komponuje się
+ * dokładnie jak przedtem.
+ */
+function kolejnoscKompozycjiLateralow(
+  rowBranchRuns: readonly SldTopologyRun[],
+  plan: RowChannelPlan,
+): readonly SldTopologyRun[] {
+  const pozycjeSzczeliny = new Map<string, number[]>();
+  rowBranchRuns.forEach((run, i) => {
+    const owner = plan.gapOwnerByRunId.get(run.id);
+    if (owner == null) return;
+    const lista = pozycjeSzczeliny.get(owner);
+    if (lista) lista.push(i);
+    else pozycjeSzczeliny.set(owner, [i]);
+  });
+  const wynik = [...rowBranchRuns];
+  for (const pozycje of pozycjeSzczeliny.values()) {
+    if (pozycje.length < 2) continue;
+    const czlonkowie = pozycje
+      .map((i) => rowBranchRuns[i])
+      .sort((a, b) => plan.byRunId.get(b.id)! - plan.byRunId.get(a.id)!);
+    pozycje.forEach((i, k) => {
+      wynik[i] = czlonkowie[k];
+    });
+  }
+  return wynik;
+}
+
+/**
+ * ODEJŚCIA-ZAGNIEŻDŻONE: przesunięcie w prawo (ponad wyrównanie wejścia do kanału)
+ * wiersza lateralu, po którym rynna wejścia (`col0.x − 2×GRID`, trasa sekcji 6)
+ * i cała treść wiersza leżą na prawo od pionów GŁĘBSZYCH lateralów tej samej
+ * szczeliny, z prześwitem równoległych kabli `MIN_PARALLEL_CABLE_CLEARANCE`.
+ * `col0X` — lewa krawędź kolumny 0 PO wyrównaniu do kanału. 0, gdy w szczelinie
+ * nie ma głębszego lateralu (każdy wiersz z jednym lateralem na szczelinę).
+ */
+function przesuniecieZaGlebszymiKanalami(col0X: number, glebszeKanaly: readonly number[]): number {
+  if (glebszeKanaly.length === 0) return 0;
+  const wymaganaRynna = Math.max(...glebszeKanaly) + MIN_PARALLEL_CABLE_CLEARANCE;
+  return Math.max(0, snapUp(wymaganaRynna - (col0X - 2 * GRID)));
 }
 
 /**
@@ -2787,7 +2987,9 @@ function gpzBayBottomPort(
   const bayInstances = gpz.symbols.filter(
     // GPZ-PARYTET cz. 3: ten sam predykat aparatu bocznego co budowa stosu pola GPZ (glif
     // rodzaju źródła pola OZE nie jest zakończeniem toru — kabel wychodzi z głowicy).
-    (s) => s.meta.bayRef === bayRef && !jestAparatemBocznymPolaGpz(s.symbolId),
+    // UX-04 (rozszerzenie 4): aparaty odgałęzienia toru (przekładnik napięciowy od strony
+    // linii) stoją w instancjach ZA torem głównym, ale nie są jego zakończeniem.
+    (s) => s.meta.bayRef === bayRef && !jestAparatemBocznymPolaGpz(s.symbolId) && s.meta.odgalezienieToru == null,
   );
   const last = bayInstances[bayInstances.length - 1];
   if (!last) return null;
@@ -2884,9 +3086,31 @@ function composeCollapsedGpz(
     SYMBOL_DEFS.breaker.height,
     ...[...aparatyPol.values()].map((a) => SYMBOL_DEFS[a?.symbolId ?? 'bayNoEquipment'].height),
   );
-  const blockY = Math.min(
+  // ODEJŚCIA-ZAGNIEŻDŻONE (L0 GPZ): porty pól liczone RAZ, przed położeniem bloku — blok
+  // musi stać tak wysoko, by NAJNIŻSZY poziom wachlarza leżał nad aparatem ciągłości
+  // KAŻDEGO pola (nie tylko pola magistrali). Inaczej poziomy biegły przez aparaty pól o
+  // wyżej zawieszonym porcie, a pion takiego pola wracał w górę przez cudze poziomy
+  // (sonda `gpzProtectionDataPath`: pole bay/001/002 z portem 88 j.św. nad polami line0x).
+  const portyPol = lineBayRefs.map((bayRef, i) => (i === 0 ? trunkPort : gpzBayBottomPort(gpz, bayRef)));
+  const gornyAparatPol = Math.min(
+    ...lineBayRefs.map((bayRef, i) => {
+      const port = portyPol[i];
+      const lacznik = aparatyPol.get(bayRef) ?? null;
+      return port ? port.y - SYMBOL_DEFS[lacznik?.symbolId ?? 'bayNoEquipment'].height : Infinity;
+    }),
+  );
+  const poziomyWachlarza = Math.max(0, lineBayRefs.length - 1) * GPZ_COLLAPSED_FAN_STEP;
+  // GPZ bez pola liniowego SN (magistrala zaczepiona w prawym końcu szyny SN, `findGpzTrunkPort`
+  // opcja 2): blok jest zwiniętą szyną i nie ma zejścia pola, więc DOLNA krawędź bloku stoi
+  // dokładnie w zaczepie magistrali (port S bloku = początek kabla). Dawniej blok wisiał nad
+  // zaczepem na wysokość aparatu, którego nie ma, a kabel zaczynał się w pustce (sonda końców
+  // odcinków: migawki sieci złotej, 5 plików na L0).
+  const blockY = lineBayRefs.length === 0 ? snapToGrid(trunkPort.y - blockDef.height) : Math.min(
     snapToGrid(busY - blockDef.height / 2),
     snapToGrid(trunkPort.y - blockDef.height - wysokoscAparatu - GPZ_COLLAPSED_DESCENT_CLEARANCE),
+    ...(Number.isFinite(gornyAparatPol)
+      ? [Math.floor((gornyAparatPol - GRID - poziomyWachlarza - blockDef.height) / GRID) * GRID]
+      : []),
   );
   const blockX = snapToGrid(axisX - blockDef.width / 2);
   const blockBottomY = blockY + blockDef.height;
@@ -2942,8 +3166,81 @@ function composeCollapsedGpz(
   // (b) Pola odejściowe: aparat ciągłości zakotwiczony w PORCIE pola (ten sam
   //     punkt, w którym tor sieci wychodzi z GPZ na L1/L2 — trasy nietknięte)
   //     + zejście od bloku do tego aparatu.
+  // ODEJŚCIA-ZAGNIEŻDŻONE (L0 GPZ): poziom wachlarza z ODLEGŁOŚCI portu od osi, nie z
+  // kolejności pól — pole dalsze od osi biegnie wyżej, bliższe niżej. Przy poziomach w
+  // kolejności pól pion pola bliższego, zawieszony wyżej, schodził przez poziom pola
+  // dalszego (sonda `gpzProtectionDataPath`: przecięcie line01 × line02). Pole magistrali
+  // (`i = 0`, port na osi) zostaje na poziomie 0 — jego zejście jest pionem osi.
+  //
+  // Rozstrzygnięcie architekta KD-5 (2026-10-30): zejście KAŻDEGO pola ma własny punkt
+  // wyjścia z bloku. Dawniej wszystkie zejścia zaczynały się w jednym porcie osi i biegły
+  // wspólnym pionem do swoich poziomów — cztery różne kable na jednym odcinku (pomiar:
+  // x = 128, y 536…584, fikstury pól liniowych GPZ). Teraz pola po prawej stronie osi
+  // wychodzą z dolnej krawędzi bloku w krokach GRID w prawo od osi, po lewej — w lewo;
+  // pole dalsze od osi dostaje punkt dalszy od osi i poziom wyższy (zagnieżdżenie bez
+  // przecięć: poziom pola bliższego leży pod końcem pionu pola dalszego). Gdy pól po
+  // jednej stronie jest więcej niż kroków dolnej krawędzi, kolejne (najdalsze) wychodzą
+  // z krawędzi bocznej bloku, od dołu w górę — poziom nad dolną krawędzią jest wyższy
+  // od każdego poziomu wachlarza, więc zagnieżdżenie zostaje zachowane.
+  const krokiDolnejKrawedzi = Math.floor(blockDef.width / 2 / GRID);
+  const poziomWachlarza = new Map<number, number>();
+  const wyjscieZBloku = new Map<number, { readonly x: number; readonly y: number }>();
+  poziomWachlarza.set(0, 0);
+  wyjscieZBloku.set(0, { x: axisX, y: blockBottomY });
+  for (const strona of [1, -1] as const) {
+    const pola = lineBayRefs
+      .map((_, i) => i)
+      .filter((i) => i > 0 && Math.sign((portyPol[i]?.x ?? axisX) - axisX) === (strona === 1 ? 1 : -1))
+      // Od najbliższego osi do najdalszego; remis — kolejność pól (determinizm).
+      .sort((a, b) => {
+        const da = Math.abs((portyPol[a]?.x ?? axisX) - axisX);
+        const db = Math.abs((portyPol[b]?.x ?? axisX) - axisX);
+        return da - db || a - b;
+      });
+    pola.forEach((i, k) => {
+      const krok = k + 1;
+      wyjscieZBloku.set(
+        i,
+        krok <= krokiDolnejKrawedzi
+          ? { x: axisX + strona * krok * GRID, y: blockBottomY }
+          : { x: axisX + strona * (blockDef.width / 2), y: blockBottomY - (krok - krokiDolnejKrawedzi) * GRID },
+      );
+    });
+  }
+  // Pola leżące dokładnie na osi (port w osi, a nie pole magistrali) — bez własnego kroku
+  // nie da się ich rozdzielić; zostają w osi i zgłaszają się notatką (dane niepełne układu).
   lineBayRefs.forEach((bayRef, i) => {
-    const port = i === 0 ? trunkPort : gpzBayBottomPort(gpz, bayRef);
+    if (i > 0 && !wyjscieZBloku.has(i)) {
+      wyjscieZBloku.set(i, { x: axisX, y: blockBottomY });
+      stopNotes.push(
+        `Blok GPZ zwinięty (L0): pole „${bayRef}" ma port w osi bloku — zejście wspólne z polem magistrali.`,
+      );
+    }
+  });
+  // Porty zejść deklarowane na symbolu bloku (`PreviewElementMeta.portyZejscBloku`) — te same
+  // punkty, z których niżej wychodzą odcinki wachlarza (jedno źródło położenia).
+  const indeksBloku = symbols.findIndex((s) => s.symbolId === 'gpzCollapsed');
+  const blok = symbols[indeksBloku]!;
+  symbols[indeksBloku] = {
+    ...blok,
+    meta: {
+      ...blok.meta,
+      portyZejscBloku: lineBayRefs
+        .map((_, i) => wyjscieZBloku.get(i)!)
+        .filter((p, i, all) => all.findIndex((q) => q.x === p.x && q.y === p.y) === i),
+    },
+  };
+  lineBayRefs
+    .map((_, i) => i)
+    .filter((i) => i > 0)
+    .sort((a, b) => {
+      const da = Math.abs((portyPol[a]?.x ?? axisX) - axisX);
+      const db = Math.abs((portyPol[b]?.x ?? axisX) - axisX);
+      return db - da || a - b;
+    })
+    .forEach((i, rank) => poziomWachlarza.set(i, rank + 1));
+  lineBayRefs.forEach((bayRef, i) => {
+    const port = portyPol[i];
     if (!port) {
       stopNotes.push(
         `Blok GPZ zwinięty (L0): pole liniowe „${bayRef}" bez portu w kompozycji — aparat ciągłości pominięty (dane niepełne).`,
@@ -2964,10 +3261,13 @@ function composeCollapsedGpz(
         elementKind: 'apparatus',
       },
     });
-    const fanY = blockBottomY + i * GPZ_COLLAPSED_FAN_STEP;
+    const wyjscie = wyjscieZBloku.get(i)!;
+    // Wyjście z krawędzi bocznej: poziom = wysokość punktu wyjścia (nad dolną krawędzią).
+    const fanY =
+      wyjscie.y < blockBottomY ? wyjscie.y : blockBottomY + poziomWachlarza.get(i)! * GPZ_COLLAPSED_FAN_STEP;
     const raw: RouteVertex[] = [
-      { x: axisX, y: blockBottomY },
-      { x: axisX, y: fanY },
+      { x: wyjscie.x, y: wyjscie.y },
+      { x: wyjscie.x, y: fanY },
       { x: port.x, y: fanY },
       { x: port.x, y: breakerTopY },
     ];
@@ -2991,11 +3291,11 @@ function composeCollapsedGpz(
   // DŁUG NAZWANY WPROST (BLOK-PUSTY, §0 R3 „brak pokrycia = dług nazwany, NIE
   // obejście") — WIERSZ STANU NIE MIEŚCI SIĘ W BANERZE STREFY GPZ.
   //
-  // POMIAR (fixtura referencyjna, L0): baner strefy (`compose/gpz.ts`
-  // `headerSlot`) ma 304 j.św. (296 przed GPZ-MODEL — nazwa GPZ substratu urosła
-  // o jeden znak) i jest zmierzony WYŁĄCZNIE dla wiersza tytułowego; wiersz stanu
-  // niesie 391 j.św. tuszu, więc wystaje poza własną rezerwację o 87 j.św. (≈43 na
-  // stronę, bo wiersze pasma są centrowane).
+  // POMIAR (fixtura referencyjna, L0, tabela posuwów kroju od 2026-10-30): baner strefy
+  // (`compose/gpz.ts` `headerSlot`) ma 248 j.św. i jest zmierzony WYŁĄCZNIE dla wiersza
+  // tytułowego; wiersz stanu niesie 298 j.św. tuszu, więc wystaje poza własną rezerwację
+  // o 50 j.św. (25 na stronę, bo wiersze pasma są centrowane). Przy szacunku 0,62 em: 304 /
+  // 391 / 87 (296 / 391 / 95 przed GPZ-MODEL).
   // Defekt jest PIERWOTNY — istniał przed tą kartą; różnica polega tylko na
   // tym, że dopóki prostokąt etykiety BYŁ slotem, nikt tego nie widział.
   //
@@ -3023,13 +3323,6 @@ function composeCollapsedGpz(
   };
 
   return { symbols, segments, nameBand };
-}
-
-/** Usuwa POWTÓRZONE kolejno wierzchołki łamanej (łamana degenerująca się do
- *  prostego odcinka, gdy oś źródła/pola pokrywa się z osią bloku) — ten sam
- *  wzorzec co objazd rynną w sekcji 5. */
-function dedupeVertices(points: readonly RouteVertex[]): readonly RouteVertex[] {
-  return points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
 }
 
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
@@ -3090,7 +3383,14 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // `bayNoEquipment` (`data-brak-wyposazenia`).
       apparatusOrigin: sym.meta.apparatusOrigin,
       apparatusTypeRef: sym.meta.apparatusTypeRef,
+      // Karta UX-04 (stan obiektu): stan rekordu aparatu — ta sama oś co aparaty stacji.
+      stanObiektu: sym.meta.stanObiektu,
       bayReserve: sym.meta.bayReserve,
+      // UX-04/POLE-LINIOWE-WZORZEC: rodzaj aparatu ENM — czwarta dana tej jawnej listy
+      // (lekcja V12K-217/219): audytor DOM `data-apparatus-kind` i sondy rodzaju aparatu.
+      apparatusKind: sym.meta.apparatusKind,
+      // UX-04 (rozszerzenie 4): numer odgałęzienia toru pola — piąta dana tej jawnej listy.
+      odgalezienieToru: sym.meta.odgalezienieToru,
     },
     // V12K-219: rodzaj uziemienia punktu neutralnego. Druga po `voltageClass`
     // dana, która wypadała w tej samej jawnej liście pól — glif rysowałby
@@ -3124,9 +3424,9 @@ function unionRects(rects: readonly V3Rect[]): V3Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+/** Gabaryt symbolu sceny — dla bloku zabezpieczeń jego ramka (`symbols/blokZabezpieczen.ts`). */
 function symbolRect(sym: PreviewSymbol): V3Rect {
-  const def = SYMBOL_DEFS[sym.symbolId];
-  return { x: sym.x, y: sym.y, width: def.width, height: def.height };
+  return gabarytSymbolu(sym);
 }
 
 /** KROPKA-WEZLOWA (V12K-150): kropka węzłowa (`junction`/`branchJunction`) to
@@ -3690,6 +3990,28 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // KD-5: kompozycja GEOMETRYCZNA (pełny szczegół) jest PRAWDĄ ŚWIATA na
     // każdym LOD — patrz deklaracja `gpzGeometry` wyżej.
     gpzGeometry = gpzLayout;
+    // UX-04/POLE-LINIOWE-WZORZEC: braki przyłączeń aparatów pól SN (porty ENM) — przyczyna
+    // pełnym zdaniem w `stopNotes` (kod w `meta.missingData`), raz na scenę: kompozycja
+    // geometryczna jest prawdą świata na każdym LOD.
+    for (const brak of gpzLayout.brakiPrzylaczy) {
+      stopNotes.push(
+        brak.deviceRef
+          ? `GPZ: pole „${brak.bayRef}", aparat „${brak.deviceRef}" — ${brak.przyczyna}; przewód do aparatu nie jest rysowany.`
+          : `GPZ: pole „${brak.bayRef}" — ${brak.przyczyna}.`,
+      );
+    }
+    // F10.5 (spec §20.2), parytet ze stacjami: braki topologiczne funkcji pól SN GPZ (np. 67N
+    // bez potwierdzonego źródła 3U₀) — ostrzeżenie, NIE błąd blokujący; treść z tej samej
+    // funkcji co adnotacja „!" przy przekaźniku (`brakiTopologiiFunkcjiPola`).
+    if (gpzLayout.brakiTopologiiFunkcji.length > 0) {
+      stopNotes.push(
+        'GPZ: walidacja topologiczna funkcji zabezpieczeń (spec §20.2) — ostrzeżenia (NIE błąd blokujący): '
+          + gpzLayout.brakiTopologiiFunkcji
+            .map((pole) => `${pole.bayRef} (${pole.gaps.map(protectionTopologyGapLabel).join('; ')})`)
+            .join(', ')
+          + '.',
+      );
+    }
     // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
     // KD-5 (dług nazwany w V12K-285): na L0 blok GPZ NIE jest rysowany polami —
     // sekcja 4 emituje zamiast tego jego reprezentację ZWINIĘTĄ (jeden symbol
@@ -3718,7 +4040,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // -- 4. Skomponuj GPZ → preview + etykiety + meta. -------------------------
   if (gpzComposition) {
     allSymbols.push(...gpzComposition.symbols.map(gpzSymbolToPreview));
-    // F9.9 R-1 (spec §17.1): okręgi przekaźników GPZ — warstwa adnotacji, ten
+    // F9.9 R-1 (spec §17.1): bloki zabezpieczeń pól GPZ — warstwa adnotacji, ten
     // sam kształt meta co stacje (`composeRowStation`). F11.1: tor wyzwalania
     // TERAZ możliwy (patrz `protectionSegments`/`measurementSegments` niżej) —
     // wyjątek „zawsze bez toru" ZNIESIONY, patrz docstring
@@ -3737,7 +4059,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           testId: unikalnyTestIdGpzAdnotacji(`${s.bayRef}#${s.symbolId}`),
           ownerRef: s.bayRef,
           elementKind: 'protectionAnnotation',
-          protectionCodes: s.protectionCodes,
+          // F10.5 (spec §20.2), parytet ze stacjami (`composeRowStation`): adnotacja „!".
+          topologyGaps: s.protectionTopologyGaps,
+          // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: ramka bloku zabezpieczeń pola — przepisana
+          // 1:1, rysuje ją `ProtectionRelayGlyph` (ta sama meta co pole stacji).
+          ramkaBlokuPrzekaznika: s.ramkaBloku,
+          wierszeBlokuPrzekaznika: s.wierszeBloku,
+          wejsciaBlokuPrzekaznika: s.wejsciaBloku,
         },
       })),
     );
@@ -3786,6 +4114,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // (uzupełniane też w sekcji 6, laterale) — patrz sprawdzenie po sekcji 6
   // niżej („DER, którego connectionRef nie rozwiązuje się do stacji sceny").
   const drawnStationIds = new Set<string>();
+  /** Przyłącza magistrali bez pola liniowego narysowanych stacji (`dociagnijPrzylaczaBezPola`). */
+  const przylaczaMagistraliBezPola: PrzylaczeBezPola[] = [];
   /** K2: stacje narysowane per bieg odgałęzienia/feedera (kolejność rysunku). */
   const stacjeBieguRysunku = new Map<string, string[]>();
   const dopiszStacjeBiegu = (runId: string, stationId: string): void => {
@@ -3861,6 +4191,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           );
     sheetRowLayouts[sheetRowIndex] = rowLayout;
     const isLastSheetRow = sheetRowIndex === sheetRowLayouts.length - 1;
+    /** §16-v3: dół rezerwacji biegu otwartego ciągu głównego tego wiersza (wiersz 0
+     *  bez stacji) — `null`, gdy wiersz nie ma takiego biegu. Kursor pakowania
+     *  treści pod wierszem nie wchodzi powyżej (`OPEN_RUN_BAND_BELOW`). */
+    let openTrunkRunReservedBottom: number | null = null;
     /** Stacje TEGO wiersza arkusza (podciąg `mainRow`). */
     const rowStations: RowStation[] = [];
     /** Prawa krawędź wiersza magistrali (bez odgałęzień). */
@@ -3878,6 +4212,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       mainRowById.set(rowStation.id, rowStation);
       bandRightX = Math.max(bandRightX, col.x + col.width);
       drawnStationIds.add(measureInput.id);
+      przylaczaMagistraliBezPola.push(...composed.przylaczaBezPola);
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
@@ -3933,6 +4268,76 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       sheetRowIndex === 0 ? gpzChannelSlot : null,
     );
     const lateralChannelXById = channelPlan.byRunId;
+    // ODEJŚCIA-ZAGNIEŻDŻONE: kolejność kompozycji — w obrębie jednej szczeliny
+    // kanałów płytszy lateral na kanale skrajnym prawym (`kolejnoscKompozycjiLateralow`).
+    const rowRunsKompozycji = kolejnoscKompozycjiLateralow(rowBranchRuns, channelPlan);
+    /** Feedery z pól GPZ TEGO wiersza: przydział pola i jego dolny port — JEDNO źródło
+     *  dla planu poziomów biegów otwartych (niżej) i budowy feederów (sekcja 6).
+     *  KANON DEDYKOWANYCH PÓL (dyrektywa właściciela, 2026-07-17): relacja
+     *  pierwszoklasowa `corridor.meta.gpz_field_ref` (przydział backendu
+     *  `_allocate_gpz_line_field_for_branch`); dla migawek bez przydziału — KOLEJNE
+     *  pole liniowe w kolejności kompozycji (licznik rośnie tylko dla feederów, którym
+     *  pole znaleziono — jak dawny `gpzFeederCount`). */
+    const feederyPolGpz = new Map<string, {
+      readonly assignedFieldRef: unknown;
+      readonly lineBayCount: number;
+      readonly port: { readonly x: number; readonly y: number } | null;
+      /** Bieg otwarty: ciąg bez żadnej stacji, ale z segmentami ENM. */
+      readonly otwarty: boolean;
+    }>();
+    if (gpzGeometry != null && gpzData != null) {
+      const lineBayRefs = findGpzLineBayRefs(gpzData);
+      const corridorsSnapshotu =
+        (snapshot as { corridors?: ReadonlyArray<{ ref_id?: string; meta?: Record<string, unknown> }> }).corridors ?? [];
+      for (const run of rowRunsKompozycji) {
+        const cableRun = cableRunById.get(run.id);
+        if ((cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) !== gpzData.id) continue;
+        const assignedFieldRef = corridorsSnapshotu.find((c) => c.ref_id === run.id)?.meta?.['gpz_field_ref'];
+        const feederBayRef =
+          typeof assignedFieldRef === 'string' && assignedFieldRef
+            ? assignedFieldRef
+            : lineBayRefs[1 + gpzFeederCount];
+        const port = feederBayRef ? gpzBayBottomPort(gpzGeometry, feederBayRef) : null;
+        if (port) gpzFeederCount += 1;
+        feederyPolGpz.set(run.id, {
+          assignedFieldRef,
+          lineBayCount: lineBayRefs.length,
+          port,
+          // Ten sam predykat co `buildRowLayout(...).measureInputs.length === 0`
+          // (każda stacja obecna w `stationById` daje wejście pomiaru).
+          otwarty: !run.stationRefs.some((id) => stationById.has(id)) && (cableRun?.segmentPaths?.length ?? 0) > 0,
+        });
+      }
+    }
+    /** Biegi otwarte z pól GPZ TEGO wiersza (feedery bez stacji) — wejście planu poziomów. */
+    const otwarteFeederyPolGpz: BiegOtwartyZPolaGpz[] = [...feederyPolGpz.entries()]
+      .filter(([, f]) => f.otwarty && f.port != null)
+      .map(([runId, f]) => ({ klucz: runId, portX: f.port!.x }));
+    /** Ciąg główny bez stacji (wiersz 0) jest biegiem otwartym spod pola GPZ. */
+    const ciagGlownyOtwarty =
+      sheetRowIndex === 0 && rowStations.length === 0 && gpzGeometry != null && gpzData != null
+      && (mainCableRun?.segmentPaths?.length ?? 0) > 0;
+    /** Plan poziomów biegów otwartych z pól GPZ. Z ciągiem głównym otwartym: liczony
+     *  TU, bo poziom ciągu głównego jest też poziomem kotwic punktów odgałęźnych na
+     *  nim; bez niego — przy pierwszym feederze otwartym (`zaplanujFeederyOtwarte`),
+     *  pod treścią spakowaną do tej chwili. */
+    let planBiegowOtwartychGpz: ReadonlyMap<string, number> | null = ciagGlownyOtwarty
+      ? poziomyBiegowOtwartychZPolGpz(openRunCorridorY(gpzGeometry!), [
+          // Ten sam port co trasa biegu niżej (`findGpzTrunkBottomPort`, funkcja czysta
+          // poza notatkami — notatki trafią do `stopNotes` przy rysowaniu biegu).
+          { klucz: KLUCZ_CIAGU_GLOWNEGO_GPZ, portX: findGpzTrunkBottomPort(gpzGeometry!, gpzData!, []).x },
+          ...otwarteFeederyPolGpz,
+        ])
+      : null;
+    const zaplanujFeederyOtwarte = (poziomBazowy: number): ReadonlyMap<string, number> => {
+      if (planBiegowOtwartychGpz == null) {
+        planBiegowOtwartychGpz = poziomyBiegowOtwartychZPolGpz(poziomBazowy, otwarteFeederyPolGpz);
+        // Rezerwacja całego pasa biegów otwartych naraz — kolejna treść (feedery ze
+        // stacjami, odgałęzienia) pakuje się pod nim.
+        packer.setCursor(Math.max(...planBiegowOtwartychGpz.values()) + OPEN_RUN_BAND_BELOW);
+      }
+      return planBiegowOtwartychGpz;
+    };
     const trunkForbiddenCutXs = new Set<number>([
       ...channelPlan.byRunId.values(),
       ...channelPlan.byBranchPointRef.values(),
@@ -3944,8 +4349,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // biegiem otwartym pod GPZ (`openRunCorridorY`) — kotwica punktu leży na TYM
     // poziomie, inaczej nie trafiłaby w tor i punkt zostałby bez symbolu.
     const branchPointCorridorY =
-      sheetRowIndex === 0 && rowStations.length === 0 && gpzGeometry
-        ? openRunCorridorY(gpzGeometry)
+      planBiegowOtwartychGpz != null && ciagGlownyOtwarty
+        ? planBiegowOtwartychGpz.get(KLUCZ_CIAGU_GLOWNEGO_GPZ)!
         : interStationCorridorY(rowLayout, lod);
     const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
     const rowAnchorByRef = new Map<string, RouteVertex>();
@@ -4022,13 +4427,26 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           const port = gpzBayBottomPort(gpzGeometry!, bayRef);
           if (!port || (port.x === gpzPort.x && port.y === gpzPort.y)) return false;
           const entryX = first.composed.entryPort.x;
+          // Pas pola = od szyny GPZ do dolnego portu pola (+ pas 2×GRID): korytarz w tym
+          // paśmie przechodzi przez stos INNEGO pola liniowego — przez jego przewody, opisy
+          // przekładników i blok kodów zabezpieczenia (pomiar: fikstura kanwy
+          // `b2Droga-add_sn_bay`, korytarz y=696 przez pole dodane w GPZ — wiersz kodów „ZS”
+          // na kablu i koniec przewodu pola na magistrali). Dawny warunek patrzył tylko na
+          // poziom portu, więc pole sięgające pod korytarz przepuszczał.
           return (
-            Math.abs(port.y - corridorY) < 2 * GRID &&
+            corridorY > gpzGeometry!.bbox.y &&
+            corridorY < port.y + 2 * GRID &&
             port.x > Math.min(gpzPort.x, entryX) &&
             port.x < Math.max(gpzPort.x, entryX)
           );
         });
-        const route = straightRiserCrossesGpzBus || corridorLevelHitsOtherLineBayPort
+        // Korytarz POWYŻEJ dolnego portu pola magistrali: prosty pion `connectViaCorridor`
+        // biegłby w górę przez WŁASNY stos pola (kabel nałożony na przewody między aparatami
+        // pola — dwa różne obiekty na jednym odcinku; pomiar: fikstury `geometria_stacji_*`
+        // i `punkt_startu_stacja_na_odcinku_*`, przewody pola 3 i 4 × przęsło GPZ→S0 po
+        // 8 j.św.). Ten sam objazd pod GPZ co dla szyny.
+        const corridorAboveGpzPort = corridorY < gpzPort.y;
+        const route = straightRiserCrossesGpzBus || corridorLevelHitsOtherLineBayPort || corridorAboveGpzPort
           ? (() => {
               const gpzBbox = gpzGeometry!.bbox;
               // Recenzja NO-GO 2026-07-17 pkt 1: bbox GPZ OBEJMUJE ramę strefy
@@ -4064,9 +4482,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             });
           });
         } else {
+          const ref = incomingSegmentRef(mainCableRun, first.id);
           allSegments.push({
             points: route.points,
-            meta: { kind: 'snTrunk', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
+            meta: { kind: 'snTrunk', ownerRef: ref, elementKind: 'segment' },
           });
         }
         allRouteGeoms.push({ points: route.points });
@@ -4235,7 +4654,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const paths = mainCableRun!.segmentPaths!;
-        const belowY = openRunCorridorY(gpzGeometry!);
+        const belowY = planBiegowOtwartychGpz!.get(KLUCZ_CIAGU_GLOWNEGO_GPZ)!;
         // Karta SLD-SUBSTRAT (kontynuacja): bieg otwarty sięga ZA ostatnią
         // kotwicę punktu odgałęźnego, który na nim leży (np. ZKSN na pierwszym
         // odcinku, stacja klienta w odgałęzieniu) — ta sama reguła co ogon ciągu.
@@ -4290,6 +4709,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           allRouteGeoms.push({ points });
         });
         emitOpenTerminalTick(xEnd, belowY, true, paths[paths.length - 1].segmentRef, lod === 2);
+        openTrunkRunReservedBottom = Math.max(...planBiegowOtwartychGpz!.values()) + OPEN_RUN_BAND_BELOW;
       } else {
         stopNotes.push(
           'Ciąg główny z segmentami ENM, ale bez stacji I bez portu GPZ — bieg otwarty nie ma punktu zaczepienia (sieć bez zasilania).',
@@ -4428,10 +4848,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // wiersza startują poniżej (kursor packera ustawiony na `dropBandBottom`).
     const dropBandTop = mainRowBottom;
     const dropBandBottom = snapUp(mainRowBottom + dropBandHeight);
-    packer.setCursor(dropBandBottom);
+    packer.setCursor(Math.max(dropBandBottom, openTrunkRunReservedBottom ?? dropBandBottom));
 
-    for (let li = 0; li < rowBranchRuns.length; li++) {
-    const run = rowBranchRuns[li];
+    for (let li = 0; li < rowRunsKompozycji.length; li++) {
+    const run = rowRunsKompozycji[li];
     const cableRun = cableRunById.get(run.id);
 
     // -- Feeder z POLA GPZ (start_branch_segment_sn z field_ref GPZ) --------
@@ -4442,11 +4862,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // zasilony z KOLEJNEGO wolnego pola liniowego GPZ (własny pion od portu
     // głowicy tego pola — na lewo od wszystkich wierszy, więc bez kolizji;
     // przecięcia z korytarzem magistrali dostają mostki §22.1 automatycznie).
-    const isGpzFeeder =
-      gpzGeometry != null &&
-      gpzData != null &&
-      (cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
-    if (isGpzFeeder) {
+    const feederPolaGpz = feederyPolGpz.get(run.id);
+    if (feederPolaGpz) {
       // KANON DEDYKOWANYCH PÓL (dyrektywa właściciela, 2026-07-17): z jednego
       // pola liniowego NIGDY nie wychodzą dwa kable — każde wyprowadzenie na
       // sieć ma WŁASNE pole. Relacja pierwszoklasowa:
@@ -4456,34 +4873,28 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // wolne pole liniowe w kolejności kompozycji. Brak dedykowanego pola ⇒
       // ciąg NIE jest rysowany (uczciwy stopNote — rysowanie feederu z
       // cudzego pola byłoby fabrykacją elektrycznie błędnego układu).
-      const corridorRecord = (
-        (snapshot as { corridors?: ReadonlyArray<{ ref_id?: string; meta?: Record<string, unknown> }> }).corridors ?? []
-      ).find((c) => c.ref_id === run.id);
-      const assignedFieldRef = corridorRecord?.meta?.['gpz_field_ref'];
-      const lineBayRefs = findGpzLineBayRefs(gpzData!);
-      const feederBayRef =
-        typeof assignedFieldRef === 'string' && assignedFieldRef
-          ? assignedFieldRef
-          : lineBayRefs[1 + gpzFeederCount];
-      const feederPort = feederBayRef ? gpzBayBottomPort(gpzGeometry!, feederBayRef) : null;
+      // Przydział pola i port — z JEDNEGO wyliczenia (`feederyPolGpz`, wyżej).
+      const feederPort = feederPolaGpz.port;
       if (!feederPort) {
         stopNotes.push(
-          `Feeder z pola GPZ „${run.id}": brak DEDYKOWANEGO pola liniowego GPZ (przydział=${String(assignedFieldRef ?? 'brak')}, pól liniowych=${lineBayRefs.length}) — ciąg pominięty; z jednego pola nie wolno wyprowadzić dwóch kabli.`,
+          `Feeder z pola GPZ „${run.id}": brak DEDYKOWANEGO pola liniowego GPZ (przydział=${String(feederPolaGpz.assignedFieldRef ?? 'brak')}, pól liniowych=${feederPolaGpz.lineBayCount}) — ciąg pominięty; z jednego pola nie wolno wyprowadzić dwóch kabli.`,
         );
         continue;
       }
-      gpzFeederCount += 1;
       const gpzBottom = snapUp(gpzGeometry!.bbox.y + gpzGeometry!.bbox.height);
       let feederLayout = buildRowLayout(
         run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true,
       );
 
       if (feederLayout.measureInputs.length === 0) {
-        // Feeder OTWARTY (bez stacji) — bieg §16-v3 od portu pola GPZ.
+        // Feeder OTWARTY (bez stacji) — bieg §16-v3 od portu pola GPZ, na poziomie
+        // z planu biegów otwartych z pól GPZ (układ zagnieżdżony, zero przecięć).
         const openPaths = cableRun?.segmentPaths ?? [];
         if (openPaths.length > 0) {
           const riserX = feederPort.x;
-          const yRow = Math.max(snapUp(packer.nextTop()) + 2 * GRID, gpzBottom + 2 * GRID);
+          const yRow = zaplanujFeederyOtwarte(
+            Math.max(snapUp(packer.nextTop()) + 2 * GRID, gpzBottom + 2 * GRID),
+          ).get(run.id)!;
           const xEnd = Math.max(mainRowDx, snapUp(riserX) + openPaths.length * OPEN_RUN_PIECE_SPAN);
           openPaths.forEach((sp, i) => {
             const to = xEnd - (openPaths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
@@ -4512,7 +4923,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             allRouteGeoms.push({ points });
           });
           emitOpenTerminalTick(xEnd, yRow, true, openPaths[openPaths.length - 1].segmentRef, lod === 2);
-          packer.setCursor(yRow + 4 * GRID);
           lateralRunIds.push(run.id);
         }
         continue;
@@ -4540,6 +4950,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const composed = composeRowStation(measureInput, props, col, feederLayout.busAxisY, feederLayout.blockTopY, lod, stopNotes, edgeDomainByRef);
         feederRow.push({ id: measureInput.id, composed });
         drawnStationIds.add(measureInput.id);
+        przylaczaMagistraliBezPola.push(...composed.przylaczaBezPola);
         dopiszStacjeBiegu(run.id, measureInput.id);
         allSymbols.push(...composed.symbols);
         allSegments.push(...composed.segments);
@@ -4590,9 +5001,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           });
         });
       } else {
+        const ref = incomingSegmentRef(cableRun, first.id);
         allSegments.push({
           points: inPoints,
-          meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, first.id), elementKind: 'segment' },
+          meta: { kind: 'sn', ownerRef: ref, elementKind: 'segment' },
         });
       }
       allRouteGeoms.push({ points: inPoints });
@@ -4681,7 +5093,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     );
     if (!origin) {
       stopNotes.push(
-        `Lateral „${run.id}": początek odgałęzienia nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a), nie ma pola odgałęźnego dla tego branchPos, albo punkt odgałęźny nie trafił na rysunek — ciąg pominięty.`,
+        `Lateral „${run.id}": początek odgałęzienia nie leży na magistrali głównej (odgałęzienie zagnieżdżone, POZA zakresem F6a), pole startowe ciągu (startingBayRef) nie jest polem odgałęźnym stacji-origin, albo punkt odgałęźny nie trafił na rysunek — ciąg pominięty.`,
       );
       continue;
     }
@@ -4718,12 +5130,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
      *    `GRID` PONIŻEJ korytarza (kolejny wolny poziom strefy B4/B5, ta sama
      *    zasada rozdzielania sub-poziomów co `trunkCorridorYOf`).
      */
-    const descentHead = (stripTopY: number): readonly RouteVertex[] => {
+    const descentHead = (): readonly RouteVertex[] => {
       if (origin.kind !== 'branch-point') {
+        // ODEJŚCIA-ZAGNIEŻDŻONE: własny poziom odejścia pola (`departureLevelYOf`);
+        // przy jednym polu odgałęźnym stacji to `stripTopY` (zachowanie sprzed zmiany).
+        const departureY = departureLevelYOf(
+          rowLayout, origin.branchPos, origin.originRow?.composed.branchBayRefs.length ?? 1,
+        );
         return [
           { x: originPort.x, y: originPort.y },
-          { x: originPort.x, y: stripTopY },
-          { x: channelX, y: stripTopY },
+          { x: originPort.x, y: departureY },
+          { x: channelX, y: departureY },
         ];
       }
       if (originPort.x === channelX) return [{ x: channelX, y: originPort.y }];
@@ -4755,7 +5172,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           const raw: RouteVertex[] =
             i === 0
               ? [
-                  ...descentHead(stripTopY),
+                  ...descentHead(),
                   { x: channelX, y: to },
                 ]
               : [
@@ -4778,8 +5195,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           allRouteGeoms.push({ points });
         });
         emitOpenTerminalTick(channelX, yEnd, false, openPaths[openPaths.length - 1].segmentRef, lod === 2);
-        // Rezerwacja pionowa: słupek + etykieta L2 mieszczą się w 4×GRID.
-        packer.setCursor(yEnd + 4 * GRID);
+        packer.setCursor(yEnd + OPEN_RUN_BAND_BELOW);
         lateralRunIds.push(run.id);
       }
       continue;
@@ -4803,7 +5219,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // liczymy je zawsze przy pełnym szczególe; L1/L2 mają identyczny port pola,
     // więc `dx` bez zmian, zmienia się tylko L0 (dosuwa laterale do L1/L2).
     const provisional = composeRowStation(layout.geometryInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, 2, [], edgeDomainByRef);
-    const dx = snapToGrid(channelX - provisional.entryPort.x);
+    // ODEJŚCIA-ZAGNIEŻDŻONE: piony GŁĘBSZYCH lateralów tej samej szczeliny (komponowane
+    // później, wszystkie na lewo od `channelX` — `kolejnoscKompozycjiLateralow`) muszą
+    // minąć ten wiersz po lewej stronie jego rynny wejścia; wiersz ustępuje w prawo.
+    const szczelina = channelPlan.gapOwnerByRunId.get(run.id);
+    const glebszeKanalySzczeliny = rowRunsKompozycji
+      .slice(li + 1)
+      .filter((laterRun) => szczelina != null && channelPlan.gapOwnerByRunId.get(laterRun.id) === szczelina)
+      .map((laterRun) => lateralChannelXById.get(laterRun.id))
+      .filter((x): x is number => x != null);
+    const dxDoKanalu = snapToGrid(channelX - provisional.entryPort.x);
+    const dx = dxDoKanalu + przesuniecieZaGlebszymiKanalami(firstCol0.x + dxDoKanalu, glebszeKanalySzczeliny);
     // pkt 13 (recenzja NO-GO 2026-07-17): korytarz mierzony na TYM SAMYM
     // tekście, który zostanie narysowany (para końców origin↔stacja0).
     // SCHEMAT-10 S1 (V12K-135, „jedna kotwica"): REZERWACJA wysokości korytarza
@@ -4828,7 +5254,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // w kolejności komponowania (`li+1..`, głębszych w grzebieniu) — rezerwowane
     // teraz, przy przesunięciu wyłącznie w X (współrzędne globalne z prepassu).
     layout = shiftRowLayout(layout, dx, 0);
-    const laterChannelXs = rowBranchRuns
+    const laterChannelXs = rowRunsKompozycji
       .slice(li + 1)
       .map((laterRun) => lateralChannelXById.get(laterRun.id))
       .filter((x): x is number => x != null);
@@ -4847,7 +5273,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // col0.x − 2×GRID`, lewa krawędź jogu §22.3) do prawej krawędzi ostatniej
     // kolumny + rezerwa otwartego ogona (biegnie w prawo od ostatniej stacji).
     const cols = layout.columnsResult.columns;
-    const footprintLeft = cols[0].x - 2 * GRID;
+    // ODEJŚCIA-ZAGNIEŻDŻONE: wiersz odsunięty za głębsze kanały szczeliny wchodzi jogiem
+    // z kanału w prawo — kanał i jog należą do footprintu (packer nie sadza tam sąsiada).
+    const footprintLeft = Math.min(cols[0].x - 2 * GRID, channelX);
     let footprintRight = Math.max(...cols.map((c) => c.x + c.width));
     const lastLateralId = layout.measureInputs[layout.measureInputs.length - 1].id;
     const tailPieceCount = openTailSegmentRefs(cableRun, lastLateralId).length;
@@ -4879,6 +5307,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const composed = composeRowStation(measureInput, props, col, layout.busAxisY, layout.blockTopY, lod, stopNotes, edgeDomainByRef);
       lateralRow.push({ id: measureInput.id, composed });
       drawnStationIds.add(measureInput.id);
+      przylaczaMagistraliBezPola.push(...composed.przylaczaBezPola);
       dopiszStacjeBiegu(run.id, measureInput.id);
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
@@ -4926,8 +5355,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // kolejnych punktów (gdy `originPort.x === channelX`, teoretyczny
       // przypadek zerowy, ORAZ zawsze między ostatnimi dwoma punktami po
       // FIX-1 — patrz DECYZJA przy `rawJogPoints` niżej) są usuwane, żeby nie
-      // emitować zdegenerowanych odcinków.
-      const stripTopY = stripTopYOf(rowLayout);
+      // emitować zdegenerowanych odcinków. ODEJŚCIA-ZAGNIEŻDŻONE: poziom jogu to
+      // poziom odejścia pola (`descentHead` → `departureLevelYOf`), przy jednym
+      // polu odgałęźnym stacji równy `stripTopY`.
 
       // F9.3 (spec §14.4 „jawne rozgałęzienia"): akcent węzła rozgałęzienia —
       // NIE na `originPort` (port dolny pola odgałęźnego — TAM już stoi JEGO
@@ -4999,7 +5429,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const rawJogPoints: RouteVertex[] = (() => {
         if (lod === 0) {
           return [
-            ...descentHead(stripTopY),
+            ...descentHead(),
             { x: channelX, y: entry.y },
             { x: entry.x, y: entry.y },
           ];
@@ -5008,7 +5438,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const gutterX = snapToGrid(col0.x - 2 * GRID);
         const underY = trunkCorridorYOf(layout) + GRID;
         return [
-          ...descentHead(stripTopY),
+          ...descentHead(),
           { x: channelX, y: dy },
           { x: gutterX, y: dy },
           { x: gutterX, y: underY },
@@ -5183,6 +5613,24 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
   }
 
+  dociagnijPrzylaczaBezPola(allSegments, przylaczaMagistraliBezPola);
+
+  // -- 6b'. STYK CZŁONÓW NA OBCYM PRZEWODZIE (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja §11.7
+  // pkt 1): punkt cięcia przęsła wieloczłonowego (`splitPolylineIntoPieces`, każde miejsce
+  // cięcia) wypadający na obcym przewodzie ukrywa skrzyżowanie przed `interiorCrossings`
+  // i kanwa nie rysuje mostka. Styk przesuwany wzdłuż własnej prostej o raster — PO złożeniu
+  // wszystkich odcinków (obcy przewód bywa rysowany później niż przęsło) i PRZED elementami
+  // toru (węzeł nazwany staje w styku już przesuniętym). `scene/stykiCzlonow.ts`.
+  {
+    const styki = odsunStykiCzlonow(allSegments, allSymbols.map(symbolRect));
+    allSegments.splice(0, allSegments.length, ...styki.segments);
+    for (const s of styki.nierozwiazane) {
+      stopNotes.push(
+        `Styk członów „${s.wlascicielPrzed ?? '?'}" / „${s.wlascicielZa ?? '?'}" w (${s.punkt.x}, ${s.punkt.y}) leży na przewodzie „${s.obcyPrzewod ?? '?'}" — na obu członach brak wolnego punktu rastru do przesunięcia; skrzyżowanie bez mostka.`,
+      );
+    }
+  }
+
   // -- 6c. ELEMENTY NA TORZE (karta SLD-SUBSTRAT, kontynuacja): łączniki
   // sekcyjne, węzły nazwane i powiązania pierścieniowe — położenie z geometrii
   // odcinków już narysowanych (`scene/elementyToru.ts`), więc PO wszystkich
@@ -5318,10 +5766,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         continue;
       }
       const obrysNo = obrysPunktuNo(kotwica.x, kotwica.y);
+      // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: NOP jest FUNKCJĄ łącznika, nie
+      // kolorem stanu — znacznik niesie BIEŻĄCE położenie tego łącznika (`status` gałęzi),
+      // rysowane geometrią i kaflem stanu jak każdy łącznik.
+      const galazPunktu = galezNop.get(nopRef);
       allSymbols.push({
         symbolId: 'noPoint',
         x: obrysNo.x,
         y: obrysNo.y,
+        state: stanStatusuGalezi(galazPunktu?.status),
         meta: { testId: `sld-v3-nop-${nopRef}`, ownerRef: nopRef, elementKind: 'apparatus' },
       });
       // Podpis „NO" na L1/L2 — jak NO stacji (GS-1): na L0 (mapa sieci, skala
@@ -5363,7 +5816,19 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     lod === 2
       ? simpleAnchored
       : simpleAnchored.filter(
-          (owner) => !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#apparatus-id-')),
+          (owner) =>
+            // Oznaczenia aparatów pola — pole stacji (`#apparatus-id-`) i pole GPZ
+            // (`#etykieta-aparatu-`) JEDNĄ regułą poziomu szczegółu: LOD2, oznaczenia przekładników
+            // (`odLod: 1`, odbiór B-02 pkt 6) od LOD1; etykieta stanu nieznanego (`unresolved`)
+            // zostaje na każdym LOD (stan łącznika nie znika z rysunku).
+            !(
+              owner.ownerKind === 'apparatus'
+              && (owner.ownerRef.includes('#apparatus-id-') || owner.ownerRef.includes('#etykieta-aparatu-'))
+              && !owner.unresolved
+              && (owner.odLod ?? 2) > lod
+            )
+            // §11.7 pkt 6: oznaczenia zacisków P1/P2 przekładnika — szczegół pola, wyłącznie LOD 2.
+            && !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA)),
         );
   const resolvedLabels: readonly OwnedLabel[] = resolveLabels({
     segmentSpans,
@@ -5384,10 +5849,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // etykietami przęseł, które też są L2-only).
   const terminationLabels: OwnedLabel[] = [];
   if (lod === 2) {
-    const headDef = SYMBOL_DEFS.cableHead;
-    const south = headDef.ports.find((pt) => pt.dir === 'S');
-    const portDx = south?.x ?? headDef.width / 2;
-    const portDy = south?.y ?? headDef.height;
     const endpointSet = new Set<string>();
     allSegments.forEach((seg) => {
       const first = seg.points[0];
@@ -5401,7 +5862,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (!captionByOwnerPrefix.has(base)) captionByOwnerPrefix.set(base, pc.text);
     }
     for (const head of allSymbols) {
-      if (head.symbolId !== 'cableHead') continue;
+      // UX-04/POLE-LINIOWE-WZORZEC: koniec toru kablowego wg RODZAJU symbolu (głowica
+      // kanoniczna i QET, przekładnik Ferrantiego na kablu za głowicą) i z gabarytu
+      // TEGO symbolu — `czyZakonczenieToruKablowego`, jeden predykat z wyrocznią niżej.
+      if (!czyZakonczenieToruKablowego(head.symbolId)) continue;
+      const headDef = SYMBOL_DEFS[head.symbolId];
+      const south = headDef.ports.find((pt) => pt.dir === 'S');
+      const portDx = south?.x ?? headDef.width / 2;
+      const portDy = south?.y ?? headDef.height;
       if (endpointSet.has(`${head.x + portDx},${head.y + portDy}`)) continue;
       // BLOK-LATERAL-WLASNOSC (reguła KLASA §5 „uczciwość w obrębie jednego
       // pliku"): dawny zapas `?? 'nieznane-pole'` FABRYKOWAŁ ref właściciela —
@@ -5456,7 +5924,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // Odrzucenia trafiają do `stopNotes` (audytowalne, nie ciche) — po
   // poprawnym S2 zbiór jest pusty na fixturze; niepusty = sygnał gęstości do
   // rozstrzygnięcia rezerwacją w kolejnej iteracji, nie cichy dług.
-  const declutter = declutterLabels(rawLabels, allSymbols.map(symbolRect));
+  // Blok zabezpieczeń: przeszkodą napisów jest obrys ramki, nie wnętrze z jego wierszami kodów.
+  const declutter = declutterLabels(rawLabels, allSymbols.flatMap(przeszkodySymbolu));
   const labels: readonly OwnedLabel[] = declutter.kept;
   if (declutter.dropped.length > 0) {
     stopNotes.push(
@@ -5464,37 +5933,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         `(silnik etykiet, priorytet S-id>nazwa>moc>parametry): ` +
         `${declutter.dropped.map((l) => `${l.ownerKind}:${l.ownerRef}`).join(', ')} (audyt §3 D2).`,
     );
-  }
-
-  // -- 7.5 (SCHEMAT-10 S7-P2, V12K-137, §22.1): węzeł T — rozcięcie kabli
-  // poziomych (magistrala/płytszy lateral) w punktach styku z pionami zejść
-  // lateralnych (styk KOŃCEM zamiast przecięcia wnętrza) + kropka węzłowa.
-  // `interiorCrossings` sn×sn → 0; piony/poziomy/załamania NIEZMIENIONE
-  // (rozcięcie współliniowe), elektryka niezmieniona (ten sam `ownerRef`).
-  const tee = resolveTeeJunctions(allSegments);
-  if (tee.dots.length > 0) {
-    allSegments.length = 0;
-    allSegments.push(...tee.segments);
-    const junctionDef = SYMBOL_DEFS.junction;
-    for (const d of tee.dots) {
-      allSymbols.push({
-        symbolId: 'junction',
-        x: d.x - junctionDef.width / 2,
-        y: d.y - junctionDef.height / 2,
-        meta: { elementKind: 'apparatus', testId: `sld-v3-wezel-t-${d.x}-${d.y}` },
-      });
-    }
-    // Te same punkty T rozcinają geometrię tras (`allRouteGeoms`) — kabel
-    // poziomy KOŃCZY się teraz w punkcie odczepu, więc `classifyRouteNodes`
-    // (sekcja 8) reklasyfikuje dawne skrzyżowanie na WĘZEŁ (koniec trasy na
-    // wnętrzu pionu), a metryka `crossingCount` (`scene.crossings`) spada do
-    // zera — spójnie z `interiorCrossings` wyroczni §22.1. Pion zejścia NIE
-    // dzieli się (punkt leży na jego pionie, nie na krawędzi poziomej).
-    const splitGeoms = allRouteGeoms.flatMap((g) =>
-      splitPolylineAtPoints(g.points, tee.dots).map((pts) => ({ points: pts })),
-    );
-    allRouteGeoms.length = 0;
-    allRouteGeoms.push(...splitGeoms);
   }
 
   // -- 7.6 (KROPKA-WEZLOWA, V12K-150, spec §22.1 / IEC 60617): kropka węzłowa
@@ -5507,7 +5945,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // (`junction` 16×16), BEZ rezerwacji miejsca — NIE przesuwa NICZEGO (piony/
   // korytarze/crossings/kotwica nietknięte; geometria odczepu bez zmian).
   // Determinizm: sort po (y,x), dedupe po współrzędnej + względem istniejących
-  // kropek (tee/branchJunction). Dług W1b (V12K-150) zamknięty w scenie
+  // kropek (węzły nazwane toru). Dług W1b (V12K-150) zamknięty w scenie
   // produkcyjnej (nie tylko w zrzucie) — wyrocznia: `lateralBranchNodes`/
   // `junctionDotGaps` (`./crossings`).
   {
@@ -5519,25 +5957,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         existingDotCenters.add(`${s.x + d.width / 2},${s.y + d.height / 2}`);
       }
     }
-    const taps: RouteVertex[] = [];
-    const tapSeen = new Set<string>();
-    for (const seg of allSegments) {
-      const ref = seg.meta?.ownerRef ?? '';
-      if (!ref.includes('#lateral-') || ref.includes('#tee-')) continue;
-      const tap = seg.points[0];
-      if (!tap) continue;
-      const key = `${tap.x},${tap.y}`;
-      if (tapSeen.has(key) || existingDotCenters.has(key)) continue;
-      tapSeen.add(key);
-      taps.push(tap);
-    }
-    taps.sort((a, b) => (a.y - b.y) || (a.x - b.x));
-    for (const tap of taps) {
+    // Predykat parami z wyrocznią `lateralBranchNodes` — jedno źródło (`odczepyWezlowModelu`:
+    // odczep z węzła modelu, który jest rozgałęzieniem — co najmniej trzy ramiona toru).
+    const taps = odczepyWezlowModelu({ segments: allSegments, symbols: allSymbols }, SYMBOL_DEFS).filter(
+      (o) => !existingDotCenters.has(`${o.punkt.x},${o.punkt.y}`),
+    );
+    for (const { punkt: tap, wezelModelu } of taps) {
       allSymbols.push({
         symbolId: 'junction',
         x: tap.x - lateralDotDef.width / 2,
         y: tap.y - lateralDotDef.height / 2,
-        meta: { elementKind: 'apparatus', testId: `sld-v3-wezel-lateral-${tap.x}-${tap.y}` },
+        meta: { elementKind: 'apparatus', testId: `sld-v3-wezel-lateral-${tap.x}-${tap.y}`, wezelModelu },
       });
     }
   }
@@ -5731,12 +6161,13 @@ export function noSceneSymbolOverlaps(scene: SceneV3): boolean {
  * `source_connectivity_probe`/§14.1, poza zakresem F9.3).
  */
 export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly PreviewSymbol[] {
-  const cableHeads = scene.symbols.filter((s) => s.symbolId === 'cableHead');
+  const cableHeads = scene.symbols.filter((s) => czyZakonczenieToruKablowego(s.symbolId));
   if (cableHeads.length === 0) return [];
-  const def = SYMBOL_DEFS.cableHead;
-  const southPort = def.ports.find((p) => p.dir === 'S');
-  const portDx = southPort?.x ?? def.width / 2;
-  const portDy = southPort?.y ?? def.height;
+  const portSouth = (head: PreviewSymbol): { readonly x: number; readonly y: number } => {
+    const def = SYMBOL_DEFS[head.symbolId];
+    const southPort = def.ports.find((p) => p.dir === 'S');
+    return { x: head.x + (southPort?.x ?? def.width / 2), y: head.y + (southPort?.y ?? def.height) };
+  };
   const endpoints = new Set<string>();
   scene.segments.forEach((seg) => {
     const first = seg.points[0];
@@ -5745,8 +6176,8 @@ export function fieldEntryConnectionsReachCableHead(scene: SceneV3): readonly Pr
     if (last) endpoints.add(`${last.x},${last.y}`);
   });
   return cableHeads.filter((head) => {
-    const key = `${head.x + portDx},${head.y + portDy}`;
-    return !endpoints.has(key);
+    const port = portSouth(head);
+    return !endpoints.has(`${port.x},${port.y}`);
   });
 }
 
@@ -5810,7 +6241,11 @@ export interface LateralApparatusGap {
  *  (a) środek symbolu POZA osią pionową toru głównego jego pola (oś =
  *      mediana środków X aparatów SZEREGOWYCH o tym samym `ownerRef`);
  *  (c) istnieje POZIOMY odcinek odgałęzienia łączący oś z symbolem (dotyka
- *      bboxa symbolu i sięga osi na wysokości symbolu).
+ *      bboxa symbolu w poziomie i sięga osi) na wysokości od węzła odczepu do dołu symbolu.
+ *      Aparat z kaflem stanu wisi pod węzłem (`zwisAparatuBocznego`, uwaga właściciela
+ *      2026-11-04, wzorzec e²TANGO: węzeł → poziomo → pionowo w dół w górny styk), więc pas
+ *      wysokości zaczyna się `zwis` nad symbolem — ta sama funkcja co kompozycja (predykat
+ *      z jednego źródła).
  * Punkt (b) spec („tor główny identyczny z ES i bez ES") jest dowodzony
  * KONSTRUKCYJNIE: `buildBayStack`/`buildFieldStack` budują tor główny z
  * `mainItems` PRZED doklejeniem laterali (odcinki toru nie zależą od nich) —
@@ -5821,14 +6256,21 @@ export interface LateralApparatusGap {
 function lateralApparatusGapsForKinds(scene: SceneV3, kinds: ReadonlySet<string>): LateralApparatusGap[] {
   const byOwner = new Map<string, { laterals: typeof scene.symbols[number][]; serialXs: number[] }>();
   for (const sym of scene.symbols) {
-    const ownerRef = sym.meta?.ownerRef;
+    // UX-04 (rozszerzenie 4): aparaty odgałęzienia toru pola mają WŁASNĄ oś (kolumna
+    // odgałęzienia) — aparat boczny odgałęzienia ocenia się względem niej, a aparaty kolumny
+    // nie przesuwają osi toru głównego.
+    const ownerRef =
+      sym.meta?.ownerRef && sym.meta.odgalezienieToru != null
+        ? `${sym.meta.ownerRef}#odgalezienie-${sym.meta.odgalezienieToru}`
+        : sym.meta?.ownerRef;
     if (!ownerRef) continue;
     if (!byOwner.has(ownerRef)) byOwner.set(ownerRef, { laterals: [], serialXs: [] });
     const bucket = byOwner.get(ownerRef)!;
     const def = SYMBOL_DEFS[sym.symbolId];
-    if (kinds.has(sym.symbolId)) {
+    // UX-04: rodzaj semantyczny — uziemnik QET jest uziemnikiem (sonda §18.1 obejmuje oba).
+    if (kinds.has(rodzajSymbolu(sym.symbolId))) {
       bucket.laterals.push(sym);
-    } else if (LATERAL_ORACLE_KINDS.has(sym.symbolId)) {
+    } else if (LATERAL_ORACLE_KINDS.has(rodzajSymbolu(sym.symbolId))) {
       // inny rodzaj lateralu — nie wlicza się do osi
     } else if (sym.meta?.elementKind === 'apparatus') {
       bucket.serialXs.push(sym.x + def.width / 2);
@@ -5846,20 +6288,34 @@ function lateralApparatusGapsForKinds(scene: SceneV3, kinds: ReadonlySet<string>
         gaps.push({ symbolId: lat.symbolId, ownerRef, reason: 'on-main-axis' });
         continue;
       }
-      const touched = scene.segments.some((seg) => {
+      // Odczep = CIĄGŁY przewód poziomy od osi toru do symbolu na wysokości w obrysie
+      // symbolu. Aparaty boczne wspólnej kotwicy wiszą na jednym przewodzie złożonym z
+      // odcinków stykających się końcami (łańcuch KD-5, `odcinkiOdczepowBocznych`) — ta sama
+      // reguła co kompozycja, więc odcinki jednej wysokości scala się przed oceną zasięgu.
+      const poziomeWObrysie = new Map<number, [number, number][]>();
+      const gora = lat.y - zwisAparatuBocznego(lat.symbolId);
+      for (const seg of scene.segments) {
         for (let i = 0; i + 1 < seg.points.length; i++) {
           const a = seg.points[i];
           const b = seg.points[i + 1];
-          if (a.y !== b.y) continue;
-          const y = a.y;
-          const minX = Math.min(a.x, b.x);
-          const maxX = Math.max(a.x, b.x);
-          const inYSpan = y >= lat.y && y <= lat.y + def.height;
+          if (a.y !== b.y || a.y < gora || a.y > lat.y + def.height) continue;
+          const lista = poziomeWObrysie.get(a.y) ?? [];
+          lista.push([Math.min(a.x, b.x), Math.max(a.x, b.x)]);
+          poziomeWObrysie.set(a.y, lista);
+        }
+      }
+      const touched = [...poziomeWObrysie.values()].some((przedzialy) => {
+        const scalone: [number, number][] = [];
+        for (const [od, doX] of [...przedzialy].sort((p, q) => p[0] - q[0] || p[1] - q[1])) {
+          const ostatni = scalone[scalone.length - 1];
+          if (ostatni && od <= ostatni[1]) ostatni[1] = Math.max(ostatni[1], doX);
+          else scalone.push([od, doX]);
+        }
+        return scalone.some(([minX, maxX]) => {
           const touchesSymbol = maxX >= lat.x && minX <= lat.x + def.width;
           const reachesAxis = minX <= axisX + 0.5 && maxX >= axisX - 0.5;
-          if (inYSpan && touchesSymbol && reachesAxis) return true;
-        }
-        return false;
+          return touchesSymbol && reachesAxis;
+        });
       });
       if (!touched) gaps.push({ symbolId: lat.symbolId, ownerRef, reason: 'no-branch-segment' });
     }
@@ -6043,26 +6499,21 @@ export function allBusbarLabelsValid(scene: SceneV3): boolean {
  *  dowodzona (dowiedziona konstrukcją modułu symboli, `symbols/__tests__/
  *  symbols.test.tsx`); ta sonda dowodzi jednoznaczności MAPOWANIA (a) i
  *  kompletności STANU (b), nie samej geometrii glifu. */
-const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
-  'breaker',
-  'disconnector',
-  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik — dedykowany
-  // glif (poprzeczka na nożu), własny wpis w zbiorze łączników.
-  'loadBreakSwitch',
-  'earthSwitch',
-  'fuseSwitch',
-]);
+// UX-04/POLE-LINIOWE-WZORZEC: oba zbiory WYPROWADZONE z rodzajów łączników pola (lustro
+// backendu `rodzajeAparatuPola.ts`) przez mapowanie rodzaj → symbol w OBU wariantach rysunku
+// (kanonicznym i QET) — zero drugiej, ręcznej listy symboli łączników.
+function symboleRodzajow(rodzaje: ReadonlySet<BayPrimaryDeviceKind>): ReadonlySet<SymbolId> {
+  const wynik = new Set<SymbolId>();
+  for (const rodzaj of rodzaje) symboleRodzajuAparatu(rodzaj).forEach((symbol) => wynik.add(symbol));
+  return wynik;
+}
+const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = symboleRodzajow(RODZAJE_LACZNIKOW_POLA);
 
 /** Łączniki TORU GŁÓWNEGO (spec §18.5 b) — podzbiór `SWITCH_SYMBOLS` BEZ
  *  `earthSwitch`: F10.1 (§18.1, `LATERAL_APPARATUS_SYMBOLS`) uziemnik jest Z
  *  KONSTRUKCJI zawsze odgałęzieniem bocznym, nigdy elementem osi toru
  *  głównego — „łącznik toru głównego" nie obejmuje więc uziemnika. */
-const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
-  'breaker',
-  'disconnector',
-  'loadBreakSwitch',
-  'fuseSwitch',
-]);
+const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = symboleRodzajow(RODZAJE_LACZNIKOW_TORU);
 
 /** Wszystkie warianty `BayPrimaryDeviceKind` (ENM, `types/enm.ts`) —
  *  powtórzone tu jako LITERALNA lista (bez importu wartości enum — ENM niesie
@@ -6071,6 +6522,7 @@ const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
 const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
   'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE', 'FUSE',
   'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
+  'THREE_POSITION_SWITCH', 'CORE_BALANCE_CT', 'VOLTAGE_INDICATOR',
   'UNBALANCE_CT', 'PHASE_TO_PHASE_VT',
 ];
 
@@ -6086,9 +6538,13 @@ const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
 const DOCUMENTED_SWITCH_SYMBOL_AMBIGUITIES: ReadonlyMap<SymbolId, ReadonlySet<BayPrimaryDeviceKind>> = new Map();
 
 /** Wartości `SwitchState` dosłownie z §18.5 b („stan otwarty/zamknięty..."
- *  + `glyphs.tsx` trzeci wariant „nieznany") — jedyne legalne renderowane
- *  stany łącznika. */
-const VALID_RENDERED_SWITCH_STATES: ReadonlySet<string> = new Set(['closed', 'open', 'unknown']);
+ *  + `glyphs.tsx` wariant „nieznany") oraz `bad` (rekord „awaria", rozszerzenie 5 karty
+ *  UX-04/POLE-LINIOWE-WZORZEC) — jedyne legalne renderowane stany łącznika. */
+const VALID_RENDERED_SWITCH_STATES: ReadonlySet<string> = new Set(['closed', 'open', 'unknown', 'bad']);
+/** UX-04/POLE-LINIOWE-WZORZEC: położenie „uziemiony" — legalne WYŁĄCZNIE dla łącznika
+ *  trójpołożeniowego (backend `BayPrimaryDevice` odrzuca je dla innych rodzajów). Zbiór
+ *  RODZAJÓW semantycznych (`rodzajSymbolu`) — rysunek ze znakiem napędu to ten sam łącznik. */
+const SYMBOLE_Z_POLOZENIEM_UZIEMIONYM: ReadonlySet<SymbolId> = new Set<SymbolId>(['qetThreePositionSwitch']);
 
 export interface SwitchSymbolUnambiguityGap {
   readonly reason:
@@ -6144,12 +6600,14 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
 
   // (a) mapowanie kind→symbolId jednoznaczne (poza wyjątkiem udokumentowanym).
   const kindsBySymbol = new Map<SymbolId, BayPrimaryDeviceKind[]>();
+  // UX-04: jednoznaczność we WSZYSTKICH rysunkach rodzaju (oba warianty × cechy rekordu).
   for (const kind of ALL_BAY_PRIMARY_DEVICE_KINDS) {
-    const symbolId = symbolIdForPrimaryDeviceKind(kind);
-    if (symbolId == null || !SWITCH_SYMBOLS.has(symbolId)) continue;
-    const list = kindsBySymbol.get(symbolId) ?? [];
-    list.push(kind);
-    kindsBySymbol.set(symbolId, list);
+    for (const symbolId of symboleRodzajuAparatu(kind)) {
+      if (!SWITCH_SYMBOLS.has(symbolId)) continue;
+      const list = kindsBySymbol.get(symbolId) ?? [];
+      if (!list.includes(kind)) list.push(kind);
+      kindsBySymbol.set(symbolId, list);
+    }
   }
   for (const [symbolId, kinds] of kindsBySymbol) {
     if (kinds.length <= 1) continue;
@@ -6170,7 +6628,10 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
   // patrz DECYZJA w docstringu wyżej).
   for (const s of scene.symbols) {
     if (!MAIN_PATH_SWITCH_SYMBOLS.has(s.symbolId)) continue;
-    if (s.state !== undefined && !VALID_RENDERED_SWITCH_STATES.has(s.state)) {
+    const legalny =
+      VALID_RENDERED_SWITCH_STATES.has(s.state ?? 'unknown')
+      || (s.state === 'earthed' && SYMBOLE_Z_POLOZENIEM_UZIEMIONYM.has(rodzajSymbolu(s.symbolId)));
+    if (s.state !== undefined && !legalny) {
       gaps.push({
         reason: 'main-path-switch-invalid-state',
         symbolId: s.symbolId,
@@ -6181,27 +6642,27 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
   }
 
   // (c) „52" wyłącznie jako etykieta ownerKind:'protection' przy wyłączniku
-  // (ownerRef `#device-number`, `compose/station.ts`), nigdy w
-  // protectionCodes okręgu przekaźnika.
+  // (ownerRef `#device-number`, `compose/blokZabezpieczenPola.ts`), nigdy jako
+  // wiersz kodu funkcji w ramce bloku zabezpieczeń.
+  const wierszeBlokow = new Set(
+    scene.symbols
+      .filter((s) => s.symbolId === 'protectionRelay')
+      .flatMap((s) => s.meta?.wierszeBlokuPrzekaznika ?? []),
+  );
   for (const l of scene.labels) {
     if (l.text !== '52') continue;
-    if (l.ownerKind !== 'protection' || !l.ownerRef.endsWith('#device-number')) {
+    if (wierszeBlokow.has(l.ownerRef)) {
+      gaps.push({
+        reason: 'device-number-52-in-protection-codes',
+        symbolId: 'protectionRelay',
+        ownerRef: l.ownerRef,
+        detail: `„52" jako wiersz kodu funkcji bloku zabezpieczeń (${l.ownerRef}) — 52 to numer urządzenia ANSI/IEEE C37.2, NIE kod funkcji (§17.1)`,
+      });
+    } else if (l.ownerKind !== 'protection' || !l.ownerRef.endsWith('#device-number')) {
       gaps.push({
         reason: 'device-number-52-misplaced',
         ownerRef: l.ownerRef,
         detail: `etykieta „52" poza kontraktem ownerKind:'protection'/#device-number (ownerKind=${l.ownerKind})`,
-      });
-    }
-  }
-  for (const s of scene.symbols) {
-    if (s.symbolId !== 'protectionRelay') continue;
-    const codes = s.meta?.protectionCodes ?? [];
-    if (codes.includes('52')) {
-      gaps.push({
-        reason: 'device-number-52-in-protection-codes',
-        symbolId: s.symbolId,
-        ownerRef: s.meta?.ownerRef,
-        detail: `„52" w protectionCodes (${codes.join(',')}) okręgu przekaźnika — 52 to numer urządzenia ANSI/IEEE C37.2, NIE kod funkcji (§17.1)`,
       });
     }
   }
@@ -6245,6 +6706,8 @@ const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'transformer2W',
   'voltageTransformer',
   'surgeArrester',
+  // UX-04: łącznik trójpołożeniowy — grupa „Q" (`apparatusSequence.ts Q_IDENTIFIER_SYMBOLS`).
+  'qetThreePositionSwitch',
 ]);
 
 const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
@@ -6293,8 +6756,13 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
   // WYŁĄCZNIE przez `compose/station.ts`; GPZ, `compose/gpz.ts`, POZA
   // autoryzacją F10.2 — własne oznaczniki `bayNumber`/`feederName` zostają
   // niezmienione, patrz raport F10.2, „WIEDZA NADZORCY O TERENIE").
+  // Uprawnione: aparat z identyfikatorem konwencji §19.1 (lista wyżej) ALBO aparat bez
+  // identyfikatora konwencji (przekładnik prądowy, głowica kablowa, wskaźnik napięcia), którego
+  // rekord niesie oznaczenie (`designationSource === 'dane'`) — wzorzec właściciela 2026-11-05:
+  // oznaczenia WSZYSTKICH aparatów pola w kolumnie oznaczeń (`compose/kolumnaOpisowPola.ts`
+  // `opisyAparatowPolaStacji`; karta RAMKA-PRZEKAZNIKA, następca 2026-11-11).
   const eligible = scene.symbols.filter(
-    (s) => IDENTIFIER_ELIGIBLE_SYMBOLS.has(s.symbolId)
+    (s) => (IDENTIFIER_ELIGIBLE_SYMBOLS.has(rodzajSymbolu(s.symbolId)) || s.meta?.designationSource === 'dane')
       && (s.meta?.elementKind === 'apparatus' || s.meta?.elementKind === 'transformer')
       && s.meta?.apparatusSource != null,
   );
@@ -6701,7 +7169,7 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
 export function sceneSegmentEndpointGaps(scene: SceneV3): readonly SceneSegmentEndpointGap[] {
   const portKeys = new Set<string>();
   scene.symbols.forEach((s) => {
-    symbolPortsInWorld(s).forEach((p) => portKeys.add(`${p.x},${p.y}`));
+    symbolAllPortsInWorld(s).forEach((p) => portKeys.add(`${p.x},${p.y}`));
     // L0 (spec §7): `stationCollapsed` (16×16, symbol zbiorczy stacji) łączy
     // się WŁASNYM ŚRODKIEM, nie krawędzią — konwencja routingu L0 od F6b
     // (`composeRowStation`, gałąź `lod===0`; `SYMBOL_DEFS.stationCollapsed.
@@ -6714,6 +7182,19 @@ export function sceneSegmentEndpointGaps(scene: SceneV3): readonly SceneSegmentE
     if (s.symbolId === 'stationCollapsed') {
       const def = SYMBOL_DEFS[s.symbolId];
       portKeys.add(`${s.x + def.width / 2},${s.y + def.height / 2}`);
+    }
+  });
+  // L0 (rozstrzygnięcie architekta KD-5, 2026-10-30): blok zwinięty (GPZ, stacja) deklaruje
+  // porty zejść swoich pól (`meta.portyZejscBloku`) — zejście KAŻDEGO pola wychodzi
+  // z WŁASNEGO punktu krawędzi bloku, bez wspólnego pionu. Port deklarowany jest legalnym
+  // zakotwiczeniem wyłącznie, gdy leży na krawędzi DOLNEJ albo BOCZNEJ obrysu bloku —
+  // deklaracja punktu spoza krawędzi nie otwiera furtki dla wiszącego końca kabla.
+  scene.symbols.forEach((s) => {
+    const def = SYMBOL_DEFS[s.symbolId];
+    for (const p of s.meta?.portyZejscBloku ?? []) {
+      const naDolnej = p.y === s.y + def.height && p.x >= s.x && p.x <= s.x + def.width;
+      const naBocznej = (p.x === s.x || p.x === s.x + def.width) && p.y >= s.y && p.y <= s.y + def.height;
+      if (naDolnej || naBocznej) portKeys.add(`${p.x},${p.y}`);
     }
   });
 
@@ -6844,7 +7325,7 @@ export function symbolWireCollisions(scene: SceneV3): readonly SymbolWireCollisi
   const hits: SymbolWireCollision[] = [];
   scene.symbols.forEach((sym, si) => {
     const rect = symbolRect(sym);
-    const ports = symbolPortsInWorld(sym);
+    const ports = symbolAllPortsInWorld(sym);
     scene.segments.forEach((seg, sei) => {
       if (ports.some((p) => pointTouchesSegment(p, seg))) return;
       const pts = seg.points;
@@ -6931,14 +7412,12 @@ export interface VerticalAuditEntry {
 }
 
 /** Rola odcinka → przyczyna długości jego pionów. `null` = rola nierozpoznana
- *  (⇒ `nieuzasadniony`). Reguła OGÓLNA z `ownerRef`/`kind` (WYTYCZNE §1/§2),
- *  sufiks `#tee-N` (kontynuacja kabla za węzłem T) zdejmowany przed klasyfikacją
- *  — pion dziedziczy przyczynę pierwotnego kabla. */
+ *  (⇒ `nieuzasadniony`). Reguła OGÓLNA z `ownerRef`/`kind` (WYTYCZNE §1/§2). */
 function verticalCauseOfRole(
   ownerRef: string | null | undefined,
   kind: PreviewSegmentKind | undefined,
 ): Exclude<VerticalCause, 'nieuzasadniony'> | null {
-  const r = (ownerRef ?? '').replace(/#tee-\d+$/, '');
+  const r = ownerRef ?? '';
   if (kind === 'openTerminal' || r.endsWith('#open-terminal')) return 'slupek-terminalny';
   // S9-1: kreski znaku ciągu dalszego są POZIOME (zero pionów) — klasyfikacja
   // dla kompletności audytu, gdyby marker kiedyś zmienił orientację.
@@ -7559,7 +8038,14 @@ export interface LayoutMetricsReport {
   readonly subtreeIntersectionCount: number;
   readonly nonOrthogonalSegmentCount: number;
   readonly ambiguousConnectionCount: number;
+  /** Liczba skrzyżowań tras (informacyjna). Warunek odbioru §22.1 (rozstrzygnięcie S7-P2,
+   *  2026-10-30) to NIE `crossingCount = 0`, tylko `crossingWithoutBridgeCount = 0` i
+   *  `junctionDotGapCount = 0`: skrzyżowanie kabli bez węzła modelu rysuje się mostkiem. */
   readonly crossingCount: number;
+  /** Przecięcia toru mocy bez rysowalnego mostka + przecięcia z szyną (mostek zakazany). */
+  readonly crossingWithoutBridgeCount: number;
+  /** Luki kropka⇔węzeł modelu (`junctionDotGaps`): kropka bez węzła, węzeł bez kropki. */
+  readonly junctionDotGapCount: number;
   readonly symbolCount: number;
   // Recenzja P1 (gęstość lokalna) — ROZKŁAD zajętości (dodatkowo do `inkDensity`
   // globalnego): średnia/maks/odchylenie/pustka po oknach `LOCAL_DENSITY_WINDOW_CELLS`.
@@ -7599,6 +8085,8 @@ export function layoutMetricsReport(scene: SceneV3): LayoutMetricsReport {
     nonOrthogonalSegmentCount: nonOrthogonalSegmentCount(scene),
     ambiguousConnectionCount: sceneSegmentEndpointGaps(scene).length,
     crossingCount: scene.crossings.length,
+    crossingWithoutBridgeCount: przecieciaBezMostka(scene.segments).length + crossingBusGaps(scene.segments).length,
+    junctionDotGapCount: junctionDotGaps(scene, SYMBOL_DEFS).length,
     symbolCount: scene.symbols.length,
     localDensityMean: density.meanDensity,
     localDensityMax: density.maxLocalDensity,
@@ -7785,7 +8273,7 @@ export function noLabelWireCollisions(scene: SceneV3): boolean {
  * declutter sceny i wyrocznie odbioru.
  */
 export function sceneObstacleRects(scene: SceneV3): readonly V3Rect[] {
-  const rects: V3Rect[] = scene.symbols.map(symbolRect);
+  const rects: V3Rect[] = scene.symbols.flatMap(przeszkodySymbolu);
   for (const segment of scene.segments) {
     const pts = segment.points;
     for (let i = 1; i < pts.length; i++) {
@@ -7915,10 +8403,10 @@ export function labelCollisions(scene: SceneV3): readonly LabelCollision[] {
       }
     }
   }
-  const symbolRects = scene.symbols.map(symbolRect);
+  const symbolRects = scene.symbols.map(przeszkodySymbolu);
   for (const label of labels) {
     for (let s = 0; s < symbolRects.length; s++) {
-      if (rectsOverlap(label.rect, symbolRects[s])) {
+      if (symbolRects[s].some((r) => rectsOverlap(label.rect, r))) {
         hits.push({ kind: 'etykieta-symbol', aRef: label.ownerRef, bRef: `symbol#${s}` });
       }
     }
@@ -8250,6 +8738,32 @@ function symbolPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
   return SYMBOL_DEFS[sym.symbolId].ports.map((p) => ({ x: sym.x + p.x, y: sym.y + p.y }));
 }
 
+/** Porty toru ORAZ zaciski obwodu wtórnego (`SymbolDef.secondaryPorts`: zacisk wtórny
+ *  przekładnika, cewka wyłączająca, wejścia przekaźnika) w świecie. Zakotwiczenia legalne
+ *  dla końców odcinków i styku symbol↔przewód; spójność toru mocy (`sceneConnectivityIndex`)
+ *  liczy WYŁĄCZNIE `symbolPortsInWorld` — obwód wtórny nie łączy toru pierwotnego. */
+function symbolAllPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
+  const def = SYMBOL_DEFS[sym.symbolId];
+  return [
+    ...[...def.ports, ...def.secondaryPorts].map((p) => ({ x: sym.x + p.x, y: sym.y + p.y })),
+    // Blok zabezpieczeń: wejścia linii na krawędziach ramki (`symbols/blokZabezpieczen.ts`).
+    ...wejsciaBlokuSymbolu(sym),
+  ];
+}
+
+/** Rodzaje aparatów będących źródłem linii pomiarowej przekaźnika (przekładniki). */
+const RODZAJE_ZRODEL_POMIARU: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'currentTransformer',
+  'voltageTransformer',
+  'qetCoreBalanceCt',
+]);
+
+/** Pole właściciela linii pomiarowej (`<bayRef>#measurement-link` albo `…-<n>` dla kolejnych
+ *  źródeł pola). */
+function poleLiniiPomiarowej(ownerRef: string | undefined): string | undefined {
+  return ownerRef?.replace(/#measurement-link(-\d+)?$/, '');
+}
+
 export interface SourceConnectivityGap {
   readonly sourceId: string;
 }
@@ -8438,75 +8952,77 @@ export function allSourcesConnected(scene: SceneV3): boolean {
 
 export interface ProtectionMarkingGap {
   readonly reason:
-    | 'circle-without-codes'
-    | 'circle-without-owner'
-    | 'codes-exceed-two'
+    | 'relay-without-frame'
+    | 'relay-without-owner'
+    | 'frame-without-codes'
     | 'codes-present-at-lod1'
+    | 'code-row-outside-frame'
     | 'trip-line-endpoint-mismatch';
   readonly ownerRef?: string;
 }
 
+/** Czy prostokąt `r` leży w całości wewnątrz ramki `ramka` (krawędzie włącznie). */
+function wRamce(r: V3Rect, ramka: V3Rect): boolean {
+  return r.x >= ramka.x && r.y >= ramka.y && r.x + r.width <= ramka.x + ramka.width && r.y + r.height <= ramka.y + ramka.height;
+}
+
 /**
- * protection_marking_probe (spec §17.5): (a) każdy okrąg przekaźnika
- * (`symbolId==='protectionRelay'`) ma `meta.ownerRef` niepusty ORAZ — na L2
- * — `meta.protectionCodes` niepuste — zero okręgów bez danych (§17.2 „brak
- * danych = brak oznaczenia"), negatyw obowiązkowy pokryty testem
- * (`buildScene.test.ts`: syntetyczny okrąg bez kodów ⇒ FAIL). Na L1 (§17.4,
- * B-1 recenzji): okrąg MUSI być BEZ kodów (`'codes-present-at-lod1'` — kody
- * na L1 to naruszenie kontraktu LOD, nie luka danych); pełny kształt L1
- * dowodzi `protectionAnnotationAtLod1IsCircleOnly` niżej. (c, część
- * STRUKTURALNA — granica liczności): maks. 2 kody w okręgu; DOWÓD PEŁNY
- * „kody = prefiks `protection_codes` bez sortowania/fabrykacji" żyje na
- * warstwie `compose/station.ts` (`compose/__tests__/station.test.ts`) — scena
- * sama nie niesie źródłowej listy `Bay.protection_codes` (WYŁĄCZNIE dwa
- * wybrane kody trafiają na symbol), więc nie może dowieść WOBEC źródła, tylko
- * granicy liczności tutaj. (b) każda linia wyzwalania
- * (`meta.kind==='protectionTrip'`) łączy REJESTROWANY port aparatu `breaker`
- * z REJESTROWANYM portem `protectionRelay` TEGO SAMEGO pola (`ownerRef` bay
- * wspólny, odczytany z sufiksu `#trip-line` — WHITE BOX, zero zgadywania
- * którędy linia biegnie/do jakiego aparatu).
+ * protection_marking_probe (spec §17.5), karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja
+ * właściciela 2026-11-05: „tak ma być ramka we wszystkich tak samo”): (a) każdy przekaźnik
+ * sceny (`symbolId==='protectionRelay'`) jest BLOKIEM ZABEZPIECZEŃ — niesie ramkę
+ * (`meta.ramkaBlokuPrzekaznika`, `'relay-without-frame'`; okręgu przekaźnika nie ma na
+ * żadnej ścieżce) i `meta.ownerRef` (`'relay-without-owner'`). Na L2 ramka niesie co najmniej
+ * jeden wiersz kodu funkcji pola (`#protection-codes-full…`, §17.2 „brak danych = brak
+ * oznaczenia" — `'frame-without-codes'`), a każdy wiersz bloku obecny na scenie leży WEWNĄTRZ
+ * ramki (`'code-row-outside-frame'` — ramka i wiersze z jednej funkcji geometrii,
+ * `symbols/blokZabezpieczen.ts::ramkaBlokuZWierszy`). Na L1 (§17.4, B-1 recenzji) ramka jest
+ * GOŁA: zero wierszy bloku (`'codes-present-at-lod1'`); pełny kształt L1 dowodzi
+ * `protectionAnnotationAtLod1IsBareFrame` niżej. DOWÓD PEŁNY „wiersze = `protection_codes`
+ * pola w kolejności danych, bez fabrykacji" żyje na warstwie kompozycji
+ * (`compose/__tests__/blokZabezpieczenNotacja.contract.test.ts`) — scena nie niesie źródłowej
+ * listy `Bay.protection_codes`. (b) każda linia wyzwalania (`meta.kind==='protectionTrip'`)
+ * łączy REJESTROWANY port (albo zacisk wtórny — cewkę) aparatu `breaker` z wejściem ramki
+ * bloku TEGO SAMEGO pola (`ownerRef` bay wspólny, odczytany z sufiksu `#trip-line` — WHITE
+ * BOX, zero zgadywania którędy linia biegnie/do jakiego aparatu).
  *
- * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15) — ZWĘŻONY w
- * F11.1 (spec §17.6 doprecyzowanie, rejestr device-ref w GPZ): okrąg BEZ
- * ŻADNEJ linii wyzwalania jest LEGALNY WYŁĄCZNIE gdy `breaker_ref`/`ct_ref`
- * są nierozwiązywalne na aparat NARYSOWANEGO stosu (§17.2 — raportowane
- * osobno przez `missingData`, `bay.protection.trip_link_unresolved`/
- * `bay.protection.measurement_link_unresolved`, nie przez tę sondę). Do F11.1
- * GPZ miała TU dodatkowy, blankietowy wyjątek („okrąg w GPZ zawsze bez toru,
- * nigdy nie jest to missingData") — bo kompozycja GPZ nie śledziła
- * `device_ref` per aparat (stosy z SZABLONÓW `FieldApparatusSpec`, nie z
- * `primary_devices`). F11.1 dostarczyła rejestr device-ref (`compose/gpz.ts`
- * `primaryDeviceItemsForTemplate`, `bay.primaryDevices` dopasowany DOKŁADNIE
- * do szablonu pola) — GPZ TERAZ rozwiązuje tor wyzwalania/linię pomiarową
- * DOKŁADNIE jak stacja (`resolveStationProtectionMarking` reużyta wprost,
- * `./protectionMarking`) i, gdy refy się NIE rozwiążą, zgłasza TĘ SAMĄ
- * missingData co stacja — wyjątek blankietowy dla GPZ ZNIESIONY, zero
- * specjalnego traktowania GPZ w tej sondzie. Sonda (b) sprawdza więc
- * WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH — nigdy nie wymaga linii per
- * okrąg (uczciwy brak danych/refów pozostaje legalny, dla stacji i GPZ
- * jednakowo).
+ * WYJĄTEK JAWNY (R-1, rozstrzygnięcie architekta 2026-07-15, zwężony w F11.1): blok BEZ linii
+ * wyzwalania jest LEGALNY WYŁĄCZNIE, gdy model nie wskazuje łącznika wyłączanego
+ * (`breaker_ref` nierozwiązywalny i brak `funkcje_eaz_wylaczajace` w stosie pola) — luka
+ * raportowana osobno przez `missingData` (`bay.protection.trip_link_unresolved`), nie przez tę
+ * sondę; stacje i GPZ jednakowo (jedna kompozycja, `compose/blokZabezpieczenPola.ts`). Sonda (b)
+ * sprawdza więc WYŁĄCZNIE zakotwiczenie linii ISTNIEJĄCYCH.
  *
- * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7) — dziedziczony z
- * konstrukcji, bez odrębnej maszynerii (zero `Date`/`Math.random` w całej
- * dostawie F9.9). (e) L0: patrz `noProtectionAnnotationAtLod0` niżej (inny
- * kształt dowodu — per-LOD, nie per-scena pojedynczej).
+ * (d) determinizm: `buildSceneV3` jest czystą funkcją (P7) — dziedziczony z konstrukcji.
+ * (e) L0: patrz `noProtectionAnnotationAtLod0` niżej (inny kształt dowodu — per-LOD).
  */
 export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkingGap[] {
   const gaps: ProtectionMarkingGap[] = [];
   const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
-  const breakerSymbols = scene.symbols.filter((s) => s.symbolId === 'breaker');
+  const breakerSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'breaker');
 
   relaySymbols.forEach((s) => {
-    const codes = s.meta?.protectionCodes ?? [];
-    // §17.4 (B-1): wymaganie kodów jest funkcją LOD — L2 wymaga, L1 ZAKAZUJE.
-    if (scene.meta.lod === 2 && codes.length === 0) {
-      gaps.push({ reason: 'circle-without-codes', ownerRef: s.meta?.ownerRef });
+    const ownerRef = s.meta?.ownerRef;
+    if (!ownerRef) gaps.push({ reason: 'relay-without-owner' });
+    const ramka = ramkaBlokuSymbolu(s);
+    if (!ramka) {
+      gaps.push({ reason: 'relay-without-frame', ownerRef });
+      return;
     }
-    if (scene.meta.lod === 1 && codes.length > 0) {
-      gaps.push({ reason: 'codes-present-at-lod1', ownerRef: s.meta?.ownerRef });
+    // Wiersze kodów pola na scenie: zadeklarowane przez symbol ORAZ każda etykieta
+    // `#protection-codes-full…` tego pola (wiersz bez deklaracji też jest wierszem bloku).
+    const prefiksKodow = `${ownerRef ?? ''}#protection-codes-full`;
+    const zadeklarowane = new Set(s.meta?.wierszeBlokuPrzekaznika ?? []);
+    const wiersze = scene.labels.filter(
+      (l) => zadeklarowane.has(l.ownerRef) || l.ownerRef === prefiksKodow || l.ownerRef.startsWith(`${prefiksKodow}-`),
+    );
+    const kodyNaScenie = wiersze.some((l) => l.ownerRef.startsWith(prefiksKodow));
+    if (scene.meta.lod === 2 && !kodyNaScenie) gaps.push({ reason: 'frame-without-codes', ownerRef });
+    if (scene.meta.lod === 1 && (wiersze.length > 0 || zadeklarowane.size > 0)) {
+      gaps.push({ reason: 'codes-present-at-lod1', ownerRef });
     }
-    if (!s.meta?.ownerRef) gaps.push({ reason: 'circle-without-owner' });
-    if (codes.length > 2) gaps.push({ reason: 'codes-exceed-two', ownerRef: s.meta?.ownerRef });
+    for (const w of wiersze) {
+      if (!wRamce(w.rect, ramka)) gaps.push({ reason: 'code-row-outside-frame', ownerRef: w.ownerRef });
+    }
   });
 
   scene.segments
@@ -8515,17 +9031,16 @@ export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkin
       const bayRef = seg.meta?.ownerRef?.replace(/#trip-line$/, '');
       const first = seg.points[0];
       const last = seg.points[seg.points.length - 1];
-      const touchesOwnBreaker = breakerSymbols.some(
-        (b) =>
-          b.meta?.ownerRef === bayRef &&
-          symbolPortsInWorld(b).some((p) => p.x === first?.x && p.y === first?.y),
-      );
-      const touchesOwnRelay = relaySymbols.some(
-        (r) =>
-          r.meta?.ownerRef === bayRef &&
-          symbolPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
-      );
-      if (!touchesOwnBreaker || !touchesOwnRelay) {
+      const dotyka = (sym: PreviewSymbol, p: RouteVertex | undefined): boolean =>
+        symbolAllPortsInWorld(sym).some((q) => q.x === p?.x && q.y === p?.y);
+      // Kierunek linii nie jest kontraktem: jeden koniec na łączniku pola, drugi na wejściu
+      // ramki bloku tego pola.
+      const ownBreakers = breakerSymbols.filter((b) => b.meta?.ownerRef === bayRef);
+      const ownRelays = relaySymbols.filter((r) => r.meta?.ownerRef === bayRef);
+      const zakotwiczona =
+        (ownBreakers.some((b) => dotyka(b, first)) && ownRelays.some((r) => dotyka(r, last)))
+        || (ownBreakers.some((b) => dotyka(b, last)) && ownRelays.some((r) => dotyka(r, first)));
+      if (!zakotwiczona) {
         gaps.push({ reason: 'trip-line-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
       }
     });
@@ -8555,30 +9070,28 @@ export function noProtectionAnnotationAtLod0(scene: SceneV3): boolean {
 }
 
 /**
- * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją): na L1 warstwa
- * adnotacji zabezpieczeń to WYŁĄCZNIE okrąg przekaźnika BEZ kodów —
- * (1) każdy `protectionRelay` ma puste/nieobecne `protectionCodes`;
- * (2) zero segmentów `protectionTrip`/`measurementLink` (F10.5, §20.1: obie
- *     linie wtórne ukryte na L1, TA SAMA gałąź LOD co tor wyzwalania);
+ * F9.9 B-1 (spec §17.4 L1, wyrocznia wymagana recenzją), karta JEDNA NOTACJA BLOKU
+ * ZABEZPIECZEŃ: na L1 warstwa adnotacji zabezpieczeń to GOŁA RAMKA bloku zabezpieczeń —
+ * (1) każdy `protectionRelay` niesie ramkę i nie deklaruje wierszy (`wierszeBlokuPrzekaznika`
+ *     puste);
+ * (2) zero segmentów `measurementLink` (F10.5, §20.1: linie pomiarowe dopiero na L2); linia
+ *     wyłączania (`protectionTrip`) ZOSTAJE — blok na L1 stoi tam, gdzie na L2, przy łączniku,
+ *     z którym łączy go linia wyłączania (odbiór B-02, oględziny koordynatora 2026-11-04; od tej
+ *     karty jednakowo w polach GPZ i stacji);
  * (3) zero symboli `meter` („M" nieobecne);
- * (4) zero etykiet `ownerKind==='protection'` („52"/pełna lista nieobecne).
- * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne
- * dowody: `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
- * Dowód POZYTYWNY (okrąg NA SCENIE L1 i nic poza nim) + negatywy — testy
- * syntetyczne w `buildScene.test.ts` (fixtura referencyjna jest
- * pusto-prawdziwa: 0 danych §17.2).
+ * (4) zero etykiet `ownerKind==='protection'` („52", kody, przekładnie — nieobecne).
+ * Dla scen L0/L2 zwraca `true` (nie dotyczy — tamte poziomy mają własne dowody:
+ * `noProtectionAnnotationAtLod0` / `protectionMarkingGaps`).
  */
-export function protectionAnnotationAtLod1IsCircleOnly(scene: SceneV3): boolean {
+export function protectionAnnotationAtLod1IsBareFrame(scene: SceneV3): boolean {
   if (scene.meta.lod !== 1) return true;
-  const relaysHaveNoCodes = scene.symbols
+  const relaysAreBareFrames = scene.symbols
     .filter((s) => s.symbolId === 'protectionRelay')
-    .every((s) => (s.meta?.protectionCodes ?? []).length === 0);
-  const noSecondaryLines = !scene.segments.some(
-    (s) => s.meta?.kind === 'protectionTrip' || s.meta?.kind === 'measurementLink',
-  );
+    .every((s) => ramkaBlokuSymbolu(s) !== null && (s.meta?.wierszeBlokuPrzekaznika ?? []).length === 0);
+  const noMeasurementLines = !scene.segments.some((s) => s.meta?.kind === 'measurementLink');
   const noMeters = !scene.symbols.some((s) => s.symbolId === 'meter');
   const noProtectionLabels = !scene.labels.some((l) => l.ownerKind === 'protection');
-  return relaysHaveNoCodes && noSecondaryLines && noMeters && noProtectionLabels;
+  return relaysAreBareFrames && noMeasurementLines && noMeters && noProtectionLabels;
 }
 
 // ---------------------------------------------------------------------------
@@ -8626,17 +9139,26 @@ export interface CtAnnotationGap {
  */
 export function ctAnnotationGaps(scene: SceneV3): readonly CtAnnotationGap[] {
   const gaps: CtAnnotationGap[] = [];
-  const ctSymbolOwners = new Set(
-    scene.symbols.filter((s) => s.symbolId === 'currentTransformer').map((s) => s.meta?.ownerRef),
-  );
-  scene.labels
-    .filter((l) => l.ownerKind === 'protection' && l.ownerRef?.includes('#ct-rating-'))
-    .forEach((l) => {
-      const bayRef = l.ownerRef?.split('#ct-rating-')[0];
-      if (!bayRef || !ctSymbolOwners.has(bayRef)) {
-        gaps.push({ reason: 'label-without-ct-symbol', ownerRef: l.ownerRef });
-      }
-    });
+  // Karta UX-04 (klasa „opis przekładnika przy symbolu"): ta sama sonda dla tabliczki KAŻDEGO
+  // rodzaju przekładnika — prądowego (`#ct-rating-`), napięciowego (`#vt-rating-`)
+  // i Ferrantiego (`#cbct-rating-`); kotwica na symbolu rodzaju z jednej tabeli
+  // (`SYMBOL_TABLICZKI_PRZEKLADNIKA`), ten sam rodzaj co rozstrzygnięcie w compose.
+  for (const rodzaj of Object.keys(PRZYROSTEK_TABLICZKI_PRZEKLADNIKA) as (keyof typeof PRZYROSTEK_TABLICZKI_PRZEKLADNIKA)[]) {
+    const znacznik = `#${PRZYROSTEK_TABLICZKI_PRZEKLADNIKA[rodzaj]}-`;
+    const wlasciciele = new Set(
+      scene.symbols
+        .filter((s) => rodzajSymbolu(s.symbolId) === SYMBOL_TABLICZKI_PRZEKLADNIKA[rodzaj])
+        .map((s) => s.meta?.ownerRef),
+    );
+    scene.labels
+      .filter((l) => l.ownerKind === 'protection' && l.ownerRef?.includes(znacznik))
+      .forEach((l) => {
+        const bayRef = l.ownerRef?.split(znacznik)[0];
+        if (!bayRef || !wlasciciele.has(bayRef)) {
+          gaps.push({ reason: 'label-without-ct-symbol', ownerRef: l.ownerRef });
+        }
+      });
+  }
   return gaps;
 }
 
@@ -8684,28 +9206,28 @@ export interface SecondaryLinkDualityGap {
 export function secondaryLinkDualityGaps(scene: SceneV3): readonly SecondaryLinkDualityGap[] {
   const gaps: SecondaryLinkDualityGap[] = [];
   const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
-  const ctSymbols = scene.symbols.filter((s) => s.symbolId === 'currentTransformer');
-  const breakerSymbols = scene.symbols.filter((s) => s.symbolId === 'breaker');
+  const ctSymbols = scene.symbols.filter((s) => RODZAJE_ZRODEL_POMIARU.has(rodzajSymbolu(s.symbolId)));
+  const breakerSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'breaker');
   const measurementSegs = scene.segments.filter((s) => s.meta?.kind === 'measurementLink');
   const tripSegs = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip');
 
   measurementSegs.forEach((seg) => {
-    const bayRef = seg.meta?.ownerRef?.replace(/#measurement-link$/, '');
+    const bayRef = poleLiniiPomiarowej(seg.meta?.ownerRef);
     const first = seg.points[0];
     const last = seg.points[seg.points.length - 1];
 
     const touchesOwnCt = ctSymbols.some(
-      (ct) => ct.meta?.ownerRef === bayRef && symbolPortsInWorld(ct).some((p) => p.x === first?.x && p.y === first?.y),
+      (ct) => ct.meta?.ownerRef === bayRef && symbolAllPortsInWorld(ct).some((p) => p.x === first?.x && p.y === first?.y),
     );
     const touchesOwnRelay = relaySymbols.some(
-      (r) => r.meta?.ownerRef === bayRef && symbolPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
+      (r) => r.meta?.ownerRef === bayRef && symbolAllPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
     );
     if (!touchesOwnCt || !touchesOwnRelay) {
       gaps.push({ reason: 'measurement-link-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
     }
 
     const touchesAnyBreaker = breakerSymbols.some((b) =>
-      symbolPortsInWorld(b).some(
+      symbolAllPortsInWorld(b).some(
         (p) => (p.x === first?.x && p.y === first?.y) || (p.x === last?.x && p.y === last?.y),
       ),
     );

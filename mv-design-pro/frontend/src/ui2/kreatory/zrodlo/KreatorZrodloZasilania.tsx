@@ -30,6 +30,7 @@ import {
   nazwaSzablonuPolaPl,
   type CompleteMvBayTemplateSummary,
 } from '../../../ui/catalog/BayTemplatePicker';
+import { notaPozycjiUkrytych, pozycjeDoWyboru } from '../../../ui/catalog/dopuszczenieNowychPol';
 import { nazwaProducentaPl, type Manufacturer } from '../../../ui/catalog/manufacturer';
 import {
   czyRodzinaPrzyjmujePojedynczePole,
@@ -309,10 +310,14 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, []);
 
-  const filtrowaneAparaty = useMemo(
+  // Pole liniowe GPZ tworzone przez kreator jest projektowane: wyłącznie pozycje dopuszczone
+  // przez backend (zakaz gazów fluorowanych, `ui/catalog/dopuszczenieNowychPol`).
+  const aparatyRodzaju = useMemo(
     () => aparaty.filter((item) => pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)),
     [aparaty, dane.gpz_line_field_apparatus_kind],
   );
+  const filtrowaneAparaty = useMemo(() => pozycjeDoWyboru(aparatyRodzaju, 'PROJEKTOWANY'), [aparatyRodzaju]);
+  const notaAparatow = useMemo(() => notaPozycjiUkrytych(aparatyRodzaju, 'PROJEKTOWANY'), [aparatyRodzaju]);
 
   const napiecieSn = dane.sn_voltage_kv ?? 0;
   // Typ 110/SN stoi na szynach SN GPZ: napięcie dolne typu = napięcie szyn SN (ta sama wartość
@@ -1143,6 +1148,7 @@ export function KreatorZrodloZasilania() {
                 wartosc={dane.gpz_line_field_apparatus_catalog_ref}
                 onZmiana={(v) => zmien('gpz_line_field_apparatus_catalog_ref', v)}
                 opcje={opcjeAparatow}
+                nota={notaAparatow}
                 status={bladAparatow ? 'error' : 'ready'}
                 placeholder={T.aparatPlaceholder}
                 komunikatBledu={bladAparatow ?? T.aparatBlad}

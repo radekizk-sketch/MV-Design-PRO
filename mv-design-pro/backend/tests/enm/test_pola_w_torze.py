@@ -730,7 +730,7 @@ def _model_zastany() -> tuple[dict[str, Any], dict[str, Any]]:
 
 def test_walidator_w042_i_w049_wskazuja_element_i_pole_z_akcja_naprawcza() -> None:
     """N2 (transformator obok pola TR) → W042; N1 (koniec odcinka na szynie sekcji bez pola,
-    predykat `odcinki_bez_pola`) → W049 (INSPEKTOR-POLA-DOMKNIECIE). Oba z jednego źródła
+    predykat `odcinki_bez_pola`) → W058 (INSPEKTOR-POLA-DOMKNIECIE). Oba z jednego źródła
     `naruszenia_zasady_toru`, poziom IMPORTANT (impedancja aparatu pola zerowa — rozpływ
     i zwarcia sieci są te same)."""
     enm, stacja = _model_zastany()
@@ -743,8 +743,8 @@ def test_walidator_w042_i_w049_wskazuja_element_i_pole_z_akcja_naprawcza() -> No
     elementy = sorted((i.code, i.element_refs[0].rsplit("/", 1)[-1]) for i in zgloszenia)
     assert elementy == [
         ("W042", "transformer"),
-        ("W049", "segment_L"),
-        ("W049", "segment_R"),
+        ("W058", "segment_L"),
+        ("W058", "segment_R"),
     ]
     for zgloszenie in zgloszenia:
         assert zgloszenie.severity == "IMPORTANT"
@@ -759,13 +759,13 @@ def test_walidator_w042_i_w049_wskazuja_element_i_pole_z_akcja_naprawcza() -> No
             ]
         )
         assert "/" not in zgloszenie.message_pl.split("—")[0] or "„" in zgloszenie.message_pl
-    # Most gotowości: W042 == `station.element_bypasses_field`, W049 ==
+    # Most gotowości: W042 == `station.element_bypasses_field`, W058 ==
     # `station.segment_without_field` (oba zarejestrowane w kanonie READINESS_CODES).
     from domain.canonical_operations import READINESS_CODES
     from domain.readiness_bridge import ODWZOROWANIE_WALIDATOR_NA_KANON
 
     assert ODWZOROWANIE_WALIDATOR_NA_KANON["W042"] == "station.element_bypasses_field"
-    assert ODWZOROWANIE_WALIDATOR_NA_KANON["W049"] == KOD_KANONICZNY_ODCINEK_BEZ_POLA
+    assert ODWZOROWANIE_WALIDATOR_NA_KANON["W058"] == KOD_KANONICZNY_ODCINEK_BEZ_POLA
     assert READINESS_CODES[KOD_KANONICZNY_ODCINEK_BEZ_POLA].level.value == "WARNING"
 
 
@@ -1075,11 +1075,15 @@ def _blok_z_jednostkami_liniowymi() -> Any:
     from network_model.catalog.switchgear.factory_configuration import (
         list_factory_configurations,
     )
+    from network_model.catalog.switchgear.families import SWITCHGEAR_FAMILY_REGISTRY
 
+    # Stacja budowana operacją jest PROJEKTOWANA — blok bez gazu fluorowanego (karta
+    # UX-04/POLE-LINIOWE-WZORZEC; rozporządzenie (UE) 2024/573, art. 13 ust. 9).
     return next(
         c
         for c in sorted(list_factory_configurations(), key=lambda c: c.configuration_ref)
-        if [u.bay_kind for u in c.units].count("liniowe_odplywowe") >= 2
+        if SWITCHGEAR_FAMILY_REGISTRY[c.switchgear_family_ref].gaz_fluorowany is False
+        and [u.bay_kind for u in c.units].count("liniowe_odplywowe") >= 2
         and any(u.bay_kind == "transformatorowe" for u in c.units)
     )
 

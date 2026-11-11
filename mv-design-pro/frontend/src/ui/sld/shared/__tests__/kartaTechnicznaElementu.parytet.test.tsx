@@ -82,6 +82,7 @@ const KATALOGI: KatalogiKarty = {
   systemyZasilajace: new Map([['siec-110-250', { name: 'Sieć 110 kV · Sₖ″ 250 MVA' }]]),
   rodzinyRozdzielnic: new Map(),
   szablonyPol: [],
+  szablonyKanoniczne: new Map(),
   operatorzyNcRfg: [
     {
       operator_id: 'pse',
@@ -207,7 +208,10 @@ function model(wariant: Wariant): EnergyNetworkModel {
         bus_ref: 'bus-sn',
         terminal_bus_ref: 'bus-z-in',
         equipment_refs: ['cb-in'],
-        primary_devices: [{ device_ref: 'cb-in', kind: 'CB', linked_ref: 'cb-in', catalog_ref: jesli('vd4-24-630-20') }],
+        stan_obiektu: jesli('PROJEKTOWANY'),
+        primary_devices: [
+          { device_ref: 'cb-in', kind: 'CB', linked_ref: 'cb-in', catalog_ref: jesli('vd4-24-630-20'), stan_obiektu: jesli('PROJEKTOWANY') },
+        ],
         protection_codes: p ? ['50', '51'] : [],
         tags: [],
         meta: {},
@@ -283,7 +287,7 @@ function model(wariant: Wariant): EnergyNetworkModel {
         tags: [],
         meta: {},
       },
-      { id: 'sw-1', ref_id: 'sw-1', name: p ? 'Łącznik sekcyjny Ł1' : '', type: 'switch', from_bus_ref: 'bus-daleka', to_bus_ref: 'bus-sekcja', status: 'open', tags: [], meta: {}, ...katalogLacznika },
+      { id: 'sw-1', ref_id: 'sw-1', name: p ? 'Łącznik sekcyjny Ł1' : '', type: 'switch', from_bus_ref: 'bus-daleka', to_bus_ref: 'bus-sekcja', status: 'open', stan_obiektu: jesli('ISTNIEJACY'), tags: [], meta: {}, ...katalogLacznika },
     ],
     transformers: [
       {
@@ -537,6 +541,37 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     const tr = wiersze(k);
     expect(tr.get('tr_typ')!.wartosc).toBe('TNOSCT 630 kVA 15/0,4 kV');
     expect(k.sekcje.find((s) => s.id === 'transformator')!.zrodloPl).toBe('katalog: TNOSCT 630 kVA 15/0,4 kV');
+  });
+
+  // Stan obiektu (karta UX-04, korekta stanu obiektu): iloczyn nośnika {pole, rekord aparatu pola,
+  // łącznik toru z własnym stanem, łącznik pola bez rekordu i bez stanu własnego → stan pola}.
+  // Tabela aparatów pola jest zwarta (decyzja architekta 2026-11-04: aparat i trzy liczby
+  // znamionowe); stan aparatu niesie karta aparatu, którą otwiera wiersz tabeli (`cel`) —
+  // scalenie z kartą BKR 2026-11-11 przeniosło tu sprawdzenie dawnej kolumny „Stan obiektu".
+  const stanZWierszaAparatow = (snapshot: EnergyNetworkModel, k: KartaTechniczna, klucz?: string): string | null => {
+    const tabela = tabele(k).get('tabela:aparaty')!;
+    const wiersz = klucz === undefined ? tabela.wiersze[0] : tabela.wiersze.find((r) => r.klucz === klucz)!;
+    expect(wiersz.cel?.rodzaj).toBe('aparat');
+    const cel = wiersz.cel as { readonly aparatRef: string };
+    const aparat = buildKartaTechniczna(snapshot, { kind: 'apparatus', elementId: cel.aparatRef } as DaneElementuKanwy, KATALOGI)!;
+    return wiersze(aparat).get('stan_obiektu')!.wartosc;
+  };
+  it('stan obiektu: pole, aparat pola, łącznik toru i łącznik pola dziedziczący stan pola', () => {
+    expect(wiersze(karta('pole', 'pelne')).get('stan_obiektu')!.wartosc).toBe('projektowany');
+    expect(stanZWierszaAparatow(model('pelne'), karta('pole', 'pelne'))).toBe('projektowany');
+    expect(wiersze(karta('aparat', 'pelne')).get('stan_obiektu')!.wartosc).toBe('projektowany');
+    expect(wiersze(karta('lacznik', 'pelne')).get('stan_obiektu')!.wartosc).toBe('istniejący');
+    // Pole bez rekordów aparatów: łącznik z `equipment_refs` bez stanu własnego dziedziczy stan pola.
+    const snapshot = model('pelne');
+    const bay = snapshot.bays!.find((b) => b.ref_id === 'bay-in')!;
+    bay.stan_obiektu = 'ISTNIEJACY';
+    bay.primary_devices = [];
+    const k = buildKartaTechniczna(snapshot, WSKAZANIE.pole as DaneElementuKanwy, KATALOGI)!;
+    expect(stanZWierszaAparatow(snapshot, k, 'cb-in')).toBe('istniejący');
+    bay.stan_obiektu = null;
+    const bez = buildKartaTechniczna(snapshot, WSKAZANIE.pole as DaneElementuKanwy, KATALOGI)!;
+    expect(wiersze(bez).get('stan_obiektu')!.wartosc).toBeNull();
+    expect(stanZWierszaAparatow(snapshot, bez, 'cb-in')).toBeNull();
   });
 
   // Iloczyn rodzaju przekładnika {prądowy · napięciowy}: lista pola pokazuje oba z polską

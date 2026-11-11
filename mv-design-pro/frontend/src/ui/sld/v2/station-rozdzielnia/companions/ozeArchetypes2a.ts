@@ -41,11 +41,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT"
@@ -823,11 +822,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "technology": "PV"
     },
@@ -897,11 +895,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT"
@@ -1684,11 +1681,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "technology": "PV"
     },
@@ -1758,11 +1754,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT"
@@ -2421,11 +2416,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "technology": "PV"
     },
@@ -2560,11 +2554,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -3425,11 +3418,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "storage": {
         "bidirectional": true,
@@ -3620,11 +3612,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -5030,11 +5021,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "storage": {
         "bidirectional": true,
@@ -6451,11 +6441,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -7322,11 +7311,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "storage": {
         "bidirectional": true,
@@ -7490,11 +7478,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "67N",
           "81U",
           "81O",
-          "df/dt",
+          "81R",
           "27",
           "59",
-          "59N",
-          "anti-islanding"
+          "59N"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -8541,11 +8528,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "67N",
         "81U",
         "81O",
-        "df/dt",
+        "81R",
         "27",
         "59",
-        "59N",
-        "anti-islanding"
+        "59N"
       ],
       "technology": "Wiatr \u2014 turbiny pe\u0142noprzekszta\u0142tnikowe (Typ 4)"
     },
@@ -8700,8 +8686,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "59",
           "81U",
           "81O",
-          "df/dt",
-          "anti-islanding"
+          "81R"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -9964,8 +9949,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "technology": "Wiatr \u2014 generatory dwustronnie zasilane (Typ 3, DFIG)"
     },
@@ -10120,8 +10104,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "59",
           "81U",
           "81O",
-          "df/dt",
-          "anti-islanding"
+          "81R"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -11382,8 +11365,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "technology": "Wiatr \u2014 generatory indukcyjne (Typ 1, sta\u0142a pr\u0119dko\u015b\u0107)"
     },
@@ -11538,8 +11520,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "59",
           "81U",
           "81O",
-          "df/dt",
-          "anti-islanding"
+          "81R"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -12018,8 +11999,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "technology": "Biogazownia \u2014 agregaty synchroniczne (kogeneracja)"
     },
@@ -12140,8 +12120,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "59",
           "81U",
           "81O",
-          "df/dt",
-          "anti-islanding"
+          "81R"
         ],
         "role": "connection",
         "source_ref": "enm:Bay.bay_role=LINIA_OUT;std:IEC_62271_pole_liniowe"
@@ -12155,9 +12134,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "on_bus_ref": "PV_NN",
         "port": null,
         "protection_codes": [
-          "anti-islanding",
           "81U",
           "81O",
+          "81R",
           "27",
           "59"
         ],
@@ -13730,8 +13709,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "technology": "GPO wielopolowe \u2014 PV (IBG) + agregat synchr. + wiatr async"
     },

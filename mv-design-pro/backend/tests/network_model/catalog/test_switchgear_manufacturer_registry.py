@@ -31,11 +31,14 @@ from network_model.catalog.switchgear import (
 class TestManufacturerRegistry:
     def test_registry_has_five_starting_manufacturers(self):
         # 5. producent SCHNEIDER_ELECTRIC dodany w programie Reference Engine
-        # V1 (rodzina SM6-24). Intencja testu bez zmian: rejestr zawiera
-        # DOKŁADNIE znanych producentów.
-        assert len(MANUFACTURER_REGISTRY) == 5
+        # V1 (rodzina SM6-24). Karta UX-04/POLE-LINIOWE-WZORZEC: 6. wpis
+        # TYP_OGOLNY_OSD — „producent" rodzin typu ogólnego wg standardu OSD (ENEA
+        # Zeszyt 1 §13; rozdzielnice GPZ bez gazów fluorowanych). Intencja testu bez
+        # zmian: rejestr zawiera DOKŁADNIE znane wpisy.
+        assert len(MANUFACTURER_REGISTRY) == 6
         refs = set(MANUFACTURER_REGISTRY.keys())
         assert refs == {
+            "TYP_OGOLNY_OSD",
             "ZPUE_WLOSZCZOWA",
             "ELEKTROMETAL",
             "ABB",
@@ -73,10 +76,11 @@ class TestManufacturerRegistry:
             get_manufacturer("NIEZNANY_PRODUCENT")
 
     def test_manufacturers_requiring_catalog_lists_all_starters(self):
-        # 5 producentów (Reference Engine V1) — wszyscy requires_catalog
-        # do czasu zatwierdzenia oficjalnych kart PDF.
+        # 5 producentów (Reference Engine V1) i wpis typu ogólnego OSD — wszyscy
+        # requires_catalog do czasu zatwierdzenia oficjalnych kart PDF (typ ogólny nie ma
+        # karty producenta z definicji).
         requiring = manufacturers_requiring_catalog()
-        assert len(requiring) == 5
+        assert len(requiring) == 6
 
     def test_verified_manufacturers_empty_on_start(self):
         assert verified_manufacturers() == []

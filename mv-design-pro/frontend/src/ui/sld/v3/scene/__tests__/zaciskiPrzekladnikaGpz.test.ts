@@ -1,0 +1,294 @@
+/**
+ * ZACISKI P1/P2 I TABLICZKA PRZEKŁADNIKA PRĄDOWEGO NA SCENIE POLA GPZ (karta
+ * UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta §11.7 pkt 6): „T1 dostaje P1 od strony szyny,
+ * P2, przekładnię i klasę rdzeni z danych modelu".
+ *
+ * Wyrocznia niezależna od kompozycji: oznaczenia z kontraktu zacisków (`P1` = port `we`,
+ * `P2` = port `wy`, PN-EN 61869-2), tekst tabliczki z rdzeni rekordu, położenie z portów symbolu
+ * na scenie, kolizje z sond sceny (`labelCollisions`, `labelWireCollisions`).
+ *
+ * Iloczyn cech: wzorzec pola (Z.10 sekcja 1 × Z.10 sekcja 2 × Z.11 z odgałęzieniem i Z.11.1)
+ * × poziom szczegółu (L0 × L1 × L2) × porty przekładnika (komplet × brak × port bez węzła ×
+ * zamienione `we`/`wy` × aparat poza torem) × rdzenie (jeden × trzy × brak) × szerokość toru
+ * (z przekładnikiem Ferrantiego szerszym od pierścienia × bez niego — przekładnik najszerszy)
+ * × przewód przy zacisku po stronie oznaczeń (żaden × odczep uziemnika z węzła zacisku dolnego
+ * × z węzła zacisku górnego — wtedy oznaczenie tego zacisku przechodzi na stronę podpisów).
+ *
+ * Położenie oznaczeń i tabliczki (polecenie właściciela 2026-11-04, korekta v2 — tekst polecenia
+ * wygrywa nad obrazem): P1 przy zacisku górnym, P2 przy dolnym, oba PO LEWEJ symbolu T1, między
+ * kolumną podpisów aparatów a symbolem; tabliczka przekładni („200–400/5") też po lewej symbolu,
+ * między podpisem „T1" a symbolem, zero przecięć — wyrocznia `oznaczeniaZaciskow.ts` (wspólna
+ * z testem kanwy). Wyjątek z danych: przewód przy zacisku po lewej (odczep uziemnika z węzła
+ * zacisku) przenosi oznaczenie tego zacisku na prawą stronę. Iniekcje: dawny zaczep (wiersze
+ * całkiem nad i pod pierścieniem), stan sprzed korekty v2 (oznaczenia po prawej) — ostatnie
+ * testy pliku.
+ */
+import { describe, expect, it } from 'vitest';
+
+import type { Bay, BayPrimaryDevice, EnergyNetworkModel } from '../../../../../types/enm';
+import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
+import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
+import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
+import { GRID, snapDown, snapUp } from '../../core/grid';
+import { labelLineHeight, measureLabelWidth } from '../../core/text';
+import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../../compose/zaciskiPrzekladnika';
+import { SYMBOL_DEFS } from '../../symbols/defs';
+import { buildSceneV3, labelCollisions, labelWireCollisions, sceneObstacleRects, type SceneV3 } from '../buildScene';
+import { naruszeniaOznaczeniaZacisku, type StronaOznaczenia } from './oznaczeniaZaciskow';
+
+type Fikstura = { readonly snapshot: EnergyNetworkModel };
+const FIKSTURY: readonly (readonly [string, EnergyNetworkModel])[] = [
+  ['Z.10 sekcja 1', (fxStaly1 as unknown as Fikstura).snapshot],
+  ['Z.10 sekcja 2', (fxStaly2 as unknown as Fikstura).snapshot],
+  ['Z.11 i Z.11.1', (fxZ11 as unknown as Fikstura).snapshot],
+];
+const [ZACISK_OD_SZYNY, ZACISK_OD_ODPLYWU] = ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne;
+
+const polaLiniowe = (enm: EnergyNetworkModel): readonly Bay[] =>
+  (enm.bays ?? []).filter((b) => (b.tags ?? []).includes('gpz_line_field'));
+const przekladnik = (bay: Bay): BayPrimaryDevice => bay.primary_devices!.find((d) => d.kind === 'CT')!;
+
+/** Kopia modelu z podmienionym aparatem CT (albo usuniętym aparatem) w KAŻDYM polu liniowym. */
+function zmienPola(enm: EnergyNetworkModel, zmiana: (devices: BayPrimaryDevice[]) => BayPrimaryDevice[]): EnergyNetworkModel {
+  const kopia = structuredClone(enm);
+  for (const bay of kopia.bays ?? []) {
+    if ((bay.tags ?? []).includes('gpz_line_field')) bay.primary_devices = zmiana(bay.primary_devices ?? []);
+  }
+  return kopia;
+}
+const zmienCt = (enm: EnergyNetworkModel, f: (d: BayPrimaryDevice) => BayPrimaryDevice): EnergyNetworkModel =>
+  zmienPola(enm, (devices) => devices.map((d) => (d.kind === 'CT' ? f(d) : d)));
+/** Uziemnik pola (rekord `ES` fikstury albo nowy, gdy pole go nie ma) przyłączony do węzła
+ *  portu `port` przekładnika — odczep aparatu bocznego wychodzi wtedy z węzła tego zacisku. */
+function naWezleZacisku(devices: BayPrimaryDevice[], port: 'we' | 'wy'): BayPrimaryDevice[] {
+  const ct = devices.find((d) => d.kind === 'CT')!;
+  const wezel = ct.ports!.find((p) => p.port_id === port)!.wezel;
+  const es = devices.find((d) => d.kind === 'ES');
+  const uziemnik: BayPrimaryDevice = {
+    ...(es ?? { ...ct, device_ref: `${ct.device_ref}-es`, kind: 'ES', designation: 'Q8', rdzenie: undefined }),
+    ports: [{ port_id: 'przylacze', wezel }],
+  } as BayPrimaryDevice;
+  return [...devices.filter((d) => d.kind !== 'ES'), uziemnik];
+}
+
+const etykietyZaciskow = (scena: SceneV3, bayRef: string) =>
+  scena.labels.filter((l) => l.ownerRef.startsWith(`${bayRef}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}`));
+const tabliczka = (scena: SceneV3, bayRef: string, deviceRef: string) =>
+  scena.labels.filter((l) => l.ownerRef === `${bayRef}#ct-rating-${deviceRef}`);
+const symbolCt = (scena: SceneV3, deviceRef: string) => scena.symbols.find((s) => s.meta?.deviceRef === deviceRef)!;
+
+/** Kolizje sceny dotyczące oznaczeń zacisków i tabliczek przekładników. */
+function kolizjeNowychEtykiet(scena: SceneV3): readonly string[] {
+  const nasza = (ref: string) => ref.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA) || ref.includes('#ct-rating-');
+  return [
+    ...labelCollisions(scena).filter((k) => nasza(k.aRef) || nasza(k.bRef)).map((k) => `${k.kind}: ${k.aRef} ↔ ${k.bRef}`),
+    ...labelWireCollisions(scena).filter((k) => nasza(k.ownerRef)).map((k) => `etykieta-przewód: ${k.ownerRef} (${k.text})`),
+    ...((scena.meta?.stopNotes ?? []) as readonly string[]).filter((n) => n.startsWith('label.declutter') && (n.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA) || n.includes('#ct-rating-'))),
+  ];
+}
+
+/** Wspólne asercje pola z oznaczeniami: P1 przy zacisku górnym (od szyny), P2 przy dolnym,
+ *  po stronie `strony` (domyślnie lewej — korekta v2 2026-11-04), bez przecięć z bryłami
+ *  symboli, przewodami i innymi etykietami sceny (`oznaczeniaZaciskow.ts`); oznaczenie po lewej
+ *  stoi na prawo od podpisu „T1"; tabliczka z rdzeni po lewej symbolu, na prawo od podpisu
+ *  „T1", w paśmie wysokości symbolu. */
+function sprawdzPole(
+  scena: SceneV3,
+  bay: Bay,
+  oczekiwaneZaciski: boolean,
+  oczekiwanaTabliczka: boolean,
+  strony: { readonly odSzyny: StronaOznaczenia; readonly odOdplywu: StronaOznaczenia } = { odSzyny: 'left', odOdplywu: 'left' },
+): void {
+  const ct = przekladnik(bay);
+  const sym = symbolCt(scena, ct.device_ref);
+  const def = SYMBOL_DEFS[sym.symbolId];
+  const zaciski = etykietyZaciskow(scena, bay.ref_id);
+  if (!oczekiwaneZaciski) {
+    expect(zaciski, `${bay.ref_id}: bez oznaczeń zacisków`).toEqual([]);
+  } else {
+    expect(zaciski.map((l) => l.text).sort(), bay.ref_id).toEqual([ZACISK_OD_SZYNY, ZACISK_OD_ODPLYWU]);
+    const kafel = { x: sym.x, y: sym.y, width: def.width, height: def.height };
+    const gornyPort = sym.y + def.ports.find((p) => p.dir === 'N')!.y;
+    const dolnyPort = sym.y + def.ports.find((p) => p.dir === 'S')!.y;
+    const przeszkody = [
+      ...sceneObstacleRects(scena).map((rect, i) => ({ opis: `przeszkoda sceny ${i}`, rect })),
+      ...scena.labels.map((l) => ({ opis: `etykieta „${l.text}" (${l.ownerRef.slice(-40)})`, rect: l.rect, ownerRef: l.ownerRef })),
+    ];
+    for (const [tekst, y, strona] of [
+      [ZACISK_OD_SZYNY, gornyPort, strony.odSzyny],
+      [ZACISK_OD_ODPLYWU, dolnyPort, strony.odOdplywu],
+    ] as const) {
+      const l = zaciski.find((z) => z.text === tekst)!;
+      expect(l.labelClass).toBe('t4');
+      const inne = przeszkody.filter((p) => !('ownerRef' in p) || p.ownerRef !== l.ownerRef);
+      expect(naruszeniaOznaczeniaZacisku(tekst, l.rect, { y, kafel, strona }, inne), `${bay.ref_id}: ${tekst}`).toEqual([]);
+    }
+    // Podpis T1 stoi w kolumnie po lewej toru; oznaczenie po lewej — między podpisem a symbolem.
+    const podpisT1 = scena.labels.find((l) => l.ownerRef.endsWith(`#etykieta-aparatu-${ct.device_ref}`));
+    expect(podpisT1, `${bay.ref_id}: podpis przekładnika`).toBeDefined();
+    expect(podpisT1!.rect.x + podpisT1!.rect.width, 'podpis przekładnika po lewej kafla').toBeLessThanOrEqual(sym.x);
+    for (const [tekst, strona] of [
+      [ZACISK_OD_SZYNY, strony.odSzyny],
+      [ZACISK_OD_ODPLYWU, strony.odOdplywu],
+    ] as const) {
+      const l = zaciski.find((z) => z.text === tekst)!;
+      if (strona === 'left') expect(l.rect.x, `${bay.ref_id}: ${tekst} na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpisT1!.rect.x + podpisT1!.rect.width);
+    }
+  }
+  const tab = tabliczka(scena, bay.ref_id, ct.device_ref);
+  if (!oczekiwanaTabliczka) {
+    expect(tab, `${bay.ref_id}: bez tabliczki`).toEqual([]);
+    return;
+  }
+  // Odbiór B-02 (2026-11-04, pkt 6): krótka przekładnia pierwszego rdzenia; zaczep i klasy —
+  // w inspektorze pola (wyrocznia z surowego rekordu, niezależna od formatera).
+  expect(tab.map((l) => l.text)).toEqual([ct.rdzenie![0].przekladnia.replace(/-/g, '–')]);
+  // Korekta v2 (2026-11-04): tabliczka PO LEWEJ symbolu (po prawej biegnie linia pomiarowa
+  // z zacisku wtórnego), na prawo od podpisu „T1", w paśmie wysokości symbolu.
+  const podpis = scena.labels.find((l) => l.ownerRef.endsWith(`#etykieta-aparatu-${ct.device_ref}`))!;
+  const r = tab[0].rect;
+  expect(r.x + r.width, `${bay.ref_id}: tabliczka po lewej symbolu`).toBeLessThanOrEqual(sym.x);
+  expect(r.x, `${bay.ref_id}: tabliczka na prawo od podpisu T1`).toBeGreaterThanOrEqual(podpis.rect.x + podpis.rect.width);
+  expect(r.y + r.height, `${bay.ref_id}: tabliczka w paśmie symbolu (góra)`).toBeGreaterThan(sym.y);
+  expect(r.y, `${bay.ref_id}: tabliczka w paśmie symbolu (dół)`).toBeLessThan(sym.y + def.height);
+  // Wzorzec właściciela 2026-11-05 (opisy pola po lewej): tabliczka stoi w kolumnie przekładni,
+  // wyrównana do LEWEJ krawędzi kolumny (dawniej dosunięta prawą krawędzią do symbolu).
+  expect(tab[0].wyrownanieTekstu, `${bay.ref_id}: tekst od lewej krawędzi kolumny przekładni`).toBe('poczatek');
+}
+
+describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur generatora', () => {
+  for (const [nazwa, enm] of FIKSTURY) {
+    it(`${nazwa}: warunek wstępny — pola liniowe z przekładnikiem z portami i rdzeniami`, () => {
+      const pola = polaLiniowe(enm);
+      expect(pola.length).toBeGreaterThan(0);
+      for (const bay of pola) {
+        const ct = przekladnik(bay);
+        expect(ct.ports?.map((p) => p.port_id).sort()).toEqual(['we', 'wy']);
+        expect(ct.rdzenie?.length ?? 0).toBeGreaterThan(0);
+      }
+    });
+
+    for (const lod of [0, 1, 2] as const) {
+      it(`${nazwa} × L${lod}: oznaczenia wyłącznie na L2, zero kolizji`, () => {
+        const scena = buildSceneV3(enm, lod);
+        for (const bay of polaLiniowe(enm)) {
+          if (lod === 2) sprawdzPole(scena, bay, true, true);
+          else expect(etykietyZaciskow(scena, bay.ref_id), `${bay.ref_id} L${lod}`).toEqual([]);
+        }
+        expect(kolizjeNowychEtykiet(scena)).toEqual([]);
+      });
+    }
+
+    it(`${nazwa}: Z.11 trzy rdzenie — wyłącznie krótka przekładnia (bez „/5/5”, klas i zaczepu)`, () => {
+      const trojrdzeniowe = polaLiniowe(enm).filter((b) => (przekladnik(b).rdzenie?.length ?? 0) === 3);
+      const scena = buildSceneV3(enm, 2);
+      for (const bay of trojrdzeniowe) {
+        expect(tabliczka(scena, bay.ref_id, przekladnik(bay).device_ref).map((l) => l.text)).toEqual([
+          '200–400/5',
+        ]);
+      }
+    });
+
+    type Strony = { readonly odSzyny: StronaOznaczenia; readonly odOdplywu: StronaOznaczenia };
+    const WARIANTY: readonly (readonly [string, (e: EnergyNetworkModel) => EnergyNetworkModel, boolean, boolean, ((fikstura: string) => Strony)?])[] = [
+      ['brak portów przekładnika', (e) => zmienCt(e, (d) => ({ ...d, ports: [] })), false, true],
+      [
+        'port „we" bez węzła pola',
+        (e) => zmienCt(e, (d) => ({ ...d, ports: (d.ports ?? []).map((p) => (p.port_id === 'we' ? { ...p, wezel: null } : p)) as never })),
+        false,
+        true,
+      ],
+      [
+        'porty zamienione (we ↔ wy) — aparat poza torem, orientacji brak w modelu',
+        (e) => zmienCt(e, (d) => ({ ...d, ports: (d.ports ?? []).map((p) => ({ ...p, port_id: p.port_id === 'we' ? 'wy' : 'we' })) })),
+        false,
+        true,
+      ],
+      ['pole rdzeni nieobecne — bez tabliczki, zaciski zostają', (e) => zmienCt(e, (d) => ({ ...d, rdzenie: undefined })), true, false],
+      ['zaczep niewybrany — tabliczka ta sama (zaczep tylko w inspektorze)', (e) => zmienCt(e, (d) => ({ ...d, zaczep_pierwotny_a: null })), true, true],
+      ['pusta lista rdzeni', (e) => zmienCt(e, (d) => ({ ...d, rdzenie: [] })), true, false],
+      [
+        'bez przekładnika Ferrantiego — kafel przekładnika na krawędzi toru, oznaczenia po prawej kafla',
+        (e) => zmienPola(e, (devices) => devices.filter((d) => d.kind !== 'CORE_BALANCE_CT')),
+        true,
+        true,
+      ],
+      [
+        // Odczep uziemnika (aparat boczny toru) biegnie po PRAWEJ toru — oznaczenie zacisku dolnego
+        // zostaje po lewej (strona oznaczeń wolna od przewodu).
+        'uziemnik na węźle zacisku dolnego bez wskaźnika napięcia — odczep przy zacisku dolnym po prawej, oznaczenia po lewej',
+        (e) => zmienPola(e, (devices) => naWezleZacisku(devices.filter((d) => d.kind !== 'VOLTAGE_INDICATOR'), 'wy')),
+        true,
+        true,
+        () => ({ odSzyny: 'left', odOdplywu: 'left' }),
+      ],
+      [
+        // Uwaga właściciela 2026-11-04 (uziemnik Q8 wisi pod węzłem odczepu,
+        // `zwisAparatuBocznego`): przekładnik za kotwicą uziemnika stoi o zwis niżej
+        // (`polozeniaToruGlownego`), odczep z węzła `w2` wychodzi pod wyłącznikiem, nad zaciskiem
+        // górnym i po prawej toru — P1 i P2 po lewej (korekta v2).
+        'uziemnik na węźle zacisku górnego — odczep nad zaciskiem górnym, oznaczenia po lewej',
+        (e) => zmienPola(e, (devices) => naWezleZacisku(devices, 'we')),
+        true,
+        true,
+        () => ({ odSzyny: 'left', odOdplywu: 'left' }),
+      ],
+    ];
+    for (const [opis, zmiana, zaciski, tab, strony] of WARIANTY) {
+      it(`${nazwa} × ${opis}`, () => {
+        const zmieniony = zmiana(enm);
+        const scena = buildSceneV3(zmieniony, 2);
+        for (const bay of polaLiniowe(zmieniony)) sprawdzPole(scena, bay, zaciski, tab, strony?.(nazwa));
+        expect(kolizjeNowychEtykiet(scena)).toEqual([]);
+      });
+    }
+  }
+
+  it('iniekcja dawnego zaczepu (po lewej, wiersz całkiem nad zaciskiem górnym i całkiem pod dolnym) — wyrocznia czerwona', () => {
+    for (const [nazwa, enm] of FIKSTURY) {
+      const scena = buildSceneV3(enm, 2);
+      for (const bay of polaLiniowe(enm)) {
+        const ct = przekladnik(bay);
+        const sym = symbolCt(scena, ct.device_ref);
+        const def = SYMBOL_DEFS[sym.symbolId];
+        const kafel = { x: sym.x, y: sym.y, width: def.width, height: def.height };
+        const wysokosc = labelLineHeight('t4');
+        for (const [tekst, port, dawnaGora] of [
+          [ZACISK_OD_SZYNY, sym.y + def.ports.find((p) => p.dir === 'N')!.y, (y: number) => snapDown(y - wysokosc) - GRID],
+          [ZACISK_OD_ODPLYWU, sym.y + def.ports.find((p) => p.dir === 'S')!.y, (y: number) => snapUp(y) + GRID],
+        ] as const) {
+          const szerokosc = measureLabelWidth(tekst, 't4');
+          const dawny = { x: sym.x - szerokosc, y: dawnaGora(port), width: szerokosc, height: wysokosc };
+          const bledy = naruszeniaOznaczeniaZacisku(tekst, dawny, { y: port, kafel, strona: 'left' }, []);
+          expect(bledy.length, `${nazwa} ${bay.ref_id} ${tekst}: dawny zaczep ${JSON.stringify(dawny)} narusza wymaganie`).toBeGreaterThan(0);
+          expect(bledy.some((b) => b.includes('od kotwicy zacisku')), `${nazwa} ${tekst}: odległość od kotwicy`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('iniekcja stanu sprzed korekty v2 (oznaczenia zacisków pierwotnych po prawej symbolu) — wyrocznia czerwona', () => {
+    for (const [nazwa, enm] of FIKSTURY) {
+      const scena = buildSceneV3(enm, 2);
+      for (const bay of polaLiniowe(enm)) {
+        const ct = przekladnik(bay);
+        const sym = symbolCt(scena, ct.device_ref);
+        const def = SYMBOL_DEFS[sym.symbolId];
+        const kafel = { x: sym.x, y: sym.y, width: def.width, height: def.height };
+        for (const l of etykietyZaciskow(scena, bay.ref_id)) {
+          const poPrawej = { ...l.rect, x: sym.x + def.width };
+          const port = sym.y + def.ports.find((p) => p.dir === (l.text === ZACISK_OD_SZYNY ? 'N' : 'S'))!.y;
+          const bledy = naruszeniaOznaczeniaZacisku(l.text, poPrawej, { y: port, kafel, strona: 'left' }, []);
+          expect(bledy.some((b) => b.includes('nie w całości po stronie left')), `${nazwa} ${bay.ref_id} ${l.text}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('determinizm: dwa przebiegi — te same oznaczenia, prostokąty i właściciele', () => {
+    const [, enm] = FIKSTURY[2];
+    const zrzut = (s: SceneV3) =>
+      s.labels.filter((l) => l.ownerRef.includes(ZNACZNIK_ZACISKU_PRZEKLADNIKA) || l.ownerRef.includes('#ct-rating-')).map((l) => [l.ownerRef, l.text, l.rect]);
+    expect(zrzut(buildSceneV3(enm, 2))).toEqual(zrzut(buildSceneV3(enm, 2)));
+  });
+});

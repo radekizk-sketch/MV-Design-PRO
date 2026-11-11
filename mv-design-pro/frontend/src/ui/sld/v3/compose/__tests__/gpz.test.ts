@@ -23,10 +23,12 @@ import type {
   CanonicalGpzProps,
   RolaPolaGpz,
 } from '../../../v2/canvas/canonicalGpzModel';
+import { PLAKIETKI_GPZ } from '../../../v2/canvas/canonicalGpzModel';
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView } from '../../../v2/model/widokPolStacji';
 import { uzwojeniaZGrupyPolaczen } from '../../symbols/uzwojenia';
 import {
   ETYKIETA_ROLI_POLA_PL,
+  KLASA_DANYCH_GPZ,
   KONTRAKT_NEGATYWNY_GPZ,
   ROLE_POL_GPZ,
   szerokoscSlotowNaglowka,
@@ -51,6 +53,7 @@ import {
   noGpzSymbolOverlaps,
   type GpzComposition,
 } from '../gpz';
+import { measureLabelWidth } from '../../core/text';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -833,6 +836,8 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
       neutralEarthingNotePl: null,
       zone: null,
       adnotacje: null,
+      brakiPrzylaczy: [],
+      brakiTopologiiFunkcji: [],
     };
   }
 
@@ -964,7 +969,14 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
 // `describe` niżej „F11.1: rejestr device-ref".
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez rejestru device-ref', () => {
+describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): blok zabezpieczeń bez rejestru device-ref', () => {
+  // Kody ze słownika funkcji EAZ (`funkcje_eaz.py`: kod = numer IEEE; karta UX-04, deduplikacja
+  // u źródła 2026-10-30). Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: przekaźnik pola GPZ bez
+  // powiązań obwodów wtórnych jest tą samą ramką z kodami co pole z powiązaniami.
+  const wierszeKodow = (composition: GpzComposition, bayRef: string): string[] =>
+    composition.labels.protection
+      .filter((l) => l.ownerRef === `${bayRef}#protection-codes-full` || l.ownerRef.startsWith(`${bayRef}#protection-codes-full-`))
+      .map((l) => l.text);
   const propsWithCodes = (codes: readonly string[]): CanonicalGpzProps =>
     baseProps({
       sections: [
@@ -978,22 +990,23 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
       ],
     });
 
-  it('§17.2 brak danych = brak oznaczenia: pola bez protectionCodes ⇒ ZERO okręgów (wszystkie istniejące fixtury tego pliku)', () => {
+  it('§17.2 brak danych = brak oznaczenia: pola bez protectionCodes ⇒ ZERO bloków (wszystkie istniejące fixtury tego pliku)', () => {
     const composition = composeGpz(baseProps(), ORIGIN);
     expect(composition.protectionSymbols).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
   });
 
-  it('F11.1 (usunięcie wyjątku §17.6): pole z kodami, ale BEZ `primaryDevices`/`protectionMarking` refów (bare `protectionCodes`, wywołujący sprzed F11.1) ⇒ DOKŁADNIE jeden okrąg z DWOMA pierwszymi kodami, ZERO segmentów wtórnych, ale missingData JEST zgłaszana TERAZ (parytet ze stacjami — dawny wyjątek R-1 ZNIESIONY)', () => {
-    const composition = composeGpz(propsWithCodes(['50/51', '51N']), ORIGIN);
+  it('F11.1 (usunięcie wyjątku §17.6): pole z kodami, ale BEZ `primaryDevices`/`protectionMarking` refów (bare `protectionCodes`, wywołujący sprzed F11.1) ⇒ DOKŁADNIE jeden blok (ramka) z OBOMA kodami, ZERO segmentów wtórnych, ale missingData JEST zgłaszana TERAZ (parytet ze stacjami — dawny wyjątek R-1 ZNIESIONY)', () => {
+    const composition = composeGpz(propsWithCodes(['51', '51N']), ORIGIN);
     expect(composition.protectionSymbols).toHaveLength(1);
     expect(composition.protectionSymbols[0].bayRef).toBe('b-prot');
-    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['50/51', '51N']);
+    expect(composition.protectionSymbols[0].ramkaBloku).toBeDefined();
+    expect(wierszeKodow(composition, 'b-prot')).toEqual(['51', '51N']);
     // BEZ danych refów (brak `protectionMarking.breakerRef`/`ctRef`) — brak
     // linii wtórnych z KONSTRUKCJI, dokładnie jak stacja z `protection_ref==null`.
     expect(composition.protectionSegments).toHaveLength(0);
     expect(composition.measurementSegments).toHaveLength(0);
-    // F11.1: wyjątek §17.6 ZNIESIONY — okrąg bez toru JEST TERAZ missingData
+    // F11.1: wyjątek §17.6 ZNIESIONY — blok bez toru JEST TERAZ missingData
     // (dokładnie jak dla stacji, `bay.protection.trip_link_unresolved`/
     // `measurement_link_unresolved`).
     expect(composition.missingData).toEqual(
@@ -1004,29 +1017,30 @@ describe('V3 compose/gpz — F9.9 R-1 (ZNIESIONY F11.1): okrąg przekaźnika bez
     );
   });
 
-  it('R-2 (§17.3 zd. 2): >2 kody ⇒ okrąg z dwoma pierwszymi + etykieta pełnej listy (kolejność źródłowa)', () => {
+  it('R-2 (§17.3 zd. 2): >2 kody ⇒ WSZYSTKIE kody wierszami w ramce bloku (kolejność źródłowa), członkowie ramki', () => {
     const composition = composeGpz(propsWithCodes(['87T', '51', '50', '51N']), ORIGIN);
-    expect(composition.protectionSymbols[0].protectionCodes).toEqual(['87T', '51']);
-    const fullList = composition.labels.protection.filter((l) => l.ownerRef.endsWith('#protection-codes-full'));
-    expect(fullList).toHaveLength(1);
-    expect(fullList[0].text).toBe('87T · 51 · 50 · 51N');
+    expect(wierszeKodow(composition, 'b-prot')).toEqual(['87T', '51', '50', '51N']);
+    expect(composition.protectionSymbols[0].wierszeBloku).toEqual(
+      composition.labels.protection.filter((l) => l.ownerRef.includes('#protection-codes-full')).map((l) => l.ownerRef),
+    );
   });
 
-  it('B-1 (§17.4 L1, circle-only): okrąg BEZ kodów, zero etykiet protection', () => {
-    const composition = composeGpz(propsWithCodes(['50/51', '51N', '67N']), ORIGIN, [], 'circle-only');
+  it('B-1 (§17.4 L1, circle-only): goła ramka bloku BEZ wierszy, zero etykiet protection', () => {
+    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN, [], 'circle-only');
     expect(composition.protectionSymbols).toHaveLength(1);
-    expect(composition.protectionSymbols[0].protectionCodes).toBeUndefined();
+    expect(composition.protectionSymbols[0].ramkaBloku).toBeDefined();
+    expect(composition.protectionSymbols[0].wierszeBloku).toEqual([]);
     expect(composition.labels.protection).toHaveLength(0);
   });
 
   it('B-1 (§17.4 L0, none): warstwa adnotacji nieobecna mimo kodów w danych', () => {
-    const composition = composeGpz(propsWithCodes(['50/51']), ORIGIN, [], 'none');
+    const composition = composeGpz(propsWithCodes(['51']), ORIGIN, [], 'none');
     expect(composition.protectionSymbols).toHaveLength(0);
     expect(composition.labels.protection).toHaveLength(0);
   });
 
   it('istniejące wyrocznie GPZ (grid/overlap/porty/parity) pozostają zielone przy polu z kodami — okrąg nie zaburza toru mocy', () => {
-    const composition = composeGpz(propsWithCodes(['50/51', '51N', '67N']), ORIGIN);
+    const composition = composeGpz(propsWithCodes(['51', '51N', '67N']), ORIGIN);
     expect(allGpzSymbolsOnGrid(composition)).toBe(true);
     expect(noGpzSymbolOverlaps(composition)).toBe(true);
     expect(gpzInternalSegmentsEndAtPortsOrBus(composition)).toBe(true);
@@ -1065,7 +1079,7 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
   ];
 
   const protMarking: BayProtectionMarkingView = {
-    codes: ['50/51', '51N'],
+    codes: ['51', '51N'],
     breakerRef: 'cb-1',
     ctRef: 'ct-1',
   };
@@ -1110,10 +1124,12 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     expect(composition.missingData).not.toContain('bay.protection.trip_link_unresolved');
   });
 
-  it('dane zgodne z szablonem ⇒ linia pomiarowa (#measurement-link) od CT deviceRef="ct-1"', () => {
+  // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (UX04 §11.20): pole BEZ powiązań obwodów wtórnych
+  // (sam `ct_ref`, bez `funkcje_eaz_zasilane`) ma ramkę BEZ linii pomiarowych CT/VT — linie
+  // pomiarowe wynikają wyłącznie z powiązań modelu (`poleLinioweGpz.test.tsx`, Z.10).
+  it('dane zgodne z szablonem, pole bez powiązań obwodów wtórnych ⇒ ZERO linii pomiarowej, CT dowiązany (deviceRef="ct-1"), zero braku danych pomiaru', () => {
     const composition = composeGpz(propsWithRegistry(), ORIGIN);
-    expect(composition.measurementSegments).toHaveLength(1);
-    expect(composition.measurementSegments[0].ownerRef).toBe('b-prot#measurement-link');
+    expect(composition.measurementSegments).toHaveLength(0);
     const ct = composition.symbols.find(
       (s) => s.meta.bayRef === 'b-prot' && s.symbolId === 'currentTransformer',
     )!;
@@ -1130,8 +1146,21 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     expect(composition.missingData).not.toContain('bay.protection.ct_rating_anchor_unresolved');
   });
 
-  it('dwie linie wtórne mają RÓŻNE ownerRef (§20.1 „zakaz jednej anonimowej linii")', () => {
-    const composition = composeGpz(propsWithRegistry(), ORIGIN);
+  it('dwie linie wtórne mają RÓŻNE ownerRef (§20.1 „zakaz jednej anonimowej linii") — pole z powiązaniami obwodów wtórnych', () => {
+    const composition = composeGpz(
+      propsWithRegistry({
+        primaryDevices: alignedLineDevices.map((d) =>
+          d.deviceRef === 'ct-1'
+            ? { ...d, renderVariant: 'qet_en60617', funkcjeEazZasilane: ['51'] }
+            : d.deviceRef === 'cb-1'
+              ? { ...d, renderVariant: 'qet_en60617', funkcjeEazWylaczajace: ['51'] }
+              : d,
+        ),
+      }),
+      ORIGIN,
+    );
+    expect(composition.measurementSegments).toHaveLength(1);
+    expect(composition.protectionSegments).toHaveLength(1);
     expect(composition.protectionSegments[0].ownerRef).not.toBe(composition.measurementSegments[0].ownerRef);
   });
 
@@ -1514,7 +1543,8 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   it('sloty belki mieszczą NAJDŁUŻSZY wariant tekstu (brak wyniku / wynik / wynik nieaktualny) — geometria nie zależy od stanu biegu', () => {
     const sloty = szerokoscSlotowNaglowka();
     const pelny = { pZasilaniaMw: '−8888,8888', qZasilaniaMvar: '−8888,8888', pOdplywowMw: '−8888,8888', qOdplywowMvar: '−8888,8888' };
-    const miara = (t: string): number => Math.ceil(t.length * 13 * 0.62);
+    // Miara z tabeli posuwów kroju w klasie danych GPZ — ta sama, którą liczy kompozycja.
+    const miara = (t: string): number => measureLabelWidth(t, KLASA_DANYCH_GPZ);
     for (const t of [tekstZasilaniaGpz(null), tekstZasilaniaGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.zasilanie);
     for (const t of [tekstOdplywowGpz(null), tekstOdplywowGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.odplywy);
     for (const t of [tekstAlarmowGpz(null, false, false), tekstAlarmowGpz('8888', true, true)]) expect(miara(t)).toBeLessThanOrEqual(sloty.alarmy);
@@ -1551,7 +1581,7 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   // = min z wariantów wykonalnych; w karcie jednowierszowej wartości nie zachodzą na
   // opis pola; karty rozłączne i w obrysie tabeli; legenda nie zachodzi na tytuł
   // ani na karty.
-  const polaTabeli = (n: number, plakietki: readonly ('SPZ' | 'SCO')[]): PoleTabeliGpzWejscie[] =>
+  const polaTabeli = (n: number, plakietki: readonly (typeof PLAKIETKI_GPZ)[number][]): PoleTabeliGpzWejscie[] =>
     Array.from({ length: n }, (_, i) => ({
       bayRef: `b-${i}`,
       oznaczenie: `Pole liniowe ${i + 1}`,
@@ -1563,7 +1593,8 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
     return ulozWariantTabeliGpz(pola, 0, 0, 0, true).karty[0].rect.width;
   };
   for (const n of [1, 4, 9]) {
-    for (const plakietki of [[], ['SPZ', 'SCO']] as const) {
+    // Pięć plakietek — pole Z.11.1 niesie SPZ, LRW, NZ i OWG (rozszerzenie 5 karty UX-04).
+    for (const plakietki of [[], ['SPZ', 'SCO'], PLAKIETKI_GPZ] as const) {
       const pola = polaTabeli(n, plakietki);
       const prog = progJednowierszowy(pola);
       for (const [nazwa, szerokosc] of [['wąska', prog - GRID], ['próg jednowierszowy', prog], ['szeroka', 100000]] as const) {
@@ -1614,14 +1645,15 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   });
 });
 
-describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', () => {
-  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji, OWG — każdy z uzasadnieniem', () => {
+describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA', () => {
+  // Plakietka OWG opuściła kontrakt negatywny (rozszerzenie 5 karty UX-04): OWG ma wpis
+  // słownika funkcji EAZ z podstawą i kod w zestawie funkcji pola Z.11.1/Z.11.
+  it('lista kontraktu negatywnego jest zamknięta: transmisja, adres, sterowanie, kasowanie sygnalizacji — każdy z uzasadnieniem', () => {
     expect(Object.keys(KONTRAKT_NEGATYWNY_GPZ).sort()).toEqual([
       'gpz.header.address',
       'gpz.header.control',
       'gpz.header.reset_signals',
       'gpz.header.transmission',
-      'gpz.status_flags.OWG',
     ]);
     for (const uzasadnienie of Object.values(KONTRAKT_NEGATYWNY_GPZ)) {
       expect(uzasadnienie).toMatch(/reguła phantom|Brak podstawy/);
@@ -1629,11 +1661,11 @@ describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', 
   });
 
   for (const [opis, props] of [['minimalny', baseProps()], ['pełny', pelnyGpz()], ['bez nazwy', pelnyGpz({ name: null })]] as const) {
-    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu SPZ/SCO`, () => {
+    it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu plakietek`, () => {
       const c = composeGpz(props, ORIGIN);
       for (const klucz of Object.keys(KONTRAKT_NEGATYWNY_GPZ)) expect(c.parityKeys.has(klucz), klucz).toBe(false);
       const plakietki = c.adnotacje!.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.flaga));
-      expect(plakietki.every((f) => f === 'SPZ' || f === 'SCO')).toBe(true);
+      expect(plakietki.every((f) => (PLAKIETKI_GPZ as readonly string[]).includes(f))).toBe(true);
     });
   }
 });

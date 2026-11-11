@@ -1,15 +1,12 @@
 import { nazwaObiektuPl, pierwszaNazwa } from '../shared/nazwaObiektu';
-import { buildCatalogBinding } from './catalogBinding';
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
 import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
-import { executeDomainOp } from '../topology/domainApi';
-import type { KartaWidmowa } from '../../types/enm';
+import type { KartaWidmowa, RodzajNapeduLacznika } from '../../types/enm';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
   CableType,
-  CatalogNamespace,
   ConverterType,
   CTCatalogType,
   KatalogPrzewodowLiniiWn,
@@ -96,8 +93,6 @@ export type CatalogListItem =
   | NeutralEarthingResistorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
-const DECATALOGING_BLOCKED_MESSAGE =
-  'Odkatalogowanie elementów technicznych jest niedostępne w trybie katalog-first.';
 const NETWORK_ERROR_MESSAGE =
   'Nie można połączyć się z API katalogów. Uruchom backend i odśwież widok.';
 const CATALOG_OPERATION_ERROR_MESSAGE =
@@ -255,6 +250,121 @@ export async function fetchCompleteBayTemplates(
   return fetchCatalogJson<CompleteMvBayTemplateSummary[]>(
     `/api/catalog/complete-bay-templates${query ? `?${query}` : ''}`,
   );
+}
+
+/** Odmowa szablonu pola w polu o podanych cechach (kod reguły + zdanie z podstawą i akcją). */
+export interface OdmowaSzablonuPola {
+  readonly kod: string;
+  readonly komunikat_pl: string;
+}
+
+/** Szablon kanoniczny pola SN z oceną dopuszczalności (`GET /api/catalog/bay-templates`). */
+export interface SzablonPolaKanoniczny {
+  readonly template_ref: string;
+  readonly template_name_pl: string;
+  readonly bay_role: string;
+  readonly podstawa: string | null;
+  readonly wykonanie_pola: string | null;
+  readonly wykonanie_pola_pl: string | null;
+  readonly wykonanie_lacznikow: string | null;
+  readonly wykonanie_lacznikow_pl: string | null;
+  readonly tylko_gpz: boolean;
+  /** Kody EAZ szablonu w klasie pola — ten sam zestaw, który operacja zapisze
+   *  w `Bay.protection_codes`. */
+  readonly funkcje_eaz: readonly string[];
+  /** Opis każdej funkcji ze słownika EAZ backendu (`funkcje_eaz.opis_funkcji_eaz_pl`:
+   *  zapis rysunku, numer IEEE C37.2, nazwa) — w kolejności `funkcje_eaz`. */
+  readonly funkcje_eaz_pl: readonly string[];
+  /** Profil funkcjonalny EAZ wzorca (`bay_templates.profil_eaz_szablonu`); `null` — szablon bez
+   *  wykonania pola liniowego GPZ. */
+  readonly profil_eaz?: readonly PozycjaProfiluEaz[] | null;
+  /** Obwody wtórne wzorca (`obwody_wtorne_pola.ObwodyWtornePola`); `null` — szablon bez rysunku. */
+  readonly obwody_wtorne?: ObwodyWtornePola | null;
+  readonly dopuszczony: boolean;
+  readonly odmowy: readonly OdmowaSzablonuPola[];
+}
+
+/** Status weryfikacji źródła wpisu wzorca — lustro `obwody_wtorne_pola.StatusWeryfikacji`. */
+export type StatusWeryfikacjiWzorca = 'ZWERYFIKOWANE_NA_RYSUNKU' | 'ODCZYT_TEKSTU' | 'INTERPRETACJA';
+
+/** Nazwa statusu weryfikacji pokazywana inżynierowi (ta sama w karcie pola i w edytorze). */
+export const NAZWA_WERYFIKACJI_PL: Readonly<Record<StatusWeryfikacjiWzorca, string>> = {
+  ZWERYFIKOWANE_NA_RYSUNKU: 'zweryfikowane na rysunku',
+  ODCZYT_TEKSTU: 'odczyt tekstu',
+  INTERPRETACJA: 'interpretacja',
+};
+
+/** Wymóg funkcji w jednej klasie pola — lustro `bay_templates.WymogFunkcjiWKlasie`. */
+export interface WymogFunkcjiWKlasie {
+  readonly klasa: string;
+  readonly wymog: string;
+  readonly wymog_pl: string;
+  readonly podstawa: string;
+  readonly weryfikacja: StatusWeryfikacjiWzorca;
+}
+
+/** Pozycja profilu EAZ wzorca — lustro `bay_templates.PozycjaProfiluEaz`. */
+export interface PozycjaProfiluEaz {
+  readonly kod: string;
+  readonly opis_pl: string;
+  readonly wymagalnosc: 'OBOWIAZKOWA' | 'WARIANTOWA' | 'OPCJONALNA';
+  readonly wymagalnosc_pl: string;
+  readonly na_rysunku: boolean;
+  readonly wymogi: readonly WymogFunkcjiWKlasie[];
+  /** Warunek przypisania funkcji warunkowej (67N — przekładnik Ferrantiego i potwierdzone
+   *  źródło 3U₀, decyzja właściciela 2026-10-29); `null` — funkcja bez warunku. */
+  readonly warunek_pl?: string | null;
+}
+
+/** Sygnał wzorca pola — lustro `obwody_wtorne_pola.SygnalPola`. */
+export interface SygnalPolaWzorca {
+  readonly nazwa: string;
+  readonly kierunek: 'WEJSCIE' | 'WYJSCIE';
+  readonly obwod: 'WYLACZNIK' | 'OKREZNY' | 'NADRZEDNY';
+  readonly sterownik_pola: boolean;
+  readonly znaczenie_pl: string | null;
+  readonly weryfikacja: StatusWeryfikacjiWzorca;
+  readonly uwaga: string | null;
+}
+
+/** Napęd łącznika wzorca — lustro `obwody_wtorne_pola.NapedAparatuPola` (oznaczenie i rodzaj
+ *  aparatu, przy którym rysunek stawia znak napędu; opis napędu z backendu). */
+export interface NapedAparatuWzorca {
+  readonly aparat: string;
+  readonly rodzaj_aparatu: string;
+  readonly naped: RodzajNapeduLacznika;
+  readonly weryfikacja: StatusWeryfikacjiWzorca;
+  readonly uwaga: string | null;
+  /** Pole wyliczane backendu (`computed_field`) — opis napędu z `OPIS_NAPEDU_PL`. */
+  readonly naped_pl: string;
+}
+
+/** Obwody wtórne wzorca pola — lustro `obwody_wtorne_pola.ObwodyWtornePola` (karta pola czyta
+ *  z niego sygnały i napędy łączników; powiązania funkcji przychodzą rozwiązane na aparatach
+ *  pola). */
+export interface ObwodyWtornePola {
+  readonly podstawa: string;
+  readonly napedy: readonly NapedAparatuWzorca[];
+  readonly sygnaly: readonly SygnalPolaWzorca[];
+}
+
+/** Cechy pola, dla których backend ocenia szablony (ta sama reguła co strażnik operacji). */
+export interface CechyPolaSzablonu {
+  readonly bayRole?: string | null;
+  readonly poleGpz: boolean;
+  readonly switchgearFamilyRef?: string | null;
+  readonly klasaPola?: string | null;
+}
+
+/** Szablony kanoniczne pól SN z oceną dopuszczalności w polu o podanych cechach. */
+export async function fetchSzablonyPolaKanoniczne(cechy: CechyPolaSzablonu): Promise<SzablonPolaKanoniczny[]> {
+  const params = new URLSearchParams();
+  if (cechy.bayRole) params.set('bay_role', cechy.bayRole);
+  if (cechy.poleGpz) params.set('pole_gpz', 'true');
+  if (cechy.switchgearFamilyRef) params.set('switchgear_family_ref', cechy.switchgearFamilyRef);
+  if (cechy.klasaPola) params.set('klasa_pola', cechy.klasaPola);
+  const query = params.toString();
+  return fetchCatalogJson<SzablonPolaKanoniczny[]>(`/api/catalog/bay-templates${query ? `?${query}` : ''}`);
 }
 
 export async function fetchCableTypes(): Promise<CableType[]> {
@@ -729,57 +839,3 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
 
   return sortCatalogItems(types);
 }
-
-export async function assignTypeToBranch(
-  projectId: string,
-  branchId: string,
-  typeId: string,
-  catalogNamespace: CatalogNamespace = 'KABEL_SN',
-): Promise<void> {
-  await executeDomainOp(projectId, 'assign_catalog_to_element', {
-    element_ref: branchId,
-    catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-  });
-}
-
-export async function assignTypeToTransformer(
-  projectId: string,
-  transformerId: string,
-  typeId: string,
-): Promise<void> {
-  await executeDomainOp(projectId, 'assign_catalog_to_element', {
-    element_ref: transformerId,
-    catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
-  });
-}
-
-export async function assignEquipmentTypeToSwitch(
-  projectId: string,
-  switchId: string,
-  typeId: string,
-  catalogNamespace: CatalogNamespace = 'APARAT_SN',
-): Promise<void> {
-  await executeDomainOp(projectId, 'assign_catalog_to_element', {
-    element_ref: switchId,
-    catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-  });
-}
-
-export async function clearTypeFromBranch(_projectId: string, _branchId: string): Promise<void> {
-  throw new Error(DECATALOGING_BLOCKED_MESSAGE);
-}
-
-export async function clearTypeFromTransformer(
-  _projectId: string,
-  _transformerId: string,
-): Promise<void> {
-  throw new Error(DECATALOGING_BLOCKED_MESSAGE);
-}
-
-export async function clearEquipmentTypeFromSwitch(
-  _projectId: string,
-  _switchId: string,
-): Promise<void> {
-  throw new Error(DECATALOGING_BLOCKED_MESSAGE);
-}
-

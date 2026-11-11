@@ -24,8 +24,9 @@ import { cleanup, render } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
-import { SYMBOL_DEFS } from '../../symbols/defs';
-import { SldCanvasV3, scenePointToCameraWorld } from '../SldCanvasV3';
+import { gabarytSymbolu } from '../../symbols/blokZabezpieczen';
+import { MIN_SCALE } from '../../../v2/viewport/ViewportController';
+import { SldCanvasV3, contentBoundingBoxOf, scenePointToCameraWorld } from '../SldCanvasV3';
 import { SLD_CANVAS_DOCK_INSETS, stationInternalPanelWidthPx } from '../toolbarLayout';
 
 afterEach(() => cleanup());
@@ -62,9 +63,11 @@ function trescWSwiecieKamery(lod: SceneLod) {
   };
   for (const s of scene.symbols) {
     if (!s.meta?.ownerRef) continue;
-    const def = SYMBOL_DEFS[s.symbolId];
-    obejmij(s.x, s.y);
-    obejmij(s.x + def.width, s.y + def.height);
+    // Gabaryt z jedynego źródła geometrii symbolu: blok zabezpieczeń to cała
+    // ramka (`gabarytSymbolu`), nie kwadrat definicji.
+    const g = gabarytSymbolu(s);
+    obejmij(g.x, g.y);
+    obejmij(g.x + g.width, g.y + g.height);
   }
   for (const seg of scene.segments) {
     if (!seg.meta?.ownerRef) continue;
@@ -77,25 +80,31 @@ function trescWSwiecieKamery(lod: SceneLod) {
   return { minX, minY, maxX, maxY };
 }
 
-function marginesy(lod: SceneLod, safeInsets?: { top: number; right: number; bottom: number; left: number }) {
+function marginesy(
+  lod: SceneLod,
+  safeInsets?: { top: number; right: number; bottom: number; left: number },
+  kanwa: { readonly width: number; readonly height: number } = CANVAS,
+) {
   const { container } = render(
     <SldCanvasV3
       snapshot={enm}
-      width={CANVAS.width}
-      height={CANVAS.height}
+      width={kanwa.width}
+      height={kanwa.height}
       lodOverride={lod}
       safeInsets={safeInsets}
     />,
   );
   const viewBox = container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!;
   const [vx, vy, vw] = viewBox.split(' ').map(Number);
-  const skala = CANVAS.width / vw;
+  const skala = kanwa.width / vw;
   const t = trescWSwiecieKamery(lod);
   return {
     lewo: (t.minX - vx) * skala,
     prawo: (vx + vw - t.maxX) * skala,
     gora: (t.minY - vy) * skala,
-    dol: (vy + CANVAS.height / skala - t.maxY) * skala,
+    dol: (vy + kanwa.height / skala - t.maxY) * skala,
+    skala,
+    vx,
   };
 }
 
@@ -122,23 +131,47 @@ describe('S9-8 — obszar bezpieczny pod dokami UI', () => {
     });
   }
 
-  it('ZASŁONA STANOWA wołającego (panel boczny) przesuwa kadr — inset nie jest stały', () => {
-    const zPanelem = {
-      ...SLD_CANVAS_DOCK_INSETS,
-      right: SLD_CANVAS_DOCK_INSETS.right + stationInternalPanelWidthPx(CANVAS.width),
-    };
-    const m = marginesy(1, zPanelem);
-    // ORZECZENIE WŁAŚCIWE: treść nie wchodzi pod panel. Marginesu NIE mierzymy
-    // jako „padding + pas" — przy bardzo wąskim prostokącie bezpiecznym o osi
-    // ograniczającej decyduje proporcja treści, a nie sam pas; wymaganie
-    // brzmi „nic pod panelem", nie „dokładnie tyle a tyle luzu".
-    expect(m.prawo).toBeGreaterThanOrEqual(zPanelem.right - 1e-6);
-    // Dowód, że to NIE jest to samo, co bez panelu: bez zasłony margines prawy
-    // byłby mniejszy o szerokość panelu.
-    cleanup();
-    const bezPanelu = marginesy(1);
-    expect(m.prawo).toBeGreaterThan(bezPanelu.prawo);
-  });
+  // Iloczyn: kanwa, na której fit MIEŚCI treść obok panelu (1920×1080: panel
+  // 1200 px, kontekst 720 px) × kanwa, na której fit opiera się o PODŁOGĘ
+  // skali `MIN_SCALE` (1200×800: kontekst SN_CONTEXT_MIN_WIDTH_PX = 440 px, a
+  // fikstura 52 stacji ma po wpięciu bloku zabezpieczeń w każde pole stacji
+  // ~9250 jednostek szerokości — pomiar 2026-11-05; potrzebna skala 0,039 <
+  // 0,05). Na podłodze treść nie może się zmieścić w żadnym prostokącie, więc
+  // orzeczeniem jest WYŚRODKOWANIE w prostokącie bezpiecznym (nadmiar dzielony
+  // po równo), nie „nic pod panelem"; poza podłogą — „nic pod panelem".
+  for (const kanwa of [CANVAS, { width: 1920, height: 1080 }] as const) {
+    it(`ZASŁONA STANOWA wołającego (panel boczny) przesuwa kadr — inset nie jest stały (kanwa ${kanwa.width}×${kanwa.height})`, () => {
+      const zPanelem = {
+        ...SLD_CANVAS_DOCK_INSETS,
+        right: SLD_CANVAS_DOCK_INSETS.right + stationInternalPanelWidthPx(kanwa.width),
+      };
+      const m = marginesy(1, zPanelem, kanwa);
+      if (m.skala > MIN_SCALE + 1e-9) {
+        // ORZECZENIE WŁAŚCIWE: treść nie wchodzi pod panel. Marginesu NIE mierzymy
+        // jako „padding + pas" — przy bardzo wąskim prostokącie bezpiecznym o osi
+        // ograniczającej decyduje proporcja treści, a nie sam pas; wymaganie
+        // brzmi „nic pod panelem", nie „dokładnie tyle a tyle luzu".
+        expect(kanwa.width, 'kanwa szeroka mieści treść bez podłogi skali').toBe(1920);
+        expect(m.prawo).toBeGreaterThanOrEqual(zPanelem.right - 1e-6);
+      } else {
+        expect(kanwa.width, 'kanwa wąska opiera się o podłogę skali').toBe(CANVAS.width);
+        expect(m.skala).toBeCloseTo(MIN_SCALE, 9);
+        // Środek celu fitu (rezerwacje etykiet, `contentBoundingBoxOf`) leży na
+        // środku prostokąta bezpiecznego — nadmiar ponad podłogą dzielony po równo.
+        const cel = contentBoundingBoxOf(buildSceneV3(enm, 1))!;
+        const a = scenePointToCameraWorld({ x: cel.minX, y: cel.minY });
+        const b = scenePointToCameraWorld({ x: cel.maxX, y: cel.maxY });
+        const srodekEkranu = ((a.x + b.x) / 2 - m.vx) * m.skala;
+        const srodekBezpieczny = zPanelem.left + (kanwa.width - zPanelem.left - zPanelem.right) / 2;
+        expect(srodekEkranu).toBeCloseTo(srodekBezpieczny, 3);
+      }
+      // Dowód, że to NIE jest to samo, co bez panelu: bez zasłony margines prawy
+      // byłby mniejszy o szerokość panelu.
+      cleanup();
+      const bezPanelu = marginesy(1, undefined, kanwa);
+      expect(m.prawo).toBeGreaterThan(bezPanelu.prawo);
+    });
+  }
 
   it('zerowe insety przywracają kadr sprzed karty (kompatybilność wsteczna wołających)', () => {
     const m = marginesy(1, { top: 0, right: 0, bottom: 0, left: 0 });

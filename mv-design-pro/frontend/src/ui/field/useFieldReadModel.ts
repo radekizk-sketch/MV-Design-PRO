@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../app-state/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import type { ObwodyWtornePola, StatusWeryfikacjiWzorca } from '../catalog/api';
 import type {
   BayCanonicalModel,
   BayProjectResults,
+  KlasaPolaLiniowego,
 } from '../../types/enm';
 import { bladZapytania } from '../../ui2/shared/bladZapytania';
+import type {
+  Etykieta,
+  KompletnoscDowodu,
+  StatusWerdyktu,
+  WyjasnienieWerdyktu,
+} from '../../ui2/wyniki/wzorzec/werdykt';
+import type { KodBrakuZrodlaU0 } from '../sld/v2/model/zrodloNapieciaZerowego';
 
 export interface FieldReadModelStatus {
   data_source: 'ENM_FIELD_READ_MODEL';
@@ -22,12 +31,129 @@ export interface FieldReadModelSummary {
   fields_with_results_count: number;
 }
 
+/** Ocena jednej funkcji EAZ pola wobec wymogu klasy — lustro `enm.pole_liniowe_gpz.OcenaFunkcjiPola`
+ *  (rekord wyjaśnialny: co oceniono, kryterium, podstawa, dowód, etykieta ze słownika backendu
+ *  i wyjaśnienie kanoniczne z przyczyną, brakami i zastrzeżeniami). */
+export interface OcenaFunkcjiPola {
+  kod: string;
+  funkcja_pl: string;
+  wymog: 'OBOWIAZKOWA' | 'NAPOWIETRZNA' | 'NA_ZADANIE_OSD' | 'DOPUSZCZALNA' | 'ZAKAZANA';
+  obecna: boolean;
+  status: StatusWerdyktu;
+  co_oceniono: string;
+  kryterium: string;
+  podstawa: string;
+  dowod: string;
+  kompletnosc_dowodu: KompletnoscDowodu;
+  etykieta: Etykieta;
+  wyjasnienie: WyjasnienieWerdyktu;
+}
+
+/** Moduł wytwarzania za polem — lustro `enm.pole_liniowe_gpz.ModulZaPolem`. */
+export interface ModulZaPolem {
+  ref_id: string;
+  p_kw: number;
+  napiecie_kv: number | null;
+  /** Typ modułu wg progów NC RfG (A–D); `null` = nieustalony (powód w `powod_pl`). */
+  typ: string | null;
+  powod_pl: string;
+}
+
+export interface NiezgodnoscPolaLiniowego {
+  kod: string;
+  bay_ref: string;
+  komunikat_pl: string;
+  /** Akcja naprawcza — ta sama, którą walidator podaje w gotowości (W053–W057). */
+  akcja_pl: string;
+}
+
+/** Ocena pola liniowego GPZ wg klasy pola — lustro `enm.pole_liniowe_gpz.OcenaPolaLiniowego`
+ *  (to samo źródło co walidator W053–W057). Krotki backendu jako tablice. */
+export interface OcenaPolaLiniowego {
+  bay_ref: string;
+  klasa_zadeklarowana: KlasaPolaLiniowego | null;
+  klasa_z_sieci: KlasaPolaLiniowego;
+  klasa_oceny: KlasaPolaLiniowego;
+  /** `true` = pole nie ma zadeklarowanej klasy, oceniono klasą wynikającą z sieci za polem. */
+  klasa_przyjeta: boolean;
+  moduly: ModulZaPolem[];
+  /** Odbiory za polem: `[ref_id, P w kW]`. */
+  odbiory: [string, number][];
+  linia_napowietrzna: boolean;
+  ajee_wymagany: boolean;
+  ajee_rdzen_obecny: boolean;
+  ajee_przyczyna: string;
+  oceny_funkcji: OcenaFunkcjiPola[];
+  niezgodnosci: NiezgodnoscPolaLiniowego[];
+  /** Obwody wtórne wzorca pola (sygnały rysunku); `null` — pole bez szablonu z rysunkiem. */
+  obwody_wtorne?: ObwodyWtornePola | null;
+  /** Obwody funkcji EAZ rozwiązane na aparatach pola (`enm.pole_liniowe_gpz.ObwodFunkcjiPola`). */
+  obwody_funkcji?: ObwodFunkcjiPola[];
+  /** Napięcie zwrotne (wzorzec z blokadą NZ); `null` — wzorzec bez pomiaru napięcia linii. */
+  napiecie_zwrotne?: NapiecieZwrotnePola | null;
+}
+
+/** Obwód wtórny funkcji EAZ pola — lustro `enm.pole_liniowe_gpz.ObwodFunkcjiPola`. */
+export interface ObwodFunkcjiPola {
+  kod: string;
+  funkcja_pl: string;
+  /** `false` — funkcja wzorca, której zestaw funkcji pola nie ma. */
+  obecna: boolean;
+  /** `null` — rysunek wzorca nie rysuje tej funkcji. */
+  blok_rysunku: string | null;
+  wejscia_pl: string[];
+  wyjscia_pl: string;
+  weryfikacja: StatusWeryfikacjiWzorca;
+  uwaga: string | null;
+}
+
+/** Napięcie zwrotne pola — lustro `enm.pole_liniowe_gpz.NapiecieZwrotnePola`. */
+export interface NapiecieZwrotnePola {
+  pomiar_pl: string;
+  blokada_nz: boolean;
+  zrodla_za_polem: number;
+  mozliwe: boolean;
+  wyjasnienie_pl: string;
+  stan_pomiaru: 'POD_NAPIECIEM' | 'BEZ_NAPIECIA' | 'NIEUSTALONY';
+  stan_pomiaru_pl: string;
+}
+
+/** Przekładnik, który może być źródłem 3U₀ pola — lustro `enm.zrodlo_napiecia_zerowego.
+ *  KandydatZrodlaU0` (propozycja dla projektanta, nie powiązanie). */
+export interface KandydatZrodlaU0 {
+  vt_ref: string;
+  pole_ref: string;
+  opis_pl: string;
+}
+
+/** Rozstrzygnięcie źródła 3U₀ i kryterium I0 pola — lustro `enm.zrodlo_napiecia_zerowego.
+ *  ZrodloU0Pola` (ta sama reguła co przypisanie 67N, ocena pola i walidator W064). */
+export interface ZrodloU0Pola {
+  potwierdzone: boolean;
+  vt_ref: string | null;
+  pole_zrodla_ref: string | null;
+  uzwojenie_pl: string | null;
+  ferranti: boolean;
+  kandydaci: KandydatZrodlaU0[];
+  braki_zrodla: string[];
+  czego_brakuje: string[];
+  /** Te same braki kodem maszynowym (kolejność `czego_brakuje`) — słownik wspólny z lustrem
+   *  reguły na schemacie SLD (`ui/sld/v2/model/zrodloNapieciaZerowego.ts`). */
+  kody_brakow: KodBrakuZrodlaU0[];
+  przyczyna_pl: string;
+}
+
 export interface FieldReadModelItem {
   bay_id: string;
   bay_ref: string;
   bay_name: string;
   canonical_model: BayCanonicalModel;
   project_results?: BayProjectResults | null;
+  /** Ocena pola liniowego GPZ (`null` = pole nie jest polem liniowym GPZ). */
+  ocena_pola_liniowego?: OcenaPolaLiniowego | null;
+  /** Źródło napięcia zerowego 3U₀ pola (`null` = szablon pola nie niesie funkcji warunkowej 67N,
+   *  pole nie ma powiązania ani zapisanej funkcji). */
+  zrodlo_u0?: ZrodloU0Pola | null;
 }
 
 export interface FieldReadModelResponse {

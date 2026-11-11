@@ -40,9 +40,11 @@ import type {
   GpzStatusFlag,
   RolaPolaGpz,
 } from './canonicalGpzModel';
+import { KOD_FUNKCJI_PLAKIETKI, PLAKIETKI_GPZ } from './canonicalGpzModel';
 import { stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import { jedynyTransformatorPola, rolaPolaZrodlowego, wytworcyWgPola } from '../model/polaZModelu';
 import { bateriaWidokuPola } from '../model/bateriaPola';
+import { zrodloU0Deskryptora } from '../model/zrodloNapieciaZerowego';
 import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
@@ -125,6 +127,8 @@ export function buildCanonicalGpzProps(
     // GEOMETRIA-STACJI (§0 pkt 5): nazwa celu odejścia pola i predykat pola wolnego.
     substations: enm.substations ?? [],
     branches: enm.branches ?? [],
+    // Karta UX-04 (stan obiektu): pola modelu — reguła stanu łącznika z gałęzi.
+    bays: enm.bays ?? [],
     galezieWgRef,
     // GPZ-PARYTET cz. 3 (pkt 1): rodzaj źródła pola OZE z przyłączonych wytwórców — ta
     // sama relacja i funkcja co pola źródłowe stacji (`v2/model/polaZModelu.ts`).
@@ -132,6 +136,8 @@ export function buildCanonicalGpzProps(
     // UX-04/POLE-BKR-MODEL: bateria kondensatorów na końcu toru pola (`bateriaWidokuPola`
     // — ta sama relacja co pola stacji i backend `pole_baterii`).
     shunt_capacitors: enm.shunt_capacitors ?? [],
+    // Odbiór B-02 (pkt 6): napięcie szyny pola — strona pierwotna krótkiej przekładni VT.
+    buses: enm.buses ?? [],
   };
 
   // GPZ-PARYTET cz. 3 (pkt 2): pole TR, którego JEDYNYM transformatorem jest transformator
@@ -159,11 +165,13 @@ export function buildCanonicalGpzProps(
   const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id) && !polaSprzegiel.has(bay.ref_id));
 
   const lvSections = buildLvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx);
-  // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
-  // przypisania TR do sekcji wg `lv_bus_ref`.
+  // Mapowanie sectionId po `busRef` sekcji ZBUDOWANYCH wyżej — przypisanie TR do sekcji wg
+  // `lv_bus_ref`. Jedno źródło z listą sekcji rysunku: mapa z samego `gpz_sections` gubiła
+  // sekcję syntetyczną (GPZ bez `gpz_sections`), a transformator zostawał bez sekcji
+  // (`gpz.transformer.section.missing`, tor SN transformatora urwany nad szyną).
   const sectionIdByLvBusRef = new Map<string, string>();
-  for (const sec of substation.gpz_sections ?? []) {
-    if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
+  for (const sec of lvSections) {
+    if (sec.busRef && !sectionIdByLvBusRef.has(sec.busRef)) sectionIdByLvBusRef.set(sec.busRef, sec.sectionId);
   }
 
   // Każdy transformator stacji rysuje się torem transformatora; pole TR przypisane wyżej
@@ -390,7 +398,7 @@ export function extractTransformerDesignation(name: string | null | undefined, i
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
 type ProtectionCtx = Pick<
   EnergyNetworkModel,
-  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'shunt_capacitors'
+  'protection_assignments' | 'measurements' | 'substations' | 'branches' | 'bays' | 'shunt_capacitors' | 'buses'
 > & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;
@@ -406,15 +414,18 @@ function buildLvSections(
 ): CanonicalGpzSection[] {
   const sectionDefs = gpz.gpz_sections ?? [];
   const lvBays = bays.filter((b) => isLvBay(b, buses));
+  const defaultBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && !wPasmieWn(b.voltage_kv));
 
-  if (sectionDefs.length === 0 && lvBays.length === 0) {
-    // Brak sekcji + brak pól — operator widzi explicit "brak danych ENM" w renderze.
+  if (sectionDefs.length === 0 && lvBays.length === 0 && !defaultBus) {
+    // Brak sekcji, pól i szyny SN — operator widzi explicit "brak danych ENM" w renderze.
     return [];
   }
 
-  if (sectionDefs.length === 0 && lvBays.length > 0) {
-    // Auto-synteza: 1 sekcja domyślna gdy brak gpz_sections ale są bays.
-    const defaultBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && !wPasmieWn(b.voltage_kv));
+  if (sectionDefs.length === 0) {
+    // Auto-synteza: 1 sekcja domyślna gdy brak gpz_sections, a GPZ ma pola albo SAMĄ szynę SN
+    // (rekord `Bus` w `bus_refs` GPZ). Szyna bez pól jest elementem modelu — rysunek, który
+    // ją pomijał, zaczepiał magistralę w originie GPZ (punkt bez węzła modelu, przewód przez
+    // szynę WN; pomiar: fikstury migawek sieci złotej, 5 plików × L1/L2).
     return [{
       sectionId: `${gpz.ref_id}__synth-section-1`,
       order: 1,
@@ -556,12 +567,15 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Pole bez aparatów
     // pierwotnych, przypisań zabezpieczeń i pomiarów w modelu daje tu `undefined` —
     // „brak danych = brak rysunku" (spec §17.2).
-    primaryDevices: projectBayPrimaryDevices(bay, protectionCtx.galezieWgRef),
+    primaryDevices: projectBayPrimaryDevices(bay, protectionCtx.galezieWgRef, protectionCtx.bays),
     protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
     ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
     // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu
     // VT co `buildExplicitStationMiniBays` — reużyta wprost (zero duplikacji).
     vtMountingAnnotations: resolveBayVtMountings(bay, protectionCtx),
+    // UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4): źródło 3U₀ funkcji 67N
+    // z powiązania modelu (`Bay.zrodlo_u0_ref`), ta sama funkcja co pola stacji.
+    ...zrodloU0Deskryptora(protectionCtx, bay),
   };
 }
 
@@ -649,18 +663,14 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
 }
 
 /**
- * Plakietki funkcji automatyki pola (karta GPZ-PARYTET) — WYŁĄCZNIE z kodów funkcji
- * zabezpieczeniowych pola w modelu (`Bay.protection_codes`, dane aktywów EAZ, ADR-022):
- * SPZ ⇔ kod ANSI 79; SCO ⇔ kod 81U na polu, które nie jest polem źródłowym (na polu OZE
- * 81U to zabezpieczenie interfejsu wytwórcy NC RfG, nie odciążenie). Brak kodu = brak
- * plakietki — nigdy domysł z roli pola. Kolejność stała (SPZ, SCO), deterministyczna.
+ * Plakietki funkcji automatyki pola (karta GPZ-PARYTET, rozszerzenie 5 karty UX-04) —
+ * WYŁĄCZNIE z kodów funkcji pola w modelu (`Bay.protection_codes`), jeden kod słownika EAZ
+ * na plakietkę (`KOD_FUNKCJI_PLAKIETKI`). Brak kodu = brak plakietki — nigdy domysł z roli
+ * pola ani z innej funkcji. Kolejność stała (`PLAKIETKI_GPZ`), deterministyczna.
  */
-export function flagiStatusuPola(bay: Pick<Bay, 'protection_codes' | 'bay_role'>): GpzStatusFlag[] {
+export function flagiStatusuPola(bay: Pick<Bay, 'protection_codes'>): GpzStatusFlag[] {
   const kody = new Set((bay.protection_codes ?? []).map((kod) => kod.trim().toUpperCase()));
-  const flagi: GpzStatusFlag[] = [];
-  if (kody.has('79')) flagi.push('SPZ');
-  if (kody.has('81U') && bay.bay_role !== 'OZE') flagi.push('SCO');
-  return flagi;
+  return PLAKIETKI_GPZ.filter((flaga) => kody.has(KOD_FUNKCJI_PLAKIETKI[flaga]));
 }
 
 /** Rola pola dla tła i legendy (`gpz.bay.panel`) — 1:1 z `Bay.bay_role`, bez zlewania

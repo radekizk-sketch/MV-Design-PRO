@@ -114,8 +114,12 @@ def test_rekord_pola_bez_id_nie_dostaje_losowego_uuid() -> None:
     """Determinizm migawki: `ENMElement.id` ma fabrykę uuid4 — rekord zbudowany bez `id`
     zostaje bez `id` (dwie identyczne budowy dają bajtowo ten sam rekord); rekord z `id`
     (odczyt z magazynu) zachowuje je."""
-    pierwszy = zbuduj_pole(ref_id="p1", bay_role="IN", bus_ref="b1", substation_ref="s1")
-    drugi = zbuduj_pole(ref_id="p1", bay_role="IN", bus_ref="b1", substation_ref="s1")
+    pierwszy = zbuduj_pole(
+        stan_obiektu="PROJEKTOWANY", ref_id="p1", bay_role="IN", bus_ref="b1", substation_ref="s1"
+    )
+    drugi = zbuduj_pole(
+        stan_obiektu="PROJEKTOWANY", ref_id="p1", bay_role="IN", bus_ref="b1", substation_ref="s1"
+    )
     assert "id" not in pierwszy
     assert pierwszy == drugi
     z_id = dodaj_pole({"bays": []}, {**pierwszy, "id": "00000000-0000-0000-0000-000000000001"})
@@ -651,6 +655,17 @@ def test_archiwum_z_dawnymi_kluczami_daje_te_same_rekordy_co_swieza_budowa(droga
     assert zmieniono is True
     a = sorted(_bez_id(z_archiwum.model_dump(mode="json")["bays"]), key=lambda r: r["ref_id"])
     b = sorted(_bez_id(ze_swiezej.model_dump(mode="json")["bays"]), key=lambda r: r["ref_id"])
+    # Stan obiektu (karta UX-04/POLE-LINIOWE-WZORZEC) jest młodszy niż dawne klucze `meta`:
+    # zapis dawny go nie niesie, więc migracja zostawia stan NIEUSTALONY (`None` — nie zgaduje,
+    # czy pole jest zastane), a świeża budowa nadaje PROJEKTOWANY. Poza tym — te same rekordy.
+    for rekord in a:
+        assert rekord.pop("stan_obiektu") is None
+        for aparat in rekord["primary_devices"]:
+            assert aparat.pop("stan_obiektu") is None
+    for rekord in b:
+        assert rekord.pop("stan_obiektu") == "PROJEKTOWANY"
+        for aparat in rekord["primary_devices"]:
+            assert aparat.pop("stan_obiektu") == "PROJEKTOWANY"
     assert a == b
     for stacja in z_archiwum.model_dump(mode="json")["substations"]:
         assert KLUCZ_SN not in stacja["meta"] and KLUCZ_NN not in stacja["meta"]

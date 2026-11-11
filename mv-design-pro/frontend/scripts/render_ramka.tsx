@@ -50,7 +50,7 @@ import {
 } from '../src/ui/sld/v3/canvas/chromeLayout';
 import { sheetSizeFor } from '../src/ui/sld/v3/sheet/outline';
 import { FRAME_MARGIN } from '../src/ui/sld/v3/sheet/Frame';
-import { measureTextWidth, screenFixedFontSize } from '../src/ui/sld/v3/core/text';
+import { LABEL_TYPOGRAPHY, measureTextWidth, screenFixedFontSize } from '../src/ui/sld/v3/core/text';
 import { useThemeModeStore } from '../src/ui2/theme/themeMode';
 import { sldPaletteForTheme } from '../src/ui/sld/v3/theme/palette';
 
@@ -123,6 +123,7 @@ for (const siec of SIECI) {
         frameMargin: FRAME_MARGIN,
         camera: kamera.transform,
         captionFontPx: screenFixedFontSize('t2', scale) * scale,
+        captionFontWeight: LABEL_TYPOGRAPHY.t2.fontWeight,
         scaleLabel: 'wg kamery',
         lodLabel: SCENE_LOD_LABELS_PL[lod],
       },

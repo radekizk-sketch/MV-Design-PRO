@@ -256,8 +256,21 @@ BACKEND = ROOT / "backend"
 # `arg-type` w kodzie skasowanego pakietu dowodowego P19 (2 w `analysis/normative/evaluator.py`
 # — reguly NR_P19, 2 w `application/proof_engine/proof_generator.py` — kroki uziemienia);
 # pliki zostaja (inne bledy). Zero nowych.
-BASELINE_ERRORS = 163
-BASELINE_FILES = 21
+# Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z karta UX-04/POLE-BKR-MODEL, 2026-10-29:
+# 167/21 -> 166/20. POMIAR `mypy_ratchet_guard`: drzewo bazowe karty (e4b778d35, pierwszy rodzic
+# scalenia) 171/22 przy progu 167/21 — karta wniosla 4 bledy i 1 plik: `enm/stan_obiektu_pola.py`
+# 3 (arg-type/list-item `str | None`), `enm/pole_katalogowe.py` 1 (assignment). Drzewo scalone po
+# naprawie 166/20: zdjete te 4 (cel operacji zawezony po rozstrzygnieciu pole/lacznik; wynik
+# wyszukania pola katalogowego w osobnej zmiennej) oraz 1 z `api/catalog.py` (union-attr: zestaw
+# EAZ szablonu z rejestru bez `None`), oba pliki karty bez bledow. Zero nowych.
+# Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): 163/21 -> 162/20.
+# POMIAR `mypy src` (mypy 1.19.1) na stronie integracji (`ffbd81d15`, `git archive`: 163/21) i na
+# drzewie scalonym (162/20); multizbior (plik, komunikat): scalone minus integracja = 0,
+# integracja minus scalone = dokladnie 1 blad `assignment` w `enm/pole_katalogowe.py`
+# (`CompleteMvBayTemplate | None` w zmiennej bez `None`) — zdjety przez karte (wynik wyszukania
+# pola katalogowego w osobnej zmiennej, opis wyzej); plik bez bledow. Zero nowych.
+BASELINE_ERRORS = 162
+BASELINE_FILES = 20
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

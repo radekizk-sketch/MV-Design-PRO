@@ -73,8 +73,14 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'PTPIREE_CERTIFICATE', icon: '☑' },
 ] as const;
 
+/**
+ * Biblioteka typów — przegląd katalogu (cały katalog, także pozycje niedopuszczone do obiektów
+ * projektowanych: aparaty z SF₆ zostają dla inwentaryzacji sieci zastanej). Wybór wiersza
+ * pokazuje szczegóły pozycji; przypisania typu do elementu przeglądarka nie prowadzi (picker
+ * typu `TypePicker` albo kreator przypisania katalogu). Dawne wywołanie zwrotne wyboru nie miało
+ * konsumenta poza testem — usunięte.
+ */
 interface TypeLibraryBrowserProps {
-  onSelectType?: (typeId: string, category: TypeCategory) => void;
   initialTab?: TypeCategory;
 }
 
@@ -207,7 +213,6 @@ const KATEGORIE_SZUKANE_SERWEROWO: ReadonlySet<TypeCategory> = new Set(['PTPIREE
 const LIMIT_STRONY_CERTYFIKATOW = 300;
 
 export function TypeLibraryBrowser({
-  onSelectType,
   initialTab = 'LINE',
 }: TypeLibraryBrowserProps) {
   const [activeTab, setActiveTab] = useState<TypeCategory>(initialTab);
@@ -312,7 +317,6 @@ export function TypeLibraryBrowser({
 
   const handleSelectType = (typeId: string) => {
     setSelectedTypeId(typeId);
-    onSelectType?.(typeId, activeTab);
   };
 
   return (

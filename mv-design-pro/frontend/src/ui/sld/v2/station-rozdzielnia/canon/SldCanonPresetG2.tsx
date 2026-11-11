@@ -6,7 +6,7 @@
  * Connection essence (grid → consumer): SIEĆ OSD nN → złącze + zab. przedlicznikowe (OSD)
  * → LICZNIK dwukierunkowy = GRANICA (the billing meter sits AT the supply boundary, AHEAD
  * of the consumer's main breaker, so the OSD meters import/export independent of the
- * consumer's switching) → wyłącznik główny odbiorcy (RGB, anti-islanding/U<>/f<>/df-dt) →
+ * consumer's switching) → wyłącznik główny odbiorcy (RGB, ochrona od pracy wyspowej U<>/f<>/df-dt) →
  * szyna nN → falownik PV + odbiór. No PCC. No separate boundary marker — the meter IS the
  * boundary.
  */
@@ -91,7 +91,7 @@ export function SldCanonPresetG2({ companion }: { companion: SldOzeArchetypeComp
       <RelayBox x={connX - 92} y={284} />
       <line x1={connX - 80} y1={284} x2={connX - 9} y2={284} stroke={CYAN} strokeWidth={1.3} strokeDasharray="3 3" />
       {lbl(connX - 150, 307, 'zab. interfejsowe', CYAN, 9.5, 700)}
-      {lbl(connX - 150, 320, 'anti-islanding · U<> · f<> · df/dt', TXT_MUTED, 9, 600)}
+      {lbl(connX - 150, 320, 'od pracy wyspowej: U<> · f<> · df/dt', TXT_MUTED, 9, 600)}
 
       {/* eksport (licznik dwukierunkowy: import/eksport wg bilansu PV–odbiór) */}
       <PowerArrow x={connX + 16} y={384} dir="up" />

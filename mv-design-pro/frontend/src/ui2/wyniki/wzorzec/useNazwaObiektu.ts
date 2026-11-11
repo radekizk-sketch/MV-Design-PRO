@@ -62,6 +62,9 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   substation: 'stacja',
   bp: 'punkt odgałęźny',
   corridor: 'ciąg liniowy',
+  // Ciąg założony odcinkiem, który nie kontynuuje żadnego ciągu (`corridor/<odcisk>/run`,
+  // reguła ciągłości `continue_trunk_segment_sn`, karta UX-04/POLE-LINIOWE-WZORZEC).
+  run: 'ciąg od punktu startu',
   seg: 'odcinek',
   segment: 'odcinek',
   bus: 'szyna',

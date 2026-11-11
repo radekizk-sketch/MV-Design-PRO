@@ -173,3 +173,94 @@ export function buildRectIndex(rects: readonly V3Rect[]): RectIndex {
   for (const r of rects) index.add(r);
   return index;
 }
+
+/**
+ * Indeks prostokątów NIOSĄCYCH ELEMENT (wpis planu etykiet, krawędź ramki bloku) — ta sama
+ * siatka i ta sama gwarancja co `RectIndex`, dla pytań, w których o kolizji rozstrzyga nie
+ * sam prostokąt, lecz cecha jego właściciela (np. „krawędź ramki INNEGO bloku", „wiersz
+ * WŁASNEGO bloku liczy się samym tuszem"). Do tej karty te pytania szły przeglądem liniowym
+ * całej listy przy każdym zapytaniu, więc koszt planu etykiet rósł ponadliniowo z liczbą
+ * wierszy bloków zabezpieczeń (pomiar 2026-11-11: iloraz kosztu sieci podwojonej do
+ * referencyjnej 2,7–3,2 przy skalach 0,4–0,8 wobec ~2,0 bez bloków).
+ *
+ * SEMANTYKA. `someCandidate(probe, test)` zwraca DOKŁADNIE to samo, co
+ * `wpisy.some(([r, e]) => rectsOverlap(probe, r) && test(e, r))`: indeks jest filtrem
+ * kandydatów (każdy kandydat i tak przechodzi `rectsOverlap` z `probe`), wpis pokrywający
+ * kilka komórek jest testowany raz, a wynik logiczny nie zależy od kolejności odwiedzin.
+ * Predykat `test` wołający może zawęzić (np. do zachodzenia na mniejszy prostokąt zawarty
+ * w `probe`) — nigdy rozszerzyć poza `probe`.
+ */
+export interface RectItemIndex<T> {
+  add(rect: V3Rect, item: T): void;
+  someCandidate(probe: V3Rect, test: (item: T, rect: V3Rect) => boolean): boolean;
+}
+
+interface WpisIndeksu<T> {
+  readonly rect: V3Rect;
+  readonly item: T;
+}
+
+class UniformGridRectItemIndex<T> implements RectItemIndex<T> {
+  private readonly cells = new Map<number, WpisIndeksu<T>[]>();
+  private readonly zawsze: WpisIndeksu<T>[] = [];
+  private readonly wszystkie: WpisIndeksu<T>[] = [];
+
+  add(rect: V3Rect, item: T): void {
+    const wpis: WpisIndeksu<T> = { rect, item };
+    this.wszystkie.push(wpis);
+    const [cx0, cx1] = zakresKomorek(rect.x, rect.width);
+    const [cy0, cy1] = zakresKomorek(rect.y, rect.height);
+    const liczbaKomorek = (cx1 - cx0 + 1) * (cy1 - cy0 + 1);
+    if (
+      !Number.isFinite(liczbaKomorek)
+      || liczbaKomorek > MAX_CELLS_PER_RECT
+      || !withinKeyRange(cx0) || !withinKeyRange(cx1)
+      || !withinKeyRange(cy0) || !withinKeyRange(cy1)
+    ) {
+      this.zawsze.push(wpis);
+      return;
+    }
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const key = cellKey(cx, cy);
+        const bucket = this.cells.get(key);
+        if (bucket) bucket.push(wpis);
+        else this.cells.set(key, [wpis]);
+      }
+    }
+  }
+
+  someCandidate(probe: V3Rect, test: (item: T, rect: V3Rect) => boolean): boolean {
+    const sprawdz = (w: WpisIndeksu<T>): boolean => rectsOverlap(probe, w.rect) && test(w.item, w.rect);
+    for (const w of this.zawsze) if (sprawdz(w)) return true;
+    const [cx0, cx1] = zakresKomorek(probe.x, probe.width);
+    const [cy0, cy1] = zakresKomorek(probe.y, probe.height);
+    const liczbaKomorek = (cx1 - cx0 + 1) * (cy1 - cy0 + 1);
+    if (
+      !Number.isFinite(liczbaKomorek)
+      || liczbaKomorek > MAX_CELLS_PER_RECT
+      || !withinKeyRange(cx0) || !withinKeyRange(cx1)
+      || !withinKeyRange(cy0) || !withinKeyRange(cy1)
+    ) {
+      // Próbnik rozległy — przegląd wpisów (koszt ograniczony rozmiarem zbioru, jak w `RectIndex`).
+      return this.wszystkie.some(sprawdz);
+    }
+    const odwiedzone = new Set<WpisIndeksu<T>>();
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const bucket = this.cells.get(cellKey(cx, cy));
+        if (bucket === undefined) continue;
+        for (const w of bucket) {
+          if (odwiedzone.has(w)) continue;
+          odwiedzone.add(w);
+          if (sprawdz(w)) return true;
+        }
+      }
+    }
+    return false;
+  }
+}
+
+export function createRectItemIndex<T>(): RectItemIndex<T> {
+  return new UniformGridRectItemIndex<T>();
+}

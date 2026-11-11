@@ -412,6 +412,7 @@ Odrzucenie: `_error_response("...", "catalog.ref_required")`.
 | `source.already_exists` | Model sieci juz ma zrodlo zasilania | — |
 | `trunk.from_terminal_missing` | Brak identyfikatora terminala zrodlowego | SLD |
 | `trunk.dlugosc_missing` | Brak dlugosci odcinka magistrali | Modal segmentu |
+| `trunk.start_not_at_trunk_end` | Odcinek nie moze kontynuowac wskazanego ciagu --- start nie jest koncem tego ciagu (nowy ciag: wolne pole liniowe bez wskazania ciagu) | SLD (koniec ciagu albo wolne pole) |
 | `station.insert.segment_missing` | Brak identyfikatora odcinka | SLD |
 | `station.insert.station_type_invalid` | Typ stacji nieprawidlowy (A/B/C/D) | Modal stacji |
 | `station.insert.nn_voltage_missing` | Brak napiecia nN stacji | Modal stacji |

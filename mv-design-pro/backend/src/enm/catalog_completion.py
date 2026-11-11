@@ -269,6 +269,9 @@ def complete_branch_point_catalog_materialization(
                     branch_point_ref=branch_point.ref_id,
                     bus_ref=branch_point.bus_ref,
                     branch_ports_count=branch_ports_count,
+                    # Uzupełnienie pól punktu już obecnego w modelu (nie operacja projektowa):
+                    # stan obiektu nieznany — jawnie nieustalony, bez domysłu.
+                    stan_obiektu=None,
                 )
             )
         changed = True

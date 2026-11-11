@@ -1519,7 +1519,7 @@ aparatu wzorca: OUT, FEEDER, IN; w GPZ kanon pól GPZ). Odmowa tylko z przyczyny
 `field.auto_field_section_unknown` (sekcja GPZ nieopisana w modelu). Jeden predykat
 `enm/zajetosc_pol.py` (`szyny_sekcji_sn`, `odcinki_bez_pola`, reguła R1 zajętości rozszerzona
 o `meta.target_bay_ref`) czytany przez operacje, `tor_pola` (reguła N1) i walidator. Nowa
-reguła W049 / `station.segment_without_field` (WARNING, obszar STATIONS; aparat pola ma
+reguła W058 / `station.segment_without_field` (WARNING, obszar STATIONS; aparat pola ma
 impedancję zerową, więc rozpływ i zwarcia są poprawne — błędny jest tor aparatu: SLD,
 selektywność, dobór; parytet z W042, który zostaje regułą transformatora), akcja naprawcza
 `przepnij_element_na_pole` — bez wolnego pola tworzy pole. Zdarzenie `LINE_FIELD_CREATED`
@@ -1528,7 +1528,7 @@ z wpisem `audit_trail` dopisywanym do potwierdzenia operacji na froncie. Inwenta
 `przepnij_element_na_pole` — naprawione; `insert_station_on_segment_sn`,
 `append_station_on_endpoint` i szablony stacji (przez `insert_station`) już przyłączały przez pole
 (POLA-W-TORZE); import XLSX buduje sieć operacjami domenowymi (`enm/kompilator_grafu.py`);
-archiwum i modele zastane nie są migrowane — W049 wskazuje odcinek, przepięcie tworzy pole;
+archiwum i modele zastane nie są migrowane — W058 wskazuje odcinek, przepięcie tworzy pole;
 szyna spoza rozdzielnicy stacji zostaje przyłączeniem wprost (punkt sieci, nie rozdzielnica).
 Sonda rozpływu i I″k na 5 rodzajach × 4 stanach × 3 operacjach: tam, gdzie pole było, wyniki
 identyczne co do bitu (różnica migawki w pierścieniach z GPZ i stacji: brak

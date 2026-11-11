@@ -63,7 +63,7 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
 
 #: Łącznik sekcyjny SN — pozycja katalogowa używana przez istniejące testy
 #: topologii (`tests/test_topology_guardians_step1.py`).
-REF_LACZNIK_SEKCYJNY = "sw-ls-schneider-rm6-17kv-400a"
+REF_LACZNIK_SEKCYJNY = "sw-ls-ogolny-prozniowy-24kv-630a"
 
 
 # ---------------------------------------------------------------------------

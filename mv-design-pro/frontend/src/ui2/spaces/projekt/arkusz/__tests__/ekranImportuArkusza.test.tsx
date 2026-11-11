@@ -133,6 +133,7 @@ describe('EkranImportuArkusza — stan zerowy i format arkusza', () => {
     expect(screen.getByText(T.cel)).toBeTruthy();
     expect(screen.getByText(T.formatWstep)).toBeTruthy();
     expect(screen.getByText(T.formatTyp)).toBeTruthy();
+    expect(screen.getByText(T.formatStan)).toBeTruthy();
     // Nazwy kolumn jako kod — każda kolumna arkuszy wymaganych i tabliczek osobnym elementem.
     const kolumny = screen.getByTestId('mvd-ark-kolumny');
     for (const grupa of [...T.formatArkusze, ...T.formatTabliczki]) {

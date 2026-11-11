@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import wyrocznia from '../../../harness-fixtures/generated/pola_kart_katalogu.json';
 import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
 import {
+  NAZWA_PRZEZNACZENIA_RDZENIA_PL,
   NAZWA_RODZAJU_APARATU_PL,
   POLA_KODOWE_KARTY,
   RODZAJE_APARATU_SN,
@@ -84,6 +85,10 @@ describe('słowniki ze źródłem w backendzie = backend', () => {
 
   it('układ połączeń baterii = NAZWY_UKLADOW_POLACZEN_BATERII_PL (bateria_kondensatorow.py)', () => {
     expect(UKLAD_POLACZEN_BATERII_PL).toEqual(wyrocznia.nazwy_z_backendu.uklad_polaczen);
+  });
+
+  it('przeznaczenie rdzenia CT / uzwojenia VT = NAZWY_PRZEZNACZENIA_PL (przekladniki.py)', () => {
+    expect(NAZWA_PRZEZNACZENIA_RDZENIA_PL).toEqual(wyrocznia.nazwy_z_backendu.przeznaczenie_rdzenia);
   });
 
   it('izolacja kabla w modelu (`Cable.insulation`, dziedzina szersza niż katalog) ma nazwy', () => {

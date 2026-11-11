@@ -20,7 +20,7 @@
  * policzonej sceny (`SceneV3`, `buildScene.ts`) i surowe relacje ENM
  * (`EnergyNetworkModel.substations`/`transformers`), zero re-obliczeń.
  */
-import { SYMBOL_DEFS } from '../symbols/defs';
+import { gabarytSymbolu } from '../symbols/blokZabezpieczen';
 import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from './buildScene';
 import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
@@ -197,8 +197,8 @@ export interface GpzDominanceGap {
 }
 
 function symbolRect(sym: SceneV3['symbols'][number]): V3Rect {
-  const def = SYMBOL_DEFS[sym.symbolId];
-  return { x: sym.x, y: sym.y, width: def.width, height: def.height };
+  // Gabaryt z jednego źródła: blok zabezpieczeń = jego ramka (`symbols/blokZabezpieczen.ts`).
+  return gabarytSymbolu(sym);
 }
 
 function unionRect(rects: readonly V3Rect[]): V3Rect | null {

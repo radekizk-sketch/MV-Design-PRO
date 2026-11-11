@@ -28,12 +28,11 @@ import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import { formatTransformerRatedPower, type StationOnRunViewModel } from '../../v2/model/widokSld';
 import { classifyLineBayDirection, czyPoleToru, fieldCaptionAt } from '../compose/directions';
 import {
-  apparatusIdentifiers,
   bayApparatusPlanFootprint,
   planBayApparatus,
-  resolveBayApparatusSymbolIds,
 } from '../compose/apparatusSequence';
-import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
+import { dolRamkiBlokuPolaStacji, protectionAnnotationColumnWidth } from '../compose/blokZabezpieczenPola';
+import { pasyOpisowPolaStacji } from '../compose/kolumnaOpisowPola';
 import { derLabelText, derSnChainExtraHeight, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { StationCompactGlyphSummary } from '../compose/preview';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
@@ -327,9 +326,9 @@ export interface LvTerminalPlan {
   readonly loadDropX: number | null;
   /** X pionu trunku rzędu DER strony nN — ZA portalem i ZA strzałką odbioru
    *  (prawy koniec zacisku, gdy stacja ma DER): pion NIGDY nie przecina
-   *  portalu, strzałki ani szyny rzędu DER (przecięcie dwóch odcinków
-   *  nie-szynowych `resolveTeeJunctions` czyta jako węzeł T — fałszywe
-   *  połączenie elektryczne). */
+   *  portalu, strzałki ani szyny rzędu DER (przecięcie toru wewnętrznego
+   *  stacji wymagałoby mostka we wnętrzu stacji, a tam węzły i skrzyżowania
+   *  wynikają wyłącznie z geometrii stacji). */
   readonly derTrunkX: number;
   /** X początku rzędu DER strony nN — flush-right ZA blokiem kolumn
    *  (`derRowFlushX`, jak przed portalem) i nie przed trunkiem. */
@@ -378,12 +377,77 @@ export function planLvTerminal(
  *  leży na osi stosu = `placement.centerX`). `[]` = stacja bez portów LV. */
 export function lvTerminalPortXs(station: StationColumnsInput): readonly number[] {
   return stationSnColumnLayout(station, 0)
-    .filter(
-      (p) =>
-        p.kind === 'transformer'
-        || (p.kind === 'bay' && isTransformerRole(station.snBays[p.bayIndex!].fieldRole)),
-    )
+    .filter((p) => czyKolumnaPortuLv(p, station.snBays))
     .map((p) => p.centerX);
+}
+
+/** Kolumna planu niosąca port LV transformatora: kolumna transformatora bez pola
+ *  albo pole roli TR — JEDEN predykat dla portów zacisku (`lvTerminalPortXs`) i dla
+ *  rezerwy grupy nN za ostatnią z nich (`zarezerwujGrupeNn`). */
+function czyKolumnaPortuLv(p: StationSnColumnPlacement, snBays: readonly MiniBlockBayDescriptor[]): boolean {
+  return p.kind === 'transformer' || (p.kind === 'bay' && isTransformerRole(snBays[p.bayIndex!].fieldRole));
+}
+
+/**
+ * GRUPA-NN-ZA-TR (znalezisko „2. odgałęzienie tej samej stacji", sonda geometrii
+ * 2026-10-29): pierwszy wolny X ZA OSTATNIĄ kolumną portu LV planu — początek rzędu DER
+ * strony nN (`planLvTerminal.derRowFlushX`). Rząd stał dotąd ZA CAŁYM blokiem, więc
+ * jego szyna (`#der-row-bus`, od pionu trunku pod TR do symboli DER) przechodziła POD
+ * każdym polem stojącym na prawo od transformatora, a kabel takiego pola schodzący z
+ * dolnego portu do strefy zejść przecinał ją — scena czytała przecięcie jako węzeł T
+ * (kropka łącząca kabel SN z rzędem nN). Dla stacji, w której TR jest ostatnią kolumną,
+ * wartość jest identyczna jak dawne „za blokiem". `null` = plan bez portu LV.
+ */
+export function nnGroupFlushX(
+  plan: readonly StationSnColumnPlacement[],
+  snBays: readonly MiniBlockBayDescriptor[],
+): number | null {
+  let last: StationSnColumnPlacement | null = null;
+  for (const p of plan) if (czyKolumnaPortuLv(p, snBays)) last = p;
+  return last ? last.leftX + last.width + GRID : null;
+}
+
+/**
+ * GRUPA-NN-ZA-TR: kolumny planu stojące ZA ostatnią kolumną portu LV przesunięte w prawo
+ * tak, by cała grupa strony nN tej kolumny (portal, strzałka odbioru, pion trunku i rząd
+ * DER — `planLvTerminal`, ta sama funkcja co kompozycja) zmieściła się PRZED nimi ze
+ * światłem `MIN_GLYPH_CLEARANCE`. Grupa nie wchodzi wtedy pod żadne pole, więc żaden
+ * kabel pola nie przecina rzędu nN. Plan, w którym nic nie stoi za ostatnią kolumną
+ * portu LV albo grupa mieści się w obrysie kolumny TR, wraca bez zmian.
+ */
+function zarezerwujGrupeNn(
+  station: StationColumnsInput,
+  plan: readonly StationSnColumnPlacement[],
+): readonly StationSnColumnPlacement[] {
+  if (!stationHasLvSide(station)) return plan;
+  let lastLv = -1;
+  const portXs: number[] = [];
+  plan.forEach((p, i) => {
+    if (!czyKolumnaPortuLv(p, station.snBays)) return;
+    lastLv = i;
+    portXs.push(p.centerX);
+  });
+  if (lastLv < 0 || lastLv === plan.length - 1) return plan;
+  const flushX = nnGroupFlushX(plan, station.snBays)!;
+  const nnDer = nnSideSources(station.derSources ?? []);
+  const lv = planLvTerminal(portXs, {
+    hasLoad: station.aggregatedLvLoad != null,
+    hasNnDer: nnDer.length > 0,
+    derRowFlushX: flushX,
+  });
+  const tr = plan[lastLv];
+  const groupRight = Math.max(
+    tr.leftX + tr.width,
+    lv.portalCenterX + LV_PORTAL_WIDTH / 2,
+    lv.loadDropX != null ? lv.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0,
+    nnDer.length > 0 ? lv.derRowStartX + derRowFootprint(nnDer).width : 0,
+  );
+  // Krok przesunięcia to wielokrotność siatki: krawędzie (`leftX`) i osie (`centerX`)
+  // kolumn planu leżą na siatce (szerokości kolumn — wielokrotności GRID,
+  // `bayColumnRequiredWidth` / `derColumnRequiredWidth`) i muszą na niej zostać.
+  const delta = snapUp(Math.max(0, groupRight + MIN_GLYPH_CLEARANCE - plan[lastLv + 1].leftX));
+  if (delta === 0) return plan;
+  return plan.map((p, i) => (i > lastLv ? { ...p, leftX: p.leftX + delta, centerX: p.centerX + delta } : p));
 }
 
 function isTransformerRole(role: FieldRole): boolean {
@@ -581,6 +645,7 @@ type StationColumnsInput = Pick<
   | 'snCouplers'
   | 'busVoltageKv'
   | 'stationCode'
+  | 'aggregatedLvLoad'
 >;
 
 /** Gabaryty glifów toru poziomego sprzęgła (`SYMBOL_DEFS.lineSwitch` 32×16,
@@ -640,6 +705,13 @@ export function stationSectionLabelText(
  * „na oko".
  */
 export function stationSnColumnLayout(
+  station: StationColumnsInput,
+  columnX: number,
+): readonly StationSnColumnPlacement[] {
+  return zarezerwujGrupeNn(station, planKolumnBezGrupyNn(station, columnX));
+}
+
+function planKolumnBezGrupyNn(
   station: StationColumnsInput,
   columnX: number,
 ): readonly StationSnColumnPlacement[] {
@@ -737,7 +809,7 @@ export function stationSnColumnLayout(
       sectionResolved: true,
       leftX: bx,
       width,
-      centerX: snapToGrid(bx + apparatusIdentifierLeftReserve(bay) + mainStackWidth / 2),
+      centerX: snapToGrid(bx + pasyOpisowPolaStacji(bay).szerokosc + mainStackWidth / 2),
     });
     bx += width + MIN_GLYPH_CLEARANCE;
   }
@@ -811,7 +883,7 @@ function multiSectionColumnLayout(
         sectionResolved: resolved,
         leftX: bx,
         width,
-        centerX: snapToGrid(bx + apparatusIdentifierLeftReserve(bay) + mainStackWidth / 2),
+        centerX: snapToGrid(bx + pasyOpisowPolaStacji(bay).szerokosc + mainStackWidth / 2),
       });
       bx += width + MIN_GLYPH_CLEARANCE;
       return;
@@ -948,45 +1020,12 @@ export function bayMainPathHeight(
 }
 
 /**
- * F10.2 (spec §19.1, V12K-035): rezerwacja PO LEWEJ stosu na identyfikatory
- * PER-APARAT (Q/QE/T, klasa t4, `apparatusIdentifiers` — `compose/
- * apparatusSequence.ts`) — prawa strona kolumny jest już zajęta (laterale
- * ES/VT/SA F10.1 + sidecar oznaczenia funkcyjnego pola + kolumna adnotacji
- * §17), więc etykiety per-aparat idą PO LEWEJ (jedna kolumna, prawa krawędź
- * WSZYSTKICH etykiet = lewa krawędź stosu, `placement:'left'`
- * `layout/labels.ts` — różne szerokości tekstu Q1/QE1/T1 dają różne lewe
- * krawędzie, wspólną PRAWĄ). `0`, gdy pole nie ma ŻADNEGO aparatu z
- * identyfikatorem (np. pole DER — sam symbol źródła).
- *
- * JEDNA prawda z `compose/station.ts` (`buildBayStack`) — rezerwacja i
- * realne etykiety MUSZĄ się zgadzać (wzór F6b-1).
- */
-export function apparatusIdentifierLeftReserve(
-  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices'>,
-): number {
-  const { symbolIds } = resolveBayApparatusSymbolIds(bay);
-  const identifiers = apparatusIdentifiers(symbolIds).filter((id): id is string => id != null);
-  if (identifiers.length === 0) return 0;
-  const maxWidth = Math.max(...identifiers.map((text) => measureLabelWidth(text, 't4')));
-  // `snapUp` (nie surowa suma): `bx + leftReserve` MUSI pozostać NA SIATCE —
-  // `bx` jest już zgrzytnięty do siatki (prefix-sum wielokrotności GRID),
-  // więc niezgrzytnięty `leftReserve` (np. 23px dla „QE1" t4) przesuwałby oś
-  // stosu (`compose/station.ts` `stackLeftX`) POZA siatkę, co przez kolejne
-  // `snapToGrid(centerX)`/`snapToGrid(symbol.x)` w łańcuchu geometrii dawało
-  // 1px rozjazd między TEORETYCZNĄ prawą krawędzią planu (`stackLeftX +
-  // planFootprint.width`, użytą do zaczepu sidecara) a REALNĄ (zgrzytniętą)
-  // krawędzią stosu/lateralu — wykryte testem `station.test.ts` FIX-3 (bbox
-  // sidecara o 1px szerszy niż rezerwacja). `snapUp` (nie `snapToGrid`)
-  // gwarantuje ZERO utraty miejsca (rezerwacja nigdy mniejsza niż potrzebna).
-  return snapUp(GRID + maxWidth);
-}
-
-/**
  * Szerokość wymagana kolumny pola `snBays[index]` (spec §5.1, FIX-3, F10.2):
  * `leftReserve + max(footprint.width + GRID + szerokość_oznaczenia_funkcyjnego,
  * szerokość_podpisu_kierunku) + szerokość_adnotacji_zabezpieczeń`.
- *  - `leftReserve` (spec §19.1) = `apparatusIdentifierLeftReserve` wyżej —
- *    miejsce PO LEWEJ na identyfikatory per-aparat Q/QE/T;
+ *  - `leftReserve` = kolumny opisów pola przy jego lewej krawędzi (`pasyOpisowPolaStacji`,
+ *    `compose/kolumnaOpisowPola.ts`, wzorzec właściciela 2026-11-05): oznaczenia wszystkich
+ *    aparatów pola (Q/QE/T) i opisy przekładników (tabliczki, montaż VT);
  *  - oznaczenie FUNKCYJNE pola (spec §19.1: „pole liniowe"/„pole
  *    transformatorowe"/…) = `fieldFunctionalDesignation` (`compose/
  *    directions.ts`, F10.2 — zastąpiło dawny `bayApparatusDesignation`,
@@ -1029,7 +1068,7 @@ export function bayColumnRequiredWidth(
   // F9.9 (spec §17.3): kolumna adnotacji zabezpieczeń — DODANA na końcu
   // (nie wchodzi do `max()` powyżej, bo leży FIZYCZNIE dalej na prawo,
   // POZA sidecarem/podpisem kierunku, `protectionAnnotationColumnWidth`,
-  // `compose/protectionMarking.ts` — jedna prawda measure↔compose, wzór
+  // `compose/blokZabezpieczenPola.ts` — jedna prawda measure↔compose, wzór
   // F6b-1). Zero, gdy pole nie niesie danych zabezpieczeń (zero zmian
   // geometrii dla pól bez §17 — `bayHasProtectionAnnotation`).
   const annotationWidth = protectionAnnotationColumnWidth(bay);
@@ -1038,8 +1077,17 @@ export function bayColumnRequiredWidth(
   // niezależny od tego, która gałąź max() (stos+sidecar vs podpis kierunku)
   // zwyciężyła, bo stos ZAWSZE zaczyna się `leftReserve` od lewej krawędzi
   // kolumny (`compose/station.ts` `stackLeftX`).
-  const leftReserve = apparatusIdentifierLeftReserve(bay);
-  return leftReserve + Math.max(widthWithSidecar, captionWidth) + annotationWidth;
+  const leftReserve = pasyOpisowPolaStacji(bay).szerokosc;
+  // `snapUp` całej rezerwacji: plan kolumn bloku (`planKolumnBezGrupyNn`,
+  // `multiSectionColumnLayout`) jest sumą prefiksową szerokości kolumn, więc lewa krawędź
+  // KAŻDEJ kolumny leży na siatce tylko wtedy, gdy każda szerokość jest wielokrotnością
+  // GRID (spec §2). Szerokości z pomiaru tekstu (`measureLabelWidth` — oznaczenie pola,
+  // podpis kierunku) mają dowolną resztę; przed 2026-10-30 kolumna za takim polem zaczynała
+  // się poza siatką, a `snapToGrid` osi kolumny transformatora bez pola i okręgu adnotacji
+  // zabezpieczeń (`compose/station.ts`) przesuwało symbol do 4 jednostek POZA jego kolumnę
+  // (portal domeny nN wystawał za blok — `station.tr2wBezPola.test.ts`). Nadmiar trafia na
+  // prawą krawędź kolumny (stos stoi od lewej, okrąg adnotacji prawo-wyrównany).
+  return snapUp(leftReserve + Math.max(widthWithSidecar, captionWidth) + annotationWidth);
 }
 
 /**
@@ -1096,7 +1144,8 @@ const DER_ROW_BOTTOM_BUFFER = GRID;
  * rezerwacja↔rysunek (wzór `bayColumnRequiredWidth`).
  */
 export function derColumnRequiredWidth(source: StationDerSourceInput): number {
-  return Math.max(derSymbolSize(source.kind).width, measureLabelWidth(derLabelText(source), 't2'));
+  // `snapUp` — kolumna planu na siatce (ta sama przyczyna co `bayColumnRequiredWidth`).
+  return snapUp(Math.max(derSymbolSize(source.kind).width, measureLabelWidth(derLabelText(source), 't2')));
 }
 
 /**
@@ -1268,11 +1317,16 @@ export function stationBlockHeight(station: StationMeasureInput): number {
     // (`compose/station.ts` `lvColumnBottoms` — QE `placement: 'below'`,
     // prześwit GRID + wiersz t4), więc kolumna TR musi zarezerwować ten pas,
     // inaczej zwis zacisku (B4) wchodziłby w pasmo nazw B5.
-    const base =
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: blok zabezpieczeń pola może sięgać poniżej aparatów
+    // pola (ramka kodów wyższa niż rysunek aparatów) — kolumna rezerwuje dolną krawędź ramki
+    // (`dolRamkiBlokuPolaStacji`, ta sama funkcja położenia co rysunek; `null` = pole bez bloku).
+    const base = Math.max(
       bayColumnFootprint(bay).height
-      + (isTransformerRole(bay.fieldRole) && planBayApparatus(bay).laterals.length > 0
-        ? GRID + labelLineHeight('t4')
-        : 0);
+        + (isTransformerRole(bay.fieldRole) && planBayApparatus(bay).laterals.length > 0
+          ? GRID + labelLineHeight('t4')
+          : 0),
+      dolRamkiBlokuPolaStacji(bay) ?? 0,
+    );
     const chainExtra2 = chainHeightByFieldRef.get(bay.bayRef);
     if (chainExtra2 == null) return base;
     // Tor zaczyna się na DNIE toru głównego pola (`bayMainPathHeight`), nie na
@@ -1337,8 +1391,10 @@ export function requiredStationWidth(station: StationMeasureInput): number {
     const plan = planLvTerminal(portXs, {
       hasLoad: station.aggregatedLvLoad != null,
       hasNnDer: nnDer.length > 0,
-      // `bx` kompozycji względem `column.x`: blok zaczyna się na `GRID`.
-      derRowFlushX: GRID + blockWidth + GRID,
+      // GRUPA-NN-ZA-TR: rząd DER za OSTATNIĄ kolumną portu LV planu (ta sama
+      // funkcja co kompozycja; `portXs` niepuste ⇒ kolumna portu LV istnieje). Dla
+      // TR na końcu bloku = dawne `GRID + blockWidth + GRID`.
+      derRowFlushX: nnGroupFlushX(stationSnColumnLayout(station, 0), station.snBays)!,
     });
     const portalRight = plan.portalCenterX + LV_PORTAL_WIDTH / 2;
     const loadRight = plan.loadDropX != null ? plan.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0;

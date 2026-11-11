@@ -127,3 +127,46 @@ describe('DoD §8 — canonical OZE preset acceptance', () => {
     });
   }
 });
+
+// §8.5 — szerokość tekstu w teście kolizji to GÓRNA granica wg rodziny kroju (decyzja
+// architekta §11.7 pkt 7, ta sama klasa co `v3/core/text.ts`): krój o stałej szerokości ma
+// jeden posuw z definicji (0,62 em to granica), krój proporcjonalny — pełny kwadrat em.
+// Iloczyn cech: {krój stały, krój proporcjonalny} × {znak wąski „1”, znak szeroki „①”, „W”}.
+// Wstrzyknięta regresja (stały mnożnik 0,62 em dla każdego kroju) przepuszcza znak
+// proporcjonalny nachodzący na symbol — wiersz „proporcjonalny × szeroki” robi się zielony
+// zamiast meldować kolizję.
+describe('§8.5 — górna granica szerokości tekstu wg rodziny kroju', () => {
+  const NS = 'http://www.w3.org/2000/svg';
+  // Symbol (keepout) zaczyna się 10 j. na prawo od początku tekstu o rozmiarze 12:
+  // 0,62 em · 12 = 7,44 < 10 < 12 = 1 em · 12.
+  function scena(rodzina: string, tekst: string): SVGSVGElement {
+    const svg = document.createElementNS(NS, 'svg') as SVGSVGElement;
+    const glif = document.createElementNS(NS, 'g');
+    glif.setAttribute('data-keepout', '110,190,20,20');
+    svg.appendChild(glif);
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', '100');
+    t.setAttribute('y', '200');
+    t.setAttribute('font-size', '12');
+    t.setAttribute('font-family', rodzina);
+    t.textContent = tekst;
+    svg.appendChild(t);
+    return svg;
+  }
+  const MONO_RODZINA = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace';
+  const SANS_RODZINA = 'Inter, system-ui, sans-serif';
+  const PRZYPADKI: ReadonlyArray<{ rodzina: string; tekst: string; kolizja: boolean }> = [
+    { rodzina: MONO_RODZINA, tekst: '1', kolizja: false },
+    { rodzina: MONO_RODZINA, tekst: '①', kolizja: false },
+    { rodzina: MONO_RODZINA, tekst: 'W', kolizja: false },
+    { rodzina: SANS_RODZINA, tekst: '1', kolizja: true },
+    { rodzina: SANS_RODZINA, tekst: '①', kolizja: true },
+    { rodzina: SANS_RODZINA, tekst: 'W', kolizja: true },
+  ];
+  for (const p of PRZYPADKI) {
+    it(`${p.rodzina.includes('monospace') ? 'krój stały' : 'krój proporcjonalny'} × „${p.tekst}” → ${p.kolizja ? 'kolizja' : 'brak kolizji'}`, () => {
+      const wynik = glyphTextCollisions(scena(p.rodzina, p.tekst), [0, 1000]);
+      expect(wynik.length > 0).toBe(p.kolizja);
+    });
+  }
+});

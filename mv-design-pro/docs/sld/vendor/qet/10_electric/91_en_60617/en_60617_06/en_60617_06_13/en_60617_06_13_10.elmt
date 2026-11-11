@@ -1,0 +1,58 @@
+<definition version="0.100.0" type="element" link_type="simple" width="120" height="110" hotspot_x="56" hotspot_y="62">
+    <uuid uuid="{8f98adb3-f1c3-1169-420a-e38bd0a4382f}"/>
+    <names>
+        <name lang="ar">محول نبضي أو تيار بثلاثة موصلات أولية ملولبة</name>
+        <name lang="ca">Transformador d'impulsos o corrent amb tres conductors primaris roscats</name>
+        <name lang="cs">Pulzní transformátornebo transformátor proudu
+se třemi závity primárního vodiče</name>
+        <name lang="da">Puls- eller strømtransformer med tre gennemførte primærledere</name>
+        <name lang="de">Stromwandler oder Impulstransformator mit
+drei durchgefädelten Primär-Wicklungen (z. B.
+Summenstromwandler)</name>
+        <name lang="el">Μετασχηματιστής παλμών ή έντασης με τρεις σπειροειδείς πρωτεύοντες αγωγούς</name>
+        <name lang="en">Pulse or current transformer with three threaded primary conductors</name>
+        <name lang="es">Transformador de impulsos o de corriente con tres conductores primarios roscados</name>
+        <name lang="fi">Pulssi- tai virtamuuntaja, kolme kierteitettyä ensiöjohtoa</name>
+        <name lang="fr">Transformateur d'impulsion ou de courant,
+avec trois conducteurs primaires traversants</name>
+        <name lang="hr">Pulsni ili strujni transformator s tri narezna primarna vodiča</name>
+        <name lang="hu">Impulzus- vagy áramváltó három menetes primer vezetővel</name>
+        <name lang="it">Trasformatore d'impulso o di corrente con tre conduttori primari passanti</name>
+        <name lang="ja">3本の貫通形一次導体を有するパルス変成器又は変流器</name>
+        <name lang="ko">세 개의 나사산 1차 도체가 있는 펄스 또는 변류기</name>
+        <name lang="mn">Гурван шурагтай анхдагч дамжуулагчтай импульс эсвэл гүйдлийн трансформатор</name>
+        <name lang="nb">Puls- eller strømtransformator med tre gjengede primærledere</name>
+        <name lang="nl">Puls- of stroomtransformator met drie doorgevoerde primaire geleiders</name>
+        <name lang="nl_BE">Puls- of stroomtransformator met drie doorgevoerde primaire geleiders</name>
+        <name lang="pl">Przekładnik impulsowy lub prądowy z trzema przewleczonymi przewodami pierwotnymi</name>
+        <name lang="pt">Transformador de impulsos ou de corrente com três condutores primários enfiados</name>
+        <name lang="pt_BR">Pulso ou Transformador de corrente com three threaded primary condutors</name>
+        <name lang="ro">Transformator de impuls sau de curent cu trei conductoare primare filetate</name>
+        <name lang="ru">Импульсный или токовый трансформатор с тремя резьбовыми первичными проводниками</name>
+        <name lang="sk">Impulzný alebo prúdový transformátor s tromi prevlečenými primárnymi vodičmi</name>
+        <name lang="sl">Impulzni ali tokovni transformator s tremi navojnimi primarnimi vodniki</name>
+        <name lang="sr">Импулсни или струјни трансформатор са три навојна примарна проводника</name>
+        <name lang="sv">Puls- eller strömtransformator med tre gängade primärledare</name>
+        <name lang="tr">Üç dişli primer iletkenli darbe veya akım transformatörü</name>
+        <name lang="uk">Імпульсний або струмовий трансформатор з трьома протягнутими первинними провідниками</name>
+        <name lang="zh">接线端子排10</name>
+    </names>
+    <informations>Author: The QElectroTech team
+License: see http://qelectrotech.org/wiki/doc/elements_license</informations>
+    <description>
+        <dynamic_text x="35" y="122.5" z="1" text_width="-1" Halignment="AlignLeft" Valignment="AlignTop" frame="false" rotation="0" keep_visual_rotation="false" text_from="ElementInfo" uuid="{97bf0c43-ec26-40d4-9dc5-a43c55ba927b}" font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular">
+            <text></text>
+            <info_name>label</info_name>
+        </dynamic_text>
+        <ellipse x="-20" y="-19" width="40" height="40" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="0" y1="-40" x2="0" y2="40" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <text text="Form 1 / Forme 1" x="-44" y="-50" rotation="0" font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular" color="#000000"/>
+        <line x1="-5" y1="5" x2="5" y2="-5" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <text text="3" x="5" y="5" rotation="0" font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular" color="#000000"/>
+        <line x1="20" y1="0" x2="60" y2="0" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="35" y1="10" x2="45" y2="-10" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <line x1="40" y1="10" x2="50" y2="-10" end1="none" end2="none" length1="1.5" length2="1.5" style="line-style:normal;line-weight:normal;filling:none;color:black" antialias="false"/>
+        <terminal uuid="{19f51af8-93b4-4c58-98d1-5f31566a7ed9}" name="" x="0" y="40" orientation="s" type="Generic"/>
+        <terminal uuid="{dacb59b3-dd7e-4d76-aac0-39b49fa1fc3e}" name="" x="0" y="-40" orientation="n" type="Generic"/>
+    </description>
+</definition>

@@ -1,14 +1,14 @@
 /**
  * K6 — pozycje katalogów potrzebne karcie technicznej inspektora: aparaty SN (nazwa typu,
  * zdolność wyłączalna, Iₜₕ, I_dyn), transformatory, przekształtniki źródeł OZE i typy sieci
- * zasilającej (nazwa i producent typu), rodziny rozdzielnic i szablony pól (nazwy zamiast
- * identyfikatorów), profile operatorów NC RfG, charakterystyki P(f) i profile modeli
- * dynamicznych (sekcja zgodności przyłączeniowej źródła). Pobierane raz na sesję; wynik jest
- * buforowany na poziomie modułu WYŁĄCZNIE wtedy, gdy wszystkie katalogi przyszły — katalog,
- * którego pobranie się nie udało, zostaje pusty do następnego zamontowania karty (ponowienie),
- * a pozostałe są pokazywane od razu. Do chwili odpowiedzi karta pokazuje dane z modelu,
- * a pola znane wyłącznie z katalogu jako „brak danych” albo opis jawny pozycji bez nazwy —
- * nigdy wartość zastępczą ani identyfikator pozycji.
+ * zasilającej (nazwa i producent typu), rodziny rozdzielnic (nazwa rodziny i serii), szablony pól
+ * producentów i szablony kanoniczne rejestru wzorców pól (nazwy zamiast identyfikatorów), profile
+ * operatorów NC RfG, charakterystyki P(f) i profile modeli dynamicznych (sekcja zgodności
+ * przyłączeniowej źródła). Pobierane raz na sesję; wynik jest buforowany na poziomie modułu
+ * WYŁĄCZNIE wtedy, gdy wszystkie katalogi przyszły — katalog, którego pobranie się nie udało,
+ * zostaje pusty do następnego zamontowania karty (ponowienie), a pozostałe są pokazywane od razu.
+ * Do chwili odpowiedzi karta pokazuje dane z modelu, a pola znane wyłącznie z katalogu jako „brak
+ * danych” albo opis jawny pozycji bez nazwy — nigdy wartość zastępczą ani identyfikator pozycji.
  */
 import { useEffect, useState } from 'react';
 
@@ -18,6 +18,7 @@ import {
   fetchMvApparatusTypes,
   fetchSourceSystemTypes,
   fetchSwitchgearFamilies,
+  fetchSzablonyPolaKanoniczne,
   fetchTransformerTypes,
 } from '../../catalog/api';
 import { KATALOGI_PUSTE, type KatalogiKarty } from '../../sld/shared/kartaTechnicznaElementu';
@@ -60,11 +61,13 @@ function zaladuj(): Promise<KatalogiKarty | null> {
       sprobuj(fetchSourceSystemTypes),
       sprobuj(() => fetchSwitchgearFamilies()),
       sprobuj(() => fetchCompleteBayTemplates()),
+      // Bez cech pola: lista WSZYSTKICH szablonów rejestru (ocena dopuszczalności nie filtruje).
+      sprobuj(() => fetchSzablonyPolaKanoniczne({ poleGpz: false })),
       sprobuj(fetchNcRfgOperators),
       sprobuj(fetchAudit2CatalogSnapshot),
       sprobuj(fetchDerDynamicProfiles),
     ] as const).then((wyniki) => {
-      const [aparaty, transformatory, przeksztaltniki, systemy, rodziny, szablony, operatorzy, audit2, dynamika] =
+      const [aparaty, transformatory, przeksztaltniki, systemy, rodziny, szablony, kanoniczne, operatorzy, audit2, dynamika] =
         wyniki;
       const katalogi: KatalogiKarty = {
         aparatySn: new Map(lista(aparaty).map((a) => [a.id, a])),
@@ -74,14 +77,18 @@ function zaladuj(): Promise<KatalogiKarty | null> {
         ),
         systemyZasilajace: new Map(lista(systemy).map((s) => [s.id, { name: s.name }])),
         rodzinyRozdzielnic: new Map(
-          lista(rodziny).map((r) => [r.switchgear_family_ref, r.family_name]),
+          lista(rodziny).map((r) => [
+            r.switchgear_family_ref,
+            r.series_name ? `${r.family_name} · ${r.series_name}` : r.family_name,
+          ]),
         ),
         szablonyPol: lista(szablony),
+        szablonyKanoniczne: new Map(lista(kanoniczne).map((s) => [s.template_ref, s.template_name_pl])),
         operatorzyNcRfg: lista(operatorzy),
         krzywePf: new Map(krzywePf(audit2).map((k) => [k.id, k.label_pl])),
         profileDynamiki: lista(dynamika),
       };
-      const listy = [aparaty, transformatory, przeksztaltniki, systemy, rodziny, szablony, operatorzy, dynamika];
+      const listy = [aparaty, transformatory, przeksztaltniki, systemy, rodziny, szablony, kanoniczne, operatorzy, dynamika];
       if (listy.every((w) => kompletny(w)) && kompletny(audit2, true)) {
         zaladowane = katalogi;
       } else {

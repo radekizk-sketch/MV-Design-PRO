@@ -347,7 +347,13 @@ def graf_z_arkusza(siec: SiecZArkusza, nazwa: str) -> GrafDoKompilacji:
     return GrafDoKompilacji(
         name=nazwa,
         szyny=tuple(
-            SzynaSpec(lit=w["ref"], name=w["name"], voltage_kv=w["voltage_kv"]) for w in siec.wezly
+            SzynaSpec(
+                lit=w["ref"],
+                name=w["name"],
+                voltage_kv=w["voltage_kv"],
+                stan_obiektu=w.get("stan_obiektu"),
+            )
+            for w in siec.wezly
         ),
         odcinki=tuple(
             EdgeSpec(

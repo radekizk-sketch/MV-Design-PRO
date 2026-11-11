@@ -309,12 +309,62 @@ def test_katalog_punktow_rozgalezienia_brak_pozycji_to_none() -> None:
     assert domain_operations._branch_point_catalog_item("pozycja-ktorej-nie-ma") is None
 
 
-@pytest.mark.parametrize("port", ["BRANCH_x", "BRANCH_", "BRANCH_1.5"])
-def test_port_zksn_z_nieliczbowym_numerem_to_nazwana_odmowa(port: str) -> None:
-    """`_resolve_branch_from_ref`: jedyną odmową parsowania numeru portu jest `ValueError`."""
-    enm = {"branch_points": [{"ref_id": "zk", "branch_point_type": "zksn", "ports": {}}]}
-    wynik = domain_operations._resolve_branch_from_ref(enm, f"zk.{port}")
-    assert wynik == (None, "branch_connection.invalid_source_port")
+_PUNKTY_ODGALEZNE = {
+    "branch_points": [
+        {
+            "ref_id": "zk",
+            "branch_point_type": "zksn",
+            "ports": {"BRANCH": ["zk/port_1", "zk/port_2"]},
+            "branch_occupied": {"BRANCH_1": "seg/zajety"},
+        },
+        {"ref_id": "slup", "branch_point_type": "branch_pole", "ports": {"BRANCH": ["slup/port"]}},
+        {"ref_id": "slup_bez_portu", "branch_point_type": "branch_pole", "ports": {}},
+    ],
+    "buses": [{"ref_id": "szyna/koniec", "tags": ["topology_terminal"]}],
+}
+
+
+@pytest.mark.parametrize(
+    ("from_ref", "kod"),
+    [
+        # Dawna postać `⟨punkt⟩.BRANCH[_n]` NIE jest rozpoznawana — bez warstwy zgodności
+        # (rozstrzygnięcie architekta 2026-10-30, jedna postać portu startu).
+        ("zk.BRANCH_1", "branch_connection.source_not_branch_capable"),
+        ("zk.BRANCH_x", "branch_connection.source_not_branch_capable"),
+        ("slup.BRANCH", "branch_connection.source_not_branch_capable"),
+        # Punkt wskazany bez portu: start wymaga zacisku konkretnego portu.
+        ("zk", "branch_connection.invalid_source_port"),
+        ("slup", "branch_connection.invalid_source_port"),
+        ("slup_bez_portu", "branch_point.required_port_missing"),
+        # Zacisk zajętego portu — nazwana odmowa z jednego źródła `branch_occupied`.
+        ("zk/port_1", "branch_point.branch_port_occupied"),
+        ("stn/x/sn_field/1", "branch_connection.source_not_branch_capable"),
+        ("szyna/nieistniejaca", "branch_connection.source_not_branch_capable"),
+    ],
+)
+def test_port_startu_poza_jedyna_postacia_to_nazwana_odmowa(from_ref: str, kod: str) -> None:
+    """`_rozwiaz_port_startu`: każda postać spoza jedynej (pole, zacisk portu punktu, szyna
+    terminalna) to nazwana odmowa, nigdy domysł portu."""
+    assert domain_operations._rozwiaz_port_startu(_PUNKTY_ODGALEZNE, from_ref) == kod
+
+
+@pytest.mark.parametrize(
+    ("from_ref", "punkt", "port_id"),
+    [
+        ("zk/port_2", "zk", "BRANCH_2"),
+        ("slup/port", "slup", "BRANCH"),
+        ("szyna/koniec", "szyna/koniec", None),
+    ],
+)
+def test_port_startu_z_zacisku_wyznacza_punkt_i_klucz_zajetosci(
+    from_ref: str, punkt: str, port_id: str | None
+) -> None:
+    """Zacisk portu punktu daje punkt pochodzenia i klucz `branch_occupied` (`BRANCH` słupa,
+    `BRANCH_n` ZKSN wg pozycji zacisku w `ports.BRANCH`); szyna terminalna jest swoim punktem."""
+    port = domain_operations._rozwiaz_port_startu(_PUNKTY_ODGALEZNE, from_ref)
+    assert port == domain_operations._PortStartu(
+        bus_ref=from_ref, element_ref=punkt, port_id=port_id
+    )
 
 
 @pytest.mark.parametrize(

@@ -1,11 +1,16 @@
 // @vitest-environment node
 /**
- * Predykaty rodziny rozdzielnicy SN (`SwitchgearFamilyPicker.tsx` — typ, predykat budowy,
+ * Predykaty rodziny rozdzielnicy SN (`SwitchgearFamilyPicker.tsx` — typ, predykat wyboru,
  * powód blokady, nazwy konstrukcji). Komponent listy rodzin skasowany 2026-11-04 (zero miejsc
- * montażu); jego reguły zostają przypięte tu, na funkcjach, które czytają kreatory.
+ * montażu); jego reguły zostają przypięte tu, na funkcjach, które czytają kreatory i edytor
+ * wyposażenia pola.
  *
- * Iloczyn: status rodziny (każdy z unii kontraktu, rejestr zamknięty) × {wolno budować,
- * powód blokady}; konstrukcja (każda z unii) × nazwa bez kodu.
+ * Decyzja o dopuszczeniu jest BACKENDU (pola wyliczane rodziny, karta UX-04/POLE-LINIOWE-WZORZEC
+ * — zakaz gazów fluorowanych w obiektach projektowanych): pole istniejące czyta
+ * `dopuszczona_do_budowania`, każde inne (nowe, projektowane) — `dopuszczona_do_nowych_pol`.
+ * Iloczyn: stan obiektu pola {brak, PROJEKTOWANY, ISTNIEJACY} × dopuszczenie do budowania
+ * {tak, nie} × dopuszczenie do nowych pól {tak, nie} × tor {MODULARNY, BLOK_RMU, niepodany};
+ * konstrukcja (każda z unii) × nazwa bez kodu.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -15,9 +20,12 @@ import {
   czyRodzinaPrzyjmujePojedynczePole,
   czySzablonPojedynczegoPola,
   powodBlokadyRodzinyPl,
-  STATUSY_DO_BUDOWANIA,
+  type StanObiektuPola,
   type SwitchgearFamily,
 } from '../SwitchgearFamilyPicker';
+
+const POWOD_BUDOWY = 'Rodzina wymaga karty katalogowej producenta.';
+const POWOD_NOWYCH = 'Rozdzielnica wykorzystuje gaz fluorowany (SF₆). Akcja naprawcza: wybierz wykonanie bez gazów fluorowanych.';
 
 function rodzina(overrides: Partial<SwitchgearFamily> = {}): SwitchgearFamily {
   return {
@@ -27,54 +35,80 @@ function rodzina(overrides: Partial<SwitchgearFamily> = {}): SwitchgearFamily {
     series_name: null,
     network_voltages_kv: [15],
     um_classes_kv: [17.5],
-    insulation_type: 'sf6',
+    insulation_type: 'air',
+    medium_lacznikow: 'PROZNIA',
     construction_type: 'RMU',
     status: 'verified',
     source_refs: ['catalog:demo'],
     notes_pl: null,
+    gaz_fluorowany: false,
+    dopuszczona_do_budowania: true,
+    powod_blokady_pl: null,
+    dopuszczona_do_nowych_pol: true,
+    powod_blokady_nowych_pol_pl: null,
     ...overrides,
   };
 }
 
-/** Status → czy wolno budować (lustro `POTWIERDZONE_STATUSY_RODZINY` backendu). */
-const STATUSY = {
-  verified: true,
-  repo_verified: true,
-  user_defined: false,
-  requires_catalog: false,
-  deprecated: false,
-} as const satisfies Record<SwitchgearFamily['status'], boolean>;
+function rodzinaDopuszczona(budowa: boolean, nowe: boolean): SwitchgearFamily {
+  return rodzina({
+    dopuszczona_do_budowania: budowa,
+    powod_blokady_pl: budowa ? null : POWOD_BUDOWY,
+    dopuszczona_do_nowych_pol: nowe,
+    powod_blokady_nowych_pol_pl: nowe ? null : POWOD_NOWYCH,
+  });
+}
 
 const KONSTRUKCJE = {
   RMU: true,
   jednoczlonowa: true,
   dwuczlonowa: true,
   wysuwna: true,
-  GIS_SF6: true,
+  GIS: true,
   wnetrzowa: true,
   kontenerowa: true,
   prefabrykowana: true,
   unknown: true,
 } as const satisfies Record<SwitchgearFamily['construction_type'], true>;
 
-describe('rodzina rozdzielnicy — predykat budowy i powód blokady', () => {
-  it.each(Object.entries(STATUSY) as Array<[SwitchgearFamily['status'], boolean]>)(
-    '%s: wolno budować = %s, powód blokady wtedy i tylko wtedy, gdy nie wolno',
-    (status, wolno) => {
-      const r = rodzina({ status });
-      expect(czyRodzinaDoBudowania(r)).toBe(wolno);
-      expect(STATUSY_DO_BUDOWANIA.has(status)).toBe(wolno);
-      const powod = powodBlokadyRodzinyPl(r);
+const STANY: readonly (StanObiektuPola | null)[] = [null, 'PROJEKTOWANY', 'ISTNIEJACY'];
+const DOPUSZCZENIA = [
+  [true, true],
+  [true, false],
+  [false, true],
+  [false, false],
+] as const;
+
+describe('rodzina rozdzielnicy — predykat wyboru i powód blokady z backendu', () => {
+  const przypadki = STANY.flatMap((stan) =>
+    DOPUSZCZENIA.map(([budowa, nowe]) => [stan, budowa, nowe] as const),
+  );
+  it.each(przypadki)(
+    'stan %s × do budowania %s × do nowych pól %s',
+    (stan, budowa, nowe) => {
+      const r = rodzinaDopuszczona(budowa, nowe);
+      const istniejace = stan === 'ISTNIEJACY';
+      const wolno = istniejace ? budowa : nowe;
+      expect(czyRodzinaDoBudowania(r, stan)).toBe(wolno);
+      const powod = powodBlokadyRodzinyPl(r, stan);
       if (wolno) expect(powod).toBeNull();
-      else {
-        expect(powod).toMatch(/^[A-ZŁŚŻŹĆ]/);
-        expect(powod).not.toContain(status);
-      }
+      else expect(powod).toBe(istniejace ? POWOD_BUDOWY : POWOD_NOWYCH);
     },
   );
 
-  it('rodzina bez karty katalogowej podaje powód z karty, nie ciszę', () => {
-    expect(powodBlokadyRodzinyPl(rodzina({ status: 'requires_catalog' }))).toContain('karty katalogowej');
+  it('rodzina z SF₆: w nowym i projektowanym polu niewybieralna z powodem backendu, w istniejącym — wybieralna', () => {
+    const r = rodzina({
+      insulation_type: 'sf6',
+      medium_lacznikow: 'SF6',
+      gaz_fluorowany: true,
+      dopuszczona_do_nowych_pol: false,
+      powod_blokady_nowych_pol_pl: POWOD_NOWYCH,
+    });
+    expect(czyRodzinaDoBudowania(r)).toBe(false);
+    expect(czyRodzinaDoBudowania(r, 'PROJEKTOWANY')).toBe(false);
+    expect(czyRodzinaDoBudowania(r, 'ISTNIEJACY')).toBe(true);
+    expect(powodBlokadyRodzinyPl(r)).toBe(POWOD_NOWYCH);
+    expect(powodBlokadyRodzinyPl(r, 'ISTNIEJACY')).toBeNull();
   });
 });
 
@@ -87,21 +121,30 @@ describe('rodzina rozdzielnicy — nazwy konstrukcji', () => {
 });
 
 /**
- * Pojedyncze pole z szablonu (lustro planu pola katalogowego backendu): iloczyn status
- * rodziny (unia) × tor {MODULARNY, BLOK_RMU, niepodany} × referencja szablonu {rodzina
- * znana, spoza katalogu, brak}. Przyjmuje ⇔ rodzina znana ∧ oferowana ∧ tor ≠ BLOK_RMU.
+ * Pojedyncze pole z szablonu (lustro planu pola katalogowego backendu): iloczyn stan obiektu ×
+ * dopuszczenia rodziny × tor {MODULARNY, BLOK_RMU, niepodany} × referencja szablonu {rodzina
+ * znana, spoza katalogu, brak}. Przyjmuje ⇔ rodzina znana ∧ dopuszczona dla stanu pola
+ * ∧ tor ≠ BLOK_RMU.
  */
 describe('szablon pojedynczego pola', () => {
   const TORY = ['MODULARNY', 'BLOK_RMU', null] as const;
-  const przypadki = (Object.entries(STATUSY) as Array<[SwitchgearFamily['status'], boolean]>).flatMap(
-    ([status, oferowana]) => TORY.map((tor) => [status, tor, oferowana && tor !== 'BLOK_RMU'] as const),
+  const przypadki = STANY.flatMap((stan) =>
+    DOPUSZCZENIA.flatMap(([budowa, nowe]) =>
+      TORY.map(
+        (tor) =>
+          [stan, budowa, nowe, tor, (stan === 'ISTNIEJACY' ? budowa : nowe) && tor !== 'BLOK_RMU'] as const,
+      ),
+    ),
   );
-  it.each(przypadki)('status %s × tor %s → przyjmuje = %s', (status, tor, oczekiwane) => {
-    const r = rodzina({ status, tor_konfiguracji: tor });
-    expect(czyRodzinaPrzyjmujePojedynczePole(r)).toBe(oczekiwane);
-    expect(czySzablonPojedynczegoPola(r.switchgear_family_ref, [r])).toBe(oczekiwane);
-    expect(czySzablonPojedynczegoPola('INNA__RODZINA', [r])).toBe(false);
-    expect(czySzablonPojedynczegoPola(null, [r])).toBe(false);
-    expect(czySzablonPojedynczegoPola(undefined, [r])).toBe(false);
-  });
+  it.each(przypadki)(
+    'stan %s × budowa %s × nowe %s × tor %s → przyjmuje = %s',
+    (stan, budowa, nowe, tor, oczekiwane) => {
+      const r = { ...rodzinaDopuszczona(budowa, nowe), tor_konfiguracji: tor };
+      expect(czyRodzinaPrzyjmujePojedynczePole(r, stan)).toBe(oczekiwane);
+      expect(czySzablonPojedynczegoPola(r.switchgear_family_ref, [r], stan)).toBe(oczekiwane);
+      expect(czySzablonPojedynczegoPola('INNA__RODZINA', [r], stan)).toBe(false);
+      expect(czySzablonPojedynczegoPola(null, [r], stan)).toBe(false);
+      expect(czySzablonPojedynczegoPola(undefined, [r], stan)).toBe(false);
+    },
+  );
 });

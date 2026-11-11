@@ -14,6 +14,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -23,29 +33,43 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_aux::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "67N"
-      ],
+      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_aux"
+      "template_id": "bay_template_aux",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "COUPLER",
@@ -61,6 +85,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -70,6 +104,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -79,16 +123,32 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_coupler::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -99,7 +159,10 @@
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_coupler"
+      "template_id": "bay_template_coupler",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "OZE",
@@ -115,6 +178,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -124,6 +197,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -133,6 +216,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -142,25 +235,47 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_der_bess::dev::4",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_der_bess::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -170,23 +285,34 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_der_bess"
+      "template_id": "bay_template_der_bess",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "OZE",
@@ -202,6 +328,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -211,6 +347,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -220,6 +366,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -229,25 +385,47 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_der_fw::dev::4",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_der_fw::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -257,23 +435,34 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_der_fw"
+      "template_id": "bay_template_der_fw",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "OZE",
@@ -289,6 +478,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -298,6 +497,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -307,6 +516,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -316,25 +535,47 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_der_pv::dev::4",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_der_pv::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -344,23 +585,2305 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_der_pv"
+      "template_id": "bay_template_der_pv",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::3",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::5",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem::dev::6",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF",
+        "79",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z10_staly_z_odlacznikiem",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
+      "wykonanie_pola": "Z10"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy::dev::0",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy::dev::3",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy::dev::5",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF",
+        "79",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": "Z10"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::0",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "WYSUWNE"
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::2",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny::dev::5",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF",
+        "79",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z10_wysuwny",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "WYSUWNY",
+      "wykonanie_pola": "Z10"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "PF0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::0",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::1",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::2",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "designation": "Q5",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::3",
+          "is_controllable": true,
+          "kind": "DS",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q51",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "odgalezienie": "pn",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::5",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "pn1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T3",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::6",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,2",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::7",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::8",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::9",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::10",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem::dev::11",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
+      "wykonanie_pola": "Z11_1"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "PF0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::0",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::1",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::2",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "designation": "Q5",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::3",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "pn1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T3",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,2",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::6",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::7",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::8",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy::dev::9",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": "Z11_1"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "PF0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::0",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "WYSUWNE"
+        },
+        {
+          "designation": "Q5",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::2",
+          "is_controllable": true,
+          "kind": "DS",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q51",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "odgalezienie": "pn",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "pn1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T3",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,2",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::6",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::7",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::8",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::9",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny::dev::10",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_1_wysuwny",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "WYSUWNY",
+      "wykonanie_pola": "Z11_1"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "PF0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::0",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::1",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::2",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "designation": "Q5",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::3",
+          "is_controllable": true,
+          "kind": "DS",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q51",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "odgalezienie": "pn",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::5",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "pn1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T3",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::6",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "ROZLICZENIE"
+              ]
+            },
+            {
+              "klasa": "0,2",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::7",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": 5.0,
+              "klasa": "0,2S",
+              "moc_va": 10.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ROZLICZENIE",
+                "JAKOSC_ENERGII"
+              ]
+            },
+            {
+              "fs": 5.0,
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "REGULACJA"
+              ]
+            },
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::8",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::9",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::10",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem::dev::11",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
+      "wykonanie_pola": "Z11"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "PF0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::0",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::1",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::2",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "designation": "Q5",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::3",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "pn1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T3",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "ROZLICZENIE"
+              ]
+            },
+            {
+              "klasa": "0,2",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::6",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": 5.0,
+              "klasa": "0,2S",
+              "moc_va": 10.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ROZLICZENIE",
+                "JAKOSC_ENERGII"
+              ]
+            },
+            {
+              "fs": 5.0,
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "REGULACJA"
+              ]
+            },
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::7",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::8",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy::dev::9",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_trojpolozeniowy",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": "Z11"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "PF0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::0",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "WYSUWNE"
+        },
+        {
+          "designation": "Q5",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::2",
+          "is_controllable": true,
+          "kind": "DS",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q51",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "odgalezienie": "pn",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "pn1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T3",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "ROZLICZENIE"
+              ]
+            },
+            {
+              "klasa": "0,2",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 7.5,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5_5_z11",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::6",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": 5.0,
+              "klasa": "0,2S",
+              "moc_va": 10.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ROZLICZENIE",
+                "JAKOSC_ENERGII"
+              ]
+            },
+            {
+              "fs": 5.0,
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "REGULACJA"
+              ]
+            },
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "200-400/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct",
+          "zaczep_pierwotny_a": 400.0,
+          "zrodlo_zaczepu": "WARTOSC_ROBOCZA"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::7",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::8",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::9",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny::dev::10",
+          "is_controllable": false,
+          "kind": "CORE_BALANCE_CT",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "obwod",
+              "wezel": "kabel"
+            }
+          ],
+          "przekladnia": "1/100",
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:core_balance_ct"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_wysuwny",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "WYSUWNY",
+      "wykonanie_pola": "Z11"
+    },
+    {
+      "bay_role": "MEASUREMENT",
+      "config_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17",
+      "field_role": "POMIAROWE",
+      "group": "pomiarowe",
+      "main_path": true,
+      "name": "Pole pomiarowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::0",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::1",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "odplyw"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 15.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            },
+            {
+              "klasa": "3P",
+              "moc_va": 15.0,
+              "otwarty_trojkat": true,
+              "przekladnia": "SN/√3 / 0,1/3",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        }
+      ],
+      "protection_codes": [
+        "59",
+        "27",
+        "59N",
+        "81U",
+        "SCO",
+        "81R"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_pomiar_napiecia_enea_z17",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": null
     },
     {
       "bay_role": "IN",
@@ -376,6 +2899,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -385,6 +2918,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -394,25 +2937,51 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_line_in::dev::3",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_line_in::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -422,6 +2991,16 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
@@ -433,7 +3012,10 @@
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_line_in"
+      "template_id": "bay_template_line_in",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "OUT",
@@ -449,6 +3031,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -458,6 +3050,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -467,25 +3069,51 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_line_out::dev::3",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_line_out::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -495,6 +3123,16 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
@@ -502,12 +3140,14 @@
       "protection_codes": [
         "51",
         "50",
-        "51N",
-        "67N"
+        "51N"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_line_out"
+      "template_id": "bay_template_line_out",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "MEASUREMENT",
@@ -523,6 +3163,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -532,16 +3182,28 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_measurement::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -549,7 +3211,10 @@
       "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_measurement"
+      "template_id": "bay_template_measurement",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "FEEDER",
@@ -565,29 +3230,43 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_reserve::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "67N"
-      ],
+      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_reserve"
+      "template_id": "bay_template_reserve",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "TR",
@@ -603,6 +3282,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -612,6 +3301,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -621,25 +3320,51 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:bay_template_transformer::dev::3",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:bay_template_transformer::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -649,6 +3374,16 @@
           "is_controllable": false,
           "kind": "TRANSFORMER_DEVICE",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "transformator"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:transformer_device"
         }
@@ -658,13 +3393,16 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": "bay_template_transformer"
+      "template_id": "bay_template_transformer",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "OZE",
@@ -680,6 +3418,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -689,6 +3437,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -698,25 +3456,51 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:mv_source_cb::dev::3",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:mv_source_cb::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -727,6 +3511,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         },
@@ -736,23 +3526,34 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": null
+      "template_id": null,
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     },
     {
       "bay_role": "OZE",
@@ -768,6 +3569,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -777,6 +3588,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -786,6 +3607,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -795,25 +3626,47 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
         {
-          "designation": "Q2",
+          "designation": "Q9",
           "device_ref": "kanoniczny:mv_source_lbs::dev::4",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
         {
-          "designation": "Q9",
+          "designation": "Q8",
           "device_ref": "kanoniczny:mv_source_lbs::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -824,6 +3677,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         },
@@ -833,23 +3692,34 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
         "81O",
-        "df/dt",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
-      "template_id": null
+      "template_id": null,
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
     }
   ],
   "gaps": {
@@ -876,12 +3746,18 @@
       "pack_id": "abb_safering",
       "primary_devices": [
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:Be::dev::0",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -906,6 +3782,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -915,6 +3801,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -924,16 +3820,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:C::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -943,6 +3855,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
@@ -953,6 +3871,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -977,6 +3901,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -986,6 +3920,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -995,16 +3939,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:CB::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -1029,6 +3989,16 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
@@ -1053,16 +4023,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:De::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -1087,6 +4073,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -1096,6 +4092,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1105,16 +4111,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:F::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1125,6 +4147,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -1149,6 +4177,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1158,6 +4196,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -1167,6 +4215,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1191,16 +4245,32 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:Sl::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -1225,6 +4295,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1234,16 +4314,32 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:Sv::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -1268,6 +4364,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1277,6 +4383,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -1286,6 +4402,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -1295,16 +4421,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_safering:V::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1314,6 +4456,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1338,6 +4486,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1347,6 +4505,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -1356,6 +4524,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1365,16 +4543,32 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:BT::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1384,6 +4578,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1408,6 +4608,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1417,6 +4627,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -1426,6 +4646,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1435,16 +4665,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:DF::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -1469,6 +4715,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1478,6 +4734,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -1487,6 +4753,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1496,6 +4772,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -1505,16 +4791,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:IF::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1524,6 +4826,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
@@ -1534,6 +4842,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -1558,6 +4872,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1567,6 +4891,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1576,6 +4910,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -1585,16 +4929,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:IFD::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1604,6 +4964,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1628,16 +4994,32 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:M::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1647,6 +5029,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1671,6 +5059,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1680,6 +5078,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -1689,6 +5097,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -1698,6 +5116,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w4"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -1707,16 +5135,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w4"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:OFM::dev::5",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1726,6 +5170,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1750,16 +5200,32 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:abb_unigear:RM::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1769,6 +5235,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1793,6 +5265,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1802,16 +5284,32 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:CM::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1821,6 +5319,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -1845,6 +5349,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -1854,6 +5368,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -1863,6 +5387,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -1872,16 +5406,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:DM1-A::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1891,6 +5441,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
@@ -1901,6 +5457,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -1920,12 +5482,18 @@
       "pack_id": "schneider_sm6",
       "primary_devices": [
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:EMB::dev::0",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -1950,16 +5518,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:GAM::dev::1",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -1970,6 +5554,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -1994,6 +5584,16 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
@@ -2004,6 +5604,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2028,6 +5634,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2037,6 +5653,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2061,6 +5683,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2070,6 +5702,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2079,16 +5721,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:IM::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2099,6 +5757,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2123,6 +5787,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2132,6 +5806,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2141,16 +5825,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:IMM::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2160,6 +5860,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2184,6 +5890,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2193,6 +5909,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -2202,16 +5928,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:PM::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -2236,6 +5978,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2245,6 +5997,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -2254,6 +6016,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2263,16 +6035,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:QM::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -2297,6 +6085,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -2306,16 +6104,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:schneider_sm6:SM::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -2340,6 +6154,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -2349,6 +6173,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2368,12 +6198,18 @@
       "pack_id": "siemens_8djh",
       "primary_devices": [
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:E::dev::0",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2383,6 +6219,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "szyna"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2407,6 +6249,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2416,16 +6268,32 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:H::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         }
@@ -2450,6 +6318,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2459,6 +6337,16 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
@@ -2469,6 +6357,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2493,6 +6387,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2502,16 +6406,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:K(E)::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2522,6 +6442,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2546,6 +6472,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -2555,6 +6491,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -2564,6 +6510,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2573,16 +6529,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:L::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2592,6 +6564,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
@@ -2602,6 +6580,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2626,6 +6610,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -2635,6 +6629,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2659,6 +6659,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2668,6 +6678,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2692,6 +6708,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2701,6 +6727,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2710,16 +6746,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:R::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2729,6 +6781,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         },
@@ -2739,6 +6797,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2763,6 +6827,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2772,16 +6846,32 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:S::dev::2",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2791,6 +6881,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }
@@ -2815,6 +6911,16 @@
           "is_controllable": true,
           "kind": "LOAD_SWITCH",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:load_switch"
         },
@@ -2824,6 +6930,16 @@
           "is_controllable": false,
           "kind": "FUSE",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:fuse"
         },
@@ -2833,6 +6949,16 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w3"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
@@ -2842,16 +6968,32 @@
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w3"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:T::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2862,6 +7004,12 @@
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "kabel"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:surge_arrester"
         }
@@ -2886,6 +7034,16 @@
           "is_controllable": true,
           "kind": "DS",
           "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ds"
         },
@@ -2895,6 +7053,16 @@
           "is_controllable": true,
           "kind": "CB",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cb"
         },
@@ -2904,16 +7072,32 @@
           "is_controllable": false,
           "kind": "CT",
           "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:ct"
         },
         {
-          "designation": "QE1",
+          "designation": "Q8",
           "device_ref": "producent:siemens_8djh:V::dev::3",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
           "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:es"
         },
@@ -2923,6 +7107,12 @@
           "is_controllable": false,
           "kind": "VT",
           "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:vt"
         }

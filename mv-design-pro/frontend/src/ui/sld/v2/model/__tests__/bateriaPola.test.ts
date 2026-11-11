@@ -28,9 +28,9 @@ import gpzBkrUziemionaFx from '../../../../../../public/test-fixtures/gpz110kvBk
 import { buildSceneV3 } from '../../../v3/scene/buildScene';
 import { CapacitorBankGlyph } from '../../../v3/symbols/glyphs';
 import {
-  PORTY_APARATOW_POLA_BKR,
+  PORTY_APARATU_POLA,
   RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
-} from '../../../v3/compose/rodzajeAparatowPolaBkr';
+} from '../../../v3/compose/rodzajeAparatuPola';
 import { bateriaNaKoncuToruPola, bateriaWidokuPola, ukladBateriiZModelu } from '../bateriaPola';
 
 const ZACISK = 'bus/zacisk-pola-bkr';
@@ -129,7 +129,7 @@ describe('CapacitorBankGlyph — znak układu i przekładnik z danych', () => {
         expect(svg).toContain(`data-przekladnik-niezrownowazenia="${zPrzekladnikiem ? 'tak' : 'nie'}"`);
         expect(svg.includes(`data-rodzaj-aparatu="${RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA}"`)).toBe(zPrzekladnikiem);
         if (zPrzekladnikiem) {
-          expect(svg).toContain(`data-port="${PORTY_APARATOW_POLA_BKR[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA][0]}"`);
+          expect(svg).toContain(`data-port="${PORTY_APARATU_POLA[RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA]?.[0]}"`);
         }
         expect(svg.includes('>?</text>')).toBe(uklad === null);
       });

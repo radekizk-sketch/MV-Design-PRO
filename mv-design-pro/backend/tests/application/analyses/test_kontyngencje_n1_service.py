@@ -952,6 +952,29 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
     # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
     # wynik UI/UX (GPZ-MODEL).
+    # 2026-10-28 (karta UX-04/POLE-LINIOWE-WZORZEC, zakaz gazów fluorowanych w obiektach
+    # projektowanych): gn01 63af4b10… → 6e9613ad…, gn03 d05d5914… → c1a30de4…. Pełne widoki
+    # z kodu bazy `f44e042f6` (odtwarzają dokładnie poprzednie piny) i po karcie porównane liść
+    # po liściu: różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Różnice modelu
+    # wejściowego: każda gałąź łączeniowa utworzona operacją niesie `stan_obiektu`
+    # „PROJEKTOWANY", a rozłącznik sekcyjny gn03 ma pozycję katalogu bez SF₆
+    # (`sw-ls-ogolny-prozniowy-24kv-630a` zamiast RM6). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne.
+    # 2026-10-29 (ta sama karta, decyzja właściciela pkt 4 — 67N tylko przy potwierdzonym
+    # źródle 3U₀): gn01 6e9613ad… → bebbfc4d…, gn03 bez zmiany. Pełne widoki z kodu bazy
+    # `dbe7c130b` (odtwarzają dokładnie poprzedni pin) i po karcie porównane liść po liściu:
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica treści modelu
+    # wejściowego: pole „Pole liniowe wyjściowe 2" nie dostaje automatycznie funkcji 67N
+    # (`bez_niespelnionych_warunkow` — pole bez powiązanego źródła 3U₀); `Bay.zrodlo_u0_ref`
+    # nienadane jest poza odciskiem. Enumeracja kontyngencji, dotkliwości i ranking identyczne.
+    # 2026-10-30 (ta sama karta, decyzja architekta: jedna nomenklatura funkcji EAZ, każda
+    # funkcja raz — `network_model/catalog/funkcje_eaz.py`): gn01 bebbfc4d… → 138e3743…, gn03
+    # bez zmiany. Pełne widoki z kodu bazy `e41837b4e` (`git archive`, odtwarzają dokładnie
+    # poprzednie piny obu sieci) i po karcie porównane liść po liściu: IDENTYCZNY zbiór 408
+    # kluczy, różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu
+    # wejściowego (738 liści, identyczny zbiór kluczy): 3 kody zabezpieczeń technologicznych
+    # pola transformatora — klucze-nazwy „Buchholz", „temp", „ciśnienie" → numery IEEE C37.2
+    # „63", „26", „63P". Enumeracja kontyngencji, dotkliwości i ranking identyczne.
     # 2026-11-04 (karta ZU, punkt 4 — proza słowami zamiast symboli spłaszczonych): gn01
     # 63af4b10… → 93a818d9…, gn03 d05d5914… → de5afc06…. Pełne widoki z kodu bazy karty
     # `01c5def16` (odtwarzają dokładnie poprzednie piny) i z drzewa karty porównane liść po
@@ -970,8 +993,18 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # `context.snapshot_hash` gn03 — model gn03 zyskał addytywne `origin_bay_ref` w meta
     # jednej gałęzi (pole wyjściowe odcinka z karty BKR). Żadna liczba; enumeracja,
     # dotkliwości, ranking i kolejność identyczne.
-    "gn01_promieniowa": "bae4ce7b4f5d26cc03d44f8ab51cb3ddb7c5919ab884aba5aa1a91b7aeb783a1",
-    "gn03_pierscien": "0d061a514108cb043c401078fa1a3b6f7c6f5ff3140b48d91da754ad88a2cf9a",
+    # 2026-11-11 (scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji po kartach ZU
+    # i BKR): gn01 bae4ce7b… → 688f14c1…, gn03 0d061a51… → 1f688e57…. Pełne widoki z kodu
+    # strony integracji (`git archive` pierwszego rodzica scalenia, odtwarzają poprzednie piny)
+    # i z drzewa scalonego porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash` obu sieci. Różnice modelu wejściowego (zrzut ENM
+    # obu sieci, liść po liściu) to dokładnie zmiany karty opisane wyżej: `stan_obiektu`
+    # „PROJEKTOWANY” na 9 polach i 4 gałęziach łączeniowych, addytywne `klasa_pola`/`zrodlo_u0_ref`
+    # (None) pól, rozłącznik sekcyjny gn03 bez SF₆, pole bez potwierdzonego źródła 3U₀ bez 67N
+    # i kody technologiczne pola transformatora jako numery IEEE C37.2. Żadna liczba wyniku;
+    # enumeracja, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "688f14c18f8dc078aa7b20409cb8b52d581cc0a66f651f61aa767766d95165ac",
+    "gn03_pierscien": "1f688e57b125b15352400bd158d68242cbf2b2430d2f713b9ec575fdf227dcf4",
 }
 
 

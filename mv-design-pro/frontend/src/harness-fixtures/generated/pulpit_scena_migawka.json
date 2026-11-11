@@ -124,6 +124,7 @@
       "r_ohm": null,
       "ref_id": "sw_coupler",
       "source_mode": null,
+      "stan_obiektu": null,
       "status": "closed",
       "tags": [],
       "to_bus_ref": "bus_sn_b",

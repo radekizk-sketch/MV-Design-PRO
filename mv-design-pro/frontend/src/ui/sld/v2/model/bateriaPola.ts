@@ -20,7 +20,7 @@ import {
   type ShuntCapacitor,
   type UkladPolaczenBaterii,
 } from '../../../../types/enm';
-import { RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../../v3/compose/rodzajeAparatowPolaBkr';
+import { RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../../v3/compose/rodzajeAparatuPola';
 
 /** Dane baterii potrzebne rysunkowi (glif `capacitorBank`). */
 export interface BateriaPolaView {

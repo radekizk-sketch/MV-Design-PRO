@@ -15,11 +15,13 @@
  * tła pól i próbki ról) — jak etykiety rysunku, które poniżej progu są szumem.
  */
 import type { JSX } from 'react';
-import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, labelLineHeight } from '../core/text';
+import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, SLD_FONT_FAMILY, labelLineHeight } from '../core/text';
 import {
   ETYKIETA_ROLI_POLA_PL,
   KLASA_DANYCH_GPZ,
+  KRESKOWANIE_PLAKIETKI_BEZ_STANU,
   OPIS_PLAKIETKI_PL,
+  STAN_FUNKCJI_PLAKIETKI_PL,
   TEKST_BRAKU_WARTOSCI,
   WYSOKOSC_WIERSZA_GPZ,
   tekstAlarmowGpz,
@@ -83,7 +85,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
       textAnchor={wyrownanie}
       dominantBaseline="middle"
       fill={kolor}
-      fontFamily="sans-serif"
+      fontFamily={SLD_FONT_FAMILY}
       fontSize={typo.fontSize}
       fontWeight={typo.fontWeight}
     >
@@ -174,8 +176,9 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                     key={`gpz-plakietka-${karta.bayRef}-${plakietka.flaga}`}
                     data-testid={`sld-v3-gpz-plakietka-${karta.bayRef}-${plakietka.flaga}`}
                     data-gpz-plakietka={plakietka.flaga}
+                    data-gpz-plakietka-stan="nieustalony"
                   >
-                    <title>{OPIS_PLAKIETKI_PL[plakietka.flaga]}</title>
+                    <title>{`${OPIS_PLAKIETKI_PL[plakietka.flaga]}; ${STAN_FUNKCJI_PLAKIETKI_PL}`}</title>
                     <rect
                       x={plakietka.rect.x}
                       y={plakietka.rect.y}
@@ -185,6 +188,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                       fill={palette.canvasBackground}
                       stroke={kolorTekstu}
                       strokeWidth={1}
+                      strokeDasharray={KRESKOWANIE_PLAKIETKI_BEZ_STANU}
                     />
                     {tekstyCzytelne && (
                       <text
@@ -193,7 +197,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill={kolorTekstu}
-                        fontFamily="sans-serif"
+                        fontFamily={SLD_FONT_FAMILY}
                         fontSize={typo.fontSize}
                         fontWeight={typo.fontWeight}
                       >

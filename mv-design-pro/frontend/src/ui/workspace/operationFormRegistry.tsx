@@ -41,6 +41,7 @@ import { KreatorOdcinkaNn } from '../../ui2/kreatory/odcinek-nn';
 import { KreatorRozdzielnicyNn } from '../../ui2/kreatory/rozdzielnica-nn';
 import { KreatorAparatuNn } from '../../ui2/kreatory/aparat-nn';
 import { KreatorRcdNn } from '../../ui2/kreatory/rcd-nn';
+import { FormularzStanuObiektu } from '../field/EdytorStanuObiektuPola';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
@@ -65,6 +66,12 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   close_switch: null,
   // Wyposażenie pola edytuje formularz INLINE na karcie pola (E-11, `BayConfiguratorSurface`).
   set_bay_equipment: null,
+  // Stan obiektu (pole, aparat pola, łącznik poza polem): ten sam edytor co karta pola (E-11)
+  // i inspektor obiektu schematu (`ui/field/EdytorStanuObiektuPola`), cel z kontekstu otwarcia.
+  set_object_state: FormularzStanuObiektu,
+  // Położenie łącznika pola bez gałęzi (otwórz / zamknij / uziem) wykonuje menu aparatu na
+  // kanwie (`sldActionExecutor`, cel z `celStanuLacznika`) — bez okna, jak `open_switch`.
+  set_bay_apparatus_position: null,
   przepnij_element_na_pole: KreatorPrzepieciaNaPole,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: KreatorPrzypisaniaKatalogu,

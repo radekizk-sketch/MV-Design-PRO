@@ -12,10 +12,8 @@
  */
 
 import {
-  COLOR_DEVICE_CLOSED,
-  COLOR_DEVICE_CLOSED_BORDER,
-  COLOR_DEVICE_OPEN,
-  COLOR_DEVICE_OPEN_BORDER,
+  COLOR_DEVICE_FAULT,
+  COLOR_LIVE,
   COLOR_LINE_PRIMARY,
   COLOR_PANEL_RAISED,
   COLOR_TEXT_MUTED,
@@ -27,15 +25,33 @@ import {
 } from '../theme/tokens';
 import type {
   EarthingSwitchState,
-  GpzApparatusSwitchState,
   OltcGlyphAnnotation,
 } from '../model/gpzSwitchgearTypes';
+import { polozenieZeStanu, type PolozenieLacznika, type SwitchState } from '../../v3/symbols/glyphs';
+import { STATE_COLOR } from '../../v3/theme/colorTokens';
 
 const CT_RADIUS = GPZ_GEOMETRY.ctRadius;
 const CB_SIZE = GPZ_GEOMETRY.cbSize;
 const TRIANGLE_SIZE = GPZ_GEOMETRY.triangleSize;
 const ES_BRANCH_LEN = GPZ_GEOMETRY.esBranchLength;
 const ES_BRANCH_OFFSET = GPZ_GEOMETRY.esBranchOffset;
+
+/**
+ * Kolor i geometria łącznika rysowanego w tym katalogu — z TEJ SAMEJ tabeli co kafel łącznika v3
+ * (`v3/symbols/glyphs.tsx::polozenieZeStanu`, kolory `v3/theme/colorTokens.ts::STATE_COLOR`;
+ * rozstrzygnięcie architekta 2026-10-30 pkt 5, karta UX-04 §11.14). Żaden symbol v2 nie ma własnej
+ * reguły koloru: czerwony = tor główny zamknięty, zielony = otwarty (także łącznik trójpołożeniowy
+ * uziemiony — tor główny otwarty), szary = nieustalony albo brak danej, fioletowy = awaria.
+ * `maZestykUziemiajacy` — łącznik trójpołożeniowy; stan „uziemiony" aparatu bez zestyku
+ * uziemiającego jest sprzeczny z rodzajem i rysuje się jako nieustalony.
+ */
+export function barwaLacznika(
+  state: SwitchState | undefined,
+  maZestykUziemiajacy: boolean,
+): { readonly polozenie: PolozenieLacznika; readonly kolor: string } {
+  const polozenie = polozenieZeStanu(state, maZestykUziemiajacy);
+  return { polozenie, kolor: STATE_COLOR[polozenie.kafel] };
+}
 
 // =============================================================================
 // CT Primary
@@ -89,8 +105,8 @@ export function CtPrimary(props: CtPrimaryProps): JSX.Element {
 interface ApparatusVisualProps {
   cx: number;
   cy: number;
-  state?: GpzApparatusSwitchState;
-  energized: boolean;
+  /** Stan aparatu z modelu; brak danej = nieustalony. */
+  state?: SwitchState;
 }
 
 export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
@@ -98,32 +114,26 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
    * Per norm: prostokąt z widocznym kontaktem styku wewnątrz.
    *  - closed: kropka w środku reprezentująca zamknięty kontakt
    *  - open: kreska pozioma (kontakt rozwarty)
-   *  - unknown: neutralny szary symbol bez znaku zastępczego
+   *  - unknown / bad: wypełnienie w kolorze stanu nieustalonego / awarii, bez znaku styku
+   * Kolor i geometria — `barwaLacznika` (jedno źródło z kaflem v3); kolor mówi o położeniu toru
+   * głównego, nie o napięciu (napięcie niesie kolor linii pola).
    * Operator natychmiast odróżnia CB od DS bo CB ma KWADRAT, nie okrąg. */
-  const { cx, cy, state = 'unknown', energized } = props;
-  const open = state === 'open';
-  const unknown = state === 'unknown';
-  const fill = unknown
-    ? COLOR_TEXT_MUTED
-    : open
-    ? COLOR_PANEL_RAISED
-    : energized
-    ? COLOR_DEVICE_CLOSED
-    : COLOR_TEXT_MUTED;
-  const stroke = unknown
-    ? COLOR_TEXT_MUTED
-    : open
-    ? COLOR_DEVICE_OPEN_BORDER
-    : COLOR_DEVICE_CLOSED_BORDER;
+  const { cx, cy, state } = props;
+  const { polozenie, kolor } = barwaLacznika(state, false);
+  const open = polozenie.geometria === 'open';
+  const unknown = polozenie.geometria === 'unknown';
+  const fill = open ? COLOR_PANEL_RAISED : kolor;
+  const stroke = kolor;
   /* K30-122 audyt fix: contact line + white outline gdy fill jest jasny
    * (zielony/żółty CLOSED state lub manipulation context). Wyraźny contrast
    * na każdym tle per WCAG AA. */
-  const contactColor = open ? COLOR_DEVICE_OPEN : '#0A0E14';
+  const contactColor = '#0A0E14';
   const contactOutline = !open && !unknown ? '#FFFFFF' : undefined;
   return (
     <g
       data-testid="sld-v2-gpz-bay-cb"
-      data-state={state}
+      data-state={state ?? 'unknown'}
+      data-kafel={polozenie.kafel}
       data-apparatus-kind="circuit_breaker"
       data-symbol-canon="circuit_breaker_square"
       data-symbol-shape="square"
@@ -144,7 +154,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
           y1={cy}
           x2={cx + CB_SIZE / 2 - 1}
           y2={cy}
-          stroke={COLOR_DEVICE_OPEN}
+          stroke={kolor}
           strokeWidth={1.4}
         />
       )}
@@ -179,7 +189,7 @@ export function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
 
 export function ApparatusCableHead(props: { cx: number; cy: number; energized: boolean }): JSX.Element {
   const { cx, cy, energized } = props;
-  const stroke = energized ? COLOR_DEVICE_CLOSED_BORDER : COLOR_TEXT_MUTED;
+  const stroke = energized ? COLOR_LIVE : COLOR_TEXT_MUTED;
   return (
     <g data-testid="sld-v2-gpz-bay-cable-head">
       <polygon
@@ -218,12 +228,11 @@ interface ApparatusEarthingSwitchProps {
  * trójkątem ziemi (3 krótkie poziome kreski malejącej długości skierowane
  * w dół). PN-EN 62271-102 wymaga jednoznacznej wizualizacji ES dla BHP.
  *
- * Kolor:
- *  - 'closed'  → czerwony (`COLOR_DEVICE_OPEN`) — uziemnik załączony,
- *                pole UZIEMIONE (bezpieczne do prac, ale BLOKADA pracy
- *                pod napięciem)
- *  - 'open'    → szary muted — pole NIE uziemione (normalne)
- *  - 'unknown' → szary muted bez znaku zastępczego
+ * Kolor — `barwaLacznika` (jedno źródło z kaflem v3, tor uziemnika jest torem głównym łącznika):
+ *  - 'closed'  → czerwony — uziemnik załączony, pole UZIEMIONE (bezpieczne
+ *                do prac, ale BLOKADA pracy pod napięciem)
+ *  - 'open'    → zielony — uziemnik otwarty, pole NIE uziemione (normalne)
+ *  - 'unknown' → szary stanu nieustalonego
  *  - 'absent'  → renderer pomija (zwraca pusty `<g/>`)
  */
 export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Element {
@@ -231,8 +240,8 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
   if (state === 'absent') {
     return <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state="absent" />;
   }
-  const closed = state === 'closed';
-  const stroke = closed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
+  const { polozenie, kolor: stroke } = barwaLacznika(state, false);
+  const closed = polozenie.geometria === 'closed';
   const sw = closed ? 1.6 : 1.2;
   /* Boczna gałąź wychodzi z osi pola — strona z `slot.side` polityki.
    * Domyślnie po RIGHT (LINE_*, GPZ_LINE_BAY, RMU_LINE, TRANSFORMER,
@@ -244,6 +253,7 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
     <g
       data-testid="sld-v2-gpz-bay-earthing-switch"
       data-state={state}
+      data-kafel={polozenie.kafel}
       data-apparatus-kind="earthing_switch"
       data-symbol-canon="earthing_switch_lateral_branch"
     >
@@ -301,6 +311,10 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
           />
         </>
       )}
+      {/* Pion odgałęzienia od styku stałego strony ziemi do najdłuższej kreski ziemi — ziemia wisi
+          na końcu pionu, pod stykiem, skierowana w dół (decyzja właściciela 2026-10-30, test klasy
+          `ui/sld/v3/symbols/__tests__/kierunekZiemi.test.tsx`). */}
+      <line x1={branchEndX} y1={cy + ES_BRANCH_LEN * 0.45} x2={branchEndX} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
       {/* Trójkąt ziemi (3 poziome kreski) */}
       <line x1={branchEndX - 3.5} y1={groundTopY + ES_BRANCH_LEN * 0.6} x2={branchEndX + 3.5} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
       <line x1={branchEndX - 2.5} y1={groundTopY + ES_BRANCH_LEN * 0.85} x2={branchEndX + 2.5} y2={groundTopY + ES_BRANCH_LEN * 0.85} stroke={stroke} strokeWidth={sw} />
@@ -329,8 +343,8 @@ interface ApparatusFuseProps {
 export function ApparatusFuse(props: ApparatusFuseProps): JSX.Element {
   const { cx, cy, state = 'unknown' } = props;
   const blown = state === 'blown';
-  const fill = state === 'healthy' ? COLOR_DEVICE_CLOSED : blown ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
-  const stroke = state === 'healthy' ? COLOR_DEVICE_CLOSED_BORDER : blown ? COLOR_DEVICE_OPEN_BORDER : COLOR_TEXT_MUTED;
+  const fill = state === 'healthy' ? COLOR_LIVE : blown ? COLOR_DEVICE_FAULT : COLOR_TEXT_MUTED;
+  const stroke = state === 'healthy' ? COLOR_LIVE : blown ? COLOR_DEVICE_FAULT : COLOR_TEXT_MUTED;
   return (
     <g data-testid="sld-v2-gpz-bay-fuse" data-state={state}>
       <rect
@@ -370,9 +384,12 @@ interface ApparatusThreePositionSwitchProps {
    *  - 'closed'  (ZAŁ):       blade bridges bus → cable (in service)
    *  - 'open'    (WYŁ):       blade at rest (isolated, gap)
    *  - 'earthed' (UZIEMIONY): blade swings to the earth contact (cable earthed)
-   *  - 'unknown':             indeterminate (grey)
+   *  - 'unknown' / brak:       nieustalony (szary, nóż kreskowany)
+   *  - 'bad':                 awaria (fioletowy, nóż jak nieustalony)
+   * Kolor i położenie noża — `barwaLacznika(position, true)`: uziemiony = tor główny
+   * otwarty, więc kolor zielony, a nóż leży na zestyku uziemiającym.
    */
-  readonly position?: 'closed' | 'open' | 'earthed' | 'unknown';
+  readonly position?: SwitchState;
   /** Half-height of the device on the field path (contacts sit at ±h). */
   readonly h?: number;
 }
@@ -393,21 +410,16 @@ interface ApparatusThreePositionSwitchProps {
 export function ApparatusThreePositionSwitch(
   props: ApparatusThreePositionSwitchProps,
 ): JSX.Element {
-  const { cx, cy, position = 'unknown', h = 9 } = props;
+  const { cx, cy, position, h = 9 } = props;
   const topY = cy - h;
   const botY = cy + h;
   const earthX = cx - h - 3;
-  const closed = position === 'closed';
-  const earthed = position === 'earthed';
-  const unknown = position === 'unknown';
-  const liveColor = unknown ? COLOR_TEXT_MUTED : COLOR_DEVICE_CLOSED_BORDER;
-  const bladeColor = closed
-    ? COLOR_DEVICE_CLOSED_BORDER
-    : earthed
-      ? COLOR_DEVICE_OPEN
-      : unknown
-        ? COLOR_TEXT_MUTED
-        : COLOR_DEVICE_OPEN_BORDER;
+  const { polozenie, kolor: bladeColor } = barwaLacznika(position, true);
+  const closed = polozenie.geometria === 'closed';
+  const earthed = polozenie.geometria === 'earthed';
+  const unknown = polozenie.geometria === 'unknown';
+  const liveColor = unknown ? COLOR_TEXT_MUTED : COLOR_LIVE;
+  const earthInk = earthed ? bladeColor : COLOR_TEXT_MUTED;
   // Blade endpoint: closed → bottom contact; earthed → earth contact; open →
   // a rest angle between (the visible gap).
   const bladeEnd = closed
@@ -418,7 +430,9 @@ export function ApparatusThreePositionSwitch(
   return (
     <g
       data-testid="sld-v2-apparatus-three-position-switch"
-      data-state={position}
+      data-state={position ?? 'unknown'}
+      data-kafel={polozenie.kafel}
+      data-polozenie-noza={polozenie.geometria}
       data-apparatus-kind="three_position_switch"
       data-symbol-canon="three_position_load_break_isolator"
       data-symbol-shape="diamond"
@@ -430,11 +444,11 @@ export function ApparatusThreePositionSwitch(
       <circle cx={cx} cy={botY} r={1.4} fill={closed ? liveColor : COLOR_TEXT_MUTED} />
       <line x1={cx} y1={botY} x2={cx} y2={botY + 3} stroke={closed ? liveColor : COLOR_TEXT_MUTED} strokeWidth={1.6} />
       {/* Earth contact branch (left) + ground triangle. */}
-      <circle cx={earthX} cy={cy + 1} r={1.2} fill={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} />
-      <line x1={earthX} y1={cy + 2.2} x2={earthX} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.2} />
-      <line x1={earthX - 3} y1={cy + 6} x2={earthX + 3} y2={cy + 6} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.2} />
-      <line x1={earthX - 2} y1={cy + 7.4} x2={earthX + 2} y2={cy + 7.4} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={1.0} />
-      <line x1={earthX - 1} y1={cy + 8.8} x2={earthX + 1} y2={cy + 8.8} stroke={earthed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED} strokeWidth={0.8} />
+      <circle cx={earthX} cy={cy + 1} r={1.2} fill={earthInk} />
+      <line x1={earthX} y1={cy + 2.2} x2={earthX} y2={cy + 6} stroke={earthInk} strokeWidth={1.2} />
+      <line x1={earthX - 3} y1={cy + 6} x2={earthX + 3} y2={cy + 6} stroke={earthInk} strokeWidth={1.2} />
+      <line x1={earthX - 2} y1={cy + 7.4} x2={earthX + 2} y2={cy + 7.4} stroke={earthInk} strokeWidth={1.0} />
+      <line x1={earthX - 1} y1={cy + 8.8} x2={earthX + 1} y2={cy + 8.8} stroke={earthInk} strokeWidth={0.8} />
       {/* The single moving blade from the top pivot to the selected contact. */}
       <line
         x1={cx}
@@ -443,6 +457,7 @@ export function ApparatusThreePositionSwitch(
         y2={bladeEnd.y}
         stroke={bladeColor}
         strokeWidth={1.8}
+        strokeDasharray={unknown ? '2 1.5' : undefined}
         strokeLinecap="round"
       />
       {/* Load-break tick (distinguishes from a plain disconnector). */}

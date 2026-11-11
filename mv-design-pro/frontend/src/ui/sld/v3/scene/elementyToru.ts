@@ -25,7 +25,7 @@ import { GRID, snapToGrid } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import type { PreviewSegment, PreviewSymbol } from '../compose/preview';
 import type { SimpleAnchoredOwnerInput } from '../layout/labels';
-import type { RouteVertex } from '../layout/route';
+import { dedupeVertices, type RouteVertex } from '../layout/route';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { stanStatusuGalezi, TYPY_GALEZI_LACZNIKA_TORU } from '../../v2/model/stanAparatowPola';
 
@@ -113,7 +113,12 @@ export function elementyToru(
   };
   const zamienPunkt = (indeks: number, stary: RouteVertex, nowy: RouteVertex): void => {
     const segment = odcinki[indeks];
-    odcinki[indeks] = { ...segment, points: segment.points.map((p) => (rowne(p, stary) ? nowy : p)) };
+    // Przycięcie do portu glifu może zdegenerować ostatni bieg: łącznik stoi na krótkim
+    // biegu tuż przy narożniku trasy (pomiar 2026-11-05, `koordynacja_scena_migawka` L0:
+    // `…/segment_L_SL` kończył się biegiem 8 jednostek do punktu łącznika, a port glifu
+    // wypadł w narożniku — wierzchołek powtórzony (456, 432)). Ta sama normalizacja co
+    // cała scena (`dedupeVertices`): bez powtórzeń i bez wierzchołków współliniowych.
+    odcinki[indeks] = { ...segment, points: dedupeVertices(segment.points.map((p) => (rowne(p, stary) ? nowy : p))) };
   };
   /** Kawałek odcinka, który ma wierzchołek `p`, i sąsiedni wierzchołek (kierunek biegu). */
   const kawalekPrzy = (p: RouteVertex): { indeks: number; sasiad: RouteVertex } | null => {
@@ -160,10 +165,18 @@ export function elementyToru(
     // Przerwa toru pod glifem: kawałki odcinków dochodzą do PORTÓW glifu (na
     // siatce), nie przechodzą przez nóż łącznika (otwarty łącznik z torem ciągłym
     // pod spodem czytałby się jako zamknięty).
-    const portWe: RouteVertex = poziomy ? { x, y: a.y } : { x: a.x, y };
-    const portWy: RouteVertex = poziomy ? { x: x + def.width, y: a.y } : { x: a.x, y: y + def.height };
+    // Port wejścia stoi po stronie, z której ODCINEK WCHODZĄCY dobiega do łącznika — tor
+    // biegnie na arkuszu także od prawej do lewej (wiersz powrotny) i od dołu w górę.
+    // Stała para „lewy = wejście" przy biegu od prawej kładła oba kable pod glifem
+    // (kabel wchodzący kończył się na lewym porcie, wychodzący zaczynał na prawym):
+    // dwa różne odcinki na jednym kawałku toru i koniec jednego we wnętrzu drugiego.
     const wchodzacy = odcinkiWchodzace(galaz.from_bus_ref);
     const wychodzacy = odcinkiWychodzace(galaz.to_bus_ref);
+    const odStronyKonca = stronaDobiegu(wchodzacy, wychodzacy, a, poziomy);
+    const portPoczatku: RouteVertex = poziomy ? { x, y: a.y } : { x: a.x, y };
+    const portKonca: RouteVertex = poziomy ? { x: x + def.width, y: a.y } : { x: a.x, y: y + def.height };
+    const portWe = odStronyKonca ? portKonca : portPoczatku;
+    const portWy = odStronyKonca ? portPoczatku : portKonca;
     for (const ref of wchodzacy) przytnij(ref, a, portWe);
     for (const ref of wychodzacy) przytnij(ref, a, portWy);
     if (lod === 2) {
@@ -191,6 +204,31 @@ export function elementyToru(
   function odcinkiWychodzace(busRef: string): string[] {
     return (odcinkiPrzySzynie.get(busRef) ?? []).filter((g) => g.from_bus_ref === busRef).map((g) => g.ref_id);
   }
+  /** `true`, gdy odcinek wchodzący dobiega do punktu łącznika od strony większej
+   *  współrzędnej (od prawej na torze poziomym, od dołu na pionowym). Kierunek z
+   *  wierzchołka sąsiedniego kawałka wchodzącego; bez niego — odwrotność kierunku
+   *  kawałka wychodzącego; bez obu — bieg od lewej/od góry. */
+  function stronaDobiegu(
+    wchodzace: readonly string[],
+    wychodzace: readonly string[],
+    p: RouteVertex,
+    poziomy: boolean,
+  ): boolean {
+    const os = (v: RouteVertex): number => (poziomy ? v.x : v.y);
+    for (const ref of wchodzace) {
+      for (const indeks of kawalkiOdcinka.get(ref) ?? []) {
+        const pts = odcinki[indeks].points;
+        if (pts.length > 1 && rowne(pts[pts.length - 1], p)) return os(pts[pts.length - 2]) > os(p);
+      }
+    }
+    for (const ref of wychodzace) {
+      for (const indeks of kawalkiOdcinka.get(ref) ?? []) {
+        const pts = odcinki[indeks].points;
+        if (pts.length > 1 && rowne(pts[0], p)) return os(pts[1]) < os(p);
+      }
+    }
+    return false;
+  }
   function przytnij(ref: string, stary: RouteVertex, nowy: RouteVertex): void {
     for (const indeks of kawalkiOdcinka.get(ref) ?? []) {
       const pts = odcinki[indeks].points;
@@ -212,7 +250,7 @@ export function elementyToru(
       symbolId: 'junction',
       x: snapToGrid(p.x - def.width / 2),
       y: snapToGrid(p.y - def.height / 2),
-      meta: { testId: `sld-v3-wezel-toru-${bus.ref_id}`, ownerRef: bus.ref_id, elementKind: 'bus' },
+      meta: { testId: `sld-v3-wezel-toru-${bus.ref_id}`, ownerRef: bus.ref_id, elementKind: 'bus', wezelModelu: bus.ref_id },
     });
     if (lod !== 0) {
       labels.push({

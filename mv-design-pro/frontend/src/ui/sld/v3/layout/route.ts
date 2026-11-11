@@ -429,3 +429,25 @@ export function classifyRouteNodes(routes: readonly RouteGeometry[]): RouteNodeC
 
   return { junctions, crossings };
 }
+
+/** Usuwa POWTÓRZONE kolejno wierzchołki łamanej (łamana degenerująca się do
+ *  prostego odcinka, gdy oś źródła/pola pokrywa się z osią bloku) — ten sam
+ *  wzorzec co objazd rynną w sekcji 5 — ORAZ wierzchołki pośrednie leżące na prostej
+ *  sąsiadów. Wierzchołek współliniowy nie zmienia rysunku, ale dzieli odcinek na dwie
+ *  krawędzie, a skrzyżowanie w takim wierzchołku nie jest „wnętrzem” żadnej z nich:
+ *  `interiorCrossings` go nie widzi i kanwa nie rysuje mostka (karta
+ *  UX-04/POLE-LINIOWE-WZORZEC, decyzja §11.7 pkt 1; pomiar przed naprawą: zejście źródła
+ *  `#grid-source-drop` bloku GPZ na L0 — jeden taki wierzchołek na każdej scenie z GPZ:
+ *  57 fikstur na L0 i 6 sieci syntetycznych, żaden na obcym przewodzie).
+ *
+ *  Jedno źródło normalizacji łamanej dla sceny (`buildScene.ts`) i dla przycięcia
+ *  odcinków do portów łącznika na torze (`scene/elementyToru.ts`). */
+export function dedupeVertices(points: readonly RouteVertex[]): readonly RouteVertex[] {
+  const bezPowtorzen = points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
+  return bezPowtorzen.filter((p, i) => {
+    if (i === 0 || i === bezPowtorzen.length - 1) return true;
+    const a = bezPowtorzen[i - 1];
+    const b = bezPowtorzen[i + 1];
+    return !((a.x === p.x && b.x === p.x) || (a.y === p.y && b.y === p.y));
+  });
+}

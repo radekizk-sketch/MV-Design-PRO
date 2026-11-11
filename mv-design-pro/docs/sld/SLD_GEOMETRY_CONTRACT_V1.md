@@ -28,7 +28,7 @@ export type LayoutMode = 'topological' | 'geo';
 export type LodLevel = 'L0' | 'L1' | 'L2';  // L0 przegląd sieci / L1 stacja-ciąg / L2 pole-szczegół — JEDNA prawda geometrii (zagnieżdżona), trzy poziomy detalu
 
 export interface PortAnchor {
-  portId: string;            // ENM PortRef.port_id (np. "...FEEDER.BRANCH")
+  portId: string;            // ENM PortRef.port_id — identyfikator portu z rejestru portów modelu (Port.id)
   ownerRef: string;          // pole/stacja/GPZ do którego port należy
   kind: PortKind;            // głowica odpływowa / wejściowa / DER / branch_point
   x: number; y: number;      // pozycja w world-space — JEDYNE źródło

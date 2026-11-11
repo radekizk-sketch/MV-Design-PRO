@@ -56,6 +56,8 @@ export const HIDDEN_LABELS_HINT_BOTTOM_PX = 52;
 export const HIDDEN_LABELS_HINT_RIGHT_PX = 12;
 /** Rozmiar pisma wskaźnika [px EKRANU] — stały, niezależny od zoomu. */
 export const HIDDEN_LABELS_HINT_FONT_PX = 12;
+/** Odmiana kroju wskaźnika (CSS font-weight) — ta sama dla renderu i pomiaru szerokości. */
+export const HIDDEN_LABELS_HINT_FONT_WEIGHT = 600;
 /** Prześwit między wskaźnikiem a aparatem arkusza, nad który ustępuje [px EKRANU]. */
 export const CHROME_ROW_GAP_PX = 6;
 /** Grubość kreski ramki arkusza [px EKRANU] — stała ekranowa (S9-7:
@@ -123,7 +125,7 @@ export function hiddenLabelsHintTextKadru(
 
 /**
  * Szerokość napisu chromu [px EKRANU]. Ta sama formuła co cała typografia v3
- * (`core/text.ts` `measureTextWidth`, `AVG_GLYPH_WIDTH_FACTOR`) — chrom nie ma
+ * (`core/text.ts` `measureTextWidth`, tabela posuwów kroju) — chrom nie ma
  * prawa mierzyć się inaczej niż rysunek, bo wtedy „rozłączność" liczona tutaj
  * nie odpowiadałaby temu, co widać.
  *
@@ -131,8 +133,8 @@ export function hiddenLabelsHintTextKadru(
  * (wołający podaje `measureTextWidth`) — patrz `sheetCaptionScreenRects`.
  */
 export interface ChromeTextMetrics {
-  /** Szerokość tekstu [px] przy zadanym rozmiarze pisma [px]. */
-  readonly measure: (text: string, fontSizePx: number) => number;
+  /** Szerokość tekstu [px] przy zadanym rozmiarze pisma [px] i odmianie kroju (font-weight). */
+  readonly measure: (text: string, fontSizePx: number, fontWeight: number) => number;
 }
 
 /** Kamera potrzebna do przeliczenia punktu arkusza na ekran. */
@@ -150,6 +152,8 @@ export interface SheetCaptionInput {
   readonly camera: ChromeCamera;
   /** Rozmiar pisma podpisów arkusza [px EKRANU] — stały (`screenFixedFontSize`). */
   readonly captionFontPx: number;
+  /** Odmiana kroju podpisów arkusza (font-weight) — ta, którą rysuje `sheet/Frame.tsx`. */
+  readonly captionFontWeight: number;
   readonly scaleLabel: string;
   /** `undefined` ⇒ ramka nie rysuje podpisu poziomu szczegółu. */
   readonly lodLabel?: string;
@@ -177,7 +181,7 @@ export function sheetCaptionScreenRects(
   input: SheetCaptionInput,
   metrics: ChromeTextMetrics,
 ): readonly SheetApparatusRect[] {
-  const { sheet, frameMargin, camera, captionFontPx } = input;
+  const { sheet, frameMargin, camera, captionFontPx, captionFontWeight } = input;
   if (!Number.isFinite(camera.scale) || camera.scale <= 0) return [];
   const krawedzY = (frameMargin + sheet.height) * camera.scale + camera.translateY;
   const baseline = krawedzY + SHEET_CAPTION_OFFSET_SCREEN_PX;
@@ -196,11 +200,11 @@ export function sheetCaptionScreenRects(
     },
   ];
   const skala = sheetScaleCaptionText(input.scaleLabel);
-  const szerSkali = metrics.measure(skala, captionFontPx);
+  const szerSkali = metrics.measure(skala, captionFontPx, captionFontWeight);
   rects.push({ id: 'skala', x: prawa - szerSkali, y, width: szerSkali, height: wysokosc });
   if (input.lodLabel !== undefined) {
     const widok = sheetLodCaptionText(input.lodLabel);
-    rects.push({ id: 'widok', x: lewa, y, width: metrics.measure(widok, captionFontPx), height: wysokosc });
+    rects.push({ id: 'widok', x: lewa, y, width: metrics.measure(widok, captionFontPx, captionFontWeight), height: wysokosc });
   }
   return rects;
 }
@@ -239,7 +243,7 @@ export function hiddenLabelsHintScreenRect(
   sheetApparatus: readonly ScreenRect[],
   metrics: ChromeTextMetrics,
 ): ScreenRect {
-  const width = metrics.measure(text, HIDDEN_LABELS_HINT_FONT_PX);
+  const width = metrics.measure(text, HIDDEN_LABELS_HINT_FONT_PX, HIDDEN_LABELS_HINT_FONT_WEIGHT);
   const height = HIDDEN_LABELS_HINT_FONT_PX + 6;
   let rect: ScreenRect = {
     // Margines od krawędzi widoku dotyczy PODKŁADKI (to ona jest widoczną

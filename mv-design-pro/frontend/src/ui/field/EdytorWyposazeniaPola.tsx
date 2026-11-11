@@ -27,26 +27,38 @@ import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '
 import {
   fetchCompleteBayTemplates,
   fetchCtTypes,
+  fetchSzablonyPolaKanoniczne,
   fetchMvApparatusTypes,
   fetchSurgeArresterTypes,
   fetchSwitchgearFamilies,
   fetchVtTypes,
   getCatalogErrorMessage,
+  NAZWA_WERYFIKACJI_PL,
+  type SzablonPolaKanoniczny,
 } from '../catalog/api';
 import {
   nazwaSzablonuPoReferencjiPl,
   nazwaSzablonuPolaPl,
   type CompleteMvBayTemplateSummary,
 } from '../catalog/BayTemplatePicker';
+import { nazwaMediumPl, notaPozycjiUkrytych, pozycjeDoWyboru } from '../catalog/dopuszczenieNowychPol';
 import { czySzablonPojedynczegoPola, type SwitchgearFamily } from '../catalog/SwitchgearFamilyPicker';
-import type { CatalogType, MVApparatusType } from '../catalog/types';
+import type { CatalogType, CTCatalogType, MVApparatusType } from '../catalog/types';
+import { zaczepyPrzekladnika } from '../sld/v2/model/tabliczkaPrzekladnika';
 import { czyLacznik } from '../shared/stanLacznika';
 import {
+  BEZ_ZMIANY_KLASY,
+  BEZ_ZMIANY_ZRODLA_U0,
   czyWierszKompletny,
+  KLASY_POLA_LINIOWEGO,
+  NAZWA_KLASY_POLA_PL,
   NAZWA_RODZAJU_APARATU_PL,
   PRZESTRZEN_KATALOGU_APARATU,
   RODZAJE_APARATU_POLA_SN,
   RODZAJE_KATALOGOWE_APARATU,
+  RODZAJ_Z_PRZEKLADNIA,
+  RODZAJ_Z_WYKONANIEM,
+  RODZAJ_Z_ZACZEPEM,
   RODZAJE_Z_GALEZIA,
   RODZAJE_Z_ROLA_UZIEMIENIA,
   STAN_DANYCH_WYPOSAZENIA_PL,
@@ -55,19 +67,29 @@ import {
   WIERSZ_PUSTY,
   wierszeZAparatow,
   zbudujPayloadWyposazenia,
+  zmienPozycje,
   zmienRodzaj,
   type PrzestrzenKatalogu,
   type RodzajAparatuPolaSn,
   type TrybWyposazenia,
   type WierszAparatu,
+  type ZmianaKlasyPola,
+  type ZmianaZrodlaU0,
 } from './wyposazeniePola';
-import type { DomainOpResponseV1 } from '../../types/enm';
+import type { ZrodloU0Pola } from './useFieldReadModel';
+import {
+  OPIS_WYKONANIA_APARATU_PL,
+  WYKONANIA_APARATU,
+  type DomainOpResponseV1,
+  type KlasaPolaLiniowego,
+  type WykonanieAparatu,
+} from '../../types/enm';
 import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 import { NAZWA_JAKOSCI_DANEJ_PL } from '../../ui2/wyniki/wzorzec/werdykt';
 
 interface PozycjeKatalogu {
   readonly APARAT_SN: readonly MVApparatusType[];
-  readonly CT: readonly CatalogType[];
+  readonly CT: readonly CTCatalogType[];
   readonly VT: readonly CatalogType[];
   readonly OGRANICZNIK_SN: readonly CatalogType[];
 }
@@ -92,14 +114,40 @@ export interface EdytorWyposazeniaPolaProps {
     payload: Record<string, unknown>,
   ) => Promise<DomainOpResponseV1 | null>;
   readonly bladStore?: () => string | null;
+  /** Źródło napięcia zerowego 3U₀ pola z modelu odczytu (`field-view` → `zrodlo_u0`): kandydaci
+   *  i rozstrzygnięcie powiązania liczone w backendzie. `null` — szablon pola nie niesie funkcji
+   *  warunkowej 67N (kontrolka powiązania niewidoczna). */
+  readonly zrodloU0?: ZrodloU0Pola | null;
 }
 
-function pozycjeDlaWiersza(katalog: PozycjeKatalogu, kind: RodzajAparatuPolaSn): readonly CatalogType[] {
+/**
+ * Pozycje katalogu dla wiersza. Filtr gazu fluorowanego jest BACKENDU
+ * (`dopuszczony_do_nowych_pol` pozycji, ta sama reguła co strażnik operacji): aparat, który po
+ * zapisie będzie projektowany (każdy wiersz bez jawnego stanu „istniejący" — nowy albo
+ * wymieniony), widzi wyłącznie pozycje dopuszczone. Wiersz inwentaryzacji aparatu zastanego
+ * (`stan_obiektu === 'ISTNIEJACY'`) widzi wszystkie, z medium w etykiecie. Pozycja już wybrana
+ * zostaje na liście (rekord niezmieniony nie znika z widoku).
+ */
+function pozycjeDlaWiersza(
+  katalog: PozycjeKatalogu,
+  kind: RodzajAparatuPolaSn,
+  wiersz: Pick<WierszAparatu, 'stan_obiektu' | 'catalog_ref'> = { stan_obiektu: '', catalog_ref: '' },
+): readonly CatalogType[] {
   const przestrzen: PrzestrzenKatalogu | null = PRZESTRZEN_KATALOGU_APARATU[kind];
   if (przestrzen === null) return [];
   if (przestrzen !== 'APARAT_SN') return katalog[przestrzen];
   const dozwolone = RODZAJE_KATALOGOWE_APARATU[kind] ?? [];
-  return katalog.APARAT_SN.filter((p) => dozwolone.includes(p.device_kind));
+  return pozycjeDoWyboru(
+    katalog.APARAT_SN.filter((p) => dozwolone.includes(p.device_kind)),
+    wiersz.stan_obiektu === 'ISTNIEJACY' ? 'ISTNIEJACY' : 'PROJEKTOWANY',
+    wiersz.catalog_ref,
+  );
+}
+
+/** Etykieta pozycji aparatu: nazwa + medium (medium widoczne zawsze, gdy karta je podaje). */
+function etykietaPozycji(p: CatalogType): string {
+  const medium = nazwaMediumPl((p as MVApparatusType).medium);
+  return medium ? `${p.name} · ${medium}` : p.name;
 }
 
 function wierszeStartowe(bay: Bay): WierszAparatu[] {
@@ -107,15 +155,35 @@ function wierszeStartowe(bay: Bay): WierszAparatu[] {
   return z.length > 0 ? z : [{ ...WIERSZ_PUSTY }];
 }
 
+/**
+ * Dane przyjęte wyposażenia — ZASADA NR 4 pkt 4: źródło wartości roboczej podane dyskretnie,
+ * JEDNĄ adnotacją na wspólny powód i jakość (pomiar 2026-10-29: zdanie „rodzaj aparatu bez
+ * katalogu SN — przyjęty z szablonu pola…" powtarzało się przy każdym z dziesięciu aparatów).
+ * Grupy w kolejności pierwszego wystąpienia, aparaty w kolejności pola — każdy rekord
+ * `dane_przyjete` backendu jest nadal wymieniony z nazwy, nic nie znika.
+ */
+export function grupyDanychPrzyjetych(
+  dane: readonly DanaPrzyjetaWyposazenia[],
+): readonly { readonly powod_pl: string; readonly jakosc: string | null; readonly nazwy: readonly string[] }[] {
+  const grupy = new Map<string, { powod_pl: string; jakosc: string | null; nazwy: string[] }>();
+  for (const d of dane) {
+    const klucz = `${d.jakosc ?? ''}\u0000${d.powod_pl}`;
+    const grupa = grupy.get(klucz) ?? { powod_pl: d.powod_pl, jakosc: d.jakosc, nazwy: [] };
+    grupa.nazwy.push(d.nazwa_pl);
+    grupy.set(klucz, grupa);
+  }
+  return [...grupy.values()];
+}
+
 function ListaDanychPrzyjetych({ dane, testid }: { dane: readonly DanaPrzyjetaWyposazenia[]; testid: string }) {
   if (dane.length === 0) return null;
   return (
-    <ul data-testid={testid} className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
-      {dane.map((d, i) => (
-        <li key={`${d.nazwa_pl}:${i}`}>
-          <span className="font-medium text-scada-text">{d.nazwa_pl}</span> — {d.powod_pl}
-          {d.jakosc !== null && (
-            <> (jakość danej: {etykietaZeSlownika(NAZWA_JAKOSCI_DANEJ_PL, d.jakosc)})</>
+    <ul data-testid={testid} className="mt-1 list-none pl-0 text-[11px] text-scada-muted">
+      {grupyDanychPrzyjetych(dane).map((g) => (
+        <li key={`${g.jakosc ?? ''}:${g.powod_pl}`} data-testid={`${testid}-grupa`}>
+          <span className="font-medium text-scada-text">{g.nazwy.join(', ')}</span> — {g.powod_pl}
+          {g.jakosc !== null && (
+            <> (jakość danej: {etykietaZeSlownika(NAZWA_JAKOSCI_DANEJ_PL, g.jakosc)})</>
           )}
         </li>
       ))}
@@ -131,6 +199,7 @@ export function EdytorWyposazeniaPola({
   activeCaseId,
   executeDomainOperation,
   bladStore,
+  zrodloU0 = null,
 }: EdytorWyposazeniaPolaProps): JSX.Element {
   const [tryb, setTryb] = useState<TrybWyposazenia>('katalog');
   const [wiersze, setWiersze] = useState<WierszAparatu[]>(() => wierszeStartowe(bay));
@@ -138,11 +207,41 @@ export function EdytorWyposazeniaPola({
   const [katalog, setKatalog] = useState<PozycjeKatalogu>(KATALOG_PUSTY);
   const [szablony, setSzablony] = useState<readonly CompleteMvBayTemplateSummary[]>([]);
   const [rodziny, setRodziny] = useState<readonly SwitchgearFamily[]>([]);
+  const [kanoniczne, setKanoniczne] = useState<readonly SzablonPolaKanoniczny[]>([]);
+  const [klasa, setKlasa] = useState<ZmianaKlasyPola>(BEZ_ZMIANY_KLASY);
+  const [zmianaZrodlaU0, setZmianaZrodlaU0] = useState<ZmianaZrodlaU0>(BEZ_ZMIANY_ZRODLA_U0);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [wynik, setWynik] = useState<WyposazeniePolaOdpowiedz | null>(null);
   const [zapis, setZapis] = useState(false);
   const [otwarty, setOtwarty] = useState(false);
+
+  // Klasa pola po zapisie (zmiana z formularza albo klasa rekordu) — wejście oceny szablonów.
+  const klasaPo = klasa.zmien ? klasa.wartosc : (bay.klasa_pola ?? null);
+  // Powiązanie źródła 3U₀ po zapisie (zmiana z formularza albo powiązanie rekordu).
+  const zrodloU0Po = zmianaZrodlaU0.zmien ? zmianaZrodlaU0.wartosc : (bay.zrodlo_u0_ref ?? null);
+
+  // Szablony kanoniczne z oceną dopuszczalności W TYM POLU (rola, pole GPZ, rodzina rozdzielnicy,
+  // klasa) — filtr i powody odmowy liczy backend tą samą regułą co strażnik operacji.
+  useEffect(() => {
+    if (!otwarty) return undefined;
+    let anulowane = false;
+    fetchSzablonyPolaKanoniczne({
+      bayRole: bay.bay_role,
+      poleGpz: Boolean(bay.gpz_section_id),
+      switchgearFamilyRef: bay.switchgear_family_ref ?? null,
+      klasaPola: klasaPo,
+    })
+      .then((lista) => {
+        if (!anulowane) setKanoniczne(lista);
+      })
+      .catch((e: unknown) => {
+        if (!anulowane) setBladKatalogu(getCatalogErrorMessage(e));
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [otwarty, bay.bay_role, bay.gpz_section_id, bay.switchgear_family_ref, klasaPo]);
 
   useEffect(() => {
     if (!otwarty) return undefined;
@@ -183,15 +282,31 @@ export function EdytorWyposazeniaPola({
     [rodziny],
   );
 
-  // Szablony pola tej samej funkcji (rola pola w modelu), z rodziny, która przyjmuje
-  // pojedyncze pole (`czySzablonPojedynczegoPola` — lustro planu pola katalogowego):
-  // inne backend odrzuca twardym błędem, więc ich pozycja na liście byłaby fantomem.
-  const szablonyPola = useMemo(
-    () =>
-      szablony.filter(
-        (s) => s.bay_role === bay.bay_role && czySzablonPojedynczegoPola(s.switchgear_family_ref, rodziny),
-      ),
-    [bay.bay_role, rodziny, szablony],
+  // Szablony pola tej samej funkcji (rola pola w modelu) — inne backend odrzuca. Szablony
+  // producenckie z rodziny, która przyjmuje pojedyncze pole (`czySzablonPojedynczegoPola` —
+  // lustro planu pola katalogowego; inne backend odrzuca twardym błędem, więc ich pozycja na
+  // liście byłaby fantomem), i kanoniczne dopuszczone w tym polu; szablon kanoniczny
+  // niedopuszczony nie jest opcją wyboru — jego powód odmowy widać pod listą.
+  const szablonyPola = useMemo(() => {
+    const producenckie = szablony.filter(
+      (s) => s.bay_role === bay.bay_role && czySzablonPojedynczegoPola(s.switchgear_family_ref, rodziny),
+    );
+    const znane = new Set(producenckie.map((s) => s.template_ref));
+    return [
+      ...producenckie.map((s) => ({ ref: s.template_ref, etykieta: nazwaSzablonuPolaPl(s, nazwyRodzin) })),
+      ...kanoniczne
+        .filter((s) => s.dopuszczony && !znane.has(s.template_ref))
+        .map((s) => ({ ref: s.template_ref, etykieta: s.template_name_pl })),
+    ];
+  }, [bay.bay_role, kanoniczne, nazwyRodzin, rodziny, szablony]);
+  const niedopuszczone = useMemo(() => kanoniczne.filter((s) => !s.dopuszczony), [kanoniczne]);
+  // Klasa pola liniowego dotyczy pola GPZ funkcji, dla której backend ma szablon pola liniowego
+  // (oś `wykonanie_pola`, ENEA Z.10/Z.11.1/Z.11) — rola z listy szablonów, nie z tablicy frontu.
+  const polePozwalaNaKlase =
+    Boolean(bay.gpz_section_id) && (kanoniczne.some((s) => s.wykonanie_pola !== null) || bay.klasa_pola != null);
+  const wybranyKanoniczny = useMemo(
+    () => kanoniczne.find((s) => s.template_ref === szablonRef) ?? null,
+    [kanoniczne, szablonRef],
   );
 
   const zmienWiersz = useCallback((indeks: number, zmiana: (w: WierszAparatu) => WierszAparatu) => {
@@ -210,7 +325,7 @@ export function EdytorWyposazeniaPola({
       const odpowiedz = await executeDomainOperation(
         activeCaseId,
         'set_bay_equipment',
-        zbudujPayloadWyposazenia(bay.ref_id, tryb, wiersze, szablonRef),
+        zbudujPayloadWyposazenia(bay.ref_id, tryb, wiersze, szablonRef, klasa, zmianaZrodlaU0),
       );
       if (!odpowiedz) {
         setBlad(bladStore?.() ?? 'Nie udało się zapisać wyposażenia pola.');
@@ -225,7 +340,7 @@ export function EdytorWyposazeniaPola({
     } finally {
       setZapis(false);
     }
-  }, [activeCaseId, bay.ref_id, bladStore, executeDomainOperation, szablonRef, tryb, wiersze]);
+  }, [activeCaseId, bay.ref_id, bladStore, executeDomainOperation, klasa, szablonRef, tryb, wiersze, zmianaZrodlaU0]);
 
   const pole = 'rounded border border-scada-border bg-white px-1.5 py-1 text-xs';
 
@@ -237,7 +352,10 @@ export function EdytorWyposazeniaPola({
       <p data-testid="wyposazenie-pola-stan" data-stan={stanDanych ?? ''} className="mt-1 text-scada-text">
         {stanDanych ? STAN_DANYCH_WYPOSAZENIA_PL[stanDanych] : 'Stan danych wyposażenia nieznany — brak modelu odczytu pola.'}
       </p>
-      <ListaDanychPrzyjetych dane={danePrzyjete} testid="wyposazenie-pola-dane-przyjete" />
+      {/* Jedna lista danych przyjętych naraz: po zapisie — lista z odpowiedzi operacji (stan po
+          zapisie), przed zapisem — z odczytu pola. Obie naraz powtarzały te same adnotacje
+          (pomiar ze zrzutu okna pola 2026-10-29). */}
+      {wynik ? null : <ListaDanychPrzyjetych dane={danePrzyjete} testid="wyposazenie-pola-dane-przyjete" />}
       {wynik ? (
         <div data-testid="wyposazenie-pola-wynik" data-stan={wynik.stan_danych} className="mt-1">
           <p>Zapisano. {STAN_DANYCH_WYPOSAZENIA_PL[wynik.stan_danych]}.</p>
@@ -256,6 +374,8 @@ export function EdytorWyposazeniaPola({
             setWiersze(wierszeStartowe(bay));
             setTryb('katalog');
             setSzablonRef('');
+            setKlasa(BEZ_ZMIANY_KLASY);
+            setZmianaZrodlaU0(BEZ_ZMIANY_ZRODLA_U0);
             setBlad(null);
             setOtwarty(true);
           }}
@@ -288,8 +408,14 @@ export function EdytorWyposazeniaPola({
           {tryb === 'katalog' ? (
             <div className="mt-2 space-y-2">
               {wiersze.map((w, i) => {
-                const pozycje = w.kind ? pozycjeDlaWiersza(katalog, w.kind) : [];
+                const pozycje = w.kind ? pozycjeDlaWiersza(katalog, w.kind, w) : [];
                 const maKatalog = w.kind !== '' && PRZESTRZEN_KATALOGU_APARATU[w.kind] !== null;
+                // Zaczepy przekładnika z tabliczki WYBRANEJ pozycji katalogu (rdzenie pozycji) —
+                // lista wyboru tylko dla przekładnika wieloprzekładniowego (≥ 2 zaczepy).
+                const zaczepy =
+                  w.kind === RODZAJ_Z_ZACZEPEM
+                    ? zaczepyPrzekladnika((katalog.CT.find((p) => p.id === w.catalog_ref)?.rdzenie ?? []).map((r) => r.przekladnia))
+                    : [];
                 return (
                   <div key={i} data-testid={`wyposazenie-pola-aparat-${i}`} className="flex flex-wrap items-center gap-1.5">
                     <select
@@ -326,12 +452,12 @@ export function EdytorWyposazeniaPola({
                         data-testid={`wyposazenie-pola-aparat-${i}-katalog`}
                         className={pole}
                         value={w.catalog_ref}
-                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, catalog_ref: e.target.value }))}
+                        onChange={(e) => zmienWiersz(i, (x) => zmienPozycje(x, e.target.value))}
                       >
                         <option value="">— pozycja katalogowa —</option>
                         {pozycje.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.name}
+                            {etykietaPozycji(p)}
                           </option>
                         ))}
                       </select>
@@ -372,6 +498,20 @@ export function EdytorWyposazeniaPola({
                         ))}
                       </select>
                     ) : null}
+                    {bay.stan_obiektu === 'ISTNIEJACY' ? (
+                      <select
+                        aria-label={`Stan aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-stan`}
+                        className={pole}
+                        value={w.stan_obiektu}
+                        onChange={(e) =>
+                          zmienWiersz(i, (x) => ({ ...x, stan_obiektu: e.target.value as WierszAparatu['stan_obiektu'] }))
+                        }
+                      >
+                        <option value="">aparat bez zmian albo nowy (wymiana — projektowany)</option>
+                        <option value="ISTNIEJACY">aparat istniejący (inwentaryzacja aparatu zastanego)</option>
+                      </select>
+                    ) : null}
                     <input
                       aria-label={`Oznaczenie aparatu ${i + 1}`}
                       data-testid={`wyposazenie-pola-aparat-${i}-oznaczenie`}
@@ -380,6 +520,64 @@ export function EdytorWyposazeniaPola({
                       value={w.designation}
                       onChange={(e) => zmienWiersz(i, (x) => ({ ...x, designation: e.target.value }))}
                     />
+                    <input
+                      aria-label={`Odgałęzienie toru aparatu ${i + 1}`}
+                      data-testid={`wyposazenie-pola-aparat-${i}-odgalezienie`}
+                      className={`${pole} w-24`}
+                      placeholder="tor główny"
+                      title="Odgałęzienie toru (np. pn — odgałęzienie przekładnika napięciowego); puste = tor główny pola"
+                      value={w.odgalezienie}
+                      onChange={(e) => zmienWiersz(i, (x) => ({ ...x, odgalezienie: e.target.value }))}
+                    />
+                    {w.kind === RODZAJ_Z_PRZEKLADNIA ? (
+                      <input
+                        aria-label={`Przekładnia aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-przekladnia`}
+                        className={`${pole} w-20`}
+                        placeholder="np. 1/100"
+                        title="Przekładnia przekładnika Ferrantiego zapisana jak na rysunku standardu (ENEA Z.10/Z.11/Z.11.1: 1/100)"
+                        value={w.przekladnia}
+                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, przekladnia: e.target.value }))}
+                      />
+                    ) : null}
+                    {w.kind === RODZAJ_Z_WYKONANIEM ? (
+                      <select
+                        aria-label={`Wykonanie aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-wykonanie`}
+                        className={pole}
+                        title="Wykonanie wyłącznika: stałe albo wysuwne (człon wysuwny na wózku, ENEA Zeszyt 1 §13) — schemat rysuje człon wysuwny znacznikiem ○ obok × wyłącznika"
+                        value={w.wykonanie}
+                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, wykonanie: e.target.value as WykonanieAparatu | '' }))}
+                      >
+                        <option value="">wykonanie nieokreślone</option>
+                        {WYKONANIA_APARATU.map((wyk) => (
+                          <option key={wyk} value={wyk}>
+                            wykonanie {OPIS_WYKONANIA_APARATU_PL[wyk]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                    {zaczepy.length >= 2 ? (
+                      <select
+                        aria-label={`Zaczep przekładnika aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-zaczep`}
+                        className={pole}
+                        title="Zaczep pierwotny przekładnika wieloprzekładniowego — przekładnia, z którą liczone są nastawy po stronie wtórnej i dobór przekładnika; schemat opisuje wybrany zaczep przy tabliczce przekładnika"
+                        value={w.zaczep}
+                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, zaczep: e.target.value }))}
+                      >
+                        <option value="">
+                          {w.zaczepRoboczy != null
+                            ? `zaczep: wartość robocza ${String(w.zaczepRoboczy).replace('.', ',')} A (do potwierdzenia)`
+                            : 'zaczep: wartość robocza (do potwierdzenia)'}
+                        </option>
+                        {zaczepy.map((z) => (
+                          <option key={z} value={String(z)}>
+                            zaczep {String(z).replace('.', ',')} A
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
                     <button
                       type="button"
                       data-testid={`wyposazenie-pola-aparat-${i}-usun`}
@@ -391,6 +589,12 @@ export function EdytorWyposazeniaPola({
                   </div>
                 );
               })}
+              {wiersze.some((w) => w.kind !== '' && PRZESTRZEN_KATALOGU_APARATU[w.kind] === 'APARAT_SN' && w.stan_obiektu !== 'ISTNIEJACY') &&
+              notaPozycjiUkrytych(katalog.APARAT_SN, 'PROJEKTOWANY') !== null ? (
+                <p data-testid="wyposazenie-pola-nota-ukrytych" className="text-scada-muted">
+                  {notaPozycjiUkrytych(katalog.APARAT_SN, 'PROJEKTOWANY')}
+                </p>
+              ) : null}
               <button
                 type="button"
                 data-testid="wyposazenie-pola-dodaj"
@@ -413,16 +617,132 @@ export function EdytorWyposazeniaPola({
               >
                 <option value="">
                   {bay.bay_template_ref
-                    ? `— szablon zapisany w polu: ${nazwaSzablonuPoReferencjiPl(bay.bay_template_ref, szablony, nazwyRodzin)} —`
+                    ? `— szablon zapisany w polu: ${
+                        kanoniczne.find((k) => k.template_ref === bay.bay_template_ref)?.template_name_pl ??
+                        nazwaSzablonuPoReferencjiPl(bay.bay_template_ref, szablony, nazwyRodzin)
+                      } —`
                     : '— pole nie ma szablonu: wskaż szablon —'}
                 </option>
                 {szablonyPola.map((s) => (
-                  <option key={s.template_ref} value={s.template_ref}>
-                    {nazwaSzablonuPolaPl(s, nazwyRodzin)}
+                  <option key={s.ref} value={s.ref}>
+                    {s.etykieta}
                   </option>
                 ))}
               </select>
             </label>
+          ) : null}
+          {tryb === 'szablon' && wybranyKanoniczny ? (
+            <p data-testid="wyposazenie-pola-szablon-opis" className="mt-1 text-[11px] text-scada-muted">
+              {wybranyKanoniczny.podstawa ? `Podstawa: ${wybranyKanoniczny.podstawa}. ` : ''}
+              {wybranyKanoniczny.wykonanie_lacznikow_pl ? `Wykonanie łączników: ${wybranyKanoniczny.wykonanie_lacznikow_pl}. ` : ''}
+              {wybranyKanoniczny.funkcje_eaz.length > 0
+                ? 'Funkcje zabezpieczeniowe pola:'
+                : 'Szablon bez funkcji zabezpieczeniowych.'}
+            </p>
+          ) : null}
+          {tryb === 'szablon' && wybranyKanoniczny && wybranyKanoniczny.funkcje_eaz_pl.length > 0 ? (
+            <ul data-testid="wyposazenie-pola-szablon-funkcje-eaz" className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
+              {wybranyKanoniczny.funkcje_eaz_pl.map((opis, i) => (
+                <li key={wybranyKanoniczny.funkcje_eaz[i]} data-kod={wybranyKanoniczny.funkcje_eaz[i]}>
+                  {opis}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {tryb === 'szablon' && wybranyKanoniczny?.profil_eaz && wybranyKanoniczny.profil_eaz.length > 0 ? (
+            <div className="mt-1 text-[11px]">
+              <span className="text-scada-text">Profil funkcjonalny zabezpieczeń wzorca (wszystkie klasy pola):</span>
+              <ul data-testid="wyposazenie-pola-szablon-profil-eaz" className="list-disc pl-4 text-scada-muted">
+                {wybranyKanoniczny.profil_eaz.map((p) => (
+                  <li
+                    key={p.kod}
+                    data-kod={p.kod}
+                    data-wymagalnosc={p.wymagalnosc}
+                    title={p.wymogi.map((w) => `${NAZWA_KLASY_POLA_PL[w.klasa as KlasaPolaLiniowego] ?? w.klasa}: ${w.wymog_pl} (${w.podstawa}; ${NAZWA_WERYFIKACJI_PL[w.weryfikacja]})`).join('\n')}
+                  >
+                    {p.opis_pl} — {p.wymagalnosc_pl}
+                    {p.na_rysunku ? '' : ' (poza rysunkiem wzorca — wymóg klasy pola)'}
+                    {p.warunek_pl ? (
+                      <span data-testid={`wyposazenie-pola-profil-warunek-${p.kod}`}>
+                        {` — warunek przypisania: ${p.warunek_pl}`}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {tryb === 'szablon' && niedopuszczone.length > 0 ? (
+            <ul data-testid="wyposazenie-pola-szablony-niedostepne" className="mt-1 list-disc pl-4 text-[11px] text-scada-muted">
+              {niedopuszczone.map((s) => (
+                <li key={s.template_ref} data-testid={`wyposazenie-pola-szablon-niedostepny-${s.template_ref}`}>
+                  <span className="font-medium text-scada-text">{s.template_name_pl}</span> — niedostępny w tym polu:{' '}
+                  {s.odmowy.map((o) => o.komunikat_pl).join(' ')}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {polePozwalaNaKlase ? (
+            <label className="mt-2 flex flex-wrap items-center gap-2">
+              <span>Klasa pola liniowego</span>
+              <select
+                data-testid="wyposazenie-pola-klasa"
+                className={pole}
+                value={klasaPo ?? ''}
+                onChange={(e) =>
+                  setKlasa({
+                    zmien: true,
+                    wartosc: e.target.value === '' ? null : (e.target.value as (typeof KLASY_POLA_LINIOWEGO)[number]),
+                  })
+                }
+              >
+                <option value="">— klasa nieustalona —</option>
+                {KLASY_POLA_LINIOWEGO.map((k) => (
+                  <option key={k} value={k}>
+                    {NAZWA_KLASY_POLA_PL[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {zrodloU0 ? (
+            // Decyzja właściciela 2026-10-29: 67N wyłącznie przy potwierdzonym źródle 3U₀ —
+            // projektant wskazuje przekładnik z otwartym trójkątem pola pomiaru napięcia szyn
+            // tej sekcji (ENEA Z.17); kandydatów i ocenę powiązania liczy backend. Kandydat NIE
+            // jest wybierany za projektanta — zapis bez wskazania nie przypisuje 67N.
+            <div data-testid="wyposazenie-pola-zrodlo-u0" className="mt-2">
+              <label className="flex flex-wrap items-center gap-2">
+                <span>Źródło napięcia zerowego 3U₀ (zabezpieczenie 67N)</span>
+                <select
+                  data-testid="wyposazenie-pola-zrodlo-u0-wybor"
+                  className={pole}
+                  value={zrodloU0Po ?? ''}
+                  onChange={(e) =>
+                    setZmianaZrodlaU0({ zmien: true, wartosc: e.target.value === '' ? null : e.target.value })
+                  }
+                >
+                  <option value="">— bez powiązania (funkcja 67N nieprzypisana) —</option>
+                  {zrodloU0.kandydaci.map((k) => (
+                    <option key={k.vt_ref} value={k.vt_ref}>
+                      {k.opis_pl}
+                    </option>
+                  ))}
+                  {zrodloU0Po && !zrodloU0.kandydaci.some((k) => k.vt_ref === zrodloU0Po) ? (
+                    <option value={zrodloU0Po}>powiązanie nieaktualne — przekładnik spoza kandydatów</option>
+                  ) : null}
+                </select>
+              </label>
+              <p
+                data-testid="wyposazenie-pola-zrodlo-u0-stan"
+                data-potwierdzone={String(zrodloU0.potwierdzone)}
+                className="mt-1 text-[11px] text-scada-muted"
+              >
+                {zrodloU0.potwierdzone
+                  ? `${zrodloU0.przyczyna_pl[0]?.toUpperCase() ?? ''}${zrodloU0.przyczyna_pl.slice(1)}.`
+                  : `Brakuje: ${zrodloU0.czego_brakuje.join('; ')}.`}
+              </p>
+            </div>
           ) : null}
 
           {tryb === 'wyczysc' ? (

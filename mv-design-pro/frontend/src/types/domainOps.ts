@@ -33,7 +33,7 @@ export const CANONICAL_OPERATION_NAMES = [
   'start_branch_segment_sn',
   'insert_section_switch_sn',
   'connect_secondary_ring_sn',
-  // POLA-W-TORZE: akcja naprawcza kontroli W042 (transformator) i W049 (odcinek bez pola
+  // POLA-W-TORZE: akcja naprawcza kontroli W042 (transformator) i W058 (odcinek bez pola
   // liniowego — operacja tworzy pole, gdy wolnego brak): element z szyny głównej na zacisk pola.
   'przepnij_element_na_pole',
   'set_normal_open_point',
@@ -43,6 +43,11 @@ export const CANONICAL_OPERATION_NAMES = [
   'close_switch',
   // W5-C: wyposażenie pola SN (tryb katalog / szablon / wyczyść) — karta pola E-11.
   'set_bay_equipment',
+  // Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (istniejący / projektowany) — karta pola E-11.
+  'set_object_state',
+  // Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: położenie łącznika pola bez własnej gałęzi
+  // (odłącznik, uziemnik, łącznik trójpołożeniowy) — menu aparatu na kanwie.
+  'set_bay_apparatus_position',
   'add_transformer_sn_nn',
   'assign_catalog_to_element',
   'update_element_parameters',

@@ -97,6 +97,7 @@ export const STACJA_STRINGS = {
     WYMAGA_KARTY: 'wymaga karty katalogowej producenta',
     WYCOFANA: 'wycofana z portfolio',
     INNA_KLASA_NAPIECIOWA: 'inna klasa napięciowa niż szyna SN',
+    GAZ_FLUOROWANY: 'gaz fluorowany (SF₆) — nowa stacja wymaga wykonania bez gazów fluorowanych',
   } as const,
 
   // --- Tor konfiguracji (kanon KONFIGURATOR_ROZDZIELNIC_SN_RMU §3) ---

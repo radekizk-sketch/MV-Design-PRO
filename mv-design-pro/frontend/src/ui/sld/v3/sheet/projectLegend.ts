@@ -39,8 +39,24 @@
  * (§16-v3, `meta.kind==='openTerminal'` — realny znacznik sceny, nie próbka).
  */
 import { legendLabelForSymbol, type SheetLegendEntry } from './Frame';
-import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { SYMBOL_DEFS, czySymbolQet, type SymbolId } from '../symbols/defs';
 import type { SceneV3 } from '../scene/buildScene';
+import { STANY_KAFLA, type StanKafla } from '../theme/colorTokens';
+import { stanKaflaLacznika } from '../symbols/glyphs';
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC — ATRYBUCJA symboli QElectroTech (licencja CC BY 3.0
+ * wymaga wskazania autora i licencji przy każdym rozpowszechnieniu rysunku, także w pliku
+ * eksportu). JEDEN tekst dla legendy (panel i eksport), tabliczki rysunkowej eksportu
+ * i okna pola (`ui/field/SchematPolaSn.tsx`). Źródło: `docs/sld/vendor/qet/README.md`.
+ */
+export const ATRYBUCJA_SYMBOLI_QET_PL =
+  'Symbole aparatów pola wg PN-EN 60617 z biblioteki QElectroTech (The QElectroTech team), licencja CC BY 3.0';
+
+/** Atrybucja symboli QET, gdy scena rysuje choć jeden z nich; `null` = brak symboli QET. */
+export function atrybucjaSymboliSceny(scene: Pick<SceneV3, 'symbols'>): string | null {
+  return scene.symbols.some((s) => czySymbolQet(s.symbolId)) ? ATRYBUCJA_SYMBOLI_QET_PL : null;
+}
 
 /** Kolejność deterministyczna: klucze `SYMBOL_DEFS` (obiekt literalny w
  *  źródle — kolejność wstawiania właściwości stabilna w JS/TS), NIE kolejność
@@ -101,6 +117,31 @@ export function computeProjectLegendEntries(scene: SceneV3): readonly SheetLegen
   const noteEntries: SheetLegendEntry[] = scene.meta.neutralEarthingNotePl
     ? [{ kind: 'note' as const, id: 'sn-neutral-earthing', labelPl: scene.meta.neutralEarthingNotePl }]
     : [];
+  const atrybucja = atrybucjaSymboliSceny(scene);
+  if (atrybucja) noteEntries.push({ kind: 'note', id: 'qet-atrybucja', labelPl: atrybucja });
 
-  return [...symbolEntries, ...lineEntries, ...noteEntries];
+  return [...symbolEntries, ...stateLegendEntries(scene), ...lineEntries, ...noteEntries];
+}
+
+/** Opisy kafli stanu łącznika w legendzie (rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC). */
+export const OPIS_KAFLA_LEGENDY_PL: Readonly<Record<StanKafla, string>> = {
+  zamkniety: 'Łącznik zamknięty — nóż na zestyku toru',
+  otwarty: 'Łącznik otwarty — tor przerwany (łącznik trójpołożeniowy uziemiony: nóż na zestyku uziemiającym)',
+  nieustalony: 'Położenie nieustalone — brak danej albo dane sprzeczne w modelu',
+  bledny: 'Awaria aparatu — położenie niewiarygodne',
+};
+
+/** Wpisy legendy dla stanów kafli OBECNYCH na scenie (ta sama reguła `stanKaflaLacznika`,
+ *  którą rysuje kanwa) — stan nieobecny na rysunku nie trafia do legendy. */
+function stateLegendEntries(scene: SceneV3): SheetLegendEntry[] {
+  const obecne = new Set<StanKafla>();
+  for (const s of scene.symbols) {
+    const stan = stanKaflaLacznika(s.symbolId, s.state);
+    if (stan) obecne.add(stan);
+  }
+  return STANY_KAFLA.filter((stan) => obecne.has(stan)).map((stan) => ({
+    kind: 'stan' as const,
+    id: `stan-${stan}`,
+    labelPl: OPIS_KAFLA_LEGENDY_PL[stan],
+  }));
 }

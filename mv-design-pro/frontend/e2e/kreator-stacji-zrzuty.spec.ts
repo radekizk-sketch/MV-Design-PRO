@@ -202,10 +202,11 @@ test.describe('kreator stacji: zrzuty dokumentacyjne', () => {
       await page.getByTestId('mvd-kreator-krok-pola').click();
       await expect(page.getByTestId('mvd-kreator-stacja-pola')).toBeVisible({ timeout: 30000 });
       await page.getByTestId('mvd-kreator-stacja-producent').selectOption('ZPUE_WLOSZCZOWA');
-      // Rotoblok: rodzina modułowa z kartą katalogową, deklarująca napięcie sieci
-      // 15 kV — czyli TĘ szynę. Rodzina spoza klasy napięciowej szyny jest w
-      // katalogu widoczna, ale niewybieralna, więc kadr musi iść po zgodnej.
-      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK');
+      // Rotoblok Air: rodzina modułowa z kartą katalogową, bez gazów fluorowanych, klasa Um
+      // 24 kV obejmuje TĘ szynę 15 kV. Rodzina spoza klasy napięciowej szyny i rodzina z SF₆
+      // (stacja projektowana, dyrektywa 2026-10-28) są w katalogu widoczne, ale niewybieralne,
+      // więc kadr musi iść po zgodnej.
+      await page.getByTestId('mvd-kreator-stacja-rodzina').selectOption('ZPUE_WLOSZCZOWA__ROTOBLOK_AIR');
       await expect(page.getByTestId('mvd-kreator-stacja-naglowek-rodziny')).toBeVisible();
       await expect(page.getByTestId('mvd-kreator-stacja-pole-wiersz-1')).toBeVisible({
         timeout: 30000,

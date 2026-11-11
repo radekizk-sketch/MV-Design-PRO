@@ -79,7 +79,7 @@ export const WIERSZE_PAKIETU: readonly WierszPakietu[] = [
   { lp: '14', cad: 'cad.magazynZPrzeksztaltnikiem', obecny: 'derBess', obecnyOpis: 'ikona baterii w ramce 32×32', uwagi: 'kabel AC → przekształtnik dwukierunkowy (S00897) → bateria (S01342) w ramce urządzenia (pierwowzór -G1)' },
   { lp: '15', cad: 'cad.generator', obecny: 'derGenerator', obecnyOpis: 'okrąg z literą G (32×32)', uwagi: 'maszyna (S00819) z literą G i „~" — 16×24' },
   { lp: '16', cad: 'cad.odplywOdbior', obecny: 'loadArrow', obecnyOpis: 'strzałka odpływu', uwagi: 'strzałka przepływu energii od szyn (S00104) — Load ENM jest odbiorem zagregowanym' },
-  { lp: '17', cad: 'cad.zabezpieczenie', obecny: 'protectionRelay', obecnyOpis: 'okrąg z kodami WEWNĄTRZ (plakietka, odrzucone §3)', uwagi: 'prostokąt urządzenia wtórnego ze znakami IEC (I>, I>>) — jak blok wyzwalacza LSI w pierwowzorze; DRAFT (konwencja, nie IEC)' },
+  { lp: '17', cad: 'cad.zabezpieczenie', obecny: 'protectionRelay', obecnyOpis: 'ramka bloku zabezpieczeń pola, kody funkcji wierszami w dwóch kolumnach (jedna notacja schematu, decyzja właściciela 2026-11-05)', uwagi: 'prostokąt urządzenia wtórnego ze znakami IEC (I>, I>>) — jak blok wyzwalacza LSI w pierwowzorze; DRAFT (konwencja, nie IEC)' },
   { lp: '18', cad: 'cad.zacisk', obecny: 'kropka', obecnyOpis: 'kropka wypełniona rysowana przez widok (ten sam znak co węzeł)', uwagi: 'zacisk (S00017) = okrąg pusty, ODRÓŻNIALNY od węzła' },
   { lp: '19', cad: 'cad.wezel', obecny: 'junction', obecnyOpis: 'kropka wypełniona r=3', uwagi: 'kropka połączenia (S00020/S00021), ∅ ≈ 7× kreski jak w pierwowzorze' },
   { lp: '20', cad: 'cad.wylacznikRoznicowopradowy', obecny: 'loadBreakSwitch', obecnyOpis: 'RCD rysowany symbolem rozłącznika (typ gałęzi switch, bez rozpoznania przestrzeni katalogu)', uwagi: 'wyłącznik różnicowoprądowy (APARAT_NN_RCD, W5-E-TTIT): krzyżyk wyłącznika + rdzeń sumacyjny (elipsa) na przewodzie pod przegubem + sprzężenie kreskowe do napędu; IΔn/typ/In w etykiecie z tabliczki katalogowej' },
@@ -172,7 +172,7 @@ function KomorkaObecna(props: { readonly wiersz: WierszPakietu; readonly state: 
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} data-pack-obecny={wiersz.obecny} data-pack-state={state} style={{ display: 'block' }}>
       <g transform={`translate(${M * S} ${M * S}) scale(${S})`}>
-        <Glyph x={0} y={0} state={state} stroke={paleta.kreskaBazowa} strokeScale={0.45} labelLines={wiersz.obecny === 'protectionRelay' ? ['50', '+2'] : undefined} />
+        <Glyph x={0} y={0} state={state} stroke={paleta.kreskaBazowa} strokeScale={0.45} />
       </g>
     </svg>
   );

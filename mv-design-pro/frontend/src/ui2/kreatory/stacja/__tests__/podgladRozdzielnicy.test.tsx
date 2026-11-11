@@ -239,8 +239,8 @@ describe('SLD-GEN-POLA — pole rysuje KOMPOZYCJĘ APARATÓW swojej rodziny', ()
     const oznaczenia = Array.from(container.querySelectorAll('[data-oznaczenie]')).map((el) =>
       el.getAttribute('data-oznaczenie'),
     );
-    expect(oznaczenia).toEqual(['Q1', 'Q0', 'T1', 'Q2', 'Q9', 'GK']);
-    expect(tekstRysunku(container)).toContain('Q9');
+    expect(oznaczenia).toEqual(['Q1', 'Q0', 'T1', 'Q9', 'Q8', 'GK']);
+    expect(tekstRysunku(container)).toContain('Q8');
   });
 
   it('rodzina RMU i rodzina wnętrzowa dają RÓŻNE rysunki tej samej roli pola', () => {
@@ -507,21 +507,21 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
   it('wiersz opisu nigdy nie kończy się ani nie zaczyna wiszącym separatorem', () => {
     // Zawijanie gotowego łańcucha „rodzaj · 17,5 kV · 630 A · 25 kA" zostawiało
     // wiersz zakończony „·" — na rysunku technicznym to błąd zapisu.
-    const wiersze = zawinCzesci(['wyłącznik', '17,5 kV', '630 A', '25 kA'], 8, 104);
+    const wiersze = zawinCzesci(['wyłącznik', '17,5 kV', '630 A', '25 kA'], 8, 600, 104);
     expect(wiersze.length).toBeGreaterThan(1);
     for (const w of wiersze) {
       expect(w.trim().endsWith('·')).toBe(false);
       expect(w.trim().startsWith('·')).toBe(false);
     }
     // Człony, których katalog nie niesie (puste), nie tworzą pustych wierszy.
-    expect(zawinCzesci(['', '  '], 8, 104)).toEqual([]);
+    expect(zawinCzesci(['', '  '], 8, 600, 104)).toEqual([]);
   });
 
   it('jednostka NIE odrywa się od liczby przy zawijaniu (spacja nierozdzielająca)', () => {
     // Zapis „…17,5" / „kV" w nowym wierszu jest w rysunku technicznym błędem
     // czytelności; pilnuje tego skleja jednostek, nie szczęśliwa długość slotu.
     expect(sklejJednostki('Rozłącznik LBS 17,5 kV')).toBe('Rozłącznik LBS 17,5\u00a0kV');
-    const wiersze = zawinTekst('Rozłącznik bezpiecznikowy ETI VV 17,5 kV', 8, 60);
+    const wiersze = zawinTekst('Rozłącznik bezpiecznikowy ETI VV 17,5 kV', 8, 600, 60);
     expect(wiersze.some((w) => w.trim() === 'kV')).toBe(false);
     expect(wiersze.join(' ')).toContain('17,5\u00a0kV');
   });
@@ -637,6 +637,25 @@ describe('SLD-GEN-POLA — wyposażenie pola rysowane TYLKO z danych formularza'
       pole('LINIA_IN', 'ap-WYLACZNIK', { relay: { catalog_ref: 'rel-1' } }),
     ]);
     expect(symbole).toEqual(['protectionRelay', 'breaker']);
+  });
+
+  it('przekaźnik w podglądzie kreatora to TA SAMA ramka bloku co na schemacie (bez okręgu)', () => {
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela 2026-11-05: „tak ma być ramka
+    // we wszystkich tak samo"): podgląd rozdzielnicy rysuje glif kanonu `protectionRelay` —
+    // ramkę bloku bez kodów (kreator nie zna jeszcze funkcji pola), bez okręgu przekaźnika.
+    const { container } = render(
+      <PodgladRozdzielnicySn
+        snFields={[pole('LINIA_IN', 'ap-WYLACZNIK', { relay: { catalog_ref: 'rel-1' } })]}
+        aparaty={KATALOG}
+        transformatory={TRAFO}
+        transformatorRef="tr-630"
+        snVoltageKv={15}
+        szablonyPol={[]}
+      />,
+    );
+    const blok = container.querySelector('[data-symbol-canon="protectionRelay"]')!;
+    expect(blok.querySelectorAll('[data-przekaznik="ramka-bloku"]')).toHaveLength(1);
+    expect(blok.querySelectorAll('circle')).toHaveLength(0);
   });
 
   it('pełne wyposażenie pola pomiarowego: odłącznik + VT + przekaźnik', () => {
@@ -925,9 +944,9 @@ describe('SLD-GEN-POLA — determinizm rysunku', () => {
         `${s.numer}:${s.rola}:${s.scena.symbole.map((sym) => `${sym.oznaczenie}=${sym.id}`).join('>')}`,
     );
     expect(struktura).toEqual([
-      '1:LINIA_IN:Q1=disconnector>Q0=loadBreakSwitch>Q2=disconnector>Q9=earthSwitch>GK=cableHead',
-      '2:LINIA_OUT:Q1=disconnector>Q0=loadBreakSwitch>Q2=disconnector>Q9=earthSwitch>GK=cableHead',
-      '3:TRANSFORMATOROWE:Q1=disconnector>Q0=fuseSwitch>Q2=disconnector>Q9=earthSwitch>TR=transformer2W',
+      '1:LINIA_IN:Q1=disconnector>Q0=loadBreakSwitch>Q9=disconnector>Q8=earthSwitch>GK=cableHead',
+      '2:LINIA_OUT:Q1=disconnector>Q0=loadBreakSwitch>Q9=disconnector>Q8=earthSwitch>GK=cableHead',
+      '3:TRANSFORMATOROWE:Q1=disconnector>Q0=fuseSwitch>Q9=disconnector>Q8=earthSwitch>TR=transformer2W',
     ]);
     // Jednostki kablowe pierścienia mają przedział kablowy, transformatorowa —
     // stronę nN. Blok K-K-T czyta się z rysunku, nie z podpisów.

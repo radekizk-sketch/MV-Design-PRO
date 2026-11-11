@@ -438,16 +438,17 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
       .toBe(true);
 
     // (2) Prawy klik w punkt wyprowadzenia tego pola → „Wyprowadź ciąg główny z głowicy”.
-    // Kanon rysunku pola wolnego (`compose/apparatusSequence.ts::czyGlowicaRezerwy`): głowica
-    // z rekordu pola nie jest rysowana, pole kończy się symbolem zakończenia `bayReserve` — to
-    // ono jest punktem wyprowadzenia, gdy rekord ma głowicę (`jestPunktemWyprowadzeniaCiagu`).
-    // Głowica nie może się pojawić na rysunku pola wolnego (kanon nietknięty).
+    // Kanon rysunku pola wolnego (`compose/apparatusSequence.ts::rekordyToruPola`): każdy
+    // rekord aparatu jest rysowany — głowica z rekordu pola także — a pole kończy się symbolem
+    // zakończenia `bayReserve`. Zakończenie jest punktem wyprowadzenia, gdy rekord ma głowicę
+    // (`jestPunktemWyprowadzeniaCiagu`); głowica wolnego pola — także (test komponentu
+    // `punktStartuCiagu.test.tsx`). Tu ćwiczona droga przez zakończenie pola.
     await wrocNaSchemat(page);
     await czekajNaWarstweTrafien(page);
     const galezieprzed = (await pobierzEnm(request, caseId)).branches?.length ?? 0;
     await expect(
       page.locator(`[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"][data-hit-for*="cableHead"]`),
-    ).toHaveCount(0);
+    ).not.toHaveCount(0);
     const uchwytGlowicy = page.locator(
       `[data-hit-role="obrys"][data-hit-owner-ref="${poleRef}"][data-hit-for*="bayReserve"]`,
     ).first();

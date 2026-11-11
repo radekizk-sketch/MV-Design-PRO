@@ -39,6 +39,7 @@ def _rekord(poziom: str, zacisk: str) -> dict[str, Any]:
     )
     szyna = {"SN": "sn", "nN": "nn", "ZKSN": "bp-szyna"}[poziom]
     return akcesor.zbuduj_pole(
+        stan_obiektu="PROJEKTOWANY",
         ref_id=ref,
         bay_role="IN",
         field_role="LINIA_IN" if poziom != "nN" else None,
@@ -139,7 +140,13 @@ def test_pola_wg_szyny_kolejnosc_rol_i_identyfikatorow() -> None:
     for ref, rola in (("d", "TR"), ("c", "IN"), ("b2", "FEEDER"), ("b1", "FEEDER"), ("a", "OUT")):
         akcesor.dodaj_pole(
             enm,
-            akcesor.zbuduj_pole(ref_id=ref, bay_role=rola, bus_ref="sn", substation_ref="st"),
+            akcesor.zbuduj_pole(
+                stan_obiektu="PROJEKTOWANY",
+                ref_id=ref,
+                bay_role=rola,
+                bus_ref="sn",
+                substation_ref="st",
+            ),
         )
     assert _refy(akcesor.pola_wg_szyny(enm)["sn"]) == ["a", "b1", "b2", "c", "d"]
 
@@ -161,29 +168,54 @@ def test_klucze_meta_zakazane_z_jednego_zrodla_z_migracja() -> None:
 def test_pisarz_odmawia_klucza_meta_z_typowanym_odpowiednikiem(klucz: str) -> None:
     with pytest.raises(akcesor.BladPola, match=klucz):
         akcesor.zbuduj_pole(
-            ref_id="p", bay_role="IN", bus_ref="sn", substation_ref="st", meta={klucz: "x"}
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="p",
+            bay_role="IN",
+            bus_ref="sn",
+            substation_ref="st",
+            meta={klucz: "x"},
         )
 
 
 def test_pisarz_odmawia_klucza_spoza_kontraktu_i_dubla() -> None:
-    rekord = akcesor.zbuduj_pole(ref_id="p", bay_role="IN", bus_ref="sn", substation_ref="st")
+    rekord = akcesor.zbuduj_pole(
+        stan_obiektu="PROJEKTOWANY", ref_id="p", bay_role="IN", bus_ref="sn", substation_ref="st"
+    )
     with pytest.raises(akcesor.BladPola, match="klucze spoza kontraktu Bay: nieznany"):
         akcesor.waliduj_rekord_pola({**rekord, "nieznany": 1})
     enm: dict[str, Any] = {"buses": [{"ref_id": "p"}], "bays": []}
     with pytest.raises(akcesor.BladPola, match="już zajęty"):
         akcesor.dodaj_pole(enm, rekord)
     with pytest.raises(akcesor.BladPola):
-        akcesor.zbuduj_pole(ref_id="p", bay_role="NIEZNANA", bus_ref="sn", substation_ref="st")
+        akcesor.zbuduj_pole(
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="p",
+            bay_role="NIEZNANA",
+            bus_ref="sn",
+            substation_ref="st",
+        )
     with pytest.raises(akcesor.BladPola):  # właściciel: dokładnie jedno z dwóch
         akcesor.zbuduj_pole(
-            ref_id="p", bay_role="IN", bus_ref="sn", substation_ref="st", branch_point_ref="bp"
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="p",
+            bay_role="IN",
+            bus_ref="sn",
+            substation_ref="st",
+            branch_point_ref="bp",
         )
 
 
 def test_zmien_i_usun_pole() -> None:
     enm: dict[str, Any] = {"bays": []}
     akcesor.dodaj_pole(
-        enm, akcesor.zbuduj_pole(ref_id="p", bay_role="IN", bus_ref="sn", substation_ref="st")
+        enm,
+        akcesor.zbuduj_pole(
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="p",
+            bay_role="IN",
+            bus_ref="sn",
+            substation_ref="st",
+        ),
     )
     zmienione = akcesor.zmien_pole(enm, "p", terminal_bus_ref="zacisk")
     assert enm["bays"][0] == zmienione and zmienione["terminal_bus_ref"] == "zacisk"
@@ -200,40 +232,70 @@ def test_zmien_i_usun_pole() -> None:
 def test_builder_kopiuje_gleboko_i_nadaje_nazwe_z_kanonu() -> None:
     meta = {"feeder_role": "ZRODLO_NN_PV", "zagniezdzone": {"a": 1}}
     rekord = akcesor.zbuduj_pole(
-        ref_id="p", bay_role="FEEDER", bus_ref="nn", substation_ref="st", poziom_nn=True, meta=meta
+        stan_obiektu="PROJEKTOWANY",
+        ref_id="p",
+        bay_role="FEEDER",
+        bus_ref="nn",
+        substation_ref="st",
+        poziom_nn=True,
+        meta=meta,
     )
     meta["zagniezdzone"]["a"] = 2
     assert rekord["meta"]["zagniezdzone"] == {"a": 1}
     assert rekord["name"] == "Pole źródła nN"
     assert (
         akcesor.zbuduj_pole(
-            ref_id="q", bay_role="IN", bus_ref="nn", substation_ref="st", poziom_nn=True
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="q",
+            bay_role="IN",
+            bus_ref="nn",
+            substation_ref="st",
+            poziom_nn=True,
         )["name"]
         == "Wyłącznik główny nN"
     )
     sn = akcesor.zbuduj_pole(
-        ref_id="r", bay_role="OUT", field_role="LINIA_ODG", bus_ref="sn", substation_ref="st"
+        stan_obiektu="PROJEKTOWANY",
+        ref_id="r",
+        bay_role="OUT",
+        field_role="LINIA_ODG",
+        bus_ref="sn",
+        substation_ref="st",
     )
     assert sn["field_role"] == "LINIA_ODG"
     assert sn["name"] and sn["name"] != "r"
     # Nazwa projektanta wygrywa; nazwa z samych spacji to brak nazwy.
     assert (
         akcesor.zbuduj_pole(
-            ref_id="s", bay_role="IN", bus_ref="sn", substation_ref="st", name="  Pole A  "
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="s",
+            bay_role="IN",
+            bus_ref="sn",
+            substation_ref="st",
+            name="  Pole A  ",
         )["name"].strip()
         == "Pole A"
     )
     assert (
         akcesor.zbuduj_pole(
-            ref_id="t", bay_role="IN", bus_ref="sn", substation_ref="st", name="   "
+            stan_obiektu="PROJEKTOWANY",
+            ref_id="t",
+            bay_role="IN",
+            bus_ref="sn",
+            substation_ref="st",
+            name="   ",
         )["name"]
         != "   "
     )
 
 
 def test_pola_zksn_z_portow_deterministyczne() -> None:
-    raz = akcesor.pola_zksn_z_portow(branch_point_ref="bp", bus_ref="b", branch_ports_count=2)
-    dwa = akcesor.pola_zksn_z_portow(branch_point_ref="bp", bus_ref="b", branch_ports_count=2)
+    raz = akcesor.pola_zksn_z_portow(
+        branch_point_ref="bp", bus_ref="b", branch_ports_count=2, stan_obiektu="PROJEKTOWANY"
+    )
+    dwa = akcesor.pola_zksn_z_portow(
+        branch_point_ref="bp", bus_ref="b", branch_ports_count=2, stan_obiektu="PROJEKTOWANY"
+    )
     # Determinizm tożsamości i treści (pole `id` — UUID instancji — poza porównaniem, jak w
     # odcisku modelu `enm.hash`).
     assert [{k: v for k, v in r.items() if k != "id"} for r in raz] == [
@@ -245,7 +307,9 @@ def test_pola_zksn_z_portow_deterministyczne() -> None:
         ("bp/pole/BRANCH_1", "ODG 1", "LINIA_ODG", "BRANCH_1"),
         ("bp/pole/BRANCH_2", "ODG 2", "LINIA_ODG", "BRANCH_2"),
     ]
-    jeden = akcesor.pola_zksn_z_portow(branch_point_ref="bp", bus_ref="b", branch_ports_count=1)
+    jeden = akcesor.pola_zksn_z_portow(
+        branch_point_ref="bp", bus_ref="b", branch_ports_count=1, stan_obiektu="PROJEKTOWANY"
+    )
     assert jeden[-1]["branch_point_port_id"] == "BRANCH"
     assert all(r["branch_point_ref"] == "bp" and r["substation_ref"] is None for r in raz)
 

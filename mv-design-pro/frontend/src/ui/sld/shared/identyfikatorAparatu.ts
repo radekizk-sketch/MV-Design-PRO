@@ -21,11 +21,17 @@
  */
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { pole } from '../../shared/polaStacji';
-import { SYMBOL_DEFS, type SymbolId } from '../v3/symbols/defs';
+import type { QetSymbolPolaSnId } from '../v3/cad/qet/qetPoleSn';
+import { rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../v3/symbols/defs';
 
-/** Rola techniczna elementu przedstawianego symbolem — tabela ZAMKNIĘTA (`Record<SymbolId>`):
- *  nowy symbol bez roli nie skompiluje się. */
-export const ROLA_SYMBOLU_PL: Readonly<Record<SymbolId, string>> = {
+/** Rodzaje semantyczne symboli rysunku pola SN (QET) bez odpowiednika w bibliotece kanonicznej
+ *  (`defs.ts::RODZAJ_SEMANTYCZNY_QET` — rodzaj równy własnemu identyfikatorowi). */
+type RodzajWlasnyQet = 'qetThreePositionSwitch' | 'qetCoreBalanceCt' | 'bayReserve';
+
+/** Rola techniczna RODZAJU aparatu — tabela ZAMKNIĘTA: każdy rodzaj semantyczny symbolu
+ *  (symbol kanoniczny albo rodzaj własny rysunku QET) ma rolę; nowy rodzaj bez roli nie
+ *  skompiluje się. */
+const ROLA_RODZAJU_PL: Readonly<Record<Exclude<SymbolId, QetSymbolPolaSnId> | RodzajWlasnyQet, string>> = {
   breaker: 'Łączenie robocze i wyłączanie prądów zwarciowych pola',
   recloser: 'Wyłączanie zwarć z samoczynnym ponownym załączeniem (SPZ)',
   disconnector: 'Widoczna przerwa izolacyjna — odłączenie pola od szyny zbiorczej',
@@ -65,7 +71,23 @@ export const ROLA_SYMBOLU_PL: Readonly<Record<SymbolId, string>> = {
   nnBreaker: 'Łączenie i zabezpieczenie zwarciowe obwodu nN',
   nnFuseSwitch: 'Łączenie i zabezpieczenie bezpiecznikowe obwodu nN',
   lvPortal: 'Przejście do schematu nN stacji',
+  qetThreePositionSwitch:
+    'Łączenie robocze, odłączenie od szyny i uziemienie odpływu jednym łącznikiem trójpołożeniowym',
+  qetCoreBalanceCt: 'Pomiar prądu zerowego dla zabezpieczeń ziemnozwarciowych (przekładnik Ferrantiego)',
 };
+
+function rolaRodzajuPl(id: SymbolId): string {
+  const rola = (ROLA_RODZAJU_PL as Readonly<Partial<Record<SymbolId, string>>>)[rodzajSymbolu(id)];
+  if (rola === undefined) throw new Error(`Rodzaj symbolu bez roli technicznej: ${rodzajSymbolu(id)}`);
+  return rola;
+}
+
+/** Rola techniczna elementu przedstawianego symbolem — dla KAŻDEGO symbolu biblioteki; wariant
+ *  rysunku pola SN (QET: z napędem, wysuwny, drugi i trzeci rysunek przekładnika) ma rolę swojego
+ *  rodzaju semantycznego (`rodzajSymbolu`) — jedna rola na rodzaj aparatu. */
+export const ROLA_SYMBOLU_PL: Readonly<Record<SymbolId, string>> = Object.fromEntries(
+  (Object.keys(SYMBOL_DEFS) as SymbolId[]).map((id) => [id, rolaRodzajuPl(id)]),
+) as Record<SymbolId, string>;
 
 /** Para ⟨pole, rodzaj aparatu⟩ rozebrana z identyfikatora. */
 export interface IdentyfikatorAparatu {
@@ -116,10 +138,11 @@ export function poleMaGlowiceKablowa(snapshot: EnergyNetworkModel | null, bayRef
  * kanwy, paska działań inspektora (`akcjeElementu.kontekstDostepnosciAkcji` →
  * `SldCommandService.getMenuActions`) i wykonawcy (`sldActionExecutor.buildSldOperationContext`).
  * Ciąg wychodzi z głowicy kablowej pola. Kanon rysunku pola wolnego/rezerwowego
- * (`v3/compose/apparatusSequence.ts::czyGlowicaRezerwy`) nie rysuje głowicy, lecz kończy pole
- * symbolem `bayReserve` — wtedy punktem wyprowadzenia jest to zakończenie, o ile rekord pola
- * ma głowicę kablową (głowica istnieje w modelu, rysunek jej nie pokazuje). Zakończenie pola
- * bez rekordu głowicy nie jest punktem (brak głowicy = brak odejścia kablowego). Zajętość pola
+ * (`v3/compose/apparatusSequence.ts::rekordyToruPola`, korekta po odrzuceniu B-02 karty
+ * UX-04/POLE-LINIOWE-WZORZEC) rysuje każdy rekord aparatu — także głowicę — i kończy pole
+ * symbolem `bayReserve`; punktem wyprowadzenia jest i głowica, i to zakończenie, o ile rekord
+ * pola ma głowicę kablową. Zakończenie pola bez rekordu głowicy nie jest punktem (brak głowicy
+ * = brak odejścia kablowego). Zajętość pola
  * (`zajetoscPol.poleLinioweWolne`) rozstrzyga wykonawca osobno, tym samym warunkiem dla głowicy
  * pola zajętego i zakończenia pola wolnego.
  */

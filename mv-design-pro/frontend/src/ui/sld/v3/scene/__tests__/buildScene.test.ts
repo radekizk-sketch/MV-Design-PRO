@@ -52,7 +52,7 @@ import {
   noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
-  protectionAnnotationAtLod1IsCircleOnly,
+  protectionAnnotationAtLod1IsBareFrame,
   protectionMarkingGaps,
   sceneSegmentEndpointGaps,
   sourceConnectivityGaps,
@@ -72,7 +72,10 @@ import { overlapProbe } from '../../layout/labels';
 import { sheetRowStationIds, trunkThicknessGaps } from '../buildScene';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { SYMBOL_DEFS } from '../../symbols/defs';
+import { rodzajSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
+import { przeszkodySymbolu } from '../../symbols/blokZabezpieczen';
+import { symboleRodzajuAparatu } from '../../compose/apparatusSequence';
+import { RODZAJE_LACZNIKOW_TORU } from '../../compose/rodzajeAparatuPola';
 import { GRID, type V3Rect } from '../../core/grid';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
@@ -106,11 +109,11 @@ const LODS: readonly SceneLod[] = [0, 1, 2];
  *  stacji zwracana przez adapter). */
 const EXPECTED_STATION_COUNT = 53;
 
+/** Przeszkody symboli sceny z JEDNEGO źródła (`przeszkodySymbolu` — ta sama funkcja co declutter
+ *  i `labelCollisions`): blok zabezpieczeń to cztery krawędzie ramki (wiersze kodów leżą wewnątrz
+ *  własnej ramki z konstrukcji), pozostałe symbole — prostokąt definicji. */
 function symbolRectsOf(scene: SceneV3): readonly V3Rect[] {
-  return scene.symbols.map((s) => {
-    const def = SYMBOL_DEFS[s.symbolId];
-    return { x: s.x, y: s.y, width: def.width, height: def.height };
-  });
+  return scene.symbols.flatMap(przeszkodySymbolu);
 }
 
 function labelOwnerKindCounts(scene: SceneV3): Record<string, number> {
@@ -127,6 +130,44 @@ function labelOwnerKindCounts(scene: SceneV3): Record<string, number> {
 function stationHash(stationId: string): string {
   const parts = stationId.split('/');
   return parts[1] ?? stationId;
+}
+
+
+/** Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: syntetyczny blok zabezpieczeń sceny — ramka 32×24
+ *  (względem symbolu), wejście linii na lewej krawędzi ramki (0, 8), na L2 jeden wiersz kodu
+ *  WEWNĄTRZ ramki. `kody: false` = ramka bez wierszy (L1). */
+function syntetycznyBlok(
+  ownerRef: string,
+  x: number,
+  y: number,
+  kody: boolean,
+): { readonly symbol: SceneV3['symbols'][number]; readonly labels: SceneV3['labels'] } {
+  const wiersz = `${ownerRef}#protection-codes-full`;
+  return {
+    symbol: {
+      symbolId: 'protectionRelay',
+      x,
+      y,
+      meta: {
+        ownerRef,
+        elementKind: 'protectionAnnotation',
+        ramkaBlokuPrzekaznika: { x: 0, y: 0, width: 32, height: 24 },
+        wierszeBlokuPrzekaznika: kody ? [wiersz] : [],
+        wejsciaBlokuPrzekaznika: [{ x: 0, y: 8 }],
+      },
+    },
+    labels: kody
+      ? [{
+          ownerRef: wiersz,
+          ownerKind: 'protection',
+          labelClass: 't4',
+          labelRole: 'dane',
+          text: '51',
+          slotIndex: 1,
+          rect: { x: x + 8, y: y + 6, width: 12, height: 10 },
+        }]
+      : [],
+  };
 }
 
 describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', () => {
@@ -600,12 +641,15 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     return { enm: zPunktemPodzialuWStacji(enm, targetStationRef), targetStationRef };
   }
 
-  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, reszta→apparatus', () => {
+  it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, protectionRelay→protectionAnnotation, reszta→apparatus', () => {
     const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
     expect(byKind.get('transformer2W')).toBe('transformer');
     expect(byKind.get('gridSource')).toBe('source');
     // LV Domain Projection (po B-02): portal domeny nN — własna kategoria.
     expect(byKind.get('lvPortal')).toBe('lvPortal');
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ: pola stacji fikstury niosą kody funkcji, więc
+    // scena niesie bloki zabezpieczeń — adnotacja, nie aparat toru (§20.1e).
+    expect(byKind.get('protectionRelay')).toBe('protectionAnnotation');
     for (const [symbolId, kind] of byKind) {
       if (symbolId.startsWith('der')) expect(kind).toBe('der');
     }
@@ -616,7 +660,8 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         !s.symbolId.startsWith('der') &&
         s.symbolId !== 'gridSource' &&
         s.symbolId !== 'stationCollapsed' &&
-        s.symbolId !== 'lvPortal',
+        s.symbolId !== 'lvPortal' &&
+        s.symbolId !== 'protectionRelay',
     );
     expect(nonSpecial.length).toBeGreaterThan(0);
     expect(nonSpecial.every((s) => s.meta?.elementKind === 'apparatus')).toBe(true);
@@ -1250,9 +1295,43 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
     // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
     // `id.localeCompare`, nie trasowanie.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
+    // AKTUALIZACJA ŚWIADOMA — karta UX-04/POLE-LINIOWE-WZORZEC (decyzje architekta §11.7,
+    // 2026-10-30): 23168/46400/46400 → 21608/45128/45128, spadek miary „nie-rosnącej" §15.1.
+    // DOWÓD 2×2 (sonda karty): kod HEAD + fikstura zregenerowana = 22728/45960/45960 (−440
+    // jednolicie, WYŁĄCZNIE identyfikatory: jedna forma `starting_port_ref` z decyzji 3 i słownik
+    // kodów EAZ zmieniają treść rekordów, a z nią skróty `ref_id`; hybryda „treść starej fikstury
+    // z nowymi identyfikatorami" = 22728, „stare identyfikatory z nowymi portami" = 23168, kody
+    // EAZ bez wpływu — inna kolejność remisu `id.localeCompare`, jak w precedensach wyżej);
+    // kod karty + fikstura sprzed regeneracji = 22048/45568/45568. Efekt kodu na fiksturze
+    // zregenerowanej, rozbity po właścicielu odcinka:
+    //  - L1/L2 −832 = 12 zejść odgałęzień (`…/branch_segment_L`) × −64 i człon ciągu
+    //    `…/segment_L_R` −64. Wiersze lateralne stacji podnoszą się o 64…192 px (pomiar per
+    //    stacja, 11 wierszy pod magistralą; magistrala bez zmian) i jest to w CAŁOŚCI skutek
+    //    tablicy szerokości znaków kroju (decyzja 7: 519 z 520 etykiet sceny węższych, wysokości
+    //    bez zmian) — wariant kodu karty z dawną szerokością 0,62 em daje położenia wszystkich
+    //    wierszy identyczne z kodem HEAD. Dawne kawałki `#tee-N` (rozcinanie kabla w punkcie
+    //    przecięcia, skasowane rozstrzygnięciem S7-P2) wróciły do całych odcinków — suma pionów
+    //    ta sama co do piksela;
+    //  - L0 −1120 = 12 × (−64 − 24) − 64: te same zejścia i człon ciągu, a do tego KD-5 — port
+    //    odejścia odgałęzienia z symbolu zbiorczego stacji stoi na jego DOLNEJ krawędzi zamiast
+    //    w środku (środkiem przechodzi kabel ciągu: początek kabla odgałęzienia leżał na wnętrzu
+    //    kabla ciągu, styk dwóch kabli bez węzła modelu), −24 px na zejście (połowa wysokości
+    //    symbolu zbiorczego).
+    // Przesunięcie styku członów z obcego przewodu i usunięcie wierzchołków współliniowych
+    // (`scene/stykiCzlonow.ts`, `dedupeVertices`) nie zmieniają sumy pionów (suma geometryczna
+    // toru ta sama).
+    // AKTUALIZACJA ŚWIADOMA — karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (2026-11-05):
+    // 21608/45128/45128 → 19696/43232/43232, spadek miary „nie-rosnącej" §15.1.
+    // Każde pole stacji z kodami niesie teraz ramkę bloku obok toru i rezerwę wysokości
+    // do dołu ramki (`dolRamkiBlokuPolaStacji`), więc stacje są szersze i arkusz łamie się
+    // na TRZY wiersze zamiast dwóch (znaki kontynuacji 4 → 8). Rozbicie po właścicielu
+    // odcinka (sonda 2026-11-05, L1/L2; L0 w nawiasie): zejścia odgałęzień
+    // `…/branch_segment_L` −3104 (−3104), człony ciągu `…/segment_L_R` −2968 (−2952),
+    // `…/segment` +3488 (+4016), `…/segment_L` +344 (+32), `…/segment_L_L` +344 (+96) —
+    // krótsze zejścia w niższych wierszach, dłuższe piony kanałów powrotnych łamania.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(19696);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(43232);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(43232);
   });
 });
 
@@ -1430,14 +1509,46 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
     expect(undefinedStateGaps).toHaveLength(0);
   });
 
-  it('(test negatywny c): „52" w protectionCodes okręgu przekaźnika ⇒ device-number-52-in-protection-codes zgłoszony', () => {
+  // Iloczyn: KAŻDY rysunek łącznika toru (wszystkie rodzaje `RODZAJE_LACZNIKOW_TORU` × warianty
+  // rysunku × cechy rekordu, w tym znak napędu z modelu — `symboleRodzajuAparatu`) × stan
+  // {closed, open, unknown, earthed, energized}. Położenie „uziemiony" jest legalne wyłącznie dla
+  // RODZAJU łącznika trójpołożeniowego — także jego rysunku ze znakiem napędu (karta
+  // UX-04/POLE-LINIOWE-WZORZEC: napęd to atrybut łącznika, nie inny aparat; sonda pyta
+  // o `rodzajSymbolu`, nie o tożsamość rysunku).
+  describe('stan × rysunek łącznika toru (w tym znak napędu)', () => {
+    const scena = buildSceneV3(enm, 2);
+    const ofiara = scena.symbols.find((s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector')!;
+    const rysunki = [...new Set([...RODZAJE_LACZNIKOW_TORU].flatMap((k) => symboleRodzajuAparatu(k)))];
+    it('warunek wstępny: rysunki obejmują oba łączniki ze znakiem napędu', () => {
+      expect(ofiara).toBeDefined();
+      expect(rysunki).toEqual(expect.arrayContaining(['qetBreakerZNapedem', 'qetThreePositionSwitchZNapedem']));
+    });
+    for (const symbolId of rysunki) {
+      for (const stan of ['closed', 'open', 'unknown', 'earthed', 'energized'] as const) {
+        it(`${symbolId} × ${stan}`, () => {
+          const sabotaz = {
+            ...scena,
+            symbols: scena.symbols.map((s) => (s === ofiara ? { ...s, symbolId, state: stan as never } : s)),
+          };
+          const luka = switchSymbolUnambiguityGaps(sabotaz).some(
+            (g) => g.reason === 'main-path-switch-invalid-state' && g.symbolId === symbolId,
+          );
+          const legalny =
+            stan === 'closed' || stan === 'open' || stan === 'unknown'
+            || (stan === 'earthed' && rodzajSymbolu(symbolId) === 'qetThreePositionSwitch');
+          expect(luka).toBe(!legalny);
+        });
+      }
+    }
+  });
+
+  it('(test negatywny c): „52" jako wiersz kodu w ramce bloku zabezpieczeń ⇒ device-number-52-in-protection-codes zgłoszony', () => {
     const scene = buildSceneV3(enm, 2);
+    const blok = syntetycznyBlok('sabotage-relay', 0, 0, true);
     const sabotaged = {
       ...scene,
-      symbols: [
-        ...scene.symbols,
-        { symbolId: 'protectionRelay' as const, x: 0, y: 0, meta: { ownerRef: 'sabotage-relay', protectionCodes: ['50/51', '52'] } },
-      ],
+      symbols: [...scene.symbols, blok.symbol],
+      labels: [...scene.labels, ...blok.labels.map((l) => ({ ...l, text: '52' }))],
     };
     const gaps = switchSymbolUnambiguityGaps(sabotaged);
     expect(gaps.some((g) => g.reason === 'device-number-52-in-protection-codes')).toBe(true);
@@ -1453,11 +1564,22 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
   });
 });
 
-describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixturze REALNEJ (sldSubstrate52s: 0 Bay[], 0 protection_assignments, 0 measurements)', () => {
-  it('§17.2 „brak danych = brak oznaczenia" na REALNEJ fixturze: ZERO okręgów przekaźnika/miernika, ZERO torów wyzwalania na WSZYSTKICH LOD — dowód „vacuously true", nie fałszywy pozytyw (fixtura nie niesie Bay[] w ogóle)', () => {
+describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixturze REALNEJ (sldSubstrate52s: pola stacji z kodami funkcji, 0 protection_assignments, 0 measurements)', () => {
+  it('§17.2 na REALNEJ fixturze: blok zabezpieczeń DOKŁADNIE przy polach z kodami funkcji (L1/L2), zero na L0; bez przypisania zabezpieczenia — zero torów wyzwalania; bez pomiarów — zero mierników; sonda bez luk', () => {
+    // Karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ (decyzja właściciela 2026-11-05): pola stacji
+    // rzutują kody funkcji `Bay.protection_codes` jak pola GPZ. Dawniej blok stacji kodów nie
+    // rzutował (W5-B), a ten test twierdził, że fikstura nie niesie pól — twierdzenie było
+    // fałszywe (fikstura niesie pola stacji z kodami; „zero" wynikało z braku projekcji).
+    const zKodami = new Set(
+      (enm.bays ?? []).filter((b) => (b.protection_codes ?? []).length > 0 && b.substation_ref).map((b) => b.ref_id),
+    );
+    expect(zKodami.size).toBeGreaterThan(100);
+    expect(enm.protection_assignments ?? []).toHaveLength(0);
     for (const lod of LODS) {
       const scene = buildSceneV3(enm, lod);
-      expect(scene.symbols.filter((s) => s.symbolId === 'protectionRelay')).toHaveLength(0);
+      const bloki = scene.symbols.filter((s) => s.symbolId === 'protectionRelay').map((s) => s.meta?.ownerRef ?? '');
+      if (lod === 0) expect(bloki).toHaveLength(0);
+      else expect([...bloki].sort()).toEqual([...zKodami].sort());
       expect(scene.symbols.filter((s) => s.symbolId === 'meter')).toHaveLength(0);
       expect(scene.segments.filter((s) => s.meta?.kind === 'protectionTrip')).toHaveLength(0);
       expect(allProtectionMarkingsValid(scene)).toBe(true);
@@ -1465,23 +1587,43 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
     }
   });
 
-  it('(negatyw obowiązkowy, §17.5a) okrąg przekaźnika BEZ kodów ⇒ protectionMarkingGaps WYKRYWA (dowód, że wyrocznia gryzie, nie zawsze zielona)', () => {
+  it('(negatyw obowiązkowy, §17.5a) ramka bloku zabezpieczeń BEZ wierszy kodów na L2 ⇒ protectionMarkingGaps WYKRYWA (dowód, że wyrocznia gryzie, nie zawsze zielona)', () => {
     const scene = buildSceneV3(enm, 2);
     const synthetic: SceneV3 = {
       ...scene,
-      symbols: [
-        ...scene.symbols,
-        {
-          symbolId: 'protectionRelay',
-          x: 800,
-          y: 800,
-          meta: { ownerRef: 'bay-fabricated', elementKind: 'protectionAnnotation', protectionCodes: [] },
-        },
-      ],
+      symbols: [...scene.symbols, syntetycznyBlok('bay-fabricated', 800, 800, false).symbol],
     };
     const gaps = protectionMarkingGaps(synthetic);
-    expect(gaps.some((g) => g.reason === 'circle-without-codes' && g.ownerRef === 'bay-fabricated')).toBe(true);
+    expect(gaps.some((g) => g.reason === 'frame-without-codes' && g.ownerRef === 'bay-fabricated')).toBe(true);
     expect(allProtectionMarkingsValid(synthetic)).toBe(false);
+  });
+
+  it('(negatyw obowiązkowy, karta JEDNA NOTACJA BLOKU ZABEZPIECZEŃ) przekaźnik BEZ ramki bloku (dawny okrąg) ⇒ relay-without-frame na KAŻDYM LOD z warstwą adnotacji', () => {
+    for (const lod of [1, 2] as const) {
+      const scene = buildSceneV3(enm, lod);
+      const synthetic: SceneV3 = {
+        ...scene,
+        symbols: [
+          ...scene.symbols,
+          { symbolId: 'protectionRelay', x: 800, y: 800, meta: { ownerRef: 'bay-okrag', elementKind: 'protectionAnnotation' } },
+        ],
+      };
+      expect(protectionMarkingGaps(synthetic).some((g) => g.reason === 'relay-without-frame' && g.ownerRef === 'bay-okrag')).toBe(true);
+    }
+  });
+
+  it('(negatyw obowiązkowy) wiersz kodu bloku POZA ramką ⇒ code-row-outside-frame', () => {
+    const scene = buildSceneV3(enm, 2);
+    const blok = syntetycznyBlok('bay-wiersz', 800, 800, true);
+    const synthetic: SceneV3 = {
+      ...scene,
+      symbols: [...scene.symbols, blok.symbol],
+      labels: [...scene.labels, ...blok.labels.map((l) => ({ ...l, rect: { ...l.rect, x: l.rect.x + 40 } }))],
+    };
+    expect(protectionMarkingGaps(synthetic).some((g) => g.reason === 'code-row-outside-frame')).toBe(true);
+    // Kontrola: ten sam blok z wierszem w ramce — zero luk.
+    const poprawny: SceneV3 = { ...scene, symbols: [...scene.symbols, blok.symbol], labels: [...scene.labels, ...blok.labels] };
+    expect(protectionMarkingGaps(poprawny)).toEqual([]);
   });
 
   it('(negatyw obowiązkowy, §17.2/§17.5b) linia wyzwalania do NIEWŁAŚCIWEGO/nierejestrowanego punktu (nie port aparatu tego samego pola) ⇒ protectionMarkingGaps WYKRYWA', () => {
@@ -1490,12 +1632,7 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
       ...scene,
       symbols: [
         ...scene.symbols,
-        {
-          symbolId: 'protectionRelay',
-          x: 800,
-          y: 800,
-          meta: { ownerRef: 'bay-x', elementKind: 'protectionAnnotation', protectionCodes: ['50/51'] },
-        },
+        syntetycznyBlok('bay-x', 800, 800, true).symbol,
       ],
       segments: [
         ...scene.segments,
@@ -1509,7 +1646,7 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
     expect(gaps.some((g) => g.reason === 'trip-line-endpoint-mismatch')).toBe(true);
   });
 
-  it('(pozytyw kontrolny) para okrąg+tor poprawnie zakotwiczona na REJESTROWANYCH portach TEGO SAMEGO pola ⇒ zero luk', () => {
+  it('(pozytyw kontrolny) para blok+tor poprawnie zakotwiczona na REJESTROWANYM porcie wyłącznika i wejściu ramki TEGO SAMEGO pola ⇒ zero luk', () => {
     const scene = buildSceneV3(enm, 2);
     const fakeBreaker: SceneV3['symbols'][number] = {
       symbolId: 'breaker',
@@ -1517,17 +1654,14 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
       y: 900,
       meta: { ownerRef: 'bay-y', elementKind: 'apparatus' },
     };
-    const fakeRelay: SceneV3['symbols'][number] = {
-      symbolId: 'protectionRelay',
-      x: 700,
-      y: 900,
-      meta: { ownerRef: 'bay-y', elementKind: 'protectionAnnotation', protectionCodes: ['51'] },
-    };
+    const blok = syntetycznyBlok('bay-y', 700, 900, true);
+    const fakeRelay = blok.symbol;
     const breakerTop = { x: fakeBreaker.x + 8, y: fakeBreaker.y }; // 'top' port offset (8,0)
-    const relayLink = { x: fakeRelay.x, y: fakeRelay.y + 8 }; // 'link' port offset (0,8)
+    const relayLink = { x: fakeRelay.x, y: fakeRelay.y + 8 }; // wejście ramki (0,8)
     const synthetic: SceneV3 = {
       ...scene,
       symbols: [...scene.symbols, fakeBreaker, fakeRelay],
+      labels: [...scene.labels, ...blok.labels],
       segments: [
         ...scene.segments,
         {
@@ -1541,62 +1675,72 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
   });
 
   // -------------------------------------------------------------------------
-  // B-1 (recenzja F9.9, spec §17.4 L1) — protectionAnnotationAtLod1IsCircleOnly.
+  // B-1 (recenzja F9.9, spec §17.4 L1) — protectionAnnotationAtLod1IsBareFrame.
   // Dowody POZYTYWNE i NEGATYWNE na scenach syntetycznych (fixtura
   // referencyjna jest pusto-prawdziwa — 0 danych §17.2, recenzent wytknął,
   // że to nie wystarcza jako dowód).
   // -------------------------------------------------------------------------
 
-  it('B-1 (§17.4 L1, POZYTYW): scena L1 z okręgiem przekaźnika BEZ kodów (i niczym więcej z warstwy §17) ⇒ oracle zielony', () => {
+  it('B-1 (§17.4 L1, POZYTYW): scena L1 z GOŁĄ ramką bloku zabezpieczeń i linią wyłączania do łącznika pola ⇒ oracle zielony', () => {
     const scene = buildSceneV3(enm, 1);
+    const blok = syntetycznyBlok('bay-l1', 800, 800, false).symbol;
+    const fakeBreaker: SceneV3['symbols'][number] = {
+      symbolId: 'breaker',
+      x: 760,
+      y: 808,
+      meta: { ownerRef: 'bay-l1', elementKind: 'apparatus' },
+    };
     const synthetic: SceneV3 = {
       ...scene,
-      symbols: [
-        ...scene.symbols,
+      symbols: [...scene.symbols, fakeBreaker, blok],
+      segments: [
+        ...scene.segments,
         {
-          symbolId: 'protectionRelay',
-          x: 800,
-          y: 800,
-          meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' },
+          // Port N wyłącznika (768, 808) → wejście ramki (800, 808).
+          points: [{ x: 768, y: 808 }, { x: 800, y: 808 }],
+          meta: { kind: 'protectionTrip', ownerRef: 'bay-l1#trip-line', elementKind: 'protectionAnnotation' },
         },
       ],
     };
     expect(synthetic.meta.lod).toBe(1);
-    // Okrąg OBECNY (dowód pozytywny — nie pusta scena) i oracle zielony.
+    // Ramka OBECNA (dowód pozytywny — nie pusta scena) i oracle zielony.
     expect(synthetic.symbols.some((s) => s.symbolId === 'protectionRelay')).toBe(true);
-    expect(protectionAnnotationAtLod1IsCircleOnly(synthetic)).toBe(true);
-    expect(allProtectionMarkingsValid(synthetic)).toBe(true); // ownerRef jest, kodów brak — L1 OK.
+    expect(protectionAnnotationAtLod1IsBareFrame(synthetic)).toBe(true);
+    expect(allProtectionMarkingsValid(synthetic)).toBe(true); // ownerRef i ramka są, kodów brak — L1 OK.
   });
 
-  it('B-1 (§17.4 L1, NEGATYW ×3): kody na okręgu / tor wyzwalania / miernik na L1 ⇒ oracle FAIL (dowód, że gryzie)', () => {
+  it('B-1 (§17.4 L1, NEGATYW ×4): wiersze kodów / przekaźnik bez ramki / linia pomiarowa / miernik na L1 ⇒ oracle FAIL (dowód, że gryzie)', () => {
     const scene = buildSceneV3(enm, 1);
+    const blok = syntetycznyBlok('bay-l1', 800, 800, true);
     const withCodes: SceneV3 = {
       ...scene,
-      symbols: [
-        ...scene.symbols,
-        {
-          symbolId: 'protectionRelay',
-          x: 800,
-          y: 800,
-          meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation', protectionCodes: ['50/51'] },
-        },
-      ],
+      symbols: [...scene.symbols, blok.symbol],
+      labels: [...scene.labels, ...blok.labels],
     };
-    expect(protectionAnnotationAtLod1IsCircleOnly(withCodes)).toBe(false);
+    expect(protectionAnnotationAtLod1IsBareFrame(withCodes)).toBe(false);
     // Ta sama wada widziana przez protectionMarkingGaps (codes-present-at-lod1).
     expect(protectionMarkingGaps(withCodes).some((g) => g.reason === 'codes-present-at-lod1')).toBe(true);
 
-    const withTrip: SceneV3 = {
+    const withCircle: SceneV3 = {
+      ...scene,
+      symbols: [
+        ...scene.symbols,
+        { symbolId: 'protectionRelay', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
+      ],
+    };
+    expect(protectionAnnotationAtLod1IsBareFrame(withCircle)).toBe(false);
+
+    const withMeasurement: SceneV3 = {
       ...scene,
       segments: [
         ...scene.segments,
         {
           points: [{ x: 800, y: 900 }, { x: 900, y: 900 }],
-          meta: { kind: 'protectionTrip', ownerRef: 'bay-l1#trip-line', elementKind: 'protectionAnnotation' },
+          meta: { kind: 'measurementLink', ownerRef: 'bay-l1#measurement-link', elementKind: 'protectionAnnotation' },
         },
       ],
     };
-    expect(protectionAnnotationAtLod1IsCircleOnly(withTrip)).toBe(false);
+    expect(protectionAnnotationAtLod1IsBareFrame(withMeasurement)).toBe(false);
 
     const withMeter: SceneV3 = {
       ...scene,
@@ -1605,12 +1749,12 @@ describe('buildSceneV3 — F9.9: protection_marking_probe (spec §17.5) na fixtu
         { symbolId: 'meter', x: 800, y: 800, meta: { ownerRef: 'bay-l1', elementKind: 'protectionAnnotation' } },
       ],
     };
-    expect(protectionAnnotationAtLod1IsCircleOnly(withMeter)).toBe(false);
+    expect(protectionAnnotationAtLod1IsBareFrame(withMeter)).toBe(false);
   });
 
   it('B-1 sanity: na L2 oracle L1 nie dotyczy (zwraca true niezależnie od kodów) — rozdział odpowiedzialności per LOD', () => {
     const scene2 = buildSceneV3(enm, 2);
-    expect(protectionAnnotationAtLod1IsCircleOnly(scene2)).toBe(true);
+    expect(protectionAnnotationAtLod1IsBareFrame(scene2)).toBe(true);
   });
 
   // -------------------------------------------------------------------------
@@ -1689,15 +1833,10 @@ describe(
         y: 950,
         meta: { ownerRef: 'bay-z', elementKind: 'apparatus' },
       };
-      const fakeRelay: SceneV3['symbols'][number] = {
-        symbolId: 'protectionRelay',
-        x: 780,
-        y: 900,
-        meta: { ownerRef: 'bay-z', elementKind: 'protectionAnnotation', protectionCodes: ['51'] },
-      };
+      const fakeRelay = syntetycznyBlok('bay-z', 780, 900, true).symbol;
       const ctTop = { x: fakeCt.x + 8, y: fakeCt.y }; // 'top' port offset (8,0)
       const breakerTop = { x: fakeBreaker.x + 8, y: fakeBreaker.y };
-      const relayLink = { x: fakeRelay.x, y: fakeRelay.y + 8 }; // 'link' port offset (0,8)
+      const relayLink = { x: fakeRelay.x, y: fakeRelay.y + 8 }; // wejście ramki (0,8)
       const synthetic: SceneV3 = {
         ...scene,
         symbols: [...scene.symbols, fakeCt, fakeBreaker, fakeRelay],
@@ -1796,10 +1935,10 @@ describe(
 
     // -----------------------------------------------------------------------
     // §20.1/§17.4: obie linie wtórne ukryte na L0/L1 (rozszerzenie
-    // `noProtectionAnnotationAtLod0`/`protectionAnnotationAtLod1IsCircleOnly`
+    // `noProtectionAnnotationAtLod0`/`protectionAnnotationAtLod1IsBareFrame`
     // o measurementLink, patrz `scene/buildScene.ts`).
     // -----------------------------------------------------------------------
-    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L1 ⇒ protectionAnnotationAtLod1IsCircleOnly FAIL', () => {
+    it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L1 ⇒ protectionAnnotationAtLod1IsBareFrame FAIL', () => {
       const scene = buildSceneV3(enm, 1);
       const synthetic: SceneV3 = {
         ...scene,
@@ -1811,7 +1950,7 @@ describe(
           },
         ],
       };
-      expect(protectionAnnotationAtLod1IsCircleOnly(synthetic)).toBe(false);
+      expect(protectionAnnotationAtLod1IsBareFrame(synthetic)).toBe(false);
     });
 
     it('(negatyw obowiązkowy) segment measurementLink fabrykowany na L0 ⇒ noProtectionAnnotationAtLod0 FAIL', () => {
@@ -1867,15 +2006,9 @@ describe(
       const primarySeg = scene.segments.find((s) => s.meta?.elementKind !== 'protectionAnnotation' && s.points.length >= 2);
       expect(primarySeg).toBeTruthy();
       const p0 = primarySeg!.points[0];
-      // Okrąg (24×24) wyśrodkowany DOKŁADNIE na pierwszym wierzchołku odcinka
-      // pierwotnego — nachodzi na przewód, BEZ dotyku WŁASNYM portem (fałszywy
-      // fabrykowany symbol nie ma zarejestrowanego portu w tym miejscu).
-      const fakeRelay: SceneV3['symbols'][number] = {
-        symbolId: 'protectionRelay',
-        x: p0.x - 12,
-        y: p0.y - 12,
-        meta: { ownerRef: 'bay-overlap', elementKind: 'protectionAnnotation', protectionCodes: ['51'] },
-      };
+      // Ramka bloku (32×24) wyśrodkowana na pierwszym wierzchołku odcinka pierwotnego —
+      // nachodzi na przewód, BEZ dotyku WŁASNYM wejściem (wejście ramki leży gdzie indziej).
+      const fakeRelay = syntetycznyBlok('bay-overlap', p0.x - 16, p0.y - 12, true).symbol;
       const synthetic: SceneV3 = { ...scene, symbols: [...scene.symbols, fakeRelay] };
       const hits = annotationOverlapsPrimaryPath(synthetic);
       expect(hits.some((h) => h.reason === 'annotation-symbol-touches-primary-wire')).toBe(true);
