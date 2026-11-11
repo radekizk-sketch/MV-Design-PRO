@@ -73,7 +73,13 @@ class TestKatalogReferencyjny:
         typy = get_default_mv_catalog().list_ct_types()
         # Pełny inwentarz katalogu referencyjnego (pomiar 2026-10-29: 14 = 12 + 2 typy ogólne OSD
         # pól liniowych GPZ wg ENEA Z.10/Z.11.1 i Z.11, karta UX-04/POLE-LINIOWE-WZORZEC).
-        assert len(typy) == 14
+        # Pomiar 2026-11-11 (karta ZU-JEDEN-NOSNIK, scalenie gałęzi szablonów pól z gałęzią
+        # integracji; ten sam zbiór 24 identyfikatorów na `44b3f173e` i na drzewie karty, zero
+        # dubletów): 14 → 24 — 10 typów ogólnych OSD szablonów pól GPZ karty POLA-GPZ-SZABLONY
+        # (`526598a52`, `mv_auxiliary_catalog.py`): Z.7 pomiar 4 rdzenie 800/1000/1200/1600/5
+        # (4), Z.12 2 rdzenie 800/1000/1200/1600/5 (4), Z.16 100/5/5/5 (1), Z.13 pole zespołu
+        # uziemiającego 100/5 (1).
+        assert len(typy) == 24
 
         for typ in typy:
             d = typ.to_dict()
@@ -83,7 +89,9 @@ class TestKatalogReferencyjny:
 
     def test_rozklad_rdzeni_w_katalogu_referencyjnym(self) -> None:
         # POMIAR 2026-10-29: 10 typów zabezpieczeniowych (2× 5P10, 7× 5P20, 1× 10P10) i 4 pomiarowe
-        # (3× 0.5, 1× 0,2S). Liczba ma znaczenie inżynierskie: to WSZYSTKIE typy, na których może
+        # (3× 0.5, 1× 0,2S). POMIAR 2026-11-11 (typy ogólne OSD Z.7/Z.12/Z.13/Z.16, patrz
+        # `test_kazdy_typ_wystawia_rodzaj_rdzenia`): 15 zabezpieczeniowych (2× 5P10, 12× 5P20 —
+        # +4 Z.12, +1 Z.13 — 1× 10P10) i 9 pomiarowych (3× 0.5, 6× 0,2S — +4 Z.7, +1 Z.16). Liczba ma znaczenie inżynierskie: to WSZYSTKIE typy, na których może
         # dziś stanąć oś zabezpieczeń. Typ ogólny OSD Z.11 (200-400/5/5/5) jest pomiarowy na
         # poziomie typu (klasa rdzenia I — rozliczeniowy 0,2S); jego trzy rdzenie, w tym 5P20 do
         # zabezpieczeń, niesie lista `rdzenie` (przekladniki.py) — nie pole `application`.
@@ -91,8 +99,11 @@ class TestKatalogReferencyjny:
         zabezpieczeniowe = [t for t in typy if t["application"] == "protection"]
         pomiarowe = [t for t in typy if t["application"] == "metering"]
 
-        assert len(zabezpieczeniowe) == 10
-        assert len(pomiarowe) == 4
+        assert len(zabezpieczeniowe) == 15
+        assert len(pomiarowe) == 9
+        klasy = sorted(str(t["accuracy_class"]) for t in typy)
+        assert klasy.count("5P10") == 2 and klasy.count("5P20") == 12 and klasy.count("10P10") == 1
+        assert klasy.count("0.5") == 3 and klasy.count("0,2S") == 6
         assert all(t["accuracy_limit_factor"] is not None for t in zabezpieczeniowe)
         assert all(t["accuracy_limit_factor"] is None for t in pomiarowe)
 
@@ -139,7 +150,7 @@ class TestDoborCieplnyIDynamiczny:
         from network_model.catalog.repository import get_default_mv_catalog
 
         typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
-        assert len(typy) == 14  # pomiar 2026-10-29 (patrz `test_kazdy_typ_wystawia_rodzaj_rdzenia`)
+        assert len(typy) == 24  # pomiar 2026-11-11 (patrz `test_kazdy_typ_wystawia_rodzaj_rdzenia`)
         bez_ith = [t["id"] for t in typy if t["ith_ka_1s"] is None]
         bez_idyn = [t["id"] for t in typy if t["idyn_ka_peak"] is None]
         assert bez_ith == [], f"typy bez pradu cieplnego: {bez_ith}"
