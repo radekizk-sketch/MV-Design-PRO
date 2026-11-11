@@ -253,14 +253,34 @@ NAGLOWKI_ZIEMNOZWARCIOWYCH_PL: tuple[str, ...] = (
 )
 
 
+def _wg_kolejnosci_wierszy(
+    rekordy: list[dict[str, Any]], *listy_wierszy: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Rekordy w kolejności wierszy wyniku (``kryteria`` wiersza) — porządek wierszy ustala
+    backend w JEDNYM miejscu (``uporzadkuj_wiersze_rodzin``: stacja, pole w rozdzielnicy,
+    funkcja), raport go nie wymyśla. Rekord spoza wierszy zostaje na końcu w kolejności wyniku."""
+    pozycja: dict[str, int] = {}
+    for wiersze in listy_wierszy:
+        for w in wiersze:
+            for kryterium_id in w.get("kryteria") or []:
+                pozycja.setdefault(str(kryterium_id), len(pozycja))
+    koniec = len(pozycja)
+    return sorted(
+        rekordy,
+        key=lambda r: pozycja.get(str(r.get("ocena", {}).get("kryterium_id")), koniec),
+    )
+
+
 def rekordy_ziemnozwarciowe(ziemne: dict[str, Any] | None) -> list[dict[str, Any]]:
-    """Rekordy sekcji w kolejności raportu: oceny funkcji, uziemienia stacji, odmowy."""
+    """Rekordy sekcji w kolejności raportu: oceny funkcji, uziemienia stacji, odmowy — każda
+    grupa w kolejności wierszy wyniku (tabele rodzin, potem uziemień)."""
     if not ziemne:
         return []
+    wiersze = [*(ziemne.get("wiersze") or []), *(ziemne.get("wiersze_uziemien") or [])]
     return [
-        *ziemne.get("oceny", []),
-        *ziemne.get("uziemienia", []),
-        *ziemne.get("odmowy", []),
+        *_wg_kolejnosci_wierszy(list(ziemne.get("oceny", [])), wiersze),
+        *_wg_kolejnosci_wierszy(list(ziemne.get("uziemienia", [])), wiersze),
+        *_wg_kolejnosci_wierszy(list(ziemne.get("odmowy", [])), wiersze),
     ]
 
 
@@ -373,9 +393,13 @@ def zdania_rodziny_nadpradowej(nadpradowe: dict[str, Any] | None) -> list[str]:
     ziemnozwarciowa (``zdanie_ziemnozwarciowe``)."""
     if not nadpradowe:
         return []
+    wiersze = list(nadpradowe.get("wiersze") or [])
     return [
         zdanie_ziemnozwarciowe(r)
-        for r in [*nadpradowe.get("oceny", []), *nadpradowe.get("odmowy", [])]
+        for r in [
+            *_wg_kolejnosci_wierszy(list(nadpradowe.get("oceny", [])), wiersze),
+            *_wg_kolejnosci_wierszy(list(nadpradowe.get("odmowy", [])), wiersze),
+        ]
     ]
 
 

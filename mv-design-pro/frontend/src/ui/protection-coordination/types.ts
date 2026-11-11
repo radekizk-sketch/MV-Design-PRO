@@ -432,6 +432,11 @@ export const LABELS = {
     error: 'Błąd analizy',
   },
 
+  panelBoczny: {
+    rozwin: 'Pokaż biegi i urządzenia',
+    zwin: 'Ukryj biegi i urządzenia',
+  },
+
   tabs: {
     summary: 'Podsumowanie',
     sensitivity: 'Czułość',

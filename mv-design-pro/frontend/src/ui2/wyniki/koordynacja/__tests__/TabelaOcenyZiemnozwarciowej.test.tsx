@@ -381,3 +381,87 @@ describe('źródła wymagań — ekran nie zmienia wartości ani stanu (wymagani
     });
   });
 });
+
+describe('filtr wierszy przy liczniku braków — iloczyn filtr × skład wierszy', () => {
+  // Skład: {mieszany, wyłącznie bez nastaw, wyłącznie z wynikiem}; filtr: {wszystkie, z wynikiem,
+  // bez nastaw}. Wyrocznia: widoczne wiersze = wiersze backendu z tym samym predykatem, w tej
+  // samej kolejności (filtr ukrywa, nie przestawia); stan filtra widoczny (`aria-pressed`).
+  const rodziny = KOMPENSOWANY.rodziny!;
+  const wiersz = (i: number, stan: Stan) => ({ ...wierszIloczynu(rodziny[i % rodziny.length], stan), funkcja_ref: `f-${i}` });
+  const SKLADY: Record<string, WierszRodziny[]> = {
+    mieszany: [wiersz(0, 'BRAK_NASTAW'), wiersz(1, 'SPELNIA'), wiersz(2, 'BRAK_NASTAW'), wiersz(3, 'NIE_SPELNIA'), wiersz(4, 'BRAK_NASTAW')],
+    'bez nastaw': [wiersz(0, 'BRAK_NASTAW'), wiersz(1, 'BRAK_NASTAW')],
+    'z wynikiem': [wiersz(0, 'SPELNIA'), wiersz(1, 'NIE_SPELNIA')],
+  };
+  const FILTRY = ['wszystkie', 'z-wynikiem', 'bez-nastaw'] as const;
+  const widoczne = () => screen.queryAllByTestId(`${TID}-wiersz`).map((e) => e.dataset.funkcja);
+
+  for (const [sklad, wiersze] of Object.entries(SKLADY)) {
+    for (const filtr of FILTRY) {
+      it(`${sklad} × ${filtr}`, async () => {
+        const user = userEvent.setup();
+        render(<TabelaOcenyZiemnozwarciowej wynik={{ ...KOMPENSOWANY, wiersze, wiersze_uziemien: [] }} />);
+        const bez = wiersze.filter((w) => w.braki.length > 0);
+        const zWyn = wiersze.filter((w) => w.braki.length === 0);
+        // Porządek prezentacji = porządek rejestru rodzin, w rodzinie porządek backendu.
+        const wgRodzin = (ws: WierszRodziny[]) =>
+          rodziny.flatMap((r) => ws.filter((w) => w.rodzina === r.id)).map((w) => w.funkcja_ref);
+        expect(widoczne()).toEqual(wgRodzin(wiersze));
+        if (bez.length === 0) {
+          // Bez wierszy bez nastaw nie ma licznika ani filtra — wszystkie wiersze widoczne.
+          expect(screen.queryByTestId(`${TID}-filtr`)).toBeNull();
+          return;
+        }
+        const grupa = screen.getByTestId(`${TID}-filtr`);
+        expect(grupa.dataset.filtr).toBe('wszystkie');
+        const przycisk = within(grupa).getByTestId(`${TID}-filtr-${filtr}`);
+        const liczba = { wszystkie: wiersze.length, 'z-wynikiem': zWyn.length, 'bez-nastaw': bez.length }[filtr];
+        expect(przycisk).toHaveTextContent(`(${liczba})`);
+        if (liczba === 0) {
+          expect(przycisk).toBeDisabled();
+          return;
+        }
+        await user.click(przycisk);
+        expect(grupa.dataset.filtr).toBe(filtr);
+        expect(przycisk).toHaveAttribute('aria-pressed', 'true');
+        for (const inny of FILTRY.filter((f) => f !== filtr)) {
+          expect(within(grupa).getByTestId(`${TID}-filtr-${inny}`)).toHaveAttribute('aria-pressed', 'false');
+        }
+        const oczekiwane = { wszystkie: wiersze, 'z-wynikiem': zWyn, 'bez-nastaw': bez }[filtr];
+        expect(widoczne()).toEqual(wgRodzin(oczekiwane));
+        // Licznik braków nie zależy od filtra.
+        expect(screen.getByTestId(`${TID}-braki-zbiorcze`)).toHaveTextContent(
+          T.ziemneBezNastaw(bez.length, new Set(bez.map((w) => w.urzadzenie_ref)).size),
+        );
+      });
+    }
+  }
+
+  it('„bez nastaw” po uzupełnieniu ostatniej nastawy: filtr znika, wszystkie wiersze widoczne', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TabelaOcenyZiemnozwarciowej wynik={{ ...KOMPENSOWANY, wiersze: SKLADY.mieszany, wiersze_uziemien: [] }} />,
+    );
+    await user.click(screen.getByTestId(`${TID}-filtr-bez-nastaw`));
+    expect(widoczne()).toHaveLength(3);
+    const poUzupelnieniu = SKLADY.mieszany.map((w, i) => ({ ...wiersz(i, 'SPELNIA'), funkcja_ref: w.funkcja_ref }));
+    rerender(<TabelaOcenyZiemnozwarciowej wynik={{ ...KOMPENSOWANY, wiersze: poUzupelnieniu, wiersze_uziemien: [] }} />);
+    expect(screen.queryByTestId(`${TID}-filtr`)).toBeNull();
+    expect(widoczne()).toHaveLength(poUzupelnieniu.length);
+  });
+});
+
+describe('komórka „Pole” — nazwa pola i kontener w drugiej linii', () => {
+  it.each([
+    ['nazwa powtarzalna z kontenerem', 'Pole 1', 'Stacja S02'],
+    ['nazwa unikatowa bez kontenera', 'Pole liniowe L7', null],
+  ])('%s', (_n, nazwa, kontener) => {
+    const w = { ...wierszIloczynu(KOMPENSOWANY.rodziny![0], 'SPELNIA'), pole_nazwa_pl: nazwa, pole_kontener_pl: kontener };
+    render(<TabelaOcenyZiemnozwarciowej wynik={{ ...KOMPENSOWANY, wiersze: [w], wiersze_uziemien: [] }} />);
+    const pierwsza = screen.getByTestId(`${TID}-wiersz`).querySelector('td')!;
+    expect(pierwsza).toHaveTextContent(nazwa);
+    const druga = within(pierwsza).queryByTestId(`${TID}-kontener`);
+    if (kontener === null) expect(druga).toBeNull();
+    else expect(druga).toHaveTextContent(kontener);
+  });
+});

@@ -41,6 +41,7 @@ przyjęta), przekładniki idealne, stany przejściowe zapłonu łuku, czas włas
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
@@ -615,6 +616,66 @@ def funkcje_ziemnozwarciowe(
     return wynik
 
 
+_LICZBY = re.compile(r"(\d+)")
+
+
+def klucz_naturalny(tekst: str) -> tuple[tuple[int, int, str], ...]:
+    """Porządek naturalny nazw: „Stacja S2” przed „Stacja S10”, liczby jako liczby."""
+    return tuple(
+        (0, int(c), "") if c.isdigit() else (1, 0, c.casefold()) for c in _LICZBY.split(tekst) if c
+    )
+
+
+@dataclass(frozen=True)
+class PoleWiersza:
+    """Identyfikacja i miejsce pola sterownika w modelu — JEDNO źródło nazwy wiersza i porządku
+    tabel rodzin (ziemnozwarciowych i nadprądowej 50/51), wierszy uziemień i raportu."""
+
+    nazwa_pl: str
+    #: Stacja albo rozdzielnica odgałęźna pola (nazwa z modelu; ``None`` — kontenera brak).
+    kontener_pl: str | None
+    #: Nazwa pola powtarza się w modelu — identyfikacja wymaga kontenera.
+    nazwa_powtarzalna: bool
+    #: Kolejność pola w rozdzielnicy: numer dyspozytorski ``bay_number`` (gdy podany), potem
+    #: kolejność pól w modelu (kreator dodaje pola w kolejności rozdzielnicy).
+    klucz_w_rozdzielnicy: tuple[Any, ...]
+
+    @property
+    def nazwa_wiersza_pl(self) -> str:
+        if self.nazwa_powtarzalna and self.kontener_pl:
+            return f"{self.nazwa_pl} — {self.kontener_pl}"
+        return self.nazwa_pl
+
+
+def pola_sterownikow(enm: EnergyNetworkModel) -> dict[str, PoleWiersza]:
+    """``ref`` sterownika → ``PoleWiersza`` (sterowniki przypisane do pola)."""
+    nazwy = [nazwa_elementu(b, "bays") for b in enm.bays]
+    stacje = {s.ref_id: nazwa_elementu(s, "substations") for s in enm.substations}
+    odgalezne = {p.ref_id: nazwa_elementu(p, "branch_points") for p in enm.branch_points}
+    pola = {b.ref_id: (i, b) for i, b in enumerate(enm.bays)}
+    wynik: dict[str, PoleWiersza] = {}
+    for a in enm.protection_assignments:
+        wpis = pola.get(a.bay_ref or "")
+        if wpis is None:
+            continue
+        i, pole = wpis
+        kontener = (
+            stacje.get(pole.substation_ref)
+            if pole.substation_ref
+            else odgalezne.get(pole.branch_point_ref or "")
+        )
+        wynik[a.ref_id] = PoleWiersza(
+            nazwa_pl=nazwy[i],
+            kontener_pl=kontener,
+            nazwa_powtarzalna=nazwy.count(nazwy[i]) > 1,
+            klucz_w_rozdzielnicy=(
+                klucz_naturalny(pole.bay_number) if pole.bay_number else ((2, 0, ""),),
+                i,
+            ),
+        )
+    return wynik
+
+
 def nazwa_pola_sterownika(enm: EnergyNetworkModel, sterownik: ProtectionAssignment) -> str | None:
     """Nazwa pola sterownika (z modelu) — identyfikacja wiersza tabel rodzin (ziemnozwarciowych
     i nadprądowej 50/51).
@@ -623,23 +684,55 @@ def nazwa_pola_sterownika(enm: EnergyNetworkModel, sterownik: ProtectionAssignme
     liniowe wejściowe 1” w S01…S04), dostaje nazwę swojej stacji albo rozdzielnicy odgałęźnej:
     „Pole liniowe wejściowe 1 — Stacja S02”. Bez tego wiersze różnych pól byłyby nie do
     odróżnienia na ekranie i w raporcie. Nazwa jednoznaczna przechodzi bez zmian."""
-    if not sterownik.bay_ref:
-        return None
-    pole = next((b for b in enm.bays if b.ref_id == sterownik.bay_ref), None)
-    if pole is None:
-        return None
-    nazwa = nazwa_elementu(pole, "bays")
-    if sum(1 for b in enm.bays if nazwa_elementu(b, "bays") == nazwa) == 1:
-        return nazwa
-    if pole.substation_ref:
-        kolekcja, ref = "substations", pole.substation_ref
-        kontener = next((s for s in enm.substations if s.ref_id == ref), None)
-    else:
-        kolekcja, ref = "branch_points", pole.branch_point_ref or ""
-        kontener = next((p for p in enm.branch_points if p.ref_id == ref), None)
-    if kontener is None:
-        return nazwa
-    return f"{nazwa} — {nazwa_elementu(kontener, kolekcja)}"
+    pole = pola_sterownikow(enm).get(sterownik.ref_id)
+    return pole.nazwa_wiersza_pl if pole is not None else None
+
+
+def uporzadkuj_wiersze_rodzin(
+    enm: EnergyNetworkModel, wiersze: Sequence[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """JEDNO miejsce porządku i identyfikacji wierszy tabel rodzin (ziemnozwarciowych i 50/51) —
+    ekran i raport czytają wiersze w tej kolejności.
+
+    Porządek: stacja albo rozdzielnica odgałęźna w porządku naturalnym nazwy, potem pole
+    w kolejności w rozdzielnicy (``PoleWiersza.klucz_w_rozdzielnicy``), potem funkcja w kolejności
+    sterownika; urządzenia bez pola w modelu na końcu, w porządku naturalnym nazwy. Wiersz dostaje
+    ``pole_nazwa_pl`` i ``pole_kontener_pl`` (kontener tylko przy nazwie powtarzalnej — ten sam
+    warunek co ``pole_pl``), żeby ekran pokazał kontener w drugiej linii."""
+    pola = pola_sterownikow(enm)
+    funkcje = {a.ref_id: [f.ref for f in a.funkcje] for a in enm.protection_assignments}
+
+    def klucz(w: dict[str, Any]) -> tuple[Any, ...]:
+        ref = str(w["urzadzenie_ref"])
+        kolejnosc = funkcje.get(ref, [])
+        f = str(w["funkcja_ref"])
+        pozycja_f = kolejnosc.index(f) if f in kolejnosc else len(kolejnosc)
+        pole = pola.get(ref)
+        if pole is None:
+            nazwa = str(w.get("sterownik_pl") or ref)
+            return (1, klucz_naturalny(nazwa), (), ref, pozycja_f, f)
+        return (
+            0,
+            klucz_naturalny(pole.kontener_pl or ""),
+            pole.klucz_w_rozdzielnicy,
+            ref,
+            pozycja_f,
+            f,
+        )
+
+    wynik: list[dict[str, Any]] = []
+    for w in sorted(wiersze, key=klucz):
+        pole = pola.get(str(w["urzadzenie_ref"]))
+        wynik.append(
+            {
+                **w,
+                "pole_nazwa_pl": pole.nazwa_pl if pole else w.get("pole_pl"),
+                "pole_kontener_pl": (
+                    pole.kontener_pl if pole is not None and pole.nazwa_powtarzalna else None
+                ),
+            }
+        )
+    return wynik
 
 
 def _nazwa_aparatu(enm: EnergyNetworkModel, breaker_ref: str) -> str:
@@ -2797,7 +2890,7 @@ def ocen_zabezpieczenia_ziemnozwarciowe(
         obliczenie,
         uziemienia=tuple(uziemienia),
         wyniki_uziemien=wyniki_uziemien,
-        wiersze=tuple(wiersze),
+        wiersze=tuple(uporzadkuj_wiersze_rodzin(enm, wiersze)),
         siec=tuple(siec),
         przypadek=przypadek,
         wiersze_uziemien=tuple(wiersze_uziemien(uziemienia)),
@@ -3160,7 +3253,11 @@ def wiersze_uziemien(
                 "kryteria": [r.ocena.kryterium_id for r in rekordy],
             }
         )
-    return wiersze
+    # Stacje w porządku naturalnym nazwy (ten sam klucz co tabele rodzin); identyfikator
+    # rozstrzyga nazwy równe.
+    return sorted(
+        wiersze, key=lambda w: (klucz_naturalny(str(w["stacja_pl"])), str(w["stacja_ref"]))
+    )
 
 
 #: Przypisy tabeli uziemień — jedno zdanie na rodzaj braku (pod tabelą, raz).

@@ -81,7 +81,7 @@
 
 .mvd-eaz-tabela th,
 .mvd-eaz-tabela td {
-  padding: 3px 8px;
+  padding: 3px 4px;
   border-bottom: 1px solid var(--mvd-line);
   text-align: left;
   vertical-align: baseline;
@@ -92,8 +92,43 @@
  * i odwołanie do źródła wymagania. Liczby zostają w jednej linii. Pomiar karty EKRANY-EAZ
  * (1440×900): tabela źródeł wymagań bez zawijania odwołania miała 1620 px w panelu 1096 px. */
 .mvd-eaz-tabela td:first-child,
+.mvd-eaz-tabela td.mvd-eaz-funkcja,
+.mvd-eaz-tabela td.mvd-eaz-tekst,
 .mvd-eaz-tabela td.mvd-eaz-przypis {
   white-space: normal;
+}
+
+/* Stacja albo rozdzielnica odgałęźna pola w drugiej linii, drobniej (nazwa pola powtarzalna). */
+.mvd-eaz-kontener {
+  display: block;
+  font-size: var(--mvd-font-size-small);
+  color: var(--mvd-muted);
+}
+
+/* Licznik braków z filtrem wierszy (stan filtra: aria-pressed). */
+.mvd-eaz-filtr-pasek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+}
+
+.mvd-eaz-filtr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.mvd-eaz-filtr .mvd-eaz-akcja[aria-pressed='true'] {
+  background: var(--mvd-bg-hover);
+  color: var(--mvd-ink);
+  font-weight: 600;
+}
+
+.mvd-eaz-filtr .mvd-eaz-akcja:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .mvd-eaz-tabela td.mvd-eaz-przypis {

@@ -192,7 +192,7 @@ RODZINY_EAZ: dict[RodzinaZiemnozwarciowa, RodzinaEaz] = {
 
 #: Kod funkcji → rodzina (jedno źródło; kod spoza rejestru rodzin to błąd programu).
 RODZINA_KODU: dict[str, RodzinaZiemnozwarciowa] = {
-    kod: rodzina.id for rodzina in RODZINY_EAZ.values() for kod in rodzina.kody
+    kod: id_rodziny for id_rodziny, rodzina in RODZINY_EAZ.items() for kod in rodzina.kody
 }
 
 #: Rodzina nadprądowa fazowa (50/51) — ten sam wzorzec wiersza co rodziny ziemnozwarciowe
@@ -239,7 +239,10 @@ RODZINA_NADPRADOWA = RodzinaEaz(
 )
 
 #: Wszystkie rodziny rejestru (ziemnozwarciowe i nadprądowa) — identyfikator → rodzina.
-REJESTR_RODZIN: dict[str, RodzinaEaz] = {**RODZINY_EAZ, "NADPRADOWE": RODZINA_NADPRADOWA}
+REJESTR_RODZIN: dict[str, RodzinaEaz] = {
+    **{str(id_rodziny): r for id_rodziny, r in RODZINY_EAZ.items()},
+    "NADPRADOWE": RODZINA_NADPRADOWA,
+}
 
 
 def sprawdz_wartosci_wiersza(rodzina: str, klucze: set[str]) -> None:

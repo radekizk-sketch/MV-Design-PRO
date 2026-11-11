@@ -331,3 +331,61 @@ export async function pomiarPierwszegoPlanu(l: Locator): Promise<{
     };
   });
 }
+
+/** Widoczność skrajnych kolumn tabeli: lewa krawędź pierwszej i prawa krawędź ostatniej komórki
+ *  nagłówka względem obszaru widocznego — okna i KAŻDEGO przodka obcinającego w poziomie
+ *  (`overflow-x` ≠ `visible`). Pomiar szerokości tabeli względem jednego panelu nie łapał tabeli
+ *  przyciętej przez inny kontener albo wychodzącej poza okno (kadr koordynacji 50/51). */
+export type WidocznoscKolumn = {
+  tabela: string;
+  lewa_px: number;
+  prawa_px: number;
+  widoczne_od_px: number;
+  widoczne_do_px: number;
+  okno_px: number;
+};
+
+export async function widocznoscSkrajnychKolumn(korzen: Locator): Promise<WidocznoscKolumn[]> {
+  return korzen.evaluate((el) => {
+    const wynik: {
+      tabela: string;
+      lewa_px: number;
+      prawa_px: number;
+      widoczne_od_px: number;
+      widoczne_do_px: number;
+      okno_px: number;
+    }[] = [];
+    for (const t of Array.from(el.querySelectorAll('table')) as HTMLElement[]) {
+      const naglowki = Array.from(t.querySelectorAll('thead tr:first-child > th')) as HTMLElement[];
+      if (naglowki.length === 0) continue;
+      const pierwsza = naglowki[0].getBoundingClientRect();
+      const ostatnia = naglowki[naglowki.length - 1].getBoundingClientRect();
+      if (ostatnia.width === 0 && ostatnia.height === 0) continue; // nie wyrenderowana (zwinięta)
+      let od = 0;
+      let doPx = window.innerWidth;
+      for (let a = t.parentElement; a; a = a.parentElement) {
+        const ox = getComputedStyle(a).overflowX;
+        if (ox === 'visible') continue;
+        const r = a.getBoundingClientRect();
+        od = Math.max(od, r.left + a.clientLeft);
+        doPx = Math.min(doPx, r.left + a.clientLeft + a.clientWidth);
+      }
+      wynik.push({
+        tabela: `${t.closest('[data-rodzina]')?.getAttribute('data-rodzina') ?? ''} ${
+          t.closest('[data-testid]')?.getAttribute('data-testid') ?? ''
+        }`.trim(),
+        lewa_px: Math.round(pierwsza.left),
+        prawa_px: Math.round(ostatnia.right),
+        widoczne_od_px: Math.round(od),
+        widoczne_do_px: Math.round(doPx),
+        okno_px: window.innerWidth,
+      });
+    }
+    return wynik;
+  });
+}
+
+/** Tabele, których skrajna kolumna nie mieści się w obszarze widocznym (tolerancja 1 px). */
+export function tabelePrzyciete(w: readonly WidocznoscKolumn[]): WidocznoscKolumn[] {
+  return w.filter((x) => x.prawa_px > x.widoczne_do_px + 1 || x.lewa_px < x.widoczne_od_px - 1);
+}

@@ -327,7 +327,7 @@ function TabNavigation({
     { id: 'trace', label: LABELS.tabs.trace, count: result.trace_steps.length },
   ];
   return (
-    <div className="flex gap-1 rounded-lg bg-slate-100 p-1" data-testid="tab-navigation">
+    <div className="flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1" data-testid="tab-navigation">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -408,6 +408,40 @@ export function ProtectionCoordinationPage() {
 
   const doEdycjiNastaw = () => openRouteSurface('E-27');
 
+  // Zakładki z tabelami rodzin (komplet kolumn rodziny 50/51 i zerowoprądowej) potrzebują pełnej
+  // szerokości: panel biegów i urządzeń jest na nich domyślnie zwinięty (pomiar karty EKRANY-EAZ:
+  // w kolumnie 2/3 siatki tabela 50/51 traciła kolumny t, charakterystyka, Δt, stan). Wybór
+  // projektanta przełącznikiem ma pierwszeństwo przed domyślnym stanem zakładki.
+  const zakladkaSzeroka = activeTab === 'nadpradowe' || activeTab === 'ziemne';
+  const [panelBocznyWybor, setPanelBocznyWybor] = useState<boolean | null>(null);
+  const panelBoczny = !result || (panelBocznyWybor ?? !zakladkaSzeroka);
+  const przyciskAnalizy = (rozmiar: string) => (
+    <button
+      onClick={() => void handleRun()}
+      disabled={status === 'RUNNING'}
+      className={`rounded bg-emerald-600 ${rozmiar} font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50`}
+      data-testid="run-analysis-button"
+    >
+      {status === 'RUNNING' ? LABELS.status.running : LABELS.actions.runAnalysis}
+    </button>
+  );
+  const statusAnalizy =
+    status !== 'IDLE' ? (
+      <div
+        data-testid="coordination-status"
+        role={status === 'ERROR' ? 'alert' : undefined}
+        className={`rounded p-3 text-sm ${
+          status === 'ERROR'
+            ? 'border border-rose-200 bg-rose-50 text-rose-700'
+            : status === 'SUCCESS'
+              ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border border-blue-200 bg-blue-50 text-blue-700'
+        }`}
+      >
+        {error || statusText}
+      </div>
+    ) : null;
+
   return (
     <div className="min-h-screen bg-slate-50 p-6" data-testid="protection-coordination-page">
       <div className="mx-auto max-w-7xl">
@@ -418,37 +452,31 @@ export function ProtectionCoordinationPage() {
         <div className="mb-6">
           <ContextSelector />
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-4">
-            <PanelBiegow biegi={biegi} />
-            <button
-              onClick={() => void handleRun()}
-              disabled={status === 'RUNNING'}
-              className="w-full rounded bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-              data-testid="run-analysis-button"
-            >
-              {status === 'RUNNING' ? LABELS.status.running : LABELS.actions.runAnalysis}
-            </button>
-            {status !== 'IDLE' && (
-              <div
-                data-testid="coordination-status"
-                role={status === 'ERROR' ? 'alert' : undefined}
-                className={`rounded p-3 text-sm ${
-                  status === 'ERROR'
-                    ? 'border border-rose-200 bg-rose-50 text-rose-700'
-                    : status === 'SUCCESS'
-                      ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border border-blue-200 bg-blue-50 text-blue-700'
-                }`}
-              >
-                {error || statusText}
-              </div>
-            )}
-            {result ? <PanelUrzadzen result={result} /> : null}
-          </div>
-          <div className="lg:col-span-2">
+        <div className={panelBoczny ? 'grid gap-6 lg:grid-cols-3' : 'grid gap-6'}>
+          {panelBoczny ? (
+            <div className="space-y-4" data-testid="coordination-panel-boczny">
+              <PanelBiegow biegi={biegi} />
+              {przyciskAnalizy('w-full px-4 py-3')}
+              {statusAnalizy}
+              {result ? <PanelUrzadzen result={result} /> : null}
+            </div>
+          ) : null}
+          <div className={panelBoczny ? 'lg:col-span-2' : undefined}>
             {result ? (
               <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPanelBocznyWybor(!panelBoczny)}
+                    aria-expanded={panelBoczny}
+                    className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+                    data-testid="coordination-panel-przelacz"
+                  >
+                    {panelBoczny ? LABELS.panelBoczny.zwin : LABELS.panelBoczny.rozwin}
+                  </button>
+                  {panelBoczny ? null : przyciskAnalizy('px-3 py-1.5 text-sm')}
+                  {panelBoczny ? null : statusAnalizy}
+                </div>
                 <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} result={result} />
                 {activeTab === 'summary' && <SummaryTab result={result} />}
                 {activeTab === 'sensitivity' && (
@@ -476,7 +504,7 @@ export function ProtectionCoordinationPage() {
                   // Tabela rodzin (warstwa ui2) bierze kolory z tokenów motywu i nie ma własnej
                   // powierzchni — kontener też z tokenów, inaczej w motywie ciemnym jasny tekst
                   // leżał na białej karcie (kontrast poniżej czytelności, kadry karty EKRANY-EAZ).
-                  <div className="rounded-lg border border-[var(--mvd-line)] bg-[var(--mvd-panel)] p-4">
+                  <div className="rounded-lg border border-[var(--mvd-line)] bg-[var(--mvd-panel)] p-3">
                     {/* Ten sam wzorzec wiersza rodziny co zwarcia doziemne (rejestr rodzin). */}
                     <TabelaOcenyZiemnozwarciowej
                       wynik={result.nadpradowe}
@@ -493,7 +521,7 @@ export function ProtectionCoordinationPage() {
                   </div>
                 )}
                 {activeTab === 'ziemne' && (
-                  <div className="rounded-lg border border-[var(--mvd-line)] bg-[var(--mvd-panel)] p-4">
+                  <div className="rounded-lg border border-[var(--mvd-line)] bg-[var(--mvd-panel)] p-3">
                     <TabelaOcenyZiemnozwarciowej
                       wynik={result.ziemnozwarciowe}
                       onUzupelnij={(cel) =>

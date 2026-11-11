@@ -27,8 +27,11 @@ import { MathInline, MathRenderer } from '../../../ui/proof/MathRenderer';
 import { KartaWerdyktu, ZnakWerdyktu } from '../wzorzec/KartaWerdyktu';
 import { formatWgJednostki } from '../../../ui/shared/formatPolishValue';
 import {
+  filtrujWiersze,
   rekordyWiersza,
+  wierszBezNastaw,
   wierszeRodzin,
+  type FiltrWierszy,
   type KomorkaRodziny,
   type PrzypadekDoziemienia,
   type RodzinaEaz,
@@ -136,7 +139,7 @@ function Komorka({ komorka, testid }: { komorka: KomorkaRodziny | undefined; tes
   const tekst = komorka.wartosc !== null ? formatWgJednostki(komorka.wartosc, komorka.jednostka) : (komorka.tekst ?? '—');
   return (
     <td
-      className="mvd-num mvd-eaz-liczba"
+      className={komorka.wartosc === null && komorka.tekst ? 'mvd-eaz-tekst' : 'mvd-num mvd-eaz-liczba'}
       data-testid={testid}
       data-spelnia={komorka.spelnia === null ? undefined : String(komorka.spelnia)}
       title={komorka.powod_pl ?? undefined}
@@ -370,7 +373,7 @@ function TabelaRodziny({
             {wiersze.map((w) => {
               const klucz = `${w.urzadzenie_ref}::${w.funkcja_ref}`;
               const otwarty = otwarte.has(klucz);
-              const bezNastaw = w.braki.length > 0;
+              const bezNastaw = wierszBezNastaw(w);
               return (
                 <Fragment key={klucz}>
                   <tr
@@ -380,8 +383,15 @@ function TabelaRodziny({
                     data-kod={w.kod}
                     data-status={w.stan}
                   >
-                    <td title={w.sterownik_pl}>{w.pole_pl ?? w.sterownik_pl}</td>
-                    <td title={w.etykieta_pl}>
+                    <td title={w.sterownik_pl}>
+                      {w.pole_nazwa_pl ?? w.pole_pl ?? w.sterownik_pl}
+                      {w.pole_kontener_pl ? (
+                        <span className="mvd-eaz-kontener" data-testid={`${testid}-kontener`}>
+                          {w.pole_kontener_pl}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="mvd-eaz-funkcja" title={w.etykieta_pl}>
                       <strong>{w.ansi}</strong> {w.oznaczenie_pl}
                     </td>
                     <td className="mvd-num">{w.grupa !== null ? T.ziemneGrupa(w.grupa) : '—'}</td>
@@ -415,10 +425,13 @@ function TabelaRodziny({
                         className="mvd-eaz-akcja"
                         aria-expanded={otwarty}
                         title={T.ziemneSzczegolyOpis}
+                        aria-label={otwarty ? T.ziemneSzczegolyZwin : T.ziemneSzczegoly}
                         data-testid={`${testid}-szczegoly-przelacz`}
                         onClick={() => przelacz(klucz)}
                       >
-                        {otwarty ? T.ziemneSzczegolyZwin : T.ziemneSzczegoly}
+                        {/* Znak rozwinięcia zamiast słowa — kolumna szczegółów nie rozpycha tabeli rodziny
+                            (pomiar karty EKRANY-EAZ); nazwa dostępna w aria-label. */}
+                        <span aria-hidden="true">{otwarty ? '▾' : '▸'}</span>
                       </button>
                     </td>
                   </tr>
@@ -460,11 +473,22 @@ export function TabelaOcenyZiemnozwarciowej({
   /** Stan zerowy (rodzina nadprądowa ma własne zdanie braku wierszy). */
   tekstBraku?: string;
 }) {
+  const [filtr, setFiltr] = useState<FiltrWierszy>('wszystkie');
   const wiersze = wierszeRodzin(wynik, urzadzenieRef);
   const uziemienia = urzadzenieRef === undefined ? (wynik?.wiersze_uziemien ?? []) : [];
-  const bezNastaw = wiersze.filter((w) => w.braki.length > 0);
+  const bezNastaw = filtrujWiersze(wiersze, 'bez-nastaw');
+  const zWynikiem = filtrujWiersze(wiersze, 'z-wynikiem');
   const polaBezNastaw = new Set(bezNastaw.map((w) => w.urzadzenie_ref)).size;
-  const rodziny = (wynik?.rodziny ?? []).filter((r) => wiersze.some((w) => w.rodzina === r.id));
+  // Pasek filtra istnieje tylko przy wierszach bez nastaw; bez niego filtr nie działa (inaczej
+  // „bez nastaw” po uzupełnieniu ostatniej nastawy zostawiłby puste tabele bez drogi powrotu).
+  const filtrEfektywny: FiltrWierszy = bezNastaw.length > 0 ? filtr : 'wszystkie';
+  const widoczne = filtrujWiersze(wiersze, filtrEfektywny);
+  const rodziny = (wynik?.rodziny ?? []).filter((r) => widoczne.some((w) => w.rodzina === r.id));
+  const opcjeFiltra: readonly [FiltrWierszy, string, number][] = [
+    ['wszystkie', T.ziemneFiltrWszystkie(wiersze.length), wiersze.length],
+    ['z-wynikiem', T.ziemneFiltrZWynikiem(zWynikiem.length), zWynikiem.length],
+    ['bez-nastaw', T.ziemneFiltrBezNastaw(bezNastaw.length), bezNastaw.length],
+  ];
   if (!wynik || (wiersze.length === 0 && uziemienia.length === 0)) {
     return (
       <div className="mvd-eaz" data-testid={testid}>
@@ -479,15 +503,41 @@ export function TabelaOcenyZiemnozwarciowej({
       {urzadzenieRef === undefined ? <PasekSieci siec={wynik.siec ?? []} testid={testid} /> : null}
       {wynik.przypadek && wiersze.length > 0 ? <PasekPrzypadku przypadek={wynik.przypadek} testid={testid} /> : null}
       {bezNastaw.length > 0 ? (
-        <p className="mvd-eaz-braki" data-testid={`${testid}-braki-zbiorcze`}>
-          {T.ziemneBezNastaw(bezNastaw.length, polaBezNastaw)}
-        </p>
+        <div className="mvd-eaz-filtr-pasek">
+          <p className="mvd-eaz-braki" data-testid={`${testid}-braki-zbiorcze`}>
+            {T.ziemneBezNastaw(bezNastaw.length, polaBezNastaw)}
+          </p>
+          {/* Filtr wierszy: porządek wierszy zostaje porządkiem backendu (stacja, pole, funkcja);
+              filtr tylko ukrywa — stan widoczny (aria-pressed), domyślnie wszystkie. */}
+          <div
+            className="mvd-eaz-filtr"
+            role="group"
+            aria-label={T.ziemneFiltrEtykieta}
+            data-testid={`${testid}-filtr`}
+            data-filtr={filtrEfektywny}
+          >
+            <span className="mvd-eaz-pasek-etykieta">{T.ziemneFiltrEtykieta}:</span>
+            {opcjeFiltra.map(([id, etykieta, liczba]) => (
+              <button
+                key={id}
+                type="button"
+                className="mvd-eaz-akcja"
+                aria-pressed={filtrEfektywny === id}
+                disabled={liczba === 0 && filtrEfektywny !== id}
+                data-testid={`${testid}-filtr-${id}`}
+                onClick={() => setFiltr(id)}
+              >
+                {etykieta}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
       {rodziny.map((r) => (
         <TabelaRodziny
           key={r.id}
           rodzina={r}
-          wiersze={wiersze.filter((w) => w.rodzina === r.id)}
+          wiersze={widoczne.filter((w) => w.rodzina === r.id)}
           wynik={wynik}
           onUzupelnij={onUzupelnij}
           testid={testid}

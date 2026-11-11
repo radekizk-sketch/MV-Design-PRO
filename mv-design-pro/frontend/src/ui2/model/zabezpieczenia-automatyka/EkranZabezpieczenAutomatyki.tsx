@@ -213,6 +213,7 @@ function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia
                   {otwarty && w.sterownikRef !== null ? (
                     <tr className="mvd-za-edytor-wiersz">
                       <td colSpan={LICZBA_KOLUMN}>
+                        <div className="mvd-za-edytor-tresc">
                         {widok.isLoading && !nastawyWgUrzadzenia.has(w.sterownikRef) ? (
                           <p className="mvd-za-pusto" data-testid="mvd-za-nastawy-ladowanie">
                             {T.nastawyLadowanie}
@@ -225,6 +226,7 @@ function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia
                           fokusFunkcjaRef={w.sterownikRef === fokusSterownik ? fokusFunkcjaRef : null}
                           testid={`mvd-za-edytor-${w.sterownikRef}`}
                         />
+                        </div>
                       </td>
                     </tr>
                   ) : null}

@@ -164,6 +164,11 @@ export interface WierszRodziny {
   urzadzenie_ref: string;
   sterownik_pl: string;
   pole_pl: string | null;
+  /** Nazwa pola z modelu (pierwsza linia komórki „Pole”). */
+  pole_nazwa_pl: string | null;
+  /** Stacja albo rozdzielnica odgałęźna — tylko przy nazwie pola powtarzalnej w modelu
+   *  (druga linia komórki „Pole”; ten sam warunek co `pole_pl` w raporcie). */
+  pole_kontener_pl: string | null;
   funkcja_ref: string;
   kod: string;
   ansi: string;
@@ -252,6 +257,19 @@ export interface WynikOcenyZiemnozwarciowej {
   wiersze_uziemien?: WierszUziemienia[];
   przypisy_uziemien?: Record<string, string>;
   zrodla_wymagan?: ZrodloWymagania[];
+}
+
+/** Wiersz bez nastaw (nazwane braki) — JEDNO źródło dla licznika „Bez nastaw” i filtra wierszy. */
+export function wierszBezNastaw(w: WierszRodziny): boolean {
+  return w.braki.length > 0;
+}
+
+export type FiltrWierszy = 'wszystkie' | 'z-wynikiem' | 'bez-nastaw';
+
+/** Wiersze widoczne przy filtrze — dopełnienie tego samego predykatu (`wierszBezNastaw`). */
+export function filtrujWiersze(wiersze: readonly WierszRodziny[], filtr: FiltrWierszy): WierszRodziny[] {
+  if (filtr === 'wszystkie') return [...wiersze];
+  return wiersze.filter((w) => wierszBezNastaw(w) === (filtr === 'bez-nastaw'));
 }
 
 /** Wiersze rodzin w kolejności backendu; `urzadzenieRef` zawęża do jednego sterownika. */

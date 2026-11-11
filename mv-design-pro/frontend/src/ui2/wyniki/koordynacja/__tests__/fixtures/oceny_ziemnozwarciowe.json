@@ -2338,6 +2338,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.1",
         "pole_pl": "Pole liniowe GPZ 1.1",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,89 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,89 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −477,9 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -2472,6 +2474,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/001/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
         ],
         "oznaczenie_pl": "Io> kierunkowe",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.1",
         "pole_pl": "Pole liniowe GPZ 1.1",
         "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 80,34 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +78,34 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.1 (przed wymuszeniem składowej czynnej), względnie +3917 % wartości granicznej).",
         "rodzina": "KIERUNKOWE_67N",
@@ -2954,6 +2958,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.2",
         "pole_pl": "Pole liniowe GPZ 1.2",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 36,12 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −31,12 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −622,5 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -3087,6 +3093,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/002/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
         ],
         "oznaczenie_pl": "Io> kierunkowe",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.2",
         "pole_pl": "Pole liniowe GPZ 1.2",
         "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 73,91 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +71,91 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.2 (przed wymuszeniem składowej czynnej), względnie +3596 % wartości granicznej).",
         "rodzina": "KIERUNKOWE_67N",
@@ -3569,6 +3577,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.3",
         "pole_pl": "Pole liniowe GPZ 1.3",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 53,91 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −48,91 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 2, względnie −978,2 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -3702,6 +3712,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/a685c5ceea811d86f06692c9c39ae620/bay/001/003/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
         ],
         "oznaczenie_pl": "Io> kierunkowe",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.3",
         "pole_pl": "Pole liniowe GPZ 1.3",
         "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 57,81 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +55,81 A, punkt: zwarcie w punkcie Zacisk odpływowy Pole liniowe GPZ 1.3 (przed wymuszeniem składowej czynnej), względnie +2790 % wartości granicznej).",
         "rodzina": "KIERUNKOWE_67N",
@@ -4205,6 +4217,8 @@
           "zabezpieczenia.ziemnozwarciowe.sn/56c60428083632fed7e5daf111007841/bay/sterownik.59N"
         ],
         "oznaczenie_pl": "U0>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole pomiarowe",
         "pole_pl": "Pole pomiarowe",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWONAPIECIOWE",
@@ -4237,6 +4251,8 @@
           "zabezpieczenia.ziemnozwarciowe.sw/d9fc5bdc862eb39a69e3c616b225f1d9/switch/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Zabezpieczenie odejścia ST1",
         "pole_pl": "Zabezpieczenie odejścia ST1",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Zabezpieczenie odejścia ST1) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 10,62 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Zabezpieczenie odejścia ST1 zapisane w modelu sieci projektu” (margines −5,622 A, punkt: zwarcie poza strefą w punkcie Zacisk końcowy Kabel pola 3, względnie −112,4 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -6997,6 +7013,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.1",
         "pole_pl": "Pole liniowe GPZ 1.1",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 28,03 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −23,03 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −460,5 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -7131,6 +7149,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/001/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
         ],
         "oznaczenie_pl": "Io> kierunkowe",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.1",
         "pole_pl": "Pole liniowe GPZ 1.1",
         "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 8,587 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.1 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +6,587 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel odejścia ST1 (przed wymuszeniem składowej czynnej), względnie +329,4 % wartości granicznej).",
         "rodzina": "KIERUNKOWE_67N",
@@ -7613,6 +7633,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.2",
         "pole_pl": "Pole liniowe GPZ 1.2",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 35,04 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −30,04 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −600,8 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -7746,6 +7768,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/002/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
         ],
         "oznaczenie_pl": "Io> kierunkowe",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.2",
         "pole_pl": "Pole liniowe GPZ 1.2",
         "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 8,523 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.2 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +6,523 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel pola 2 (przed wymuszeniem składowej czynnej), względnie +326,2 % wartości granicznej).",
         "rodzina": "KIERUNKOWE_67N",
@@ -8228,6 +8252,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.3",
         "pole_pl": "Pole liniowe GPZ 1.3",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 52,61 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines −47,61 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −952,2 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",
@@ -8361,6 +8387,8 @@
           "zabezpieczenia.ziemnozwarciowe.gpz/faf191e734581c52caa6945df15cc258/bay/001/003/sterownik.67N.WSPOLCZYNNIK_CZULOSCI_OPOR"
         ],
         "oznaczenie_pl": "Io> kierunkowe",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole liniowe GPZ 1.3",
         "pole_pl": "Pole liniowe GPZ 1.3",
         "przyczyna_pl": "Przy zwarciu doziemnym w każdym węźle strefy rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna) osiąga próg nastawy funkcji Io> kierunkowe (67N) — funkcja ruszy (Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV) — kryterium spełnione. Rzut prądu 3I0 na kierunek charakterystyczny (strona pierwotna): 8,17 A wobec wymaganych ≥ 2 A wg funkcja Io> kierunkowe (67N): próg 2 A (strona pierwotna) „Nastawy zabezpieczenia Sterownik · Pole liniowe GPZ 1.3 — GPZ 15 kV zapisane w modelu sieci projektu” (margines +6,17 A, punkt: zwarcie w punkcie Zacisk końcowy Kabel pola 3 (przed wymuszeniem składowej czynnej), względnie +308,5 % wartości granicznej).",
         "rodzina": "KIERUNKOWE_67N",
@@ -8864,6 +8892,8 @@
           "zabezpieczenia.ziemnozwarciowe.sn/f08415cf9528654b19c6a9d76da8dcbb/bay/sterownik.59N"
         ],
         "oznaczenie_pl": "U0>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Pole pomiarowe",
         "pole_pl": "Pole pomiarowe",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji U0> (59N) przy zwarciu doziemnym (Sterownik · Pole pomiarowe — GPZ 15 kV) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja U0> (59N) zabezpieczenia Sterownik · Pole pomiarowe — GPZ 15 kV nie ma przypiętego wejścia 3U0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3U0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg napięcia przesunięcia punktu neutralnego U₀, zwłoka czasowa — uzupełnij w karcie pola). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWONAPIECIOWE",
@@ -8896,6 +8926,8 @@
           "zabezpieczenia.ziemnozwarciowe.sw/a11f5359ce8cad1bc86cdb00e80d1cb7/switch/sterownik.51N.WSPOLCZYNNIK_ODSTROJENIA"
         ],
         "oznaczenie_pl": "Io>",
+        "pole_kontener_pl": null,
+        "pole_nazwa_pl": "Zabezpieczenie odejścia ST1",
         "pole_pl": "Zabezpieczenie odejścia ST1",
         "przyczyna_pl": "Przy zwarciu doziemnym poza strefą pola (szyny, linie sąsiednie) prąd zerowy 3I0 w polu (strona pierwotna) nie osiąga progu funkcji Io> (51N) — funkcja nie zadziała zbędnie (Zabezpieczenie odejścia ST1) — kryterium naruszone. Prąd zerowy 3I0 w polu (strona pierwotna): 10,3 A wobec wymaganych ≤ 5 A wg funkcja Io> (51N): próg 5 A (strona pierwotna) „Nastawy zabezpieczenia Zabezpieczenie odejścia ST1 zapisane w modelu sieci projektu” (margines −5,303 A, punkt: zwarcie poza strefą w punkcie Zacisk odpływowy Pole pomiarowe, względnie −106,1 % wartości granicznej).",
         "rodzina": "ZEROWOPRADOWE",

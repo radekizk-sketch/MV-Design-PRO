@@ -125,7 +125,10 @@
   font-size: 12.5px;
 }
 
-.mvd-za-tabela th {
+/* Selektory DZIECKA: tabele zagnieżdżone w rozwiniętym wierszu (karta nastaw, tabela rodziny
+ * oceny) mają własne style — selektor potomka narzucał im krój maszynowy i odstępy 8 px
+ * (kadry karty EKRANY-EAZ). */
+.mvd-za-tabela > thead > tr > th {
   text-align: left;
   padding: 3px 8px;
   border-bottom: 1px solid var(--mvd-line);
@@ -135,14 +138,14 @@
   white-space: nowrap;
 }
 
-.mvd-za-tabela td {
+.mvd-za-tabela > tbody > tr > td {
   padding: 3px 8px;
   border-bottom: 1px solid var(--mvd-line);
   color: var(--mvd-ink);
   vertical-align: middle;
 }
 
-.mvd-za-tabela tr:last-child td {
+.mvd-za-tabela > tbody > tr:last-child > td {
   border-bottom: none;
 }
 
@@ -181,8 +184,16 @@
   gap: 4px;
 }
 
-.mvd-za-edytor-wiersz > td {
+.mvd-za-tabela > tbody > .mvd-za-edytor-wiersz > td {
   padding: 4px 0 8px;
+}
+
+/* Karta nastaw w rozwiniętym wierszu nie rozpycha tabeli pól (szerokość minimalna treści
+ * karty — tabela rodziny 67N, tabela nastaw — przewijała całą tabelę E-27 w bok): treść
+ * przyjmuje szerokość wiersza, szersze tabele przewijają się we własnym kontenerze. */
+.mvd-za-edytor-tresc {
+  width: 0;
+  min-width: 100%;
 }
 
 /* --- Następny krok -------------------------------------------------------- */

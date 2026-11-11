@@ -16,12 +16,13 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 import { katalogZrzutow } from './katalogZrzutow';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
+import { tabelePrzyciete, widocznoscSkrajnychKolumn, type WidocznoscKolumn } from './scenaDoziemieniaE2e';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/uiux/zrzuty/ekrany-eaz'));
 
-type Wiersz = { urzadzenie_ref: string; stan: string };
+type Wiersz = { urzadzenie_ref: string; stan: string; braki: unknown[] };
 type Rodzina = { id: string; kolumny: { klucz: string }[] };
 const WYNIK = JSON.parse(
   fs.readFileSync(path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_wynik.json'), 'utf-8'),
@@ -64,6 +65,28 @@ for (const theme of ['dark', 'light'] as const) {
     ).toEqual(WYNIK.nadpradowe.wiersze.map((w) => `${w.urzadzenie_ref}|${w.stan}`));
     const kolumny = await nadpr.locator('th[data-kolumna]').evaluateAll((t) => t.map((e) => e.getAttribute('data-kolumna')));
     expect(kolumny).toEqual(WYNIK.nadpradowe.rodziny[0].kolumny.map((k) => k.klucz));
+    // Zakładka z tabelą rodziny: panel biegów i urządzeń domyślnie zwinięty (pełna szerokość).
+    await expect(page.getByTestId('coordination-panel-przelacz')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('coordination-panel-boczny')).toHaveCount(0);
+    // Porządek wierszy z backendu: stacje S01…S04 (druga linia komórki „Pole”).
+    const stacje = await nadpr.getByTestId('coordination-nadpradowe-kontener').allTextContents();
+    expect(stacje.length).toBeGreaterThan(0);
+    expect(stacje).toEqual([...stacje].sort((a, b) => a.localeCompare(b, 'pl', { numeric: true })));
+
+    // Filtr wierszy przy liczniku braków: stan widoczny, porządek bez zmian, domyślnie wszystkie.
+    const filtr = nadpr.getByTestId('coordination-nadpradowe-filtr');
+    await expect(filtr).toHaveAttribute('data-filtr', 'wszystkie');
+    const zWynikiem = WYNIK.nadpradowe.wiersze.filter((w) => w.braki.length === 0);
+    await filtr.getByTestId('coordination-nadpradowe-filtr-z-wynikiem').click();
+    await expect(filtr).toHaveAttribute('data-filtr', 'z-wynikiem');
+    await expect(filtr.getByTestId('coordination-nadpradowe-filtr-z-wynikiem')).toHaveAttribute('aria-pressed', 'true');
+    expect(await wiersze.evaluateAll((w) => w.map((e) => e.getAttribute('data-urzadzenie')))).toEqual(
+      zWynikiem.map((w) => w.urzadzenie_ref),
+    );
+    await filtr.getByTestId('coordination-nadpradowe-filtr-bez-nastaw').click();
+    await expect(wiersze).toHaveCount(WYNIK.nadpradowe.wiersze.length - zWynikiem.length);
+    await filtr.getByTestId('coordination-nadpradowe-filtr-wszystkie').click();
+    await expect(wiersze).toHaveCount(WYNIK.nadpradowe.wiersze.length);
 
     // Kontrast tekstu wiersza rodziny względem tła, na którym leży (WCAG 2.x, ≥ 4,5:1 dla tekstu
     // zwykłego) — w motywie ciemnym tabela z tokenów leżała na białej karcie (≈1,3:1).
@@ -98,20 +121,32 @@ for (const theme of ['dark', 'light'] as const) {
     expect(await kontrast('coordination-ziemne'), 'kontrast wiersza ziemnozwarciowego').toBeGreaterThanOrEqual(4.5);
 
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    const pomiar: Record<string, WidocznoscKolumn[]> = {};
     for (const { szer, wys } of OKNA) {
       const okno = `${szer}x${wys}`;
       await page.setViewportSize({ width: szer, height: wys });
-      await page.getByTestId('tab-nadpradowe').click();
-      await nadpr.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(300);
-      await page.screenshot({ path: path.join(OUTPUT_DIR, `koordynacja-nadpradowe-${okno}-${theme}.png`) });
-      await page.getByTestId('tab-ziemne').click();
-      const ziemne = page.getByTestId('coordination-ziemne');
-      await expect(ziemne).toBeVisible({ timeout: 15000 });
-      await ziemne.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(300);
-      await page.screenshot({ path: path.join(OUTPUT_DIR, `koordynacja-ziemne-${okno}-${theme}.png`) });
+      for (const zakladka of ['nadpradowe', 'ziemne'] as const) {
+        await page.getByTestId(`tab-${zakladka}`).click();
+        const tabela = page.getByTestId(`coordination-${zakladka}`);
+        await expect(tabela).toBeVisible({ timeout: 15000 });
+        // Źródła wymagań rozwinięte na czas pomiaru — ich tabela też musi się zmieścić.
+        const zrodla = tabela.getByTestId(`coordination-${zakladka}-zrodla`);
+        const zZrodlami = (await zrodla.count()) > 0;
+        if (zZrodlami) await zrodla.locator('summary').click();
+        await page.waitForTimeout(300);
+        const w = await widocznoscSkrajnychKolumn(tabela);
+        pomiar[`${zakladka}-${okno}`] = w;
+        expect(w.length, `tabele ${zakladka} ${okno}`).toBeGreaterThan(0);
+        expect(tabelePrzyciete(w), `koordynacja ${zakladka} ${okno}`).toEqual([]);
+        if (zZrodlami) await zrodla.locator('summary').click();
+        await tabela.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(300);
+        await page.screenshot({ path: path.join(OUTPUT_DIR, `koordynacja-${zakladka}-${okno}-${theme}.png`) });
+      }
     }
+    const plik = path.resolve(process.env.POMIAR_EAZ_KATALOG ?? 'test-results', `pomiar-koordynacja-${theme}.json`);
+    fs.mkdirSync(path.dirname(plik), { recursive: true });
+    fs.writeFileSync(plik, `${JSON.stringify(pomiar, null, 2)}\n`);
     expect(errs, `błędy renderu koordynacji/${theme}`).toEqual([]);
   });
 }

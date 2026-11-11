@@ -386,6 +386,45 @@ describe('wynik i odmowy', () => {
     });
   });
 
+  // Panel biegów i urządzeń: iloczyn {zakładka wąska (podsumowanie, selektywność), szeroka
+  // (nadprądowe 51/50, zwarcia doziemne)} × {wybór projektanta: brak, rozwiń, zwiń}. Domyślnie
+  // zwinięty wyłącznie na zakładkach z tabelą rodziny (komplet kolumn bez przewijania w bok);
+  // wybór projektanta wygrywa z domyślnym na każdej zakładce. Przed wynikiem panel jest zawsze.
+  it('panel biegów i urządzeń — zakładka × wybór projektanta', async () => {
+    const user = userEvent.setup();
+    zBiegami();
+    render(<ProtectionCoordinationPage />);
+    await waitFor(() => expect(screen.getByTestId('coordination-run-min')).toHaveTextContent('✓'));
+    expect(screen.getByTestId('coordination-panel-boczny')).toBeInTheDocument();
+    expect(screen.queryByTestId('coordination-panel-przelacz')).toBeNull();
+    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await screen.findByTestId('tab-nadpradowe');
+    const ZAKLADKI = [
+      ['summary', false],
+      ['selectivity', false],
+      ['nadpradowe', true],
+      ['ziemne', true],
+    ] as const;
+    const panel = () => screen.queryByTestId('coordination-panel-boczny') !== null;
+    const przelacz = () => screen.getByTestId('coordination-panel-przelacz');
+    for (const [id, szeroka] of ZAKLADKI) {
+      await user.click(screen.getByTestId(`tab-${id}`));
+      expect(panel(), `${id} — domyślnie`).toBe(!szeroka);
+      expect(przelacz()).toHaveAttribute('aria-expanded', String(!szeroka));
+    }
+    for (const wybor of [true, false]) {
+      if (panel() !== wybor) await user.click(przelacz());
+      for (const [id] of ZAKLADKI) {
+        await user.click(screen.getByTestId(`tab-${id}`));
+        expect(panel(), `${id} — wybór ${wybor ? 'rozwiń' : 'zwiń'}`).toBe(wybor);
+        expect(przelacz()).toHaveAttribute('aria-expanded', String(wybor));
+        expect(przelacz()).toHaveTextContent(wybor ? LABELS.panelBoczny.zwin : LABELS.panelBoczny.rozwin);
+        // Zwinięty panel nie zabiera uruchomienia analizy — zwarty pasek z przyciskiem.
+        expect(screen.getAllByTestId('run-analysis-button')).toHaveLength(1);
+      }
+    }
+  });
+
   it('wynik bez pola ziemnozwarciowego (sieć bez funkcji doziemnych) — uczciwy stan zerowy zakładki', async () => {
     const user = userEvent.setup();
     zBiegami();

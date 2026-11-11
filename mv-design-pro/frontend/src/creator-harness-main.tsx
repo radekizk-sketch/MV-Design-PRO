@@ -2358,7 +2358,11 @@ function Harness() {
       style={{
         // Sceny rundy dowodowej V-B mają szerokie tabele (kolumny decyzyjne +
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
-        width: [
+        // Scena „koordynacja” = szerokość panelu wyników aplikacji (okno minus nawigacja
+        // przestrzeni i marginesy: 1096 px przy 1440, 936 px przy 1280 — pomiar karty
+        // EKRANY-EAZ w żywej aplikacji), żeby kadr i asercja widoczności ostatniej kolumny
+        // tabel rodzin mierzyły układ, który widzi projektant, a nie stałe 1180 px.
+        width: creator === 'koordynacja' ? 'calc(100vw - 344px)' : [
           'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
           'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-dynamika-odbior-brak', 'akademickie',
           'ocena', 'ocena-przekroczenia',

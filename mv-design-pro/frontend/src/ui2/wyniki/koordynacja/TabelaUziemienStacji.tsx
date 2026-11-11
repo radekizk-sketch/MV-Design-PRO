@@ -112,6 +112,7 @@ export function TabelaUziemienStacji({
                         className="mvd-eaz-akcja"
                         aria-expanded={otwarty}
                         title={T.ziemneSzczegolyOpis}
+                        aria-label={otwarty ? T.ziemneSzczegolyZwin : T.ziemneSzczegoly}
                         data-testid={`${testid}-szczegoly-przelacz`}
                         onClick={() =>
                           setOtwarte((o) => {
@@ -122,7 +123,9 @@ export function TabelaUziemienStacji({
                           })
                         }
                       >
-                        {otwarty ? T.ziemneSzczegolyZwin : T.ziemneSzczegoly}
+                        {/* Znak rozwinięcia zamiast słowa — kolumna szczegółów nie rozpycha tabeli rodziny
+                            (pomiar karty EKRANY-EAZ); nazwa dostępna w aria-label. */}
+                        <span aria-hidden="true">{otwarty ? '▾' : '▸'}</span>
                       </button>
                     </td>
                   </tr>

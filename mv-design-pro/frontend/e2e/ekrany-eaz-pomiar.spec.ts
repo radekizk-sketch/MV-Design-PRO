@@ -17,9 +17,12 @@ import {
   otworzOceneZabezpieczen,
   otworzZabezpieczeniaIAutomatyke,
   pomiarPierwszegoPlanu,
+  tabelePrzyciete,
   uruchomOcene,
   ustawNastawy,
+  widocznoscSkrajnychKolumn,
   zbudujSiec,
+  type WidocznoscKolumn,
 } from './scenaDoziemieniaE2e';
 
 const PLIK = process.env.POMIAR_EAZ_PLIK ?? path.resolve('test-results/pomiar-eaz.json');
@@ -48,14 +51,28 @@ test('pomiar przed/po: E-28 i karta nastaw w scenariuszu 67N', async ({ page, re
   await expect(tabela).toBeVisible({ timeout: 20000 });
   await page.waitForTimeout(300);
   const e28 = await pomiarPierwszegoPlanu(tabela);
-  // Po karcie: przy 1440×900 żadna tabela oceny nie wychodzi poza panel (bez zawijania
-  // nagłówków rodzina 67N miała 1280 px, bez zawijania odwołania tabela źródeł 1620 px — w panelu
-  // 1096 px). Na kodzie sprzed karty tabela rodziny nie istniała, a spec mierzy oba stany —
-  // asercja tylko, gdy ekran ma tabele rodzin.
-  if ((await tabela.locator('[data-rodzina]').count()) > 0) expect(e28.tabele_szersze_niz_panel).toEqual([]);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.waitForTimeout(300);
   const e28w1280 = await pomiarPierwszegoPlanu(tabela);
+
+  // Widoczność skrajnych kolumn KAŻDEJ tabeli oceny (rodziny, uziemienia, źródła wymagań
+  // rozwinięte) w obu oknach — względem okna i każdego kontenera obcinającego. Na kodzie
+  // sprzed karty tabel rodzin nie było (spec mierzy oba stany): asercja, gdy ekran je ma.
+  const zRodzinami = (await tabela.locator('[data-rodzina]').count()) > 0;
+  const zrodla = page.getByTestId('mvd-ocena-zabezpieczen-ziemne-zrodla');
+  if ((await zrodla.count()) > 0) await zrodla.locator('summary').click();
+  const kolumnyE28: Record<string, WidocznoscKolumn[]> = {};
+  for (const [szer, wys] of [
+    [1440, 900],
+    [1280, 720],
+  ] as const) {
+    await page.setViewportSize({ width: szer, height: wys });
+    await page.waitForTimeout(300);
+    const w = await widocznoscSkrajnychKolumn(tabela);
+    kolumnyE28[`${szer}x${wys}`] = w;
+    if (zRodzinami) expect(tabelePrzyciete(w), `E-28 ${szer}×${wys}`).toEqual([]);
+  }
+  if ((await zrodla.count()) > 0) await zrodla.locator('summary').click();
   await page.setViewportSize({ width: 1440, height: 900 });
 
   await otworzZabezpieczeniaIAutomatyke(page);
@@ -66,11 +83,24 @@ test('pomiar przed/po: E-28 i karta nastaw w scenariuszu 67N', async ({ page, re
   await expect(karta).toBeVisible({ timeout: 20000 });
   await page.waitForTimeout(300);
   const kartaNastaw = await pomiarPierwszegoPlanu(karta);
+  const kolumnyKarty: Record<string, WidocznoscKolumn[]> = {};
+  for (const [szer, wys] of [
+    [1440, 900],
+    [1280, 720],
+  ] as const) {
+    await page.setViewportSize({ width: szer, height: wys });
+    await page.waitForTimeout(300);
+    const w = await widocznoscSkrajnychKolumn(karta);
+    kolumnyKarty[`${szer}x${wys}`] = w;
+    if (zRodzinami) expect(tabelePrzyciete(w), `karta nastaw ${szer}×${wys}`).toEqual([]);
+  }
 
   const wynik = {
     e28_tabela_zwarc_doziemnych: e28,
     e28_tabela_zwarc_doziemnych_1280x720: e28w1280,
     karta_nastaw_ocena: kartaNastaw,
+    skrajne_kolumny_e28: kolumnyE28,
+    skrajne_kolumny_karty_nastaw: kolumnyKarty,
     klikniecia_do_nastawy: doNastawy.liczba,
     klikniecia_do_wyniku: doWyniku.liczba,
     okno: '1440x900',

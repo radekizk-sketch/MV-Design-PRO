@@ -27,6 +27,7 @@ from application.analyses.protection.coordination.models import (
 from application.analyses.protection.ocena_nadpradowa import (
     ETYKIETY_KRZYWYCH_PL,
     NastawyUrzadzenia,
+    OdmowaUrzadzenia,
     WynikOceny,
     czas_urzadzenia,
     stopnie_nadpradowe,
@@ -34,8 +35,9 @@ from application.analyses.protection.ocena_nadpradowa import (
 )
 from application.analyses.protection.ocena_ziemnozwarciowa import (
     RekordOcenyZiemnozwarciowej,
-    nazwa_pola_sterownika,
+    pola_sterownikow,
     stan_wiersza,
+    uporzadkuj_wiersze_rodzin,
 )
 from application.analyses.protection.rodziny_eaz import (
     RODZINA_NADPRADOWA,
@@ -230,7 +232,7 @@ def wiersze_nadpradowe(
     }
     # Identyfikacja wiersza jak w rodzinach ziemnozwarciowych: „Pole” = nazwa pola z modelu,
     # nazwa sterownika w podpowiedzi; urządzenie bez pola — jego własna nazwa.
-    pola_modelu = {a.ref_id: nazwa_pola_sterownika(model, a) for a in model.protection_assignments}
+    pola_modelu = {ref: p.nazwa_wiersza_pl for ref, p in pola_sterownikow(model).items()}
     czulosc = {c.device_id: c for c in wynik.sensitivity_checks}
     przeciazalnosc = {c.device_id: c for c in wynik.overload_checks}
     odstepy: dict[str, list[Any]] = {}
@@ -249,7 +251,7 @@ def wiersze_nadpradowe(
     rekordy: list[RekordOcenyZiemnozwarciowej] = []
     odmowy: list[RekordOcenyZiemnozwarciowej] = []
     wiersze: list[dict[str, Any]] = []
-    urzadzenia = sorted(
+    urzadzenia: list[NastawyUrzadzenia | OdmowaUrzadzenia] = sorted(
         [
             *ocena_max.nastawy,
             *(
@@ -425,5 +427,5 @@ def wiersze_nadpradowe(
         "uziemienia": [],
         "odmowy": [r.to_dict() for r in odmowy],
         "rodziny": [RODZINA_NADPRADOWA.to_dict()],
-        "wiersze": wiersze,
+        "wiersze": uporzadkuj_wiersze_rodzin(model, wiersze),
     }

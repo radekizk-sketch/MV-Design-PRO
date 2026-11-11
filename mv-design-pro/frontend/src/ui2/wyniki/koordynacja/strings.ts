@@ -196,6 +196,10 @@ export const KOORDYNACJA_STRINGS = {
   ziemnePunkty: 'punkty',
   ziemneBezNastaw: (funkcji: number, pol: number) =>
     `Bez nastaw: ${funkcji} ${odmianaFunkcji(funkcji)} w ${pol} ${pol === 1 ? 'polu' : 'polach'}.`,
+  ziemneFiltrEtykieta: 'Pokaż wiersze',
+  ziemneFiltrWszystkie: (n: number) => `wszystkie (${n})`,
+  ziemneFiltrZWynikiem: (n: number) => `z wynikiem (${n})`,
+  ziemneFiltrBezNastaw: (n: number) => `bez nastaw (${n})`,
   ziemneKolPole: 'Pole',
   ziemneKolFunkcja: 'Funkcja',
   ziemneKolGrupa: 'Gr.',

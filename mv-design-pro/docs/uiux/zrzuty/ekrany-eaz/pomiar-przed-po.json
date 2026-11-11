@@ -1,7 +1,6 @@
 {
-  "opis": "Pomiar przed/po karty EKRANY-EAZ-ZIEMNOZWARCIOWE: scenariusz e2e 67N (e2e/ekrany-eaz-pomiar.spec.ts, realny backend, natywne kliki). Wysokość = scrollHeight elementu w px; słowa = innerText (pierwszy plan, bez zwiniętych szczegółów); kliknięcia liczone od palety poleceń do zapisanej nastawy i od „Oblicz” do widocznego wyniku oceny.",
+  "opis": "Pomiar przed/po karty EKRANY-EAZ-ZIEMNOZWARCIOWE: scenariusz e2e 67N (e2e/ekrany-eaz-pomiar.spec.ts, realny backend, natywne kliki). Wysokość = scrollHeight elementu w px; słowa = innerText (pierwszy plan, bez zwiniętych szczegółów); kliknięcia liczone od palety poleceń do zapisanej nastawy i od „Oblicz” do widocznego wyniku oceny. Skrajne kolumny: lewa/prawa krawędź pierwszej i OSTATNIEJ komórki nagłówka każdej tabeli względem okna i każdego kontenera przewijania poziomego (widoczne_od_px … widoczne_do_px); tabela mieści się, gdy lewa_px ≥ widoczne_od_px i prawa_px ≤ widoczne_do_px (tolerancja 1 px). Strona koordynacji (e2e/ekrany-eaz-koordynacja-screenshot.spec.ts, scena harnessu z fixtur realnych biegów G08, szerokość korzenia = szerokość panelu wyników aplikacji, oba motywy — pomiar identyczny): zakładki „Nadprądowe 51/50” i zwarć doziemnych ze źródłami wymagań rozwiniętymi.",
   "przed": {
-    "kod": "105b64f3d (rodzic pierwszego commitu karty 9ebf3eb1f)",
     "e28_tabela_zwarc_doziemnych": {
       "wysokosc_px": 1692,
       "slowa": 1365,
@@ -26,43 +25,265 @@
       "najszersza_tabela": "mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela",
       "tabele_szersze_niz_panel": []
     },
+    "skrajne_kolumny_e28": {
+      "1440x900": [
+        {
+          "tabela": "mvd-ocena-zabezpieczen-ziemne",
+          "lewa_px": 295,
+          "prawa_px": 1391,
+          "widoczne_od_px": 262,
+          "widoczne_do_px": 1424,
+          "okno_px": 1440
+        }
+      ],
+      "1280x720": [
+        {
+          "tabela": "mvd-ocena-zabezpieczen-ziemne",
+          "lewa_px": 295,
+          "prawa_px": 1231,
+          "widoczne_od_px": 262,
+          "widoczne_do_px": 1264,
+          "okno_px": 1280
+        }
+      ]
+    },
+    "skrajne_kolumny_karty_nastaw": {
+      "1440x900": [
+        {
+          "tabela": "mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela",
+          "lewa_px": 312,
+          "prawa_px": 1374,
+          "widoczne_od_px": 301,
+          "widoczne_do_px": 1385,
+          "okno_px": 1440
+        }
+      ],
+      "1280x720": [
+        {
+          "tabela": "mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela",
+          "lewa_px": 312,
+          "prawa_px": 1214,
+          "widoczne_od_px": 301,
+          "widoczne_do_px": 1225,
+          "okno_px": 1280
+        }
+      ]
+    },
     "klikniecia_do_nastawy": 10,
     "klikniecia_do_wyniku": 5,
-    "okno": "1440x900"
+    "okno": "1440x900",
+    "kod": "105b64f3d (rodzic pierwszego commitu karty 9ebf3eb1f)"
   },
   "po": {
-    "kod": "gałąź karty, commit niosący ten plik",
     "e28_tabela_zwarc_doziemnych": {
-      "wysokosc_px": 666,
-      "slowa": 332,
+      "wysokosc_px": 610,
+      "slowa": 342,
       "szerokosc_dostepna_px": 1096,
       "najszersza_tabela_px": 1096,
       "najszersza_tabela": "ZEROWOPRADOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
       "tabele_szersze_niz_panel": []
     },
     "e28_tabela_zwarc_doziemnych_1280x720": {
-      "wysokosc_px": 786,
-      "slowa": 332,
+      "wysokosc_px": 672,
+      "slowa": 342,
       "szerokosc_dostepna_px": 936,
-      "najszersza_tabela_px": 1006,
-      "najszersza_tabela": "KIERUNKOWE_67N mvd-ocena-zabezpieczen-ziemne-rodzina",
-      "tabele_szersze_niz_panel": [
-        {
-          "tabela": "KIERUNKOWE_67N mvd-ocena-zabezpieczen-ziemne-rodzina",
-          "szerokosc_px": 1006
-        }
-      ]
+      "najszersza_tabela_px": 936,
+      "najszersza_tabela": "ZEROWOPRADOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
+      "tabele_szersze_niz_panel": []
     },
     "karta_nastaw_ocena": {
-      "wysokosc_px": 164,
+      "wysokosc_px": 148,
       "slowa": 91,
-      "szerokosc_dostepna_px": 1334,
-      "najszersza_tabela_px": 1334,
+      "szerokosc_dostepna_px": 1062,
+      "najszersza_tabela_px": 1062,
       "najszersza_tabela": "KIERUNKOWE_67N mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela-rodzina",
       "tabele_szersze_niz_panel": []
     },
+    "skrajne_kolumny_e28": {
+      "1440x900": [
+        {
+          "tabela": "ZEROWOPRADOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "lewa_px": 295,
+          "prawa_px": 1391,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1391,
+          "okno_px": 1440
+        },
+        {
+          "tabela": "KIERUNKOWE_67N mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "lewa_px": 295,
+          "prawa_px": 1391,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1391,
+          "okno_px": 1440
+        },
+        {
+          "tabela": "ZEROWONAPIECIOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "lewa_px": 295,
+          "prawa_px": 1391,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1391,
+          "okno_px": 1440
+        },
+        {
+          "tabela": "mvd-ocena-zabezpieczen-ziemne-uziemienia",
+          "lewa_px": 295,
+          "prawa_px": 1391,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1391,
+          "okno_px": 1440
+        },
+        {
+          "tabela": "mvd-ocena-zabezpieczen-ziemne-zrodla",
+          "lewa_px": 295,
+          "prawa_px": 1391,
+          "widoczne_od_px": 262,
+          "widoczne_do_px": 1424,
+          "okno_px": 1440
+        }
+      ],
+      "1280x720": [
+        {
+          "tabela": "ZEROWOPRADOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "lewa_px": 295,
+          "prawa_px": 1231,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1231,
+          "okno_px": 1280
+        },
+        {
+          "tabela": "KIERUNKOWE_67N mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "lewa_px": 295,
+          "prawa_px": 1231,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1231,
+          "okno_px": 1280
+        },
+        {
+          "tabela": "ZEROWONAPIECIOWE mvd-ocena-zabezpieczen-ziemne-rodzina",
+          "lewa_px": 295,
+          "prawa_px": 1231,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1231,
+          "okno_px": 1280
+        },
+        {
+          "tabela": "mvd-ocena-zabezpieczen-ziemne-uziemienia",
+          "lewa_px": 295,
+          "prawa_px": 1231,
+          "widoczne_od_px": 295,
+          "widoczne_do_px": 1231,
+          "okno_px": 1280
+        },
+        {
+          "tabela": "mvd-ocena-zabezpieczen-ziemne-zrodla",
+          "lewa_px": 295,
+          "prawa_px": 1231,
+          "widoczne_od_px": 262,
+          "widoczne_do_px": 1264,
+          "okno_px": 1280
+        }
+      ]
+    },
+    "skrajne_kolumny_karty_nastaw": {
+      "1440x900": [
+        {
+          "tabela": "KIERUNKOWE_67N mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela-rodzina",
+          "lewa_px": 312,
+          "prawa_px": 1374,
+          "widoczne_od_px": 312,
+          "widoczne_do_px": 1374,
+          "okno_px": 1440
+        }
+      ],
+      "1280x720": [
+        {
+          "tabela": "KIERUNKOWE_67N mvd-za-edytor-gpz/675238c0dfff02a19876bbb94a2551b9/bay/001/001/sterownik-ziemne-tabela-rodzina",
+          "lewa_px": 312,
+          "prawa_px": 1214,
+          "widoczne_od_px": 312,
+          "widoczne_do_px": 1214,
+          "okno_px": 1280
+        }
+      ]
+    },
     "klikniecia_do_nastawy": 10,
     "klikniecia_do_wyniku": 5,
-    "okno": "1440x900"
+    "okno": "1440x900",
+    "kod": "gałąź karty EKRANY-EAZ-ZIEMNOZWARCIOWE (po poprawkach układu, porządku wierszy i filtra)"
+  },
+  "koordynacja_skrajne_kolumny_po": {
+    "nadpradowe-1440x900": [
+      {
+        "tabela": "NADPRADOWE coordination-nadpradowe-rodzina",
+        "lewa_px": 66,
+        "prawa_px": 1031,
+        "widoczne_od_px": 66,
+        "widoczne_do_px": 1031,
+        "okno_px": 1440
+      }
+    ],
+    "ziemne-1440x900": [
+      {
+        "tabela": "ZEROWOPRADOWE coordination-ziemne-rodzina",
+        "lewa_px": 66,
+        "prawa_px": 1031,
+        "widoczne_od_px": 66,
+        "widoczne_do_px": 1031,
+        "okno_px": 1440
+      },
+      {
+        "tabela": "coordination-ziemne-uziemienia",
+        "lewa_px": 66,
+        "prawa_px": 1031,
+        "widoczne_od_px": 66,
+        "widoczne_do_px": 1031,
+        "okno_px": 1440
+      },
+      {
+        "tabela": "coordination-ziemne-zrodla",
+        "lewa_px": 66,
+        "prawa_px": 1031,
+        "widoczne_od_px": 33,
+        "widoczne_do_px": 1063,
+        "okno_px": 1440
+      }
+    ],
+    "nadpradowe-1280x720": [
+      {
+        "tabela": "NADPRADOWE coordination-nadpradowe-rodzina",
+        "lewa_px": 66,
+        "prawa_px": 889,
+        "widoczne_od_px": 66,
+        "widoczne_do_px": 890,
+        "okno_px": 1280
+      }
+    ],
+    "ziemne-1280x720": [
+      {
+        "tabela": "ZEROWOPRADOWE coordination-ziemne-rodzina",
+        "lewa_px": 66,
+        "prawa_px": 871,
+        "widoczne_od_px": 66,
+        "widoczne_do_px": 871,
+        "okno_px": 1280
+      },
+      {
+        "tabela": "coordination-ziemne-uziemienia",
+        "lewa_px": 66,
+        "prawa_px": 871,
+        "widoczne_od_px": 66,
+        "widoczne_do_px": 871,
+        "okno_px": 1280
+      },
+      {
+        "tabela": "coordination-ziemne-zrodla",
+        "lewa_px": 66,
+        "prawa_px": 871,
+        "widoczne_od_px": 33,
+        "widoczne_do_px": 903,
+        "okno_px": 1280
+      }
+    ]
   }
 }
