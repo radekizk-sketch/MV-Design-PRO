@@ -2210,18 +2210,24 @@ def ocen_zabezpieczenia_biegu(
 
 
 def ocen_zabezpieczenia_ziemnozwarciowe_biegu(
-    model: EnergyNetworkModel, sc_run: CanonicalRun
+    model: EnergyNetworkModel,
+    sc_run: CanonicalRun,
+    *,
+    wymagania: Mapping[str, float] | None = None,
 ) -> WynikOcenyZiemnozwarciowej:
     """JEDNA ścieżka oceny zabezpieczeń ziemnozwarciowych i uziemień stacji na biegu zwarciowym.
 
     Funkcje i nastawy z ``model`` (D-21), topologia stref z grafu migawki biegu (ten sam graf co
     ocena nadprądowa). Fizyka sieci zerowej — solver ``network_model.solvers.doziemienie_sn``
     (zwarcie doziemne zależne od sposobu pracy punktu neutralnego); ten sam wynik zasila
-    zabezpieczenia i prąd uziomowy stacji (PN-EN 50522).
+    zabezpieczenia i prąd uziomowy stacji (PN-EN 50522). ``wymagania`` — wymagania EAZ
+    projektanta z przypadku obliczeniowego (``StudyCaseConfig.wymagania_eaz``); brak — tabela
+    źródeł ``rodziny_eaz.ZRODLA_WYMAGAN_EAZ``.
     """
     from application.analyses.protection.ocena_ziemnozwarciowa import (
         ocen_zabezpieczenia_ziemnozwarciowe,
     )
+    from domain.study_case import wymagania_eaz_z_danych
     from enm.mapping import map_enm_to_network_graph
 
     graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(sc_run.snapshot))
@@ -2229,6 +2235,7 @@ def ocen_zabezpieczenia_ziemnozwarciowe_biegu(
         model,
         graph,
         odniesienie=f"obliczenie zwarcia doziemnego sieci SN (migawka {sc_run.snapshot_hash[:12]})",
+        wymagania=wymagania_eaz_z_danych(wymagania) or None,
     )
 
 
@@ -2271,7 +2278,9 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
 
     model = EnergyNetworkModel.model_validate(run.snapshot)
     wynik = ocen_zabezpieczenia_biegu(model, sc_run, uow_factory=uow_factory)
-    ziemne = ocen_zabezpieczenia_ziemnozwarciowe_biegu(model, sc_run)
+    ziemne = ocen_zabezpieczenia_ziemnozwarciowe_biegu(
+        model, sc_run, wymagania=run.options.get("wymagania_eaz")
+    )
     pozycje_katalogu = {n.urzadzenie_ref: n.pozycja_katalogu for n in wynik.nastawy}
 
     evaluations = tuple(

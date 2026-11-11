@@ -37,7 +37,9 @@ from tests.reference_networks.sceny_zajetosci_pol import ok, op
 _KLUCZ = "case-koordynacja-ziemnozwarciowa"
 
 
-def _biegi(model: EnergyNetworkModel) -> tuple[str, str, Any]:
+def _biegi(
+    model: EnergyNetworkModel, wymagania_eaz: dict[str, float] | None = None
+) -> tuple[str, str, Any]:
     reset_canonical_runs()
     reset_enm_store()
     set_enm(_KLUCZ, model)
@@ -58,14 +60,19 @@ def _biegi(model: EnergyNetworkModel) -> tuple[str, str, Any]:
             case_id=_KLUCZ,
             klucz_twin=_KLUCZ,
             analysis_type="protection_sn",
-            options={"sc_run_id": ids["max"]},
+            options={
+                "sc_run_id": ids["max"],
+                **({"wymagania_eaz": wymagania_eaz} if wymagania_eaz else {}),
+            },
         ).id
     )
     assert ochrona.status == "FINISHED", ochrona.error_message
     return ids["max"], ids["min"], ochrona
 
 
-def _koordynuj(sc_max: str, sc_min: str) -> dict[str, Any]:
+def _koordynuj(
+    sc_max: str, sc_min: str, wymagania_eaz: dict[str, float] | None = None
+) -> dict[str, Any]:
     return koordynacja_z_biegow(
         model=get_enm(_KLUCZ),
         project_id="projekt",
@@ -74,6 +81,7 @@ def _koordynuj(sc_max: str, sc_min: str) -> dict[str, Any]:
         pf_run_id=None,
         pary_wskazane=None,
         config=CoordinationConfig(),
+        wymagania_eaz=wymagania_eaz,
     ).to_dict()
 
 
@@ -120,3 +128,17 @@ def test_sterowniki_wylacznie_ziemnozwarciowe_to_nie_model_bez_zabezpieczen() ->
     ziemne = wynik["ziemnozwarciowe"]
     assert ziemne == ochrona.raw_result["protection_result"]["ziemnozwarciowe"]
     assert {"51N", "67N"} <= {r["kod"] for r in ziemne["oceny"]}
+
+
+def test_wymagania_przypadku_rowne_w_biegu_i_koordynacji() -> None:
+    """Wymagania EAZ projektanta × konsument {bieg ``protection_sn``, koordynacja}: ten sam
+    wynik, wiersze ze stanem „wartość projektanta”; koordynacja bez wymagań — wynik inny
+    (wymaganie realnie wchodzi do oceny, nie jest ozdobą)."""
+    wymagania = {"k_b": 3.0}
+    model = EnergyNetworkModel.model_validate(scena_z_nastawami("IZOLOWANY"))
+    sc_max, sc_min, ochrona = _biegi(model, wymagania)
+    ziemne = _koordynuj(sc_max, sc_min, wymagania)["ziemnozwarciowe"]
+    assert ziemne == ochrona.raw_result["protection_result"]["ziemnozwarciowe"]
+    k_b = [w["wymagania"]["k_b"] for w in ziemne["wiersze"] if "k_b" in w["wymagania"]]
+    assert k_b and {(k["wartosc"], k["stan"]) for k in k_b} == {(3.0, "WARTOSC_PROJEKTANTA")}
+    assert _koordynuj(sc_max, sc_min)["ziemnozwarciowe"] != ziemne

@@ -12,7 +12,8 @@
     "operator_profile_id": "enea",
     "sc_input_mode": "simplified",
     "sc_simplified_sk_mva": null,
-    "sc_simplified_r_x_ratio": 0.1
+    "sc_simplified_r_x_ratio": 0.1,
+    "wymagania_eaz": {}
   },
   "is_active": true,
   "revision": 1,

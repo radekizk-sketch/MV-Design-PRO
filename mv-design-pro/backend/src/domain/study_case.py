@@ -24,10 +24,43 @@ juz nie czyta ani nie pisze — pilnuje tego `scripts/result_status_writer_guard
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
+
+#: Wymagania oceny zabezpieczeń ziemnozwarciowych, które projektant może podać w przypadku
+#: obliczeniowym zamiast wartości tabeli źródeł (``rodziny_eaz.ZRODLA_WYMAGAN_EAZ``): współczynnik
+#: bezpieczeństwa nastawy k_b, wymagany współczynnik czułości k_c przy doziemieniu metalicznym
+#: i przy doziemieniu oporowym (U₀ = 50 %). Lista ZAMKNIĘTA — klucz spoza niej to błąd danych.
+KLUCZE_WYMAGAN_EAZ: tuple[str, ...] = ("k_b", "k_c", "k_c_opor")
+
+
+def wymagania_eaz_z_danych(dane: Mapping[str, Any] | None) -> dict[str, float]:
+    """Wymagania EAZ przypadku po walidacji: klucz z ``KLUCZE_WYMAGAN_EAZ``, wartość skończona
+    dodatnia. Naruszenie — ``ValueError`` z nazwą klucza (odmowa danych, nie ciche pominięcie)."""
+    if not dane:
+        return {}
+    wynik: dict[str, float] = {}
+    for klucz, wartosc in dane.items():
+        if klucz not in KLUCZE_WYMAGAN_EAZ:
+            raise ValueError(
+                f"Wymaganie zabezpieczeń ziemnozwarciowych {klucz!r} spoza listy "
+                f"{', '.join(KLUCZE_WYMAGAN_EAZ)}"
+            )
+        if (
+            isinstance(wartosc, bool)
+            or not isinstance(wartosc, int | float)
+            or not math.isfinite(wartosc)
+            or wartosc <= 0
+        ):
+            raise ValueError(
+                f"Wymaganie {klucz} = {wartosc!r} musi być liczbą skończoną większą od zera"
+            )
+        wynik[klucz] = float(wartosc)
+    return dict(sorted(wynik.items()))
 
 
 @dataclass(frozen=True)
@@ -73,6 +106,14 @@ class StudyCaseConfig:
     sc_simplified_sk_mva: float | None = None  # S″k po stronie SN [MVA]
     sc_simplified_r_x_ratio: float = 0.1  # R/X stosunek po stronie SN (domyślnie 0.1)
 
+    # Wymagania oceny zabezpieczeń ziemnozwarciowych podane przez projektanta (k_b, k_c,
+    # k_c_opor — ``KLUCZE_WYMAGAN_EAZ``); puste — wartości tabeli źródeł. Wartość z przypadku
+    # jest w ocenie oznaczona jako „wartość projektanta”, nie udaje źródła ENEA.
+    wymagania_eaz: Mapping[str, float] = field(default_factory=dict, hash=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "wymagania_eaz", wymagania_eaz_z_danych(self.wymagania_eaz))
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for storage."""
         return {
@@ -85,6 +126,7 @@ class StudyCaseConfig:
             "sc_input_mode": self.sc_input_mode,
             "sc_simplified_sk_mva": self.sc_simplified_sk_mva,
             "sc_simplified_r_x_ratio": self.sc_simplified_r_x_ratio,
+            "wymagania_eaz": dict(self.wymagania_eaz),
         }
 
     @classmethod
@@ -100,6 +142,7 @@ class StudyCaseConfig:
             sc_input_mode=data.get("sc_input_mode", "simplified"),
             sc_simplified_sk_mva=data.get("sc_simplified_sk_mva"),
             sc_simplified_r_x_ratio=data.get("sc_simplified_r_x_ratio", 0.1),
+            wymagania_eaz=wymagania_eaz_z_danych(data.get("wymagania_eaz")),
         )
 
 

@@ -507,10 +507,6 @@ def _z_przypadku(symbol: str, wartosc: float) -> WymaganieWspolczynnika:
     )
 
 
-#: Klucze wymagań, które projektant może nadpisać w przypadku obliczeniowym
-#: (``StudyCaseConfig.wymagania_eaz``) — lista ZAMKNIĘTA, klucz spoza niej to błąd danych.
-KLUCZE_WYMAGAN_PRZYPADKU: tuple[str, ...] = ("k_b", "k_c", "k_c_opor")
-
 K_B_ROBOCZE = _ZRODLO["k_b"].wartosc
 
 

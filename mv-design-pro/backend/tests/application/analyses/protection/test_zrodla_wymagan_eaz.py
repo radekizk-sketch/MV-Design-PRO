@@ -31,6 +31,7 @@ from application.analyses.protection.rodziny_eaz import (
     wymaganie_k_c,
     wymaganie_k_c_opor,
 )
+from domain.study_case import KLUCZE_WYMAGAN_EAZ, wymagania_eaz_z_danych
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 
@@ -108,7 +109,7 @@ def test_wymagania_czytaja_tabele_bez_zmiany_stanu() -> None:
         assert u0 == wartosc and "II.4.5.4.1.5" in zdanie and WYDANIE in zdanie
 
 
-@pytest.mark.parametrize("klucz", ["k_b", "k_c", "k_c_opor"])
+@pytest.mark.parametrize("klucz", KLUCZE_WYMAGAN_EAZ)
 def test_wartosc_projektanta_oznaczona_nie_udaje_enea(klucz: str) -> None:
     wymagania = {klucz: 1.7}
     w = (
@@ -125,6 +126,17 @@ def test_wartosc_projektanta_oznaczona_nie_udaje_enea(klucz: str) -> None:
     assert w.podstawa.rodzaj == "ZALOZENIE_PROJEKTOWE" and w.podstawa.status == "WSKAZANE"
     assert "ENEA" not in w.podstawa.dokument and w.przyjete is False
     assert w.to_dict()["stan_pl"] == "wartość projektanta (przypadek obliczeniowy)"
+
+
+def test_lista_kluczy_przypadku_jest_zamknieta() -> None:
+    """Jedno źródło kluczy (domena przypadku): każdy klucz jest konsumowany przez ewaluator,
+    klucz spoza listy odrzuca walidacja przypadku."""
+    assert KLUCZE_WYMAGAN_EAZ == ("k_b", "k_c", "k_c_opor")
+    with pytest.raises(ValueError):
+        wymagania_eaz_z_danych({"k_x": 1.5})
+    for zle in (0.0, -1.0, float("nan"), float("inf"), "1,5", True):
+        with pytest.raises(ValueError):
+            wymagania_eaz_z_danych({"k_b": zle})
 
 
 def _rejestr() -> list[dict]:

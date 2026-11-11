@@ -11,7 +11,7 @@ z wynikiem biegu jest dozwolone wyłącznie, gdy oba opisują TĘ SAMĄ sieć
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 from uuid import UUID
@@ -110,6 +110,7 @@ def koordynacja_z_biegow(
     pary_wskazane: Sequence[tuple[str, str]] | None,
     config: CoordinationConfig,
     uow_factory: Any = None,
+    wymagania_eaz: Mapping[str, float] | None = None,
 ) -> CoordinationAnalysisResult:
     """Koordynacja urządzeń modelu na biegach — albo ``OdmowaKoordynacji``/``BiegNiemiarodajny``."""
     wejscie_biegow = wejscie_koordynacji_z_biegow(run_id_max=sc_run_id, run_id_min=sc_run_id_min)
@@ -124,7 +125,7 @@ def koordynacja_z_biegow(
     ocena_min = ocen_zabezpieczenia_biegu(model, bieg_min, uow_factory=uow_factory)
     # Ocena ziemnozwarciowa i uziemienia — ta sama funkcja co bieg oceny zabezpieczeń
     # (jedna ścieżka); stopniowanie funkcji ziemnozwarciowych jest jej częścią.
-    ziemne = ocen_zabezpieczenia_ziemnozwarciowe_biegu(model, bieg_max)
+    ziemne = ocen_zabezpieczenia_ziemnozwarciowe_biegu(model, bieg_max, wymagania=wymagania_eaz)
     if not ocena_max.nastawy and not ziemne.funkcje:
         raise OdmowaKoordynacji(
             "BRAK_ZABEZPIECZEN_W_MODELU",

@@ -32,7 +32,9 @@ from tests.test_execution_api import _klucz_modelu  # noqa: E402
 from tests.utils.biegi import wykonaj_bieg, wykonaj_bieg_zabezpieczen  # noqa: E402
 
 
-def _bieg(app_client: Any, sposob: SposobPracy) -> tuple[str, EnergyNetworkModel]:
+def _bieg(
+    app_client: Any, sposob: SposobPracy, wymagania_eaz: dict[str, float] | None = None
+) -> tuple[str, EnergyNetworkModel]:
     projekt = app_client.post("/api/projects", json={"name": f"Doziemienie {sposob}"})
     assert projekt.status_code == 201
     project_id = projekt.json()["id"]
@@ -42,6 +44,12 @@ def _bieg(app_client: Any, sposob: SposobPracy) -> tuple[str, EnergyNetworkModel
     )
     assert przypadek.status_code == 201
     case_id = str(przypadek.json()["id"])
+    if wymagania_eaz is not None:
+        # Ścieżka projektanta: zmiana konfiguracji przypadku (PATCH, pełna konfiguracja).
+        config = {**przypadek.json()["config"], "wymagania_eaz": wymagania_eaz}
+        zmiana = app_client.patch(f"/api/study-cases/{case_id}", json={"config": config})
+        assert zmiana.status_code == 200, zmiana.text
+        assert zmiana.json()["config"]["wymagania_eaz"] == wymagania_eaz
     model = EnergyNetworkModel.model_validate(scena_z_nastawami(sposob))
     set_enm(_klucz_modelu(case_id), model)
     sc = app_client.post(
@@ -114,3 +122,44 @@ def test_bieg_niesie_ocene_ziemnozwarciowa_i_uziemienia(app_client: Any, sposob:
     assert "siec_zerowa_z_modelu" in kroki
     assert "zwarcie_doziemne_c_min" in kroki and "zwarcie_doziemne_c_max" in kroki
     assert "uziemienie_stacji" in kroki
+
+
+@pytest.mark.parametrize("wymagania", [None, {"k_b": 1.5, "k_c": 2.5}])
+def test_wymagania_przypadku_trafiaja_do_biegu_jako_wartosc_projektanta(
+    app_client: Any, wymagania: dict[str, float] | None
+):
+    """Wymagania EAZ z konfiguracji przypadku × {brak, k_b i k_c projektanta}: bieg oceny niesie
+    je w wierszach ze stanem „wartość projektanta”; bez nich — wartości i stany tabeli źródeł.
+    Tabela źródeł wyniku bez zmian w obu wariantach (nadpisanie nie udaje ENEA)."""
+    run_id, _ = _bieg(app_client, "IZOLOWANY", wymagania)
+    ziemne = app_client.get(f"/api/protection-runs/{run_id}/results").json()["ziemnozwarciowe"]
+    wiersze = [w for w in ziemne["wiersze"] if w["kod"] in ("51N", "67N")]
+    assert wiersze
+    for w in wiersze:
+        k_b, k_c = w["wymagania"]["k_b"], w["wymagania"]["k_c"]
+        if wymagania is None:
+            assert (k_b["wartosc"], k_b["stan"]) == (1.2, "ZALOZENIE_INZYNIERSKIE")
+            assert (k_c["wartosc"], k_c["stan"]) == (1.5, "ENEA_ZWERYFIKOWANE")
+        else:
+            assert (k_b["wartosc"], k_b["stan"]) == (1.5, "WARTOSC_PROJEKTANTA")
+            assert (k_c["wartosc"], k_c["stan"]) == (2.5, "WARTOSC_PROJEKTANTA")
+            assert "ENEA" not in k_c["zrodlo_pl"]
+        # k_c,opor nie nadpisane — zostaje ENEA (ppkt 2).
+        assert w["wymagania"]["k_c_opor"]["stan"] == "ENEA_ZWERYFIKOWANE"
+    stany = {z["klucz"]: z["stan"] for z in ziemne["zrodla_wymagan"]}
+    assert stany["k_b"] == "ZALOZENIE_INZYNIERSKIE" and stany["k_c.zerowopradowe"] == (
+        "ENEA_ZWERYFIKOWANE"
+    )
+
+
+def test_wymaganie_spoza_listy_odrzucone(app_client: Any):
+    projekt = app_client.post("/api/projects", json={"name": "Wymagania błędne"}).json()
+    przypadek = app_client.post(
+        "/api/study-cases", json={"project_id": projekt["id"], "name": "P", "set_active": True}
+    ).json()
+    for zle in ({"k_x": 1.5}, {"k_b": -1.0}, {"k_c": 0}):
+        odp = app_client.patch(
+            f"/api/study-cases/{przypadek['id']}",
+            json={"config": {**przypadek["config"], "wymagania_eaz": zle}},
+        )
+        assert odp.status_code in (400, 422), (zle, odp.status_code, odp.text)

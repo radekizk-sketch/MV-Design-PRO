@@ -21,7 +21,7 @@ konsumenta (ekran czyta pełny wynik jednym odczytem); każda niosła wycinek te
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -34,6 +34,7 @@ from application.analyses.protection.coordination.z_biegow import (
 )
 from application.autorytet_biegu_zwarciowego import BiegNiemiarodajnyError
 from application.twin_key import klucz_twin_dla_projektu
+from enm.canonical_analysis import get_run as get_canonical_run
 from enm.store import get_enm
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
@@ -118,10 +119,46 @@ def run_coordination_analysis(
     inny niż 3F/2F, bieg rozpływu niewłaściwy, model bez zabezpieczeń nadprądowych.
     """
     model = get_enm(klucz_twin_dla_projektu(project_id, uow_factory))
-    return wykonaj_koordynacje(model=model, project_id=project_id, request=request)
+    return wykonaj_koordynacje(
+        model=model,
+        project_id=project_id,
+        request=request,
+        wymagania_eaz=_wymagania_eaz_biegu(request.sc_run_id, uow_factory),
+    )
 
 
-def wykonaj_koordynacje(*, model: Any, project_id: UUID, request: RunCoordinationRequest) -> dict:
+def _wymagania_eaz_biegu(
+    sc_run_id: str | None, uow_factory: Callable[[], UnitOfWork]
+) -> dict[str, float]:
+    """Wymagania EAZ projektanta z przypadku biegu zwarciowego MAX (ten sam przypadek, który
+    wskazał projektant); bieg nieznany albo przypadek spoza bazy — brak wymagań (odmowę
+    biegu nazywa most autorytetu w ``koordynacja_z_biegow``)."""
+    if not sc_run_id:
+        return {}
+    try:
+        bieg = get_canonical_run(UUID(sc_run_id))
+    except ValueError:
+        return {}
+    if bieg is None:
+        return {}
+    try:
+        case_uuid = UUID(str(bieg.case_id))
+    except ValueError:
+        # Bieg kluczowany identyfikatorem spoza bazy przypadków (magazyn bez przypadku) —
+        # przypadek nie niesie wymagań, ocena bierze tabelę źródeł.
+        return {}
+    with uow_factory() as uow:
+        przypadek = uow.cases.get_study_case(case_uuid) if uow.cases else None
+    return dict(przypadek.config.wymagania_eaz) if przypadek is not None else {}
+
+
+def wykonaj_koordynacje(
+    *,
+    model: Any,
+    project_id: UUID,
+    request: RunCoordinationRequest,
+    wymagania_eaz: Mapping[str, float] | None = None,
+) -> dict:
     """Wspólne wykonanie końcówki (API i generator fikstur harnessu — ta sama funkcja)."""
     config = (
         CoordinationConfig(**request.config.model_dump())
@@ -139,6 +176,7 @@ def wykonaj_koordynacje(*, model: Any, project_id: UUID, request: RunCoordinatio
                 [(p.nadrzedne_ref, p.podrzedne_ref) for p in request.pary] if request.pary else None
             ),
             config=config,
+            wymagania_eaz=wymagania_eaz,
         )
     except BiegNiemiarodajnyError as brak:
         raise HTTPException(

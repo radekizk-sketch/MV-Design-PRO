@@ -30,7 +30,7 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
-from api.klucz_twin_dep import klucz_twin_z_uow
+from api.klucz_twin_dep import klucz_twin_z_uow, przypadek_z_bazy
 from api.odmowa_http import OdmowaHttpError
 from application.execution import wykonawca_biegow
 from application.result_freshness import (
@@ -284,12 +284,24 @@ def create_protection_run(
             klucz_twin=klucz,
             project_id=str(project_id),
             analysis_type="protection_sn",
-            options={"sc_run_id": request.sc_run_id},
+            options={
+                "sc_run_id": request.sc_run_id,
+                # Wymagania EAZ projektanta z przypadku (k_b, k_c) — część wejścia biegu,
+                # więc wynik i odcisk biegu są funkcją migawki ORAZ wymagań przypadku.
+                **_wymagania_eaz_przypadku(request.protection_case_id, uow_factory),
+            },
         )
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
     return _run_to_response(run)
+
+
+def _wymagania_eaz_przypadku(case_id: str, uow_factory: Callable[[], UnitOfWork]) -> dict[str, Any]:
+    """Opcja ``wymagania_eaz`` biegu z konfiguracji przypadku (puste — klucz pominięty, odcisk
+    biegu bez wymagań projektanta bez zmian)."""
+    wymagania = dict(przypadek_z_bazy(case_id, uow_factory).config.wymagania_eaz)
+    return {"wymagania_eaz": wymagania} if wymagania else {}
 
 
 @router.post(

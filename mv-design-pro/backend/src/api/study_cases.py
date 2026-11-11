@@ -29,6 +29,7 @@ from application.study_case import (
     StudyCaseService,
 )
 from application.study_case.status_wynikow import pola_statusu_przypadku
+from domain.study_case import StudyCaseConfig
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
@@ -176,6 +177,20 @@ def _z_statusem(dane: dict[str, Any], uow_factory: Any) -> dict[str, Any]:
 # =============================================================================
 
 
+def _sprawdz_konfiguracje(config: dict[str, Any] | None) -> None:
+    """Konfiguracja przypadku z żądania musi dać się odczytać (``StudyCaseConfig.from_dict``):
+    wartość spoza dziedziny (np. wymaganie EAZ spoza listy albo niedodatnie) to odmowa 422
+    z nazwą pola, nie błąd serwera."""
+    if config is None:
+        return
+    try:
+        StudyCaseConfig.from_dict(config)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+
 @router.post("", response_model=StudyCaseResponse, status_code=status.HTTP_201_CREATED)
 def create_study_case(
     request: CreateStudyCaseRequest,
@@ -187,6 +202,7 @@ def create_study_case(
     POST /api/study-cases
     """
     project_id = _parse_uuid(request.project_id, "project_id")
+    _sprawdz_konfiguracje(request.config)
     service = _build_service(uow_factory)
 
     case = service.create_case(
@@ -252,6 +268,7 @@ def update_study_case(
     PATCH /api/study-cases/{case_id}
     """
     parsed_id = _parse_uuid(case_id, "case_id")
+    _sprawdz_konfiguracje(request.config)
     service = _build_service(uow_factory)
 
     try:
