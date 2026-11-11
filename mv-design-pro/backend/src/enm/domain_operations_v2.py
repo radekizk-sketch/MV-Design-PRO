@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import copy
 import math
-from collections.abc import Callable, Collection, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -109,6 +109,7 @@ from .domain_operations import (
     _nazwa_pola_w_modelu,
     _odmowa_typu_ladunku,
     _opt_float_any,
+    _powiaz_aparaty_pola_z_galezia,
     _powod_odmowy_tolerancji_nn,
     _require_catalog_ref,
     _require_transformer_fields,
@@ -156,6 +157,7 @@ from .nazwy_elementow import (
 )
 from .operacje_lacznikow import close_switch, open_switch, set_normal_open_point
 from .pola import (
+    aparaty_po_wymianie,
     dodaj_pole,
     pola_nn_stacji,
     pola_sn_stacji,
@@ -2455,10 +2457,15 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             "i dodaj pole właściwej funkcji.",
             "sn.coupler_zmiana_roli",
         )
-    if bay_role == "COUPLER" and not existing_field_ref:
+    if bay_role == "COUPLER" and _sprzeglo_pola(new_enm, existing_field) is None:
+        # Nowe pole sprzęgła albo pole sprzęgła-rezerwa (gałąź sprzęgła usunięta,
+        # `delete_element`) — wiązanie z gałęzią `bus_coupler` JEDNĄ regułą
+        # (`rozstrzygnij_sprzeglo_pola`); ogólna droga niżej zbudowałaby zacisk i drugi
+        # wyłącznik na zacisku, czyli martwy aparat pola sprzęgła.
         return _zapisz_pole_sprzegla(
             new_enm,
             station=station,
+            existing_field=existing_field,
             bus_ref=bus_ref,
             field_ref=field_ref,
             field_name=field_name,
@@ -2494,9 +2501,15 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         )
         if branch is not None:
             if branch.get("type") != "bus_coupler":
-                # Gałąź sprzęgła pola sprzęgła zachowuje typ i nazwę łącznika sekcji (D3).
                 branch["name"] = f"Aparat {field_name}"
                 branch["type"] = branch_type
+            elif "primary_devices" in producer_refs:
+                # Gałąź sprzęgła pola sprzęgła zachowuje typ i nazwę łącznika sekcji (D3),
+                # a aparat główny nowego szablonu (Q0) wskazuje ją — ta sama reguła co budowa
+                # pola sprzęgła (`zwiaz_pole_ze_sprzeglem`).
+                producer_refs["primary_devices"] = _powiaz_aparaty_pola_z_galezia(
+                    producer_refs["primary_devices"], branch
+                )
             # Pochodzenie katalogowe deklarujemy TYLKO wtedy, gdy pozycja katalogu
             # naprawdę stoi za aparatem. Pole bez wskazanego aparatu jest kanoniczne
             # (`requires_catalog_binding`) i nie może nieść kategorii, z której nic
@@ -2777,10 +2790,29 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     )
 
 
+def _sprzeglo_pola(
+    enm: Mapping[str, Any], pole_rec: Mapping[str, Any] | None
+) -> dict[str, Any] | None:
+    """Gałąź `bus_coupler` będąca aparatem pola (`equipment_refs`) — `None` dla pola nowego
+    i pola sprzęgła-rezerwy (gałąź usunięta)."""
+    if not isinstance(pole_rec, Mapping):
+        return None
+    refy = {r for r in pole_rec.get("equipment_refs") or [] if isinstance(r, str)}
+    return next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict) and b.get("type") == "bus_coupler" and b.get("ref_id") in refy
+        ),
+        None,
+    )
+
+
 def _zapisz_pole_sprzegla(
     new_enm: dict[str, Any],
     *,
     station: dict[str, Any],
+    existing_field: dict[str, Any] | None,
     bus_ref: str,
     field_ref: str,
     field_name: str,
@@ -2800,10 +2832,11 @@ def _zapisz_pole_sprzegla(
     pochodzenie_pola: dict[str, Any] | None,
     tags: list[str],
 ) -> dict[str, Any]:
-    """Nowe pole sprzęgła `add_sn_bay` (decyzja architekta D3): wiąże się z istniejącym
-    sprzęgłem sekcji bez pola, a gdy sąsiednia sekcja nie ma sprzęgła — tworzy je tym samym
-    krokiem. Rozdzielnica o jednej sekcji — odmowa `field.coupler_requires_two_sections`.
-    Nie powstaje zacisk pola ani drugi wyłącznik."""
+    """Pole sprzęgła `add_sn_bay` (decyzja architekta D3) — nowe albo pole sprzęgła-rezerwa
+    (`existing_field`, gałąź sprzęgła usunięta): wiąże się z istniejącym sprzęgłem sekcji bez
+    pola, a gdy sąsiednia sekcja nie ma sprzęgła — tworzy je tym samym krokiem. Rozdzielnica
+    o jednej sekcji — odmowa `field.coupler_requires_two_sections`. Nie powstaje zacisk pola
+    ani drugi wyłącznik."""
     station_ref = str(station["ref_id"])
     sprzeglo, odmowa = rozstrzygnij_sprzeglo_pola(
         new_enm,
@@ -2857,6 +2890,43 @@ def _zapisz_pole_sprzegla(
         bay_role="COUPLER",
         aparaty_pola=aparaty_pola,
     )
+    meta_pola: dict[str, Any] = {
+        **meta_pola_sprzegla(sprzeglo, requires_catalog_binding=catalog_ref is None),
+        "apparatus_kind": apparatus_kind,
+        "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+        "field_status": "CONFIGURED_FOR_TRUNK",
+    }
+    if existing_field is not None:
+        # Pole sprzęgła-rezerwa (gałąź sprzęgła usunięta) wiąże się ponownie — rekord zostaje
+        # tym samym polem (identyfikator, kolejność, nazwa), dostaje gałąź i aparaty.
+        zmien_pole(
+            new_enm,
+            field_ref,
+            name=field_name,
+            equipment_refs=[sprzeglo.coupler_ref],
+            gpz_section_id=gpz_section_id,
+            primary_devices=aparaty_po_wymianie(
+                existing_field.get("primary_devices") or [], aparaty_pola
+            ),
+            config_id=konfiguracja_pola,
+            protection_ref=protection_ref or existing_field.get("protection_ref"),
+            protection_codes=protection_codes or existing_field.get("protection_codes"),
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            manufacturer_ref=manufacturer_ref or existing_field.get("manufacturer_ref"),
+            meta={**(existing_field.get("meta") or {}), **meta_pola},
+        )
+        created.remove(field_ref)
+        zdarzenia.append(
+            {
+                "event_seq": len(zdarzenia) + 1,
+                "event_type": "FIELD_UPDATED_SN",
+                "element_id": field_ref,
+            }
+        )
+        return _response(
+            new_enm, created=created, selection_id=field_ref, selection_type="bay", events=zdarzenia
+        )
     dodaj_pole(
         new_enm,
         zbuduj_pole(
@@ -2878,12 +2948,7 @@ def _zapisz_pole_sprzegla(
             wybor_bloku=wybor_bloku,
             metadane_pochodzenia=pochodzenie_pola,
             tags=tags,
-            meta={
-                **meta_pola_sprzegla(sprzeglo, requires_catalog_binding=catalog_ref is None),
-                "apparatus_kind": apparatus_kind,
-                "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
-                "field_status": "CONFIGURED_FOR_TRUNK",
-            },
+            meta=meta_pola,
             stan_obiektu="PROJEKTOWANY",
         ),
     )

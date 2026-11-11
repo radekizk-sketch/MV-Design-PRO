@@ -3528,6 +3528,337 @@
       "wykonanie_pola": null
     },
     {
+      "bay_role": "ZU",
+      "config_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
+      "field_role": "ZESPOL_UZIEMIAJACY",
+      "group": "uziemiajace",
+      "main_path": true,
+      "name": "Pole zespołu uziemiającego",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13::dev::0",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_100_5_z13",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "100/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13::dev::3",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "50N",
+        "ZS",
+        "50BF"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "ZU",
+      "config_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14",
+      "field_role": "ZESPOL_UZIEMIAJACY",
+      "group": "uziemiajace",
+      "main_path": true,
+      "name": "Pole zespołu uziemiającego",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14::dev::0",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_100_5_z13",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "100/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14::dev::3",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "50N",
+        "ZS",
+        "50BF"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "ZU",
+      "config_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15",
+      "field_role": "ZESPOL_UZIEMIAJACY",
+      "group": "uziemiajace",
+      "main_path": true,
+      "name": "Pole zespołu uziemiającego",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15::dev::0",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cb",
+          "wykonanie": "STALE"
+        },
+        {
+          "catalog_ref": "ct_typ_ogolny_osd_100_5_z13",
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
+          "rdzenie": [
+            {
+              "fs": null,
+              "klasa": "5P20",
+              "moc_va": 15.0,
+              "przekladnia": "100/5",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15::dev::3",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "50N",
+        "ZS",
+        "50BF",
+        "79"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": null
+    },
+    {
       "bay_role": "IN",
       "config_ref": "kanoniczny:bay_template_line_in",
       "field_role": "LINIA_IN",

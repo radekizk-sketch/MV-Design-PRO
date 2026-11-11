@@ -58,12 +58,14 @@ def _enm_z_odcinkiem() -> dict[str, Any]:
     }
 
 
-def _wstaw_stacje(apparatus_ref: str, role: list[str]) -> dict[str, Any]:
+def _wstaw_stacje(
+    apparatus_ref: str, role: list[str], *, station_type: str = "B"
+) -> dict[str, Any]:
     return insert_station_on_segment_sn(
         _enm_z_odcinkiem(),
         {
             "segment_id": "seg-1",
-            "station_type": "B",
+            "station_type": station_type,
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": role,
@@ -106,8 +108,13 @@ def test_wstawienie_stacji_zapisuje_rodzaj_aparatu_z_katalogu(
 
 
 def test_sprzeglo_zachowuje_typ_lacznika_sekcji_niezaleznie_od_rodzaju_aparatu() -> None:
-    """Rola elementu w topologii (sprzęgło) i rodzaj wyrobu to DWIE różne osie."""
-    odpowiedz = _wstaw_stacje(ROZLACZNIK_BEZPIECZNIKOWY, ["IN", "OUT", "SPRZEGLO", "TR"])
+    """Rola elementu w topologii (sprzęgło) i rodzaj wyrobu to DWIE różne osie. Stacja
+    sekcyjna (typ D) — pole sprzęgła wiąże się ze sprzęgłem jej dwóch sekcji (decyzja
+    architekta D3; w stacji o jednej sekcji pole sprzęgła jest odmową
+    `field.coupler_requires_two_sections`, test `test_pole_sprzegla_sekcje.py`)."""
+    odpowiedz = _wstaw_stacje(
+        ROZLACZNIK_BEZPIECZNIKOWY, ["IN", "OUT", "SPRZEGLO", "TR"], station_type="D"
+    )
     assert odpowiedz.get("error") is None, odpowiedz
 
     aparaty = _aparaty_pol(odpowiedz)

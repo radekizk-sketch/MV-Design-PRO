@@ -74,6 +74,10 @@ NAPEDY_RODZAJU_APARATU: dict[str, tuple[RodzajNapedu, ...]] = {
     "THREE_POSITION_SWITCH": ("ZASOBNIKOWY_RECZNY",),
 }
 
+#: Skrót ruchowy obwodu wyłączającego wyłącznika na rysunkach pól ENEA Zeszyt 1 (OW, OW1, OW2)
+#: — oznaczenie obwodu (kod), nie słowo; nazwy sygnałów „OW od …” składa się z tej stałej.
+SKROT_OBWODU_WYLACZAJACEGO = "OW"
+
 #: Opis napędu dla karty pola i raportu (symbol normy w opisie, bez skrótów projektu).
 OPIS_NAPEDU_PL: dict[RodzajNapedu, str] = {
     "SILNIKOWY": "napęd silnikowy (M, EN 60617 02-13-26)",
@@ -950,7 +954,7 @@ _OBWODY_Z7 = ObwodyWtornePola(
             [
                 _ct("T1", 4, _IN, _UWAGA_RDZEN_WSPOLNY),
                 _sygnal("Blokowanie ZS"),
-                _sygnal("OW od ZS do łącznika szyn"),
+                _sygnal(f"{SKROT_OBWODU_WYLACZAJACEGO} od ZS do łącznika szyn"),
             ],
             wyjscia=("OW1", "WZS", "Zadziałanie Izs>> od łącznika szyn"),
             uwaga=None,
@@ -1001,13 +1005,13 @@ _OBWODY_Z7 = ObwodyWtornePola(
             "szyn i blokuje SZR SN",
         ),
         _s(
-            "OW od ZS do łącznika szyn",
+            f"{SKROT_OBWODU_WYLACZAJACEGO} od ZS do łącznika szyn",
             "WEJSCIE",
             "NADRZEDNY",
             uwaga="napis i grot strzałki jak na rysunku (grot w dół, do bloku ZS)",
         ),
         _s("Blokowanie SZR", "WYJSCIE", "NADRZEDNY", sterownik=True),
-        _s("OW od SZR", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(f"{SKROT_OBWODU_WYLACZAJACEGO} od SZR", "WEJSCIE", "NADRZEDNY", sterownik=True),
         _s("ZW od SZR", "WEJSCIE", "NADRZEDNY", sterownik=True),
         _s(
             "OW2 od zabezpieczeń str. 110 kV",
@@ -1016,9 +1020,19 @@ _OBWODY_Z7 = ObwodyWtornePola(
             polaczony_z=("OW2",),
             uwaga="linia z górnej krawędzi wprost do obwodu OW2 wyłącznika, bez sterownika",
         ),
-        _s("OW od zabezpieczeń str. 110 kV", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            f"{SKROT_OBWODU_WYLACZAJACEGO} od zabezpieczeń str. 110 kV",
+            "WEJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+        ),
         _s("ZW sterownikiem str. 110 kV", "WEJSCIE", "NADRZEDNY", sterownik=True),
-        _s("OW sterownikiem str. 110 kV", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            f"{SKROT_OBWODU_WYLACZAJACEGO} sterownikiem str. 110 kV",
+            "WEJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+        ),
         _s("Wyłączenie pól SN z generacją", "WYJSCIE", "NADRZEDNY", sterownik=True),
         _s(
             "Regulacja zaczepów",

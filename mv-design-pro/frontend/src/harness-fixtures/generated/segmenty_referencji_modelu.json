@@ -5,6 +5,7 @@
     "assignment",
     "aux_load",
     "bay",
+    "bay_coupler",
     "bay_device",
     "bay_terminal",
     "bess",

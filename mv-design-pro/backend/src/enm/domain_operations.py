@@ -7673,7 +7673,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # Rola pola przechodzi przez WSPÓLNY słownik `ROLA_POLA_SN_Z_ALIASU` —
     # także dla wpisów słownikowych: szablon klasy pomiarowej wysyła
     # `field_role="MEASUREMENT"`, a bez normalizacji ta rola nie trafiała do
-    # mapy ról i pole lądowało w modelu jako odgałęzienie (FEEDER).
+    # mapy ról i pole lądowało w modelu jako odgałęzienie (FEEDER). Ta sama reguła
+    # w `append_station_on_endpoint` (parytet zapisu pól przypina
+    # `tests/enm/test_pole_sprzegla_sekcje.py`; pętla jest powtórzona, bo analiza AST
+    # odczytów ładunku `tests/ci/odczyty_ladunku_handlerow.py` śledzi elementy listy
+    # wyłącznie w ciele handlera).
     sn_fields: list[dict[str, Any]] = []
     for item in sn_fields_raw:
         if isinstance(item, str):
@@ -12505,9 +12509,20 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     transformer_ref = f"tr/{seed}/transformer"
     sn_fields_payload = payload.get("sn_fields")
     raw_sn_fields = sn_fields_payload if isinstance(sn_fields_payload, list) else []
-    sn_fields: list[dict[str, Any]] = [
-        dict(field) for field in raw_sn_fields if isinstance(field, dict)
-    ]
+    # Ta sama reguła zapisu pól co `insert_station_on_segment_sn`: wpis tekstowy to rola pola,
+    # wpis słownikowy niesie rolę w `field_role`. Dawniej ta droga pomijała po cichu wpisy
+    # tekstowe — stacja powstawała z pól domyślnych zamiast wskazanych. Wpis innego typu
+    # zostaje — odmawia go `_odmowa_roli_pola_spoza_slownika`.
+    sn_fields: list[dict[str, Any]] = []
+    for item in raw_sn_fields:
+        if isinstance(item, str):
+            sn_fields.append({"field_role": kanoniczna_rola_pola_sn(item)})
+        elif isinstance(item, dict):
+            sn_fields.append(
+                {**item, "field_role": kanoniczna_rola_pola_sn(item.get("field_role"))}
+            )
+        else:
+            sn_fields.append(item)
     # POMIAR POLA (kontrakt §5, V12K-336): stacja końcowa to droga BUDOWY
     # STACJI — pole POMIAROWE bez deklaracji jest układem pomiarowym ENERGII
     # o rodzaju PODSTAWOWYM (to samo źródło rozstrzygnięcia, co wcięcie

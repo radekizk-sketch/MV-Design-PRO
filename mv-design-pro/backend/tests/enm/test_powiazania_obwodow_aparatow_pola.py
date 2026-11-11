@@ -62,7 +62,9 @@ def _gpz(szablon_id: str = Z11_1) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": ZRODLO,
-        "sections_count": 1,
+        # Pole łącznika szyn (Z.12) łączy dwie sekcje — w rozdzielnicy o jednej sekcji jest
+        # odmową `field.coupler_requires_two_sections` (decyzja architekta D3).
+        "sections_count": 2 if BAY_TEMPLATE_REGISTRY[szablon_id].bay_role == "COUPLER" else 1,
         "line_fields_per_section": 1,
         "gpz_line_field_apparatus": {"catalog_ref": APARAT},
         "switchgear_family_ref": _rodzina(szablon_id),

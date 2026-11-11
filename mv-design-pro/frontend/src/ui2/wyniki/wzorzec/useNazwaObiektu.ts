@@ -136,6 +136,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   coupler: 'sprzęgło',
   sn_coupler: 'sprzęgło SN',
   section_coupler: 'sprzęgło sekcyjne',
+  bay_coupler: 'sprzęgło sekcji',
   sn_field: 'pole SN',
   source_field: 'pole źródłowe',
   source_field_terminal: 'zacisk pola źródłowego',

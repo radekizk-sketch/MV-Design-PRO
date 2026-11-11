@@ -101,6 +101,7 @@ import {
   notaAparatowPola,
   brakujacePolaToru,
   czyAparaturaKompletna,
+  czyDwieSekcjeSzyn,
   czyKoniecOdcinka,
   domyslneWpisyPol,
   etykietaRodzajuAparatu,
@@ -127,6 +128,7 @@ import {
   producenciUzywalni,
   rodzajStacjiZKreatora,
   rolePolaStacji,
+  rolePolaWyboru,
   szablonyDlaWyboru,
   szablonyPerRola,
   walidujFormularz,
@@ -1577,7 +1579,12 @@ export function KreatorStacjiSnNn() {
             etykieta={T.typStacji}
             wartosc={dane.station_type}
             onZmiana={(v) => zmien('station_type', v as TypStacji)}
-            opcje={T.typStacjiOpcje}
+            opcje={T.typStacjiOpcje.filter(
+              // Stacja na końcu ciągu ma jedną sekcję szyn SN — rodzaj sekcyjny wymaga
+              // wcięcia w odcinek (decyzja architekta D3, `czyDwieSekcjeSzyn`).
+              (o) => o.id !== 'sectional' || czyDwieSekcjeSzyn('sectional', kontekst.tryb)
+                || dane.station_type === 'sectional',
+            )}
             pomoc={T.typStacjiPomoc}
             testid="mvd-kreator-stacja-typ"
           />
@@ -2061,7 +2068,13 @@ export function KreatorStacjiSnNn() {
                       etykieta={T.polaRola}
                       wartosc={pole.field_role}
                       onZmiana={(v) => zmienPole(pole.id, { field_role: v as SnFieldRole })}
-                      opcje={ROLE_POL.map((rola) => ({
+                      opcje={[
+                        ...new Set([
+                          ...rolePolaWyboru(ROLE_POL, dane.station_type, kontekst.tryb),
+                          // Rola bieżąca zostaje widoczna — niedopuszczalną nazywa walidacja.
+                          pole.field_role,
+                        ]),
+                      ].map((rola) => ({
                         id: rola,
                         etykieta: fieldRoleLabelPl(rola),
                       }))}
