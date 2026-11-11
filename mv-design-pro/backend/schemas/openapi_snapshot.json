@@ -22145,7 +22145,7 @@
   },
   "/api/catalog/earthing-transformer-types": {
    "get": {
-    "description": "Transformatory uziemiające ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — katalog operacji\n`add_zespol_uziemiajacy_sn` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).",
+    "description": "Transformatory uziemiające ZNyn11 — pozycje katalogu transformatorów SN/nN\n(``TRAFO_SN_NN``) z uzwojeniem górnym w zygzak z punktem neutralnym; katalog operacji\n`add_zespol_uziemiajacy_sn` (karta ZU-JEDEN-NOSNIK: zespół uziemiający jest transformatorem,\njedna przestrzeń katalogu, ten sam rekord co lista `/transformer-types`).",
     "operationId": "list_earthing_transformer_types_api_catalog_earthing_transformer_types_get",
     "responses": {
      "200": {

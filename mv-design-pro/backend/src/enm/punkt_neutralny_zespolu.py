@@ -57,7 +57,22 @@ from .models import DlawikGaszacy, GroundingConfig, RezystorUziemiajacy, Transfo
 from .nazwy_elementow import nazwa_elementu
 
 
-def jest_transformatorem_uziemiajacym(trafo: Transformer) -> bool:
+def grupa_transformatora_uziemiajacego(grupa_polaczen: str | None) -> bool:
+    """Czy grupa połączeń ma uzwojenie GÓRNE w zygzak z wyprowadzonym punktem neutralnym
+    (litera ``ZN`` grupy IEC 60076-1, np. ZNyn11) — JEDEN predykat grupy dla rekordu modelu
+    (``jest_transformatorem_uziemiajacym``), pisarza zespołu (pozycja katalogu
+    ``add_zespol_uziemiajacy_sn``) i listy katalogu transformatorów uziemiających (API).
+    Grupa spoza słownika — nie."""
+    if not grupa_polaczen:
+        return False
+    try:
+        grupa = parsuj_grupe_polaczen(grupa_polaczen)
+    except OdmowaDanychError:
+        return False
+    return grupa.gn_typ == "Z" and grupa.gn_punkt_neutralny
+
+
+def jest_transformatorem_uziemiajacym(trafo: Transformer | Mapping[str, Any]) -> bool:
     """Czy transformator jest transformatorem uziemiającym sieci SN (zespół uziemiający).
 
     JEDEN predykat dla modelu składowej zerowej, prawdy o uziemieniu sekcji, walidatora,
@@ -65,14 +80,16 @@ def jest_transformatorem_uziemiajacym(trafo: Transformer) -> bool:
     punktem neutralnym (litera ``ZN`` grupy połączeń IEC 60076-1) na napięciu z pasma SN —
     zygzak jest drogą prądu zerowego do ziemi sieci SN, a jego punkt neutralny nośnikiem
     sposobu uziemienia tej sieci (ENEA Zeszyt 1 §16: ZNyn11). Grupa spoza słownika — nie
-    (zgłasza ją E-W5-02)."""
-    if not trafo.vector_group or not w_pasmie_sn(trafo.uhv_kv):
-        return False
-    try:
-        grupa = parsuj_grupe_polaczen(trafo.vector_group)
-    except OdmowaDanychError:
-        return False
-    return grupa.gn_typ == "Z" and grupa.gn_punkt_neutralny
+    (zgłasza ją E-W5-02). Czyta rekord modelu albo surowy słownik migawki (pisarze operacji,
+    powiązanie pola ZU z transformatorem) — jeden predykat dla obu nośników."""
+    if isinstance(trafo, Mapping):
+        u_hv, grupa = trafo.get("uhv_kv"), trafo.get("vector_group")
+    else:
+        u_hv, grupa = trafo.uhv_kv, trafo.vector_group
+    napiecie = float(u_hv) if isinstance(u_hv, int | float) and not isinstance(u_hv, bool) else None
+    return w_pasmie_sn(napiecie) and grupa_transformatora_uziemiajacego(
+        grupa if isinstance(grupa, str) else None
+    )
 
 
 #: Źródło wartości parametru urządzenia punktu neutralnego.
@@ -539,7 +556,8 @@ def _odmowa_wyposazenia(cfg: GroundingConfig | None, nazwa: str) -> str | None:
         return (
             f"Zespół uziemiający {nazwa}: impedancję punktu neutralnego transformatora "
             "uziemiającego opisują gałęzie (dławik gaszący, rezystor) z katalogu i nastawy — "
-            "nie wpisane wprost R_N/X_N; usuń R_N/X_N i opisz gałęzie punktu neutralnego."
+            "nie wpisana wprost rezystancja ani reaktancja punktu neutralnego; usuń wpisane wprost "
+            "wartości i opisz gałęzie punktu neutralnego."
         )
     ma_element = cfg.dlawik is not None or cfg.rezystor is not None
     if cfg.type == "directly_grounded":
@@ -592,7 +610,7 @@ def blad_wyposazenia_punktu_neutralnego(
             "i zapis przeniesienia punktu neutralnego dotyczą wyłącznie punktu neutralnego "
             "transformatora uziemiającego (uzwojenie górne w zygzak z punktem neutralnym, sieć "
             f"SN); ten punkt neutralny ({ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(cfg.type, cfg.type)}) "
-            "opisuje R_N/X_N."
+            "opisuje rezystancję albo reaktancję uziemienia."
         )
     return None
 

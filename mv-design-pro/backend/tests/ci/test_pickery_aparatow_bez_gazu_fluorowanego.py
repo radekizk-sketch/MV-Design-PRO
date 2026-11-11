@@ -29,9 +29,23 @@ PROJEKT = Path(__file__).resolve().parents[3]
 FRONT_SRC = PROJEKT / "frontend" / "src"
 PREDYKAT = FRONT_SRC / "ui" / "catalog" / "dopuszczenieNowychPol.ts"
 
+#: Użycie pobrania katalogu: wywołanie (``fetchMvApparatusTypes()``) ALBO przekazanie funkcji
+#: dalej (``sprobuj(fetchMvApparatusTypes)``, ``queryFn: fetchMvApparatusTypes``) — dawny wzorzec
+#: z nawiasem otwierającym nie widział konsumenta przekazującego referencję (karta techniczna
+#: `katalogiKarty.ts`). Import, ponowny eksport (``export { … } from``) i komentarz nie są
+#: użyciem (``_BEZ_UZYC``).
 _POBRANIE = re.compile(
-    r"\b(fetchMvApparatusTypes|fetchSwitchEquipmentTypes|fetchTypesByCategory)\("
+    r"\b(fetchMvApparatusTypes|fetchSwitchEquipmentTypes|fetchTypesByCategory)\b"
 )
+_BEZ_UZYC = re.compile(
+    r"^(?:import|export)\s[^;]*?from\s+'[^']+';?|//[^\n]*|/\*.*?\*/", re.M | re.S
+)
+
+
+def _uzywa_pobrania(tekst: str) -> bool:
+    return _POBRANIE.search(_BEZ_UZYC.sub("", tekst)) is not None
+
+
 _WYWOLANIE_PREDYKATU = "pozycjeDoWyboru("
 _IMPORT_PREDYKATU = re.compile(
     r"from '[./]*(?:ui/)?catalog/dopuszczenieNowychPol'|from '\./dopuszczenieNowychPol'"
@@ -104,7 +118,7 @@ def _konsumenci() -> dict[str, str]:
         if sciezka == "ui/catalog/api.ts":
             continue
         tekst = plik.read_text(encoding="utf-8")
-        if _POBRANIE.search(tekst):
+        if _uzywa_pobrania(tekst):
             wynik[sciezka] = tekst
     return wynik
 
@@ -188,9 +202,12 @@ def test_front_nie_rozstrzyga_gazu_z_medium() -> None:
 
 
 def test_detektory_lapia_wzorce() -> None:
-    assert _POBRANIE.search("fetchMvApparatusTypes()")
-    assert _POBRANIE.search("Promise.all([fetchSwitchEquipmentTypes(), x])")
-    assert not _POBRANIE.search("import { fetchMvApparatusTypes } from")
+    assert _uzywa_pobrania("fetchMvApparatusTypes()")
+    assert _uzywa_pobrania("Promise.all([fetchSwitchEquipmentTypes(), x])")
+    assert _uzywa_pobrania("sprobuj(fetchMvApparatusTypes),")
+    assert not _uzywa_pobrania("import { fetchMvApparatusTypes } from './api';")
+    assert not _uzywa_pobrania("export {\n  fetchTypesByCategory,\n} from './catalog';")
+    assert not _uzywa_pobrania("// Kategoria złożona (`fetchTypesByCategory`)")
     assert _IMPORT_PREDYKATU.search("from '../../../ui/catalog/dopuszczenieNowychPol'")
     assert _IMPORT_PREDYKATU.search("from '../catalog/dopuszczenieNowychPol'")
     assert _IMPORT_PREDYKATU.search("from './dopuszczenieNowychPol'")

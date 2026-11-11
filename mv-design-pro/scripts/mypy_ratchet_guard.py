@@ -256,8 +256,15 @@ BACKEND = ROOT / "backend"
 # `arg-type` w kodzie skasowanego pakietu dowodowego P19 (2 w `analysis/normative/evaluator.py`
 # — reguly NR_P19, 2 w `application/proof_engine/proof_generator.py` — kroki uziemienia);
 # pliki zostaja (inne bledy). Zero nowych.
-BASELINE_ERRORS = 163
-BASELINE_FILES = 21
+# Karta ZU-JEDEN-NOSNIK (2026-11-11, baza `ffbd81d15` = 163/21): 163/21 -> 162/20. POMIAR
+# `mypy src` (mypy 1.19.1) na drzewie bazy i na drzewie karty, roznica zbiorow (plik, komunikat):
+# karta minus baza = 0, baza minus karta = dokladnie 1 wiersz `assignment` w
+# `enm/pole_katalogowe.py` (szablon pola czytany jako `CompleteMvBayTemplate | None` z jednego
+# miejsca); plik bez innych bledow. Dwa bledy wprowadzone w toku karty (ta sama zmienna petli dla
+# szyn sekcji i rekordu sekcji w `enm/validator.py`, typ `hv_neutral` w
+# `enm/domain_operations_v2.py::zmien_wariant_zespolu`) naprawione u zrodla przed pomiarem.
+BASELINE_ERRORS = 162
+BASELINE_FILES = 20
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

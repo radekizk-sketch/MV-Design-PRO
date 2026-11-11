@@ -14,3 +14,11 @@
 meta\["zespol_uziemiajacy"\]
 meta\.zespol_uziemiajacy\b
 \bZAPIS_ZESPOLU\b
+# Osobna przestrzen katalogu transformatorow uziemiajacych i jej typ (model A) — transformator
+# uziemiajacy jest pozycja katalogu transformatorow SN/nN (`TRAFO_SN_NN`), wybrana jednym
+# predykatem grupy polaczen ZN; kod gotowosci odbioru potrzeb wlasnych bez emitera.
+\bTRANSFORMATOR_UZIEMIAJACY\b
+\bEARTHING_TRANSFORMER\b
+\bEarthingTransformer(CatalogType|Type)\b
+\bTU_ZNYN11_15KV_PW160\b
+\bzespol_auxiliary_load_missing\b

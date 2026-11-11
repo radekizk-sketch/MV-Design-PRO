@@ -973,8 +973,7 @@
             "transformer_refs": []
           }
         ],
-        "transformers": [],
-        "zespoly_uziemiajace": []
+        "transformers": []
       },
       "stacja_startu": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation"
     },
@@ -3619,8 +3618,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/98d4edad394b38ce1da666b9b3294dc4/substation"
     },
@@ -7919,8 +7917,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/d966b8bd7fe3ffc5813f6bc64f60bd96/substation"
     },
@@ -13873,8 +13870,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/b661364fd4da5fcecca248ad1e785b53/substation"
     },
@@ -21481,8 +21477,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/d01150d65d33c18ca656de9d793095c5/substation"
     },
@@ -30743,8 +30738,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/87aa5de4a83ba5d1d202befb17353496/substation"
     },
@@ -41659,8 +41653,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/3001ef6e103b7f616cf913001186073d/substation"
     },
@@ -54229,8 +54222,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/3cbe69dd32e91d7f29264ae9da4967c8/substation"
     },
@@ -68453,8 +68445,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/7dd04f11e06c9125345ff379be7db59b/substation"
     },
@@ -84331,8 +84322,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/0c763386fd41f1b04b908f6aa9942157/substation"
     },
@@ -101863,8 +101853,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/3bfb3e2dc89e69e3e43e759d4524aed9/substation"
     },
@@ -121049,8 +121038,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/4dfd768e5d513ad5e6bfb11d5cedcfb6/substation"
     },
@@ -141889,8 +141877,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/f6661810b1fd98f70fd09487cbe633a2/substation"
     },
@@ -164383,8 +164370,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/4491acd3fff8fa1eb41aa0d35d2e1893/substation"
     },
@@ -188531,8 +188517,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/924e48562a3d6053b7b20b3c35fcff3c/substation"
     },
@@ -214333,8 +214318,7 @@
             "vector_group": "Dyn11",
             "x0_ohm": null
           }
-        ],
-        "zespoly_uziemiajace": []
+        ]
       },
       "stacja_startu": "sub/4b1d9dfb8345649346894380c5c3f2a4/substation"
     }

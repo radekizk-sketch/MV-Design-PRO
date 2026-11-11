@@ -398,7 +398,7 @@ def test_walidator_portow_i_polozenia_uziemiony():
         "kind": "CB",
         "placement": "MIDSTREAM",
     }
-    with pytest.raises(ValidationError, match="nie ma portu"):
+    with pytest.raises(ValidationError, match="port spoza kompletu portów"):
         BayPrimaryDevice.model_validate({**baza, "ports": [{"port_id": "przylacze"}]})
     with pytest.raises(ValidationError, match="powtórzony port"):
         BayPrimaryDevice.model_validate(

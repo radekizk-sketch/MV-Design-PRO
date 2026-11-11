@@ -156,6 +156,32 @@ RODZAJ_PRZEKLADNIKA_FERRANTIEGO = "CORE_BALANCE_CT"
 #: odgałęzienie jednoportowe bez obciążenia toru.
 RODZAJ_WSKAZNIKA_NAPIECIA = "VOLTAGE_INDICATOR"
 
+#: Nazwa rodzaju aparatu pola (``BayPrimaryDevice.kind``) w zdaniu dla projektanta — liść
+#: słownika, z którego czytają model (odmowy walidatora aparatu) i operacje wyposażenia pola.
+NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
+    "CB": "wyłącznik",
+    "LOAD_SWITCH": "rozłącznik",
+    "DS": "odłącznik",
+    "ES": "uziemnik",
+    "CT": "przekładnik prądowy",
+    "VT": "przekładnik napięciowy",
+    "SURGE_ARRESTER": "ogranicznik przepięć",
+    "FUSE": "bezpieczniki",
+    "CABLE_HEAD": "głowica kablowa",
+    "TRANSFORMER_DEVICE": "transformator pola",
+    RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: "łącznik trójpołożeniowy",
+    RODZAJ_WSKAZNIKA_NAPIECIA: "wskaźnik napięcia",
+    RODZAJ_PRZEKLADNIKA_FERRANTIEGO: "przekładnik Ferrantiego",
+    "UNBALANCE_CT": "przekładnik niezrównoważenia baterii",
+    "PHASE_TO_PHASE_VT": "przekładnik napięciowy międzyfazowy",
+}
+
+
+def nazwa_rodzaju_aparatu_pola_pl(rodzaj: object) -> str:
+    """Nazwa rodzaju aparatu pola; rodzaj spoza słownika = „aparat innego rodzaju”."""
+    return NAZWY_RODZAJOW_APARATU_POLA_PL.get(str(rodzaj), "aparat innego rodzaju")
+
+
 #: Aparaty pola baterii kondensatorów (BKR, karta UX-04/POLE-BKR-MODEL; ENEA Operator, Stacje
 #: 110 kV, Zeszyt 1, §17 s. 32 i Zał. 16): bateria w układzie podwójnej gwiazdy z izolowanymi
 #: punktami gwiazd ma przekładnik prądowy w połączeniu międzygwiazdowym (zabezpieczenie od

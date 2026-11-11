@@ -42,6 +42,7 @@ from network_model.catalog.rodzaje_aparatury import (
     RODZAJE_LACZNIKOW_TORU,
     RODZAJE_Z_WYKONANIEM,
     WykonanieAparatu,
+    nazwa_rodzaju_aparatu_pola_pl,
     porty_toru_pola,
 )
 from network_model.catalog.wartosci_robocze import pola_zaczepu_rekordu
@@ -181,7 +182,8 @@ class BayTemplate(BaseModel):
         nieznane = kody_spoza_slownika(self.funkcje_eaz)
         if nieznane:
             raise ValueError(
-                f"Szablon {self.template_id}: kody funkcji EAZ spoza słownika: {nieznane}."
+                f"Szablon {self.description}: funkcje EAZ spoza słownika: "
+                f"{', '.join(nieznane)}."
             )
         if self.obwody_wtorne is not None:
             _sprawdz_obwody_wtorne(self)
@@ -201,9 +203,14 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
     aparaty = {d.designation_q: d for d in szablon.devices}
     powiazane = [p.funkcja for p in obwody.powiazania]
     if sorted(powiazane) != sorted(szablon.funkcje_eaz):
+        # Różnica zbiorów albo powtórzenie (ta sama funkcja powiązana dwa razy).
+        rozbiezne = sorted(set(powiazane) ^ set(szablon.funkcje_eaz)) or sorted(
+            {k for k in powiazane if powiazane.count(k) > 1}
+        )
         raise ValueError(
-            f"Szablon {nazwa}: powiązania obwodów wtórnych {sorted(powiazane)} ≠ funkcje EAZ "
-            f"szablonu {sorted(szablon.funkcje_eaz)}."
+            f"Szablon {nazwa}: powiązania obwodów wtórnych różnią się od funkcji EAZ szablonu "
+            f"(brak, nadmiar albo powtórzenie): "
+            f"{'; '.join(opis_funkcji_eaz_pl(k) for k in rozbiezne)}."
         )
     liczba_obwodow = {"CT": "rdzenie", "VT": "uzwojenia"}
     rodzaj_wejscia = RODZAJ_APARATU_WEJSCIA
@@ -211,7 +218,10 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
     def _obwod(oznaczenie: str, rodzaj: str, numer: int | None, kto: str) -> None:
         aparat = aparaty.get(oznaczenie)
         if aparat is None or aparat.kind != rodzaj:
-            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie jest aparatem {rodzaj}.")
+            raise ValueError(
+                f"Szablon {nazwa}, {kto}: aparat {oznaczenie} nie jest aparatem rodzaju "
+                f"„{nazwa_rodzaju_aparatu_pola_pl(rodzaj)}”."
+            )
         if numer is not None and numer > len(getattr(aparat, liczba_obwodow[rodzaj])):
             raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie ma obwodu nr {numer}.")
 
@@ -233,7 +243,10 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
             raise ValueError(f"Szablon {nazwa}: {przypisanie.aparat} nie jest przekładnikiem.")
         _obwod(przypisanie.aparat, rodzaj, przypisanie.numer, "przypisanie obwodu")
         if klucz in obwody_eaz or klucz in obwody_poza:
-            raise ValueError(f"Szablon {nazwa}: obwód {klucz} ma dwa przeznaczenia.")
+            raise ValueError(
+                f"Szablon {nazwa}: obwód nr {przypisanie.numer} aparatu {przypisanie.aparat} "
+                "ma dwa przeznaczenia."
+            )
         obwody_poza.add(klucz)
     wszystkie = {
         (d.designation_q, n)
@@ -242,9 +255,10 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
         for n in range(1, len(getattr(d, liczba_obwodow[d.kind])) + 1)
     }
     if wszystkie != obwody_eaz | obwody_poza:
+        bez_przeznaczenia = sorted(wszystkie - obwody_eaz - obwody_poza)
         raise ValueError(
             f"Szablon {nazwa}: obwody przekładników bez przeznaczenia na rysunku: "
-            f"{sorted(wszystkie - obwody_eaz - obwody_poza)}."
+            f"{', '.join(f'obwód nr {numer} aparatu {aparat}' for aparat, numer in bez_przeznaczenia)}."
         )
 
 
@@ -422,7 +436,7 @@ WARUNEK_ZRODLA_U0 = "ZRODLO_U0"
 WARUNKI_FUNKCJI_EAZ: dict[str, str] = {"67N": WARUNEK_ZRODLA_U0}
 OPIS_WARUNKU_FUNKCJI_EAZ_PL: dict[str, str] = {
     WARUNEK_ZRODLA_U0: (
-        "przypisana wyłącznie przy źródle napięcia zerowego 3U₀ powiązanym w modelu — uzwojeniu "
+        "przypisana wyłącznie przy źródle napięcia zerowego powiązanym w modelu — uzwojeniu "
         "otwartego trójkąta przekładnika napięciowego pola pomiaru napięcia szyn tej samej sekcji "
         "(ENEA Zeszyt 1, Z.17 s.97, obwód okrężny „Z, Zz”) albo tego pola — i kryterium prądowym "
         "z przekładnika Ferrantiego pola"
@@ -1343,7 +1357,7 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
     description=(
         "Pole pomiaru napięcia SN rozdzielni GPZ (ENEA Z.17) — łącznik trójpołożeniowy z napędem, "
         "wskaźnik napięcia, przekładnik napięciowy wtykowy z uzwojeniem otwartego trójkąta "
-        "(źródło napięcia zerowego 3U₀ sekcji)."
+        "(źródło napięcia zerowego sekcji)."
     ),
     podstawa=PODSTAWA_POLA_POMIARU_NAPIECIA_Z17,
     render_variant="qet_en60617",
@@ -1672,7 +1686,8 @@ BAY_TEMPLATE_GPZ_BKR_Z16 = _szablon_pola_gpz_wg_rysunku(
             "kind": "UNBALANCE_CT",
             "designation_q": "T6",
             "placement": "OFF_PATH",
-            "opis": "przekładnik niezrównoważenia między punktami gwiazd baterii (Ir>)",
+            "opis": "przekładnik niezrównoważenia między punktami gwiazd baterii (zabezpieczenie "
+            "od prądu niezrównoważenia)",
         },
     ],
     ports=[BayPortTemplate(kind="sn_output", suffix="bkr")],

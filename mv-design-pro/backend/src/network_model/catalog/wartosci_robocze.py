@@ -1477,9 +1477,12 @@ def wyprowadz_skladowa_zerowa(
 #: (`impedancja_zerowa_zygzaka_robocza_ohm` — jedno źródło liczby i jej uzasadnienia).
 ZALOZENIE_Z0_ZYGZAKA = (
     "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: "
-    "|Z0| = 3·s·Uf/IN przy spadku s = 5 % napięcia fazowego i prądzie punktu neutralnego "
-    "IN = 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29), X0/R0 = 5; "
-    "producent podaje Z0 na tabliczce (IEC 60076-6), standard ENEA jej nie podaje"
+    "moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd "
+    "punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A "
+    "(górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to "
+    "potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji "
+    "zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard "
+    "ENEA jej nie podaje"
 )
 
 #: Pola impedancji zerowej transformatora (zygzak) objęte daną przyjętą (kolejność stała).

@@ -2051,7 +2051,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
     # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
     # w konfiguracji stacji — druga prawda punktu neutralnego, pilnowana przez grep-zero), +48 (pola encji
-    # `ZespolUziemiajacy` i jej aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
+    # zespolu uziemiajacego i jego aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
     # payloady operacji zespolu; trzy przestrzenie katalogu aparatow zespolu; wejscie solvera
     # skladowej zerowej `y0_bus`/`node_index`/`galezie_sieci`/`brak_wyniku_zerowego`; kontekst
     # V12.6 `uziemienie_sn`/`prad_dlawikow_a`). PASS niezmieniony.
@@ -2154,7 +2154,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `protection_ready`, `short_circuit_ready`, `sld_ready`, `snapshot_fingerprint`; dodane
     # (+5): `goly_aparat_wniosek_pl`, `kombinacja_wniosek_pl`, `koniec`, `nowe_elementy`,
     # `punkt`. Dawny pin 4504 z rozwiazania konfliktu nie byl pomiarem. PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4501." in wyjscie, wyjscie
+    # Karta ZU-JEDEN-NOSNIK (scalenie szablonow pol GPZ `44b3f173e` do integracji `ffbd81d15`,
+    # 2026-11-11): 4501 -> 4579 — POMIAR zbiorow `contract_fields()` (`git archive`): integracja
+    # 4501, strona szablonow pol 4478, drzewo karty 4579 = integracja + 86 - 8. Dodane: 84 nazwy
+    # strony szablonow pol (obwody wtorne pola, funkcje EAZ, zrodlo napiecia zerowego, stan
+    # obiektu, wykonanie pola i lacznikow, zaczepy przekladnikow, sprzeglo sekcji) oraz 2 nazwy
+    # karty: `dawca` i `wyposazenie` (typowane wyposazenie punktu neutralnego transformatora
+    # uziemiajacego). Skasowane (-8, zadna nie zyje na stronie szablonow): kolekcja zespolow
+    # uziemiajacych modelu i odwolanie do odbioru potrzeb wlasnych zespolu (kasacja dawnego
+    # nosnika zespolu, nazwy przypina `config/grep_zero_zu1_patterns.txt`), `uziemienie_bezposrednie`,
+    # `earthing_transformer_types`, `grupa_polaczen`, `s_pw_kva`, `u_pw_kv` (dawna karta typu
+    # transformatora uziemiajacego — nosnikiem jest katalog transformatorow), `ct_cores`
+    # (rdzenie przekladnika jako `rdzenie`). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4579." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2490,7 +2502,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta kanalow tekstu dla projektanta (2026-10-30): 600 -> 599 (-1: opis rodzaju i stanu
         # przebiegu przeniesiony z `application/analyses/opis_przebiegu.py` do `domain/` —
         # poza korzeniami skanu, bo czyta go takze warstwa domeny). POMIAR guardem.
-        "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta ZU-JEDEN-NOSNIK (scalenie galezi szablonow pol z galezia integracji
+        # `ffbd81d15`): 606 -> 620 (+4 network_model, +10 enm — rozbicie przy pinach korzeni). POMIAR guardem na `ffbd81d15` (606) i na drzewie karty;
+        # dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 620 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2709,7 +2724,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
         # Odcinek 2 karty ZU (2026-10-29): 195 -> 196 (+1 `solvers/doziemienie_sn.py`), dlug
         # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
-        "  network_model: pliki_skanowane=196, dlug=10 plikow/suma 65, "
+        # Karta ZU-JEDEN-NOSNIK: 196 -> 200 (+4 `catalog/funkcje_eaz.py`, `gazy_fluorowane.py`,
+        # `obwody_wtorne_pola.py`, `przekladniki.py` z galezi szablonow pol). POMIAR guardem.
+        "  network_model: pliki_skanowane=200, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2803,7 +2820,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # galezi.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
         # Odcinek 2 karty ZU (2026-10-29): enm 78 -> 79 (+1 `enm/doziemienie_sieci.py`);
         # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `0344668a0` i na drzewie karty.
-        "  enm: pliki_skanowane=79, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Karta ZU-JEDEN-NOSNIK: enm 79 -> 89 (+9 z galezi szablonow pol: `aparaty_pol_sn.py`,
+        # `gaz_fluorowany_pola.py`, `oznaczenia_aparatow_pola.py`, `pole_liniowe_gpz.py`,
+        # `polozenie_aparatu_pola.py`, `stan_obiektu_pola.py`, `zespol_uziemiajacy.py`,
+        # `zgodnosc_szablonu_pola.py`, `zrodlo_napiecia_zerowego.py`; +1 karty:
+        # `punkt_neutralny_zespolu.py` — predykat grupy ZN i wyposazenie punktu neutralnego);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `ffbd81d15` i na drzewie karty.
+        "  enm: pliki_skanowane=89, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

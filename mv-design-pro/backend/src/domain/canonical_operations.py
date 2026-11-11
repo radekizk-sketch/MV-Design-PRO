@@ -2400,7 +2400,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Pole albo aparat pola z gazem fluorowanym (SF₆) nie jest oznaczone jako istniejące "
+            "Pole albo aparat pola z gazem fluorowanym (SF6) nie jest oznaczone jako istniejące "
             "— pole projektowane wymaga wykonania bez gazów fluorowanych"
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
@@ -2525,7 +2525,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.WARNING,
         message_pl=(
             "Pole ma zabezpieczenie ziemnozwarciowe kierunkowe (67N) bez potwierdzonego źródła "
-            "napięcia zerowego 3U₀ — przekładnika z uzwojeniem otwartego trójkąta w polu pomiaru "
+            "napięcia zerowego — przekładnika z uzwojeniem otwartego trójkąta w polu pomiaru "
             "napięcia szyn tej sekcji (ENEA Zeszyt 1, Z.17)"
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},

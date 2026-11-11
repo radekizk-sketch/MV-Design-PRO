@@ -112,6 +112,7 @@ ETYKIETA = "etykieta"
 KANALY_TRESCI: dict[str, str] = {
     "ability_pl": ETYKIETA,
     "akcja_naprawcza_pl": ZDANIE,
+    "akcja_pl": ZDANIE,
     "alias_pl": ETYKIETA,
     "analysis_label_pl": ETYKIETA,
     "aparat_pl": ETYKIETA,
@@ -164,6 +165,8 @@ KANALY_TRESCI: dict[str, str] = {
     "faza_nieznana_powod_pl": ZDANIE,
     "fix_hint_pl": ZDANIE,
     "function_label_pl": ETYKIETA,
+    "funkcja_pl": ETYKIETA,
+    "funkcje_eaz_pl": ETYKIETA,
     "goly_aparat_wniosek_pl": ETYKIETA,
     "granica_temperatury_pl": ZDANIE,
     "info_pl": ETYKIETA,
@@ -192,6 +195,7 @@ KANALY_TRESCI: dict[str, str] = {
     "missing_fields_pl": ZDANIE,
     "naglowek_pl": ETYKIETA,
     "name_pl": ETYKIETA,
+    "nazwa_aparatu_pl": ETYKIETA,
     "nazwa_operatora_pl": ETYKIETA,
     "nazwa_pl": ETYKIETA,
     "nazwa_punktu_pl": ETYKIETA,
@@ -203,6 +207,7 @@ KANALY_TRESCI: dict[str, str] = {
     "nosnik_pl": ZDANIE,
     "note_pl": ZDANIE,
     "notes_pl": ZDANIE,
+    "odbiornik_pl": ETYKIETA,
     "odeslanie_pl": ETYKIETA,
     "odmowa_pl": ZDANIE,
     "odniesienie_pl": ETYKIETA,
@@ -220,6 +225,7 @@ KANALY_TRESCI: dict[str, str] = {
     "opis_zrodla_pl": ZDANIE,
     "ostrzezenia": ZDANIE,
     "over_limit_label_pl": ETYKIETA,
+    "oznaczenie_pl": ETYKIETA,
     "parametry_robocze_pl": ZDANIE,
     "pasmo_brak_etykieta_pl": ETYKIETA,
     "pasmo_brak_powod_pl": ZDANIE,
@@ -235,8 +241,10 @@ KANALY_TRESCI: dict[str, str] = {
     "pokrycie_pl": ZDANIE,
     "pokrycie_programu_pl": ZDANIE,
     "pole_pl": ETYKIETA,
+    "pomiar_pl": ETYKIETA,
     "pominiete_pl": ZDANIE,
     "pominiete_zrodla_pl": ZDANIE,
+    "powod_blokady_nowych_pol_pl": ZDANIE,
     "powod_braku_niepewnosci_pl": ZDANIE,
     "powod_braku_pl": ZDANIE,
     "powod_decyzji_pl": ZDANIE,
@@ -291,6 +299,7 @@ KANALY_TRESCI: dict[str, str] = {
     "source_note_pl": ZDANIE,
     "source_pl": ETYKIETA,
     "stan_pl": ETYKIETA,
+    "stan_pomiaru_pl": ETYKIETA,
     "status_label_pl": ETYKIETA,
     "status_pl": ETYKIETA,
     "statystyka_pl": ETYKIETA,
@@ -318,6 +327,7 @@ KANALY_TRESCI: dict[str, str] = {
     "uwagi_metody_pl": ZDANIE,
     "uwagi_pl": ZDANIE,
     "uzasadnienie_pl": ZDANIE,
+    "uzwojenie_pl": ETYKIETA,
     "verdict_description_pl": ZDANIE,
     "verdict_pl": ETYKIETA,
     "voltage_level_pl": ETYKIETA,
@@ -325,6 +335,7 @@ KANALY_TRESCI: dict[str, str] = {
     "wartosc_pl": ETYKIETA,
     "warunek_pl": ETYKIETA,
     "warunek_wstepny_pl": ZDANIE,
+    "wejscia_pl": ETYKIETA,
     "werdykt_pl": ETYKIETA,
     "werdykt_sekwencji_pl": ZDANIE,
     "wezly_strefy_nazwy_pl": ETYKIETA,
@@ -340,6 +351,11 @@ KANALY_TRESCI: dict[str, str] = {
     "wplyw_pl": ZDANIE,
     "wscr_why_pl": ZDANIE,
     "wyjasnienie_pl": ZDANIE,
+    "wyjscia_pl": ETYKIETA,
+    "wykonanie_lacznikow_pl": ETYKIETA,
+    "wykonanie_pola_pl": ETYKIETA,
+    "wymagalnosc_pl": ETYKIETA,
+    "wymog_pl": ETYKIETA,
     "wynik_pl": ETYKIETA,
     "wzor_opis_pl": ZDANIE,
     "z0_missing_reason_pl": ZDANIE,
@@ -355,6 +371,7 @@ KANALY_TRESCI: dict[str, str] = {
     "zdanie_pl": ZDANIE,
     "zdolnosc_4q_pl": ETYKIETA,
     "zdolnosc_gfm_pl": ETYKIETA,
+    "znaczenie_pl": ETYKIETA,
     "zrodlo_k_pl": ETYKIETA,
     "zrodlo_liczb_pl": ZDANIE,
     "zrodlo_napiecia_pl": ZDANIE,
@@ -1215,6 +1232,14 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
 #: albo oznaczeniem normowym — klucz ``moduł:wyrażenie kolekcji``; uzasadnienie wskazuje,
 #: skąd pochodzi tekst (żywotność: ``test_wylaczenia_sklejen_sa_zywe``).
 KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
+    "enm/pole_liniowe_gpz.py:nz.wyjscia": (
+        "nazwy sygnałów wyjściowych bloku napięcia zwrotnego w zapisie rysunku pola ENEA "
+        "Zeszyt 1 (`PowiazanieFunkcjiEaz.wyjscia` — nazwy `SygnalPola`, np. „Blokowanie ZS”)"
+    ),
+    "enm/zrodlo_napiecia_zerowego.py:zrodlo.czego_brakuje": (
+        "zdania braków źródła napięcia zerowego z `zrodlo_u0_pola` (`braki_i0` i `braki` tej "
+        "samej funkcji) — pola nazwane `opis_elementu`, kody braków osobno w `kody_brakow`"
+    ),
     "api/cloud_backup.py:result.errors": (
         "błędy `ProjectArchiveService.import_project`: zdania `verify_archive_integrity` "
         "(`domain/project_archive.py`) i treść błędu archiwum — oba w zakresie strażnika"
@@ -1324,6 +1349,15 @@ KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
 #: dla autora danych. Klucz ``moduł:wyrażenie kolekcji`` (żywotność:
 #: ``test_wylaczenia_sklejen_sa_zywe``).
 KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
+    # Szablony pól i ich obwody wtórne są danymi katalogu zapisanymi w kodzie (rysunki ENEA
+    # Zeszyt 1); odmowa walidacji definicji trafia do autora danych katalogu, który poprawia
+    # wpis po kodzie funkcji EAZ, którego sam użył — kod spoza słownika nie ma nazwy słownej.
+    "network_model/catalog/bay_templates.py:nieznane": (
+        "kody funkcji EAZ definicji szablonu pola spoza słownika `FUNKCJE_EAZ`"
+    ),
+    "network_model/catalog/obwody_wtorne_pola.py:nieznane": (
+        "kody funkcji EAZ powiązań obwodów wtórnych definicji spoza słownika `FUNKCJE_EAZ`"
+    ),
     "api/catalog.py:sorted(pozycje)": "slugi rodzin w ścieżce `GET …/przeglad-wiarygodnosci/{rodzina}`",
     "api/enm.py:sorted(_OP_DISPATCH.keys())": "nazwy operacji pola `op` żądania API modelu",
     "application/analyses/odpowiedz_osd.py:sorted(_COMMANDS)": (
@@ -2587,6 +2621,11 @@ def _echo_odrzuconej_wartosci(zrodlo: str, wezel: ast.AST, rodzice: dict[int, as
 #: (``moduł:wyrażenie`` → uzasadnienie; żywotność i warunek: ``test_wylaczenia_sklejen_sa_zywe``
 #: oraz test przy wpisie).
 WYLICZENIA_BEZ_ETYKIETY: dict[str, str] = {
+    "application/xlsx_import/importer.py:stan": (
+        "stan obiektu z kolumny `stan` arkusza szyn — zapis, który projektant sam wpisał i którego "
+        "słownik `stan_obiektu_z_arkusza` nie rozpoznał; komunikat cytuje go, żeby wskazał "
+        "komórkę do poprawy (ten sam wzorzec co `rodzaj` odcinka)"
+    ),
     "application/xlsx_import/importer.py:rodzaj": (
         "rodzaj odcinka z kolumny arkusza (`LINIA`/`KABEL`) — słowo, które projektant sam "
         "wpisał w arkuszu; komunikat cytuje jego zapis, żeby wskazał komórkę do poprawy"

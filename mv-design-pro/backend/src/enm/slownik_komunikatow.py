@@ -240,7 +240,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_bay_equipment:bay_template_ref": "Szablon pola",
     "set_bay_equipment:klasa_pola": "Klasa pola liniowego",
     # Decyzja właściciela 2026-10-29: powiązanie źródła napięcia zerowego 3U₀ pola (ENEA Z.17).
-    "set_bay_equipment:zrodlo_u0_ref": "Źródło napięcia zerowego 3U₀",
+    "set_bay_equipment:zrodlo_u0_ref": "Źródło napięcia zerowego",
     # Karta UX-04/POLE-LINIOWE-WZORZEC: stan obiektu pola (istniejący/projektowany).
     "set_object_state:bay_ref": "Pole rozdzielnicy",
     "set_object_state:stan_obiektu": "Stan obiektu",

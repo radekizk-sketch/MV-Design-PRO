@@ -42,7 +42,7 @@ NAZWY_IZOLACJI_RODZINY_PL: dict[str, str] = {
     "air": "izolacja powietrzna",
     "ssis": "izolacja stało-powietrzna",
     "gaz_bez_f": "izolacja gazowa bez gazów fluorowanych",
-    "sf6": "izolacja gazowa SF₆",
+    "sf6": "izolacja gazowa SF6",
     "unknown": "izolacja nieustalona",
 }
 
@@ -55,7 +55,7 @@ NAZWY_IZOLACJI_RODZINY_PL: dict[str, str] = {
 MediumLacznikowRodziny = Literal["SF6", "PROZNIA", "POWIETRZE", "KATALOG_APARATOW"]
 
 NAZWY_MEDIUM_LACZNIKOW_PL: dict[str, str] = {
-    "SF6": "łączniki w SF₆",
+    "SF6": "łączniki w SF6",
     "PROZNIA": "łączniki próżniowe",
     "POWIETRZE": "łączniki powietrzne",
     "KATALOG_APARATOW": "aparat łączeniowy z katalogu aparatów",
@@ -114,6 +114,7 @@ NAZWY_TOROW_KONFIGURACJI_PL: dict[str, str] = {
 ETYKIETA_STATUSU_RODZINY_PL: dict[str, str] = {
     "verified": "zweryfikowana w oficjalnym katalogu producenta",
     "repo_verified": "weryfikacja na danych publicznych",
+    "standard_osd": "typ ogólny wg standardu operatora — wymagania OSD, nie karta wyrobu",
     "user_defined": "definicja użytkownika",
     "requires_catalog": "wymaga katalogu producenta",
     "deprecated": "rodzina wycofana z oferty producenta",

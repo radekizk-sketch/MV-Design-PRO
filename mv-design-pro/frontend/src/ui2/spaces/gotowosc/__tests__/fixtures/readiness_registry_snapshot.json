@@ -34,6 +34,94 @@
       }
     },
     {
+      "area": "STATIONS",
+      "code": "bay.apparatus_designation_duplicate",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.earth_fault_u0_source_unconfirmed",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.fluorinated_gas_not_existing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.generation_fed_from_load_bay",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.gpz_template_outside_gpz",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.line_class_execution_mismatch",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.loads_behind_dedicated_generation_bay",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.reclosing_in_dedicated_generation_bay",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.settlement_core_missing",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.switching_execution_insulation_mismatch",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "bay.ufls_in_bay_with_generation",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
       "area": "GENERATORS",
       "code": "bess.energy_module_missing",
       "fix_navigation": {
@@ -255,6 +343,23 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.object_state_invalid",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.object_state_not_applicable",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "catalog.ref_missing",
       "fix_navigation": {
         "modal": "CatalogPicker",
@@ -470,6 +575,15 @@
       }
     },
     {
+      "area": "SOURCES",
+      "code": "earthing.multiple_grounded_neutrals_in_island",
+      "fix_navigation": {
+        "focus": "neutral_grounding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "STATIONS",
       "code": "earthing.network_grounding_warning",
       "fix_navigation": {
@@ -483,15 +597,6 @@
       "code": "earthing.neutral_grounding_inconsistent",
       "fix_navigation": {
         "focus": "neutral_grounding",
-        "panel": "inspector",
-        "tab": "parametry"
-      }
-    },
-    {
-      "area": "STATIONS",
-      "code": "earthing.zespol_auxiliary_load_missing",
-      "fix_navigation": {
-        "focus": "odbior_pw_ref",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1564,7 +1669,7 @@
       }
     }
   ],
-  "count": 183,
+  "count": 196,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1674,11 +1779,6 @@
     {
       "action_type": "SELECT_CATALOG",
       "modal_type": null,
-      "panel": null
-    },
-    {
-      "action_type": "SELECT_CATALOG",
-      "modal_type": null,
       "panel": "catalog"
     },
     {
@@ -1696,6 +1796,7 @@
     "E-W5-01": "earthing.neutral_grounding_inconsistent",
     "E-W5-02": "transformer.vector_group_invalid",
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    "E-W5-04": "earthing.multiple_grounded_neutrals_in_island",
     "E-ZU-01": "earthing.zespol_bus_invalid",
     "E-ZU-02": "earthing.zespol_neutral_undefined",
     "E001": "source.grid_supply_missing",
@@ -1712,7 +1813,6 @@
     "W-W5-02": "source.sn_neutral_data_ignored",
     "W-ZU-01": "earthing.zespol_spz_without_resistor",
     "W-ZU-02": "earthing.zespol_transformer_trip_missing",
-    "W-ZU-03": "earthing.zespol_auxiliary_load_missing",
     "W-ZU-04": "earthing.network_grounding_warning",
     "W-ZU-05": "earthing.zespol_direct_earthing",
     "W-ZU-06": "earthing.zespol_voltage_mismatch",
@@ -1728,6 +1828,17 @@
     "W047": "station.bkr_discharge_vt_missing",
     "W048": "station.bkr_transformer_trip_incomplete",
     "W049": "station.segment_without_field",
+    "W050": "bay.switching_execution_insulation_mismatch",
+    "W051": "bay.gpz_template_outside_gpz",
+    "W052": "bay.line_class_execution_mismatch",
+    "W053": "bay.generation_fed_from_load_bay",
+    "W054": "bay.loads_behind_dedicated_generation_bay",
+    "W055": "bay.ufls_in_bay_with_generation",
+    "W056": "bay.reclosing_in_dedicated_generation_bay",
+    "W057": "bay.settlement_core_missing",
+    "W058": "bay.fluorinated_gas_not_existing",
+    "W063": "bay.apparatus_designation_duplicate",
+    "W064": "bay.earth_fault_u0_source_unconfirmed",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

@@ -1823,7 +1823,7 @@
           "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
           "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
         },
-        "name": "Szyna potrzeb własnych 0,4 kV — Pole zespołu uziemiającego",
+        "name": "Szyna potrzeb własnych 0,4 kV — Transformator uziemiający — Pole zespołu uziemiającego",
         "phase_system": "3ph",
         "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/zu_bus_nn",
         "tags": [
@@ -1854,7 +1854,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "66747a06655a1154f62c8299aa047b95f6d7038794d355e65bd37e0f9da24583",
+      "hash_sha256": "693b485d82931d7175a4f02ca450296c4e4da55b127c9632a2a3afb4e934765a",
       "name": "GPZ z polem zespołu uziemiającego Z14",
       "revision": 1,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2078,9 +2078,48 @@
         "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
         "hv_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
         "hv_neutral": {
-          "awsc_prad_wymuszenia_a": 40.0,
+          "dlawik": {
+            "catalog_namespace": "DLAWIK_GASZACY",
+            "catalog_ref": "DL_40_400A_15KV_CIAGLY",
+            "materialized_params": {
+              "catalog_item_id": "DL_40_400A_15KV_CIAGLY",
+              "catalog_item_version": "2024.1",
+              "i_max_a": 400.0,
+              "i_min_a": 40.0,
+              "regulacja": "ciagla",
+              "u_n_kv": 15.0,
+              "u_wtorne_v": 500.0,
+              "wartosci_robocze": {
+                "i_max_a": "ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %",
+                "i_min_a": "ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %",
+                "regulacja": "ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %",
+                "u_wtorne_v": "ENEA Zeszyt 1 §16 s. 31: uzwojenie dodatkowe (wtórne) 500 V, ≥ 500 A przez 60 s"
+              }
+            },
+            "stan_odlacznika": "zamkniety"
+          },
           "r_ohm": null,
+          "rezystor": {
+            "catalog_namespace": "REZYSTOR_UZIEMIAJACY",
+            "catalog_ref": "REZ_200A_15KV",
+            "materialized_params": {
+              "catalog_item_id": "REZ_200A_15KV",
+              "catalog_item_version": "2024.1",
+              "i_n_a": 200.0,
+              "r_ohm": 43.3,
+              "t_s": 10.0,
+              "u_n_kv": 15.0,
+              "wartosci_robocze": {
+                "i_n_a": "założenie robocze: prąd znamionowy rezystora sieci kablowej (§16 s. 29 nie podaje wartości) — do potwierdzenia analizą przepięć i działania zabezpieczeń ziemnozwarciowych",
+                "r_ohm": "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym",
+                "t_s": "założenie robocze: dopuszczalny czas przepływu prądu znamionowego 10 s — do potwierdzenia kartą producenta"
+              }
+            },
+            "stan_odlacznika": "zamkniety"
+          },
+          "spz": false,
           "type": "petersen_coil",
+          "wylaczenie_od_transformatorow_refs": [],
           "x_ohm": null
         },
         "i0_percent": 2.5,
@@ -2098,29 +2137,21 @@
           "voltage_hv_kv": 15.0,
           "voltage_lv_kv": 0.4,
           "wartosci_robocze": {
-            "r0_ohm": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: |Z0| = 3·s·Uf/IN przy spadku s = 5 % napięcia fazowego i prądzie punktu neutralnego IN = 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29), X0/R0 = 5; producent podaje Z0 na tabliczce (IEC 60076-6), standard ENEA jej nie podaje",
-            "x0_ohm": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: |Z0| = 3·s·Uf/IN przy spadku s = 5 % napięcia fazowego i prądzie punktu neutralnego IN = 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29), X0/R0 = 5; producent podaje Z0 na tabliczce (IEC 60076-6), standard ENEA jej nie podaje"
+            "r0_ohm": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje",
+            "x0_ohm": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje"
           },
           "x0_ohm": 3.18452915853
         },
         "meta": {
+          "catalog_binding": {
+            "catalog_item_id": "tu-sn-nn-15-04-100kva-znyn11",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "TRAFO_SN_NN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
           "field_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
-          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
-          "zespol_uziemiajacy": {
-            "bay_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
-            "dane_przyjete": [
-              {
-                "jakosc": "ESTIMATED",
-                "jednostka": "A",
-                "nazwa_pl": "prąd wymuszenia AWSC",
-                "parametr": "awsc_prad_wymuszenia_a",
-                "podstawa_pl": "ENEA Operator, Stacje 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.30: rezystor wymuszający po stronie pierwotnej stosuje się, gdy prąd wymuszenia przekracza 40 A — przyjęto granicę 40 A; projektant podaje prąd swojego rezystora",
-                "wartosc": 40.0
-              }
-            ],
-            "wariant": "Z14",
-            "zrodlo_ref": null
-          }
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
         },
         "name": "Transformator uziemiający — Pole zespołu uziemiającego",
         "overrides": [],

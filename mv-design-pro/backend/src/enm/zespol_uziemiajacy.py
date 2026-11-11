@@ -25,6 +25,7 @@ dodaniu pola ZU i wraca przy usunięciu transformatora. Warunek oddania czyta TY
 from __future__ import annotations
 
 import copy
+from collections.abc import Mapping
 from typing import Any, Literal
 
 from network_model.catalog.mv_zespol_uziemiajacy_catalog import (
@@ -243,23 +244,57 @@ def wariant_z_uziemienia_zrodla(enm: dict[str, Any], bus_ref: str) -> WariantZes
     return WARIANT_Z_TYPU_UZIEMIENIA_ZRODLA.get(str(typ)) if typ else None
 
 
-def transformator_zespolu_pola(enm: dict[str, Any], bay_ref: str) -> dict[str, Any] | None:
-    """Transformator uziemiający pola ZU ``bay_ref`` — pierwszy (``ref_id``) transformator
-    uziemiający z wyposażenia pola (``Bay.equipment_refs``). Jedno źródło powiązania pola
-    z transformatorem — lustro ``pole_transformatorowe.pole_zespolu_transformatora``."""
-    pole = next(
-        (b for b in enm.get("bays", []) if isinstance(b, dict) and b.get("ref_id") == bay_ref),
-        None,
-    )
-    if pole is None:
+def _wartosc(obiekt: object, nazwa: str) -> object:
+    return obiekt.get(nazwa) if isinstance(obiekt, Mapping) else getattr(obiekt, nazwa, None)
+
+
+def _napisy(wartosci: object) -> set[str]:
+    if not isinstance(wartosci, list | tuple):
+        return set()
+    return {w.strip() for w in wartosci if isinstance(w, str) and w.strip()}
+
+
+def pole_zespolu_transformatora(enm: object, transformator: object) -> object | None:
+    """Pole zespołu uziemiającego (rola ``ZU``), do którego należy transformator — JEDNO źródło
+    powiązania pola ZU z transformatorem uziemiającym (karta ZU-JEDEN-NOSNIK; zapis w ``meta``
+    skasowany) dla W041 i transformatorów rozdzielczych stacji (``enm.pole_transformatorowe``),
+    pisarzy pola ZU (``transformator_zespolu_pola``) i rysunku (lustro frontu
+    `frontend/src/ui/shared/transformatoryStacji.ts::poleZespoluTransformatora`).
+
+    Transformator należy do pola, gdy JEST transformatorem uziemiającym
+    (``jest_transformatorem_uziemiajacym``: uzwojenie górne ZN… w paśmie SN) i wskazuje go
+    typowane wyposażenie pola roli ``ZU`` (``Bay.equipment_refs``). Inny transformator
+    w wyposażeniu pola ZU nie jest aparatem zespołu — działa dla niego zwykła reguła W041, nie
+    cichy wyjątek. Kolejność pól deterministyczna (``ref_id``) — transformator należy do
+    jednego pola. Czyta model albo surową migawkę."""
+    if not isinstance(transformator, Transformer | Mapping):
         return None
-    refy = {r for r in pole.get("equipment_refs") or [] if isinstance(r, str)}
+    if not jest_transformatorem_uziemiajacym(transformator):
+        return None
+    refy = _napisy([_wartosc(transformator, "ref_id"), _wartosc(transformator, "id")])
+    if not refy:
+        return None
+    pola = _wartosc(enm, "bays")
+    kandydaci = [
+        b
+        for b in (pola if isinstance(pola, list | tuple) else [])
+        if str(_wartosc(b, "bay_role") or "").strip().upper() == ROLA_POLA_ZESPOLU_UZIEMIAJACEGO
+    ]
+    for bay in sorted(kandydaci, key=lambda b: str(_wartosc(b, "ref_id") or "")):
+        if refy & _napisy(_wartosc(bay, "equipment_refs")):
+            return bay
+    return None
+
+
+def transformator_zespolu_pola(enm: dict[str, Any], bay_ref: str) -> dict[str, Any] | None:
+    """Transformator uziemiający pola ZU ``bay_ref`` — pierwszy (``ref_id``) transformator,
+    którego pole zespołu (``pole_zespolu_transformatora``, jedno źródło powiązania) to
+    ``bay_ref``."""
     for transformator in sorted(
         (t for t in enm.get("transformers", []) if isinstance(t, dict)),
         key=lambda t: str(t.get("ref_id")),
     ):
-        if transformator.get("ref_id") in refy and jest_transformatorem_uziemiajacym(
-            Transformer.model_validate(transformator)
-        ):
+        pole = pole_zespolu_transformatora(enm, transformator)
+        if pole is not None and _wartosc(pole, "ref_id") == bay_ref:
             return transformator
     return None

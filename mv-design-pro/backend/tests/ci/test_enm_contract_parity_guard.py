@@ -115,7 +115,7 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
 
     Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA dopisuje do `SPRAWDZANE` cztery encje zespolu
     uziemiajacego SN z lustrem w `types/enm.ts` i zachowanym parytetem zbioru wartosci:
-    `ZespolUziemiajacy.parameter_source` (CATALOG / OVERRIDE) i `.grupa_polaczen` (ZNyn11 /
+    dawnej encji zespolu: `parameter_source` (CATALOG / OVERRIDE) i `grupa_polaczen` (ZNyn11 /
     ZNyn5 / ZNy11 / ZNy5 / ZN), `DlawikGaszacy.regulacja` (ciagla / zaczepy) i
     `.stan_odlacznika`, `RezystorUziemiajacy.stan_odlacznika` (zamkniety / otwarty)
     i `RezystorWymuszajacyAwsc.strona` (wtorna / pierwotna) — licznik 125 -> 131 (pomiar
@@ -144,15 +144,26 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     — pomiar guardem na drzewie `git archive 85bd2aadf`: 133. Zaczep przekładnika
     wieloprzekładniowego (§11.15) dodaje `BayPrimaryDevice.zrodlo_zaczepu` (PROJEKTANT |
     WARTOSC_ROBOCZA, lustro `ZrodloZaczepu` w `types/enm.ts`, parytet zbioru wartości
-    zachowany): 133 -> 134 (pomiar guardem na drzewie karty)."""
+    zachowany): 133 -> 134 (pomiar guardem na drzewie karty).
+
+    Karta ZU-JEDEN-NOSNIK (2026-11-11, scalenie modelu A zespołu uziemiającego z gałęzią
+    POLA-GPZ-SZABLONY): kasuje osobną encję zespołu uziemiającego (jej dwa pola Literal
+    `parameter_source` i `grupa_polaczen` znikają — zespół jest transformatorem `Transformer`
+    z wyposażeniem punktu neutralnego w `GroundingConfig`), dopisuje do `SPRAWDZANE`
+    `DawcaPunktuNeutralnego` (bez pól Literal), a cztery pola Literal wyposażenia punktu
+    neutralnego (`DlawikGaszacy.regulacja` i `.stan_odlacznika`,
+    `RezystorUziemiajacy.stan_odlacznika`, `RezystorWymuszajacyAwsc.strona`) wchodzą do pomiaru
+    gałęzi POLA-GPZ-SZABLONY (134 — tamta gałąź encji zespołu nie miała). Pomiar guardem:
+    gałąź modelu A `ffbd81d15` = 132, gałąź POLA-GPZ-SZABLONY `44b3f173e` = 134, drzewo karty =
+    134 + 4 = 138."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 134, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 134 — "
+    assert int(dopasowanie.group(1)) == 138, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 138 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

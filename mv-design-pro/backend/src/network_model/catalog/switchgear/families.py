@@ -1325,8 +1325,8 @@ _UWAGI_TYPU_OGOLNEGO_OSD = (
     "02.2023-2): §13 — rozdzielnica jednosystemowa, dwusekcyjna, wnętrzowa, osłonięta, "
     "przedziałowa, łukoodporna; napięcie znamionowe 24 kV w sieci ≤ 20 kV; wyłączniki "
     "z próżniowymi komorami gaszeniowymi; §8.2 tabele 3–4 — szyny 1250 A / 2000 A, pole "
-    "liniowe 630 A; §9.2 — 16 kA przez 3 s. Wartości robocze (bez karty producenta). Status "
-    "danych: standard_osd — wymagania operatora, nie karta wyrobu."
+    "liniowe 630 A; §9.2 — 16 kA przez 3 s. Wartości robocze (bez karty producenta). Stan "
+    "źródła: typ ogólny wg standardu operatora — wymagania OSD, nie karta wyrobu."
 )
 
 _POLA_GPZ_TYPU_OGOLNEGO: list[str] = [

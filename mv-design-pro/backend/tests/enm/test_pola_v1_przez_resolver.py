@@ -478,9 +478,10 @@ def test_kazde_pole_kazdej_rodziny_modularnej_materializuje_aparaty() -> None:
 # Pin INWENTARZA: nowe miejsce budowy pola musi podjąć decyzję świadomie
 # ---------------------------------------------------------------------------
 
-#: Funkcje operacji domenowych, które BUDUJĄ rekord pola (`enm.pola.zbuduj_pole`) — 16 wywołań
-#: buildera w 14 funkcjach dwóch modułów (13 dróg budowy pola z karty + pole źródła
-#: przekształtnika na szynie SN, rozstrzygnięcie integratora W5-B). Lista ZAMKNIĘTA: każde nowe miejsce budowy
+#: Funkcje operacji domenowych, które BUDUJĄ rekord pola (`enm.pola.zbuduj_pole`) — 17 wywołań
+#: buildera w 15 funkcjach dwóch modułów (13 dróg budowy pola z karty + pole źródła
+#: przekształtnika na szynie SN, rozstrzygnięcie integratora W5-B + dwie drogi karty BKR:
+#: nowe pole liniowe stacji i pierwsze pole liniowe sekcji GPZ, scalone w integracji 2026-11). Lista ZAMKNIĘTA: każde nowe miejsce budowy
 #: pola musi rozstrzygnąć, skąd bierze aparaty pierwotne i identyfikator konfiguracji
 #: (`_aparaty_i_konfiguracja_pola` — resolver katalogu albo jawny argument), więc świadomie
 #: dopisać się tu. `z_katalogiem` — drogi, które przekazują aparaty i konfigurację z wyboru
@@ -555,7 +556,7 @@ def _wywolania_buildera() -> dict[str, dict[str, int]]:
 
 
 def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
-    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (16 wywołań buildera),
+    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (17 wywołań buildera),
     a drogi z wyborem katalogowym przekazują aparaty i konfigurację z resolvera."""
     znalezione = _wywolania_buildera()
     assert znalezione == MIEJSCA_BUDOWY_POLA, (
@@ -563,7 +564,8 @@ def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
         "rozstrzygnac, skad bierze aparaty pola (resolver katalogu vs jawny argument) i "
         f"dopisac sie do inwentarza. Jest: {znalezione}"
     )
-    assert sum(sum(g.values()) for g in znalezione.values()) == 16
+    assert sum(sum(g.values()) for g in znalezione.values()) == 17
+    assert sum(len(g) for g in znalezione.values()) == 15
 
 
 def test_zadna_operacja_nie_sklada_rekordu_pola_recznie() -> None:

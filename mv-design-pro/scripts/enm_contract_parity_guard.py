@@ -155,8 +155,8 @@ SPRAWDZANE: dict[str, str] = {
     "Transformer": "Transformer",
     "TrendState": "TrendState",
     "WyborBlokuPola": "WyborBlokuPola",
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN i elementy punktu neutralnego.
-    "ZespolUziemiajacy": "ZespolUziemiajacy",
+    # Wyposażenie punktu neutralnego transformatora uziemiającego (karta ZU-JEDEN-NOSNIK).
+    "DawcaPunktuNeutralnego": "DawcaPunktuNeutralnego",
     "DlawikGaszacy": "DlawikGaszacy",
     "RezystorUziemiajacy": "RezystorUziemiajacy",
     "RezystorWymuszajacyAwsc": "RezystorWymuszajacyAwsc",

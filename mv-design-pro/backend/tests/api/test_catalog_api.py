@@ -26,8 +26,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         ("/api/catalog/ct-types", "ct_400_5_5p20_15va_abb"),
         ("/api/catalog/vt-types", "vt_15kv_100v_05_abb"),
         ("/api/catalog/wind-inverter-types", "conv-wind-2mw-15kv"),
-        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: trzy przestrzenie zespołu uziemiającego SN.
-        ("/api/catalog/earthing-transformer-types", "TU_ZNYN11_15KV_PW160"),
+        # Zespół uziemiający SN: transformatory ZNyn11 (podzbiór TRAFO_SN_NN), dławiki, rezystory.
+        ("/api/catalog/earthing-transformer-types", "tu-sn-nn-15-04-100kva-znyn11"),
         ("/api/catalog/arc-suppression-coil-types", "DL_40_400A_15KV_CIAGLY"),
         ("/api/catalog/neutral-earthing-resistor-types", "REZ_200A_15KV"),
         ("/api/catalog/protection/device-types", "REF-OC-EF-500"),
@@ -47,6 +47,25 @@ def test_catalog_api_exposes_extended_namespaces(
     assert isinstance(payload, list)
     assert payload
     assert any(item["id"] == expected_id for item in payload)
+
+
+def test_lista_transformatorow_uziemiajacych_z_jednego_predykatu_grupy(client: TestClient) -> None:
+    """Lista transformatorów uziemiających (picker kreatora zespołu) to dokładnie pozycje
+    ``/transformer-types`` z grupą ZN… wg TEGO SAMEGO predykatu, którym pisarz zespołu przyjmuje
+    pozycję katalogu i model rozpoznaje transformator uziemiający (predykaty parami: pozycja
+    z listy nigdy nie dostaje odmowy ``zu.catalog_not_earthing_transformer``, pozycja spoza
+    listy — zawsze)."""
+    from enm.punkt_neutralny_zespolu import grupa_transformatora_uziemiajacego
+
+    wszystkie = client.get("/api/catalog/transformer-types").json()
+    zu = client.get("/api/catalog/earthing-transformer-types").json()
+    oczekiwane = [
+        t["id"] for t in wszystkie if grupa_transformatora_uziemiajacego(t.get("vector_group"))
+    ]
+    assert [t["id"] for t in zu] == oczekiwane
+    assert len(oczekiwane) >= 2
+    assert len(oczekiwane) < len(wszystkie)
+    assert all(t["vector_group"].startswith("ZN") for t in zu)
 
 
 def test_protection_catalog_api_exposes_unverified_flag_for_analytical_devices(

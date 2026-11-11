@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **196** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -70,6 +70,7 @@ Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `source.voltage_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowe napięcie źródła zasilania | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
 | `connection.power_flow_missing` | SOURCES | 2 | WARNING | Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić warunki przyłączenia | panel: `analizy`, tab: `rozplyw` |
 | `connection.power_limit_missing` | SOURCES | 2 | WARNING | Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `moc_przylaczeniowa_mw` |
+| `earthing.multiple_grounded_neutrals_in_island` | SOURCES | 2 | BLOCKER | Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej SN — pozostaw jeden (pozostałe izolowane) albo otwórz sprzęgło sekcji | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez rezystancji uziemienia, dławik bez reaktancji albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
@@ -157,7 +158,17 @@ Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.lv_earthing_system_missing` | STATIONS | 2 | BLOCKER | Transformator SN/nN nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone | panel: `inspector`, tab: `parametry`, focus: `lv_earthing_system` |
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
-| `earthing.zespol_auxiliary_load_missing` | STATIONS | 3 | WARNING | Uzwojenie potrzeb własnych zespołu bez odbioru potrzeb własnych na szynie zespołu | panel: `inspector`, tab: `parametry`, focus: `odbior_pw_ref` |
+| `bay.apparatus_designation_duplicate` | STATIONS | 3 | WARNING | Dwa aparaty pola noszą to samo oznaczenie — oznaczenie aparatu musi być jednoznaczne w obrębie pola (IEC 81346-1) | panel: `inspector`, tab: `pola` |
+| `bay.earth_fault_u0_source_unconfirmed` | STATIONS | 3 | WARNING | Pole ma zabezpieczenie ziemnozwarciowe kierunkowe (67N) bez potwierdzonego źródła napięcia zerowego — przekładnika z uzwojeniem otwartego trójkąta w polu pomiaru napięcia szyn tej sekcji (ENEA Zeszyt 1, Z.17) | panel: `inspector`, tab: `pola` |
+| `bay.fluorinated_gas_not_existing` | STATIONS | 3 | WARNING | Pole albo aparat pola z gazem fluorowanym (SF6) nie jest oznaczone jako istniejące — pole projektowane wymaga wykonania bez gazów fluorowanych | panel: `inspector`, tab: `pola` |
+| `bay.generation_fed_from_load_bay` | STATIONS | 3 | WARNING | Za polem odbiorczym pracują moduły wytwarzania — pole z generacją wymaga klasy mieszanej albo dedykowanej i wykonania Z.11.1 albo Z.11 | panel: `inspector`, tab: `pola` |
+| `bay.gpz_template_outside_gpz` | STATIONS | 3 | WARNING | Pole stacji spoza GPZ ma szablon pola liniowego rozdzielni GPZ — wybierz szablon pola stacji SN | panel: `inspector`, tab: `pola` |
+| `bay.line_class_execution_mismatch` | STATIONS | 3 | WARNING | Klasa pola liniowego z generacją wymaga wykonania z przekładnikiem napięciowym od strony linii (ENEA Z.11.1 albo Z.11) | panel: `inspector`, tab: `pola` |
+| `bay.loads_behind_dedicated_generation_bay` | STATIONS | 3 | WARNING | Za polem dedykowanym modułom wytwarzania są odbiory — pole dedykowane współpracuje wyłącznie z modułami wytwarzania | panel: `inspector`, tab: `pola` |
+| `bay.reclosing_in_dedicated_generation_bay` | STATIONS | 3 | WARNING | Pole dedykowane modułom wytwarzania ma samoczynne ponowne załączenie — lista funkcji pola dedykowanego nie przewiduje SPZ | panel: `inspector`, tab: `pola` |
+| `bay.settlement_core_missing` | STATIONS | 3 | WARNING | Pole wymaga pomiaru rozliczeniowego i analizatora jakości energii (wytwórca ≥ 200 kW albo odbiorca > 4 MW), a przekładnik prądowy nie ma rdzenia rozliczeniowego | panel: `inspector`, tab: `pola` |
+| `bay.switching_execution_insulation_mismatch` | STATIONS | 3 | WARNING | Wykonanie łączników pola nie jest dopuszczone w izolacji rozdzielnicy — łącznik trójpołożeniowy przy szynie wymaga izolacji gazowej bez gazów fluorowanych albo stało-powietrznej | panel: `inspector`, tab: `pola` |
+| `bay.ufls_in_bay_with_generation` | STATIONS | 3 | WARNING | Pole z generacją ma samoczynne częstotliwościowe odciążenie — SCO nie uruchamia się w liniach z jednostkami wytwórczymi | panel: `inspector`, tab: `pola` |
 | `earthing.zespol_direct_earthing` | STATIONS | 3 | WARNING | Uziemienie bezpośrednie punktu neutralnego sieci SN poza rozwiązaniami §16 | panel: `inspector`, tab: `parametry`, focus: `uziemienie_bezposrednie` |
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
@@ -248,21 +259,21 @@ Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 108 |
-| WARNING | 66 |
+| BLOCKER | 111 |
+| WARNING | 76 |
 | INFO | 9 |
-| **Razem** | **183** |
+| **Razem** | **196** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 20 |
+| SOURCES | 21 |
 | TOPOLOGY | 7 |
-| CATALOGS | 55 |
-| STATIONS | 32 |
+| CATALOGS | 57 |
+| STATIONS | 42 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |
-| **Razem** | **183** |
+| **Razem** | **196** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

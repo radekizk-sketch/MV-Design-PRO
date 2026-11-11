@@ -117,8 +117,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5: 167/21 → 163/21 — pomiar `mypy src` na HEAD
     # karty i na drzewie commitu; zniknęły dokładnie 4 błędy `arg-type` skasowanego pakietu
     # dowodowego P19 (opis przy `BASELINE_*` w guardzie), zero nowych.
-    assert modul.BASELINE_ERRORS == 163
-    assert modul.BASELINE_FILES == 21
+    # Karta ZU-JEDEN-NOSNIK (scalenie gałęzi szablonów pól z gałęzią integracji `ffbd81d15`):
+    # 163/21 → 162/20 — pomiar `mypy src` na bazie i na drzewie karty; zniknął dokładnie jeden
+    # błąd `assignment` w `enm/pole_katalogowe.py`, zero nowych (opis przy `BASELINE_*`).
+    assert modul.BASELINE_ERRORS == 162
+    assert modul.BASELINE_FILES == 20
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

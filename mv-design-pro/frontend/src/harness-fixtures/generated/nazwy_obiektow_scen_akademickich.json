@@ -31,6 +31,10 @@
     {
       "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
       "name": "Zacisk pola źródłowego SN Farma PV"
+    },
+    {
+      "ref_id": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn",
+      "name": "Szyna potrzeb własnych 0,4 kV — Zespół uziemiający GPZ"
     }
   ],
   "branches": [
@@ -71,6 +75,10 @@
     {
       "ref_id": "tr_sn_nn",
       "name": "TR 15/0.4"
+    },
+    {
+      "ref_id": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer",
+      "name": "Zespół uziemiający GPZ"
     }
   ],
   "sources": [

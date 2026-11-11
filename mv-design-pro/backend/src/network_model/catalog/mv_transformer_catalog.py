@@ -1496,15 +1496,17 @@ def _transformator_uziemiajacy(hv_kv: float) -> dict[str, Any]:
                 "r0_ohm": ZALOZENIE_Z0_ZYGZAKA,
                 "x0_ohm": ZALOZENIE_Z0_ZYGZAKA,
             },
-            "source_reference": f"{_ZRODLO_ZESZYTU_1_P16}; u_k, P_k, P0, i0: pozycja "
-            f"tr-sn-nn-{hv_kv:g}-04-100kva-dyn11",
+            "source_reference": f"{_ZRODLO_ZESZYTU_1_P16}; napięcie zwarcia, straty obciążeniowe, "
+            f"straty jałowe i prąd jałowy: pozycja tr-sn-nn-{hv_kv:g}-04-100kva-dyn11",
             "contract_version": "2.0",
             "verification_note": (
                 "Pozycja TYPOWA transformatora uziemiającego zespołu uziemiającego GPZ — nie "
                 "egzemplarz producenta. Grupa, zaczepy, napięcie dolne i najmniejsza moc "
-                "uzwojenia potrzeb własnych z §16 Zeszytu 1; u_k, P_k, P0, i0 — wartość robocza "
+                "uzwojenia potrzeb własnych z §16 Zeszytu 1; napięcie zwarcia, straty obciążeniowe, "
+                "straty jałowe i prąd jałowy — wartość robocza "
                 "z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje); "
-                "impedancja zerowa R0/X0 na fazę po stronie SN — wartość robocza (założenie "
+                "impedancja zerowa (rezystancja i reaktancja zerowa) na fazę po stronie SN — wartość "
+                "robocza (założenie "
                 "inżynierskie, `wartosci_robocze`). Rozporządzenie UE 548/2014 art. 1 ust. 2 "
                 "wyłącza transformatory uziemiające z wymagań Tier 2."
             ),

@@ -3616,12 +3616,12 @@ class ENMValidator:
                 )
             # Reguła wyłączenia od TR jest cechą projektu pola (automatyka), nie stanu łącznika:
             # zespół w polu ZU należy do sieci szyny pola także przy otwartym wyłączniku pola.
-            sekcja = sekcja_szyny.get(szyna_pola_zu.get(zu.hv_bus_ref, zu.hv_bus_ref))
-            if z_rezystorem and sekcja is not None:
+            szyny_sekcji = sekcja_szyny.get(szyna_pola_zu.get(zu.hv_bus_ref, zu.hv_bus_ref))
+            if z_rezystorem and szyny_sekcji is not None:
                 zasilajace = sorted(
                     t.ref_id
                     for t in enm.transformers
-                    if _transformator_wn_sn_sieci(t, sekcja, szyny)
+                    if _transformator_wn_sn_sieci(t, szyny_sekcji, szyny)
                 )
                 brakujace = [
                     ref for ref in zasilajace if ref not in cfg.wylaczenie_od_transformatorow_refs

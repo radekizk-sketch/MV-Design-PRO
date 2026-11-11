@@ -84,18 +84,14 @@ def _migawka_z_wiersza(wiersz: dict[str, Any]) -> dict[str, Any]:
                 "pk_kw": 6.5,
             }
         )
-        if opis_tr.get("zespol_uziemiajacy_pole"):
-            # Zapis pary przeniesienia punktu neutralnego (`enm.zespol_uziemiajacy`) — jedyne
-            # powiązanie transformatora uziemiającego z jego polem ZU.
-            transformers[-1]["vector_group"] = "ZNyn11"
-            transformers[-1]["meta"] = {
-                "zespol_uziemiajacy": {
-                    "bay_ref": opis_tr["zespol_uziemiajacy_pole"],
-                    "wariant": "Z15",
-                    "zrodlo_ref": None,
-                    "dane_przyjete": [],
-                }
-            }
+        if opis_tr.get("grupa"):
+            transformers[-1]["vector_group"] = opis_tr["grupa"]
+        if opis_tr.get("pole_wyposazenia"):
+            # Typowane wyposażenie pola (`Bay.equipment_refs`) — jedyne powiązanie transformatora
+            # uziemiającego z jego polem ZU (karta ZU-JEDEN-NOSNIK).
+            for bay in bays:
+                if bay["ref_id"] == opis_tr["pole_wyposazenia"]:
+                    bay["equipment_refs"] = ["tr-1"]
         if stacja["deklaruje_transformator"]:
             transformer_refs.append("tr-1")
         if opis_tr.get("blokowy_der"):
@@ -150,22 +146,18 @@ def test_tablica_parytetu_pokrywa_iloczyn_cech() -> None:
     assert ("jest", "jest") in cechy
     assert ("brak", "jest") in cechy
     assert ("jest", "brak") in cechy
-    # Karta POLA-GPZ-SZABLONY (W041 transformatora uziemiającego): {zapis zespołu jest, brak} ×
-    # {pole ZU jest, brak, pole innej roli} — każdy narożnik ma wiersz.
+    # Karta ZU-JEDEN-NOSNIK (W041 transformatora uziemiającego): {grupa ZN…, inna} ×
+    # {wskazanie w polu ZU, w polu innej roli, brak} — każdy narożnik ma wiersz, a werdykt
+    # „bez znaleziska" ma WYŁĄCZNIE transformator uziemiający wskazany przez pole ZU.
     zespol = {
-        (
-            w.get("cecha_zespol_uziemiajacy"),
-            "ZU" in w["stacja"]["role_pol"],
-            (w["transformator"] or {}).get("zespol_uziemiajacy_pole"),
-            w["oczekiwane_znalezisko"],
-        )
+        (w["cecha_grupa"], w["cecha_wskazanie"]): w["oczekiwane_znalezisko"]
         for w in wiersze
-        if w.get("cecha_zespol_uziemiajacy")
+        if w.get("cecha_grupa")
     }
-    assert ("zapis", True, "pole-001", False) in zespol
-    assert ("zapis", False, "pole-009", True) in zespol
-    assert ("zapis", False, "pole-001", True) in zespol
-    assert ("brak_zapisu", True, None, True) in zespol
+    assert set(zespol) == {
+        (g, s) for g in ("zn", "inna") for s in ("pole_zu", "pole_innej_roli", "brak")
+    }
+    assert {k for k, v in zespol.items() if not v} == {("zn", "pole_zu")}
     assert ("brak", "brak") in cechy
     # Werdykty muszą być obu rodzajów — tablica z samymi „false" przechodziłaby
     # przy predykacie, który nigdy niczego nie zgłasza.

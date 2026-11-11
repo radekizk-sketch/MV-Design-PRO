@@ -61,7 +61,7 @@ from .models import EnergyNetworkModel
 from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol
 from .slownik_komunikatow import opis_nazwy
 from .tor_pola import szyny_stacji
-from .zespol_uziemiajacy import ROLA_POLA_ZESPOLU_UZIEMIAJACEGO
+from .zespol_uziemiajacy import pole_zespolu_transformatora
 
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
@@ -188,28 +188,6 @@ def transformator_blokowy_der(transformator: ElementEnm, refy_blokowe: set[str])
         return True
     meta = _pole(transformator, "meta", {})
     return _tekst(meta, "catalog_role") == ROLA_TRANSFORMATORA_BLOKOWEGO_DER
-
-
-def pole_zespolu_transformatora(
-    enm: Mapping[str, object] | EnergyNetworkModel, transformator: ElementEnm
-) -> ElementEnm | None:
-    """Pole zespołu uziemiającego (rola ``ZU``), do którego należy transformator — JEDNO źródło
-    odpowiedzi „transformator uziemiający ma swoje pole” (W041, marker rysunku, rysunek pola ZU).
-
-    Powiązanie z typowanego wyposażenia pola (``Bay.equipment_refs`` pola o roli ``ZU`` wskazuje
-    transformator — karta ZU-JEDEN-NOSNIK; zapis w ``meta`` skasowany). Transformator, którego nie
-    wskazuje żadne pole ZU, jest transformatorem BEZ pola (``None``) — wtedy działa zwykła reguła
-    W041, nie cichy wyjątek. Kolejność pól deterministyczna (``ref_id``). Lustro frontu:
-    `frontend/src/ui/shared/transformatoryStacji.ts::poleZespoluTransformatora`."""
-    refy = _refy(transformator)
-    if not refy:
-        return None
-    for bay in sorted(_lista(enm, "bays"), key=_ref):
-        if _tekst(bay, "bay_role").upper() != ROLA_POLA_ZESPOLU_UZIEMIAJACEGO:
-            continue
-        if refy & set(_teksty(_lista(bay, "equipment_refs"))):
-            return bay
-    return None
 
 
 def transformatory_stacji(

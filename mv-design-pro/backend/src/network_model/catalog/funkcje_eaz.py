@@ -109,9 +109,9 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "67N",
         "Io> kierunkowe",
         "67N",
-        "ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+        "ziemnozwarciowe kierunkowe (wejścia prądu zerowego i napięcia zerowego)",
         "ZABEZPIECZENIE",
-        f"{_Z1}, Z.10 s.89 (zabezpieczenie ziemnozwarciowe, wejścia Io i U0), Z.11, Z.11.1; "
+        f"{_Z1}, Z.10 s.89 (zabezpieczenie ziemnozwarciowe, wejścia prądu i napięcia zerowego), Z.11, Z.11.1; "
         f"{_IR} II.4.5.4.2.1 pkt 2, II.4.5.4.2.2 pkt 2, II.4.5.4.2.3 pkt 2",
     ),
     FunkcjaEaz(

@@ -7,12 +7,13 @@ from typing import Any
 
 from enm.pole_katalogowe import czy_wybor_katalogowy
 from enm.slownik_komunikatow import opis_operacji, pole
-from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
+from enm.wyposazenie_pola import PRZESTRZEN_KATALOGU_APARATU
 from enm.zrodlo_zwarcie import klucz_mocy_zwarciowej, strona_rownowaznika, tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
 )
+from network_model.catalog.rodzaje_aparatury import NAZWY_RODZAJOW_APARATU_POLA_PL
 from network_model.catalog.types import CatalogBinding
 
 DEFAULT_CATALOG_VERSION = "2024.1"

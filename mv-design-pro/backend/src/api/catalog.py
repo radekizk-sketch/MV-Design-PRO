@@ -27,6 +27,7 @@ from application.catalog_governance import CatalogGovernanceService
 from application.parametry_linii_wn import podglad_parametrow_linii
 from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
 from enm.models import UKLADY_SIECI_NN, GeometriaSlupaLinii, UkladSieciNn
+from enm.punkt_neutralny_zespolu import grupa_transformatora_uziemiajacego
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
@@ -399,7 +400,7 @@ def list_earthing_transformer_types() -> list[dict[str, Any]]:
     return [
         item.to_dict()
         for item in get_default_mv_catalog().list_transformer_types()
-        if (item.vector_group or "").upper().startswith("ZN")
+        if grupa_transformatora_uziemiajacego(item.vector_group)
     ]
 
 

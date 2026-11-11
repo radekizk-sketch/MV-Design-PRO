@@ -92,7 +92,11 @@ def _wykonaj(enm: dict[str, Any], operacja: str, rodzaj: str, szyna: str) -> dic
         return op(enm, "start_branch_segment_sn", {"from_bus_ref": szyna, "segment": odcinek(155)})
     if operacja == "odgalezienie_port":
         return op(
-            enm, "start_branch_segment_sn", {"from_ref": f"{szyna}.BRANCH", "segment": odcinek(156)}
+            # Jedna postać portu startu: szyna sekcji wskazana jako `from_ref` (dawna postać
+            # `⟨szyna⟩.BRANCH` nie jest rozpoznawana — rozstrzygnięcie architekta 2026-10-30).
+            enm,
+            "start_branch_segment_sn",
+            {"from_ref": szyna, "segment": odcinek(156)},
         )
     return op(
         enm,
@@ -162,6 +166,9 @@ def test_odcinek_z_szyny_sekcji_zawsze_przez_pole(operacja: str, rodzaj: str, st
         assert pole_celu in wynik["changes"]["created_element_ids"]
         pole_nowe = next(p for p in model["bays"] if p["ref_id"] == pole_celu)
         assert pole_nowe["bay_role"] in ROLE_LINIOWE
+        # Operacja projektowa nadaje stan obiektu jawnie (jedyny builder pola, argument
+        # obowiązkowy) — pole utworzone przy przyłączeniu odcinka i jego aparat są PROJEKTOWANE.
+        assert pole_nowe["stan_obiektu"] == "PROJEKTOWANY"
         zacisk = zacisk_pola(pole_nowe)
         if wzorzec is None:
             assert zacisk in (None, szyna)
@@ -240,9 +247,7 @@ def test_pole_wskazane_wolne_jest_uzyte_a_zajete_stacji_odmawia(rodzaj: str) -> 
     assert enm == przed
     # Odgałęzienie ze wskazanego zajętego pola: stacja SN/nN odmawia, GPZ przydziela nowe pole
     # kanonem pól GPZ — z tym samym komunikatem dla projektanta co przy szynie sekcji.
-    wynik = op(
-        enm, "start_branch_segment_sn", {"from_ref": f"{zajete[0]}.BRANCH", "segment": odcinek(157)}
-    )
+    wynik = op(enm, "start_branch_segment_sn", {"from_ref": zajete[0], "segment": odcinek(157)})
     if rodzaj in ("stacja_na_odcinku", "stacja_koncowa"):
         assert wynik.get("error_code") == "field.line_field_occupied"
     else:

@@ -95,7 +95,7 @@ def czy_gaz_fluorowany_dopuszczony(stan_obiektu: str | None) -> bool:
 def powod_odmowy_gazu_fluorowanego_pl(co_pl: str) -> str:
     """Zdanie odmowy dla projektanta: co odmówiono, dlaczego (podstawa) i akcja naprawcza."""
     return (
-        f"{co_pl} wykorzystuje gaz fluorowany (SF₆) w izolacji albo w gaszeniu łuku — obiekt "
+        f"{co_pl} wykorzystuje gaz fluorowany (SF6) w izolacji albo w gaszeniu łuku — obiekt "
         f"projektowany nie może go zawierać ({PODSTAWA_ZAKAZU_GAZU_FLUOROWANEGO}). "
         f"Akcja naprawcza: {AKCJA_NAPRAWCZA_GAZU_FLUOROWANEGO_PL}."
     )

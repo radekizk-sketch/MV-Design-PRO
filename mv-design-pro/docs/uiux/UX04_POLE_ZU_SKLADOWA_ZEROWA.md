@@ -5,6 +5,20 @@ Stan: dostarczone do weryfikacji B-01 (zmiana mapowania składowej zerowej i dw�
 FROZEN: `network_model/solvers/v126_academic.py`, `network_model/solvers/short_circuit_core.py`).
 Werdykt wizualny SLD (B-02) nie jest tu wystawiany — karta nie rysuje szablonu pola ZU (pkt 9).
 
+> **Stan po karcie ZU-JEDEN-NOSNIK (2026-11-11).** Model zespołu tej karty (osobna kolekcja
+> modelu, osobna encja zespołu, osobna przestrzeń katalogu transformatorów uziemiających
+> z pozycją `TU_ZNYN11_15KV_PW160`, Z_0,TU = 1,5 + j6,0 Ω, wskaźnik odbioru potrzeb własnych
+> i reguła W-ZU-03) został scalony z modelem karty POLA-GPZ-SZABLONY w JEDEN nośnik: zespół
+> uziemiający jest transformatorem ZNyn11 modelu (`Transformer` z pozycją katalogu
+> transformatorów SN/nN `tu-sn-nn-15-04-100kva-znyn11`, R0/X0 uzwojenia zygzakowego
+> 0,637 + j3,185 Ω — wartość robocza IEC 60076-6, jakość `ESTIMATED`), a jego wyposażenie punktu
+> neutralnego (dławik z AWSC, rezystor, stany odłączników, SPZ, lista transformatorów
+> wyłączanych, zapis dawcy) jest typowanym `Transformer.hv_neutral`. Reguły W-ZU, White Box
+> impedancji punktu neutralnego, kreator, eksport CGMES, archiwum, porównanie, kwalifikacja
+> analiz, V12.6 i ekran składowych czytają ten jeden nośnik; drugi nośnik pilnuje grupa
+> `zu1_` strażnika `scripts/grep_zero_guard.py`. Identyfikatory i liczby w dalszej części
+> dokumentu są zapisem dostawy karty UX-04 (stan archiwalny), nie stanem modelu.
+
 Źródła: ENEA Zeszyt 1 (02.2023) §16 s. 29–32, §26.9.6 s. 54, §26.10.7 s. 56, §27.1 s. 59;
 IRiESD ENEA II.4.5.4.3 s. 53, VII.4 s. 119; rysunki Zeszytu 1 Z.13 (s. 93), Z.14 (s. 94),
 Z.15 (s. 95) w odczycie `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`; IEC 60909-0

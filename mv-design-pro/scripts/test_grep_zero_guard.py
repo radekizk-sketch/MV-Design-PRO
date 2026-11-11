@@ -247,6 +247,13 @@ INIEKCJE_ZU1: tuple[tuple[str, str], ...] = (
     ("frontend/src/ui2/d.ts", "const w = tr.meta.zespol_uziemiajacy;\n"),
     ("backend/schemas/openapi_snapshot.json", '{"zespoly_uziemiajace": []}\n'),
     ("frontend/e2e/zu.spec.ts", "expect(enm.zespoly_uziemiajace).toHaveLength(1);\n"),
+    # Osobna przestrzeń katalogu transformatorów uziemiających (model A) i martwy kod gotowości.
+    ("backend/src/network_model/catalog/t.py", 'NS = "TRANSFORMATOR_UZIEMIAJACY"\n'),
+    ("frontend/src/ui/catalog/e.ts", "case 'EARTHING_TRANSFORMER':\n"),
+    ("frontend/src/ui/catalog/f.ts", "let t: EarthingTransformerCatalogType;\n"),
+    ("backend/src/network_model/catalog/s.py", "class EarthingTransformerType:\n"),
+    ("backend/tests/enm/r.py", 'REF = "TU_ZNYN11_15KV_PW160"\n'),
+    ("frontend/src/ui2/g.ts", "'earthing.zespol_auxiliary_load_missing': EDYCJA,\n"),
 )
 
 

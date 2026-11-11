@@ -42,6 +42,8 @@
       "catalog_status",
       "contract_version",
       "device_kind",
+      "dopuszczony_do_nowych_pol",
+      "gaz_fluorowany",
       "i_dyn_ka",
       "i_dyn_pochodzenie",
       "i_n_a",
@@ -51,7 +53,9 @@
       "id",
       "making_capacity_ka",
       "manufacturer",
+      "medium",
       "name",
+      "powod_blokady_nowych_pol_pl",
       "source_reference",
       "u_n_kv",
       "verification_note",
@@ -170,11 +174,13 @@
       "id",
       "idyn_ka_peak",
       "ith_ka_1s",
+      "liczba_rdzeni",
       "manufacturer",
       "name",
       "ratio_primary_a",
       "ratio_secondary_a",
       "rct_ohm",
+      "rdzenie",
       "source_reference",
       "verification_note",
       "verification_status"
@@ -188,12 +194,14 @@
       "contract_version",
       "has_residual_winding",
       "id",
+      "liczba_uzwojen",
       "manufacturer",
       "name",
       "rated_voltage_factor",
       "ratio_primary_v",
       "ratio_secondary_v",
       "source_reference",
+      "uzwojenia",
       "verification_note",
       "verification_status",
       "voltage_factor_duration_s"
@@ -211,6 +219,8 @@
       "id",
       "idyn_ka_peak",
       "ith_ka_1s",
+      "liczba_rdzeni",
+      "liczba_uzwojen",
       "manufacturer",
       "name",
       "rated_voltage_factor",
@@ -219,7 +229,9 @@
       "ratio_secondary_a",
       "ratio_secondary_v",
       "rct_ohm",
+      "rdzenie",
       "source_reference",
+      "uzwojenia",
       "verification_note",
       "verification_status",
       "voltage_factor_duration_s"
@@ -412,23 +424,6 @@
       "uklad_polaczen",
       "verification_status"
     ],
-    "EARTHING_TRANSFORMER": [
-      "catalog_status",
-      "contract_version",
-      "grupa_polaczen",
-      "id",
-      "manufacturer",
-      "name",
-      "r0_ohm",
-      "s_n_kva",
-      "s_pw_kva",
-      "source_reference",
-      "u_n_kv",
-      "u_pw_kv",
-      "verification_status",
-      "wartosci_robocze",
-      "x0_ohm"
-    ],
     "ARC_SUPPRESSION_COIL": [
       "catalog_status",
       "contract_version",
@@ -571,6 +566,7 @@
       "name",
       "p0_kw",
       "pk_kw",
+      "r0_ohm",
       "rated_power_mva",
       "source_reference",
       "tap_max",
@@ -581,13 +577,17 @@
       "verification_note",
       "verification_status",
       "voltage_hv_kv",
-      "voltage_lv_kv"
+      "voltage_lv_kv",
+      "wartosci_robocze",
+      "x0_ohm"
     ],
     "SWITCH_EQUIPMENT": [
       "card_field_status",
       "catalog_status",
       "contract_version",
+      "dopuszczony_do_nowych_pol",
       "equipment_kind",
+      "gaz_fluorowany",
       "i_cu_ka",
       "icw_ka",
       "id",
@@ -596,6 +596,7 @@
       "manufacturer",
       "medium",
       "name",
+      "powod_blokady_nowych_pol_pl",
       "source_reference",
       "u_m_kv",
       "un_kv",
@@ -809,9 +810,6 @@
       "NC_RfG_typ_C",
       "NC_RfG_typ_D"
     ],
-    "grupa_polaczen": [
-      "ZNyn11"
-    ],
     "i_th_pochodzenie": [
       "producent",
       "referencyjny"
@@ -848,7 +846,13 @@
     ],
     "przeznaczenie": [
       "FAZOWY",
-      "ODGROMOWY"
+      "JAKOSC_ENERGII",
+      "ODGROMOWY",
+      "POMIAR",
+      "REGULACJA",
+      "ROZLICZENIE",
+      "ROZNICOWE",
+      "ZABEZPIECZENIA"
     ],
     "ptpiree_status": [
       "NIEPOWIAZANY",
@@ -895,7 +899,8 @@
     ],
     "vector_group": [
       "Dyn11",
-      "Yd11"
+      "Yd11",
+      "ZNyn11"
     ],
     "verification_status": [
       "CZESCIOWO_ZWERYFIKOWANY",
@@ -922,20 +927,27 @@
     "filter_l_pu",
     "filter_r_pu",
     "flicker_c",
+    "fs",
     "has_switchgear",
     "has_transformer",
     "i_n_a",
+    "i_th_ka",
     "kind",
+    "klasa",
     "manufacturer",
     "medium",
+    "moc_va",
     "model",
     "note",
     "object_role",
+    "otwarty_trojkat",
     "p_installed_mw",
     "pll_bandwidth_hz",
     "pmax_mw",
     "pn_ac_mw",
     "port_id",
+    "przekladnia",
+    "przeznaczenie",
     "qmax_mvar",
     "qmin_mvar",
     "quality",
@@ -984,6 +996,14 @@
       "REFERENCYJNY_V1",
       "TESTOWY"
     ],
+    "przeznaczenie_rdzenia": {
+      "JAKOSC_ENERGII": "analizator jakości energii elektrycznej",
+      "POMIAR": "pomiar techniczny i telemechanika",
+      "REGULACJA": "regulacja napięcia",
+      "ROZLICZENIE": "pomiar rozliczeniowy energii",
+      "ROZNICOWE": "zabezpieczenie różnicowe",
+      "ZABEZPIECZENIA": "zabezpieczenia"
+    },
     "insulation": [
       "EPR",
       "PAPER",

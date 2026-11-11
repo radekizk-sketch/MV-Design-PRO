@@ -2025,6 +2025,7 @@ def _nowe_pole_liniowe_stacji(
         substation_ref=station_ref,
         tags=["station_sn_field"],
         meta={"requires_catalog_binding": True, "utworzone_przy_przylaczeniu_odcinka": True},
+        stan_obiektu="PROJEKTOWANY",
     )
     nowe: list[str] = [field_ref]
     wzorzec = _wzorzec_pola_sekcji(enm, szyna_ref)
@@ -2139,6 +2140,7 @@ def _pierwsze_pole_liniowe_gpz(
                 "source_field_kind": "FEEDER",
                 "field_status": "READY_FOR_TRUNK",
             },
+            stan_obiektu="PROJEKTOWANY",
         ),
     )
     return field_ref
@@ -6644,9 +6646,17 @@ def sekcje_szyn_sn_stacji(enm: Mapping[str, Any], station: Mapping[str, Any]) ->
     szyny potrzeb własnych i zaciski pól nie są sekcjami rozdzielnicy SN)."""
     sekcje_gpz = station.get("gpz_sections")
     if station.get("station_type") == "gpz" and isinstance(sekcje_gpz, list):
+        # `GPZSection.order` jest polem wymaganym modelu — sekcja bez kolejności nie jest
+        # sekcją modelu i nie dostaje zastępczej kolejności (zero podstawień liczb).
         uporzadkowane = sorted(
-            (s for s in sekcje_gpz if isinstance(s, Mapping) and isinstance(s.get("bus_ref"), str)),
-            key=lambda s: (int(s.get("order") or 0), str(s.get("section_id") or "")),
+            (
+                s
+                for s in sekcje_gpz
+                if isinstance(s, Mapping)
+                and isinstance(s.get("bus_ref"), str)
+                and isinstance(s.get("order"), int)
+            ),
+            key=lambda s: (int(s["order"]), str(s.get("section_id") or "")),
         )
         return [str(s["bus_ref"]) for s in uporzadkowane]
     szyny = {
@@ -6654,21 +6664,20 @@ def sekcje_szyn_sn_stacji(enm: Mapping[str, Any], station: Mapping[str, Any]) ->
         for b in enm.get("buses", [])
         if isinstance(b, Mapping) and isinstance(b.get("ref_id"), str)
     }
-    refy = [r for r in station.get("bus_refs") or [] if isinstance(r, str) and r in szyny]
-    napiecia = [
-        float(szyny[r].get("voltage_kv") or 0.0)
-        for r in refy
-        if "field_terminal" not in (szyny[r].get("tags") or [])
-    ]
-    if not napiecia:
-        return []
-    napiecie_sn = max(napiecia)
-    return [
-        r
-        for r in refy
-        if math.isclose(float(szyny[r].get("voltage_kv") or 0.0), napiecie_sn, rel_tol=1e-9)
+    # Szyna bez napięcia (`Bus.voltage_kv` jest polem wymaganym) nie jest kandydatem sekcji —
+    # pominięta, nie liczona jako 0 kV.
+    napiecie_szyny = {
+        r: float(szyny[r]["voltage_kv"])
+        for r in station.get("bus_refs") or []
+        if isinstance(r, str)
+        and r in szyny
+        and isinstance(szyny[r].get("voltage_kv"), int | float)
         and "field_terminal" not in (szyny[r].get("tags") or [])
-    ]
+    }
+    if not napiecie_szyny:
+        return []
+    napiecie_sn = max(napiecie_szyny.values())
+    return [r for r, u in napiecie_szyny.items() if math.isclose(u, napiecie_sn, rel_tol=1e-9)]
 
 
 def _sprzegla_zwiazane_z_polami(enm: Mapping[str, Any]) -> set[str]:
@@ -9691,15 +9700,11 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         return branch_catalog_ref
 
     # INSPEKTOR-POLA-DOMKNIECIE: start wskazany SZYNĄ SEKCJI SN stacji (`from_bus_ref` bez
-    # `from_ref` albo `from_ref` będące szyną, z portem `BRANCH` lub bez) — odgałęzienie wychodzi
+    # `from_ref` albo `from_ref` będące szyną; jedna postać portu startu) — odgałęzienie wychodzi
     # z wolnego pola liniowego tej szyny, a bez wolnego pola z pola utworzonego w tej operacji
     # (`_przylacz_koniec_przez_pole`); dawniej szyna dawała odmowę „brak portu odgałęźnego".
     pole_przylaczenia: _PrzylaczeniePrzezPole | None = None
-    szyna_startu = (
-        from_ref.removesuffix(".BRANCH")
-        if isinstance(from_ref, str) and from_ref.strip()
-        else from_bus_ref
-    )
+    szyna_startu = from_ref if isinstance(from_ref, str) and from_ref.strip() else from_bus_ref
     if isinstance(szyna_startu, str) and szyna_startu in szyny_sekcji_sn(enm):
         model_z_polem = kopia_graniczna_enm(enm)
         przylaczenie = _przylacz_koniec_przez_pole(
@@ -9710,7 +9715,8 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         if przylaczenie is not None:
             pole_przylaczenia = przylaczenie
             enm = model_z_polem
-            from_ref = f"{przylaczenie.field_ref}.BRANCH"
+            # Port startu w JEDNEJ postaci `_rozwiaz_port_startu`: `ref_id` pola liniowego.
+            from_ref = przylaczenie.field_ref
             from_bus_ref = None
     inferred_from_bus_ref = bool(not from_ref and from_bus_ref)
     if inferred_from_bus_ref:

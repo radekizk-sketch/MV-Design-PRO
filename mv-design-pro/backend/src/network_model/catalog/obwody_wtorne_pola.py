@@ -142,9 +142,12 @@ class WejscieFunkcjiEaz(BaseModel):
     def _ksztalt(self) -> WejscieFunkcjiEaz:
         z_aparatem = self.rodzaj != "SYGNAL"
         if z_aparatem != (self.aparat is not None) or z_aparatem == (self.sygnal is not None):
-            raise ValueError(f"Wejście {self.rodzaj}: aparat albo sygnał — dokładnie jedno.")
+            raise ValueError("Wejście funkcji EAZ: aparat albo sygnał — dokładnie jedno.")
         if (self.rodzaj in ("RDZEN_CT", "UZWOJENIE_VT")) != (self.numer is not None):
-            raise ValueError(f"Wejście {self.rodzaj}: numer wyłącznie dla rdzenia i uzwojenia.")
+            raise ValueError(
+                "Wejście funkcji EAZ: numer wskazuje wyłącznie rdzeń przekładnika prądowego "
+                "albo uzwojenie przekładnika napięciowego."
+            )
         if self.weryfikacja == _IN and not self.uwaga:
             raise ValueError("Wejście z interpretacji wymaga uzasadnienia (uwaga).")
         return self
@@ -242,7 +245,7 @@ class ObwodyWtornePola(BaseModel):
     def _spojnosc(self) -> ObwodyWtornePola:
         nieznane = kody_spoza_slownika([p.funkcja for p in self.powiazania])
         if nieznane:
-            raise ValueError(f"Obwody wtórne: kody funkcji spoza słownika EAZ: {nieznane}.")
+            raise ValueError(f"Obwody wtórne: funkcje spoza słownika EAZ: {', '.join(nieznane)}.")
         z_napedem = [n.aparat for n in self.napedy]
         if len(set(z_napedem)) != len(z_napedem):
             raise ValueError("Obwody wtórne: aparat z więcej niż jednym napędem.")
@@ -284,7 +287,10 @@ class ObwodyWtornePola(BaseModel):
             s.nazwa for s in self.sygnaly if s.nazwa not in uzyte and not s.sterownik_pola
         ]
         if osierocone:
-            raise ValueError(f"Obwody wtórne: sygnały bez odbiornika na rysunku: {osierocone}.")
+            raise ValueError(
+                "Obwody wtórne: sygnały bez odbiornika na rysunku: "
+                f"{', '.join(f'„{nazwa}”' for nazwa in osierocone)}."
+            )
         return self
 
 
@@ -306,9 +312,9 @@ _UWAGA_STEROWNIK = (
 #: funkcji bez kierunku jest wnioskiem z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga
 #: źródła 3U₀ spoza pola, a prąd zerowy pole mierzy samo.
 _UWAGA_KRYTERIUM_PRADOWE_IO = (
-    "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest "
+    "linia prądu zerowego z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest "
     "na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji "
-    "właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego "
+    "właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego z obwodu okrężnego "
     "„Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo"
 )
 
@@ -491,14 +497,14 @@ def _sygnaly(z_vt: bool, wyjscia_wylacznika: tuple[str, ...]) -> list[SygnalPola
             nazwa="Z, Zz",
             kierunek="WEJSCIE",
             obwod="OKREZNY",
-            znaczenie_pl="napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia "
+            znaczenie_pl="napięcie zerowe sieci z obwodu okrężnego (wejście napięcia zerowego zabezpieczenia "
             "ziemnozwarciowego)",
             weryfikacja=_ZW,
             uwaga="rysunek pola doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok "
-            "przekładnika Ferrantiego (Io); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III "
+            "przekładnika Ferrantiego (prąd zerowy); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III "
             "(0,1/3, 15 VA, kl. 3P) w otwartym trójkącie przekładnika pola pomiaru napięcia "
-            "sekcji — źródło napięcia zerowego 3U₀ (powiązanie wskazuje się w wyposażeniu pola: "
-            "„Źródło napięcia zerowego 3U₀”)",
+            "sekcji — źródło napięcia zerowego (powiązanie wskazuje się w wyposażeniu pola: "
+            "„Źródło napięcia zerowego (zabezpieczenie 67N)”)",
         ),
     ]
     return wylacznik + nadrzedne + okrezne
@@ -882,7 +888,7 @@ def _z_zz_sekcji() -> SygnalPola:
         _Z_ZZ_SEKCJI,
         "WEJSCIE",
         "OKREZNY",
-        znaczenie="napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia "
+        znaczenie="napięcie zerowe sieci z obwodu okrężnego (wejście napięcia zerowego zabezpieczenia "
         "ziemnozwarciowego)",
         uwaga="Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (otwarty trójkąt) "
         "przekładnika pola pomiaru napięcia sekcji",

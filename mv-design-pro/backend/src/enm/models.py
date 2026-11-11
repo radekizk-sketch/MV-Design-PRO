@@ -30,6 +30,7 @@ from network_model.catalog.rodzaje_aparatury import (
     RODZAJE_Z_WYKONANIEM,
     STAN_UZIEMIONY,
     WykonanieAparatu,
+    nazwa_rodzaju_aparatu_pola_pl,
 )
 from network_model.catalog.wartosci_robocze import ZrodloZaczepu
 from network_model.core.bateria_kondensatorow import (
@@ -721,7 +722,8 @@ class Transformer(ENMElement):
             self.vector_group or ""
         ).lower():
             raise ValueError(
-                "Impedancja zerowa R0/X0 transformatora dotyczy wyłącznie uzwojenia "
+                "Impedancja zerowa (rezystancja i reaktancja zerowa) transformatora dotyczy "
+                "wyłącznie uzwojenia "
                 "zygzakowego (grupa połączeń z literą Z albo z) — grupa "
                 f"„{self.vector_group or 'nieokreślona'}” go nie ma."
             )
@@ -1841,6 +1843,7 @@ class BayPrimaryDevice(BaseModel):
     def _zaczep_przekladnika(self) -> BayPrimaryDevice:
         """Zaczep i jego źródło razem, tylko przekładnikowi prądowemu wieloprzekładniowemu
         i tylko ze zbioru zaczepów tabliczki (ten sam zbiór co operacja i rejestr)."""
+        rodzaj_pl = nazwa_rodzaju_aparatu_pola_pl(self.kind)
         if (self.zaczep_pierwotny_a is None) != (self.zrodlo_zaczepu is None):
             raise ValueError(
                 f"aparat {self.device_ref!r}: zaczep przekładnika zapisuje się razem z jego "
@@ -1851,7 +1854,7 @@ class BayPrimaryDevice(BaseModel):
         zaczepy = zaczepy_przekladnika(r.przekladnia for r in self.rdzenie)
         if self.kind != "CT" or len(zaczepy) < 2:
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): zaczep pierwotny ma wyłącznie "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): zaczep pierwotny ma wyłącznie "
                 "przekładnik prądowy wieloprzekładniowy (np. 200-400/5 A)"
             )
         if self.zaczep_pierwotny_a not in zaczepy:
@@ -1866,33 +1869,34 @@ class BayPrimaryDevice(BaseModel):
         """Powiązania obwodów wtórnych tylko na aparatach, których dotyczą: napęd na łączniku
         rodzaju, dla którego słownik go dopuszcza (`NAPEDY_RODZAJU_APARATU`), funkcje wyłączające
         na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
+        rodzaj_pl = nazwa_rodzaju_aparatu_pola_pl(self.kind)
         zasilajace = set(RODZAJ_APARATU_WEJSCIA.values())
         if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(self.kind, ()):
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): napęd {self.naped} nie dotyczy "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): napęd {self.naped} nie dotyczy "
                 "aparatu tego rodzaju"
             )
         if self.wykonanie is not None and self.kind not in RODZAJE_Z_WYKONANIEM:
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): wykonanie (stałe / wysuwne) ma "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): wykonanie (stałe / wysuwne) ma "
                 "wyłącznie wyłącznik"
             )
         if self.funkcje_eaz_wylaczajace and self.kind != "CB":
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): funkcje EAZ działające na "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): funkcje EAZ działające na "
                 "wyłącznik ma wyłącznie wyłącznik"
             )
         if self.funkcje_eaz_zasilane and self.kind not in zasilajace:
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): funkcje EAZ mierzące z aparatu ma "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): funkcje EAZ mierzące z aparatu ma "
                 "wyłącznie przekładnik prądowy, napięciowy albo Ferrantiego"
             )
         for nazwa, kody in (
-            ("funkcje_eaz_zasilane", self.funkcje_eaz_zasilane),
-            ("funkcje_eaz_wylaczajace", self.funkcje_eaz_wylaczajace),
+            ("funkcjach EAZ mierzących z aparatu", self.funkcje_eaz_zasilane),
+            ("funkcjach EAZ działających na wyłącznik", self.funkcje_eaz_wylaczajace),
         ):
             if len(set(kody)) != len(kody):
-                raise ValueError(f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}")
+                raise ValueError(f"aparat {self.device_ref!r}: powtórzona funkcja w {nazwa}")
         return self
 
     @model_validator(mode="after")
@@ -1900,13 +1904,15 @@ class BayPrimaryDevice(BaseModel):
         """Porty tylko z kompletu rodzaju (bez powtórzeń); położenie „uziemiony" tylko dla
         łącznika trójpołożeniowego. Brak portu z kompletu jest dozwolony (jawny brak danych
         przyłączenia), port spoza kompletu — nie (port, którego aparat nie ma)."""
+        rodzaj_pl = nazwa_rodzaju_aparatu_pola_pl(self.kind)
         komplet = PORTY_APARATU_POLA.get(self.kind, ())
         widziane: set[str] = set()
         for port in self.ports:
             if port.port_id not in komplet:
                 raise ValueError(
-                    f"aparat {self.device_ref!r} ({self.kind}) nie ma portu {port.port_id!r} — "
-                    f"porty rodzaju: {', '.join(komplet) or 'brak'}"
+                    f"aparat {self.device_ref!r} ({rodzaj_pl}): "
+                    "port spoza kompletu portów aparatu tego rodzaju (liczba portów rodzaju: "
+                    f"{len(komplet)})"
                 )
             if port.port_id in widziane:
                 raise ValueError(f"aparat {self.device_ref!r}: powtórzony port {port.port_id!r}")
@@ -1917,21 +1923,21 @@ class BayPrimaryDevice(BaseModel):
             and self.kind != RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO
         ):
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): położenie „uziemiony” ma wyłącznie "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): położenie „uziemiony” ma wyłącznie "
                 "łącznik trójpołożeniowy"
             )
         if self.rdzenie and self.kind != "CT":
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): rdzenie ma wyłącznie przekładnik prądowy"
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): rdzenie ma wyłącznie przekładnik prądowy"
             )
         if self.uzwojenia and self.kind != "VT":
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): uzwojenia ma wyłącznie przekładnik "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): uzwojenia ma wyłącznie przekładnik "
                 "napięciowy"
             )
         if self.przekladnia is not None and self.kind != "CORE_BALANCE_CT":
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): przekładnię zapisuje się wyłącznie "
+                f"aparat {self.device_ref!r} ({rodzaj_pl}): przekładnię zapisuje się wyłącznie "
                 "przekładnikowi Ferrantiego"
             )
         return self

@@ -1652,7 +1652,8 @@ def get_all_ct_types() -> list[dict]:
                     source_reference=(
                         "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 (s.89) "
                         "i Z.11.1 (s.91); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości "
-                        "rozdzielnicy SN: Ith 20 kA/1 s dla toru 200-1000 A)"
+                        "rozdzielnicy SN: prąd znamionowy krótkotrwały wytrzymywany 20 kA/1 s dla "
+                        "toru 200-1000 A)"
                     ),
                     catalog_status="REFERENCYJNY_V1",
                     verification_note=(
@@ -1701,7 +1702,7 @@ def get_all_ct_types() -> list[dict]:
                     source_reference=(
                         "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 (s.90); "
                         "IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: "
-                        "Ith 20 kA/1 s dla toru 200-1000 A)"
+                        "prąd znamionowy krótkotrwały wytrzymywany 20 kA/1 s dla toru 200-1000 A)"
                     ),
                     catalog_status="REFERENCYJNY_V1",
                     verification_note=(

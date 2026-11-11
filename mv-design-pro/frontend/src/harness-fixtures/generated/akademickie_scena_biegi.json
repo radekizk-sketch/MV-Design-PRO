@@ -24,10 +24,10 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "c2c4356788f956d8ca2f07b199bf09f487ea8711b9a1bfea4665f80d863d0644",
-        "proof_id": "proof:v126:ssci_impedance:90777b80f6f0d3f1",
+        "proof_hash": "b395dbd5583b80792688df921f5bd0c239711fa4f3e2ece7665e29e6a482a8e9",
+        "proof_id": "proof:v126:ssci_impedance:f079859d8ecb5dea",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
-        "source_result_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
+        "source_result_hash": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423",
         "steps": [
           {
             "data": {
@@ -136,7 +136,7 @@
       "koperta": {
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
-        "deterministic_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
+        "deterministic_hash": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance",
@@ -149,19 +149,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "1438aaf43ac550bf77801b4491b50079600625bdd1874d1da3954e0a7578d0c9",
-        "report_id": "report:v126:ssci_impedance:90777b80f6f0d3f1",
+        "report_hash": "52151ba13f6f6b1da9f86ad5fc614fc3855dc3c43f69609639869fa034db19cc",
+        "report_id": "report:v126:ssci_impedance:f079859d8ecb5dea",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:ssci_impedance:90777b80f6f0d3f1"
+                "value": "proof:v126:ssci_impedance:f079859d8ecb5dea"
               },
               {
                 "label": "proof_hash",
-                "value": "c2c4356788f956d8ca2f07b199bf09f487ea8711b9a1bfea4665f80d863d0644"
+                "value": "b395dbd5583b80792688df921f5bd0c239711fa4f3e2ece7665e29e6a482a8e9"
               },
               {
                 "label": "trace_step_count",
@@ -175,7 +175,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee"
+                "value": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423"
               },
               {
                 "label": "solver_version",
@@ -183,19 +183,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "3dd5efea79b997262ee9621c58c4c7dc47ff566ca0c57b0daff96084acb2ab4e"
+                "value": "2553f4b6efda3b646286c6b673be6bff3823b4a9c833126b13e783d15663af75"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "c2c4356788f956d8ca2f07b199bf09f487ea8711b9a1bfea4665f80d863d0644",
-        "source_result_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee"
+        "source_proof_hash": "b395dbd5583b80792688df921f5bd0c239711fa4f3e2ece7665e29e6a482a8e9",
+        "source_result_hash": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423"
       },
       "slad": {
         "analysis_type": "ssci_impedance",
-        "deterministic_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
+        "deterministic_hash": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "steps": [
           {
@@ -309,14 +309,14 @@
         "trace_version": "AcademicWhiteBoxTraceV1"
       },
       "stabilnosc": {
-        "analysis_id": "09b3d37722176a03e7675934c1f8bccbef416d4de8c01061fc598675c9f754f7",
+        "analysis_id": "120bfaa8158cc1d4854847757079e118d3abff3c417d7ea5487384897948cf62",
         "context": {
           "case_id": "case-demo",
           "case_name": null,
           "project_name": null,
           "run_id": "run-v126-scena-akademickie-ssci_impedance",
           "run_timestamp": "2026-09-16T09:00:00+00:00",
-          "snapshot_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee"
+          "snapshot_hash": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423"
         },
         "gain_crossover_mag": 1.0,
         "ocena": {
@@ -593,13 +593,13 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:ssci_impedance:90777b80f6f0d3f1",
-        "report_ref": "report:v126:ssci_impedance:90777b80f6f0d3f1",
+        "proof_ref": "proof:v126:ssci_impedance:f079859d8ecb5dea",
+        "report_ref": "report:v126:ssci_impedance:f079859d8ecb5dea",
         "result": {
           "analysis_type": "ssci_impedance",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
-          "input_hash": "3dd5efea79b997262ee9621c58c4c7dc47ff566ca0c57b0daff96084acb2ab4e",
+          "deterministic_hash": "f079859d8ecb5dead0459ae89ba38cfe5dea0082e55b50e3f54a7e773e2ed423",
+          "input_hash": "2553f4b6efda3b646286c6b673be6bff3823b4a9c833126b13e783d15663af75",
           "result": {
             "base_frequency_hz": 50.0,
             "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
@@ -2179,14 +2179,14 @@
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "34f3278d0877fd2603f110429067974c28b9d8fed771f135ea5ecd217991460c",
-        "proof_id": "proof:v126:voltage_stability:f91beb656edbcdac",
+        "proof_hash": "43e2ebde521899c07a9ba5123154572d11ccb0ed57b5de3315b7ea9ff8581342",
+        "proof_id": "proof:v126:voltage_stability:2e7e96793fb007f0",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
-        "source_result_hash": "f91beb656edbcdac97a04401393e58b91af4287bd98cc2c175b04ee6c01f634f",
+        "source_result_hash": "2e7e96793fb007f043717e17c0e1530c23db82b6c455479341a9ee27a49b6b3c",
         "steps": [
           {
             "data": {
-              "buses": 8,
+              "buses": 9,
               "buses_with_fault_level": 1,
               "reactive_capability_source": null
             },
@@ -2201,7 +2201,7 @@
               "pv_curves": null,
               "qv_curves": null
             },
-            "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 8 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
+            "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 9 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
             "substitution": "Żadna z wielkości stabilności napięciowej nie została wyznaczona — brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
             "unit_check": "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb."
           }
@@ -2211,7 +2211,7 @@
       "koperta": {
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
-        "deterministic_hash": "f91beb656edbcdac97a04401393e58b91af4287bd98cc2c175b04ee6c01f634f",
+        "deterministic_hash": "2e7e96793fb007f043717e17c0e1530c23db82b6c455479341a9ee27a49b6b3c",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability",
@@ -2224,19 +2224,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "483c10fa94e60145fc984e385cab27fa8592ae329e6bc5cd844c667919217785",
-        "report_id": "report:v126:voltage_stability:f91beb656edbcdac",
+        "report_hash": "0219f661fc99026c9eb0e4448780cea93215452a22c24a51125358ffa2b0644d",
+        "report_id": "report:v126:voltage_stability:2e7e96793fb007f0",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:voltage_stability:f91beb656edbcdac"
+                "value": "proof:v126:voltage_stability:2e7e96793fb007f0"
               },
               {
                 "label": "proof_hash",
-                "value": "34f3278d0877fd2603f110429067974c28b9d8fed771f135ea5ecd217991460c"
+                "value": "43e2ebde521899c07a9ba5123154572d11ccb0ed57b5de3315b7ea9ff8581342"
               },
               {
                 "label": "trace_step_count",
@@ -2250,7 +2250,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "f91beb656edbcdac97a04401393e58b91af4287bd98cc2c175b04ee6c01f634f"
+                "value": "2e7e96793fb007f043717e17c0e1530c23db82b6c455479341a9ee27a49b6b3c"
               },
               {
                 "label": "solver_version",
@@ -2258,24 +2258,24 @@
               },
               {
                 "label": "input_hash",
-                "value": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef"
+                "value": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "34f3278d0877fd2603f110429067974c28b9d8fed771f135ea5ecd217991460c",
-        "source_result_hash": "f91beb656edbcdac97a04401393e58b91af4287bd98cc2c175b04ee6c01f634f"
+        "source_proof_hash": "43e2ebde521899c07a9ba5123154572d11ccb0ed57b5de3315b7ea9ff8581342",
+        "source_result_hash": "2e7e96793fb007f043717e17c0e1530c23db82b6c455479341a9ee27a49b6b3c"
       },
       "slad": {
         "analysis_type": "voltage_stability",
-        "deterministic_hash": "f91beb656edbcdac97a04401393e58b91af4287bd98cc2c175b04ee6c01f634f",
+        "deterministic_hash": "2e7e96793fb007f043717e17c0e1530c23db82b6c455479341a9ee27a49b6b3c",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "steps": [
           {
             "data": {
-              "buses": 8,
+              "buses": 9,
               "buses_with_fault_level": 1,
               "reactive_capability_source": null
             },
@@ -2291,7 +2291,7 @@
               "pv_curves": null,
               "qv_curves": null
             },
-            "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 8 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
+            "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 9 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
             "step": 1,
             "substitution": "Żadna z wielkości stabilności napięciowej nie została wyznaczona — brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
             "unit_check": "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb."
@@ -2303,13 +2303,13 @@
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:voltage_stability:f91beb656edbcdac",
-        "report_ref": "report:v126:voltage_stability:f91beb656edbcdac",
+        "proof_ref": "proof:v126:voltage_stability:2e7e96793fb007f0",
+        "report_ref": "report:v126:voltage_stability:2e7e96793fb007f0",
         "result": {
           "analysis_type": "voltage_stability",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "f91beb656edbcdac97a04401393e58b91af4287bd98cc2c175b04ee6c01f634f",
-          "input_hash": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef",
+          "deterministic_hash": "2e7e96793fb007f043717e17c0e1530c23db82b6c455479341a9ee27a49b6b3c",
+          "input_hash": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96",
           "result": {
             "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
             "l_index_per_bus": [
@@ -2359,6 +2359,12 @@
                 "alert": null,
                 "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
                 "bus_ref": "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+                "l_index": null
+              },
+              {
+                "alert": null,
+                "brak_danych": "Wskaźnik bliskości załamania napięcia nie jest wyznaczany: poprzedni wzór mnożył stosunek obciążenia do mocy zwarciowej przez współczynnik bez pokrycia w danych i w normie. Wymaga wyznaczenia z macierzy admitancyjnej przy zbieżnym rozpływie oraz mocy zwarciowej węzłów w modelu.",
+                "bus_ref": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn",
                 "l_index": null
               }
             ],
@@ -2426,6 +2432,13 @@
                 "lambda_max": null,
                 "margin_percent": null,
                 "u_at_max": null
+              },
+              {
+                "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
+                "bus_ref": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn",
+                "lambda_max": null,
+                "margin_percent": null,
+                "u_at_max": null
               }
             ],
             "qv_curves": [
@@ -2484,6 +2497,13 @@
                 "margin_mvar": null,
                 "q_available_mvar": null,
                 "q_min_mvar": null
+              },
+              {
+                "brak_danych": "Zapas mocy biernej nie jest wyznaczany: kontrakt wejściowy nie niesie zdolności wytwórczej mocy biernej (ani granic Q wytwórcy, ani krzywej producenta P–Q), a poprzednia wartość powstawała z krotności mocy czynnej bez pokrycia w danych. Uzupełnij granice mocy biernej źródeł, aby przywrócić tę wielkość.",
+                "bus_ref": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn",
+                "margin_mvar": null,
+                "q_available_mvar": null,
+                "q_min_mvar": null
               }
             ],
             "sanity": {
@@ -2498,7 +2518,7 @@
           "white_box_trace": [
             {
               "data": {
-                "buses": 8,
+                "buses": 9,
                 "buses_with_fault_level": 1,
                 "reactive_capability_source": null
               },
@@ -2513,7 +2533,7 @@
                 "pv_curves": null,
                 "qv_curves": null
               },
-              "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 8 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
+              "result_pl": "Analiza wstrzymana: brak danych wejściowych (moc zwarciowa węzłów podana dla 1 z 9 szyn; zdolność wytwórcza mocy biernej nieprzenoszona przez kontrakt wejściowy).",
               "step": 1,
               "substitution": "Żadna z wielkości stabilności napięciowej nie została wyznaczona — brakuje mocy zwarciowej węzłów oraz zdolności wytwórczej mocy biernej, a poprzednie wzory zastępowały te dane współczynnikami bez pokrycia.",
               "unit_check": "Brak wielkości do sprawdzenia jednostek — analiza nie wyznacza liczb."
@@ -2529,10 +2549,10 @@
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "7f22cbb5c61fb9e7879a23288872006c449f51bbafa33dda827de0cfa2e0c120",
-        "proof_id": "proof:v126:reliability_contingency:932f1ba29e4bc4e7",
+        "proof_hash": "83bb1a4e84216c16f4c23c05dbff300b42af96ed380e4633eb111371e6beb712",
+        "proof_id": "proof:v126:reliability_contingency:a4979cc15b91f7cf",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
-        "source_result_hash": "932f1ba29e4bc4e76aad194d2b52eba08bb04bc3217fb95d45e27c94001bb176",
+        "source_result_hash": "a4979cc15b91f7cff4ef0c201fb0bcde6147fb05eb235aa9d88ea7ebac2f9945",
         "steps": [
           {
             "data": {
@@ -2558,7 +2578,7 @@
       "koperta": {
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
-        "deterministic_hash": "932f1ba29e4bc4e76aad194d2b52eba08bb04bc3217fb95d45e27c94001bb176",
+        "deterministic_hash": "a4979cc15b91f7cff4ef0c201fb0bcde6147fb05eb235aa9d88ea7ebac2f9945",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency",
@@ -2571,19 +2591,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "3195d4b37b5791f13199b09e34ae8614787d5c9c341379a8ca1ffb057e721589",
-        "report_id": "report:v126:reliability_contingency:932f1ba29e4bc4e7",
+        "report_hash": "74fd86e74e1324a6e900a194cce0269b8289c932a4f39c0dc1bcd100e9ffc822",
+        "report_id": "report:v126:reliability_contingency:a4979cc15b91f7cf",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:reliability_contingency:932f1ba29e4bc4e7"
+                "value": "proof:v126:reliability_contingency:a4979cc15b91f7cf"
               },
               {
                 "label": "proof_hash",
-                "value": "7f22cbb5c61fb9e7879a23288872006c449f51bbafa33dda827de0cfa2e0c120"
+                "value": "83bb1a4e84216c16f4c23c05dbff300b42af96ed380e4633eb111371e6beb712"
               },
               {
                 "label": "trace_step_count",
@@ -2597,7 +2617,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "932f1ba29e4bc4e76aad194d2b52eba08bb04bc3217fb95d45e27c94001bb176"
+                "value": "a4979cc15b91f7cff4ef0c201fb0bcde6147fb05eb235aa9d88ea7ebac2f9945"
               },
               {
                 "label": "solver_version",
@@ -2605,19 +2625,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "746193a35b18722b8e7e6a8fa624772571e998da20581d978478450960cef53a"
+                "value": "332c9069702454bc8e14da6ae6bf72da5170ff0f1ce4ec128b4fd8f68e4e9d24"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "7f22cbb5c61fb9e7879a23288872006c449f51bbafa33dda827de0cfa2e0c120",
-        "source_result_hash": "932f1ba29e4bc4e76aad194d2b52eba08bb04bc3217fb95d45e27c94001bb176"
+        "source_proof_hash": "83bb1a4e84216c16f4c23c05dbff300b42af96ed380e4633eb111371e6beb712",
+        "source_result_hash": "a4979cc15b91f7cff4ef0c201fb0bcde6147fb05eb235aa9d88ea7ebac2f9945"
       },
       "slad": {
         "analysis_type": "reliability_contingency",
-        "deterministic_hash": "932f1ba29e4bc4e76aad194d2b52eba08bb04bc3217fb95d45e27c94001bb176",
+        "deterministic_hash": "a4979cc15b91f7cff4ef0c201fb0bcde6147fb05eb235aa9d88ea7ebac2f9945",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "steps": [
           {
@@ -2647,13 +2667,13 @@
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:reliability_contingency:932f1ba29e4bc4e7",
-        "report_ref": "report:v126:reliability_contingency:932f1ba29e4bc4e7",
+        "proof_ref": "proof:v126:reliability_contingency:a4979cc15b91f7cf",
+        "report_ref": "report:v126:reliability_contingency:a4979cc15b91f7cf",
         "result": {
           "analysis_type": "reliability_contingency",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "932f1ba29e4bc4e76aad194d2b52eba08bb04bc3217fb95d45e27c94001bb176",
-          "input_hash": "746193a35b18722b8e7e6a8fa624772571e998da20581d978478450960cef53a",
+          "deterministic_hash": "a4979cc15b91f7cff4ef0c201fb0bcde6147fb05eb235aa9d88ea7ebac2f9945",
+          "input_hash": "332c9069702454bc8e14da6ae6bf72da5170ff0f1ce4ec128b4fd8f68e4e9d24",
           "result": {
             "dane_przyjete": [
               {
@@ -2773,10 +2793,10 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "12cfb1bd1f55d1f32ae5d6ba13ebb0bf9957f186de77eaa8d6d1d98aac2f5d57",
-        "proof_id": "proof:v126:earthing_safety:e9ea3fa45d0f9a52",
+        "proof_hash": "e7a820ed90e3e0eb228eeb9b7fe49b61a8a80192e94c656218494874245b0fe1",
+        "proof_id": "proof:v126:earthing_safety:5e2e75404128246f",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
-        "source_result_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
+        "source_result_hash": "5e2e75404128246feee5baf14f3ed3ce08e0a002635725b958ccc8f4ff81ff71",
         "steps": [
           {
             "data": {
@@ -2788,7 +2808,7 @@
                   "bus_ref": "bus_sn_main",
                   "nazwa_pl": "sieć SN 15 kV — Szyna SN",
                   "opis_pl": "sieć SN skompensowana, dławik gaszący w tej stacji — $I_E = r\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$",
-                  "prad_a": 294.0926,
+                  "prad_a": 300.9921,
                   "stan_awsc": "spoczynek",
                   "strona": "SN",
                   "tryb": "kompensowany",
@@ -2850,7 +2870,7 @@
       "koperta": {
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
-        "deterministic_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
+        "deterministic_hash": "5e2e75404128246feee5baf14f3ed3ce08e0a002635725b958ccc8f4ff81ff71",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety",
@@ -2863,19 +2883,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "f0c3ef64ad72e893bd673e76b039ea670f6059b7a9fa710b161c3917cc2588b3",
-        "report_id": "report:v126:earthing_safety:e9ea3fa45d0f9a52",
+        "report_hash": "13191298bf9f7542041aefbcf86d00fd5e7fd23344118a9d57a083c761e8083a",
+        "report_id": "report:v126:earthing_safety:5e2e75404128246f",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earthing_safety:e9ea3fa45d0f9a52"
+                "value": "proof:v126:earthing_safety:5e2e75404128246f"
               },
               {
                 "label": "proof_hash",
-                "value": "12cfb1bd1f55d1f32ae5d6ba13ebb0bf9957f186de77eaa8d6d1d98aac2f5d57"
+                "value": "e7a820ed90e3e0eb228eeb9b7fe49b61a8a80192e94c656218494874245b0fe1"
               },
               {
                 "label": "trace_step_count",
@@ -2889,7 +2909,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3"
+                "value": "5e2e75404128246feee5baf14f3ed3ce08e0a002635725b958ccc8f4ff81ff71"
               },
               {
                 "label": "solver_version",
@@ -2897,19 +2917,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "d705513b858aff490fdff786a1669d767a104a1adfb24982a5e9d99a238de4b5"
+                "value": "2f649702d15945bf3c87212670364816a3a5dae880d696d145dd6ca2958cbfd7"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "12cfb1bd1f55d1f32ae5d6ba13ebb0bf9957f186de77eaa8d6d1d98aac2f5d57",
-        "source_result_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3"
+        "source_proof_hash": "e7a820ed90e3e0eb228eeb9b7fe49b61a8a80192e94c656218494874245b0fe1",
+        "source_result_hash": "5e2e75404128246feee5baf14f3ed3ce08e0a002635725b958ccc8f4ff81ff71"
       },
       "slad": {
         "analysis_type": "earthing_safety",
-        "deterministic_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
+        "deterministic_hash": "5e2e75404128246feee5baf14f3ed3ce08e0a002635725b958ccc8f4ff81ff71",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "steps": [
           {
@@ -2922,7 +2942,7 @@
                   "bus_ref": "bus_sn_main",
                   "nazwa_pl": "sieć SN 15 kV — Szyna SN",
                   "opis_pl": "sieć SN skompensowana, dławik gaszący w tej stacji — $I_E = r\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$",
-                  "prad_a": 294.0926,
+                  "prad_a": 300.9921,
                   "stan_awsc": "spoczynek",
                   "strona": "SN",
                   "tryb": "kompensowany",
@@ -2989,13 +3009,13 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earthing_safety:e9ea3fa45d0f9a52",
-        "report_ref": "report:v126:earthing_safety:e9ea3fa45d0f9a52",
+        "proof_ref": "proof:v126:earthing_safety:5e2e75404128246f",
+        "report_ref": "report:v126:earthing_safety:5e2e75404128246f",
         "result": {
           "analysis_type": "earthing_safety",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
-          "input_hash": "d705513b858aff490fdff786a1669d767a104a1adfb24982a5e9d99a238de4b5",
+          "deterministic_hash": "5e2e75404128246feee5baf14f3ed3ce08e0a002635725b958ccc8f4ff81ff71",
+          "input_hash": "2f649702d15945bf3c87212670364816a3a5dae880d696d145dd6ca2958cbfd7",
           "result": {
             "bus_ref": "bus_sn_main",
             "dane_przyjete": [
@@ -3020,19 +3040,19 @@
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
-                  "wartosc": 1.5
+                  "wartosc": 0.636905831706
                 }
               },
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
-                  "wartosc": 6.0
+                  "wartosc": 3.18452915853
                 }
               },
               {
@@ -3106,7 +3126,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk e9ea3fa45d0f9a52)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 5e2e75404128246f)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -3132,19 +3152,19 @@
                       {
                         "jakosc": "ESTIMATED",
                         "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
-                          "wartosc": 1.5
+                          "wartosc": 0.636905831706
                         }
                       },
                       {
                         "jakosc": "ESTIMATED",
                         "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
-                          "wartosc": 6.0
+                          "wartosc": 3.18452915853
                         }
                       },
                       {
@@ -3235,7 +3255,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk e9ea3fa45d0f9a52)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 5e2e75404128246f)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -3261,19 +3281,19 @@
                           {
                             "jakosc": "ESTIMATED",
                             "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
-                              "wartosc": 1.5
+                              "wartosc": 0.636905831706
                             }
                           },
                           {
                             "jakosc": "ESTIMATED",
                             "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
-                              "wartosc": 6.0
+                              "wartosc": 3.18452915853
                             }
                           },
                           {
@@ -3408,8 +3428,8 @@
                       "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                       "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                       "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3449,8 +3469,8 @@
                         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
                         "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                         "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3492,7 +3512,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk e9ea3fa45d0f9a52)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 5e2e75404128246f)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -3518,19 +3538,19 @@
                           {
                             "jakosc": "ESTIMATED",
                             "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
-                              "wartosc": 1.5
+                              "wartosc": 0.636905831706
                             }
                           },
                           {
                             "jakosc": "ESTIMATED",
                             "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
-                              "wartosc": 6.0
+                              "wartosc": 3.18452915853
                             }
                           },
                           {
@@ -3665,8 +3685,8 @@
                       "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                       "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                       "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3706,8 +3726,8 @@
                         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
                         "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                         "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3761,8 +3781,8 @@
                   "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                   "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                   "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3774,8 +3794,8 @@
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3786,8 +3806,8 @@
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3826,8 +3846,8 @@
                     "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                     "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                     "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3839,8 +3859,8 @@
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3851,8 +3871,8 @@
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3867,8 +3887,8 @@
                     "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
                     "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                     "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -3908,7 +3928,7 @@
                   "bus_ref": "bus_sn_main",
                   "nazwa_pl": "sieć SN 15 kV — Szyna SN",
                   "opis_pl": "sieć SN skompensowana, dławik gaszący w tej stacji — $I_E = r\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$",
-                  "prad_a": 294.0926,
+                  "prad_a": 300.9921,
                   "stan_awsc": "spoczynek",
                   "strona": "SN",
                   "tryb": "kompensowany",
@@ -3963,7 +3983,7 @@
                     "bus_ref": "bus_sn_main",
                     "nazwa_pl": "sieć SN 15 kV — Szyna SN",
                     "opis_pl": "sieć SN skompensowana, dławik gaszący w tej stacji — $I_E = r\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$",
-                    "prad_a": 294.0926,
+                    "prad_a": 300.9921,
                     "stan_awsc": "spoczynek",
                     "strona": "SN",
                     "tryb": "kompensowany",
@@ -4031,10 +4051,10 @@
         "analysis_type": "insulation_coordination",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "6eeafa34f3e35ac18309dc9c4f80116d384472f8e6f8f4421d16dbefa1d26912",
-        "proof_id": "proof:v126:insulation_coordination:96201c05ab4e12f4",
+        "proof_hash": "cb8fff5cbf3db392904c271734b3d1448db68675852fab88b70948afe484e6f9",
+        "proof_id": "proof:v126:insulation_coordination:78d0852f0ab6ac8a",
         "run_id": "run-v126-scena-akademickie-insulation_coordination",
-        "source_result_hash": "96201c05ab4e12f4985919bb56d9c645c230b42cc707e2ace13f8a1147d23cc7",
+        "source_result_hash": "78d0852f0ab6ac8a33c4572fc5d1034ae704629f0a1c41850983cefd24330b76",
         "steps": [
           {
             "data": {
@@ -4069,7 +4089,7 @@
       "koperta": {
         "analysis_type": "insulation_coordination",
         "case_id": "case-demo",
-        "deterministic_hash": "96201c05ab4e12f4985919bb56d9c645c230b42cc707e2ace13f8a1147d23cc7",
+        "deterministic_hash": "78d0852f0ab6ac8a33c4572fc5d1034ae704629f0a1c41850983cefd24330b76",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-insulation_coordination/results/v126/insulation_coordination/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-insulation_coordination/results/v126/insulation_coordination/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-insulation_coordination/results/v126/insulation_coordination",
@@ -4082,19 +4102,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "d6ff2ba1a8bd023e69ebfae3e9cc3dd4f3594d779361dcb78fcfd4dec22b6b1c",
-        "report_id": "report:v126:insulation_coordination:96201c05ab4e12f4",
+        "report_hash": "49916c17f3b49ce71224a75bc2de69cbdd41146a5b908f46b469ceacfd37903f",
+        "report_id": "report:v126:insulation_coordination:78d0852f0ab6ac8a",
         "run_id": "run-v126-scena-akademickie-insulation_coordination",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:insulation_coordination:96201c05ab4e12f4"
+                "value": "proof:v126:insulation_coordination:78d0852f0ab6ac8a"
               },
               {
                 "label": "proof_hash",
-                "value": "6eeafa34f3e35ac18309dc9c4f80116d384472f8e6f8f4421d16dbefa1d26912"
+                "value": "cb8fff5cbf3db392904c271734b3d1448db68675852fab88b70948afe484e6f9"
               },
               {
                 "label": "trace_step_count",
@@ -4108,7 +4128,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "96201c05ab4e12f4985919bb56d9c645c230b42cc707e2ace13f8a1147d23cc7"
+                "value": "78d0852f0ab6ac8a33c4572fc5d1034ae704629f0a1c41850983cefd24330b76"
               },
               {
                 "label": "solver_version",
@@ -4116,19 +4136,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef"
+                "value": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "6eeafa34f3e35ac18309dc9c4f80116d384472f8e6f8f4421d16dbefa1d26912",
-        "source_result_hash": "96201c05ab4e12f4985919bb56d9c645c230b42cc707e2ace13f8a1147d23cc7"
+        "source_proof_hash": "cb8fff5cbf3db392904c271734b3d1448db68675852fab88b70948afe484e6f9",
+        "source_result_hash": "78d0852f0ab6ac8a33c4572fc5d1034ae704629f0a1c41850983cefd24330b76"
       },
       "slad": {
         "analysis_type": "insulation_coordination",
-        "deterministic_hash": "96201c05ab4e12f4985919bb56d9c645c230b42cc707e2ace13f8a1147d23cc7",
+        "deterministic_hash": "78d0852f0ab6ac8a33c4572fc5d1034ae704629f0a1c41850983cefd24330b76",
         "run_id": "run-v126-scena-akademickie-insulation_coordination",
         "steps": [
           {
@@ -4167,13 +4187,13 @@
         "analysis_type": "insulation_coordination",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:insulation_coordination:96201c05ab4e12f4",
-        "report_ref": "report:v126:insulation_coordination:96201c05ab4e12f4",
+        "proof_ref": "proof:v126:insulation_coordination:78d0852f0ab6ac8a",
+        "report_ref": "report:v126:insulation_coordination:78d0852f0ab6ac8a",
         "result": {
           "analysis_type": "insulation_coordination",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "96201c05ab4e12f4985919bb56d9c645c230b42cc707e2ace13f8a1147d23cc7",
-          "input_hash": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef",
+          "deterministic_hash": "78d0852f0ab6ac8a33c4572fc5d1034ae704629f0a1c41850983cefd24330b76",
+          "input_hash": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96",
           "result": {
             "arresters": [
               {
@@ -4238,7 +4258,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 96201c05ab4e12f4)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 78d0852f0ab6ac8a)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -4313,7 +4333,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 96201c05ab4e12f4)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 78d0852f0ab6ac8a)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -4504,7 +4524,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 96201c05ab4e12f4)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 78d0852f0ab6ac8a)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -4640,7 +4660,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 96201c05ab4e12f4)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 78d0852f0ab6ac8a)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -4998,10 +5018,10 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "c82d258e81b71ad2853613d87defcab16fe044344c42e3dd4e61e76189c12cf7",
-        "proof_id": "proof:v126:earth_fault_detection:25bac922c3405d81",
+        "proof_hash": "19af7974a6a60b1cc22fdf5eb958b0811801e17cf623a0654ad88cccb8c82588",
+        "proof_id": "proof:v126:earth_fault_detection:51b0229f28d00850",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
-        "source_result_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
+        "source_result_hash": "51b0229f28d008503096bfbb63af62a7a363a68e21d542131ff0abe798cf25ef",
         "steps": [
           {
             "data": {
@@ -5034,7 +5054,7 @@
       "koperta": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "deterministic_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
+        "deterministic_hash": "51b0229f28d008503096bfbb63af62a7a363a68e21d542131ff0abe798cf25ef",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
@@ -5047,19 +5067,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "f50a532d8265fb66a5bf4794d17d837289ab37db78f5db0a0a9e11abda6bb914",
-        "report_id": "report:v126:earth_fault_detection:25bac922c3405d81",
+        "report_hash": "78c3669b52501cfcaf621840c4f356c1c2abd1ff9d96421d9d465d7721b25f4f",
+        "report_id": "report:v126:earth_fault_detection:51b0229f28d00850",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earth_fault_detection:25bac922c3405d81"
+                "value": "proof:v126:earth_fault_detection:51b0229f28d00850"
               },
               {
                 "label": "proof_hash",
-                "value": "c82d258e81b71ad2853613d87defcab16fe044344c42e3dd4e61e76189c12cf7"
+                "value": "19af7974a6a60b1cc22fdf5eb958b0811801e17cf623a0654ad88cccb8c82588"
               },
               {
                 "label": "trace_step_count",
@@ -5073,7 +5093,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233"
+                "value": "51b0229f28d008503096bfbb63af62a7a363a68e21d542131ff0abe798cf25ef"
               },
               {
                 "label": "solver_version",
@@ -5081,19 +5101,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "efcf27ca8104870eee0b11f9c1adda5444a2431be140a22ba1d8d12054f7fbaf"
+                "value": "6b3921466f44267898a5f23531e42965d6cf567ed7ef46fd32e2b13a22c9aeae"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "c82d258e81b71ad2853613d87defcab16fe044344c42e3dd4e61e76189c12cf7",
-        "source_result_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233"
+        "source_proof_hash": "19af7974a6a60b1cc22fdf5eb958b0811801e17cf623a0654ad88cccb8c82588",
+        "source_result_hash": "51b0229f28d008503096bfbb63af62a7a363a68e21d542131ff0abe798cf25ef"
       },
       "slad": {
         "analysis_type": "earth_fault_detection",
-        "deterministic_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
+        "deterministic_hash": "51b0229f28d008503096bfbb63af62a7a363a68e21d542131ff0abe798cf25ef",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "steps": [
           {
@@ -5130,13 +5150,13 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earth_fault_detection:25bac922c3405d81",
-        "report_ref": "report:v126:earth_fault_detection:25bac922c3405d81",
+        "proof_ref": "proof:v126:earth_fault_detection:51b0229f28d00850",
+        "report_ref": "report:v126:earth_fault_detection:51b0229f28d00850",
         "result": {
           "analysis_type": "earth_fault_detection",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "25bac922c3405d815a13c578d7a6758ceb80b11bcb44876057dde26193fd4233",
-          "input_hash": "efcf27ca8104870eee0b11f9c1adda5444a2431be140a22ba1d8d12054f7fbaf",
+          "deterministic_hash": "51b0229f28d008503096bfbb63af62a7a363a68e21d542131ff0abe798cf25ef",
+          "input_hash": "6b3921466f44267898a5f23531e42965d6cf567ed7ef46fd32e2b13a22c9aeae",
           "result": {
             "alternative_method": "fifth_harmonic",
             "kompletnosc_dowodu": "NIEPELNY",
@@ -5146,7 +5166,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "DEKLARACJA",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 25bac922c3405d81)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 51b0229f28d00850)",
                   "poziom": "DECLARATION",
                   "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
                   "status_danych": {
@@ -5324,10 +5344,10 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "473ee3279434994472652ce5ecf0ab5996172f9508615bd7bf038d733bac023f",
-        "proof_id": "proof:v126:transient_trv:5444c55d04105bdd",
+        "proof_hash": "2613d2bbf09ca9530c73ec45c7f516863799a6c28ff9a2f10e219c30d981c7db",
+        "proof_id": "proof:v126:transient_trv:ab3393fca47fc139",
         "run_id": "run-v126-scena-akademickie-transient_trv",
-        "source_result_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
+        "source_result_hash": "ab3393fca47fc1393d025a995bdcc43af6e59b0d1f4814a4dc698a43e5eccaa7",
         "steps": [
           {
             "data": {
@@ -5355,7 +5375,7 @@
       "koperta": {
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
-        "deterministic_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
+        "deterministic_hash": "ab3393fca47fc1393d025a995bdcc43af6e59b0d1f4814a4dc698a43e5eccaa7",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv",
@@ -5368,19 +5388,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "29fc8b84cee513ce1f4cc63fbe2af127406d22f32499956093137963057eadd4",
-        "report_id": "report:v126:transient_trv:5444c55d04105bdd",
+        "report_hash": "82c6f414b8c35a5d3d764129737f124051bc991c9988c9a1e694ce2bdc7e6ec0",
+        "report_id": "report:v126:transient_trv:ab3393fca47fc139",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:transient_trv:5444c55d04105bdd"
+                "value": "proof:v126:transient_trv:ab3393fca47fc139"
               },
               {
                 "label": "proof_hash",
-                "value": "473ee3279434994472652ce5ecf0ab5996172f9508615bd7bf038d733bac023f"
+                "value": "2613d2bbf09ca9530c73ec45c7f516863799a6c28ff9a2f10e219c30d981c7db"
               },
               {
                 "label": "trace_step_count",
@@ -5394,7 +5414,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50"
+                "value": "ab3393fca47fc1393d025a995bdcc43af6e59b0d1f4814a4dc698a43e5eccaa7"
               },
               {
                 "label": "solver_version",
@@ -5402,19 +5422,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "f22a1c9bc42cef22a76f4532589c2fdb5f77ac39f8324c8e464e630acc0b891e"
+                "value": "b532a6e5f72d09e7411e471a03516398df400515d266de4440d675121108dfa5"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "473ee3279434994472652ce5ecf0ab5996172f9508615bd7bf038d733bac023f",
-        "source_result_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50"
+        "source_proof_hash": "2613d2bbf09ca9530c73ec45c7f516863799a6c28ff9a2f10e219c30d981c7db",
+        "source_result_hash": "ab3393fca47fc1393d025a995bdcc43af6e59b0d1f4814a4dc698a43e5eccaa7"
       },
       "slad": {
         "analysis_type": "transient_trv",
-        "deterministic_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
+        "deterministic_hash": "ab3393fca47fc1393d025a995bdcc43af6e59b0d1f4814a4dc698a43e5eccaa7",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "steps": [
           {
@@ -5446,13 +5466,13 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:transient_trv:5444c55d04105bdd",
-        "report_ref": "report:v126:transient_trv:5444c55d04105bdd",
+        "proof_ref": "proof:v126:transient_trv:ab3393fca47fc139",
+        "report_ref": "report:v126:transient_trv:ab3393fca47fc139",
         "result": {
           "analysis_type": "transient_trv",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
-          "input_hash": "f22a1c9bc42cef22a76f4532589c2fdb5f77ac39f8324c8e464e630acc0b891e",
+          "deterministic_hash": "ab3393fca47fc1393d025a995bdcc43af6e59b0d1f4814a4dc698a43e5eccaa7",
+          "input_hash": "b532a6e5f72d09e7411e471a03516398df400515d266de4440d675121108dfa5",
           "result": {
             "ferroresonance": {
               "recommendation": "brak przesłanek do ferrorezonansu",
@@ -5469,7 +5489,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 5444c55d04105bdd)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk ab3393fca47fc139)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -5818,10 +5838,10 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "95d36335563c926f3b34ae14722c3a06271b11ca965f2526117591c1716b68b8",
-        "proof_id": "proof:v126:motor_starting:9575fddd8ac5fda0",
+        "proof_hash": "cec35c900381ba7846ae766d717ca687d9a89717d43181379d2cf3dbcb29b495",
+        "proof_id": "proof:v126:motor_starting:8d2b0aca64210f3d",
         "run_id": "run-v126-scena-akademickie-motor_starting",
-        "source_result_hash": "9575fddd8ac5fda01f6971d6e49dac5ae5b920e5731212a15727e24b6b8d2c08",
+        "source_result_hash": "8d2b0aca64210f3df861b7ac7ae2b7eac3dae19ad1275f1c2a4843b1edf219df",
         "steps": [
           {
             "data": {
@@ -5853,7 +5873,7 @@
       "koperta": {
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
-        "deterministic_hash": "9575fddd8ac5fda01f6971d6e49dac5ae5b920e5731212a15727e24b6b8d2c08",
+        "deterministic_hash": "8d2b0aca64210f3df861b7ac7ae2b7eac3dae19ad1275f1c2a4843b1edf219df",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting",
@@ -5866,19 +5886,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "83cfcbf720e6017626b0e9e6927aa819d5fa6b53d63bccdf417014fa60c24c91",
-        "report_id": "report:v126:motor_starting:9575fddd8ac5fda0",
+        "report_hash": "85ed0a04f38df4480644e444b82e20a829358e984e48314bc1fe9ab4bfa957c5",
+        "report_id": "report:v126:motor_starting:8d2b0aca64210f3d",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:motor_starting:9575fddd8ac5fda0"
+                "value": "proof:v126:motor_starting:8d2b0aca64210f3d"
               },
               {
                 "label": "proof_hash",
-                "value": "95d36335563c926f3b34ae14722c3a06271b11ca965f2526117591c1716b68b8"
+                "value": "cec35c900381ba7846ae766d717ca687d9a89717d43181379d2cf3dbcb29b495"
               },
               {
                 "label": "trace_step_count",
@@ -5892,7 +5912,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "9575fddd8ac5fda01f6971d6e49dac5ae5b920e5731212a15727e24b6b8d2c08"
+                "value": "8d2b0aca64210f3df861b7ac7ae2b7eac3dae19ad1275f1c2a4843b1edf219df"
               },
               {
                 "label": "solver_version",
@@ -5900,19 +5920,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "3627bd1c8bf1a9ac2de233855f463238c46c1863c3b3d9412f8b5ccefd3c47c8"
+                "value": "43607835cc32d3cdd07498fcd1f195161388669dccf4b684f5b2f1a6b57eae47"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "95d36335563c926f3b34ae14722c3a06271b11ca965f2526117591c1716b68b8",
-        "source_result_hash": "9575fddd8ac5fda01f6971d6e49dac5ae5b920e5731212a15727e24b6b8d2c08"
+        "source_proof_hash": "cec35c900381ba7846ae766d717ca687d9a89717d43181379d2cf3dbcb29b495",
+        "source_result_hash": "8d2b0aca64210f3df861b7ac7ae2b7eac3dae19ad1275f1c2a4843b1edf219df"
       },
       "slad": {
         "analysis_type": "motor_starting",
-        "deterministic_hash": "9575fddd8ac5fda01f6971d6e49dac5ae5b920e5731212a15727e24b6b8d2c08",
+        "deterministic_hash": "8d2b0aca64210f3df861b7ac7ae2b7eac3dae19ad1275f1c2a4843b1edf219df",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "steps": [
           {
@@ -5948,13 +5968,13 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:motor_starting:9575fddd8ac5fda0",
-        "report_ref": "report:v126:motor_starting:9575fddd8ac5fda0",
+        "proof_ref": "proof:v126:motor_starting:8d2b0aca64210f3d",
+        "report_ref": "report:v126:motor_starting:8d2b0aca64210f3d",
         "result": {
           "analysis_type": "motor_starting",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "9575fddd8ac5fda01f6971d6e49dac5ae5b920e5731212a15727e24b6b8d2c08",
-          "input_hash": "3627bd1c8bf1a9ac2de233855f463238c46c1863c3b3d9412f8b5ccefd3c47c8",
+          "deterministic_hash": "8d2b0aca64210f3df861b7ac7ae2b7eac3dae19ad1275f1c2a4843b1edf219df",
+          "input_hash": "43607835cc32d3cdd07498fcd1f195161388669dccf4b684f5b2f1a6b57eae47",
           "result": {
             "kompletnosc_dowodu": "NIEPELNY",
             "motors": [
@@ -6001,7 +6021,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 9575fddd8ac5fda0)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 8d2b0aca64210f3d)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -6064,7 +6084,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 9575fddd8ac5fda0)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 8d2b0aca64210f3d)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -6236,7 +6256,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 9575fddd8ac5fda0)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 8d2b0aca64210f3d)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -6383,7 +6403,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 9575fddd8ac5fda0)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 8d2b0aca64210f3d)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -6680,10 +6700,10 @@
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "342cf05b1e567df245ec8f303d554b043d5af7dd7296a5c71c16f1db2a315eaa",
-        "proof_id": "proof:v126:benchmark_validation:32032a3749b20a70",
+        "proof_hash": "908fb06d7de18ac4cc1ac73a4fa4c839bd28d3986ab67ec61abae9bfcbd9e854",
+        "proof_id": "proof:v126:benchmark_validation:1ce74fc5ab1d01ba",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
-        "source_result_hash": "32032a3749b20a70bb74c1907c360f462489389c6c48161f30f4a139d11c65ac",
+        "source_result_hash": "1ce74fc5ab1d01ba4015b3e1aa6fa0e28fd06135939b182ed16aa6c8f4973ada",
         "steps": [
           {
             "data": {
@@ -6708,7 +6728,7 @@
       "koperta": {
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
-        "deterministic_hash": "32032a3749b20a70bb74c1907c360f462489389c6c48161f30f4a139d11c65ac",
+        "deterministic_hash": "1ce74fc5ab1d01ba4015b3e1aa6fa0e28fd06135939b182ed16aa6c8f4973ada",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation",
@@ -6721,19 +6741,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "b92be5a4811914c942ed614d232e5ece50eb96486e19dda55319ee5101807d7d",
-        "report_id": "report:v126:benchmark_validation:32032a3749b20a70",
+        "report_hash": "5728a9f81372e43ea31bd950e9212091808eda51bb993f0f98333d66c08ab9bd",
+        "report_id": "report:v126:benchmark_validation:1ce74fc5ab1d01ba",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:benchmark_validation:32032a3749b20a70"
+                "value": "proof:v126:benchmark_validation:1ce74fc5ab1d01ba"
               },
               {
                 "label": "proof_hash",
-                "value": "342cf05b1e567df245ec8f303d554b043d5af7dd7296a5c71c16f1db2a315eaa"
+                "value": "908fb06d7de18ac4cc1ac73a4fa4c839bd28d3986ab67ec61abae9bfcbd9e854"
               },
               {
                 "label": "trace_step_count",
@@ -6747,7 +6767,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "32032a3749b20a70bb74c1907c360f462489389c6c48161f30f4a139d11c65ac"
+                "value": "1ce74fc5ab1d01ba4015b3e1aa6fa0e28fd06135939b182ed16aa6c8f4973ada"
               },
               {
                 "label": "solver_version",
@@ -6755,19 +6775,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef"
+                "value": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "342cf05b1e567df245ec8f303d554b043d5af7dd7296a5c71c16f1db2a315eaa",
-        "source_result_hash": "32032a3749b20a70bb74c1907c360f462489389c6c48161f30f4a139d11c65ac"
+        "source_proof_hash": "908fb06d7de18ac4cc1ac73a4fa4c839bd28d3986ab67ec61abae9bfcbd9e854",
+        "source_result_hash": "1ce74fc5ab1d01ba4015b3e1aa6fa0e28fd06135939b182ed16aa6c8f4973ada"
       },
       "slad": {
         "analysis_type": "benchmark_validation",
-        "deterministic_hash": "32032a3749b20a70bb74c1907c360f462489389c6c48161f30f4a139d11c65ac",
+        "deterministic_hash": "1ce74fc5ab1d01ba4015b3e1aa6fa0e28fd06135939b182ed16aa6c8f4973ada",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "steps": [
           {
@@ -6796,13 +6816,13 @@
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:benchmark_validation:32032a3749b20a70",
-        "report_ref": "report:v126:benchmark_validation:32032a3749b20a70",
+        "proof_ref": "proof:v126:benchmark_validation:1ce74fc5ab1d01ba",
+        "report_ref": "report:v126:benchmark_validation:1ce74fc5ab1d01ba",
         "result": {
           "analysis_type": "benchmark_validation",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "32032a3749b20a70bb74c1907c360f462489389c6c48161f30f4a139d11c65ac",
-          "input_hash": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef",
+          "deterministic_hash": "1ce74fc5ab1d01ba4015b3e1aa6fa0e28fd06135939b182ed16aa6c8f4973ada",
+          "input_hash": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96",
           "result": {
             "kompletnosc_dowodu": "NIEPELNY",
             "message_pl": "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, CIGRE MV) z wartościami policzonymi przez solver. Bez nich odchyłki nie wyznacza się i oceny nie wystawia (zakaz cichego fałszu K-09).",
@@ -6811,7 +6831,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 32032a3749b20a70)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 1ce74fc5ab1d01ba)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -6952,14 +6972,14 @@
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "0d85b4e5eddc2be3377f178a6d1f8fbcec3d24f9511aa20923a18b70755d1c2b",
-        "proof_id": "proof:v126:uncertainty_sensitivity:a65e1b53a225b436",
+        "proof_hash": "bfcb26e8793df3057397e6bec340085dcc9ddd8db7dc5c1ec3fab11f8eba9ee9",
+        "proof_id": "proof:v126:uncertainty_sensitivity:0532f3f232a71022",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
-        "source_result_hash": "a65e1b53a225b436d714a734ca6734133b8af8b450a9532296c7c60f0e49f92e",
+        "source_result_hash": "0532f3f232a71022eda8652a3639f24580ff2e3ac99365ef0645aec03770f797",
         "steps": [
           {
             "data": {
-              "parameters": 9
+              "parameters": 10
             },
             "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
             "formula_latex": "\\sigma_Y^2 = \\sum_i \\left(\\dfrac{\\partial Y}{\\partial x_i}\\cdot \\sigma_{x_i}\\right)^2\\text{,}\\quad U_{95} = 2\\sigma_Y",
@@ -6967,9 +6987,9 @@
             "proof_ref": "proof:v126:uncertainty_sensitivity:uncertainty_propagation",
             "proof_status": "complete",
             "result": {
-              "expanded_uncertainty_percent_k2": 5.74737
+              "expanded_uncertainty_percent_k2": 5.80278
             },
-            "result_pl": "Niepewność rozszerzona (k = 2): 5,74737 %",
+            "result_pl": "Niepewność rozszerzona (k = 2): 5,80278 %",
             "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
             "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
           }
@@ -6979,7 +6999,7 @@
       "koperta": {
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
-        "deterministic_hash": "a65e1b53a225b436d714a734ca6734133b8af8b450a9532296c7c60f0e49f92e",
+        "deterministic_hash": "0532f3f232a71022eda8652a3639f24580ff2e3ac99365ef0645aec03770f797",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity",
@@ -6992,19 +7012,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "adca32e34c114ff55fe4c57ce31a2dd56a09ff72730a6ff8b5d5331c76dd2074",
-        "report_id": "report:v126:uncertainty_sensitivity:a65e1b53a225b436",
+        "report_hash": "0f12b18bce0b65d52feb531691cd05e754bdd5bd4ee2e9cf981cc005237ec8e6",
+        "report_id": "report:v126:uncertainty_sensitivity:0532f3f232a71022",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:uncertainty_sensitivity:a65e1b53a225b436"
+                "value": "proof:v126:uncertainty_sensitivity:0532f3f232a71022"
               },
               {
                 "label": "proof_hash",
-                "value": "0d85b4e5eddc2be3377f178a6d1f8fbcec3d24f9511aa20923a18b70755d1c2b"
+                "value": "bfcb26e8793df3057397e6bec340085dcc9ddd8db7dc5c1ec3fab11f8eba9ee9"
               },
               {
                 "label": "trace_step_count",
@@ -7018,7 +7038,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "a65e1b53a225b436d714a734ca6734133b8af8b450a9532296c7c60f0e49f92e"
+                "value": "0532f3f232a71022eda8652a3639f24580ff2e3ac99365ef0645aec03770f797"
               },
               {
                 "label": "solver_version",
@@ -7026,24 +7046,24 @@
               },
               {
                 "label": "input_hash",
-                "value": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef"
+                "value": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "0d85b4e5eddc2be3377f178a6d1f8fbcec3d24f9511aa20923a18b70755d1c2b",
-        "source_result_hash": "a65e1b53a225b436d714a734ca6734133b8af8b450a9532296c7c60f0e49f92e"
+        "source_proof_hash": "bfcb26e8793df3057397e6bec340085dcc9ddd8db7dc5c1ec3fab11f8eba9ee9",
+        "source_result_hash": "0532f3f232a71022eda8652a3639f24580ff2e3ac99365ef0645aec03770f797"
       },
       "slad": {
         "analysis_type": "uncertainty_sensitivity",
-        "deterministic_hash": "a65e1b53a225b436d714a734ca6734133b8af8b450a9532296c7c60f0e49f92e",
+        "deterministic_hash": "0532f3f232a71022eda8652a3639f24580ff2e3ac99365ef0645aec03770f797",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "steps": [
           {
             "data": {
-              "parameters": 9
+              "parameters": 10
             },
             "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
             "formula_latex": "\\sigma_Y^2 = \\sum_i \\left(\\dfrac{\\partial Y}{\\partial x_i}\\cdot \\sigma_{x_i}\\right)^2\\text{,}\\quad U_{95} = 2\\sigma_Y",
@@ -7052,9 +7072,9 @@
             "proof_status": "complete",
             "reporting_status": "reportable",
             "result": {
-              "expanded_uncertainty_percent_k2": 5.74737
+              "expanded_uncertainty_percent_k2": 5.80278
             },
-            "result_pl": "Niepewność rozszerzona (k = 2): 5,74737 %",
+            "result_pl": "Niepewność rozszerzona (k = 2): 5,80278 %",
             "step": 1,
             "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
             "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
@@ -7066,16 +7086,16 @@
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:uncertainty_sensitivity:a65e1b53a225b436",
-        "report_ref": "report:v126:uncertainty_sensitivity:a65e1b53a225b436",
+        "proof_ref": "proof:v126:uncertainty_sensitivity:0532f3f232a71022",
+        "report_ref": "report:v126:uncertainty_sensitivity:0532f3f232a71022",
         "result": {
           "analysis_type": "uncertainty_sensitivity",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "a65e1b53a225b436d714a734ca6734133b8af8b450a9532296c7c60f0e49f92e",
-          "input_hash": "297c6a6da3c160c78f70e4ee60f9a9dd9134d9c69c97bbdd591d45fee3752cef",
+          "deterministic_hash": "0532f3f232a71022eda8652a3639f24580ff2e3ac99365ef0645aec03770f797",
+          "input_hash": "1e2840ac93308821399409132096a1bb7694716da501c94ac23c71b98224bb96",
           "result": {
             "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
-            "expanded_uncertainty_percent_k2": 5.74737,
+            "expanded_uncertainty_percent_k2": 5.80278,
             "sanity": {
               "checks_passed": 3,
               "checks_total": 3,
@@ -7085,37 +7105,42 @@
             "sensitivity_ranking": [
               {
                 "parameter": "bus_hv.s_sc_mva",
-                "share_percent": 51.6062,
+                "share_percent": 47.6701,
                 "sigma_contribution_percent": 2.5
               },
               {
                 "parameter": "tr_hv_sn.uk_percent",
-                "share_percent": 24.771,
+                "share_percent": 22.8816,
                 "sigma_contribution_percent": 1.2
               },
               {
                 "parameter": "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer.uk_percent",
-                "share_percent": 12.3855,
+                "share_percent": 11.4408,
                 "sigma_contribution_percent": 0.6
               },
               {
                 "parameter": "tr_sn_nn.uk_percent",
-                "share_percent": 9.2891,
+                "share_percent": 8.5806,
                 "sigma_contribution_percent": 0.45
               },
               {
+                "parameter": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer.uk_percent",
+                "share_percent": 7.6272,
+                "sigma_contribution_percent": 0.4
+              },
+              {
                 "parameter": "line_b_c.z_ohm",
-                "share_percent": 1.4636,
+                "share_percent": 1.3519,
                 "sigma_contribution_percent": 0.0709
               },
               {
                 "parameter": "cab_main_b.z_ohm",
-                "share_percent": 0.4762,
+                "share_percent": 0.4399,
                 "sigma_contribution_percent": 0.02307
               },
               {
                 "parameter": "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable.z_ohm",
-                "share_percent": 0.0085,
+                "share_percent": 0.0078,
                 "sigma_contribution_percent": 0.00041
               },
               {
@@ -7134,7 +7159,7 @@
           "white_box_trace": [
             {
               "data": {
-                "parameters": 9
+                "parameters": 10
               },
               "formula": "sigma_Y^2 = sum((dY/dx_i * sigma_x_i)^2); U95 = 2*sigma_Y",
               "key": "uncertainty_propagation",
@@ -7142,9 +7167,9 @@
               "proof_status": "complete",
               "reporting_status": "reportable",
               "result": {
-                "expanded_uncertainty_percent_k2": 5.74737
+                "expanded_uncertainty_percent_k2": 5.80278
               },
-              "result_pl": "Niepewność rozszerzona (k = 2): 5,74737 %",
+              "result_pl": "Niepewność rozszerzona (k = 2): 5,80278 %",
               "step": 1,
               "substitution": "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
               "unit_check": "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %."
@@ -7160,10 +7185,10 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "6333979246f76227b1ea961c6b93269690b33be8caff6cb081f68340276a773b",
-        "proof_id": "proof:v126:neutral_earthing_design:478f36daa6ea700e",
+        "proof_hash": "7209a19af87a459b4853e0b9789cb50ddd51b3e4e9ced3ef09d670e7df6e3ea4",
+        "proof_id": "proof:v126:neutral_earthing_design:3e0eda69e083fa02",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "source_result_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
+        "source_result_hash": "3e0eda69e083fa0276ac4802a8be92197ab382a5a3811e0ab9d0a187ee991435",
         "steps": [
           {
             "data": {
@@ -7232,16 +7257,16 @@
           },
           {
             "data": {
-              "detuning_v": -74.308402,
-              "i_l_a": 209.3323,
-              "i_w_a": 2.5303,
+              "detuning_v": -76.065808,
+              "i_l_a": 214.2174,
+              "i_w_a": 1.125,
               "i_w_awsc_a": null,
               "ic_a": 2.7797,
               "punkty": [
                 {
                   "nazwa_pl": "Zespół uziemiający GPZ",
-                  "z0_r_ohm": 1.5,
-                  "z0_x_ohm": 6.0,
+                  "z0_r_ohm": 0.636905831706,
+                  "z0_x_ohm": 3.18452915853,
                   "z_n_r_ohm": 0.0,
                   "z_n_x_ohm": 39.3647910811
                 }
@@ -7253,13 +7278,13 @@
             "proof_ref": "proof:v126:neutral_earthing_design:petersen_residual_current",
             "proof_status": "complete",
             "result": {
-              "detuning_v": -74.308402,
-              "i_residual_a": 206.568179,
+              "detuning_v": -76.065808,
+              "i_residual_a": 211.440679,
               "i_residual_awsc_a": null
             },
-            "result_pl": "Prąd resztkowy dławika modelu: 206,5682 A (rozstrojenie -7430,84 %)",
-            "substitution": "I_res=√(2.5303²+(2.7797−209.3323)²); v=(2.7797−209.3323)/2.7797",
-            "substitution_latex": "I_{\\mathrm{res}} = \\sqrt{2,5303^2 + (2,7797 - 209,3323)^2}\\ \\mathrm{A}\\text{,}\\quad v = \\dfrac{2,7797 - 209,3323}{2,7797}",
+            "result_pl": "Prąd resztkowy dławika modelu: 211,4407 A (rozstrojenie -7606,58 %)",
+            "substitution": "I_res=√(1.125²+(2.7797−214.2174)²); v=(2.7797−214.2174)/2.7797",
+            "substitution_latex": "I_{\\mathrm{res}} = \\sqrt{1,125^2 + (2,7797 - 214,2174)^2}\\ \\mathrm{A}\\text{,}\\quad v = \\dfrac{2,7797 - 214,2174}{2,7797}",
             "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe.",
             "unit_check_latex": "\\sqrt{\\mathrm{A}^{2} + \\mathrm{A}^{2}} = \\mathrm{A},\\quad (\\mathrm{A} - \\mathrm{A})/\\mathrm{A} = 1",
             "unit_check_pl": "Zgodność jednostek: pierwiastek z sumy kwadratów prądów daje prąd w amperach, a odstrojenie (różnica prądów odniesiona do prądu) jest wielkością bezwymiarową."
@@ -7270,7 +7295,7 @@
       "koperta": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "deterministic_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
+        "deterministic_hash": "3e0eda69e083fa0276ac4802a8be92197ab382a5a3811e0ab9d0a187ee991435",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
@@ -7283,19 +7308,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "4488e3cfdac52d3231ecdfa569b245e71c50bd60530ce032081ff62e924a4331",
-        "report_id": "report:v126:neutral_earthing_design:478f36daa6ea700e",
+        "report_hash": "2e99e90a2d1c619b2c2b17584eec7a09d954f150d93e9b2b2f5f84443bf9ab4c",
+        "report_id": "report:v126:neutral_earthing_design:3e0eda69e083fa02",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:neutral_earthing_design:478f36daa6ea700e"
+                "value": "proof:v126:neutral_earthing_design:3e0eda69e083fa02"
               },
               {
                 "label": "proof_hash",
-                "value": "6333979246f76227b1ea961c6b93269690b33be8caff6cb081f68340276a773b"
+                "value": "7209a19af87a459b4853e0b9789cb50ddd51b3e4e9ced3ef09d670e7df6e3ea4"
               },
               {
                 "label": "trace_step_count",
@@ -7309,7 +7334,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62"
+                "value": "3e0eda69e083fa0276ac4802a8be92197ab382a5a3811e0ab9d0a187ee991435"
               },
               {
                 "label": "solver_version",
@@ -7317,19 +7342,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "3137ffb603700dda6852031f88d0bcc8ea9b7b5eb08c714c47e16858e1d08a9c"
+                "value": "1ecf852881e331fb73723f8388a2215471ad85bc010a8a5ca0a058344d843cfd"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "6333979246f76227b1ea961c6b93269690b33be8caff6cb081f68340276a773b",
-        "source_result_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62"
+        "source_proof_hash": "7209a19af87a459b4853e0b9789cb50ddd51b3e4e9ced3ef09d670e7df6e3ea4",
+        "source_result_hash": "3e0eda69e083fa0276ac4802a8be92197ab382a5a3811e0ab9d0a187ee991435"
       },
       "slad": {
         "analysis_type": "neutral_earthing_design",
-        "deterministic_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
+        "deterministic_hash": "3e0eda69e083fa0276ac4802a8be92197ab382a5a3811e0ab9d0a187ee991435",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "steps": [
           {
@@ -7405,16 +7430,16 @@
           },
           {
             "data": {
-              "detuning_v": -74.308402,
-              "i_l_a": 209.3323,
-              "i_w_a": 2.5303,
+              "detuning_v": -76.065808,
+              "i_l_a": 214.2174,
+              "i_w_a": 1.125,
               "i_w_awsc_a": null,
               "ic_a": 2.7797,
               "punkty": [
                 {
                   "nazwa_pl": "Zespół uziemiający GPZ",
-                  "z0_r_ohm": 1.5,
-                  "z0_x_ohm": 6.0,
+                  "z0_r_ohm": 0.636905831706,
+                  "z0_x_ohm": 3.18452915853,
                   "z_n_r_ohm": 0.0,
                   "z_n_x_ohm": 39.3647910811
                 }
@@ -7427,14 +7452,14 @@
             "proof_status": "complete",
             "reporting_status": "reportable",
             "result": {
-              "detuning_v": -74.308402,
-              "i_residual_a": 206.568179,
+              "detuning_v": -76.065808,
+              "i_residual_a": 211.440679,
               "i_residual_awsc_a": null
             },
-            "result_pl": "Prąd resztkowy dławika modelu: 206,5682 A (rozstrojenie -7430,84 %)",
+            "result_pl": "Prąd resztkowy dławika modelu: 211,4407 A (rozstrojenie -7606,58 %)",
             "step": 4,
-            "substitution": "I_res=√(2.5303²+(2.7797−209.3323)²); v=(2.7797−209.3323)/2.7797",
-            "substitution_latex": "I_{\\mathrm{res}} = \\sqrt{2,5303^2 + (2,7797 - 209,3323)^2}\\ \\mathrm{A}\\text{,}\\quad v = \\dfrac{2,7797 - 209,3323}{2,7797}",
+            "substitution": "I_res=√(1.125²+(2.7797−214.2174)²); v=(2.7797−214.2174)/2.7797",
+            "substitution_latex": "I_{\\mathrm{res}} = \\sqrt{1,125^2 + (2,7797 - 214,2174)^2}\\ \\mathrm{A}\\text{,}\\quad v = \\dfrac{2,7797 - 214,2174}{2,7797}",
             "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe.",
             "unit_check_latex": "\\sqrt{\\mathrm{A}^{2} + \\mathrm{A}^{2}} = \\mathrm{A},\\quad (\\mathrm{A} - \\mathrm{A})/\\mathrm{A} = 1",
             "unit_check_pl": "Zgodność jednostek: pierwiastek z sumy kwadratów prądów daje prąd w amperach, a odstrojenie (różnica prądów odniesiona do prądu) jest wielkością bezwymiarową."
@@ -7446,15 +7471,15 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:neutral_earthing_design:478f36daa6ea700e",
-        "report_ref": "report:v126:neutral_earthing_design:478f36daa6ea700e",
+        "proof_ref": "proof:v126:neutral_earthing_design:3e0eda69e083fa02",
+        "report_ref": "report:v126:neutral_earthing_design:3e0eda69e083fa02",
         "result": {
           "analysis_type": "neutral_earthing_design",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
-          "input_hash": "3137ffb603700dda6852031f88d0bcc8ea9b7b5eb08c714c47e16858e1d08a9c",
+          "deterministic_hash": "3e0eda69e083fa0276ac4802a8be92197ab382a5a3811e0ab9d0a187ee991435",
+          "input_hash": "1ecf852881e331fb73723f8388a2215471ad85bc010a8a5ca0a058344d843cfd",
           "result": {
-            "active_component_a": 2.5303,
+            "active_component_a": 1.125,
             "active_component_awsc_a": null,
             "branches_contributing": [
               {
@@ -7482,7 +7507,7 @@
             "branches_missing_b0": [],
             "c0_farad": 3.40558e-07,
             "capacitive_earth_fault_current_a": 2.7797,
-            "coil_current_model_a": 209.3323,
+            "coil_current_model_a": 214.2174,
             "coil_current_rating_a": 2.7797,
             "coil_inductance_h": 9.91717192,
             "coil_reactance_ohm": 3115.5714,
@@ -7508,19 +7533,19 @@
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
-                  "wartosc": 1.5
+                  "wartosc": 0.636905831706
                 }
               },
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
-                  "wartosc": 6.0
+                  "wartosc": 3.18452915853
                 }
               },
               {
@@ -7552,7 +7577,7 @@
               }
             ],
             "design_mode": "petersen_coil",
-            "detuning_model": -74.308402,
+            "detuning_model": -76.065808,
             "kompletnosc_dowodu": "NIEPELNY",
             "nazwa_pl": "Sieć SN 15 kV — Szyna SN",
             "network_line_voltage_kv": 15.0,
@@ -7562,7 +7587,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 478f36daa6ea700e)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 3e0eda69e083fa02)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -7588,19 +7613,19 @@
                       {
                         "jakosc": "ESTIMATED",
                         "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
-                          "wartosc": 1.5
+                          "wartosc": 0.636905831706
                         }
                       },
                       {
                         "jakosc": "ESTIMATED",
                         "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "powod_pl": "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
-                          "wartosc": 6.0
+                          "wartosc": 3.18452915853
                         }
                       },
                       {
@@ -7689,9 +7714,9 @@
                   "skala_rodzaj": "LIMIT",
                   "wartosc": {
                     "jednostka": "pp",
-                    "wartosc": -7421.397702
+                    "wartosc": -7596.688435
                   },
-                  "wzgledny": -742.1397702
+                  "wzgledny": -759.6688435
                 },
                 "niepewnosc": {
                   "metoda_pl": null,
@@ -7711,8 +7736,8 @@
                   "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                   "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                   "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
@@ -7726,7 +7751,7 @@
                 "slad": [
                   {
                     "krok": "petersen_residual_current",
-                    "opis_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci: wynik 7431 %, limit 10 % (Z-6)",
+                    "opis_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci: wynik 7607 %, limit 10 % (Z-6)",
                     "run_id": null,
                     "wersja_silnika": "v126-academic-whitebox-1.5"
                   }
@@ -7743,21 +7768,21 @@
                 },
                 "wyjasnienie": {
                   "czego_brakuje": [],
-                  "przyczyna_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci przekracza wartość graniczną o 7421 pp (Sieć SN 15 kV — Szyna SN)",
+                  "przyczyna_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci przekracza wartość graniczną o 7597 pp (Sieć SN 15 kV — Szyna SN)",
                   "zastrzezenia": [
                     "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-6 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                     "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
                     "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                     "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 0,6369 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 3,185 Ω, jakość danej: oszacowane — impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje.",
                     "Zakres ważności: Galwanicznie połączona sieć SN z zespołem uziemiającym modelu; prąd pojemnościowy z susceptancji zerowej linii, kabli i baterii tej sieci; prąd doziemienia z impedancji punktów neutralnych w ruchu — wynik nie obejmuje: straty czynne dławika i upływność izolacji sieci (rzeczywisty prąd resztkowy jest nie mniejszy); impedancje zgodna i przeciwna sieci w prądzie rezystora (strona bezpieczna)."
                   ],
-                  "zdanie_pl": "Prąd resztkowy dławika modelu nie większy od dopuszczalnego udziału prądu pojemnościowego sieci (Sieć SN 15 kV — Szyna SN) — kryterium naruszone. Udział prądu resztkowego w prądzie pojemnościowym sieci: 7431 % wobec wymaganych ≤ 10 % wg § Z-6 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines −7421 pp, punkt: Sieć SN 15 kV — Szyna SN, względnie −74210 % wartości granicznej)."
+                  "zdanie_pl": "Prąd resztkowy dławika modelu nie większy od dopuszczalnego udziału prądu pojemnościowego sieci (Sieć SN 15 kV — Szyna SN) — kryterium naruszone. Udział prądu resztkowego w prądzie pojemnościowym sieci: 7607 % wobec wymaganych ≤ 10 % wg § Z-6 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines −7597 pp, punkt: Sieć SN 15 kV — Szyna SN, względnie −75970 % wartości granicznej)."
                 },
                 "wynik": {
                   "chwila_s": null,
@@ -7766,7 +7791,7 @@
                   "symbol_latex": "I_{\\mathrm{res}}/I_C",
                   "wartosc": {
                     "jednostka": "%",
-                    "wartosc": 7431.397702
+                    "wartosc": 7606.688435
                   },
                   "wielkosc_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci"
                 },
@@ -7786,10 +7811,10 @@
                 }
               }
             ],
-            "residual_current_a": 206.568179,
-            "residual_current_at_resonance_a": 2.53032,
+            "residual_current_a": 211.440679,
+            "residual_current_at_resonance_a": 1.12498,
             "residual_current_awsc_a": null,
-            "residual_share_percent": 7431.397702,
+            "residual_share_percent": 7606.688435,
             "sanity": {
               "checks_passed": 3,
               "checks_total": 3,
@@ -7870,16 +7895,16 @@
             },
             {
               "data": {
-                "detuning_v": -74.308402,
-                "i_l_a": 209.3323,
-                "i_w_a": 2.5303,
+                "detuning_v": -76.065808,
+                "i_l_a": 214.2174,
+                "i_w_a": 1.125,
                 "i_w_awsc_a": null,
                 "ic_a": 2.7797,
                 "punkty": [
                   {
                     "nazwa_pl": "Zespół uziemiający GPZ",
-                    "z0_r_ohm": 1.5,
-                    "z0_x_ohm": 6.0,
+                    "z0_r_ohm": 0.636905831706,
+                    "z0_x_ohm": 3.18452915853,
                     "z_n_r_ohm": 0.0,
                     "z_n_x_ohm": 39.3647910811
                   }
@@ -7891,13 +7916,13 @@
               "proof_status": "complete",
               "reporting_status": "reportable",
               "result": {
-                "detuning_v": -74.308402,
-                "i_residual_a": 206.568179,
+                "detuning_v": -76.065808,
+                "i_residual_a": 211.440679,
                 "i_residual_awsc_a": null
               },
-              "result_pl": "Prąd resztkowy dławika modelu: 206,5682 A (rozstrojenie -7430,84 %)",
+              "result_pl": "Prąd resztkowy dławika modelu: 211,4407 A (rozstrojenie -7606,58 %)",
               "step": 4,
-              "substitution": "I_res=√(2.5303²+(2.7797−209.3323)²); v=(2.7797−209.3323)/2.7797",
+              "substitution": "I_res=√(1.125²+(2.7797−214.2174)²); v=(2.7797−214.2174)/2.7797",
               "unit_check": "√(A²+A²)=A; (A−A)/A — bezwymiarowe."
             }
           ]

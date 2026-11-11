@@ -70,6 +70,7 @@ from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU
 from network_model.catalog.przekladniki import RdzenPrzekladnikaPradowego, zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import (
     KLUCZ_ODGALEZIENIA,
+    NAZWY_RODZAJOW_APARATU_POLA_PL,
     OPIS_WYKONANIA_APARATU_PL,
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
     RODZAJ_PRZEKLADNIKA_FERRANTIEGO,
@@ -166,25 +167,6 @@ RODZAJE_STEROWALNE: frozenset[str] = _SWITCHABLE_PRIMARY_KINDS
 _UMIEJSCOWIENIA: frozenset[str] = frozenset(
     get_args(BayPrimaryDevice.model_fields["placement"].annotation)
 )
-
-#: Nazwa rodzaju aparatu w zdaniu dla projektanta.
-NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
-    "CB": "wyłącznik",
-    "LOAD_SWITCH": "rozłącznik",
-    "DS": "odłącznik",
-    "ES": "uziemnik",
-    "CT": "przekładnik prądowy",
-    "VT": "przekładnik napięciowy",
-    "SURGE_ARRESTER": "ogranicznik przepięć",
-    "FUSE": "bezpieczniki",
-    "CABLE_HEAD": "głowica kablowa",
-    "TRANSFORMER_DEVICE": "transformator pola",
-    RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO: "łącznik trójpołożeniowy",
-    RODZAJ_WSKAZNIKA_NAPIECIA: "wskaźnik napięcia",
-    RODZAJ_PRZEKLADNIKA_FERRANTIEGO: "przekładnik Ferrantiego",
-    "UNBALANCE_CT": "przekładnik niezrównoważenia baterii",
-    "PHASE_TO_PHASE_VT": "przekładnik napięciowy międzyfazowy",
-}
 
 
 def stan_danych_aparatu(aparat: Mapping[str, Any] | BayPrimaryDevice) -> StanDanychAparatu:

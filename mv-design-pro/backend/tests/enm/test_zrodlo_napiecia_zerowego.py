@@ -34,6 +34,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.hash import hash_migawki_enm
 from enm.models import Bay, EnergyNetworkModel
 from enm.pole_liniowe_gpz import ocena_pola_liniowego
+from enm.uziemienie_sekcji import uziemienie_sieci
 from enm.validator import ENMValidator
 from enm.zrodlo_napiecia_zerowego import (
     KOD_WALIDATORA_ZRODLA_U0,
@@ -235,20 +236,26 @@ def test_iloczyn_zestaw_powiazania_ocena_walidator_odczyt(
         assert item["zrodlo_u0"]["kody_brakow"] == ["BRAK_POLA_POMIARU_NAPIECIA"]
         assert item["zrodlo_u0"]["kandydaci"] == []
     # Ścieżka zwarcia doziemnego pola (wyniki projektu pola; scena bez biegu — wywołanie wprost
-    # z tym samym rozstrzygnięciem źródła co odczyt): potwierdzone źródło daje tor I0 i U0.
+    # z tym samym rozstrzygnięciem źródła co odczyt i z sekcją sieci SN modelu, jak
+    # `droga_doziemna_pola`): potwierdzone źródło daje tor I0 i U0, niepotwierdzone — oba tory
+    # „brak” (sieć SN ma zawsze rozstrzygnięty sposób uziemienia, więc droga istnieje).
+    model = EnergyNetworkModel.model_validate(enm)
+    sekcja = next(s for s in uziemienie_sieci(model) if pole["bus_ref"] in s.szyny)
     sciezka = _build_earth_fault_path(
         bay=Bay.model_validate(pole),
         measurement_chain=None,
         sources_by_bus={},
         transformers_by_bus={},
+        sekcja=sekcja,
         zrodlo_u0_potwierdzone=bool(item["zrodlo_u0"]["potwierdzone"]),
     )
+    assert sciezka is not None
     if potwierdzone:
-        assert sciezka is not None
         assert sciezka.zero_sequence_current_source == "przekladnik_ferrantiego"
         assert sciezka.zero_sequence_voltage_source == "otwarty_trojkat_vt"
     else:
-        assert sciezka is None
+        assert sciezka.zero_sequence_current_source == "brak"
+        assert sciezka.zero_sequence_voltage_source == "brak"
 
 
 @pytest.mark.parametrize("wykonanie", WYKONANIA)

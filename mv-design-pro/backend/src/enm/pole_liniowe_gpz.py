@@ -350,11 +350,11 @@ def _ocena_funkcji(
         stan_funkcji = (
             "funkcja zadeklarowana w polu bez wejścia napięcia zerowego"
             if obecna
-            else "funkcja nieprzypisana — przypisanie wymaga źródła 3U₀"
+            else "funkcja nieprzypisana — przypisanie wymaga źródła napięcia zerowego"
         )
         przyczyna = f"{zrodlo_u0.przyczyna_pl}; {stan_funkcji} — {AKCJA_NAPRAWCZA_ZRODLA_U0_PL}"
         czego_brakuje = zrodlo_u0.czego_brakuje
-        dowod = f"{_DOWOD_DEKLARACJI}; źródło 3U₀: {PODSTAWA_ZRODLA_U0}"
+        dowod = f"{_DOWOD_DEKLARACJI}; źródło napięcia zerowego: {PODSTAWA_ZRODLA_U0}"
     elif wymog == "NAPOWIETRZNA" and not linia_napowietrzna:
         status, przyczyna = (
             "NIE_DOTYCZY",

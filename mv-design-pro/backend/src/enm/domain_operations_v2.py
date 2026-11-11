@@ -22,7 +22,7 @@ import copy
 import math
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from domain.generator_validation import (
     KLUCZ_META_KONTROLI_MOCY,
@@ -179,7 +179,10 @@ from .pole_katalogowe import (
     rozwiaz_plan_pola,
 )
 from .polozenie_aparatu_pola import set_bay_apparatus_position
-from .punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
+from .punkt_neutralny_zespolu import (
+    grupa_transformatora_uziemiajacego,
+    jest_transformatorem_uziemiajacym,
+)
 from .rola_pola_sn import (
     ROLE_POLA_MODELU,
     kanoniczna_rola_pola_sn,
@@ -8077,7 +8080,7 @@ def _pozycja_transformatora_uziemiajacego(
         return None, None, {}, blad
     grupa = parametry.get("vector_group")
     u_hv = parametry.get("voltage_hv_kv")
-    if not isinstance(grupa, str) or not grupa.upper().startswith("ZN"):
+    if not isinstance(grupa, str) or not grupa_transformatora_uziemiajacego(grupa):
         return (
             None,
             None,
@@ -8102,6 +8105,12 @@ def _pozycja_transformatora_uziemiajacego(
     return catalog_ref, binding, parametry, None
 
 
+#: Przedrostki identyfikatorów transformatora zespołu i szyny potrzeb własnych: ``sn`` — pisarz
+#: pola ZU (``add_sn_bay`` z szablonem), ``zu`` — operacja ``add_zespol_uziemiajacy_sn``. Jedno
+#: źródło zbioru dla słownika segmentów identyfikatorów (eksport fikstur harnessu).
+PrefiksTransformatoraZespolu = Literal["sn", "zu"]
+
+
 def _zainstaluj_transformator_zespolu(
     enm: dict[str, Any],
     *,
@@ -8109,7 +8118,7 @@ def _zainstaluj_transformator_zespolu(
     szyna_sekcji_ref: str,
     field_ref: str | None,
     station_ref: str | None,
-    prefiks: str,
+    prefiks: PrefiksTransformatoraZespolu,
     seed: str,
     catalog_ref: str,
     binding: dict[str, Any] | None,
@@ -8190,13 +8199,16 @@ def zmien_wariant_zespolu(enm: dict[str, Any], bay_ref: str, wariant: WariantZes
     transformator = transformator_zespolu_pola(enm, bay_ref)
     if transformator is None:
         return False
-    poprzedni = (
-        transformator.get("hv_neutral") if isinstance(transformator.get("hv_neutral"), dict) else {}
-    )
+    hv_neutral = transformator.get("hv_neutral")
+    poprzedni: dict[str, Any] = hv_neutral if isinstance(hv_neutral, dict) else {}
     if wariant_zespolu(poprzedni) == wariant:
         return False
-    napiecie_kv = float(transformator.get("uhv_kv") or 0.0)
-    ladunek, odmowa = ladunek_wariantu(wariant, napiecie_kv, poprzedni)
+    napiecie_kv = transformator.get("uhv_kv")
+    if not isinstance(napiecie_kv, int | float):
+        # `Transformer.uhv_kv` jest polem wymaganym — bez napięcia górnego nie ma doboru
+        # wyposażenia wariantu (zero podstawień liczb za nieobecne dane).
+        return False
+    ladunek, odmowa = ladunek_wariantu(wariant, float(napiecie_kv), poprzedni)
     if ladunek is None or odmowa is not None:
         return False
     cfg, blad = _wyposazenie_z_ladunku(

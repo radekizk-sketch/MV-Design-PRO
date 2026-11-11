@@ -635,96 +635,94 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         },
         lambda p: _zepsuj_wiazanie(p),
     ),
-    # --- Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN ------------
+    # --- Karta ZU-JEDEN-NOSNIK: zespół uziemiający SN (transformator ZNyn11) ------------
     # Iloczyn {transformator uziemiający, dławik, rezystor} × {referencja, wiązanie}.
-    # Ten sam iloczyn w zespołach sekcji GPZ (`add_grid_source_sn.zespoly_uziemiajace[]`).
+    # Ten sam iloczyn w zespołach sekcji GPZ (`add_grid_source_sn.zespoly_sekcji[]`).
     IniekcjaBramy(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].catalog_ref",
+        "zespoly_sekcji[].catalog_ref",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[{"sekcja": 1, "catalog_ref": "TU_ZNYN11_15KV_PW160"}]
+            zespoly_sekcji=[{"sekcja": 1, "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11"}]
         ),
-        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "catalog_ref"),
+        lambda p: _zepsuj_klucz(p, "zespoly_sekcji", 0, "catalog_ref"),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].catalog_binding",
+        "zespoly_sekcji[].catalog_binding",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[
+            zespoly_sekcji=[
                 {
                     "sekcja": 1,
-                    "catalog_binding": _wiazanie(
-                        "TRANSFORMATOR_UZIEMIAJACY", "TU_ZNYN11_15KV_PW160"
-                    ),
+                    "catalog_binding": _wiazanie("TRAFO_SN_NN", "tu-sn-nn-15-04-100kva-znyn11"),
                 }
             ]
         ),
-        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_sekcji", 0),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].dlawik.catalog_ref",
+        "zespoly_sekcji[].dlawik.catalog_ref",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[
+            zespoly_sekcji=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
                     "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
                 }
             ]
         ),
-        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "dlawik", "catalog_ref"),
+        lambda p: _zepsuj_klucz(p, "zespoly_sekcji", 0, "dlawik", "catalog_ref"),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].dlawik.catalog_binding",
+        "zespoly_sekcji[].dlawik.catalog_binding",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[
+            zespoly_sekcji=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
                     "dlawik": {
                         "catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")
                     },
                 }
             ]
         ),
-        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0, "dlawik"),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_sekcji", 0, "dlawik"),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].rezystor.catalog_ref",
+        "zespoly_sekcji[].rezystor.catalog_ref",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[
+            zespoly_sekcji=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
                     "rezystor": {"catalog_ref": "REZ_200A_15KV"},
                 }
             ]
         ),
-        lambda p: _zepsuj_klucz(p, "zespoly_uziemiajace", 0, "rezystor", "catalog_ref"),
+        lambda p: _zepsuj_klucz(p, "zespoly_sekcji", 0, "rezystor", "catalog_ref"),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "zespoly_uziemiajace[].rezystor.catalog_binding",
+        "zespoly_sekcji[].rezystor.catalog_binding",
         lambda: _payload_zrodla(
-            zespoly_uziemiajace=[
+            zespoly_sekcji=[
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
                     "rezystor": {
                         "catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")
                     },
                 }
             ]
         ),
-        lambda p: _zepsuj_wiazanie(p, "zespoly_uziemiajace", 0, "rezystor"),
+        lambda p: _zepsuj_wiazanie(p, "zespoly_sekcji", 0, "rezystor"),
     ),
     IniekcjaBramy(
         "add_zespol_uziemiajacy_sn",
         "catalog_ref",
-        lambda: {"bus_ref": "bus-1", "catalog_ref": "TU_ZNYN11_15KV_PW160"},
+        lambda: {"bus_ref": "bus-1", "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11"},
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),
     IniekcjaBramy(
@@ -732,7 +730,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "catalog_binding",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_binding": _wiazanie("TRANSFORMATOR_UZIEMIAJACY", "TU_ZNYN11_15KV_PW160"),
+            "catalog_binding": _wiazanie("TRAFO_SN_NN", "tu-sn-nn-15-04-100kva-znyn11"),
         },
         lambda p: _zepsuj_wiazanie(p),
     ),
@@ -741,7 +739,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "dlawik.catalog_ref",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
             "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY"},
         },
         lambda p: _zepsuj_klucz(p, "dlawik", "catalog_ref"),
@@ -751,7 +749,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "dlawik.catalog_binding",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
             "dlawik": {"catalog_binding": _wiazanie("DLAWIK_GASZACY", "DL_40_400A_15KV_CIAGLY")},
         },
         lambda p: _zepsuj_wiazanie(p, "dlawik"),
@@ -761,7 +759,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "rezystor.catalog_ref",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
             "rezystor": {"catalog_ref": "REZ_200A_15KV"},
         },
         lambda p: _zepsuj_klucz(p, "rezystor", "catalog_ref"),
@@ -771,7 +769,7 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         "rezystor.catalog_binding",
         lambda: {
             "bus_ref": "bus-1",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
             "rezystor": {"catalog_binding": _wiazanie("REZYSTOR_UZIEMIAJACY", "REZ_200A_15KV")},
         },
         lambda p: _zepsuj_wiazanie(p, "rezystor"),

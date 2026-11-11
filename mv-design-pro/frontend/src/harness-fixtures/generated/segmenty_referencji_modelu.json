@@ -5,6 +5,7 @@
     "assignment",
     "aux_load",
     "bay",
+    "bay_coupler",
     "bay_device",
     "bay_terminal",
     "bess",
@@ -71,6 +72,7 @@
     "rcd_bus",
     "relay",
     "ring_closure",
+    "run",
     "section",
     "section_1",
     "section_bus",
@@ -110,9 +112,10 @@
     "vt",
     "wind_inverter",
     "wn_sn",
-    "zespol",
     "zksn",
-    "zu"
+    "zu",
+    "zu_bus_nn",
+    "zu_transformer"
   ],
   "przyrostki_podzialu": [
     "_L",

@@ -300,7 +300,10 @@ def test_wiersz_koordynacji_izolacji_po_polsku() -> None:
     from tests.enm.test_prad_pojemnosciowy_sieci_galwanicznej import _model
 
     enm = _model("zamkniete", 1, "brak")
-    [szyna] = [z.bus_ref for z in enm.zespoly_uziemiajace][:1]
+    from enm.punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
+
+    # Zacisk SN transformatora uziemiającego (jedyny nośnik zespołu, karta ZU-JEDEN-NOSNIK).
+    [szyna] = [t.hv_bus_ref for t in enm.transformers if jest_transformatorem_uziemiajacym(t)][:1]
     with pytest.raises(OdmowaDanychError) as odmowa:
         _with_parameter_payloads(
             V126AcademicInput.model_construct(),

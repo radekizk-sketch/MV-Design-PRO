@@ -233,11 +233,14 @@ def test_iniekcja_powiazanie_dwukrotne() -> None:
     "wejscie,komunikat",
     [
         ({"rodzaj": "RDZEN_CT", "aparat": "T1", "numer": 2}, "nie ma obwodu nr 2"),
-        ({"rodzaj": "RDZEN_CT", "aparat": "T3", "numer": 1}, "nie jest aparatem CT"),
+        (
+            {"rodzaj": "RDZEN_CT", "aparat": "T3", "numer": 1},
+            "nie jest aparatem rodzaju „przekładnik prądowy”",
+        ),
         ({"rodzaj": "UZWOJENIE_VT", "aparat": "T3", "numer": 4}, "nie ma obwodu nr 4"),
         (
             {"rodzaj": "PRZEKLADNIK_FERRANTIEGO", "aparat": "T1"},
-            "nie jest aparatem CORE",
+            "nie jest aparatem rodzaju „przekładnik Ferrantiego”",
         ),
     ],
 )

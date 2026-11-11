@@ -454,9 +454,13 @@
         "lv_bus_ref": "bus_nn",
         "lv_earthing_system": "TN-S",
         "lv_neutral": {
-          "awsc_prad_wymuszenia_a": null,
+          "dawca": null,
+          "dlawik": null,
           "r_ohm": null,
+          "rezystor": null,
+          "spz": false,
           "type": "directly_grounded",
+          "wylaczenie_od_transformatorow_refs": [],
           "x_ohm": null
         },
         "lv_voltage_tolerance": "PLUS_6",
@@ -484,8 +488,7 @@
         "vector_group": "Dyn11",
         "x0_ohm": null
       }
-    ],
-    "zespoly_uziemiajace": []
+    ]
   },
   "snapshot_id": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
 }

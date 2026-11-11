@@ -29,7 +29,10 @@ from network_model.catalog.bay_templates import (
     FIELD_TYPES_WITHOUT_TEMPLATE,
     enumerate_canonical_configurations,
 )
-from network_model.catalog.rodzaje_aparatury import porty_toru_pola
+from network_model.catalog.rodzaje_aparatury import (
+    nazwa_rodzaju_aparatu_pola_pl,
+    porty_toru_pola,
+)
 from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU
 
 from .registry import list_reference_packs
@@ -169,7 +172,8 @@ def producer_cell_primary_devices(
         # Rodzaj spoza toru głównego i aparatów bocznych — celka opisuje aparat, którego most
         # nie umie umieścić; jawna odmowa zamiast cichego pominięcia.
         raise ValueError(
-            f"Celka {config_ref}: rodzaje aparatów bez miejsca w polu: {sorted(set(remaining))}"
+            f"Konfiguracja celki {config_ref}: rodzaje aparatów bez miejsca w polu: "
+            f"{', '.join(nazwa_rodzaju_aparatu_pola_pl(k) for k in sorted(set(remaining)))}"
         )
 
     devices: list[dict[str, Any]] = []

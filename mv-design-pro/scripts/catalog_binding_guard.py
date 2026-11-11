@@ -130,7 +130,6 @@ NAMESPACE_TO_TYPE_CLASS: dict[str, str] = {
     "VT": "VTType",
     "OBCIAZENIE": "LoadType",
     "KOMPENSATOR_SN": "ShuntCapacitorType",
-    "TRANSFORMATOR_UZIEMIAJACY": "EarthingTransformerType",
     "DLAWIK_GASZACY": "ArcSuppressionCoilType",
     "REZYSTOR_UZIEMIAJACY": "NeutralEarthingResistorType",
     "ZRODLO_NN_PV": "PVInverterType",

@@ -1,11 +1,11 @@
 {
-  "analysis_id": "32e458e568aecc14c1ea845d547f1353c0a391f8c9017bdb360418fbc9964eae",
+  "analysis_id": "8d1ecc3678e1fdbf183d30ce6886ddd8739084bfc391c6f38404fd5e04f92a46",
   "context": {
     "project_name": "Przyłączenie farmy PV 8 MW",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "3c340d5cb123db0a4d3788a12f16dc55e2ebadb7e9d88efe8b66a96e809fd8dc",
+    "snapshot_hash": "df0e9814186e036799ef710d7d971e602ce225978534afd60336c9a20e106c0b",
     "run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a"
   },
   "saturation_tol_mvar": 0.001,

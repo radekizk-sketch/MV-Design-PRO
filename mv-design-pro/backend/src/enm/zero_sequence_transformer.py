@@ -322,7 +322,7 @@ def _slad_zespolu(
             "uziemiający, połączenie wprost) z odłącznikami w stanie z modelu, połączone "
             "równolegle; rezystor wymuszający AWSC przewodzi wyłącznie w stanie załączonym "
             "automatyki (przypadek obliczeniowy). Impedancja punktu neutralnego wchodzi do "
-            "obwodu zerowego jako 3·Z_N (IEC 60909-0)."
+            "obwodu zerowego potrojona (IEC 60909-0)."
         ),
     )
 
@@ -519,7 +519,11 @@ def _z0_zygzaka_pu(tracer: Any, trafo: Transformer, nazwa: str, strona: str) -> 
     u_kv = trafo.uhv_kv if strona == "HV" else trafo.ulv_kv
     p_r0, p_x0 = parametry_z0_zygzaka(trafo, u_kv)
     r0, x0 = p_r0.wartosc, p_x0.wartosc
-    robocze = [etykieta for etykieta, p in (("R0", p_r0), ("X0", p_x0)) if p.roboczy]
+    robocze = [
+        etykieta
+        for etykieta, p in (("rezystancja zerowa", p_r0), ("reaktancja zerowa", p_x0))
+        if p.roboczy
+    ]
     podstawa_robocza = next((p.podstawa_pl for p in (p_r0, p_x0) if p.roboczy), "")
     z_base = impedancja_z_napiecia_i_mocy_ohm(u_kv, S_BASE_MVA) if u_kv > 0 else 0.0
     z_pu = complex(r0, x0) / z_base if z_base > 0 else 0j
@@ -535,15 +539,23 @@ def _z0_zygzaka_pu(tracer: Any, trafo: Transformer, nazwa: str, strona: str) -> 
             "u_kv": u_kv,
             "s_base_mva": S_BASE_MVA,
         },
-        substitution=f"Z_0,zyg = {_fmt_c(complex(r0, x0))} Ω → {_fmt_c(z_pu)} pu",
+        substitution=(
+            f"impedancja zerowa uzwojenia zygzakowego {_fmt_c(complex(r0, x0))} Ω na fazę; "
+            f"{_fmt_c(z_pu)} pu na moc bazową {S_BASE_MVA:g} MVA"
+        ),
+        substitution_latex=(
+            rf"Z_{{0,zyg}} = {_fmt_c_tex(complex(r0, x0))}\ \Omega \rightarrow "
+            rf"{_fmt_c_tex(z_pu)}\ \mathrm{{pu}}\ (S_{{base}})"
+        ),
         result={"z0_zygzaka_pu_base": z_pu},
         notes=(
-            "Droga zerowa zygzaka z R0/X0 na fazę (IEC 60076-6), nie z u_k. "
+            "Droga zerowa zygzaka z rezystancji i reaktancji zerowej na fazę (IEC 60076-6), "
+            "nie z napięcia zwarcia. "
             + (
                 f"{' i '.join(robocze)} — wartość robocza ({podstawa_robocza}); wpisz dane "
                 "producenta w parametrach transformatora."
                 if robocze
-                else "R0 i X0 z elementu modelu."
+                else "Rezystancja i reaktancja zerowa z elementu modelu."
             )
         ),
     )

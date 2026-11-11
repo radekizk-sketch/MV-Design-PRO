@@ -719,7 +719,7 @@ class XlsxNetworkImporter:
                         wiersz=szyna["_wiersz"],
                         kolumna="stan",
                         komunikat=(
-                            f"Stan obiektu '{stan}' spoza słownika (dopuszczalne: "
+                            f"Stan obiektu „{stan}” spoza słownika (dopuszczalne: "
                             + ", ".join(f"„{n}”" for n in NAZWY_STANOW_OBIEKTU_PL.values())
                             + "; puste = projektowany)"
                         ),

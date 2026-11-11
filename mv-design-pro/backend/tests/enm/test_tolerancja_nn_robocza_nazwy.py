@@ -111,11 +111,20 @@ def test_koperta_wejscia_solvera_liczy_na_wartosci_roboczej(scenariusz: str) -> 
 @pytest.mark.parametrize("siec", sorted(_SIECI))
 def test_k_t_czyta_wartosc_robocza_kazdego_transformatora(siec: str) -> None:
     graf = map_enm_to_network_graph(_SIECI[siec]())
-    galezie = [g for g in graf.branches.values() if isinstance(g, TransformerBranch)]
+    # Transformator uziemiający zespołu (`ZU_GPZ`, karta ZU-JEDEN-NOSNIK) zasila własną wyspę
+    # nN potrzeb własnych z deklaracją stałą +6 % — wartość robocza wyspy TR go nie dotyczy.
+    zespol = ref_to_graph_id("ZU_GPZ")
+    galezie = [
+        g for g in graf.branches.values() if isinstance(g, TransformerBranch) and g.id != zespol
+    ]
     assert galezie
     for galaz in galezie:
         assert galaz.tolerancja_nn_dolna == "PLUS_10"
         assert galaz.get_voltage_factor_c_max() == 1.10
+    galaz_zespolu = graf.branches[zespol]
+    assert isinstance(galaz_zespolu, TransformerBranch)
+    assert galaz_zespolu.tolerancja_nn_dolna == "PLUS_6"
+    assert galaz_zespolu.get_voltage_factor_c_max() == 1.05
 
 
 @pytest.mark.parametrize("odczyt", ["c_max", "c_max_zrodlo", "k_g"])

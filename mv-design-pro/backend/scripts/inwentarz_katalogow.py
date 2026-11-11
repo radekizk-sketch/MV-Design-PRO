@@ -121,8 +121,8 @@ RODZINY_MIERNIKA: dict[str, str] = {
     "spectral-card": "karty_widmowe",
     # Karta LINIA-110: przewody linii napowietrznych 110 kV (dane wyrobu PN-EN 50182).
     "overhead-conductor": "overhead_conductor_types",
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: elementy zespołu uziemiającego SN (ENEA §16).
-    "earthing-transformer": "earthing_transformer_types",
+    # Elementy punktu neutralnego zespołu uziemiającego SN (ENEA §16); transformator uziemiający
+    # ZNyn11 jest pozycją rodziny transformatorów SN/nN (karta ZU-JEDEN-NOSNIK).
     "arc-suppression-coil": "arc_suppression_coil_types",
     "neutral-earthing-resistor": "neutral_earthing_resistor_types",
 }

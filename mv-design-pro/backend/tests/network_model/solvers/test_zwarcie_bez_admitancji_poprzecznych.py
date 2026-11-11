@@ -331,7 +331,7 @@ def _siec_z_zespolem(susceptancja: str) -> tuple[dict[str, Any], dict[str, str]]
         op_name="add_zespol_uziemiajacy_sn",
         payload={
             "bus_ref": szyny["GPZ"],
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
             "rezystor": {"catalog_ref": "REZ_200A_15KV"},
         },
     )
@@ -340,9 +340,14 @@ def _siec_z_zespolem(susceptancja: str) -> tuple[dict[str, Any], dict[str, str]]
 
 
 def _z0_reczne_z_zespolem(miejsce: str) -> complex:
-    """Bocznik zespołu Z_0,ZU = Z_0,TU + 3·R_N na szynie GPZ (katalog: Z_0,TU = 1,5 + j6 Ω,
-    R_N = 43,3 Ω) równolegle z modelem π kabla (Y_0 = jB0ℓ/2 na końcach, Z_L0 szeregowo)."""
-    z0_zu = complex(1.5, 6.0) + 3.0 * 43.3
+    """Bocznik zespołu Z_0,ZU = Z_0,TU + 3·R_N na szynie GPZ (katalog: transformator
+    uziemiający ZNyn11 15/0,4 kV 100 kVA, impedancja zerowa na fazę z wartości roboczej
+    IEC 60076-6 — spadek 5 % U_f przy I_N = 400 A, X/R = 5: |Z_0| = 3·0,05·U_f/I_N, około
+    0,637 + j3,185 Ω; rezystor R_N = 43,3 Ω) równolegle z modelem π kabla (Y_0 = jB0ℓ/2 na
+    końcach, Z_L0 szeregowo). Rachunek ręczny, bez funkcji produktu."""
+    z0_abs = 3.0 * 0.05 * (UN_KV * 1e3 / math.sqrt(3.0)) / 400.0
+    r0_tu = z0_abs / math.sqrt(1.0 + 5.0**2)
+    z0_zu = complex(r0_tu, 5.0 * r0_tu) + 3.0 * 43.3
     y_konca = 1j * B_KM_S * DLUGOSC_KM["AB"] / 2.0
     z_l0 = complex(R0_KM, X0_KM) * DLUGOSC_KM["AB"]
     y_gpz = 1.0 / z0_zu + y_konca

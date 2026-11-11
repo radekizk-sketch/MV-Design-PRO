@@ -393,8 +393,12 @@
       "graph_id": "158eec95-939b-5b35-97ad-9433334b5506"
     },
     {
-      "ref_id": "zu/babc9fdad264b7fe856505e0a58d788f/zespol",
-      "graph_id": "8e215649-3ed0-5e68-8611-c7012cfc7359"
+      "ref_id": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn",
+      "graph_id": "c00a0a17-dcae-535f-b4f9-d42993893d87"
+    },
+    {
+      "ref_id": "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer",
+      "graph_id": "049953f9-176f-5a2a-a0c1-18e00ca2e911"
     }
   ]
 }
