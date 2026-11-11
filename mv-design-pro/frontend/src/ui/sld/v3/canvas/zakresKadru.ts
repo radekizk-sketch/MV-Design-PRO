@@ -813,7 +813,7 @@ export function prostokatyZakresu(
     const baza = prostokatRefowWScenie(scena, zakresKadru.refy);
     if (!baza) return [];
     const przeszkody = [...sceneObstacleRects(scena), ...etykiety];
-    return ulozOdejscia(odejsciaKadru(snapshot, scena, refyCeluZbior, baza), pismoOpisuOdejscia(scale), przeszkody);
+    return ulozOdejscia(odejsciaKadru(snapshot, scena, refyCeluZbior, baza), baza, pismoOpisuOdejscia(scale), przeszkody);
   };
   const obrysOdejsc = (ulozone: readonly UlozoneOdejscie[]): BoundingBox | null => {
     let box: BoundingBox | null = null;
@@ -1147,21 +1147,33 @@ function opisZewnetrzny(o: OdejscieKadru, fontSize: number): ProstokatOpisu {
   }
 }
 
-/** Opis WEWNĄTRZ ramki, nad torem (wyjście poziome) albo obok toru (pionowe), przy krawędzi —
+/** Warianty opisu WEWNĄTRZ ramki przy krawędzi, w stałej kolejności: wyjście poziome —
+ *  nad torem, pod torem; wyjście pionowe — po prawej, po lewej stronie toru. Opis w ramce
  *  nie poszerza kadru. */
-function opisWewnetrzny(o: OdejscieKadru, fontSize: number): ProstokatOpisu {
+function wariantyWewnetrzne(o: OdejscieKadru, fontSize: number): readonly ProstokatOpisu[] {
   const width = measureTextWidth(o.tekst, fontSize);
   const height = fontSize + 6;
   const nadTorem = o.punkt.y - ODEJSCIE_PRZESWIT_TORU - height;
+  const podTorem = o.punkt.y + ODEJSCIE_PRZESWIT_TORU;
+  const prawaStrona = o.punkt.x + ODEJSCIE_PRZESWIT_TORU;
+  const lewaStrona = o.punkt.x - ODEJSCIE_PRZESWIT_TORU - width;
   switch (o.kierunek) {
-    case 'prawo':
-      return { x: o.punkt.x - GRID / 2 - width, y: nadTorem, width, height };
-    case 'lewo':
-      return { x: o.punkt.x + GRID / 2, y: nadTorem, width, height };
-    case 'dol':
-      return { x: o.punkt.x + ODEJSCIE_PRZESWIT_TORU, y: o.punkt.y - GRID / 2 - height, width, height };
-    case 'gora':
-      return { x: o.punkt.x + ODEJSCIE_PRZESWIT_TORU, y: o.punkt.y + GRID / 2, width, height };
+    case 'prawo': {
+      const x = o.punkt.x - GRID / 2 - width;
+      return [{ x, y: nadTorem, width, height }, { x, y: podTorem, width, height }];
+    }
+    case 'lewo': {
+      const x = o.punkt.x + GRID / 2;
+      return [{ x, y: nadTorem, width, height }, { x, y: podTorem, width, height }];
+    }
+    case 'dol': {
+      const y = o.punkt.y - GRID / 2 - height;
+      return [{ x: prawaStrona, y, width, height }, { x: lewaStrona, y, width, height }];
+    }
+    case 'gora': {
+      const y = o.punkt.y + GRID / 2;
+      return [{ x: prawaStrona, y, width, height }, { x: lewaStrona, y, width, height }];
+    }
   }
 }
 
@@ -1176,8 +1188,8 @@ export interface UlozoneOdejscie {
 }
 
 /**
- * Ułożenie opisów odejść przy piśmie `fontSize` [j.św.]. Opis stoi WEWNĄTRZ ramki przy
- * jej krawędzi, gdy to miejsce jest wolne od `przeszkody` (symbole i przewody sceny,
+ * Ułożenie opisów odejść przy piśmie `fontSize` [j.św.]. Opis stoi WEWNĄTRZ `ramka` przy
+ * jej krawędzi (pierwszy z `wariantyWewnetrzne` mieszczący się w ramce), gdy to miejsce jest wolne od `przeszkody` (symbole i przewody sceny,
  * narysowane etykiety planu przy tej samej skali) i od opisów ułożonych wcześniej —
  * wtedy nie poszerza kadru i nie obniża jego skali; w przeciwnym razie ZA znakiem, poza
  * ramką (ramka kadru go obejmuje). Kolejność stała (`odejsciaKadru` — po refie odcinka),
@@ -1185,6 +1197,8 @@ export interface UlozoneOdejscie {
  */
 export function ulozOdejscia(
   odejscia: readonly OdejscieKadru[],
+  /** Prostokąt celu bez odejść (ten sam, z którego `odejsciaKadru` wyznacza punkty). */
+  ramka: BoundingBox,
   fontSize: number,
   przeszkody: readonly { readonly x: number; readonly y: number; readonly width: number; readonly height: number }[],
 ): readonly UlozoneOdejscie[] {
@@ -1195,10 +1209,12 @@ export function ulozOdejscia(
   const kolidujeZOpisem = (r: ProstokatOpisu) =>
     zajete.some((q) => r.x < q.x + q.width && r.x + r.width > q.x && r.y < q.y + q.height && r.y + r.height > q.y);
   return odejscia.map((o) => {
-    const w = opisWewnetrzny(o, fontSize);
-    const wewnatrz = !koliduje(w);
+    const wRamce = (r: ProstokatOpisu) =>
+      r.x >= ramka.minX && r.y >= ramka.minY && r.x + r.width <= ramka.maxX && r.y + r.height <= ramka.maxY;
+    const w = wariantyWewnetrzne(o, fontSize).find((r) => wRamce(r) && !koliduje(r));
+    const wewnatrz = w !== undefined;
     let opis = w;
-    if (!wewnatrz) {
+    if (opis === undefined) {
       // Za znakiem: pierwszy wariant wolny od przeszkód i opisów; inaczej pierwszy wolny
       // od innych opisów (opis nie zasłania opisu sąsiedniego odpływu); inaczej bazowy.
       const warianty = wariantyZewnetrzne(o, fontSize);

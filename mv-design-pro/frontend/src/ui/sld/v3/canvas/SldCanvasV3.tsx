@@ -2879,9 +2879,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // znakiem kontynuacji z nazwą obiektu na drugim końcu (`zakresKadru.odejsciaKadru`); ta
   // sama funkcja wyznacza je dla ramki kadru (`prostokatyZakresu`), więc znak i opis są w kadrze.
   const odejscia = useMemo(() => {
-    if (!zbiorKadru || !props.snapshot) return [];
+    if (!zbiorKadru || !props.snapshot) return null;
     const baza = prostokatRefowWScenie(scene, [...zbiorKadru]);
-    return baza ? odejsciaKadru(props.snapshot, scene, zbiorKadru, baza) : [];
+    return baza ? { baza, lista: odejsciaKadru(props.snapshot, scene, zbiorKadru, baza) } : null;
   }, [zbiorKadru, props.snapshot, scene]);
   const pozaKadrem = useCallback(
     (ownerRef: string | undefined | null): boolean => zbiorKadru !== null && !nalezyDoZakresu(ownerRef, zbiorKadru),
@@ -2898,9 +2898,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // (`prostokatyZakresu` → `tuszEtykiet`): symbole i przewody sceny + narysowany plan etykiet.
   const ulozoneOdejscia = useMemo(
     () =>
-      odejscia.length === 0
+      !odejscia || odejscia.lista.length === 0
         ? []
-        : ulozOdejscia(odejscia, pismoOpisuOdejscia(camera.transform.scale), [
+        : ulozOdejscia(odejscia.lista, odejscia.baza, pismoOpisuOdejscia(camera.transform.scale), [
             ...labelObstacles,
             ...labelPlan.drawn.map((d) => d.rect),
           ]),

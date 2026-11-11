@@ -105,6 +105,16 @@ type Prost = { readonly x: number; readonly y: number; readonly width: number; r
 /** Nachodzenie wnętrz (styk krawędzi nie jest kolizją). */
 const nachodza = (a: Prost, b: Prost) =>
   a.x < b.x + b.width - 1e-6 && a.x + a.width > b.x + 1e-6 && a.y < b.y + b.height - 1e-6 && a.y + a.height > b.y + 1e-6;
+/** Ramka, na której krawędzi (od strony `kierunek`) leży `punkt`; `glebokosc` w głąb. */
+const ramkaDla = (kierunek: OdejscieKadru['kierunek'], punkt: { x: number; y: number }, glebokosc = 1000) => {
+  const { x, y } = punkt;
+  switch (kierunek) {
+    case 'prawo': return { minX: x - glebokosc, minY: y - 1000, maxX: x, maxY: y + 1000 };
+    case 'lewo': return { minX: x, minY: y - 1000, maxX: x + glebokosc, maxY: y + 1000 };
+    case 'dol': return { minX: x - 1000, minY: y - glebokosc, maxX: x + 1000, maxY: y };
+    case 'gora': return { minX: x - 1000, minY: y, maxX: x + 1000, maxY: y + glebokosc };
+  }
+};
 const zawiera = (zew: { minX: number; minY: number; maxX: number; maxY: number }, w: typeof zew) =>
   w.minX >= zew.minX - 1e-6 && w.minY >= zew.minY - 1e-6 && w.maxX <= zew.maxX + 1e-6 && w.maxY <= zew.maxY + 1e-6;
 
@@ -207,33 +217,40 @@ describe('odejścia kadru stacji — iloczyn stacja × poziom × skala', () => {
           if (o.kierunek === 'dol') expect(u.opis.y + u.opis.height).toBeLessThanOrEqual(o.punkt.y);
           if (o.kierunek === 'gora') expect(u.opis.y).toBeGreaterThanOrEqual(o.punkt.y);
           expect(o.punkt.x >= baza.minX - 1e-6 && o.punkt.x <= baza.maxX + 1e-6).toBe(true);
+          expect(zawiera(baza, { minX: u.opis.x, minY: u.opis.y, maxX: u.opis.x + u.opis.width, maxY: u.opis.y + u.opis.height }), `${st} ${o.tekst}`).toBe(true);
         }
       }
     }
     expect(tryby.has(true)).toBe(true);
   });
 
-  it('ułożenie: wolne miejsce → opis w ramce; przeszkoda albo wcześniejszy opis → za znakiem, poza ramką (każdy kierunek)', () => {
+  it('ułożenie: wolne miejsce → opis w ramce (najpierw nad/z prawej, potem pod/z lewej); wnętrze zajęte albo poza ramką → za znakiem (każdy kierunek)', () => {
     const kierunki = ['prawo', 'lewo', 'dol', 'gora'] as const;
     for (const kierunek of kierunki) {
       const o: OdejscieKadru = {
         segmentRef: `s-${kierunek}`, galazRef: 'g', cel: 'Stacja X', tekst: 'dalej: Stacja X',
         punkt: { x: 500, y: 500 }, kierunek, kreski: [],
       };
-      const [wolny] = ulozOdejscia([o], 10, []);
+      const ramka = ramkaDla(kierunek, o.punkt);
+      const [wolny] = ulozOdejscia([o], ramka, 10, []);
       expect(wolny.wewnatrz).toBe(true);
-      const [zajety] = ulozOdejscia([o], 10, [wolny.opis]);
+      expect(zawiera(ramka, { minX: wolny.opis.x, minY: wolny.opis.y, maxX: wolny.opis.x + wolny.opis.width, maxY: wolny.opis.y + wolny.opis.height })).toBe(true);
+      const sciana = { x: ramka.minX, y: ramka.minY, width: ramka.maxX - ramka.minX, height: ramka.maxY - ramka.minY };
+      const [zajety] = ulozOdejscia([o], ramka, 10, [sciana]);
       expect(zajety.wewnatrz).toBe(false);
-      expect(nachodza(zajety.opis, wolny.opis)).toBe(false);
+      expect(nachodza(zajety.opis, sciana)).toBe(false);
       // Na zewnątrz: po stronie wyjścia trasy.
       if (kierunek === 'prawo') expect(zajety.opis.x).toBeGreaterThan(o.punkt.x);
       if (kierunek === 'lewo') expect(zajety.opis.x + zajety.opis.width).toBeLessThan(o.punkt.x);
       if (kierunek === 'dol') expect(zajety.opis.y).toBeGreaterThan(o.punkt.y);
       if (kierunek === 'gora') expect(zajety.opis.y + zajety.opis.height).toBeLessThan(o.punkt.y);
-      // Dwa odejścia w tym samym punkcie: drugie nie wejdzie na miejsce pierwszego.
-      const [a, b] = ulozOdejscia([o, { ...o, segmentRef: `t-${kierunek}` }], 10, []);
-      expect(a.wewnatrz).toBe(true);
-      expect(b.wewnatrz).toBe(false);
+      // Ramka węższa od opisu: wariant wewnętrzny nie wystaje poza ramkę — opis za znakiem.
+      const waska = ramkaDla(kierunek, o.punkt, 4);
+      expect(ulozOdejscia([o], waska, 10, [])[0].wewnatrz).toBe(false);
+      // Trzy odejścia w tym samym punkcie: dwa warianty w ramce, trzeci za znakiem; bez nachodzenia.
+      const trzy = ulozOdejscia([0, 1, 2].map((k) => ({ ...o, segmentRef: `t${k}-${kierunek}` })), ramka, 10, []);
+      expect(trzy.map((u) => u.wewnatrz)).toEqual([true, true, false]);
+      for (const [a, b] of [[0, 1], [0, 2], [1, 2]] as const) expect(nachodza(trzy[a].opis, trzy[b].opis)).toBe(false);
     }
   });
 
@@ -247,7 +264,7 @@ describe('odejścia kadru stacji — iloczyn stacja × poziom × skala', () => {
     const sciana = poziomy
       ? { x: kierunek === 'prawo' ? 0 : 500, y: 0, width: 500, height: 2000 }
       : { x: 0, y: kierunek === 'dol' ? 0 : 500, width: 2000, height: 500 };
-    const ulozone = ulozOdejscia(odejscia, 22, [sciana]);
+    const ulozone = ulozOdejscia(odejscia, ramkaDla(kierunek, { x: 500, y: 500 }), 22, [sciana]);
     for (const u of ulozone) expect(u.wewnatrz).toBe(false);
     for (const [i, a] of ulozone.entries()) {
       for (const [j, b] of ulozone.entries()) if (i < j) expect(nachodza(a.opis, b.opis)).toBe(false);
