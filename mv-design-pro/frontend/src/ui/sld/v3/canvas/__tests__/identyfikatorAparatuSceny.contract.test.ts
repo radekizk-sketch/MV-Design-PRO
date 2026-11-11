@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * TOŻSAMOŚĆ APARATU POLA — od symbolu sceny do refu operacji.
  *

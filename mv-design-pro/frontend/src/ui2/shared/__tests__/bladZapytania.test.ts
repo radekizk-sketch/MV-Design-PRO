@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jedno źródło komunikatu o nieudanym zapytaniu (karta komunikatów, commit 4).
  *

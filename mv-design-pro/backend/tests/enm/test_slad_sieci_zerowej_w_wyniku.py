@@ -330,9 +330,12 @@ _TYPY_FRONTU = (
 ).resolve()
 
 
-def _mapa_frontu(nazwa: str) -> dict[str, str]:
+_WARTOSCI_KODOWE_FRONTU = _TYPY_FRONTU.parent.parent / "catalog" / "wartosciKodoweKarty.ts"
+
+
+def _mapa_frontu(nazwa: str, plik: Path = _TYPY_FRONTU) -> dict[str, str]:
     """Wpisy `klucz: 'opis'` mapy o nazwie ``nazwa`` (stała albo pole `TRACE_VALUE_CODES`)."""
-    tresc = _TYPY_FRONTU.read_text(encoding="utf-8")
+    tresc = plik.read_text(encoding="utf-8")
     poczatek = re.search(rf"(?m)^\s*(?:const )?{re.escape(nazwa)}\b[^{{\n]*{{$", tresc)
     assert poczatek is not None, nazwa
     blok = tresc[poczatek.end() : tresc.index("}", poczatek.end())]
@@ -349,7 +352,16 @@ def test_kody_sladu_sieci_zerowej_maja_lustro_w_interfejsie() -> None:
     assert _mapa_frontu("UZWOJENIA_ZEROWE_PL") == {
         kod.value: opis for kod, opis in NAZWY_UZWOJEN_ZEROWYCH_PL.items()
     }
-    assert _mapa_frontu("uklad_polaczen") == NAZWY_UKLADOW_POLACZEN_BATERII_PL
+    # Układ połączeń baterii ma we froncie jedno źródło (karta BKR): słownik karty katalogu
+    # `UKLAD_POLACZEN_BATERII_PL`, który `TRACE_VALUE_CODES.uklad_polaczen` wskazuje wprost.
+    assert (
+        _mapa_frontu("export const UKLAD_POLACZEN_BATERII_PL", _WARTOSCI_KODOWE_FRONTU)
+        == NAZWY_UKLADOW_POLACZEN_BATERII_PL
+    )
+    assert re.search(
+        r"(?m)^\s*uklad_polaczen: UKLAD_POLACZEN_BATERII_PL,$",
+        _TYPY_FRONTU.read_text(encoding="utf-8"),
+    )
 
 
 def test_tokeny_rodzaju_zwarcia_interfejsu_to_kody_wyniku() -> None:

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jedno źródło prawdy statusu źródła szablonu pola (`STATUS_ZRODLA` w `BayTemplatePicker.tsx`):
  * nazwa szczegółowa (inspektor), grupa (kreatory, podgląd rozdzielnicy) i kompletność pakietu

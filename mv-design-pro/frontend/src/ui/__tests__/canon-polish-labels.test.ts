@@ -52,7 +52,9 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
   });
 
   it('ma polskie etykiety w bibliotece katalogowej', () => {
-    const { missing } = fileContains('catalog/TypeLibraryBrowser.tsx', [
+    // Etykiety kategorii mają jedno źródło (karta BKR): słownik pełny
+    // `ETYKIETY_KATEGORII_TYPOW`, czytany przez zakładki `TypeLibraryBrowser` i `TypePicker`.
+    const { missing } = fileContains('catalog/etykietyKategoriiTypow.ts', [
       'Typy linii',
       'Typy kabli',
       'Typy transformatorów',
@@ -60,7 +62,7 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
     ]);
     expect(
       missing,
-      `Missing Polish labels in TypeLibraryBrowser: ${missing.join(', ')}`,
+      `Missing Polish labels in ETYKIETY_KATEGORII_TYPOW: ${missing.join(', ')}`,
     ).toHaveLength(0);
   });
 

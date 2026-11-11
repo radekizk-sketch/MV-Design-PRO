@@ -443,8 +443,8 @@ def test_kazde_pole_kazdej_rodziny_modularnej_materializuje_aparaty() -> None:
 # Pin INWENTARZA: nowe miejsce budowy pola musi podjąć decyzję świadomie
 # ---------------------------------------------------------------------------
 
-#: Funkcje operacji domenowych, które BUDUJĄ rekord pola (`enm.pola.zbuduj_pole`) — 14 wywołań
-#: buildera w 12 funkcjach dwóch modułów (13 dróg budowy pola z karty + pole źródła
+#: Funkcje operacji domenowych, które BUDUJĄ rekord pola (`enm.pola.zbuduj_pole`) — 16 wywołań
+#: buildera w 14 funkcjach dwóch modułów (13 dróg budowy pola z karty + pole źródła
 #: przekształtnika na szynie SN, rozstrzygnięcie integratora W5-B). Lista ZAMKNIĘTA: każde nowe miejsce budowy
 #: pola musi rozstrzygnąć, skąd bierze aparaty pierwotne i identyfikator konfiguracji
 #: (`_aparaty_i_konfiguracja_pola` — resolver katalogu albo jawny argument), więc świadomie
@@ -464,6 +464,12 @@ MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
         "domain_operations.py:_allocate_gpz_line_field_for_branch": 1,
         "domain_operations.py:_zbuduj_pola_nn": 2,  # wyłącznik główny nN + odpływy nN
         "domain_operations.py:_domknij_pole": 1,  # pole domykane stacji końca ciągu
+        # Karta BKR (przyłączenie odcinka przez pole, 2026-11): nowe pole liniowe stacji SN/nN
+        # wyposażone jak pole wzorcowe sekcji (zacisk i aparat tej samej pozycji katalogu co
+        # wzorzec; bez wzorca `requires_catalog_binding`), oraz pierwsze pole liniowe sekcji
+        # GPZ modelu zastanego — bez aparatu, bo sekcja nie ma pola wzorcowego.
+        "domain_operations.py:_nowe_pole_liniowe_stacji": 1,
+        "domain_operations.py:_pierwsze_pole_liniowe_gpz": 1,
         "domain_operations_v2.py:_add_nn_outgoing_field_internal": 1,
         "domain_operations_v2.py:_append_nn_source_meta_field": 1,
         "domain_operations_v2.py:_append_converter_field_if_needed": 1,
@@ -511,7 +517,7 @@ def _wywolania_buildera() -> dict[str, dict[str, int]]:
 
 
 def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
-    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (14 wywołań buildera),
+    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (16 wywołań buildera),
     a drogi z wyborem katalogowym przekazują aparaty i konfigurację z resolvera."""
     znalezione = _wywolania_buildera()
     assert znalezione == MIEJSCA_BUDOWY_POLA, (
@@ -519,7 +525,7 @@ def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
         "rozstrzygnac, skad bierze aparaty pola (resolver katalogu vs jawny argument) i "
         f"dopisac sie do inwentarza. Jest: {znalezione}"
     )
-    assert sum(sum(g.values()) for g in znalezione.values()) == 14
+    assert sum(sum(g.values()) for g in znalezione.values()) == 16
 
 
 def test_zadna_operacja_nie_sklada_rekordu_pola_recznie() -> None:

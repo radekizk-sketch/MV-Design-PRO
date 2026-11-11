@@ -101,7 +101,7 @@ const KRYTERIA: MacierzResponse['parameters']['kryteria'] = {
     zrodlo_obciazalnosci_pl:
       'Gałąź: obciążalność długotrwała (prąd znamionowy odcinka) z danych elementu '
       + 'w modelu sieci. Transformator: moc znamionowa jednostki. Brak wartości = '
-      + 'kryterium pominięte jawnie (pozycja na liście kryteria_pominiete), nigdy '
+      + 'kryterium pominięte jawnie (pozycja na liście kryteriów pominiętych), nigdy '
       + 'wartość zastępcza.',
   },
   napiecie: {
@@ -130,7 +130,8 @@ const KRYTERIA: MacierzResponse['parameters']['kryteria'] = {
     definicja_pl:
       'Dotkliwość = krotka liczników (odbiory bez zasilania, przeciążenia, naruszenia '
       + 'napięciowe). Ranking sortuje tę krotkę malejąco w podanej kolejności '
-      + 'kategorii, przy remisie rosnąco po element_ref. Bez wag, bez liczby złożonej.',
+      + 'kategorii, przy remisie rosnąco po identyfikatorze elementu. Bez wag, bez liczby '
+      + 'złożonej.',
     kolejnosc_kategorii: ['odbiory_bez_zasilania', 'przeciazenia', 'naruszenia_napiecia'],
   },
 };

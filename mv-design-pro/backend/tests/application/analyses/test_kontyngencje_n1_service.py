@@ -961,8 +961,17 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # return_conductor_ith_1s_a; 4 gałęzie gn01, 3 gałęzie gn03) — opis założenia słowami
     # („Rezystancja jednostkowa składowej zerowej równa sumie…" zamiast „R′0 = R′1 + R′…").
     # Żadna liczba ani identyfikator; enumeracja, dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "93a818d95e2f279ebabbf1ff2bb4879aedea26956a0b72fa04b5f0f81af73a05",
-    "gn03_pierscien": "de5afc06f1d99af4c94aafedd247d3e12ba8550ac88413dcfebd6ac3edcff618",
+    # 2026-11-11 (scalenie karty BKR do drzewa integracji): gn01 93a818d9… → bae4ce7b…,
+    # gn03 de5afc06… → 0d061a51…. Pełne widoki z kodu strony integracji (`d3fcb7632^1`,
+    # odtwarzają poprzednie piny) i z drzewa scalonego porównane liść po liściu: zbiór kluczy
+    # i długości list identyczne; różnią się WYŁĄCZNIE dwa teksty kryteriów (karta BKR —
+    # bez klucza pola w zdaniu: „na liście kryteriów pominiętych” zamiast nazwy pola,
+    # „po identyfikatorze elementu” zamiast `element_ref`), `input_hash` obu sieci oraz
+    # `context.snapshot_hash` gn03 — model gn03 zyskał addytywne `origin_bay_ref` w meta
+    # jednej gałęzi (pole wyjściowe odcinka z karty BKR). Żadna liczba; enumeracja,
+    # dotkliwości, ranking i kolejność identyczne.
+    "gn01_promieniowa": "bae4ce7b4f5d26cc03d44f8ab51cb3ddb7c5919ab884aba5aa1a91b7aeb783a1",
+    "gn03_pierscien": "0d061a514108cb043c401078fa1a3b6f7c6f5ff3140b48d91da754ad88a2cf9a",
 }
 
 

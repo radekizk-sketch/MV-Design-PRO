@@ -144,7 +144,9 @@ def test_update_element_parameters_generator_dynamika_enforces_cross_validator()
     # zdanie walidatora), a nie dopiero przy zapisie migawki na granicy API.
     assert result.get("error_code") == "operation.model_contract_violated", result
     assert result.get("snapshot") is None
-    with pytest.raises(ValidationError, match="porządek reaktancji osi podłużnej"):
+    # Zdanie walidatora nazywa parametry słowami (karty BKR i ZU): bez klucza pola i symbolu.
+    porzadek = "porządek reaktancji „Reaktancja podprzejściowa osi podłużnej"
+    with pytest.raises(ValidationError, match=porzadek):
         wynik_bez_kontroli = copy.deepcopy(enm)
         wynik_bez_kontroli["generators"][0]["dynamika"] = _maszyna_synchroniczna_payload(
             xd_bis_pu=0.35, xd_prim_pu=0.30, xd_pu=1.8

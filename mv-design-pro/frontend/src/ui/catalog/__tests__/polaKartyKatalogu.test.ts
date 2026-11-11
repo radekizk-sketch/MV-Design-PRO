@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Schemat panelu ogólnego karty katalogu = serializacja serwera (jedno źródło).
  *

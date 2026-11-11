@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Wartości kodowe kart katalogu — iloczyn: KAŻDE pole kodowe wyroczni × KAŻDA jego wartość
  * wysyłana przez serwer ma nazwę polską albo jest oznaczeniem normowym z uzasadnieniem.

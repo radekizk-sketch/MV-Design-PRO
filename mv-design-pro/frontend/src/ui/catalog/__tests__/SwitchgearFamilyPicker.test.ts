@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Predykaty rodziny rozdzielnicy SN (`SwitchgearFamilyPicker.tsx` — typ, predykat budowy,
  * powód blokady, nazwy konstrukcji). Komponent listy rodzin skasowany 2026-11-04 (zero miejsc

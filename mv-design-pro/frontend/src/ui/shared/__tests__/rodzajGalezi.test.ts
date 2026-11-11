@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Rodzaje gałęzi modelu — jedno źródło listy (`types/rodzajeGalezi.ts`) i jeden słownik nazw
  * (`ui/shared/rodzajGalezi.ts`) w parytecie z backendem.

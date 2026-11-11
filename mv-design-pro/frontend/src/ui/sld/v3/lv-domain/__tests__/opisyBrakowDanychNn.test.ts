@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Miejsce braku danych nN nazywa element nazwą albo oznaczeniem — nigdy identyfikatorem
  * (karta komunikatów, commit 4).

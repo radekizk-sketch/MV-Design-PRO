@@ -180,8 +180,10 @@ class MaszynaSynchroniczna(BaseModel):
     s_n_mva: float = Field(gt=0.0, le=2000.0, description="Moc znamionowa maszyny (MVA).")
     h_s: float = Field(gt=0.0, le=15.0, description="Stała inercji H (s).")
     d_pu: float = Field(ge=0.0, le=20.0, description="Współczynnik tłumienia D (pu).")
-    xd_pu: float = Field(gt=0.0, le=2.5, description="Reaktancja synchroniczna wzdluzna Xd (pu).")
-    xq_pu: float = Field(gt=0.0, le=2.5, description="Reaktancja synchroniczna poprzeczna Xq (pu).")
+    xd_pu: float = Field(gt=0.0, le=2.5, description="Reaktancja synchroniczna osi podłużnej (pu).")
+    xq_pu: float = Field(
+        gt=0.0, le=2.5, description="Reaktancja synchroniczna osi poprzecznej (pu)."
+    )
     xd_prim_pu: float = Field(
         gt=0.0, le=0.6, description="Reaktancja przejściowa osi podłużnej (pu)."
     )

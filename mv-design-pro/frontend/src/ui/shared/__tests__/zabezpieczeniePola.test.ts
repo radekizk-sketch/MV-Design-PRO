@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jedna funkcja odczytu zabezpieczenia pola — iloczyn cech:
  * funkcje wymagane przez wzorzec {są, brak} × sterownik {brak referencji, referencja wisząca,

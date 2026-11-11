@@ -51,16 +51,28 @@ def _z_parametrami(enm: EnergyNetworkModel, parametry: dict[str, Any]):
     [
         ({"neutral_grounding": "solid"}, "„neutral_grounding” nie jest przyjmowany"),
         ({"neutral_earthing_type": "resistor"}, "„neutral_earthing_type” nie jest przyjmowany"),
+        # Wiersz koordynacji izolacji: odmowa nazywa parametr słowami (karta BKR — komunikat
+        # bez klucza pola); każdy z trzech odrzucanych kluczy wiersza ma swój przypadek.
         (
             {"insulation": [{**_WIERSZ_IZOLACJI, "network_neutral": "earthed"}]},
-            "„network_neutral” nie jest przyjmowany",
+            "„sposób uziemienia sieci” podany w wierszu nie jest przyjmowany",
         ),
         (
             {"insulation": [{**_WIERSZ_IZOLACJI, "earth_fault_factor": 1.0}]},
-            "„earth_fault_factor” nie jest przyjmowany",
+            "„współczynnik zwarcia doziemnego” podany w wierszu nie jest przyjmowany",
+        ),
+        (
+            {"insulation": [{**_WIERSZ_IZOLACJI, "earth_fault_factor_zrodlo_pl": "projektant"}]},
+            "„źródło współczynnika zwarcia doziemnego” podany w wierszu nie jest przyjmowany",
         ),
     ],
-    ids=["neutral_grounding", "neutral_earthing_type", "network_neutral", "earth_fault_factor"],
+    ids=[
+        "neutral_grounding",
+        "neutral_earthing_type",
+        "network_neutral",
+        "earth_fault_factor",
+        "earth_fault_factor_zrodlo_pl",
+    ],
 )
 def test_nadpisanie_uziemienia_to_odmowa_nazwana(
     z_zespolem: bool, parametry: dict[str, Any], fraza: str

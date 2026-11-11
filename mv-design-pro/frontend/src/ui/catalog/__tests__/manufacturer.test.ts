@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Nazwa producenta dla projektanta (`nazwaProducentaPl`) — jedno źródło dla kreatorów pola,
  * źródła i stacji oraz nagłówka rozdzielnicy. Iloczyn: referencja {każdy producent katalogu

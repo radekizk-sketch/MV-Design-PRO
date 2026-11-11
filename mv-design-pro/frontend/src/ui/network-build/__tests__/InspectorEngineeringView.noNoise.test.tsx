@@ -44,7 +44,9 @@ describe('InspectorEngineeringView — no developer noise', () => {
     // Liczba "Oznaczenie ..." labels w content (field entries).
     const ozLabels = content.match(/label:\s*'Oznaczenie/g);
     expect(ozLabels).not.toBeNull();
-    expect((ozLabels ?? []).length).toBeGreaterThanOrEqual(10);
+    // Pomiar 2026-11-11 (drzewo integracji po scaleniu karty BKR): 9 pól — karta BKR
+    // skasowała sekcje inspektora bez konsumenta produkcyjnego (dawniej 13).
+    expect((ozLabels ?? []).length).toBeGreaterThanOrEqual(9);
     // formatValue jest jedyną drogą przez którą value trafia do UI (przez
     // `formatValue(field.value)` w `useEffect`/`useMemo`).
     expect(content).toContain('formatValue(field.value)');

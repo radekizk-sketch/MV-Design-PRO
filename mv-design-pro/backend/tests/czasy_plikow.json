@@ -1,5 +1,5 @@
 {
-  "zrodlo": "pełny bieg backendu -n 4 --dist loadfile -m 'not pandapower and not andes', 41 029 testów, 2026-10-28, maszyna 4 vCPU pod blokadą biegu ciężkiego (obce lekkie procesy obok), drzewo 1465336df; czas pliku = suma czasów przypadków raportu JUnit; zdjęto wpisy bez pliku (tests/application/analyses/protection/test_vector_group_earth_fault_touch_voltage.py): plik testów mostu doziemienia skasowany z mostem ground_fault_bridge w odcinku 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (6bfd4bcab), 2026-10-30; zdjęto wpisy bez pliku (tests/proof_engine/test_earthing_pack.py, tests/proof_engine/test_earthing_proof.py): karta UX-04/POLE-ZU-SKLADOWA-ZEROWA commit 5: kasacja pakietu dowodowego P19 (uziemienie / doziemienie SN) — testy test_earthing_pack.py i test_earthing_proof.py usunięte razem z kodem",
+  "zrodlo": "pełny bieg backendu -n 4 --dist loadfile -m 'not pandapower and not andes', 41 029 testów, 2026-10-28, maszyna 4 vCPU pod blokadą biegu ciężkiego (obce lekkie procesy obok), drzewo 1465336df; czas pliku = suma czasów przypadków raportu JUnit; zdjęto wpisy bez pliku (tests/application/analyses/protection/test_vector_group_earth_fault_touch_voltage.py): plik testów mostu doziemienia skasowany z mostem ground_fault_bridge w odcinku 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (6bfd4bcab), 2026-10-30; zdjęto wpisy bez pliku (tests/proof_engine/test_earthing_pack.py, tests/proof_engine/test_earthing_proof.py): karta UX-04/POLE-ZU-SKLADOWA-ZEROWA commit 5: kasacja pakietu dowodowego P19 (uziemienie / doziemienie SN) — testy test_earthing_pack.py i test_earthing_proof.py usunięte razem z kodem; zdjęto wpisy bez pliku (tests/test_field_device.py, tests/test_generator_validation.py, tests/test_readiness_gates.py, tests/test_station_field_validation.py): karta BKR skasowała pliki testów razem z kodem bez konsumenta produkcyjnego (scalenie do drzewa integracji 2026-11-11)",
   "czasy_s": {
     "tests/analysis/reporting/test_arc_flash_report.py": 2.4,
     "tests/analysis/reporting/test_audit2_report.py": 2.4,
@@ -805,8 +805,6 @@
     "tests/test_fault_scenarios_domain.py": 0.4,
     "tests/test_fault_scenarios_run_integration.py": 1.1,
     "tests/test_faza6_blocking.py": 0.5,
-    "tests/test_field_device.py": 0.6,
-    "tests/test_generator_validation.py": 0.2,
     "tests/test_geometry_overrides.py": 0.4,
     "tests/test_golden_networks.py": 0.2,
     "tests/test_graph.py": 0.5,
@@ -845,7 +843,6 @@
     "tests/test_protection_library.py": 0.2,
     "tests/test_protection_settings.py": 0.8,
     "tests/test_protection_settings_w3c2_identity.py": 0.2,
-    "tests/test_readiness_gates.py": 0.2,
     "tests/test_result_api_contract.py": 0.4,
     "tests/test_result_contract_v1.py": 1.1,
     "tests/test_semantic_rules.py": 0.6,
@@ -859,7 +856,6 @@
     "tests/test_solver_input_simplified_sc.py": 0.2,
     "tests/test_state_estimation_wls.py": 0.5,
     "tests/test_station.py": 0.4,
-    "tests/test_station_field_validation.py": 0.2,
     "tests/test_study_case_config_p09.py": 0.2,
     "tests/test_topology_guardians_step1.py": 0.2,
     "tests/test_topology_ops_determinism.py": 0.3,

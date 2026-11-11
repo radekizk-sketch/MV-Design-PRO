@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Opis bez powtórzeń — jedna reguła dla rodzaju, roli i nazwy obiektu nadrzędnego.
  *

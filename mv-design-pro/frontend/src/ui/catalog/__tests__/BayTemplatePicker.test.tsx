@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Nazwy prezentacyjne szablonu pola SN (`BayTemplatePicker.tsx`): status źródła i nazwa
  * pakietu pola. Iloczyn: status źródła (każdy z unii `BayTemplateSourceStatus`) × etykieta,

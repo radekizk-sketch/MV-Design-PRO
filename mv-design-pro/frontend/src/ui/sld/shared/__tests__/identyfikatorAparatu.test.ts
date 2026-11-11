@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Jeden identyfikator aparatu pola `${bayRef}#${SymbolId}` — konstruktor i parser są
  * swoimi odwrotnościami na CAŁEJ bibliotece symboli × refach pola z `#` w środku, a kod
