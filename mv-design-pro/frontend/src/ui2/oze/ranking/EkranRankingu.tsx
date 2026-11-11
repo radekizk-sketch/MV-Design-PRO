@@ -51,6 +51,7 @@ import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -219,7 +220,7 @@ function WynikRankingu({
   napiecieWezla: (busRef: string) => number | null;
   szczegolyAudytowe: boolean;
 }) {
-  const [wybranyBusRef, setWybranyBusRef] = useState<string | null>(null);
+  const [wybranyBusRef, setWybranyBusRef] = useWyborPowrotu('wybor:ranking-oze');
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
 

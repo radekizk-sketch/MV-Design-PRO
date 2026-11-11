@@ -57,6 +57,7 @@ import {
 } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 type TrybZakresu = 'pelny' | 'wybrane';
 
@@ -355,7 +356,7 @@ export function EkranKontyngencji({ szczegolyAudytowe, onOtworzDowod }: EkranKon
   const [macierz, setMacierz] = useState<StanMacierzy>({ rodzaj: 'przedBiegiem' });
   const [tryb, setTryb] = useState<TrybZakresu>('pelny');
   const [zaznaczone, setZaznaczone] = useState<ReadonlySet<string>>(new Set());
-  const [wybranaKontyngencja, setWybranaKontyngencja] = useState<string | null>(null);
+  const [wybranaKontyngencja, setWybranaKontyngencja] = useWyborPowrotu('wybor:kontyngencje');
 
   // Zapowiedź zakresu — tania (bez biegu solvera), więc pobierana od razu.
   useEffect(() => {

@@ -26,7 +26,7 @@ vi.mock('../../app-state', () => ({
 // przez `gotowoscAdapter` z `useSnapshotStore.readiness` — scena zasila TO pole
 // (dawna atrapa `readinessLiveStore` była osobnym, nigdy nieodświeżanym źródłem).
 vi.mock('../../topology/snapshotStore', async (importOriginal) => {
-  const stan = () => ({
+  const stan = (): { snapshot: unknown; fixActions: never[]; readiness: ReadinessInfo | null } => ({
     snapshot: {
       sources: [{ ref_id: 'src-1' }],
       branches: [{ type: 'cable' }],
@@ -41,7 +41,7 @@ vi.mock('../../topology/snapshotStore', async (importOriginal) => {
     ...(await importOriginal<Record<string, unknown>>()),
     // `getState` czyta przycisk „Pokaż na schemacie" wiersza (predykat obecności elementu).
     useSnapshotStore: Object.assign(
-      (selector: (state: { snapshot: unknown; fixActions: []; readiness: ReadinessInfo | null }) => unknown) =>
+      (selector: (state: ReturnType<typeof stan>) => unknown) =>
         selector(stan()),
       { getState: stan },
     ),

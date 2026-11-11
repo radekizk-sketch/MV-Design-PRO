@@ -73,6 +73,7 @@ import {
   tylkoRozniceSzyn,
 } from './porownanieModel';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 /**
  * Ranking nie ma dowodu per komórka (problem nie jest wartością jednego
@@ -185,7 +186,7 @@ function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
   const [blad, setBlad] = useState<string | null>(null);
 
   const [zakladka, setZakladka] = useState<Zakladka>('szyny');
-  const [wybranyProblem, setWybranyProblem] = useState<string | null>(null);
+  const [wybranyProblem, setWybranyProblem] = useWyborPowrotu('wybor:porownanie');
   // L-14: filtr „pokaż tylko różnice" — czysta prezentacja na deltach backendu
   // (parytet mostu `#compare`, który miał ten przełącznik).
   const [tylkoRoznice, setTylkoRoznice] = useState(false);

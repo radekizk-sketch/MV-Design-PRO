@@ -12,7 +12,7 @@
  * (delta API wzorca, scalenie U3 #4); wiersz wybrany steruje sekcją wkładów.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import './zwarcia.css';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
@@ -40,6 +40,7 @@ import {
   useWynikZwarciowy,
   type WkladZwarciowy,
 } from './zwarciaModel';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 export interface EkranZwarcProps {
   szczegolyAudytowe: boolean;
@@ -65,7 +66,7 @@ export function EkranZwarc({
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const rows = wynik?.rows ?? [];
-  const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
+  const [wybranyPunkt, setWybranyPunkt] = useWyborPowrotu('wybor:zwarcia');
   // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
   // (reużycie wzorca V12K-073 — wspólny store selekcji, produkcyjny store overlay).
   const nakladkaZwarcia = useNakladkaZwarciaNaSchemacie();

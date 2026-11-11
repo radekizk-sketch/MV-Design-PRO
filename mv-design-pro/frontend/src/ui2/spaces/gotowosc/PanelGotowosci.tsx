@@ -50,6 +50,17 @@ import { SekcjaZgodnosciReferencyjnej } from './SekcjaZgodnosciReferencyjnej';
 import { GOTOWOSC_STRINGS } from './strings';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { ETYKIETA_CELU } from './grupowanieCelow';
+import { useStanPrzywracany, type KodekStanuPowrotu } from '../../shell/powrotZeSchematu';
+
+const KODEK_FILTROW: KodekStanuPowrotu<FiltryGotowosci> = {
+  zapisz: (f) => JSON.stringify(f),
+  odczytaj: (t) => ({ ...FILTRY_PUSTE, ...(JSON.parse(t) as Partial<FiltryGotowosci>) }),
+};
+
+const KODEK_ZWINIETYCH: KodekStanuPowrotu<ReadonlySet<CelGotowosci>> = {
+  zapisz: (z) => JSON.stringify([...z].sort()),
+  odczytaj: (t) => new Set(JSON.parse(t) as CelGotowosci[]),
+};
 
 export interface PanelGotowosciProps {
   /** „Szczegóły audytowe” powłoki — odsłaniają kod techniczny problemu (karta §2.7). */
@@ -72,8 +83,14 @@ export function PanelGotowosci({
   const nastepnaAkcja = useNastepnaAkcja();
 
   const grupyPelne = useMemo(() => grupujProblemyWgCelu(issues), [issues]);
-  const [filtry, setFiltry] = useState<FiltryGotowosci>(FILTRY_PUSTE);
-  const [zwiniete, setZwiniete] = useState<ReadonlySet<CelGotowosci>>(() => new Set());
+  // Filtry i zwinięte grupy wracają po „Wróć do" ze schematu (karta
+  // SLD-SKALA-I-NAWIGACJA, pkt 4 — ekran w tym samym stanie).
+  const [filtry, setFiltry] = useStanPrzywracany<FiltryGotowosci>('gotowosc:filtry', () => FILTRY_PUSTE, KODEK_FILTROW);
+  const [zwiniete, setZwiniete] = useStanPrzywracany<ReadonlySet<CelGotowosci>>(
+    'gotowosc:zwiniete',
+    () => new Set(),
+    KODEK_ZWINIETYCH,
+  );
   const [ogloszenie, setOgloszenie] = useState('');
 
   const blokadyCalkowite = grupyPelne.reduce((acc, g) => acc + g.blokady, 0);
@@ -191,7 +208,7 @@ export function PanelGotowosci({
               <SekcjaCelu
                 key={grupa.cel}
                 grupa={grupa}
-                problemyWidoczne={filtrujProblemy(grupa.problemy, filtry)}
+                problemyWidoczne={filtrujProblemy(grupa.problemy, filtry, nazwaElementu)}
                 rozwinieta={!zwiniete.has(grupa.cel)}
                 onPrzelacz={() => przelaczSekcje(grupa.cel)}
                 szczegolyAudytowe={szczegolyAudytowe}

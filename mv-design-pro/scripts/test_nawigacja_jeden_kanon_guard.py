@@ -145,6 +145,7 @@ def przypnij(monkeypatch, src: Path) -> None:
     monkeypatch.setattr(guard, "PLIK_KANWY", src / "ui2" / "legacy" / "KanwaSchematu.tsx")
     monkeypatch.setattr(guard, "PLIK_STORE_SELEKCJI", src / "ui" / "selection" / "store.ts")
     monkeypatch.setattr(guard, "KATALOG_INFRASTRUKTURY_TESTOW", src / "test")
+    monkeypatch.setattr(guard, "KATALOG_UI2", src / "ui2")
     monkeypatch.setattr(
         guard,
         "SCIEZKA_REJESTRU_OBSZAROW",
@@ -577,6 +578,30 @@ def test_regula_g_lapie_droge_bez_kamery(tmp_path, monkeypatch) -> None:
     przypnij(monkeypatch, src)
 
     assert any("[schemat-droga-pusta]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_lapie_wybor_wiersza_bez_powrotu(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Ekran.tsx").write_text(
+        "const [wybrany, setWybrany] = useState<string | null>(null);\n"
+        "export const E = () => <TabelaWynikow wybranyWiersz={wybrany} />;\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert any("[schemat-wybor-bez-powrotu]" in w for w in guard.regula_g_jedna_droga_na_schemat())
+
+
+def test_regula_g_przepuszcza_wybor_przez_powrot(tmp_path, monkeypatch) -> None:
+    src = zbuduj_front(tmp_path)
+    (src / "ui2" / "Ekran.tsx").write_text(
+        "const [wybrany, setWybrany] = useWyborPowrotu('wybor:ekran');\n"
+        "export const E = () => <TabelaWynikow wybranyWiersz={wybrany} />;\n",
+        encoding="utf-8",
+    )
+    przypnij(monkeypatch, src)
+
+    assert guard.regula_g_jedna_droga_na_schemat() == []
 
 
 def test_guard_zielony_na_repozytorium() -> None:

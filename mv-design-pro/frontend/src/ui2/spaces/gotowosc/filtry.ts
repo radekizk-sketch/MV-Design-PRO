@@ -35,22 +35,33 @@ export function czyFiltrPusty(filtry: FiltryGotowosci): boolean {
   return filtry.waga === null && filtry.cel === null && filtry.fraza.trim() === '';
 }
 
-function pasujeFraza(problem: ProblemGotowosci, fraza: string): boolean {
+/**
+ * Fraza pasuje do NUMERU (ref) albo NAZWY elementu — pole obiecuje „Numer lub nazwa
+ * elementu…". Dawniej porównanie szło wyłącznie po ref, więc wpisanie nazwy stacji
+ * nie znajdowało niczego (obietnica pola bez pokrycia).
+ */
+function pasujeFraza(
+  problem: ProblemGotowosci,
+  fraza: string,
+  nazwa: ((ref: string) => string) | undefined,
+): boolean {
   const znormalizowana = fraza.trim().toLowerCase();
   if (znormalizowana === '') return true;
-  const ref = (problem.elementRef ?? '').toLowerCase();
-  return ref.includes(znormalizowana);
+  const ref = problem.elementRef ?? '';
+  if (ref.toLowerCase().includes(znormalizowana)) return true;
+  return ref !== '' && nazwa !== undefined && nazwa(ref).toLowerCase().includes(znormalizowana);
 }
 
 /** Filtruje listę problemów wg wagi + celu + frazy (koniunkcja wszystkich ustawionych). */
 export function filtrujProblemy(
   problemy: ProblemGotowosci[],
   filtry: FiltryGotowosci,
+  nazwa?: (ref: string) => string,
 ): ProblemGotowosci[] {
   return problemy.filter((p) => {
     if (filtry.waga !== null && p.waga !== filtry.waga) return false;
     if (filtry.cel !== null && p.cel !== filtry.cel) return false;
-    if (!pasujeFraza(p, filtry.fraza)) return false;
+    if (!pasujeFraza(p, filtry.fraza, nazwa)) return false;
     return true;
   });
 }

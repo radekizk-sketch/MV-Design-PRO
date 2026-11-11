@@ -53,7 +53,12 @@ REGULA G — jedna droga „pokaz element na schemacie" (karta SLD-SKALA-I-NAWIG
     - kanwe `<SldCanvasV3Workspace` montuje wylacznie `ui2/legacy/KanwaSchematu.tsx`,
       i tylko on rejestruje montaz (`useRejestracjaKanwySchematu(`) — rejestr jest
       predykatem PARY z konsumentem wskazania kamery, wiec druga sciezka montazu
-      bez rejestracji rozjechalaby „kanwa widoczna" z „wskazanie obsluzone".
+      bez rejestracji rozjechalaby „kanwa widoczna" z „wskazanie obsluzone";
+    - wybrany wiersz tabeli wynikow (`wybranyWiersz={X}`) nie jest zwyklym
+      `useState` — po „Wroc do" ekran wraca w tym samym stanie tylko wtedy, gdy
+      wybor idzie przez `useWyborPowrotu` / `useStanPrzywracany`
+      (`ui2/shell/powrotZeSchematu.ts`); zwykly stan resetowal wybor do
+      pierwszego wiersza przy ponownym montazu ekranu.
 
 Uruchomienie:
     python scripts/nawigacja_jeden_kanon_guard.py
@@ -349,6 +354,8 @@ DEFINICJA_NAWIGACJI_SLD = re.compile(r"\bfunction\s+navigateToSld\s*\(")
 WYWOLANIE_WSKAZANIA = re.compile(r"\bcenterSldOnElement\s*\(")
 MONTAZ_KANWY = re.compile(r"<SldCanvasV3Workspace\b")
 REJESTRACJA_KANWY = re.compile(r"\buseRejestracjaKanwySchematu\s*\(")
+WYBRANY_WIERSZ = re.compile(r"wybranyWiersz=\{(\w+)\}")
+KATALOG_UI2 = FRONTEND_SRC / "ui2"
 DEFINICJA_REJESTRACJI = re.compile(r"\bfunction\s+useRejestracjaKanwySchematu\s*\(")
 #: Infrastruktura testow (`src/test/`) rejestruje montaz kanwy TA SAMA funkcja co
 #: produkcja (pomocnik `schematTestowy.ts`) — to nie druga sciezka montazu.
@@ -403,6 +410,21 @@ def regula_g_jedna_droga_na_schemat() -> list[str]:
                 naruszenia.append(
                     f"[schemat-druga-rejestracja] {miejsce} rejestracja montazu kanwy "
                     "poza KanwaSchematu.tsx"
+                )
+
+    for sciezka in pliki_frontu():
+        if not sciezka.is_relative_to(KATALOG_UI2):
+            continue
+        tresc = bez_komentarzy(sciezka.read_text(encoding="utf-8"))
+        for nazwa in sorted(set(WYBRANY_WIERSZ.findall(tresc))):
+            stan_lokalny = re.compile(
+                r"const \[" + re.escape(nazwa) + r",\s*\w+\]\s*=\s*useState\b"
+            )
+            if stan_lokalny.search(tresc):
+                naruszenia.append(
+                    f"[schemat-wybor-bez-powrotu] {sciezka.relative_to(REPO_ROOT)} wybrany "
+                    f"wiersz `{nazwa}` w zwyklym useState — po „Wroc do” ekran traci wybor; "
+                    "uzyj useWyborPowrotu"
                 )
 
     if PLIK_JEDNEJ_DROGI.is_file():

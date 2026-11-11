@@ -26,7 +26,7 @@
  * tym samym ekranie. Wzór pliku: `PanelDowoduCieplnego.tsx`.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { EkranAnalizy } from '../wzorzec';
 import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../wzorzec';
@@ -49,6 +49,7 @@ import {
 } from './api';
 import { JAKOSC_STRINGS, fmtKA, fmtKV, fmtProcent, fmtWartosc, istotnoscWiarygodnosci } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 // ---------------------------------------------------------------------------
 // Napięcia szyn
@@ -219,8 +220,8 @@ export function SekcjaPasmRozplywu({
   const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<PasmaRozplywuResponse>(runId, fetchPasmaRozplywu);
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
-  const [wybranaSzyna, setWybranaSzyna] = useState<string | null>(null);
-  const [wybranaGalaz, setWybranaGalaz] = useState<string | null>(null);
+  const [wybranaSzyna, setWybranaSzyna] = useWyborPowrotu('wybor:pasma-szyny');
+  const [wybranaGalaz, setWybranaGalaz] = useWyborPowrotu('wybor:pasma-galezie');
   const nazwaObiektu = useNazwaObiektu();
 
   const napieciaItems = dane?.napiecia.items ?? [];

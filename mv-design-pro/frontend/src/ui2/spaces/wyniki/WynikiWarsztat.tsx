@@ -94,7 +94,7 @@ import {
 } from './obszary';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
-import { useEkranZrodlowy, useStanPowrotu } from '../../shell/powrotZeSchematu';
+import { useEkranZrodlowy, useStanPowrotu, useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 const KLUCZ_POWROTU_WYNIKOW = 'wyniki-warsztat';
 import './wynikiWarsztat.css';
@@ -232,12 +232,14 @@ export function WynikiWarsztat({
   const wynikiTab = useShellStore((s) => s.wynikiTab);
   const wynikiTabElement = useShellStore((s) => s.wynikiTabElement);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
-  const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
+  // Kontekst elementu zakładek wraca po „Wróć do" razem z zakładką (karta
+  // SLD-SKALA-I-NAWIGACJA, pkt 4 — ekran w tym samym stanie).
+  const [elementKompensacji, setElementKompensacji] = useWyborPowrotu('kontekst:kompensacja');
   /** KD-4 (L-11): element wskazany 2× klikiem — zawęża wywód do jego kroków. */
-  const [elementDowodu, setElementDowodu] = useState<string | null>(null);
-  const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
-  const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
-  const [elementDynamiki, setElementDynamiki] = useState<string | null>(null);
+  const [elementDowodu, setElementDowodu] = useWyborPowrotu('kontekst:dowod-element');
+  const [modulNcRfg, setModulNcRfg] = useWyborPowrotu('kontekst:ncrfg');
+  const [elementRozplywu, setElementRozplywu] = useWyborPowrotu('kontekst:rozplyw');
+  const [elementDynamiki, setElementDynamiki] = useWyborPowrotu('kontekst:dynamika');
   useEffect(() => {
     if (!wynikiTab) return;
     // V126-JEZYK: deep-link nie może obejść bramy trybu — żądanie zakładki

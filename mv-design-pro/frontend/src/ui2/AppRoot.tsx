@@ -26,6 +26,7 @@ import { useBackendHealth } from './shell/backendHealth';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
 import { pokazElementNaSchemacie, zaznaczElementModelu } from './shell/zaznaczElementModelu';
+import { useStanPrzywracany, type KodekStanuPowrotu } from './shell/powrotZeSchematu';
 import { useThemeModeStore } from './theme/themeMode';
 import { obiektyModeluDoIndeksu } from './search/obiektyModelu';
 import { PowrotDoEkranu, PrzelacznikPodgladu } from './spaces/schemat';
@@ -38,6 +39,7 @@ import { useSynchronizacjaDerZModelu } from '../ui/network-build/station-der';
 import {
   ContextTree,
   NAV_STRINGS,
+  TRYBY_DRZEWA_TOPOLOGII,
   useCasesTree,
   useRunsTree,
   useTopologyTree,
@@ -123,6 +125,11 @@ function akcjaPustegoDrzewa(space: SpaceId): AkcjaPusty | undefined {
   return undefined;
 }
 
+const KODEK_TRYBU_TOPOLOGII: KodekStanuPowrotu<TrybDrzewaTopologii> = {
+  zapisz: (t) => t,
+  odczytaj: (t) => TRYBY_DRZEWA_TOPOLOGII.find((tryb) => tryb === t) ?? 'zasilania',
+};
+
 function DrzewoPrzestrzeni({
   space,
   zaznaczonyId,
@@ -139,7 +146,12 @@ function DrzewoPrzestrzeni({
   // realne źródło (`useTopologyStore.structure`, `topologyTreeAdapter.ts`),
   // więc przełącznik `ContextTree` (dotąd nigdy niewpięty — `tryb` zawsze
   // `undefined`) dostaje stan i wybór użytkownika.
-  const [trybTopologii, setTrybTopologii] = useState<TrybDrzewaTopologii>('zasilania');
+  // Tryb drzewa wraca po „Wróć do" ze schematu razem z rozwiniętymi węzłami.
+  const [trybTopologii, setTrybTopologii] = useStanPrzywracany<TrybDrzewaTopologii>(
+    'drzewo:tryb-topologii',
+    () => 'zasilania',
+    KODEK_TRYBU_TOPOLOGII,
+  );
   const topologia = useTopologyTree(trybTopologii);
   const przypadki = useCasesTree();
   const przebiegi = useRunsTree();

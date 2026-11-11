@@ -29,6 +29,7 @@ import {
   type ZrodloZaznaczenia,
 } from './treeModel';
 import { NAV_STRINGS, licznikTitle, trybDrzewaLabel } from './strings';
+import { useStanPrzywracany, type KodekStanuPowrotu } from '../shell/powrotZeSchematu';
 
 const TYPEAHEAD_RESET_MS = 600;
 
@@ -60,6 +61,11 @@ function sciezkaPrzodkow(wezly: WezelDrzewa[], id: string, sciezka: string[] = [
   return null;
 }
 
+const KODEK_ROZWINIETYCH: KodekStanuPowrotu<Set<string>> = {
+  zapisz: (z) => JSON.stringify([...z].sort()),
+  odczytaj: (t) => new Set(JSON.parse(t) as string[]),
+};
+
 export function ContextTree({
   wezly,
   zaznaczonyId,
@@ -78,10 +84,17 @@ export function ContextTree({
     [wezly, filtrProblemy],
   );
 
-  const [rozwiniete, setRozwiniete] = useState<Set<string>>(() => {
-    const przodkowie = zaznaczonyId ? sciezkaPrzodkow(wezlyPrzefiltrowane, zaznaczonyId) : null;
-    return new Set(przodkowie ?? []);
-  });
+  // Rozwinięte węzły wracają po „Wróć do" ze schematu (karta SLD-SKALA-I-NAWIGACJA,
+  // pkt 4): przestrzeń „Schemat" pokazuje panel obszaru zamiast drzewa, więc drzewo
+  // jest odmontowane, a bez przywrócenia zostawałaby sama ścieżka do zaznaczenia.
+  const [rozwiniete, setRozwiniete] = useStanPrzywracany<Set<string>>(
+    `drzewo:${etykietaDrzewa}:rozwiniete`,
+    () => {
+      const przodkowie = zaznaczonyId ? sciezkaPrzodkow(wezlyPrzefiltrowane, zaznaczonyId) : null;
+      return new Set(przodkowie ?? []);
+    },
+    KODEK_ROZWINIETYCH,
+  );
 
   const [focusedId, setFocusedId] = useState<string | null>(zaznaczonyId);
   const typeaheadBuffer = useRef('');

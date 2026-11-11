@@ -25,6 +25,7 @@ import {
   useEkranZrodlowy,
   usePowrotZeSchematu,
   useStanPowrotu,
+  useWyborPowrotu,
   wrocDoEkranu,
 } from '../powrotZeSchematu';
 import {
@@ -159,6 +160,36 @@ describe('Stan lokalny ekranu źródłowego i przewinięcie', () => {
       vi.advanceTimersByTime(OKNO_PRZEWINIECIA_MS);
     });
     expect(nowy.scrollTop).toBe(420);
+  });
+});
+
+describe('Stan wielu ekranów naraz: zakładka warsztatu × wybrany wiersz ekranu', () => {
+  let ustawWybor: (w: string | null) => void = () => undefined;
+  function EkranWynikow() {
+    const [wybor, setWybor] = useWyborPowrotu('wybor:test-ekran');
+    ustawWybor = setWybor;
+    return <span data-testid="wybor">{wybor ?? 'brak'}</span>;
+  }
+  function Warsztat() {
+    const zakladka = useStanPowrotu('test-warsztat') ?? 'ocena';
+    useEkranZrodlowy(`Wyniki — ${zakladka}`, 'test-warsztat', 'zwarcia');
+    return <EkranWynikow />;
+  }
+
+  it('„Wróć do" oddaje oba stany; etykieta z warsztatu (ekran bez etykiety jej nie nadpisuje)', () => {
+    const pierwszy = render(<Warsztat />);
+    act(() => ustawWybor('wiersz-2'));
+    pokazElementNaSchemacie('bus-1', 'test');
+    expect(usePowrotZeSchematu.getState().wpis).toMatchObject({
+      etykieta: 'Wyniki — ocena',
+      stany: { 'test-warsztat': 'zwarcia', 'wybor:test-ekran': 'wiersz-2' },
+    });
+    pierwszy.unmount();
+    wrocDoEkranu();
+    const drugi = render(<Warsztat />);
+    expect(drugi.getByTestId('wybor')).toHaveTextContent('wiersz-2');
+    // Oba stany odebrane — trzeci montaż startuje od zera.
+    expect(usePowrotZeSchematu.getState().doOdebrania).toBeNull();
   });
 });
 

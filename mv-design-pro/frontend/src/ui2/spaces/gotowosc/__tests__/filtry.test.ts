@@ -63,7 +63,7 @@ describe('filtrujProblemy — cel (interpretacja „typ")', () => {
   });
 });
 
-describe('filtrujProblemy — fraza (interpretacja „gałąź": referencja elementu)', () => {
+describe('filtrujProblemy — fraza (referencja albo nazwa elementu)', () => {
   it('dopasowuje podłańcuch elementRef, bez rozróżniania wielkości liter', () => {
     const wynik = filtrujProblemy(problemy, { ...FILTRY_PUSTE, fraza: 'gpz' });
     expect(wynik.map((p) => p.code)).toEqual(['source.grid_supply_missing']);
@@ -71,6 +71,22 @@ describe('filtrujProblemy — fraza (interpretacja „gałąź": referencja elem
 
   it('pusta fraza nie ogranicza wyniku', () => {
     expect(filtrujProblemy(problemy, FILTRY_PUSTE)).toHaveLength(3);
+  });
+
+  // Pole obiecuje „Numer lub nazwa elementu…" — fraza pasuje także do NAZWY z modelu.
+  const nazwa = (ref: string): string => ({ 'REL-2': 'Przekaźnik pola odpływowego' })[ref] ?? ref;
+
+  it('dopasowuje nazwę elementu z modelu (numer × nazwa)', () => {
+    const wynik = filtrujProblemy(problemy, { ...FILTRY_PUSTE, fraza: 'odpływow' }, nazwa);
+    expect(wynik.map((p) => p.code)).toEqual(['protection.vt_required']);
+    // Numer działa dalej z tym samym resolverem nazw.
+    expect(filtrujProblemy(problemy, { ...FILTRY_PUSTE, fraza: 'rel-1' }, nazwa).map((p) => p.code)).toEqual([
+      'protection.ct_required',
+    ]);
+  });
+
+  it('bez resolvera nazw fraza nazwy nie pasuje (brak modelu ≠ dopasowanie)', () => {
+    expect(filtrujProblemy(problemy, { ...FILTRY_PUSTE, fraza: 'odpływow' })).toEqual([]);
   });
 });
 

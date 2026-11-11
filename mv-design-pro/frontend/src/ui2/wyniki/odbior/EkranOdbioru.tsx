@@ -55,6 +55,7 @@ import {
 import { PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 const WIELKOSCI: readonly WielkoscPomiaru[] = ['U', 'P', 'Q'];
 
@@ -233,7 +234,7 @@ function WynikZgodnosci({
   szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }) {
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:odbior');
   const poprawWModelu = usePoprawWModelu();
   const nazwaObiektu = useNazwaObiektu();
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.

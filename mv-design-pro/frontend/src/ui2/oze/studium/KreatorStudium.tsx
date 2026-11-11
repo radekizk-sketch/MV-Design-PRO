@@ -77,6 +77,7 @@ import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 /** Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza). */
 interface ParametryZakonczonegoBiegu {
@@ -349,7 +350,7 @@ export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStud
 
   const [stan, setStan] = useState<StanStudium | null>(null);
   const [trwaBieg, setTrwaBieg] = useState(false);
-  const [wybranyWariant, setWybranyWariant] = useState<string | null>(null);
+  const [wybranyWariant, setWybranyWariant] = useWyborPowrotu('wybor:studium-wariant');
 
   // Identyfikacja domyślna z aktywnego projektu/przypadku (read-only, do dokumentu).
   const nazwaProjektuBazowa = useAppStateStore((s) => s.activeProjectName);

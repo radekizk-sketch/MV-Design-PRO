@@ -18,7 +18,7 @@
  * formatowanie prezentacji. Stylowanie wyłącznie tokenami --mvd-*.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import './skladowe.css';
 // Style wspólnego wzorca (SekcjaZalozen, TabelaWynikow) — import jawny, bo ekran
 // nie renderuje ramy `EkranAnalizy`, która normalnie wnosi ten arkusz.
@@ -49,6 +49,7 @@ import {
 } from './model';
 import { SKLADOWE_STRINGS as T } from './strings';
 import { biegiRodziny, useAktywnyBieg, useWybierzBieg } from '../kontekst/kontekstWyniku';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 function Stan({
   tytul,
@@ -114,7 +115,7 @@ export function EkranSkladowych() {
   const dane = useDaneSkladowych(przebieg?.id ?? null);
   const rows = dane?.wynik?.rows ?? [];
 
-  const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
+  const [wybranyPunkt, setWybranyPunkt] = useWyborPowrotu('wybor:skladowe');
   const poprawWModelu = usePoprawWModelu();
   const refPunktu = (klucz: string): string => rows.find((r) => r.target_id === klucz)?.element_id ?? klucz;
   const aktywnyPunkt = useMemo(() => {

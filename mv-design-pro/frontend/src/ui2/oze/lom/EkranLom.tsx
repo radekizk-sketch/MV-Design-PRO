@@ -29,6 +29,7 @@ import { LOM_STRINGS, fmtNastawaLom, fmtOknoLom, istotnoscLom } from './strings'
 import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
+import { useWyborPowrotu } from '../../shell/powrotZeSchematu';
 
 type StanZasobu = 'brakPrzypadku' | 'ladowanie' | 'blad' | 'gotowe';
 
@@ -219,7 +220,7 @@ function WynikLom({
   onOtworzDowod: (ref: string) => void;
 }) {
   const nazwaObiektu = useNazwaObiektu();
-  const [wybrany, setWybrany] = useState<string | null>(null);
+  const [wybrany, setWybrany] = useWyborPowrotu('wybor:lom');
 
   const wierszeSelektora = useMemo(
     () => new Map<string, PoleLom>(dane.fields.map((pole) => [pole.bay_ref, pole])),

@@ -21,7 +21,7 @@
  * się WYŁĄCZNIE jawnym klikiem „Wróć do", nigdy samoczynnie.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { create } from 'zustand';
 
 import { przejdzDoPrzestrzeni } from './przejsciaPrzestrzeni';
@@ -30,12 +30,16 @@ import { useShellStore } from './useShellStore';
 
 /**
  * Ekran, do którego prowadzi powrót. Ekran przestrzeni jest po wyjściu
- * ODMONTOWANY, więc swój stan lokalny (np. zakładkę) oddaje jako `klucz` + `stan`
- * i odbiera go przy ponownym montażu (`useStanPowrotu`). `przywroc` służy
- * nakładkom, których właściciel żyje dalej (okno przeglądu zbiorczego w AppRoot).
+ * ODMONTOWANY, więc swój stan lokalny (np. zakładkę, wybrany wiersz) oddaje jako
+ * `klucz` + `stan` i odbiera go przy ponownym montażu (`useStanPowrotu`). Wpis
+ * zbiera stany WSZYSTKICH zamontowanych ekranów (warsztat: zakładka; ekran
+ * wyników: wybrany wiersz), a etykietę — z ostatniego ekranu, który ją podał.
+ * `przywroc` służy nakładkom, których właściciel żyje dalej (okno przeglądu
+ * zbiorczego w AppRoot).
  */
 export interface EkranPowrotu {
-  readonly etykieta: string;
+  /** Etykieta ekranu; `null` — ekran oddaje wyłącznie stan (wybrany wiersz). */
+  readonly etykieta: string | null;
   readonly klucz?: string;
   readonly stan?: string | null;
   readonly przywroc?: () => void;
@@ -54,7 +58,9 @@ export interface WpisPowrotu {
   readonly przestrzen: SpaceId;
   readonly hash: string;
   readonly przewiniecia: readonly PrzewinieciePowrotu[];
-  readonly ekran: EkranPowrotu;
+  /** Stany lokalne zamontowanych ekranów (klucz → stan) do odebrania po powrocie. */
+  readonly stany: Readonly<Record<string, string>>;
+  readonly przywroc?: () => void;
 }
 
 /** Korzenie przewijanych obszarów zapamiętywanych przy wyjściu (warsztat, drzewo). */
@@ -64,8 +70,8 @@ interface StanPowrotu {
   readonly wpis: WpisPowrotu | null;
   /** Ekrany zamontowane w bieżącej przestrzeni (ostatni = najbardziej szczegółowy). */
   readonly ekrany: readonly { readonly id: number; readonly ekran: EkranPowrotu }[];
-  /** Stan lokalny do odebrania przez ponownie montowany ekran źródłowy. */
-  readonly doOdebrania: { readonly klucz: string; readonly stan: string } | null;
+  /** Stany lokalne do odebrania przez ponownie montowane ekrany źródłowe. */
+  readonly doOdebrania: Readonly<Record<string, string>> | null;
 }
 
 export const usePowrotZeSchematu = create<StanPowrotu>(() => ({ wpis: null, ekrany: [], doOdebrania: null }));
@@ -74,10 +80,10 @@ let licznikEkranow = 0;
 
 /**
  * Rejestracja ekranu źródłowego: zamontowany ekran podaje swoją etykietę (np.
- * „Wyniki i dowody — Zwarcia") i funkcję przywracającą stan lokalny. Bez
- * rejestracji powrót niesie etykietę przestrzeni.
+ * „Wyniki i dowody — Zwarcia") i stan lokalny pod kluczem. Bez rejestracji
+ * powrót niesie etykietę przestrzeni.
  */
-export function useEkranZrodlowy(etykieta: string, klucz?: string, stan?: string | null): void {
+export function useEkranZrodlowy(etykieta: string | null, klucz?: string, stan?: string | null): void {
   useEffect(() => {
     licznikEkranow += 1;
     const id = licznikEkranow;
@@ -92,15 +98,50 @@ export function useEkranZrodlowy(etykieta: string, klucz?: string, stan?: string
  * inicjalizator trybu ścisłego Reacta widzi tę samą wartość.
  */
 export function useStanPowrotu(klucz: string): string | null {
-  const [stan] = useState(() => {
-    const d = usePowrotZeSchematu.getState().doOdebrania;
-    return d && d.klucz === klucz ? d.stan : null;
-  });
+  const [stan] = useState(() => usePowrotZeSchematu.getState().doOdebrania?.[klucz] ?? null);
   useEffect(() => {
     const d = usePowrotZeSchematu.getState().doOdebrania;
-    if (d && d.klucz === klucz) usePowrotZeSchematu.setState({ doOdebrania: null });
+    if (!d || !(klucz in d)) return;
+    const reszta = { ...d };
+    delete reszta[klucz];
+    usePowrotZeSchematu.setState({ doOdebrania: Object.keys(reszta).length > 0 ? reszta : null });
   }, [klucz]);
   return stan;
+}
+
+/** Zapis stanu lokalnego ekranu do wpisu powrotu (tekst) i odczyt z niego. */
+export interface KodekStanuPowrotu<T> {
+  readonly zapisz: (wartosc: T) => string | null;
+  readonly odczytaj: (tekst: string) => T;
+}
+
+/**
+ * Stan lokalny ekranu PRZYWRACANY po „Wróć do" (karta SLD-SKALA-I-NAWIGACJA,
+ * pkt 4: ekran wraca w tym samym stanie). Zamiennik `useState` dla stanu, który
+ * projektant ustawił przed wejściem na schemat (wybrany wiersz, filtry, zwinięte
+ * grupy): wartość początkowa z wpisu powrotu, bieżąca — rejestrowana jako stan
+ * ekranu bez etykiety (etykietę niesie warsztat przestrzeni). Klucz jest unikalny
+ * dla ekranu (np. `wybor:zwarcia`).
+ */
+export function useStanPrzywracany<T>(
+  klucz: string,
+  domyslny: () => T,
+  kodek: KodekStanuPowrotu<T>,
+): readonly [T, Dispatch<SetStateAction<T>>] {
+  const poczatkowy = useStanPowrotu(klucz);
+  const [stan, setStan] = useState<T>(() => (poczatkowy === null ? domyslny() : kodek.odczytaj(poczatkowy)));
+  useEkranZrodlowy(null, klucz, kodek.zapisz(stan));
+  return [stan, setStan] as const;
+}
+
+const KODEK_WYBORU: KodekStanuPowrotu<string | null> = { zapisz: (w) => w, odczytaj: (t) => t };
+const BEZ_WYBORU = (): string | null => null;
+
+/** Wybrany wiersz ekranu (ref albo klucz wiersza) przywracany po „Wróć do". */
+export function useWyborPowrotu(
+  klucz: string,
+): readonly [string | null, Dispatch<SetStateAction<string | null>>] {
+  return useStanPrzywracany(klucz, BEZ_WYBORU, KODEK_WYBORU);
 }
 
 function etykietaPrzestrzeni(space: SpaceId): string {
@@ -150,15 +191,20 @@ export function zmierzPrzewiniecia(): PrzewinieciePowrotu[] {
  */
 export function zapiszPowrot(nakladka: EkranPowrotu | null): void {
   const przestrzen = useShellStore.getState().activeSpace;
-  const ekrany = usePowrotZeSchematu.getState().ekrany;
-  const ekran = nakladka ?? ekrany[ekrany.length - 1]?.ekran ?? { etykieta: etykietaPrzestrzeni(przestrzen) };
+  const ekrany = usePowrotZeSchematu.getState().ekrany.map((e) => e.ekran);
+  const zrodla = nakladka ? [...ekrany, nakladka] : ekrany;
+  const stany: Record<string, string> = {};
+  for (const e of zrodla) if (e.klucz && e.stan != null) stany[e.klucz] = e.stan;
+  const etykieta =
+    [...zrodla].reverse().find((e) => e.etykieta !== null)?.etykieta ?? etykietaPrzestrzeni(przestrzen);
   usePowrotZeSchematu.setState({
     wpis: {
-      etykieta: ekran.etykieta,
+      etykieta,
       przestrzen,
       hash: typeof window === 'undefined' ? '' : window.location.hash,
       przewiniecia: nakladka ? [] : zmierzPrzewiniecia(),
-      ekran,
+      stany,
+      przywroc: nakladka?.przywroc,
     },
     doOdebrania: null,
   });
@@ -194,10 +240,10 @@ function przywrocPrzewiniecia(przewiniecia: readonly PrzewinieciePowrotu[]): voi
 export function wrocDoEkranu(): void {
   const wpis = usePowrotZeSchematu.getState().wpis;
   if (!wpis) return;
-  const { klucz, stan, przywroc } = wpis.ekran;
+  const { stany, przywroc } = wpis;
   usePowrotZeSchematu.setState({
     wpis: null,
-    doOdebrania: klucz && stan != null ? { klucz, stan } : null,
+    doOdebrania: Object.keys(stany).length > 0 ? stany : null,
   });
   if (wpis.przestrzen !== useShellStore.getState().activeSpace) przejdzDoPrzestrzeni(wpis.przestrzen);
   if (typeof window !== 'undefined' && window.location.hash !== wpis.hash) window.location.hash = wpis.hash;

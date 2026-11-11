@@ -3,7 +3,6 @@ import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { KrokDowodu } from '../KrokDowodu';
 import { mapujKroki } from '../dowodModel';
-import { DOWOD_STRINGS } from '../strings';
 import { ETYKIETA_POKAZ_NA_SCHEMACIE } from '../../../shell/zaznaczElementModelu';
 import { subskrybuj } from '../../../events';
 import { traceStepsFixture } from './fixtures';
