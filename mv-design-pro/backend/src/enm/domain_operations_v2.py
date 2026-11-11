@@ -7932,7 +7932,7 @@ def _wyposazenie_z_ladunku(
         surowy = cast(dict[str, Any], payload["dlawik"])
         nastawa = _liczba_dodatnia(surowy.get("i_nastawy_a"))
         if nastawa == "niepoprawna":
-            return _error_response(
+            return None, _error_response(
                 f"{pole('dlawik.i_nastawy_a', OPERACJA_ZESPOLU)}: oczekiwano prądu nastawy > 0 A.",
                 "zu.payload_invalid",
             )
@@ -7942,7 +7942,7 @@ def _wyposazenie_z_ladunku(
             if (isinstance(i_min, int | float) and float(nastawa) < float(i_min)) or (
                 isinstance(i_max, int | float) and float(nastawa) > float(i_max)
             ):
-                return _error_response(
+                return None, _error_response(
                     f"Nastawa dławika {float(nastawa):g} A leży poza zakresem regulacji typu "
                     f"({float(i_min):g}–{float(i_max):g} A) — dobierz nastawę w zakresie albo "
                     "inny typ dławika.",
@@ -7952,7 +7952,7 @@ def _wyposazenie_z_ladunku(
         awsc = surowy.get("awsc")
         if awsc is not None:
             if not isinstance(awsc, dict):
-                return _error_response(
+                return None, _error_response(
                     f"{pole('dlawik.awsc', OPERACJA_ZESPOLU)}: oczekiwano opisu rezystora AWSC.",
                     "zu.payload_invalid",
                 )
@@ -7963,7 +7963,7 @@ def _wyposazenie_z_ladunku(
             ):
                 liczba = _liczba_dodatnia(awsc.get(klucz_awsc))
                 if liczba == "niepoprawna":
-                    return _error_response(
+                    return None, _error_response(
                         f"{pole(sciezka_awsc, OPERACJA_ZESPOLU)}: oczekiwano liczby > 0.",
                         "zu.payload_invalid",
                     )
@@ -7977,7 +7977,7 @@ def _wyposazenie_z_ladunku(
                     or not math.isfinite(float(zwloka))
                     or float(zwloka) < 0
                 ):
-                    return _error_response(
+                    return None, _error_response(
                         f"{pole('dlawik.awsc.czas_zwloki_s', OPERACJA_ZESPOLU)}: oczekiwano liczby ≥ 0.",
                         "zu.payload_invalid",
                     )
@@ -7985,7 +7985,7 @@ def _wyposazenie_z_ladunku(
             strona = awsc.get("strona")
             if strona is not None:
                 if strona not in _STRONY_REZYSTORA_AWSC:
-                    return _error_response(
+                    return None, _error_response(
                         f"{pole('dlawik.awsc.strona', OPERACJA_ZESPOLU)}: dozwolone „pierwotna” "
                         "albo „wtórna”.",
                         "zu.payload_invalid",
@@ -7995,18 +7995,18 @@ def _wyposazenie_z_ladunku(
 
     bezposrednie = payload.get("uziemienie_bezposrednie", False)
     if not isinstance(bezposrednie, bool):
-        return _error_response(
+        return None, _error_response(
             f"{pole('uziemienie_bezposrednie', OPERACJA_ZESPOLU)}: oczekiwano wartości tak/nie.",
             "zu.payload_invalid",
         )
     if bezposrednie and (dlawik is not None or rezystor is not None):
-        return _error_response(
+        return None, _error_response(
             "Uziemienie bezpośrednie punktu neutralnego wyklucza dławik i rezystor — punkt "
             "połączony wprost z ziemią zwiera element w punkcie neutralnym.",
             "zu.direct_with_element",
         )
     if not bezposrednie and dlawik is None and rezystor is None:
-        return _error_response(
+        return None, _error_response(
             "Zespół uziemiający wymaga elementu w punkcie neutralnym: dławika gaszącego "
             "(Z.13), dławika i rezystora równolegle (Z.14), rezystora (Z.15) albo jawnej "
             "deklaracji uziemienia bezpośredniego.",
@@ -8015,7 +8015,7 @@ def _wyposazenie_z_ladunku(
 
     spz = payload.get("spz", False)
     if not isinstance(spz, bool):
-        return _error_response(
+        return None, _error_response(
             f"{pole('spz', OPERACJA_ZESPOLU)}: oczekiwano wartości tak/nie.",
             "zu.payload_invalid",
         )
@@ -8023,7 +8023,7 @@ def _wyposazenie_z_ladunku(
     if not isinstance(trafo_refs_surowe, list) or not all(
         isinstance(r, str) and r for r in trafo_refs_surowe
     ):
-        return _error_response(
+        return None, _error_response(
             f"{pole('wylaczenie_od_transformatorow_refs', OPERACJA_ZESPOLU)}: oczekiwano listy "
             "transformatorów.",
             "zu.payload_invalid",
@@ -8032,7 +8032,7 @@ def _wyposazenie_z_ladunku(
     znane_trafo = {t.get("ref_id") for t in enm.get("transformers", []) if isinstance(t, dict)}
     nieznane = [r for r in trafo_refs if r not in znane_trafo]
     if nieznane:
-        return _error_response(
+        return None, _error_response(
             "Wyłączenie zespołu wskazuje transformatory spoza modelu — wybierz transformatory "
             "WN/SN stacji.",
             "zu.transformer_not_found",
@@ -8171,6 +8171,15 @@ def _zainstaluj_transformator_zespolu(
             equipment_refs=[*(rekord.get("equipment_refs") or []), transformator_ref],
         )
     return [transformator_ref, szyna_nn], None
+
+
+def _nazwa_transformatora_zespolu(pole_rec: dict[str, Any] | None) -> str:
+    """Nazwa nadawana transformatorowi uziemiającemu bez nazwy w ładunku: z nazwy pola ZU,
+    a bez pola (zespół wprost na szynie) — sam rodzaj elementu."""
+    nazwa_pola = nazwa_nadana((pole_rec or {}).get("name"))
+    return (
+        f"Transformator uziemiający — {nazwa_pola}" if nazwa_pola else "Transformator uziemiający"
+    )
 
 
 def zmien_wariant_zespolu(enm: dict[str, Any], bay_ref: str, wariant: WariantZespolu) -> bool:
@@ -8357,8 +8366,7 @@ def add_zespol_uziemiajacy_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             binding=binding,
             parametry=parametry_tu,
             konfiguracja=konfiguracja,
-            nazwa=nazwa
-            or f"Transformator uziemiający — {nazwa_nadana((pole_rec or {}).get('name')) or opis_bez_nazwy('transformers')}",
+            nazwa=nazwa or _nazwa_transformatora_zespolu(pole_rec),
         )
         if blad is not None:
             return blad

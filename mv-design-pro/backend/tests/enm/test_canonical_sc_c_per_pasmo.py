@@ -31,7 +31,6 @@ from enm.models import (
     ENMHeader,
     Source,
     Transformer,
-    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 from network_model.core.czas_wylaczenia import czas_tb_roboczy
@@ -39,7 +38,7 @@ from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.catalog_test_helpers import gpz_source_record
-from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
+from tests.utils.zespol_uziemiajacy import z_zespolem_o_impedancji_zerowej
 
 _SK_Q_MVA = 250.0
 _UN_HV_KV = 15.0
@@ -75,6 +74,11 @@ N0 = "N0_GPZ_SN"
 N1 = "N1_SZYNA_SN"
 N2 = "N2_SZYNA_NN"
 N3 = "N3_KONIEC_NN"
+#: Szyna 0,4 kV potrzeb własnych transformatora uziemiającego zespołu na szynie GPZ (karta
+#: ZU-JEDEN-NOSNIK: nośnikiem drogi zerowej sieci SN jest transformator ZNyn11). Tolerancja
+#: sieci nN zadeklarowana +6 % — wiersz nN tabeli 1 IEC 60909-0 jak szyn N2/N3 domyślnie;
+#: deklaracja stała, więc testy tolerancji transformatora TR nie widzą tej wyspy nN.
+ZU_NN = "ZU_GPZ-nn"
 
 
 def _build_mv_lv_enm(
@@ -88,7 +92,7 @@ def _build_mv_lv_enm(
     tabeli 1 IEC 60909-0). Domyślnie +6 % (1,05/0,95) — wartości przypięte w tym pliku
     liczono dla tego wiersza; ``None`` buduje sieć bez deklaracji — liczoną z wartością roboczą
     rejestru (+10 %, karta TOLERANCJA-NN-WARTOSC-ROBOCZA), nie odmowę."""
-    return EnergyNetworkModel(
+    model = EnergyNetworkModel(
         header=ENMHeader(name=name),
         buses=[
             Bus(ref_id=N0, name="GPZ 15 kV", voltage_kv=_UN_HV_KV),
@@ -158,16 +162,24 @@ def _build_mv_lv_enm(
                 )
             ),
         ],
-        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: droga zerowa sieci SN niesiona przez zespół
-        # uziemiający na szynie GPZ (ten sam bocznik Z0, który dawniej udawał Z0 równoważnika
-        # SN — liczby 1F bez zmian).
-        zespoly_uziemiajace=[
-            ZespolUziemiajacy.model_validate(
-                zespol_o_impedancji_zerowej(
-                    "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
+    )
+    # Karta ZU-JEDEN-NOSNIK: droga zerowa sieci SN niesiona przez zespół
+    # uziemiający na szynie GPZ (ten sam bocznik Z0, który dawniej udawał Z0 równoważnika
+    # SN — liczby 1F bez zmian).
+    model = z_zespolem_o_impedancji_zerowej(
+        model, "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
+    )
+    return model.model_copy(
+        update={
+            "transformers": [
+                (
+                    t.model_copy(update={"lv_voltage_tolerance": "PLUS_6"})
+                    if t.ref_id == "ZU_GPZ"
+                    else t
                 )
-            )
-        ],
+                for t in model.transformers
+            ]
+        }
     )
 
 
@@ -248,6 +260,7 @@ def test_scenario_max_default_uses_c_per_band_for_every_node():
         N1: 1.10,  # SN (15 kV) > 1 kV
         N2: 1.05,  # nN (0,4 kV) <= 1 kV
         N3: 1.05,  # nN (0,4 kV) <= 1 kV
+        ZU_NN: 1.05,  # nN potrzeb własnych zespołu (+6 %)
     }
     assert set(rows.keys()) == {ref_to_graph_id(ref) for ref in expected_c}
     for bus_ref, c_expected in expected_c.items():
@@ -295,6 +308,7 @@ def test_scenario_min_uses_c_min_per_band_and_temperature_correction():
         N1: 1.00,
         N2: 0.95,  # nN (0,4 kV) <= 1 kV
         N3: 0.95,
+        ZU_NN: 0.95,
     }
     for bus_ref, c_expected in expected_c_min.items():
         row = rows_min[ref_to_graph_id(bus_ref)]
@@ -343,8 +357,8 @@ def test_explicit_c_factor_overrides_auto_for_every_node():
     assert result.raw_result["c_factor_override"] is True
 
     rows = _rows_by_node(result)
-    assert len(rows) == 4
-    for bus_ref in (N0, N1, N2, N3):
+    assert len(rows) == 5
+    for bus_ref in (N0, N1, N2, N3, ZU_NN):
         row = rows[ref_to_graph_id(bus_ref)]
         assert row["c_factor"] == pytest.approx(1.2), bus_ref
         assert row["c_factor_override"] is True, bus_ref
@@ -507,7 +521,12 @@ def test_single_phase_fault_with_min_scenario_uses_c_min_and_does_not_crash():
     assert result.raw_result["short_circuit_type"] == "1F"
     assert result.raw_result["scenario"] == "MIN"
     rows = _rows_by_node(result)
-    assert len(rows) == 4
+    assert len(rows) == 5
+    # Szyna 0,4 kV zespołu: punkt neutralny uzwojenia dolnego transformatora uziemiającego
+    # bez uziemienia — zwarcie doziemne z nazwaną przyczyną braku drogi zerowej, bez liczby.
+    zu_nn = rows[ref_to_graph_id(ZU_NN)]
+    assert zu_nn["ikss_a"] is None
+    assert zu_nn["brak_wyniku_zerowego"]["przyczyna"] == "brak_drogi"
 
     expected_c_min = {N0: 1.00, N1: 1.00, N2: 0.95, N3: 0.95}
     for bus_ref, c_expected in expected_c_min.items():
@@ -716,7 +735,7 @@ def test_location_absent_keeps_all_nodes_parity():
     )
     assert result.status == "FINISHED", result.error_message
     rows = _rows_by_node(result)
-    assert set(rows.keys()) == {ref_to_graph_id(ref) for ref in (N0, N1, N2, N3)}
+    assert set(rows.keys()) == {ref_to_graph_id(ref) for ref in (N0, N1, N2, N3, ZU_NN)}
 
 
 # =============================================================================
@@ -906,7 +925,7 @@ N4 = "N4_SZYNA_NN_B"
 
 def _dwie_wyspy_nn(tolerancja_a: str, tolerancja_b: str | None) -> EnergyNetworkModel:
     enm = _build_mv_lv_enm("Dwie wyspy nN", tolerancja=tolerancja_a)  # type: ignore[arg-type]
-    (tr1,) = enm.transformers
+    (tr1,) = (t for t in enm.transformers if t.ref_id != "ZU_GPZ")
     tr2 = tr1.model_copy(
         update={
             "ref_id": "TR2",
@@ -916,7 +935,9 @@ def _dwie_wyspy_nn(tolerancja_a: str, tolerancja_b: str | None) -> EnergyNetwork
         }
     )
     szyna_b = Bus(ref_id=N4, name="Szyna nN wyspy B", voltage_kv=_UN_LV_KV)
-    return enm.model_copy(update={"buses": [*enm.buses, szyna_b], "transformers": [tr1, tr2]})
+    return enm.model_copy(
+        update={"buses": [*enm.buses, szyna_b], "transformers": [*enm.transformers, tr2]}
+    )
 
 
 @pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])

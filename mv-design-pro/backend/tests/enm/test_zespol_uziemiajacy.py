@@ -1,64 +1,73 @@
-"""D1 (karta POLA-GPZ-SZABLONY): przeniesienie punktu neutralnego sieci SN ze źródła GPZ na
-transformator uziemiający ZNyn11 i oddanie go źródłu — para z jednego zapisu
-(`enm.zespol_uziemiajacy`), wartości robocze ESTIMATED (ZASADA NR 4) i czytelnicy opisu sieci.
+"""D1 (karta POLA-GPZ-SZABLONY) w modelu jednego nośnika (karta ZU-JEDEN-NOSNIK): przeniesienie
+opisu punktu neutralnego źródła sieci SN na transformator uziemiający ZNyn11 i oddanie go źródłu
+— para z jednego typowanego zapisu ``hv_neutral.dawca`` (``enm.zespol_uziemiajacy``) — oraz
+czytelnicy uziemienia sieci po przeniesieniu.
 
-Iloczyn cech: wariant rysunku (Z.13, Z.14, Z.15) × uziemienie źródła (brak, izolowany, ten sam
-typ z kompletem, inny typ) × pojemność doziemna wyspy (znana / nieznana) × przeniesienie →
-oddanie; po przeniesieniu: bloker E-W5-04 milczy, czytelnicy wyspy widzą transformator.
+Opis punktu neutralnego źródła na szynie SN fizyka pomija (W-W5-02): uziemienie sieci SN niesie
+wyłącznie punkt neutralny uzwojenia transformatora. Przeniesienie nie wyprowadza z opisu źródła
+wartości punktu neutralnego zespołu (dawny model B nastawiał X_N na rozstrojenie +10 % i kopiował
+R_N/X_N źródła) — impedancję punktu neutralnego opisują gałęzie z katalogu (dławik, rezystor),
+a brak nastawy to wartość robocza wyprowadzana przy odczycie (zasada nr 4). Oddanie przywraca
+źródłu jego WŁASNY opis sprzed przeniesienia (dawny model B oddawał bieżący opis zespołu).
+
+Iloczyn cech: uziemienie źródła (brak, izolowany, dławik, rezystor) × dane składowej zerowej
+źródła (brak, R0/X0, Z0/Z1) × strona źródła (SN, 110 kV) × przeniesienie → oddanie; po
+przeniesieniu: czytelnicy sieci (``uziemienie_sieci``, V12.6) widzą transformator, bloker E-W5-04
+liczy wyłącznie nośniki zadeklarowane.
 """
 
 from __future__ import annotations
 
 import copy
+from typing import Any
 
 import pytest
-from application.analyses.v126_gotowosc import _uziemienie_z_modelu
+from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
-from enm.nosniki_punktu_neutralnego import (
-    typy_punktu_neutralnego_szyn_sn,
-    wyspy_z_wieloma_nosnikami,
-)
+from enm.uziemienie_sekcji import nosniki_sieci, uziemienie_sieci
 from enm.zespol_uziemiajacy import (
     GRUPA_POLACZEN_TRANSFORMATORA_UZIEMIAJACEGO,
-    ROZSTROJENIE_DLAWIKA,
-    TYP_UZIEMIENIA_WARIANTU,
-    ZAPIS_ZESPOLU,
+    POLA_ZEROWE_ZRODLA,
     oddaj_uziemienie_zrodlu,
     przenies_uziemienie_na_zespol,
 )
+from solver_input.v126_contracts import uziemienie_sn_v126
 
-WARIANTY = ("Z13", "Z14", "Z15")
-ZRODLA = {
+from tests.utils.zespol_uziemiajacy import dodaj_zespol
+
+ZRODLA: dict[str, dict[str, Any] | None] = {
     "brak": None,
     "izolowany": {"type": "isolated"},
-    "dlawik": {"type": "petersen_coil", "x_ohm": 150.0, "awsc_prad_wymuszenia_a": 30.0},
+    "dlawik": {"type": "petersen_coil", "x_ohm": 150.0},
     "rezystor": {"type": "resistor_grounded", "r_ohm": 25.0},
 }
-_B0_S_PER_KM = 3.0e-5
-_DLUGOSC_KM = 10.0
+ZEROWE: dict[str, dict[str, float]] = {
+    "bez_z0": {},
+    "r0_x0": {"r0_ohm": 3.0, "x0_ohm": 9.0},
+    "z0_z1": {"z0_z1_ratio": 3.0},
+}
 
 
-def _enm(uziemienie: dict | None, *, b0: bool) -> dict:
-    kabel = {
-        "ref_id": "kabel",
-        "name": "Kabel",
-        "type": "cable",
-        "from_bus_ref": "sn",
-        "to_bus_ref": "sn_odbior",
-        "length_km": _DLUGOSC_KM,
-        "r_ohm_per_km": 0.2,
-        "x_ohm_per_km": 0.1,
-    }
-    if b0:
-        kabel["b0_siemens_per_km"] = _B0_S_PER_KM
+def _enm(uziemienie: dict | None, zerowe: dict[str, float] | None = None) -> dict:
     return {
         "header": {"name": "zu"},
         "buses": [
             {"ref_id": "sn", "name": "Szyna SN", "voltage_kv": 15.0},
             {"ref_id": "sn_odbior", "name": "Odbiór", "voltage_kv": 15.0},
-            {"ref_id": "nn", "name": "Potrzeby własne", "voltage_kv": 0.4},
         ],
-        "branches": [kabel],
+        "branches": [
+            {
+                "ref_id": "kabel",
+                "name": "Kabel",
+                "type": "cable",
+                "from_bus_ref": "sn",
+                "to_bus_ref": "sn_odbior",
+                "length_km": 10.0,
+                "r_ohm_per_km": 0.2,
+                "x_ohm_per_km": 0.1,
+                "b0_siemens_per_km": 3.0e-5,
+            }
+        ],
         "sources": [
             {
                 "ref_id": "gpz",
@@ -68,6 +77,7 @@ def _enm(uziemienie: dict | None, *, b0: bool) -> dict:
                 "sk3_mva": 250.0,
                 "rx_ratio": 0.1,
                 **({"neutral_grounding": uziemienie} if uziemienie is not None else {}),
+                **(zerowe or {}),
             }
         ],
         "transformers": [],
@@ -80,124 +90,127 @@ def _transformator() -> dict:
         "name": "Transformator uziemiający",
         "hv_bus_ref": "sn",
         "lv_bus_ref": "nn",
-        "sn_mva": 0.63,
-        "uhv_kv": 15.0,
-        "ulv_kv": 0.4,
-        "uk_percent": 4.0,
-        "pk_kw": 6.5,
         "vector_group": GRUPA_POLACZEN_TRANSFORMATORA_UZIEMIAJACEGO,
+        "hv_neutral": {"type": "resistor_grounded"},
     }
 
 
-def _po_przeniesieniu(wariant: str, zrodlo: str, b0: bool) -> tuple[dict, dict]:
-    enm = _enm(copy.deepcopy(ZRODLA[zrodlo]), b0=b0)
-    tr = _transformator()
-    assert (
-        przenies_uziemienie_na_zespol(enm, transformator=tr, bay_ref="pole_zu", wariant=wariant)
-        is None
-    )
-    enm["transformers"].append(tr)
-    return enm, tr
-
-
-@pytest.mark.parametrize("b0", [True, False])
+@pytest.mark.parametrize("zerowe", sorted(ZEROWE))
 @pytest.mark.parametrize("zrodlo", sorted(ZRODLA))
-@pytest.mark.parametrize("wariant", WARIANTY)
-def test_iloczyn_przeniesienie_i_oddanie(wariant, zrodlo, b0):
-    enm, tr = _po_przeniesieniu(wariant, zrodlo, b0)
-    typ = TYP_UZIEMIENIA_WARIANTU[wariant]
-    cfg = tr["hv_neutral"]
-    assert cfg["type"] == typ
-    assert enm["sources"][0]["neutral_grounding"] == {"type": "isolated"}
-    zapis = tr["meta"][ZAPIS_ZESPOLU]
-    assert (zapis["bay_ref"], zapis["wariant"], zapis["zrodlo_ref"]) == ("pole_zu", wariant, "gpz")
-    przyjete = {p["parametr"]: p for p in zapis["dane_przyjete"]}
-    assert all(p["jakosc"] == "ESTIMATED" and p["podstawa_pl"] for p in przyjete.values())
-    ten_sam_typ = ZRODLA[zrodlo] is not None and ZRODLA[zrodlo]["type"] == typ
-    if typ == "petersen_coil":
-        if ten_sam_typ:
-            assert cfg["x_ohm"] == 150.0 and "x_ohm" not in przyjete
-            assert (
-                cfg["awsc_prad_wymuszenia_a"] == 30.0 and "awsc_prad_wymuszenia_a" not in przyjete
-            )
-        else:
-            assert przyjete["awsc_prad_wymuszenia_a"]["wartosc"] == 40.0
-            if b0:
-                b0_suma = _B0_S_PER_KM * _DLUGOSC_KM
-                x_n = 1.0 / (3.0 * b0_suma * (1.0 + ROZSTROJENIE_DLAWIKA))
-                assert cfg["x_ohm"] == pytest.approx(x_n, rel=1e-12)
-                assert przyjete["x_ohm"]["jednostka"] == "Ω"
-            else:
-                # Pojemność doziemna sieci to dana MODELU — bez niej brak nazywa E-W5-01.
-                assert cfg["x_ohm"] is None and "x_ohm" not in przyjete
-    else:
-        assert cfg["r_ohm"] == (25.0 if ten_sam_typ else 40.0)
-        assert ("r_ohm" in przyjete) is (not ten_sam_typ)
-    model = EnergyNetworkModel.model_validate(enm)
-    if cfg.get("x_ohm") is not None or typ == "resistor_grounded":
-        # Jeden nośnik w wyspie — bloker E-W5-04 milczy; czytelnicy wyspy widzą transformator.
-        assert wyspy_z_wieloma_nosnikami(model) == []
-        assert typy_punktu_neutralnego_szyn_sn(model)["sn_odbior"] == typ
-        uziemienie = _uziemienie_z_modelu(model)
-        assert uziemienie is not None and uziemienie[0] == typ and "Transformator" in uziemienie[1]
-    # Oddanie: źródło-dawca z zapisu dostaje bieżący nośnik transformatora.
-    tr["hv_neutral"] = {**cfg, "x_ohm": 99.0} if typ == "petersen_coil" else {**cfg, "r_ohm": 11.0}
+def test_iloczyn_przeniesienie_i_oddanie(zrodlo: str, zerowe: str) -> None:
+    enm = _enm(copy.deepcopy(ZRODLA[zrodlo]), dict(ZEROWE[zerowe]))
+    przed = copy.deepcopy(enm["sources"][0])
+    tr = _transformator()
+    przenies_uziemienie_na_zespol(enm, transformator=tr, szyna_sekcji_ref="sn")
+    zrodlo_po = enm["sources"][0]
+    nic_do_oddania = ZRODLA[zrodlo] is None and not ZEROWE[zerowe]
+    if nic_do_oddania:
+        # Źródło bez opisu i bez Z0 — brak zapisu (nie ma czego oddawać).
+        assert "dawca" not in tr["hv_neutral"]
+        assert zrodlo_po == przed
+        assert oddaj_uziemienie_zrodlu(enm, tr) is None
+        return
+    dawca = tr["hv_neutral"]["dawca"]
+    assert dawca["zrodlo_ref"] == "gpz"
+    assert dawca["neutral_grounding"] == ZRODLA[zrodlo]
+    assert {k: dawca.get(k) for k in POLA_ZEROWE_ZRODLA if dawca.get(k) is not None} == ZEROWE[
+        zerowe
+    ]
+    assert zrodlo_po.get("neutral_grounding") is None
+    assert all(zrodlo_po.get(k) is None for k in POLA_ZEROWE_ZRODLA)
+    # Przeniesienie nie zmienia typu ani impedancji punktu neutralnego zespołu.
+    assert tr["hv_neutral"]["type"] == "resistor_grounded"
+    assert "r_ohm" not in tr["hv_neutral"] and "x_ohm" not in tr["hv_neutral"]
+    # Oddanie: źródło-dawca dostaje SWÓJ opis i dane zerowe sprzed przeniesienia (bit w bit),
+    # niezależnie od zmian punktu neutralnego zespołu w międzyczasie.
+    tr["hv_neutral"]["type"] = "petersen_coil"
     assert oddaj_uziemienie_zrodlu(enm, tr) == "gpz"
-    assert enm["sources"][0]["neutral_grounding"] == tr["hv_neutral"]
-    assert enm["sources"][0]["neutral_grounding"] is not tr["hv_neutral"]
+    assert {k: enm["sources"][0].get(k) for k in przed} == przed
+    # Kopia, nie wspólny obiekt zapisu (późniejsza edycja źródła nie zmienia zapisu dawcy).
+    if przed.get("neutral_grounding") is not None:
+        assert enm["sources"][0]["neutral_grounding"] is not dawca["neutral_grounding"]
 
 
-def test_bez_zapisu_zespolu_nic_nie_wraca():
-    enm = _enm({"type": "isolated"}, b0=True)
+def test_bez_zapisu_zespolu_nic_nie_wraca() -> None:
+    enm = _enm({"type": "isolated"})
     assert oddaj_uziemienie_zrodlu(enm, _transformator()) is None
     assert enm["sources"][0]["neutral_grounding"] == {"type": "isolated"}
 
 
-def test_zrodlo_110kv_nie_jest_dawca():
-    enm = _enm({"type": "petersen_coil", "x_ohm": 150.0}, b0=True)
+def test_dawca_usuniety_z_modelu_nic_nie_wraca() -> None:
+    enm = _enm({"type": "petersen_coil", "x_ohm": 150.0})
+    tr = _transformator()
+    przenies_uziemienie_na_zespol(enm, transformator=tr, szyna_sekcji_ref="sn")
+    enm["sources"] = []
+    assert oddaj_uziemienie_zrodlu(enm, tr) is None
+
+
+def test_zrodlo_110kv_nie_jest_dawca() -> None:
+    enm = _enm({"type": "petersen_coil", "x_ohm": 150.0})
     enm["sources"][0]["source_side"] = "HV_110"
     tr = _transformator()
-    przenies_uziemienie_na_zespol(enm, transformator=tr, bay_ref="p", wariant="Z15")
-    assert tr["meta"][ZAPIS_ZESPOLU]["zrodlo_ref"] is None
+    przenies_uziemienie_na_zespol(enm, transformator=tr, szyna_sekcji_ref="sn")
+    assert "dawca" not in tr["hv_neutral"]
     assert enm["sources"][0]["neutral_grounding"] == {"type": "petersen_coil", "x_ohm": 150.0}
 
 
-def test_czytelnik_wyspy_izolowanej_i_milczacej():
-    assert typy_punktu_neutralnego_szyn_sn(
-        EnergyNetworkModel.model_validate(_enm({"type": "isolated"}, b0=True))
-    ) == {"sn": "isolated", "sn_odbior": "isolated"}
-    assert (
-        typy_punktu_neutralnego_szyn_sn(EnergyNetworkModel.model_validate(_enm(None, b0=True)))
-        == {}
-    )
+@pytest.mark.parametrize("zrodlo", sorted(ZRODLA))
+def test_czytelnicy_sieci_widza_transformator_uziemiajacy(zrodlo: str) -> None:
+    """Po dodaniu zespołu (operacja produktu) uziemienie sieci SN i V12.6 wynikają z punktu
+    neutralnego transformatora uziemiającego — opis źródła (pomijany przez fizykę) nie zmienia
+    wariantu sieci, a bez zespołu sieć jest izolowana z modelu."""
+    enm = _enm(copy.deepcopy(ZRODLA[zrodlo]))
+    model = EnergyNetworkModel.model_validate(enm)
+    ((sekcja_przed),) = uziemienie_sieci(model)
+    assert sekcja_przed.wariant() == "izolowany"
+    dodaj_zespol(enm, "zu", "sn", wariant="rezystor")
+    model = EnergyNetworkModel.model_validate(enm)
+    sieci = {s.szyny: s for s in uziemienie_sieci(model)}
+    (sekcja,) = (s for szyny, s in sieci.items() if "sn" in szyny)
+    assert "sn_odbior" in sekcja.szyny
+    assert sekcja.wariant() == "rezystor"
+    assert [p.element_ref for p in sekcja.punkty_w_ruchu] == ["zu"]
+    assert uziemienie_sn_v126(model).wariant == "rezystor"
+    assert nosniki_sieci(model) == []
 
 
-def test_determinizm_przeniesienia():
-    a = _po_przeniesieniu("Z13", "brak", True)
-    b = _po_przeniesieniu("Z13", "brak", True)
-    assert a == b
+def test_determinizm_przeniesienia() -> None:
+    def _raz() -> tuple[dict, dict]:
+        enm = _enm({"type": "petersen_coil", "x_ohm": 150.0}, {"r0_ohm": 3.0, "x0_ohm": 9.0})
+        tr = _transformator()
+        przenies_uziemienie_na_zespol(enm, transformator=tr, szyna_sekcji_ref="sn")
+        return enm, tr
+
+    assert _raz() == _raz()
 
 
-@pytest.mark.parametrize("uhv_kv", [110.0, None])
-def test_transformator_poza_pasmem_sn_odmowa_bez_skutku(uhv_kv):
-    enm = _enm({"type": "petersen_coil", "x_ohm": 150.0}, b0=True)
-    tr = {**_transformator(), "uhv_kv": uhv_kv}
+@pytest.mark.parametrize("napiecie_kv", [110.0, 0.4])
+def test_zespol_poza_pasmem_sn_odmowa_bez_skutku(napiecie_kv: float) -> None:
+    """Operacja zespołu na szynie spoza pasma SN — odmowa nazwana bez migawki (bez skutku)."""
+    enm = _enm({"type": "petersen_coil", "x_ohm": 150.0})
+    enm["buses"].append({"ref_id": "inna", "name": "Szyna inna", "voltage_kv": napiecie_kv})
     przed = copy.deepcopy(enm)
-    assert przenies_uziemienie_na_zespol(enm, transformator=tr, bay_ref="p", wariant="Z13")
-    assert enm == przed and "hv_neutral" not in tr
+    odp = execute_domain_operation(
+        enm_dict=enm,
+        op_name="add_zespol_uziemiajacy_sn",
+        payload={"bus_ref": "inna", "rezystor": {"catalog_ref": "REZ_200A_15KV"}},
+    )
+    assert odp.get("error_code")
+    assert odp.get("snapshot") is None
+    assert enm == przed
 
 
 @pytest.mark.parametrize("jawny", [False, True])
-def test_e_w5_04_liczy_wylacznie_nosniki_zadeklarowane(jawny):
+def test_e_w5_04_liczy_wylacznie_nosniki_zadeklarowane(jawny: bool) -> None:
     """Dwa transformatory z punktem wyprowadzonym (YNyn0 — droga zerowa po stronie SN) na tej
-    samej wyspie SN: bez konfiguracji (sama litera grupy) bloker milczy, z konfiguracją —
+    samej sieci SN: bez konfiguracji (sama litera grupy) bloker milczy, z konfiguracją —
     melduje (golden network ENM: dwa TR Dyn11 za zamkniętym sprzęgłem)."""
-    enm = _enm(None, b0=False)
+    enm = _enm(None)
     enm["buses"].append({"ref_id": "wn", "name": "WN", "voltage_kv": 110.0})
     for ref in ("t1", "t2"):
-        tr = {
-            **_transformator(),
+        tr: dict[str, Any] = {
             "ref_id": ref,
+            "name": ref,
             "hv_bus_ref": "wn",
             "lv_bus_ref": "sn",
             "uhv_kv": 110.0,
@@ -205,10 +218,10 @@ def test_e_w5_04_liczy_wylacznie_nosniki_zadeklarowane(jawny):
             "sn_mva": 25.0,
             "uk_percent": 11.0,
             "pk_kw": 120.0,
-            "vector_group": "Dyn11",
+            "vector_group": "YNyn0",
         }
         if jawny:
             tr["lv_neutral"] = {"type": "directly_grounded"}
         enm["transformers"].append(tr)
     model = EnergyNetworkModel.model_validate(enm)
-    assert bool(wyspy_z_wieloma_nosnikami(model)) is jawny
+    assert bool(nosniki_sieci(model)) is jawny

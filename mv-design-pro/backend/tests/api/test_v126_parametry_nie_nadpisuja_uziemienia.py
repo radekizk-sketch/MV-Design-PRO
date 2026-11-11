@@ -17,28 +17,33 @@ from typing import Any
 
 import pytest
 from api.v126_academic import _with_parameter_payloads
-from enm.models import DlawikGaszacy, EnergyNetworkModel, RezystorUziemiajacy, ZespolUziemiajacy
+from enm.models import EnergyNetworkModel
 from network_model.odmowa_danych import OdmowaDanychError
 from solver_input.v126_contracts import build_v126_input_from_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
+from tests.utils.zespol_uziemiajacy import z_zespolem as _z_zespolem
 
 _SZYNA_SN = "bus_sn_main"
 _WIERSZ_IZOLACJI: dict[str, Any] = {"location_bus_ref": _SZYNA_SN, "u_m_kv": 17.5}
 
 
 def _siec(z_zespolem: bool, element: str = "dlawik") -> EnergyNetworkModel:
+    """Sieć złota z zespołem uziemiającym (transformator ZNyn11 z dławikiem gaszącym albo
+    rezystorem w punkcie neutralnym — operacja produktu) na szynie SN albo bez zespołu."""
     enm = build_golden_enm().model_copy(deep=True)
-    if z_zespolem:
-        zespol = ZespolUziemiajacy(
-            ref_id="zu_gpz", name="Zespół uziemiający GPZ", bus_ref=_SZYNA_SN
-        )
-        if element == "dlawik":
-            zespol.dlawik = DlawikGaszacy(i_min_a=40.0, i_max_a=400.0, i_nastawy_a=100.0)
-        else:
-            zespol.rezystor = RezystorUziemiajacy(r_ohm=43.3)
-        enm.zespoly_uziemiajace = [zespol]
-    return enm
+    if not z_zespolem:
+        return enm
+    u_kv = next(b.voltage_kv for b in enm.buses if b.ref_id == _SZYNA_SN)
+    return _z_zespolem(
+        enm,
+        "zu_gpz",
+        _SZYNA_SN,
+        wariant="dlawik" if element == "dlawik" else "rezystor",
+        u_kv=u_kv,
+        i_nastawy_a=100.0 if element == "dlawik" else None,
+        name="Zespół uziemiający GPZ",
+    )
 
 
 def _z_parametrami(enm: EnergyNetworkModel, parametry: dict[str, Any]):

@@ -10,6 +10,7 @@ from solver_input.v126_contracts import (
 )
 
 from tests.utils.biegi import uruchom_v126
+from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekordy
 
 _ARRESTER_ID = "arrester-abb-polim-d-24kv-10ka"
 
@@ -38,6 +39,7 @@ def _model(
     bus: dict = {"ref_id": "BUS_SN", "name": "Szyna SN", "voltage_kv": bus_voltage_kv}
     wariant = "dlawik" if uziemienie is _BRAK else uziemienie
     zespoly: list[dict] = []
+    szyny_zespolow: list[dict] = []
     sources: list[dict] = []
     if bus_voltage_kv >= 110.0:
         # Szyna WN: punkt neutralny sieci 110 kV za granicą modelu opisuje źródło na tej szynie
@@ -52,18 +54,26 @@ def _model(
             }
         )
     elif wariant is not None:
-        zespol: dict = {"ref_id": "ZU1", "name": "Zespół uziemiający", "bus_ref": "BUS_SN"}
-        if wariant == "dlawik":
-            zespol["dlawik"] = {"i_min_a": 40.0, "i_max_a": 400.0, "i_nastawy_a": 100.0}
-        elif wariant == "rezystor":
-            zespol["rezystor"] = {"r_ohm": 40.0}
+        # Zespół uziemiający = transformator ZNyn11 z wyposażeniem punktu neutralnego
+        # (operacja produktu, pozycje katalogu); „bez_elementu” — punkt neutralny bez elementu.
+        zespol, szyna_zespolu = zespol_uziemiajacy_rekordy(
+            "ZU1",
+            "BUS_SN",
+            wariant="rezystor" if wariant == "rezystor" else "dlawik",
+            u_kv=bus_voltage_kv,
+            i_nastawy_a=100.0 if wariant == "dlawik" else None,
+            name="Zespół uziemiający",
+        )
+        if wariant == "bez_elementu":
+            zespol["hv_neutral"] = None
         zespoly.append(zespol)
+        szyny_zespolow.append(szyna_zespolu)
     return EnergyNetworkModel.model_validate(
         {
             "header": ENMHeader(name="test-insulation").model_dump(),
-            "buses": [bus],
+            "buses": [bus, *szyny_zespolow],
             "sources": sources,
-            "zespoly_uziemiajace": zespoly,
+            "transformers": zespoly,
             "substations": [
                 {
                     "ref_id": "ST1",

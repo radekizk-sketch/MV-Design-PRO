@@ -22,7 +22,10 @@ from typing import Any
 from enm.models import EnergyNetworkModel
 
 from tests.catalog_test_helpers import gpz_source_record
-from tests.utils.zespol_uziemiajacy import zespol_zamiast_z0_rownowaznika
+from tests.utils.zespol_uziemiajacy import (
+    dodaj_zespol_o_impedancji_zerowej,
+    impedancja_zerowa_zamiast_z0_rownowaznika,
+)
 
 NAZWA_GALEZI_REALNEJ_MALEJ = "Kabel odgałęzienia"
 NAZWA_GALEZI_BEZ_PRADU = "Kabel bez ładowania"
@@ -71,97 +74,93 @@ def _kabel(
 
 def siec_wkladow_pominietych() -> EnergyNetworkModel:
     """ENM sieci testowej (deterministyczny, bez losowości)."""
-    return EnergyNetworkModel.model_validate(
-        {
-            "header": {
-                "name": "Prog wkladu pominietego",
-                "enm_version": "1.0",
-                "defaults": {"frequency_hz": 50, "unit_system": "SI"},
-                "created_at": "2024-01-01T00:00:00Z",
-                "updated_at": "2024-01-01T00:00:00Z",
-                "revision": 1,
-                "hash_sha256": "",
+    dane: dict[str, Any] = {
+        "header": {
+            "name": "Prog wkladu pominietego",
+            "enm_version": "1.0",
+            "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "revision": 1,
+            "hash_sha256": "",
+        },
+        "buses": [
+            _szyna(1, "bus-main", "Szyna glowna"),
+            _szyna(2, "bus-oze", "Szyna OZE"),
+            _szyna(3, "bus-odg", "Szyna odgalezienia"),
+            _szyna(4, "bus-martwa", "Szyna martwa"),
+        ],
+        "branches": [
+            _kabel(11, "branch-oze", NAZWA_GALEZI_GLOWNEJ, "bus-main", "bus-oze", 0.5, 2.6e-07),
+            _kabel(
+                12,
+                "branch-odg",
+                NAZWA_GALEZI_REALNEJ_MALEJ,
+                "bus-oze",
+                "bus-odg",
+                0.005,
+                2.6e-07,
+            ),
+            _kabel(13, "branch-martwa", NAZWA_GALEZI_BEZ_PRADU, "bus-oze", "bus-martwa", 0.2, 0.0),
+        ],
+        "sources": [
+            {
+                "id": "00000000-0000-0000-0000-000000000721",
+                "tags": [],
+                "meta": {},
+                **gpz_source_record(
+                    ref_id="src-grid",
+                    name="Zasilanie GPZ",
+                    bus_ref="bus-main",
+                    voltage_kv=15.0,
+                    sk3_mva=250.0,
+                    rx_ratio=0.10,
+                ),
+            }
+        ],
+        "loads": [],
+        "transformers": [],
+        "generators": [
+            {
+                # Mikrogenerator synchroniczny: P = 25 mW, cos φ = 0,8 → S_r = 31,25 mVA,
+                # x″d = 0,15 (domyślna `SynchronousMachineSource`) → |Z″_GK| ≈ 1e9 Ω,
+                # prąd do zwarcia na szynie głównej ≈ 9 µA (3F); 2F, 1F, 2F+G mniejszy, ale
+                # wciąż nad progiem 1e-6 A i pod 1e-4 A.
+                "id": "00000000-0000-0000-0000-000000000732",
+                "ref_id": "gen-mikro",
+                "name": "Mikrogenerator synchroniczny",
+                "tags": [],
+                "meta": {},
+                "bus_ref": "bus-odg",
+                "p_mw": 2.5e-8,
+                "q_mvar": 0.0,
+                "gen_type": "synchronous",
             },
-            "buses": [
-                _szyna(1, "bus-main", "Szyna glowna"),
-                _szyna(2, "bus-oze", "Szyna OZE"),
-                _szyna(3, "bus-odg", "Szyna odgalezienia"),
-                _szyna(4, "bus-martwa", "Szyna martwa"),
-            ],
-            "branches": [
-                _kabel(11, "branch-oze", NAZWA_GALEZI_GLOWNEJ, "bus-main", "bus-oze", 0.5, 2.6e-07),
-                _kabel(
-                    12,
-                    "branch-odg",
-                    NAZWA_GALEZI_REALNEJ_MALEJ,
-                    "bus-oze",
-                    "bus-odg",
-                    0.005,
-                    2.6e-07,
-                ),
-                _kabel(
-                    13, "branch-martwa", NAZWA_GALEZI_BEZ_PRADU, "bus-oze", "bus-martwa", 0.2, 0.0
-                ),
-            ],
-            "sources": [
-                {
-                    "id": "00000000-0000-0000-0000-000000000721",
-                    "tags": [],
-                    "meta": {},
-                    **gpz_source_record(
-                        ref_id="src-grid",
-                        name="Zasilanie GPZ",
-                        bus_ref="bus-main",
-                        voltage_kv=15.0,
-                        sk3_mva=250.0,
-                        rx_ratio=0.10,
-                    ),
-                }
-            ],
-            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół
-            # uziemiający szyny głównej (bocznik równy dawnemu Z0/Z1 = 3 równoważnika SN).
-            "zespoly_uziemiajace": [
-                zespol_zamiast_z0_rownowaznika(
-                    "zu-gpz", "bus-main", u_kv=15.0, sk3_mva=250.0, rx_ratio=0.10, z0_z1_ratio=3.0
-                )
-            ],
-            "loads": [],
-            "transformers": [],
-            "generators": [
-                {
-                    # Mikrogenerator synchroniczny: P = 25 mW, cos φ = 0,8 → S_r = 31,25 mVA,
-                    # x″d = 0,15 (domyślna `SynchronousMachineSource`) → |Z″_GK| ≈ 1e9 Ω,
-                    # prąd do zwarcia na szynie głównej ≈ 9 µA (3F); 2F, 1F, 2F+G mniejszy, ale
-                    # wciąż nad progiem 1e-6 A i pod 1e-4 A.
-                    "id": "00000000-0000-0000-0000-000000000732",
-                    "ref_id": "gen-mikro",
-                    "name": "Mikrogenerator synchroniczny",
-                    "tags": [],
-                    "meta": {},
-                    "bus_ref": "bus-odg",
-                    "p_mw": 2.5e-8,
-                    "q_mvar": 0.0,
-                    "gen_type": "synchronous",
-                },
-                {
-                    "id": "00000000-0000-0000-0000-000000000731",
-                    "ref_id": "gen-pv",
-                    "name": "Falownik PV",
-                    "tags": [],
-                    "meta": {},
-                    "bus_ref": "bus-oze",
-                    "p_mw": 1.0,
-                    "q_mvar": 0.0,
-                    "gen_type": "pv_inverter",
-                    "connection_variant": "DEDICATED_MV_CONNECTION",
-                },
-            ],
-            "substations": [],
-            "bays": [],
-            "junctions": [],
-            "corridors": [],
-            "measurements": [],
-            "protection_assignments": [],
-            "branch_points": [],
-        }
+            {
+                "id": "00000000-0000-0000-0000-000000000731",
+                "ref_id": "gen-pv",
+                "name": "Falownik PV",
+                "tags": [],
+                "meta": {},
+                "bus_ref": "bus-oze",
+                "p_mw": 1.0,
+                "q_mvar": 0.0,
+                "gen_type": "pv_inverter",
+                "connection_variant": "DEDICATED_MV_CONNECTION",
+            },
+        ],
+        "substations": [],
+        "bays": [],
+        "junctions": [],
+        "corridors": [],
+        "measurements": [],
+        "protection_assignments": [],
+        "branch_points": [],
+    }
+    # Karta ZU-JEDEN-NOSNIK: drogę zerową sieci SN niesie transformator uziemiający zespołu na
+    # szynie głównej (bocznik równy dawnemu Z0/Z1 = 3 równoważnika SN).
+    r0, x0 = impedancja_zerowa_zamiast_z0_rownowaznika(
+        u_kv=15.0, sk3_mva=250.0, rx_ratio=0.10, z0_z1_ratio=3.0
     )
+    dodaj_zespol_o_impedancji_zerowej(dane, "zu-gpz", "bus-main", r0_ohm=r0, x0_ohm=x0)
+    return EnergyNetworkModel.model_validate(dane)

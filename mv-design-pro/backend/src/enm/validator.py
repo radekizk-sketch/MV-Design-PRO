@@ -39,6 +39,7 @@ from network_model.core.uziemienie import (
     ETYKIETA_PL_WARIANTU_UZIEMIENIA,
 )
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaNazwana
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from network_model.pochodne.pasma_napieciowe import (
     OPIS_PASMA_SN,
@@ -133,8 +134,10 @@ from .tor_pola import (
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .uziemienie_sekcji import (
+    UziemienieSekcji,
     impedancja_zerowa_zrodla_dozwolona,
     nosniki_sieci,
+    sieci_sn,
     tor_odlaczonego_pola_zu,
     uziemienie_sieci,
 )
@@ -1242,6 +1245,7 @@ class ENMValidator:
                     fix_action=FixAction(
                         action_type="SELECT_CATALOG",
                         element_ref=zu.ref_id,
+                        modal_type="TransformerModal",
                         payload_hint={"required": "hv_neutral"},
                     ),
                 )
@@ -3516,8 +3520,16 @@ class ENMValidator:
             return
         szyny = {b.ref_id: b for b in enm.buses}
         transformatory = {t.ref_id: t for t in enm.transformers}
-        sieci = uziemienie_sieci(enm)
-        sekcja_szyny = {szyna: sekcja for sekcja in sieci for szyna in sekcja.szyny}
+        # Podział na sieci SN bez pojemności (``sieci_sn``) — reguły zespołu czytają szyny sieci;
+        # ostrzeżenia sieci (rozstrojenie dławika) wymagają pojemności doziemnej, a ta odmawia
+        # przy niespójnej baterii kondensatorów (zgłasza ją E043 — walidator nie przerywa się).
+        sekcja_szyny = {
+            szyna: szyny_sieci for szyny_sieci, _, _ in sieci_sn(enm) for szyna in szyny_sieci
+        }
+        try:
+            sieci: tuple[UziemienieSekcji, ...] = uziemienie_sieci(enm)
+        except OdmowaNazwana:
+            sieci = ()
         szyna_pola_zu = {
             b.terminal_bus_ref: b.bus_ref
             for b in enm.bays
@@ -3609,7 +3621,7 @@ class ENMValidator:
                 zasilajace = sorted(
                     t.ref_id
                     for t in enm.transformers
-                    if _transformator_wn_sn_sieci(t, sekcja.szyny, szyny)
+                    if _transformator_wn_sn_sieci(t, sekcja, szyny)
                 )
                 brakujace = [
                     ref for ref in zasilajace if ref not in cfg.wylaczenie_od_transformatorow_refs

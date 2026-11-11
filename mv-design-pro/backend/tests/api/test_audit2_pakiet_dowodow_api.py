@@ -35,10 +35,11 @@ def _model():
         Load,
         Substation,
         Transformer,
-        ZespolUziemiajacy,
     )
 
-    return EnergyNetworkModel(
+    from tests.utils.zespol_uziemiajacy import z_zespolem
+
+    model = EnergyNetworkModel(
         header=ENMHeader(name="Pakiet dowodow — sciezka produktu"),
         buses=[
             Bus(ref_id="bus-sn", name="Szyna SN", voltage_kv=15.0),
@@ -80,20 +81,15 @@ def _model():
             ),
             Generator(ref_id="gen/pv-2", name="PV Polna", bus_ref="bus-nn-2", p_mw=0.1),
         ],
-        # Sposób uziemienia SN dowodu przekładników z modelu (karta UX-04/POLE-ZU-SKLADOWA-
-        # ZEROWA): zespół uziemiający z dławikiem gaszącym na szynie SN stacji.
-        zespoly_uziemiajace=[
-            ZespolUziemiajacy(
-                ref_id="zu/1",
-                name="ZU Łąkowa",
-                bus_ref="bus-sn",
-                dlawik={"i_nastawy_a": 100.0},
-            )
-        ],
         loads=[
             Load(ref_id="ld-1", name="Odbiór 1", bus_ref="bus-nn-1", p_mw=0.5, q_mvar=0.0),
             Load(ref_id="ld-2", name="Odbiór 2", bus_ref="bus-nn-2", p_mw=0.1, q_mvar=0.0),
         ],
+    )
+    # Sposób uziemienia SN dowodu przekładników z modelu (karta ZU-JEDEN-NOSNIK): zespół
+    # uziemiający (transformator ZNyn11 z dławikiem gaszącym) na szynie SN stacji.
+    return z_zespolem(
+        model, "zu/1", "bus-sn", wariant="dlawik", i_nastawy_a=100.0, name="ZU Łąkowa"
     )
 
 

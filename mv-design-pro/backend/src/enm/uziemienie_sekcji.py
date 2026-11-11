@@ -644,12 +644,13 @@ class NosnikPunktuNeutralnego:
 
 def nosniki_sieci(
     enm: EnergyNetworkModel,
-) -> list[tuple[UziemienieSekcji, tuple[NosnikPunktuNeutralnego, ...]]]:
+) -> list[tuple[tuple[str, ...], tuple[NosnikPunktuNeutralnego, ...]]]:
     """Sieci SN z co najmniej dwoma ZADEKLAROWANYMI uziemionymi nośnikami punktu neutralnego
     (decyzja architekta D1 karty POLA-GPZ-SZABLONY, kod E-W5-04): punkt neutralny sieci SN
     uziemia się w JEDNYM miejscu — dwa boczniki zerowe w jednej sieci liczyłyby się równolegle.
 
-    JEDNO źródło sieci i punktów: ``uziemienie_sieci`` (ta sama prawda co mapowanie Y0).
+    JEDNO źródło sieci i punktów: ``sieci_sn`` (ten sam podział i punkty co ``uziemienie_sieci``
+    i mapowanie Y0; bez pojemności — wynik to szyny sieci i jej nośniki).
     Nośnik zadeklarowany: zespół uziemiający z typem uziemionym (niezależnie od stanów
     odłączników gałęzi — to stan ruchowy, nie opis sieci) i uzwojenie transformatora
     z jawną konfiguracją uziemioną. Punkt wyprowadzony bez konfiguracji (litera grupy, np. Dyn11
@@ -657,11 +658,11 @@ def nosniki_sieci(
     decyzją projektanta — nie jest nośnikiem (pomiar 2026-11-05: golden network ENM). Źródło na
     szynie SN nie jest nośnikiem: jego opis punktu neutralnego fizyka pomija (W-W5-02,
     ``impedancja_zerowa_zrodla_dozwolona``)."""
-    wynik: list[tuple[UziemienieSekcji, tuple[NosnikPunktuNeutralnego, ...]]] = []
+    wynik: list[tuple[tuple[str, ...], tuple[NosnikPunktuNeutralnego, ...]]] = []
     trafo = {t.ref_id: t for t in enm.transformers}
-    for sekcja in uziemienie_sieci(enm):
+    for szyny, _u_kv, punkty in sieci_sn(enm):
         nosniki: list[NosnikPunktuNeutralnego] = []
-        for punkt in sekcja.punkty:
+        for punkt in punkty:
             if not punkt.jawny:
                 continue
             element = trafo[punkt.element_ref]
@@ -673,7 +674,7 @@ def nosniki_sieci(
                 NosnikPunktuNeutralnego(punkt.element_ref, punkt.bus_ref, pole, cfg.type)
             )
         if len(nosniki) > 1:
-            wynik.append((sekcja, tuple(nosniki)))
+            wynik.append((szyny, tuple(nosniki)))
     return wynik
 
 
@@ -765,21 +766,40 @@ def _ostrzezenia(sekcja: UziemienieSekcji) -> tuple[str, ...]:
 
 
 def tor_odlaczonego_pola_zu(enm: EnergyNetworkModel, szyny: Iterable[str]) -> bool:
-    """Czy zbiór szyn to wyłącznie zaciski torów pól zespołu uziemiającego (rola ``ZU``).
+    """Czy zbiór szyn to wyłącznie tor odłączonego pola zespołu uziemiającego: zaciski torów
+    pól o roli ``ZU`` oraz szyny potrzeb własnych 0,4 kV transformatorów uziemiających
+    przyłączonych do tych zacisków (karta ZU-JEDEN-NOSNIK: zespół = transformator ZNyn11
+    z szyną potrzeb własnych, więc za otwartym wyłącznikiem pola ZU leży zacisk SN RAZEM
+    z szyną 0,4 kV tego transformatora). Zbiór musi zawierać co najmniej jeden zacisk pola ZU.
 
     JEDEN predykat dla uziemienia sieci (zespół za otwartym wyłącznikiem pola nie jest
     siecią SN i nie uziemia niczego) i walidatora (E003: tor odłączonego pola ZU nie jest
     „wyspą odciętą od zasilania”, tylko zespołem wyłączonym z ruchu — stan ruchowy, nie
     błąd modelu). Pusty zbiór — ``False``."""
     zaciski = {b.terminal_bus_ref for b in enm.bays if b.bay_role == "ZU" and b.terminal_bus_ref}
+    szyny_potrzeb_wlasnych = {
+        t.lv_bus_ref
+        for t in enm.transformers
+        if t.hv_bus_ref in zaciski and jest_transformatorem_uziemiajacym(t)
+    }
     lista = list(szyny)
-    return bool(lista) and all(s in zaciski for s in lista)
+    return any(s in zaciski for s in lista) and all(
+        s in zaciski or s in szyny_potrzeb_wlasnych for s in lista
+    )
 
 
-def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
-    """Uziemienie każdej galwanicznie połączonej sieci SN modelu (kolejność ``derive``)."""
+def sieci_sn(
+    enm: EnergyNetworkModel,
+) -> tuple[tuple[tuple[str, ...], float, tuple[PunktUziemienia, ...]], ...]:
+    """Galwanicznie połączone sieci SN modelu (kolejność ``derive``): (szyny posortowane,
+    napięcie sieci [kV], punkty uziemienia) — BEZ pojemności doziemnej.
+
+    JEDEN podział na sieci i jeden zbiór punktów dla ``uziemienie_sieci`` (dokłada B0, I_C,
+    rozstrojenie) i dla bloku nośników ``nosniki_sieci`` (E-W5-04): podział i punkty nie zależą od
+    danych pojemności, więc walidator topologii nośników nie czyta admitancji baterii, której
+    niespójność zgłasza osobno (E043)."""
     napiecie = {b.ref_id: b.voltage_kv for b in enm.buses}
-    wynik: list[UziemienieSekcji] = []
+    wynik: list[tuple[tuple[str, ...], float, tuple[PunktUziemienia, ...]]] = []
     for skladowa in derive(enm).sekcje:
         napiecia = [napiecie[s] for s in skladowa if napiecie.get(s)]
         if not napiecia:
@@ -795,11 +815,19 @@ def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
             continue
         szyny = frozenset(skladowa)
         punkty = _punkty_uzwojen(list(enm.transformers), szyny, u_kv)
-        b0, bez_b0, baterie_b0, b0_robocze = _b0_sieci(enm, szyny)
+        wynik.append((tuple(sorted(szyny)), u_kv, tuple(punkty)))
+    return tuple(wynik)
+
+
+def uziemienie_sieci(enm: EnergyNetworkModel) -> tuple[UziemienieSekcji, ...]:
+    """Uziemienie każdej galwanicznie połączonej sieci SN modelu (kolejność ``derive``)."""
+    wynik: list[UziemienieSekcji] = []
+    for szyny, u_kv, punkty in sieci_sn(enm):
+        b0, bez_b0, baterie_b0, b0_robocze = _b0_sieci(enm, frozenset(szyny))
         sekcja = UziemienieSekcji(
-            szyny=tuple(sorted(szyny)),
+            szyny=szyny,
             napiecie_kv=u_kv,
-            punkty=tuple(punkty),
+            punkty=punkty,
             b0_s=b0,
             galezie_bez_b0=bez_b0,
             baterie_b0=baterie_b0,

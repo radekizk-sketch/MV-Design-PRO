@@ -1,0 +1,16 @@
+# version: ZU-JEDEN-NOSNIK (2026-11-11) — jeden nosnik zespolu uziemiajacego SN: transformator
+# uziemiajacy ZNyn11 (`Transformer.hv_neutral` z typowanym wyposazeniem punktu neutralnego).
+# Skasowane BEZ warstwy zgodnosci: kolekcja modelu `zespoly_uziemiajace` i jej klasa, wskaznik
+# odbioru potrzeb wlasnych, punkt zespolu w prawdzie o uziemieniu sekcji, zapis zespolu w `meta`
+# transformatora (model B), prad AWSC jako pole konfiguracji punktu neutralnego (model B).
+# Postaci UZYCIA w Pythonie, TS i JSON — nowe miejsce = wskrzeszenie drugiego nosnika.
+\bzespoly_uziemiajace\b
+\bzespolyUziemiajace\b
+\bZespolUziemiajacy\b
+\bodbior_pw_ref\b
+\bodbiorPwRef\b
+\bpunkt_zespolu\b
+\bawsc_prad_wymuszenia_a\b
+meta\["zespol_uziemiajacy"\]
+meta\.zespol_uziemiajacy\b
+\bZAPIS_ZESPOLU\b
