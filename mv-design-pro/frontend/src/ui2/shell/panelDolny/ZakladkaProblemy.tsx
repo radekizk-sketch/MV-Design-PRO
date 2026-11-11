@@ -11,6 +11,7 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { sanitizePublicReadinessMessage } from '../../../ui/shared/publicReadinessMessage';
 import type { ReadinessSeverity } from '../../../ui/types';
 import type { KontekstPaneluDolnego } from './rejestrZakladek';
+import { ETYKIETA_POKAZ_NA_SCHEMACIE, elementNaSchemacie } from '../zaznaczElementModelu';
 
 const WAGA: Record<ReadinessSeverity, string> = {
   BLOCKER: 'Blokada',
@@ -32,6 +33,8 @@ export function LicznikProblemow() {
 
 export function ZakladkaProblemy({ onWybierzElement }: KontekstPaneluDolnego) {
   const readiness = useSnapshotStore((s) => s.readiness);
+  // Subskrypcja migawki: wiersz jest akcją tylko dla elementu obecnego na schemacie.
+  useSnapshotStore((s) => s.snapshot);
   const problemy = useProblemyGotowosci();
 
   if (!czyGotowoscUstalona(readiness)) {
@@ -61,12 +64,12 @@ export function ZakladkaProblemy({ onWybierzElement }: KontekstPaneluDolnego) {
         );
         return (
           <li key={`${problem.code}:${ref ?? '-'}:${indeks}`}>
-            {ref ? (
+            {ref && elementNaSchemacie(ref) ? (
               <button
                 type="button"
                 className="mvd-dolny-wiersz"
                 onClick={() => onWybierzElement(ref)}
-                title="Pokaż element na schemacie (przejście do schematu i kadr) oraz w inspektorze"
+                title={`${ETYKIETA_POKAZ_NA_SCHEMACIE} (przejście do schematu i kadr) oraz w inspektorze`}
                 data-testid={`mvd-problem-${indeks}`}
               >
                 {tresc}

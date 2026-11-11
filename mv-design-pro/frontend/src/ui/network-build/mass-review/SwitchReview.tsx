@@ -8,9 +8,9 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { PokazZPrzegladu, przegladajElement } from './wejscieZPrzegladu';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useSelectionStore } from '../../selection';
 import { isApparatusBranch } from '../../../types/enm';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 
@@ -38,7 +38,6 @@ export interface SwitchReviewProps {
 
 export function SwitchReview({ className }: SwitchReviewProps) {
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  const selectElement = useSelectionStore((s) => s.selectElement);
 
   const rows = useMemo(() => {
     if (!snapshot) return [];
@@ -62,12 +61,9 @@ export function SwitchReview({ className }: SwitchReviewProps) {
 
   const handleRowClick = useCallback(
     (row: (typeof rows)[0]) => {
-      selectElement({ id: row.id, type: 'Switch', name: row.name });
-      window.dispatchEvent(
-        new CustomEvent('sld:center-on-element', { detail: { elementId: row.id } }),
-      );
+      przegladajElement({ id: row.id, type: 'Switch', name: row.name });
     },
-    [selectElement],
+    [],
   );
 
   const openCount = rows.filter((r) => r.state === 'open').length;
@@ -103,6 +99,7 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                 <th className="px-3 py-1.5 text-center font-medium text-gray-500">NOP</th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Katalog</th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">ID</th>
+                <th className="px-3 py-1.5 text-right font-medium text-gray-500">Schemat</th>
               </tr>
             </thead>
             <tbody>
@@ -149,6 +146,9 @@ export function SwitchReview({ className }: SwitchReviewProps) {
                     )}
                   </td>
                   <td className="px-3 py-1.5 text-gray-400 font-mono text-[10px]">{row.id}</td>
+                  <td className="px-3 py-1.5 text-right">
+                    <PokazZPrzegladu elementRef={row.id} />
+                  </td>
                 </tr>
               ))}
             </tbody>

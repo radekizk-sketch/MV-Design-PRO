@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { KrokDowodu } from '../KrokDowodu';
 import { mapujKroki } from '../dowodModel';
 import { DOWOD_STRINGS } from '../strings';
+import { ETYKIETA_POKAZ_NA_SCHEMACIE } from '../../../shell/zaznaczElementModelu';
 import { subskrybuj } from '../../../events';
 import { traceStepsFixture } from './fixtures';
 import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
@@ -116,7 +117,7 @@ describe('KrokDowodu — powiązanie krok → element (magistrala zdarzeń)', ()
   it('przycisk używa etykiety PL', () => {
     render(<KrokDowodu krok={model()[0]} szczegolyAudytowe={false} />);
     expect(
-      screen.getByRole('button', { name: DOWOD_STRINGS.pokazNaSchemacie }),
+      screen.getByRole('button', { name: ETYKIETA_POKAZ_NA_SCHEMACIE }),
     ).toBeInTheDocument();
   });
 });

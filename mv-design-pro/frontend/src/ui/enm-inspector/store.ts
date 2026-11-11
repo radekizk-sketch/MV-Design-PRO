@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import type { DiagnosticSeverity } from './types';
 
-type InspectorTab = 'tree' | 'diagnostics' | 'preflight' | 'reference';
+type InspectorTab = 'diagnostics' | 'preflight' | 'reference';
 
 interface EnmInspectorState {
   /** Aktualnie wybrany tab */
@@ -16,47 +16,26 @@ interface EnmInspectorState {
   severityFilter: DiagnosticSeverity | null;
   /** Wybrany element ENM (ref_id) */
   selectedElementId: string | null;
-  /** Rozwinięte węzły drzewa */
-  expandedNodes: Set<string>;
-  /** Wyszukiwarka drzewa */
-  searchQuery: string;
 
   // Actions
   setActiveTab: (tab: InspectorTab) => void;
   setSeverityFilter: (severity: DiagnosticSeverity | null) => void;
   setSelectedElementId: (id: string | null) => void;
-  toggleNode: (nodeId: string) => void;
-  setSearchQuery: (query: string) => void;
   reset: () => void;
 }
 
 export const useEnmInspectorStore = create<EnmInspectorState>((set) => ({
-  activeTab: 'tree',
+  activeTab: 'diagnostics',
   severityFilter: null,
   selectedElementId: null,
-  expandedNodes: new Set<string>(),
-  searchQuery: '',
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSeverityFilter: (severity) => set({ severityFilter: severity }),
   setSelectedElementId: (id) => set({ selectedElementId: id }),
-  toggleNode: (nodeId) =>
-    set((state) => {
-      const next = new Set(state.expandedNodes);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return { expandedNodes: next };
-    }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
   reset: () =>
     set({
-      activeTab: 'tree',
+      activeTab: 'diagnostics',
       severityFilter: null,
       selectedElementId: null,
-      expandedNodes: new Set<string>(),
-      searchQuery: '',
     }),
 }));

@@ -34,7 +34,6 @@ import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
 import { kanwaSchematuWidocznaDla, powierzchniaRozwinieta } from '../shell/widokKanwySchematu';
-import { pokazElementNaSchemacie } from '../shell/zaznaczElementModelu';
 import { LegacySurface } from './LegacySurface';
 
 /** Strona nieznanej trasy — PRZENIESIONA z App.tsx (kasacja ramy E1.7c). */
@@ -193,10 +192,7 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
     <div className="mvd-legacy-host">
       {/* Walidacja semantyczna — globalny baner nad warsztatem (dawny AppShellV12). */}
       {(semanticIssues?.length ?? 0) > 0 && (
-        <SemanticIssuesBanner
-          issues={semanticIssues}
-          onSelectElement={(ref) => pokazElementNaSchemacie(ref, 'baner-problemow-semantycznych')}
-        />
+        <SemanticIssuesBanner issues={semanticIssues} />
       )}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}

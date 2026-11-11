@@ -8,9 +8,9 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { PokazZPrzegladu, przegladajElement } from './wejscieZPrzegladu';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { podpisStacjiPl } from '../../shared/rodzajStacji';
-import { useSelectionStore } from '../../selection';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import {
   kontekstTransformatorowStacji,
@@ -40,7 +40,6 @@ interface StationRow {
 export function IncompleteStationsReview() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
-  const selectElement = useSelectionStore((s) => s.selectElement);
 
   const rows = useMemo((): StationRow[] => {
     if (!snapshot) return [];
@@ -77,12 +76,9 @@ export function IncompleteStationsReview() {
 
   const handleNavigate = useCallback(
     (stationId: string) => {
-      selectElement({ id: stationId, type: 'Station', name: stationId });
-      window.dispatchEvent(
-        new CustomEvent('sld:center-on-element', { detail: { elementId: stationId } }),
-      );
+      przegladajElement({ id: stationId, type: 'Station', name: stationId });
     },
-    [selectElement],
+    [],
   );
 
   if (rows.length === 0) {
@@ -110,6 +106,7 @@ export function IncompleteStationsReview() {
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Szyny nN</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Zagadnienia</th>
             <th className="px-3 py-2 font-medium text-gray-600">Kontrola</th>
+            <th className="px-3 py-1.5 text-right font-medium text-gray-500">Schemat</th>
           </tr>
         </thead>
         <tbody>
@@ -147,6 +144,9 @@ export function IncompleteStationsReview() {
                 ) : (
                   <span className="inline-block w-2 h-2 rounded-full bg-red-500" title="Niekompletna" />
                 )}
+              </td>
+              <td className="px-3 py-1.5 text-right">
+                <PokazZPrzegladu elementRef={r.id} />
               </td>
             </tr>
           ))}

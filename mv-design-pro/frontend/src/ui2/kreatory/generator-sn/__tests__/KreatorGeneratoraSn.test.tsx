@@ -46,7 +46,8 @@ vi.mock('../../../../ui/selection', () => ({
   useSelectionStore: (selector: (s: typeof selectionState) => unknown) => selector(selectionState),
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => undefined,
 }));
 

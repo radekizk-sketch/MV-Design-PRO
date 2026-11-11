@@ -34,7 +34,8 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationForm: () => activeForm,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

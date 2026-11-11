@@ -41,7 +41,9 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useActiveOperationForm: () => activeForm,
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({ navigateToSld: () => undefined }));
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  navigateToSld: () => undefined }));
 
 vi.mock('../../../../ui/selection', () => ({
   useSelectionStore: (selector: (s: { selectElement: () => void; centerSldOnElement: () => void }) => unknown) =>

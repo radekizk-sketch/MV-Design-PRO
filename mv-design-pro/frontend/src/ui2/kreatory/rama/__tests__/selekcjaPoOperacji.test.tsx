@@ -17,7 +17,8 @@ const navigateToSldMock = vi.fn();
 const selectElementMock = vi.fn();
 const centerSldOnElementMock = vi.fn();
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

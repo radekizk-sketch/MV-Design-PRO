@@ -9,6 +9,7 @@
  */
 
 import { useMemo } from 'react';
+import { PrzyciskPokazNaSchemacie } from '../../../../ui2/shared/PrzyciskPokazNaSchemacie';
 
 import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import {
@@ -31,8 +32,6 @@ export interface StationConfigDerSourcesCardProps {
   readonly ders: readonly StationDerConnection[];
   /** Otwarcie konfiguratora dla DERa (E-21/E-22/E-23). */
   readonly onOpenDer?: (derId: string, derKind: AddDerKindRequest) => void;
-  /** Otwarcie SLD focused na DERze. */
-  readonly onShowOnSld?: (derId: string) => void;
   /** Wywołanie kreatora dodawania DERa. */
   readonly onAddDer?: (kind: AddDerKindRequest) => void;
   /** Usunięcie DERa (po potwierdzeniu w UI). */
@@ -124,7 +123,6 @@ export function StationConfigDerSourcesCard(
     stationLabel,
     ders,
     onOpenDer,
-    onShowOnSld,
     onAddDer,
     onDetachDer,
     canDetachDer,
@@ -247,15 +245,11 @@ export function StationConfigDerSourcesCard(
                           Otwórz
                         </RowAction>
                       )}
-                      {onShowOnSld && (
-                        <RowAction
-                          testId={`der-action-sld-${der.id}`}
-                          title="Pokaż na schemacie SLD"
-                          onClick={() => onShowOnSld(der.id)}
-                        >
-                          SLD
-                        </RowAction>
-                      )}
+                      <PrzyciskPokazNaSchemacie
+                        elementRef={der.id}
+                        zrodlo="konfigurator-stacji"
+                        testId={`der-action-sld-${der.id}`}
+                      />
                       {onDetachDer && (canDetachDer?.(der.id) ?? true) && (
                         <RowAction
                           testId={`der-action-detach-${der.id}`}

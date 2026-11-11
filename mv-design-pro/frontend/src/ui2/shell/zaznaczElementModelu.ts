@@ -6,7 +6,7 @@
  * wyników, pozycja gotowości, węzeł drzewa, link inspektora, krok dowodu, przegląd
  * zbiorczy, wyszukiwarka, kreator po zapisie), przechodzi przez JEDNĄ z dwóch
  * funkcji tego modułu. Drugiego mechanizmu nie ma: zdarzenie DOM
- * `sld:center-on-element` (nikt go nie słuchał), gołe `centerSldOnElement` w
+ * DOM „wyśrodkuj schemat na elemencie” (nikt go nie słuchał), gołe `centerSldOnElement` w
  * komponentach i własne `navigateToSld()` są skasowane i pilnowane regułą G
  * strażnika `scripts/nawigacja_jeden_kanon_guard.py`.
  *
@@ -28,16 +28,18 @@
  */
 
 import { emituj } from '../events';
+import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore, type TrybWskazaniaSld } from '../../ui/selection/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { resolveSelectedElementFromSnapshot } from '../../ui/shared/selectionResolution';
 import type { SelectedElement } from '../../ui/types';
 import { przejdzDoPrzestrzeni } from './przejsciaPrzestrzeni';
 import { zapiszPowrot, type EkranPowrotu } from './powrotZeSchematu';
-import { kanwaSchematuWidoczna } from './widokKanwySchematu';
+import { kanwaSchematuWidoczna, powierzchniaRozwinieta } from './widokKanwySchematu';
+import { useShellStore } from './useShellStore';
 
-/** Etykieta akcji — JEDNA w całej aplikacji (karta, pkt 5). */
-export const ETYKIETA_POKAZ_NA_SCHEMACIE = 'Pokaż na schemacie';
+/** Etykieta akcji — JEDNA w całej aplikacji (karta, pkt 5); źródło w module liściowym. */
+export { ETYKIETA_POKAZ_NA_SCHEMACIE } from './etykietaPokazNaSchemacie';
 
 /**
  * Element migawki modelu dla refu albo `null` (brak na schemacie). Bez migawki
@@ -95,8 +97,23 @@ export interface OpcjePokazania {
 }
 
 /**
+ * Czy wołający stoi w ROZWINIĘTEJ powierzchni (konfigurator stacji, przegląd
+ * techniczny układu): warsztat pokazuje wtedy powierzchnię, nie kanwę, nawet po
+ * przejściu do przestrzeni „Schemat".
+ */
+function wRozwinietejPowierzchni(): boolean {
+  const openMode = useNetworkBuildStore.getState().activeSurface?.openMode;
+  return powierzchniaRozwinieta(openMode, useShellStore.getState().activeSpace);
+}
+
+/**
  * Jawne wejście na schemat. Zwraca `true`, gdy element jest na schemacie;
  * ref nieobecny w migawce nie przełącza przestrzeni i nie zapisuje powrotu.
+ *
+ * Wołający w rozwiniętej powierzchni dostaje kanwę jako KOLEJNĄ powierzchnię
+ * stosu (E-01, ten sam `KanwaSchematu`) — powrót niesie wtedy okruszek stosu
+ * powierzchni (`SurfaceBreadcrumbs`), więc wpis „Wróć do" nie powstaje (dwie
+ * drogi powrotu do tego samego ekranu byłyby drugą historią).
  */
 export function pokazElementNaSchemacie(ref: string, zrodlo: string, opcje: OpcjePokazania = {}): boolean {
   const element = elementNaSchemacie(ref);
@@ -105,12 +122,24 @@ export function pokazElementNaSchemacie(ref: string, zrodlo: string, opcje: Opcj
     return false;
   }
   const naKanwie = kanwaSchematuWidoczna();
-  if (!naKanwie || opcje.powrot) zapiszPowrot(opcje.powrot ?? null);
+  const wPowierzchni = !naKanwie && wRozwinietejPowierzchni();
+  if (!wPowierzchni && (!naKanwie || opcje.powrot)) zapiszPowrot(opcje.powrot ?? null);
   const selekcja = useSelectionStore.getState();
   selekcja.selectElement(element);
   selekcja.centerSldOnElement(element.id, opcje.tryb ?? 'kadruj');
   emituj({ typ: 'selekcja', obiektId: ref, zrodlo });
-  if (!naKanwie) przejdzDoPrzestrzeni('schemat');
+  if (wPowierzchni) {
+    useNetworkBuildStore.getState().openRouteSurface('E-01', {
+      titlePl: 'Schemat i topologia',
+      entityRef: element.id,
+      subjectKind: 'entity',
+      subjectRef: element.id,
+      route: 'sld',
+      supportsMiniSld: true,
+    });
+  } else if (!naKanwie) {
+    przejdzDoPrzestrzeni('schemat');
+  }
   return true;
 }
 

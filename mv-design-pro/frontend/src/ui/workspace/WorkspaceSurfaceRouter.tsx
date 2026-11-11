@@ -55,7 +55,7 @@ import { EkranDynamiki } from '../../ui2/wyniki/dynamika';
 import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
 import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
 import { useShellStore } from '../../ui2/shell/useShellStore';
-import { zaznaczElementModelu } from '../../ui2/shell/zaznaczElementModelu';
+import { pokazElementNaSchemacie, zaznaczElementModelu } from '../../ui2/shell/zaznaczElementModelu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 import {
   exportReport,
@@ -1904,7 +1904,6 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const fixActions = useSnapshotStore((state) => state.fixActions);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
-  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const blockerCount = readiness?.blockers?.length ?? 0;
@@ -2070,14 +2069,11 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
     }
 
     if (target.kind === 'navigate_to_element' && target.element_ref) {
-      openRouteSurface('E-01', {
-        titlePl: 'Schemat i topologia',
-        entityRef: target.element_ref,
-        subjectKind: 'entity',
-        subjectRef: target.element_ref,
-        route: 'sld',
-        supportsMiniSld: true,
-      });
+      // Jedyna droga wejścia na schemat: zaznaczenie + wskazanie kamery; w
+      // rozwiniętej powierzchni kanwa wchodzi jako kolejna powierzchnia stosu.
+      // Dawne gołe `openRouteSurface('E-01', {entityRef})` otwierało kanwę bez
+      // wskazania (entityRef nie miał konsumenta kamery).
+      pokazElementNaSchemacie(target.element_ref, 'przeglad-techniczny-ukladu');
     }
   };
 

@@ -19,3 +19,6 @@ export { IncompleteStationsReview } from './IncompleteStationsReview';
 
 export { MassReviewPanel } from './MassReviewPanel';
 export type { MassReviewPanelProps, ReviewTab } from './MassReviewPanel';
+
+export { KontekstPrzegladuZbiorczego, PokazZPrzegladu, przegladajElement } from './wejscieZPrzegladu';
+export type { KontekstPrzegladu } from './wejscieZPrzegladu';

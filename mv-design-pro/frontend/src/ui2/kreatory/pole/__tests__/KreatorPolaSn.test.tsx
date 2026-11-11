@@ -44,7 +44,8 @@ vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   stationLabel: () => 'Rozdzielnia ST-1',
 }));
 
-vi.mock('../../../../ui/navigation/routes', () => ({
+vi.mock('../../../../ui/navigation/routes', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   navigateToSld: () => navigateToSldMock(),
 }));
 

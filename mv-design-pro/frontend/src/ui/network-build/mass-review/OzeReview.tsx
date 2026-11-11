@@ -8,10 +8,10 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { PokazZPrzegladu, przegladajElement } from './wejscieZPrzegladu';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
-import { useSelectionStore } from '../../selection';
 import { formatGeneratorTypeShortLabelPl } from '../../shared/generatorTypeLabels';
 
 // =============================================================================
@@ -38,7 +38,6 @@ export function OzeReview({ className }: OzeReviewProps) {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
-  const selectElement = useSelectionStore((s) => s.selectElement);
 
   const blockerRefs = useMemo(() => {
     const set = new Set<string>();
@@ -75,12 +74,9 @@ export function OzeReview({ className }: OzeReviewProps) {
 
   const handleRowClick = useCallback(
     (row: (typeof rows)[0]) => {
-      selectElement({ id: row.id, type: 'Generator', name: row.name });
-      window.dispatchEvent(
-        new CustomEvent('sld:center-on-element', { detail: { elementId: row.id } }),
-      );
+      przegladajElement({ id: row.id, type: 'Generator', name: row.name });
     },
-    [selectElement],
+    [],
   );
 
   const handleAssignCatalog = useCallback(
@@ -130,6 +126,7 @@ export function OzeReview({ className }: OzeReviewProps) {
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Stacja</th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Katalog</th>
                 <th className="px-3 py-1.5 text-right font-medium text-gray-500">Akcja</th>
+                <th className="px-3 py-1.5 text-right font-medium text-gray-500">Schemat</th>
               </tr>
             </thead>
             <tbody>
@@ -197,6 +194,9 @@ export function OzeReview({ className }: OzeReviewProps) {
                         Przypisz
                       </button>
                     )}
+                  </td>
+                  <td className="px-3 py-1.5 text-right">
+                    <PokazZPrzegladu elementRef={row.id} />
                   </td>
                 </tr>
               ))}

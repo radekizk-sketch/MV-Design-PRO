@@ -15,6 +15,7 @@
  */
 
 import { useMemo, useState } from 'react';
+import { PrzyciskPokazNaSchemacie } from '../../ui2/shared/PrzyciskPokazNaSchemacie';
 import { useSnapshotStore, type SnapshotOperationHistoryEntry } from '../topology/snapshotStore';
 import type { CanonicalOpName } from '../../types/domainOps';
 import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
@@ -135,14 +136,11 @@ interface AuditTrailPanelProps {
   elementRef?: string;
   /** Maks liczba wpisów do pokazania (przed paginacją). Default 100. */
   maxEntries?: number;
-  /** Callback gdy user klika "Pokaż element" w wpisie. */
-  onSelectElement?: (ref: string) => void;
 }
 
 export function AuditTrailPanel({
   elementRef,
   maxEntries = 100,
-  onSelectElement,
 }: AuditTrailPanelProps): JSX.Element {
   const history = useSnapshotStore((s) => s.operationHistory);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -245,15 +243,16 @@ export function AuditTrailPanel({
                   Element: <span className="text-scada-text">{entry.elementName}</span>
                 </div>
               )}
-              {!elementRef && entry.elementRef && onSelectElement && (
-                <button
-                  type="button"
-                  onClick={() => onSelectElement(entry.elementRef!)}
-                  className="text-[10px] text-blue-400 hover:underline self-start"
-                  data-testid={`audit-trail-show-element-${entry.id}`}
-                >
-                  Pokaż element na SLD
-                </button>
+              {/* Wspólne wejście na schemat (karta SLD-SKALA-I-NAWIGACJA); dawne
+                  „Pokaż element na SLD" tylko zaznaczało element z typem zgadniętym
+                  jako szyna. Element usunięty z modelu nie ma przycisku. */}
+              {!elementRef && entry.elementRef && (
+                <PrzyciskPokazNaSchemacie
+                  elementRef={entry.elementRef}
+                  zrodlo="dziennik-operacji"
+                  testId={`audit-trail-show-element-${entry.id}`}
+                  className="self-start"
+                />
               )}
             </li>
           ))}

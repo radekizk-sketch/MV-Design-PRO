@@ -8,10 +8,10 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { PokazZPrzegladu, przegladajElement } from './wejscieZPrzegladu';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
-import { useSelectionStore } from '../../selection';
 
 // =============================================================================
 // Types
@@ -36,7 +36,6 @@ export interface MissingCatalogReviewProps {
 export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
-  const selectElement = useSelectionStore((s) => s.selectElement);
 
   const rows = useMemo((): MissingCatalogRow[] => {
     if (!snapshot) return [];
@@ -105,7 +104,7 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
 
   const handleRowClick = useCallback(
     (row: MissingCatalogRow) => {
-      selectElement({
+      przegladajElement({
         id: row.id,
         type: row.category === 'branch' ? 'LineBranch'
           : row.category === 'transformer' ? 'TransformerBranch'
@@ -114,11 +113,8 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
           : 'Load',
         name: row.name,
       });
-      window.dispatchEvent(
-        new CustomEvent('sld:center-on-element', { detail: { elementId: row.id } }),
-      );
     },
-    [selectElement],
+    [],
   );
 
   const handleAssignCatalog = useCallback(
@@ -180,6 +176,7 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Kategoria</th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">ID</th>
                 <th className="px-3 py-1.5 text-right font-medium text-gray-500">Akcja</th>
+                <th className="px-3 py-1.5 text-right font-medium text-gray-500">Schemat</th>
               </tr>
             </thead>
             <tbody>
@@ -212,6 +209,9 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
                       Przypisz
                     </button>
                   </td>
+                  <td className="px-3 py-1.5 text-right">
+                    <PokazZPrzegladu elementRef={row.id} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -222,7 +222,7 @@ export function MissingCatalogReview({ className }: MissingCatalogReviewProps) {
       {/* Footer */}
       {rows.length > 0 && (
         <div className="px-4 py-1.5 border-t border-gray-100 bg-gray-50 text-[10px] text-gray-400">
-          {rows.length} elementów bez katalogu — kliknij wiersz aby zlokalizować na schemacie
+          {rows.length} elementów bez katalogu — kliknij wiersz, aby zaznaczyć element; przycisk „Pokaż na schemacie” otwiera schemat
         </div>
       )}
     </div>

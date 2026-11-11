@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import {
   TabelaWynikow,
@@ -11,6 +11,25 @@ import { WZORZEC_STRINGS } from '../strings';
 import type { DefinicjaKolumny, WierszTabeli } from '../wzorzecModel';
 import { kolumnyFixture, wierszeFixture } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection';
+import { ustawMigawkeZElementami } from '../../../../test/schematTestowy';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+
+/**
+ * Karta SLD-SKALA-I-NAWIGACJA: akcja decyzji z celem „schemat" renderuje się
+ * WYŁĄCZNIE dla elementu obecnego w migawce modelu (ten sam predykat co jedyna
+ * droga `pokazElementNaSchemacie`). Klucze fixtury („Szyna A/B/C") są refami szyn.
+ */
+function migawkaSzynFixtury(): void {
+  ustawMigawkeZElementami(
+    ['Szyna A', 'Szyna B', 'Szyna C'].map((id) => ({ kolekcja: 'buses' as const, id, pola: { voltage_kv: 15 } })),
+  );
+}
+
+// Migawka jest sklepem modułowym — bez sprzątania przeciekałaby do opisów, które
+// badają tabelę bez modelu (kanonikalizacja selekcji odrzuca wtedy obce refy).
+afterEach(() => {
+  useSnapshotStore.setState({ snapshot: null });
+});
 
 function props(over: Partial<Parameters<typeof TabelaWynikow>[0]> = {}) {
   return {
@@ -30,6 +49,15 @@ function kolejnoscNazw(): string[] {
 }
 
 describe('TabelaWynikow — pętla decyzji (F-E6.1: „Popraw w modelu")', () => {
+  beforeEach(migawkaSzynFixtury);
+
+  it('element wiersza nieobecny w migawce modelu → brak przycisku decyzji (bez martwego kliku)', () => {
+    useSnapshotStore.setState({ snapshot: null });
+    render(<TabelaWynikow {...props({ onPoprawWModelu: vi.fn() })} />);
+    expect(screen.getByTestId('mvd-wyn-th-decyzja')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+
   it('bez onPoprawWModelu: brak kolumny decyzji i przycisków (zero zmiany dla nie-konsumentów)', () => {
     render(<TabelaWynikow {...props()} />);
     expect(screen.queryByTestId('mvd-wyn-th-decyzja')).toBeNull();
@@ -470,6 +498,7 @@ describe('TabelaWynikow — wirtualizacja okienkowa (>500 wierszy)', () => {
 });
 
 describe('TabelaWynikow — tryb decyzji (F-K4)', () => {
+  beforeEach(migawkaSzynFixtury);
   /** Wiersz BEZ ostrzeżenia (fixtura ma taki: „Szyna C"). */
   const bezOstrzezenia = [wierszeFixture[2]];
 

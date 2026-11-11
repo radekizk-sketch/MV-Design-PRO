@@ -563,6 +563,7 @@ export function AppRoot() {
       <MassReviewPanel
         isOpen={przegladOtwarty}
         onClose={() => setPrzegladOtwarty(false)}
+        onOtworz={() => setPrzegladOtwarty(true)}
         initialTab="readiness"
       />
       <ProjectMetadataModal

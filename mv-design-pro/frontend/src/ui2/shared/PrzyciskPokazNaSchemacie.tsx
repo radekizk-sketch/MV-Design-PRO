@@ -48,6 +48,8 @@ export function PrzyciskPokazNaSchemacie({
   const onClick = (e: MouseEvent<HTMLButtonElement>) => {
     // Wiersz tabeli bywa sam klikalny (zaznaczenie) — wejście nie wybiera wiersza drugi raz.
     e.stopPropagation();
+    // Przycisk w `<summary>` nie przełącza rozwinięcia sekcji przy wejściu na schemat.
+    e.preventDefault();
     przed?.();
     pokazElementNaSchemacie(elementRef, zrodlo, opcje);
   };

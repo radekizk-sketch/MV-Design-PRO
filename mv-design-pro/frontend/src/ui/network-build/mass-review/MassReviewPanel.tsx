@@ -17,6 +17,7 @@ import { ReadinessBlockersReview } from './ReadinessBlockersReview';
 import { IncompleteStationsReview } from './IncompleteStationsReview';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { isApparatusBranch } from '../../../types/enm';
+import { KontekstPrzegladuZbiorczego, type KontekstPrzegladu } from './wejscieZPrzegladu';
 
 // =============================================================================
 // Types
@@ -47,11 +48,32 @@ export interface MassReviewPanelProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: ReviewTab;
+  /**
+   * Ponowne otwarcie okna przez „Wróć do" ze schematu (właściciel stanu `isOpen`).
+   * Bez niego wiersze nie zapisują powrotu do okna.
+   */
+  onOtworz?: () => void;
   className?: string;
 }
 
-export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', className }: MassReviewPanelProps) {
+export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', onOtworz, className }: MassReviewPanelProps) {
   const [activeTab, setActiveTab] = useState<ReviewTab>(initialTab);
+  const kontekst = useMemo<KontekstPrzegladu>(() => {
+    const etykieta = TABS.find((t) => t.id === activeTab)?.label ?? activeTab;
+    const zakladka = activeTab;
+    return {
+      zamknij: onClose,
+      powrot: {
+        etykieta: `Kontrola techniczna układu — ${etykieta}`,
+        przywroc: onOtworz
+          ? () => {
+              setActiveTab(zakladka);
+              onOtworz();
+            }
+          : undefined,
+      },
+    };
+  }, [activeTab, onClose, onOtworz]);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
 
@@ -161,6 +183,7 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
         </div>
 
         {/* Content */}
+        <KontekstPrzegladuZbiorczego.Provider value={kontekst}>
         <div className="flex-1 overflow-hidden">
           {activeTab === 'catalog' && <MissingCatalogReview />}
           {activeTab === 'transformers' && <TransformerReview />}
@@ -169,6 +192,7 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
           {activeTab === 'readiness' && <ReadinessBlockersReview />}
           {activeTab === 'stations' && <IncompleteStationsReview />}
         </div>
+        </KontekstPrzegladuZbiorczego.Provider>
       </div>
     </div>
   );
