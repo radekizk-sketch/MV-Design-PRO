@@ -1403,20 +1403,24 @@ _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ: dict[str, str] = {
 
 
 def _rodzaj_aparatu_glownego_galezi(galaz: Mapping[str, Any]) -> str | None:
-    """Rodzaj aparatu pierwotnego pola wskazującego gałąź łącznika modelu. Gałąź `bus_coupler`
-    jest rolą w topologii (łącznik sekcji), nie rodzajem wyrobu — rodzaj wyrobu pochodzi
-    z pozycji katalogu gałęzi (`_DEVICE_KIND_NA_TYP_GALEZI`), domyślnie wyłącznik."""
-    typ = str(galaz.get("type"))
-    if typ == "bus_coupler":
-        catalog_ref = galaz.get("catalog_ref")
-        kind = (
-            _rodzaj_aparatu_sn_z_katalogu(catalog_ref)
-            if isinstance(catalog_ref, str) and catalog_ref
-            else None
-        )
-        if kind in _DEVICE_KIND_NA_TYP_GALEZI:
-            typ = _DEVICE_KIND_NA_TYP_GALEZI[kind][0]
-    return _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ.get(typ)
+    """Rodzaj aparatu pierwotnego pola wskazującego gałąź łącznika modelu. Rodzaj wyrobu
+    pochodzi z pozycji katalogu gałęzi (`device_kind` → rodzaj aparatu pierwotnego tą samą
+    funkcją, którą szablon zastępuje aparat główny — `_main_apparatus_primary_kind`, para
+    predykatów z jednego źródła: rozłącznik bezpiecznikowy → wkładka FUSE, rozłącznik →
+    LOAD_SWITCH); bez pozycji — z typu gałęzi. Gałąź `bus_coupler` jest rolą w topologii
+    (łącznik sekcji), nie rodzajem wyrobu — bez pozycji katalogu wyłącznik (Z.12)."""
+    from network_model.catalog.bay_templates import _main_apparatus_primary_kind
+
+    catalog_ref = galaz.get("catalog_ref")
+    kind = (
+        _rodzaj_aparatu_sn_z_katalogu(catalog_ref)
+        if isinstance(catalog_ref, str) and catalog_ref
+        else None
+    )
+    z_katalogu = _main_apparatus_primary_kind(kind)
+    if z_katalogu is not None:
+        return z_katalogu
+    return _RODZAJ_APARATU_DLA_GALEZI_POLA_GPZ.get(str(galaz.get("type")))
 
 
 def _aparaty_pola_liniowego_gpz(
@@ -1486,6 +1490,14 @@ def _powiaz_aparaty_pola_z_galezia(
     łącznika, `enm.wyposazenie_pola`)."""
     rodzaj = _rodzaj_aparatu_glownego_galezi(galaz)
     kandydaci = [a for a in aparaty if a.get("kind") == rodzaj]
+    if rodzaj == "FUSE" and any(a.get("kind") == "LOAD_SWITCH" for a in aparaty):
+        # Rozłącznik bezpiecznikowy: łącznikiem toru (stan gałęzi) jest rozłącznik pola,
+        # wkładki są jego częścią (pole RMU `bay_template_rmu_*`).
+        kandydaci = [a for a in aparaty if a.get("kind") == "LOAD_SWITCH"]
+    if rodzaj == "DS" and not kandydaci:
+        # Łącznik trójpołożeniowy jest odłącznikiem z uziemnikiem w jednym napędzie (pole
+        # pomiaru napięcia Z.17) — gałąź odłącznika wskazuje go, gdy pole nie ma odłącznika.
+        kandydaci = [a for a in aparaty if a.get("kind") == "THREE_POSITION_SWITCH"]
     glowny = next((a for a in kandydaci if a.get("placement") == "MIDSTREAM"), None) or next(
         iter(kandydaci), None
     )
@@ -8626,6 +8638,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             ev_seq += 1
             events.append({**zdarzenie, "event_seq": ev_seq})
 
+    # Aparaty toru pól SN bez szablonu z szablonu, z którego pole ma funkcje EAZ — JEDNA
+    # reguła każdej drogi budowy pola SN (`enm.aparaty_pol_sn`).
+    from enm.aparaty_pol_sn import uzupelnij_aparaty_pol_sn
+
+    uzupelnij_aparaty_pol_sn(
+        new_enm, [b["ref_id"] for b in pola(new_enm) if b.get("substation_ref") == stn_id]
+    )
+
     # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
     wynik_wyposazenia = _zastosuj_wyposazenie_pol(
         new_enm,
@@ -13205,6 +13225,14 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         for zdarzenie in zdarzenia_zaczepow:
             ev_seq += 1
             events.append({**zdarzenie, "event_seq": ev_seq})
+
+    # Aparaty toru pól SN bez szablonu z szablonu, z którego pole ma funkcje EAZ — JEDNA
+    # reguła każdej drogi budowy pola SN (`enm.aparaty_pol_sn`).
+    from enm.aparaty_pol_sn import uzupelnij_aparaty_pol_sn
+
+    uzupelnij_aparaty_pol_sn(
+        new_enm, [b["ref_id"] for b in pola(new_enm) if b.get("substation_ref") == substation_ref]
+    )
 
     # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
     wynik_wyposazenia = _zastosuj_wyposazenie_pol(

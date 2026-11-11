@@ -83,6 +83,7 @@ from network_model.pochodne.pasma_napieciowe import (
 from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
+from .aparaty_pol_sn import uzupelnij_aparaty_pol_sn
 from .assembler import czestotliwosc_studium_hz
 from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
@@ -562,9 +563,40 @@ def _wymagane_pola_odcinka(segment: dict[str, Any], *pola: str) -> dict[str, flo
     return wartosci
 
 
+def _rodzaj_galezi_z_szablonu_pola(
+    payload: dict[str, Any], station: Mapping[str, Any], bay_role: str
+) -> str | None:
+    """Rodzaj gałęzi aparatu pola bez pozycji katalogu i bez deklaracji rodzaju — rodzaj
+    aparatu GŁÓWNEGO szablonu, z którego pole bierze tor (wskazany `bay_template_ref` albo
+    szablon domyślny roli, `enm.aparaty_pol_sn.szablon_domyslny_pola_sn`). Para predykatów
+    z jednego źródła: typ gałęzi ↔ rodzaj rekordu aparatu głównego. Pole rodziny albo bloku
+    fabrycznego — `None` (wyłącznik; aparat główny pola rodziny wskazuje rodzina)."""
+    from network_model.catalog.bay_templates import rodzaj_aparatu_glownego_szablonu
+
+    from .aparaty_pol_sn import szablon_domyslny_pola_sn
+
+    szablon = payload.get("bay_template_ref")
+    if isinstance(szablon, str) and szablon.strip():
+        return rodzaj_aparatu_glownego_szablonu(szablon.strip())
+    if payload.get("switchgear_family_ref") or wybor_bloku_fabrycznego(payload):
+        return None
+    return rodzaj_aparatu_glownego_szablonu(
+        szablon_domyslny_pola_sn(
+            bay_role, gpz=station.get("station_type") == "gpz", insulation_type=None
+        )
+    )
+
+
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
     normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
-    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK", "UZIEMNIK"}:
+    if normalized in {
+        "DISCONNECTOR",
+        "DS",
+        "ODLACZNIK",
+        "ODŁĄCZNIK",
+        "UZIEMNIK",
+        "THREE_POSITION_SWITCH",
+    }:
         return "disconnector"
     if normalized in {
         "LOAD_SWITCH",
@@ -2330,7 +2362,12 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     # polu (reguła katalog-first). Brak pozycji katalogowej ⇒ decyduje deklaracja,
     # jak dotąd.
     rodzaj_z_katalogu = _rodzaj_aparatu_sn_z_katalogu(catalog_ref) if catalog_ref else None
-    branch_type = _sn_bay_branch_type(rodzaj_z_katalogu or apparatus_kind)
+    rodzaj_glowny = rodzaj_z_katalogu or (
+        apparatus_kind if isinstance(apparatus_kind, str) and apparatus_kind.strip() else None
+    )
+    branch_type = _sn_bay_branch_type(
+        rodzaj_glowny or _rodzaj_galezi_z_szablonu_pola(payload, station, bay_role)
+    )
 
     # V12K-058 (G-POLE-R): powiązania producenckie pola (szablon/rodzina/producent/
     # zabezpieczenie) — trafiają na rekord pola przez `enm.pola.zbuduj_pole` (parytet ze
@@ -2415,7 +2452,9 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             payload,
             field_ref=field_ref,
             bay_template_ref=bay_template_ref,
-            main_apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
+            # Rodzaj wyrobu z KATALOGU wygrywa z deklaracją (KOMPLETNOSC-POLA-TR) — rekord
+            # aparatu głównego opisuje ten sam wyrób co gałąź aparatu pola.
+            main_apparatus_kind=rodzaj_glowny,
         )
     except NiezgodnoscKonfiguracjiError as blad:
         return _error_response(str(blad), _KOD_BLEDU_POLA_KATALOGOWEGO)
@@ -2503,10 +2542,10 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             if branch.get("type") != "bus_coupler":
                 branch["name"] = f"Aparat {field_name}"
                 branch["type"] = branch_type
-            elif "primary_devices" in producer_refs:
-                # Gałąź sprzęgła pola sprzęgła zachowuje typ i nazwę łącznika sekcji (D3),
-                # a aparat główny nowego szablonu (Q0) wskazuje ją — ta sama reguła co budowa
-                # pola sprzęgła (`zwiaz_pole_ze_sprzeglem`).
+            # Gałąź sprzęgła pola sprzęgła zachowuje typ i nazwę łącznika sekcji (D3). Aparat
+            # główny nowego toru wskazuje gałąź aparatu pola (każda rola — para rekord pola ↔
+            # gałąź ↔ aparat główny z jednego źródła, `_powiaz_aparaty_pola_z_galezia`).
+            if "primary_devices" in producer_refs:
                 producer_refs["primary_devices"] = _powiaz_aparaty_pola_z_galezia(
                     producer_refs["primary_devices"], branch
                 )
@@ -2714,6 +2753,16 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             protection_codes = _resolve_bay_template_protection_codes(
                 manufacturer_ref, bay_template_ref, bay_role
             )
+        elif aparaty_pola and not any(a.get("linked_ref") for a in aparaty_pola):
+            # Tor z szablonu, pola rodziny albo bloku: aparat główny wskazuje gałąź aparatu pola,
+            # łączniki bez gałęzi — położenie zgodne ze stanem gałęzi (ta sama reguła co pole
+            # liniowe GPZ i pole stacji bez szablonu).
+            galaz_pola = next(
+                b
+                for b in new_enm.get("branches", [])
+                if isinstance(b, dict) and b.get("ref_id") == apparatus_ref
+            )
+            aparaty_pola = _powiaz_aparaty_pola_z_galezia(aparaty_pola, galaz_pola)
         dodaj_pole(
             new_enm,
             zbuduj_pole(
@@ -2747,6 +2796,8 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
             ),
         )
         created.insert(0, field_ref)
+        # Aparaty toru pola bez szablonu — ta sama reguła co pola stacji (`enm.aparaty_pol_sn`).
+        uzupelnij_aparaty_pol_sn(new_enm, [field_ref])
 
     zdarzenia_zespolu: list[dict[str, Any]] = []
     if bay_role == "ZU" and existing_field_ref:
@@ -2916,6 +2967,7 @@ def _zapisz_pole_sprzegla(
             manufacturer_ref=manufacturer_ref or existing_field.get("manufacturer_ref"),
             meta={**(existing_field.get("meta") or {}), **meta_pola},
         )
+        uzupelnij_aparaty_pol_sn(new_enm, [field_ref])
         created.remove(field_ref)
         zdarzenia.append(
             {
@@ -2952,6 +3004,7 @@ def _zapisz_pole_sprzegla(
             stan_obiektu="PROJEKTOWANY",
         ),
     )
+    uzupelnij_aparaty_pol_sn(new_enm, [field_ref])
     zdarzenia.append(
         {
             "event_seq": len(zdarzenia) + 1,

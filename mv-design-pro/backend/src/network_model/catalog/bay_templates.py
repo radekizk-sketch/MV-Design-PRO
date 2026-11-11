@@ -58,6 +58,7 @@ class BayDeviceTemplate(BaseModel):
 
     kind: Literal[
         "CB",  # wyłącznik
+        "LOAD_SWITCH",  # rozłącznik (pole RMU stacji SN/nN)
         "DS_BUS",  # odłącznik szynowy
         "DS_LINE",  # odłącznik liniowy
         "DS_BRANCH",  # odłącznik odgałęzienia (przekładnika napięciowego, Z.11/Z.11.1)
@@ -1156,6 +1157,102 @@ BAY_TEMPLATE_DER_FW = BayTemplate(
     ports=[BayPortTemplate(kind="sn_der_fw", suffix="fw")],
 )
 
+# ---------------------------------------------------------------------------
+# Pola ROZŁĄCZNIKOWE rozdzielnicy RMU stacji SN/nN (karta SZABLONY-POL, rozszerzenie sesji
+# głównej 2026-11-11): konstrukcja pola, w którym aparatem głównym jest rozłącznik albo
+# rozłącznik bezpiecznikowy wskazany w katalogu (`device_kind` ROZLACZNIK /
+# ROZLACZNIK_BEZPIECZNIKOWY). Rozłącznik zapewnia przerwę izolacyjną, więc pole nie ma
+# odłączników szynowego i liniowego; bez wyłącznika pole nie ma przekaźnika EAZ ani
+# przekładników prądowych (funkcje EAZ puste — pole transformatorowe chroni wkładka
+# bezpiecznikowa). Szablon bez podstawy normatywnej (kanon pól RMU, jak `bay_template_line_*`),
+# oznaczenia — wartość robocza wg praktyki DIN 40719-2 (Q1 rozłącznik, F1 wkładki, Q8 uziemnik).
+# ---------------------------------------------------------------------------
+
+
+def _szablon_pola_rmu_liniowego(
+    template_id: str, rola_pola: str, bay_role: str, port: BayPortTemplate
+) -> BayTemplate:
+    return BayTemplate(
+        template_id=template_id,
+        name=f"{nazwa_roli_pola_sn(rola_pola)} (rozłącznikowe)",
+        bay_role=bay_role,
+        description="Pole liniowe RMU — rozłącznik, uziemnik, głowica kablowa.",
+        devices=[
+            BayDeviceTemplate(
+                kind="LOAD_SWITCH", designation_q="Q1", position=0, placement="MIDSTREAM"
+            ),
+            BayDeviceTemplate(kind="ES", designation_q="Q8", position=1, placement="GROUND_BRANCH"),
+            BayDeviceTemplate(
+                kind="CABLE_HEAD", designation_q="GK", position=2, placement="DOWNSTREAM"
+            ),
+        ],
+        funkcje_eaz=[],
+        ports=[port],
+    )
+
+
+BAY_TEMPLATE_RMU_LINE_IN = _szablon_pola_rmu_liniowego(
+    "bay_template_rmu_line_in", "LINIA_IN", "IN", BayPortTemplate(kind="sn_input", suffix="in")
+)
+BAY_TEMPLATE_RMU_LINE_OUT = _szablon_pola_rmu_liniowego(
+    "bay_template_rmu_line_out", "LINIA_OUT", "OUT", BayPortTemplate(kind="sn_output", suffix="out")
+)
+BAY_TEMPLATE_RMU_LINE_BRANCH = _szablon_pola_rmu_liniowego(
+    "bay_template_rmu_line_branch",
+    "LINIA_ODG",
+    "FEEDER",
+    BayPortTemplate(kind="sn_branch", suffix="branch"),
+)
+BAY_TEMPLATE_RMU_TRANSFORMER = BayTemplate(
+    template_id="bay_template_rmu_transformer",
+    name=f"{nazwa_roli_pola_sn('TRANSFORMATOROWE')} (rozłącznik bezpiecznikowy)",
+    bay_role="TR",
+    description=(
+        "Pole transformatorowe RMU — rozłącznik z wkładkami bezpiecznikowymi, uziemnik, "
+        "transformator SN/nN."
+    ),
+    devices=[
+        BayDeviceTemplate(
+            kind="LOAD_SWITCH", designation_q="Q1", position=0, placement="MIDSTREAM"
+        ),
+        BayDeviceTemplate(kind="FUSE", designation_q="F1", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(
+            kind="TRANSFORMER_DEVICE", designation_q="TR", position=3, placement="DOWNSTREAM"
+        ),
+    ],
+    funkcje_eaz=[],
+    ports=[BayPortTemplate(kind="sn_transformer", suffix="trafo")],
+)
+BAY_TEMPLATE_RMU_COUPLER = BayTemplate(
+    template_id="bay_template_rmu_coupler",
+    name=f"{nazwa_roli_pola_sn('SPRZEGLO')} (rozłącznikowe)",
+    bay_role="COUPLER",
+    description="Sprzęgło sekcyjne RMU — rozłącznik dwóch sekcji szyny SN z uziemnikiem.",
+    devices=[
+        BayDeviceTemplate(
+            kind="LOAD_SWITCH", designation_q="Q1", position=0, placement="MIDSTREAM"
+        ),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=1, placement="GROUND_BRANCH"),
+    ],
+    funkcje_eaz=[],
+    ports=[
+        BayPortTemplate(kind="sn_coupler", suffix="left"),
+        BayPortTemplate(kind="sn_coupler", suffix="right"),
+    ],
+)
+
+#: Szablon pola ROZŁĄCZNIKOWEGO roli (para `SZABLON_KANONICZNY_ROLI` — pole wyłącznikowe).
+#: Role bez wpisu (pole pomiarowe, źródłowe OZE) mają jedną konstrukcję.
+SZABLON_ROZLACZNIKOWY_ROLI: dict[str, BayTemplate] = {
+    "IN": BAY_TEMPLATE_RMU_LINE_IN,
+    "OUT": BAY_TEMPLATE_RMU_LINE_OUT,
+    "FEEDER": BAY_TEMPLATE_RMU_LINE_BRANCH,
+    "TR": BAY_TEMPLATE_RMU_TRANSFORMER,
+    "COUPLER": BAY_TEMPLATE_RMU_COUPLER,
+}
+
+
 BAY_TEMPLATE_RESERVE = BayTemplate(
     template_id="bay_template_reserve",
     name="Pole rezerwowe",
@@ -1679,6 +1776,7 @@ BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
         BAY_TEMPLATE_DER_FW,
         BAY_TEMPLATE_RESERVE,
         BAY_TEMPLATE_AUX,
+        *SZABLON_ROZLACZNIKOWY_ROLI.values(),
         *BAY_TEMPLATES_GPZ_LINE,
     ]
 }
@@ -1934,6 +2032,7 @@ def funkcje_eaz_roli(bay_role: str, warunki: Collection[str] = frozenset()) -> l
 # `placement` (UPSTREAM vs DOWNSTREAM). Zero fabrykacji: 1:1, jawne, z komentarzem.
 _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND: dict[str, str] = {
     "CB": "CB",
+    "LOAD_SWITCH": "LOAD_SWITCH",
     "DS_BUS": "DS",
     "DS_LINE": "DS",
     "DS_BRANCH": "DS",
@@ -2004,6 +2103,44 @@ def postac_odcisku_szablonu(szablon: BayTemplate) -> dict[str, Any]:
     return zrzut
 
 
+#: Łączniki toru, które są aparatem głównym szablonu bez wyłącznika i rozłącznika (pole pomiaru
+#: napięcia, pole rezerwowe, pole potrzeb własnych): pierwszy łącznik toru od szyny.
+_LACZNIKI_GLOWNE_BEZ_WYLACZNIKA: frozenset[str] = frozenset({"DS", "THREE_POSITION_SWITCH"})
+
+
+def indeks_aparatu_glownego_szablonu(template: BayTemplate) -> int | None:
+    """Pozycja (indeks w `template.devices`) GŁÓWNEGO aparatu łączeniowego pola — JEDNO źródło
+    dla nadpisania rodzajem wskazanym w katalogu (`template_primary_devices`) i dla typu gałęzi
+    aparatu pola tworzonego bez pozycji katalogu (`rodzaj_aparatu_glownego_szablonu`).
+
+    Wyłącznik albo rozłącznik szablonu (każdy szablon rejestru ma co najwyżej jeden — test
+    `tests/enm/test_aparaty_pol_sn.py`); bez nich — pierwszy łącznik toru (odłącznik albo łącznik
+    trójpołożeniowy w położeniu toru, nie w gałęzi uziemiającej). `None` — szablon bez łącznika."""
+    rodzaje = [_TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND.get(d.kind) for d in template.devices]
+    for indeks, rodzaj in enumerate(rodzaje):
+        if rodzaj in ("CB", "LOAD_SWITCH"):
+            return indeks
+    for indeks, (rodzaj, device) in enumerate(zip(rodzaje, template.devices, strict=True)):
+        if rodzaj in _LACZNIKI_GLOWNE_BEZ_WYLACZNIKA and device.placement in (
+            "UPSTREAM",
+            "MIDSTREAM",
+        ):
+            return indeks
+    return None
+
+
+def rodzaj_aparatu_glownego_szablonu(template_id: str | None) -> str | None:
+    """Rodzaj rekordu aparatu głównego szablonu (`indeks_aparatu_glownego_szablonu`) —
+    `None` dla szablonu nieznanego albo bez łącznika."""
+    template = BAY_TEMPLATE_REGISTRY.get(template_id or "")
+    if template is None:
+        return None
+    indeks = indeks_aparatu_glownego_szablonu(template)
+    if indeks is None:
+        return None
+    return _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND.get(template.devices[indeks].kind)
+
+
 def template_primary_devices(
     template_id: str | None,
     *,
@@ -2027,13 +2164,15 @@ def template_primary_devices(
     if template is None:
         return []
     override = _main_apparatus_primary_kind(main_apparatus_kind)
+    glowny = indeks_aparatu_glownego_szablonu(template)
     devices: list[dict[str, Any]] = []
-    for device in template.devices:
+    for indeks, device in enumerate(template.devices):
         primary_kind = _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND.get(device.kind)
         if primary_kind is None:
             continue
-        # Nadpisanie GŁÓWNEGO łącznika pola (CB szablonu) wyborem kreatora.
-        if primary_kind == "CB" and override is not None:
+        # Nadpisanie GŁÓWNEGO łącznika pola (`indeks_aparatu_glownego_szablonu`) wyborem
+        # kreatora albo rodzajem wyrobu wskazanym w katalogu.
+        if indeks == glowny and override is not None:
             primary_kind = override
         entry: dict[str, Any] = {
             "device_ref": f"{field_ref}::dev::{device.position}",
