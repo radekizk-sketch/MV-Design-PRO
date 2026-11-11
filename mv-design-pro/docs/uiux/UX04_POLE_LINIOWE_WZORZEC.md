@@ -2460,3 +2460,50 @@ i Z.11; spek bloku — kolumna oznaczeń w kadrach pola stacji, GPZ i źródła 
 Zrzuty: `docs/uiux/zrzuty/ux04-pole-liniowe/` (oba motywy: `pole-z11-1-*`, `pole-z11-*`,
 `blok-*`); stan przed wzorcem: `przed/<kadr>-przed-v3.png` z drzewa `9dafb6083`. Werdykt
 wizualny — właściciel (B-02).
+
+#### Klasa wzorca pola — ramka bloku i kolumna opisów w każdym polu z EAZ (karta RAMKA-PRZEKAZNIKA, następca 2026-11-11) → wykonanie → test
+
+**Inwentarz klasy (kompozytory pól w `frontend/src/ui/sld/v3/compose/**`).** Blok zabezpieczeń:
+jedna funkcja `blokZabezpieczenPola.ts::ulozBlokZabezpieczenPola` — pola sekcji GPZ i pola toru
+transformatora GPZ (`gpz.ts::adnotacjePolaGpz`), pola SN stacji, w tym sprzęgło, pole TR i pole
+źródła OZE (`station.ts::composeStation`). Kolumna opisów (`kolumnaOpisowPola.ts`): pola sekcji
+GPZ i pola stacji — używały; **pola toru transformatora GPZ (wieża) — nie używały** (tabliczki po
+prawej symbolu, bez kolumny oznaczeń). Oznaczenia: **pola GPZ rysowane symbolami kanonicznymi —
+bez oznaczeń** (warunek „pole bez symboli QET — bez etykiet”; sonda 59 fikstur, LOD2: 8 bloków
+GPZ bez kolumny — ścieżka danych zabezpieczeń, pole BKR, pola źródeł OZE w GPZ); **pola stacji —
+bez oznaczeń aparatów spoza konwencji §19.1** (T1, T2, GK z rekordu); **oznaczenia przekładników
+stacji nie były na LOD1** (w GPZ były — dwie reguły). Świadomie poza klasą: tor źródła OZE pod
+transformatorem blokowym (`composeDerSnChain`) i kolumna transformatora bez pola
+(`composeImplicitTransformerColumn`) — to nie są pola i nie niosą funkcji EAZ.
+
+**Naprawy.** `gpz.ts`: oznaczenie każdego aparatu z rekordem (`tekstyEtykietAparatowGpz`), jedna
+funkcja kolumn opisów i zacisków P1/P2 dla pól sekcji i toru transformatora
+(`kolumnyOpisowPolaGpz`), zasięg wieży rezerwuje pasy opisów po lewej tą samą funkcją
+(`zasiegWiezy` ← `pasyOpisowPolaGpz`), jedna rozdzielczość opisów przekładników dla wierszy
+i rysunku (`KolumnaPrzekladniPolaGpz`); martwa ścieżka tabliczki po prawej symbolu skasowana.
+`kolumnaOpisowPola.ts`: oznaczenie z rekordu dla aparatów bez identyfikatora konwencji,
+`RODZAJE_PRZEKLADNIKOW_OD_LOD1` wspólne dla GPZ i stacji. `buildScene.ts`: jedna reguła poziomu
+szczegółu oznaczeń pola GPZ i stacji; wyrocznia `apparatusIdentifierGaps` liczy aparaty
+z oznaczeniem z rekordu.
+
+**Testy.** `scene/__tests__/kolumnaOpisowPolaKlasa.contract.test.ts` — rodzaj pola {GPZ
+z powiązaniami (QET), GPZ bez powiązań (kanoniczne), źródło OZE w GPZ, tor transformatora GPZ,
+liniowe stacji, sprzęgło, TR stacji, źródło OZE stacji} × LOD {0, 1, 2} × EAZ {są, brak} ×
+przekładniki {są, brak}; wyrocznie (A) blok wtedy i tylko wtedy, gdy EAZ na LOD1/2, (B) oznaczenie
+rekordu każdego aparatu w kolumnie (LOD2; przekładniki od LOD1), (C) opisy przekładników tylko
+LOD2 i tylko przy przekładnikach, (D) ramka na prawo od kolumn, (E) wyrocznie kolumn i kodów
+ramki; pokrycie przypięte; iniekcje sceny w każdym rodzaju pola. Fikstury wspólne z kontraktem
+bloku: `scene/__tests__/fixtures/polaZFunkcjamiEaz.ts`. Na drzewie bez naprawy (`f385804e4`):
+46 z 48 testów czerwonych. Iniekcje w kodzie (każda czerwona, plik przywrócony): wieża bez
+kolumny — 6, warunek QET — 12, stacja bez oznaczenia z rekordu — 16, stacja bez `odLod` — 9,
+blok zdjęty w polu źródła OZE stacji — 4.
+
+**Pomiar (scena LOD2, j.św., kody 50/51/51N; przed = `f385804e4`, po = karta).** Liczba opisów
+w kolumnach: GPZ bez powiązań 1 → 6, źródło OZE w GPZ 0 → 8, tor transformatora GPZ 2 → 9
+(opisy stały za torem: odstęp opis→aparaty −110 → 18), liniowe stacji 4 → 6, źródło OZE stacji
+5 → 7, TR stacji 5 → 6; GPZ z powiązaniami, sprzęgło — bez zmian (9, 4). Szerokość rysunku pola:
+GPZ bez powiązań 216 → 248, OZE w GPZ 104 → 144, tor TR GPZ 136 → 224, pola stacji bez zmian
+(104/112). Linia wyłączania Q0 → ramka bez zmian we wszystkich rodzajach (32; pole OZE w GPZ bez
+łącznika wyłączanego w modelu — 0); odstęp lewa krawędź ramki − prawa krawędź toru głównego bez
+zmian (8–24). Zrzuty e2e: zmienił się kadr `blok-pole-zrodla-oze-*` (oznaczenia T1, T2, GK);
+pozostałe kadry bloku i pola liniowego bajtowo bez zmian. Werdykt wizualny — właściciel (B-02).
