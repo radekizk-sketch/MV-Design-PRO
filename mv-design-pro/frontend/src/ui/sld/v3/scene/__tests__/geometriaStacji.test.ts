@@ -38,7 +38,10 @@ import { rodzajStacji } from '../../../../shared/rodzajStacji';
 import { buildResultRefBridge } from '../../canvas/resultRefBridge';
 import { obrysyZaznaczenia } from '../../canvas/obrysZaznaczenia';
 import { zakresCelu } from '../../canvas/zakresKadru';
-import { SYMBOL_DEFS } from '../../symbols/defs';
+import { rodzajSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
+
+/** Aparaty boczne toru (odczep w bok od węzła, §18.1). */
+const BOCZNE = new Set(['earthSwitch', 'voltageTransformer', 'surgeArrester']);
 import { allBayEquipmentTruthful, bayEquipmentGaps, buildSceneV3, type SceneV3 } from '../buildScene';
 
 type Wariant = 'zamkniete' | 'otwarte' | 'bez_wyposazenia';
@@ -124,7 +127,10 @@ describe('GEOMETRIA-STACJI — sekcje szyn SN z modelu (rodzaj × liczba sekcji 
           expect(odcinek, pole.ref_id).not.toBeNull();
           const symbole = symbolePola(sc, pole.ref_id);
           expect(symbole.length, pole.ref_id).toBeGreaterThan(0);
-          for (const s of symbole) {
+          // Tor główny pola nad szyną sekcji. Aparaty boczne (uziemnik, przekładnik napięciowy,
+          // ogranicznik — odczep w bok od węzła toru, §18.1) wiszą obok kolumny i mogą wyjść
+          // poza koniec szyny ostatniego pola sekcji; przynależność pola do sekcji niesie tor.
+          for (const s of symbole.filter((x) => !BOCZNE.has(rodzajSymbolu(x.symbolId)))) {
             const srodek = s.x + SYMBOL_DEFS[s.symbolId].width / 2;
             expect(srodek, `${pole.ref_id} ${s.symbolId}`).toBeGreaterThanOrEqual(odcinek!.x0);
             expect(srodek, `${pole.ref_id} ${s.symbolId}`).toBeLessThanOrEqual(odcinek!.x1);
@@ -208,7 +214,14 @@ describe('GEOMETRIA-STACJI — sekcje szyn SN z modelu (rodzaj × liczba sekcji 
       for (const pole of wolne) {
         const symbole = symbolePola(sc, pole.ref_id);
         expect(symbole.map((s) => s.symbolId), pole.ref_id).toContain('bayReserve');
-        expect(symbole.map((s) => s.symbolId), pole.ref_id).not.toContain('cableHead');
+        // KOREKTA (karta SZABLONY-POL, rozszerzenie 2026-11-11): pole wolne ma tor z szablonu
+        // roli (`enm/aparaty_pol_sn.py`), a pole rezerwowe/wolne rysuje WSZYSTKIE aparaty
+        // swoich rekordów (`apparatusSequence.ts` — zero fabrykacji w obie strony): głowica
+        // kablowa jest na rysunku wtedy i tylko wtedy, gdy jest w rekordach pola. Kabla
+        // odpływowego nadal brak (`bayReserve` bez portu S, bez podpisu kierunku).
+        expect(symbole.some((s) => s.symbolId === 'cableHead'), pole.ref_id).toBe(
+          (pole.primary_devices ?? []).some((d) => d.kind === 'CABLE_HEAD'),
+        );
         for (const s of symbole) expect(s.meta?.bayReserve, pole.ref_id).toBe('wolne');
         expect(sc.labels.some((l) => l.ownerRef === `${pole.ref_id}#direction`), pole.ref_id).toBe(false);
       }
@@ -246,7 +259,7 @@ describe('GEOMETRIA-STACJI — aparat {z modelu, brak danych} (tożsamość ze z
   const NAZWY = STACJE_RODZAJE.map(([n]) => n);
 
   for (const wariant of ['zamkniete', 'otwarte'] as const) {
-    it(`${wariant}: zbiór deviceRef aparatów pól stacji = zbiór gałęzi łączeniowych z equipment_refs`, () => {
+    it(`${wariant}: zbiór deviceRef aparatów pól stacji = zbiór rekordów aparatów (albo gałęzi łączeniowych pola bez rekordów)`, () => {
       const snapshot = FIKSTURY[wariant];
       const sc = scena(snapshot, wariant);
       const lacznikowe = new Set(
@@ -258,20 +271,28 @@ describe('GEOMETRIA-STACJI — aparat {z modelu, brak danych} (tożsamość ze z
         for (const pole of polaSn(snapshot, stacja(snapshot, nazwa))) {
           if (pole.bay_role === 'COUPLER') continue;
           pola.add(pole.ref_id);
-          for (const ref of pole.equipment_refs ?? []) if (lacznikowe.has(ref)) oczekiwane.add(ref);
+          // Pole z rekordami aparatów (tor z szablonu roli, `enm/aparaty_pol_sn.py`) — każdy
+          // rekord toru, także transformator pola (rysowany w kolumnie pola z jego refem).
+          const rekordy = pole.primary_devices ?? [];
+          if (rekordy.length > 0) for (const d of rekordy) oczekiwane.add(d.device_ref);
+          else for (const ref of pole.equipment_refs ?? []) if (lacznikowe.has(ref)) oczekiwane.add(ref);
         }
       }
       const naScenie = new Set(
         sc.symbols.filter((s) => pola.has(s.meta?.ownerRef ?? '') && s.meta?.deviceRef).map((s) => s.meta!.deviceRef!),
       );
       expect([...naScenie].sort()).toEqual([...oczekiwane].sort());
-      // Aparat z rekordu niesie źródło „dane", pochodzenie i typ katalogowy, stan z gałęzi.
+      // Aparat z rekordu niesie źródło „dane" i pochodzenie z rekordu pola; aparat główny
+      // (wskazujący gałąź pola) — typ katalogowy gałęzi i stan z gałęzi (wariant „otwarte"
+      // otwiera wyłącznie sprzęgło, pola są w ruchu).
       for (const s of sc.symbols) {
         if (!pola.has(s.meta?.ownerRef ?? '') || !s.meta?.deviceRef) continue;
         expect(s.meta.apparatusSource).toBe('dane');
-        expect(s.meta.apparatusOrigin).toBe('galaz_pola');
-        expect(s.meta.apparatusTypeRef).toBeTruthy();
-        expect(s.state).toBe('closed');
+        expect(s.meta.apparatusOrigin).toBe('rekord_pola');
+        if (s.meta.linkedRef) {
+          expect(s.meta.apparatusTypeRef, s.meta.deviceRef).toBeTruthy();
+          expect(s.state, s.meta.deviceRef).toBe('closed');
+        }
       }
     });
   }

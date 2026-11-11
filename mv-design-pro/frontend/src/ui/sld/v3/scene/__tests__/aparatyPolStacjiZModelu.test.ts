@@ -12,6 +12,12 @@
  * Fikstura `stacjeKonstrukcjiPol.enm.json` z REALNYCH operacji domenowych backendu
  * (`tests.reference_networks.fikstury_enm_sld`), po jednej stacji sekcyjnej na konstrukcję.
  *
+ * Pole sprzęgła stoi MIĘDZY sekcjami i rysuje się dziś JEDNYM glifem toru poziomego gałęzi
+ * `bus_coupler` (`v2/model/sprzeglaSekcji.ts`, ta sama reguła w GPZ dla Z.12) — rodzaj glifu
+ * z aparatu głównego rekordu pola (test niżej). Rysunek pozostałych aparatów pola sprzęgła
+ * (odłączniki Q1/Q2, uziemnik) wymaga decyzji o geometrii pola sprzęgła — zgłoszone w meldunku
+ * karty, nie udawane tym testem.
+ *
  * Wyrocznia NIEZALEŻNA od kompozycji: rekordy aparatów czytane wprost z modelu.
  * Rekord transformatora pola (`TRANSFORMER_DEVICE`) rysuje transformator stacji — glif
  * transformatora nie należy do pola, więc wyrocznia liczy go poza polem (jawnie niżej).
@@ -39,6 +45,8 @@ const KONSTRUKCJE: Readonly<Record<string, string>> = {
   'S-ODL': 'odłącznik',
 };
 const ROLE = ['IN', 'OUT', 'COUPLER', 'TR'] as const;
+/** Pola rysowane kolumną nad szyną (sprzęgło — glifem toru poziomego między sekcjami). */
+const ROLE_KOLUMNY = ['IN', 'OUT', 'TR'] as const;
 
 /** Rekordy, które pole rysuje w SWOJEJ kolumnie (transformator rysuje stacja). */
 const POZA_KOLUMNA_POLA = new Set(['TRANSFORMER_DEVICE']);
@@ -67,6 +75,7 @@ describe('pole stacji SN rysuje każdy aparat z modelu', () => {
       const scene = buildSceneV3(enm, lod);
       let zbadane = 0;
       for (const pole of polaStacji) {
+        if (!(ROLE_KOLUMNY as readonly string[]).includes(pole.bay_role)) continue;
         const rekordy = (pole.primary_devices ?? []).filter((d) => !POZA_KOLUMNA_POLA.has(d.kind));
         if (rekordy.length === 0) continue;
         const opis = `${stacje.get(pole.substation_ref ?? '')} / ${pole.bay_role}`;
@@ -80,9 +89,23 @@ describe('pole stacji SN rysuje każdy aparat z modelu', () => {
         ).toEqual(rekordy.map((d) => d.device_ref).sort());
         zbadane += 1;
       }
-      expect(zbadane).toBe(stacje.size * ROLE.length);
+      expect(zbadane).toBe(stacje.size * ROLE_KOLUMNY.length);
     });
   }
+
+  it('pole sprzęgła: glif toru poziomego gałęzi bus_coupler wg aparatu głównego rekordu pola', () => {
+    const scene = buildSceneV3(enm, 2);
+    for (const pole of polaStacji.filter((b) => b.bay_role === 'COUPLER')) {
+      const nazwa = stacje.get(pole.substation_ref ?? '');
+      const [galaz] = pole.equipment_refs ?? [];
+      const glify = scene.symbols.filter((s) => s.meta?.ownerRef === galaz);
+      const glowny = (pole.primary_devices ?? []).find((d) => d.linked_ref === galaz);
+      expect(glowny, `${nazwa}: aparat główny wskazuje gałąź sprzęgła`).toBeDefined();
+      expect(glify.map((s) => s.symbolId), String(nazwa)).toEqual([
+        glowny!.kind === 'CB' ? 'lineBreaker' : 'lineSwitch',
+      ]);
+    }
+  });
 
   it('konstrukcja rozłącznikowa nie rysuje przekładnika prądowego ani wyłącznika (pole RMU)', () => {
     const scene = buildSceneV3(enm, 2);
