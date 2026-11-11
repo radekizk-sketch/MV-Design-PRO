@@ -10,11 +10,69 @@
  * (parytet przypięty plikiem `szynyStacjiParytet.json`, klucz `transformatory`).
  */
 import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
+import { grupaTransformatoraUziemiajacego } from '../../types/uziemienie';
+import { wPasmieSn } from '../../ui2/model/pasmaNapieciowe';
 import { szynyStacji } from './szynyStacji';
 
 /** Minimalny wycinek migawki czytany przez regułę (wyrocznie sceny niosą tylko część pól). */
 export type ModelTransformatorow = Pick<EnergyNetworkModel, 'transformers'>
-  & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations'>>;
+  & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations' | 'bays'>>;
+
+/** Rola pola zespołu uziemiającego — backend `ROLA_POLA_ZESPOLU_UZIEMIAJACEGO`. */
+export const ROLA_POLA_ZESPOLU_UZIEMIAJACEGO = 'ZU';
+
+/** Wycinek transformatora czytany przez predykat transformatora uziemiającego. */
+export type TransformatorZespolu = {
+  readonly ref_id?: string;
+  readonly id?: string;
+  readonly vector_group?: string | null;
+  readonly uhv_kv?: number | null;
+};
+
+/**
+ * Czy transformator JEST transformatorem uziemiającym sieci SN (jedyny nośnik zespołu
+ * uziemiającego, karta ZU-JEDEN-NOSNIK) — lustro backendu
+ * `enm.punkt_neutralny_zespolu.jest_transformatorem_uziemiajacym`: uzwojenie GÓRNE w zygzak
+ * z wyprowadzonym punktem neutralnym (`grupaTransformatoraUziemiajacego`) na napięciu z pasma SN.
+ */
+export function jestTransformatoremUziemiajacym(transformer: TransformatorZespolu): boolean {
+  return grupaTransformatoraUziemiajacego(transformer.vector_group) && wPasmieSn(transformer.uhv_kv);
+}
+
+/**
+ * Pole zespołu uziemiającego (rola `ZU`), do którego należy transformator — JEDNO źródło
+ * odpowiedzi „transformator uziemiający ma swoje pole” we froncie (marker braku pola TR,
+ * rysunek pola ZU w GPZ, stacja transformatora). Lustro backendu
+ * `enm.zespol_uziemiajacy.pole_zespolu_transformatora` (parytet: wiersze `tr-*` tablicy
+ * `pole_transformatorowe_parytet_v1.json`): transformator JEST transformatorem uziemiającym
+ * i wskazuje go typowane wyposażenie pola roli `ZU` (`Bay.equipment_refs`); pola w kolejności
+ * `ref_id` (transformator należy do jednego pola). Inaczej `null` — inny transformator
+ * w wyposażeniu pola ZU nie jest aparatem zespołu (działa dla niego zwykła reguła W041).
+ */
+export function poleZespoluTransformatora<
+  B extends {
+    readonly ref_id?: string;
+    readonly id?: string;
+    readonly bay_role?: string | null;
+    readonly equipment_refs?: readonly string[] | null;
+  },
+>(bays: readonly B[] | null | undefined, transformer: TransformatorZespolu): B | null {
+  if (!jestTransformatoremUziemiajacym(transformer)) return null;
+  const refy = new Set([transformer.ref_id, transformer.id].filter(nonEmptyRef).map((r) => r.trim()));
+  if (refy.size === 0) return null;
+  const kandydaci = (bays ?? [])
+    .filter((bay) => (bay.bay_role ?? '').trim().toUpperCase() === ROLA_POLA_ZESPOLU_UZIEMIAJACEGO)
+    .sort((a, b) => {
+      const ra = a.ref_id ?? '';
+      const rb = b.ref_id ?? '';
+      return ra < rb ? -1 : ra > rb ? 1 : 0;
+    });
+  return (
+    kandydaci.find((bay) =>
+      (bay.equipment_refs ?? []).some((ref) => nonEmptyRef(ref) && refy.has(ref.trim())),
+    ) ?? null
+  );
+}
 
 /** Rola katalogowa transformatora blokowego toru DER po stronie SN — backend
  *  `enm.domain_operations_v2` zapisuje ją w `Transformer.meta.catalog_role` przy
@@ -68,7 +126,8 @@ export function transformatorBlokowyDer(
  * `enm.pole_transformatorowe.transformatory_stacji`), czytana przez rysunek, inspektor,
  * konfigurator stacji, kartę stacji i kreator źródła:
  *  1. transformator blokowy źródła DER (`transformatorBlokowyDer`) jest wykluczony — także
- *     wtedy, gdy stacja deklaruje go w `transformer_refs`;
+ *     wtedy, gdy stacja deklaruje go w `transformer_refs`; tak samo transformator uziemiający
+ *     z polem zespołu (`poleZespoluTransformatora`) — aparat pola ZU, nie transformator rozdzielczy;
  *  2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
  *  3. przy BRAKU deklaracji — transformator, którego koniec leży na szynie stacji z lustra
  *     `szynyStacji` (strona górna na zacisku pola TR, strona dolna za wyłącznikiem głównym nN).
@@ -82,7 +141,14 @@ function transformatorStacji(
   transformer: Transformer,
   deklarowane: ReadonlySet<string>,
   szynyStacjiRefs: ReadonlySet<string>,
+  stacjaRef: string | null | undefined,
+  kontekst: KontekstTransformatorowStacji,
 ): boolean {
+  // Transformator uziemiający z polem zespołu należy do stacji TEGO pola (`Bay.substation_ref`)
+  // — rozstrzyga przed deklaracją i szynami: jego zaciski leżą na zacisku pola ZU i na szynie
+  // potrzeb własnych, których lustro `szynyStacji` nie niesie, a stacja zwykle go nie deklaruje.
+  // Bez tego blok stacji na L0, eksport i topologia gubiły aparat pola ZU (reguła kompletności).
+  if (kontekst.stacjaZespolu.has(transformer)) return kontekst.stacjaZespolu.get(transformer) === stacjaRef;
   if (deklarowane.size > 0) return transformerRefs(transformer).some((ref) => deklarowane.has(ref));
   return szynyStacjiRefs.has(transformer.hv_bus_ref) || szynyStacjiRefs.has(transformer.lv_bus_ref);
 }
@@ -99,6 +165,11 @@ export interface KontekstTransformatorowStacji {
   readonly refyBlokowe: ReadonlySet<string>;
   /** Transformatory migawki spełniające `transformatorBlokowyDer` (jedyny filtr, wyżej). */
   readonly blokowe: ReadonlySet<Transformer>;
+  /** Transformatory uziemiające z polem zespołu (`poleZespoluTransformatora`) — aparaty pola ZU,
+   *  nie transformatory rozdzielcze. */
+  readonly zespolu: ReadonlySet<Transformer>;
+  /** Stacja pola zespołu (`Bay.substation_ref`) transformatora uziemiającego z `zespolu`. */
+  readonly stacjaZespolu: ReadonlyMap<Transformer, string | null>;
   /** Pamięć szyn i deklaracji stacji (wyliczane raz na stację migawki przy pierwszym pytaniu —
    *  odwrotność reguły pyta o każdą stację dla każdego transformatora). */
   readonly stacje: Map<Substation, DaneStacji>;
@@ -111,12 +182,19 @@ interface DaneStacji {
 
 export function kontekstTransformatorowStacji(snapshot: ModelTransformatorow): KontekstTransformatorowStacji {
   const refyBlokowe = refyTransformatorowBlokowych(snapshot);
+  const stacjaZespolu = new Map<Transformer, string | null>();
+  for (const transformer of snapshot.transformers ?? []) {
+    const pole = poleZespoluTransformatora(snapshot.bays, transformer);
+    if (pole) stacjaZespolu.set(transformer, pole.substation_ref ?? null);
+  }
   return {
     snapshot,
+    stacjaZespolu,
     refyBlokowe,
     blokowe: new Set(
       (snapshot.transformers ?? []).filter((transformer) => transformatorBlokowyDer(transformer, refyBlokowe)),
     ),
+    zespolu: new Set(stacjaZespolu.keys()),
     stacje: new Map(),
   };
 }
@@ -161,7 +239,8 @@ export function selectStationDistributionTransformers(
   return (snapshot.transformers ?? []).filter(
     (transformer) =>
       !pelny.blokowe.has(transformer)
-      && transformatorStacji(transformer, deklarowane, szyny),
+      && !pelny.zespolu.has(transformer)
+      && transformatorStacji(transformer, deklarowane, szyny, station.ref_id, pelny),
   );
 }
 
@@ -179,7 +258,7 @@ export function transformatoryNalezaceDoStacji(
   if (!snapshot || !station) return [];
   const pelny = kontekstDla(snapshot, kontekst);
   const { deklarowane, szyny } = daneStacji(station, pelny);
-  return (snapshot.transformers ?? []).filter((transformer) => transformatorStacji(transformer, deklarowane, szyny));
+  return (snapshot.transformers ?? []).filter((transformer) => transformatorStacji(transformer, deklarowane, szyny, station.ref_id, pelny));
 }
 
 /**
@@ -197,7 +276,7 @@ export function stationRefOfTransformer(
   const pelny = kontekstDla(snapshot, kontekst);
   for (const station of snapshot.substations ?? []) {
     const { deklarowane, szyny } = daneStacji(station, pelny);
-    if (transformatorStacji(transformer, deklarowane, szyny)) {
+    if (transformatorStacji(transformer, deklarowane, szyny, station.ref_id, pelny)) {
       return station.ref_id ?? null;
     }
   }

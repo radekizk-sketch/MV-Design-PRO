@@ -116,7 +116,10 @@ class TestCtVtVariantFields:
     def test_uzwojenia_rejected_on_ct_measurement(self):
         with pytest.raises(
             ValueError,
-            match="pole „Uzwojenia przekładnika napięciowego” dotyczy wyłącznie przekładnika napięciowego VT",
+            match=(
+                "pole „Uzwojenia wtórne przekładnika napięciowego” dotyczy wyłącznie "
+                "przekładnika napięciowego VT"
+            ),
         ):
             Measurement.model_validate(_ct(uzwojenia=[UZWOJENIE_RESZTKOWE]))
 

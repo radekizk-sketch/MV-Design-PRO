@@ -36,7 +36,7 @@ from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 
 from tests.catalog_test_helpers import gpz_source_record
-from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekord
+from tests.utils.zespol_uziemiajacy import dodaj_zespol
 
 #: Moc zwarciowa i R/X równoważników torów zasilania (scenariusz MAX).
 SK_L1_MVA = 3000.0
@@ -239,100 +239,99 @@ def enm_h5(
                 "materialized_params": {"sn_mva": 2.0, "un_kv": UN_SN_KV, "k_sc": 1.1},
             }
         )
-    return EnergyNetworkModel.model_validate(
-        {
-            "header": {
-                "name": "GPZ H5 wklady zrodel",
-                "enm_version": "1.0",
-                "defaults": {"frequency_hz": 50, "unit_system": "SI"},
-                "created_at": "2024-01-01T00:00:00Z",
-                "updated_at": "2024-01-01T00:00:00Z",
-                "revision": 1,
-                "hash_sha256": "",
+    dane: dict[str, Any] = {
+        "header": {
+            "name": "GPZ H5 wklady zrodel",
+            "enm_version": "1.0",
+            "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "revision": 1,
+            "hash_sha256": "",
+        },
+        "buses": [
+            _szyna_enm(1, "bus-a", "Sekcja A SN"),
+            _szyna_enm(2, "bus-b", "Sekcja B SN"),
+            _szyna_enm(3, "bus-pole", "Szyna pola"),
+        ],
+        "branches": [
+            {
+                "id": "00000000-0000-0000-0000-000000000811",
+                "ref_id": "kabel-pole",
+                "name": "Kabel pola",
+                "tags": [],
+                "meta": {},
+                "type": "cable",
+                "from_bus_ref": "bus-a",
+                "to_bus_ref": "bus-pole",
+                "status": "closed",
+                "catalog_ref": "KABEL_SN_TEST",
+                "parameter_source": "CATALOG",
+                "length_km": 2.0,
+                "r_ohm_per_km": 0.253,
+                "x_ohm_per_km": 0.073,
+                "b_siemens_per_km": 0.0,
+                "r0_ohm_per_km": 3 * 0.253,
+                "x0_ohm_per_km": 3 * 0.073,
+                "b0_siemens_per_km": 0.0,
+                "rating": {"in_a": 270.0},
             },
-            "buses": [
-                _szyna_enm(1, "bus-a", "Sekcja A SN"),
-                _szyna_enm(2, "bus-b", "Sekcja B SN"),
-                _szyna_enm(3, "bus-pole", "Szyna pola"),
-            ],
-            "branches": [
-                {
-                    "id": "00000000-0000-0000-0000-000000000811",
-                    "ref_id": "kabel-pole",
-                    "name": "Kabel pola",
-                    "tags": [],
-                    "meta": {},
-                    "type": "cable",
-                    "from_bus_ref": "bus-a",
-                    "to_bus_ref": "bus-pole",
-                    "status": "closed",
-                    "catalog_ref": "KABEL_SN_TEST",
-                    "parameter_source": "CATALOG",
-                    "length_km": 2.0,
-                    "r_ohm_per_km": 0.253,
-                    "x_ohm_per_km": 0.073,
-                    "b_siemens_per_km": 0.0,
-                    "r0_ohm_per_km": 3 * 0.253,
-                    "x0_ohm_per_km": 3 * 0.073,
-                    "b0_siemens_per_km": 0.0,
-                    "rating": {"in_a": 270.0},
-                },
-                {
-                    "id": "00000000-0000-0000-0000-000000000812",
-                    "ref_id": "sprzeglo-sn",
-                    "name": "Sprzęgło szyn SN",
-                    "tags": [],
-                    "meta": {},
-                    "type": "bus_coupler",
-                    "from_bus_ref": "bus-a",
-                    "to_bus_ref": "bus-b",
-                    "status": "closed" if lacznik_zamkniety else "open",
-                },
-            ],
-            "sources": [
-                {
-                    "id": "00000000-0000-0000-0000-000000000821",
-                    "tags": [],
-                    "meta": {},
-                    **gpz_source_record(
-                        ref_id=REF_ZRODLA_L1,
-                        name="Tor zasilania L1",
-                        bus_ref="bus-a",
-                        voltage_kv=UN_SN_KV,
-                        sk3_mva=SK_SN_L1_MVA,
-                        rx_ratio=RX_L1,
-                    ),
-                },
-                {
-                    "id": "00000000-0000-0000-0000-000000000822",
-                    "tags": [],
-                    "meta": {},
-                    **gpz_source_record(
-                        ref_id=REF_ZRODLA_L2,
-                        name="Tor zasilania L2",
-                        bus_ref="bus-b",
-                        voltage_kv=UN_SN_KV,
-                        sk3_mva=SK_SN_L2_MVA,
-                        rx_ratio=RX_L2,
-                    ),
-                },
-            ],
-            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie punktu neutralnego sieci SN niesie
-            # zespół uziemiający sekcji (rezystor, Z.15) — równoważnik SN nie ma Z0 (dawniej
-            # ``z0_z1_ratio`` torów zasilania udawał drogę zerową przez źródło SN).
-            "zespoly_uziemiajace": [
-                zespol_uziemiajacy_rekord("zu-a", "bus-a"),
-                zespol_uziemiajacy_rekord("zu-b", "bus-b"),
-            ],
-            "loads": [],
-            "transformers": [],
-            "generators": generatory,
-            "substations": [],
-            "bays": [],
-            "junctions": [],
-            "corridors": [],
-            "measurements": [],
-            "protection_assignments": [],
-            "branch_points": [],
-        }
-    )
+            {
+                "id": "00000000-0000-0000-0000-000000000812",
+                "ref_id": "sprzeglo-sn",
+                "name": "Sprzęgło szyn SN",
+                "tags": [],
+                "meta": {},
+                "type": "bus_coupler",
+                "from_bus_ref": "bus-a",
+                "to_bus_ref": "bus-b",
+                "status": "closed" if lacznik_zamkniety else "open",
+            },
+        ],
+        "sources": [
+            {
+                "id": "00000000-0000-0000-0000-000000000821",
+                "tags": [],
+                "meta": {},
+                **gpz_source_record(
+                    ref_id=REF_ZRODLA_L1,
+                    name="Tor zasilania L1",
+                    bus_ref="bus-a",
+                    voltage_kv=UN_SN_KV,
+                    sk3_mva=SK_SN_L1_MVA,
+                    rx_ratio=RX_L1,
+                ),
+            },
+            {
+                "id": "00000000-0000-0000-0000-000000000822",
+                "tags": [],
+                "meta": {},
+                **gpz_source_record(
+                    ref_id=REF_ZRODLA_L2,
+                    name="Tor zasilania L2",
+                    bus_ref="bus-b",
+                    voltage_kv=UN_SN_KV,
+                    sk3_mva=SK_SN_L2_MVA,
+                    rx_ratio=RX_L2,
+                ),
+            },
+        ],
+        "loads": [],
+        "transformers": [],
+        "generators": generatory,
+        "substations": [],
+        "bays": [],
+        "junctions": [],
+        "corridors": [],
+        "measurements": [],
+        "protection_assignments": [],
+        "branch_points": [],
+    }
+    # Karta ZU-JEDEN-NOSNIK: uziemienie punktu neutralnego sieci SN niesie transformator
+    # uziemiający zespołu sekcji (rezystor, Z.15) — równoważnik SN nie ma Z0. Jedna sieć
+    # galwaniczna = jeden nośnik (bloker E-W5-04): przy zamkniętym sprzęgle zespół tylko
+    # w sekcji A, przy otwartym — zespół w każdej sekcji.
+    dodaj_zespol(dane, "zu-a", "bus-a")
+    if not lacznik_zamkniety:
+        dodaj_zespol(dane, "zu-b", "bus-b")
+    return EnergyNetworkModel.model_validate(dane)

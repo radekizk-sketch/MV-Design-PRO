@@ -1718,7 +1718,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         const zaznaczPole = refPola !== null
           && elementId !== null
           && wykonawcaAkcjiMenu(actionId, kind) !== 'stan-lacznika';
-        const metaCelu: SldElementClickMeta | undefined = zaznaczPole
+        const metaCelu: SldElementClickMeta | undefined = zaznaczPole && contextSubject
           ? {
               ownerRef: refPola,
               elementKind: cel.meta?.elementKind,

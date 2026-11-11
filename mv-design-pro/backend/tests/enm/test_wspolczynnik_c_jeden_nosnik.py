@@ -45,13 +45,16 @@ from network_model.core.voltage_factor import (
 )
 from network_model.odmowa_danych import OdmowaDanychError
 
-from tests.enm.test_canonical_sc_c_per_pasmo import N0, N1, N2, N3, _build_mv_lv_enm
+from tests.enm.test_canonical_sc_c_per_pasmo import N0, N1, N2, N3, ZU_NN, _build_mv_lv_enm
 
 _CASE = UUID("00000000-0000-0000-0000-00000000c0c0")
 
 #: Tabela 1 IEC 60909-0 wpisana RĘCZNIE (wyrocznia niezależna od `voltage_factor.py`).
 _TABELA_1 = {("nN", "MAX"): 1.05, ("nN", "MIN"): 0.95, ("SN", "MAX"): 1.10, ("SN", "MIN"): 1.00}
-_PASMO_WEZLA = {N0: "SN", N1: "SN", N2: "nN", N3: "nN"}
+#: `ZU_NN` — szyna 0,4 kV potrzeb własnych transformatora uziemiającego zespołu na szynie GPZ
+#: (jedyny nośnik drogi zerowej, karta ZU-JEDEN-NOSNIK): węzeł raportowalny pasma nN
+#: z deklaracją +6 %, jak szyny N2/N3.
+_PASMO_WEZLA = {N0: "SN", N1: "SN", N2: "nN", N3: "nN", ZU_NN: "nN"}
 
 #: Lokalizacja: None = cała sieć mieszana (wszystkie węzły raportowalne).
 _LOKALIZACJE = {"wezel_nN": N2, "wezel_SN": N1, "siec_mieszana": None}
@@ -115,7 +118,9 @@ def test_c_i_podstawa_per_wezel(scenariusz: str, lokalizacja: str, tryb: str) ->
     assert wynik.status == "FINISHED", wynik.error_message
     wiersze = {w["fault_node_id"]: w for w in wynik.raw_result["results"]}
     oczekiwane_wezly = (
-        [N0, N1, N2, N3] if _LOKALIZACJE[lokalizacja] is None else [_LOKALIZACJE[lokalizacja]]
+        [N0, N1, N2, N3, ZU_NN]
+        if _LOKALIZACJE[lokalizacja] is None
+        else [_LOKALIZACJE[lokalizacja]]
     )
     assert set(wiersze) == {ref_to_graph_id(ref) for ref in oczekiwane_wezly}
     pasma = {_PASMO_WEZLA[ref] for ref in oczekiwane_wezly}

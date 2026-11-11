@@ -412,8 +412,12 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
  *  (`⟨pole | transformator⟩#odgalezienie-⟨n⟩`) albo aparatu bocznego kolumny odgałęzienia
  *  (`…#odgalezienie-⟨n⟩-lateral-⟨k⟩`, decyzja architekta 2026-11-04: kropka i krawędź kafla
  *  dla WSZYSTKICH kotwic — Q51 z portu S Q5 w Z.11.1); bez przewodów kolumny `…-wire-…`
- *  i dojść port → węzeł (`…#wezel-odczepu-⟨k⟩`). */
-const ODCZEP_WEZLA_POLA = /#(lateral-|hv-lateral-\d+$|tr-field-lateral-\d+$|odgalezienie-\d+$|odgalezienie-\d+-lateral-\d+$)/;
+ *  i dojść port → węzeł (`…#wezel-odczepu-⟨k⟩`). Pole zespołu uziemiającego (Z.13–Z.15
+ *  s.93–95): ogranicznik i zejścia gałęzi punktu neutralnego z przewodu punktu neutralnego
+ *  (`⟨pole⟩#zespol-ogranicznik`, `⟨pole⟩#zespol-⟨dlawik|rezystor⟩-zejscie`) — kropka tylko w
+ *  rozgałęzieniu (≥ 3 ramiona), zejście ostatniej gałęzi to narożnik. */
+const ODCZEP_WEZLA_POLA =
+  /#(lateral-|hv-lateral-\d+$|tr-field-lateral-\d+$|odgalezienie-\d+$|odgalezienie-\d+-lateral-\d+$|zespol-ogranicznik$|zespol-(dlawik|rezystor)-zejscie$)/;
 
 /**
  * JEDNO źródło prawdy odczepu z węzła modelu (reguła KLASA §3, predykaty parami): ten sam

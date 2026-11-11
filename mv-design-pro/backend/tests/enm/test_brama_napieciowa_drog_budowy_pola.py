@@ -11,7 +11,7 @@ nie oferuje na napięcie szyny.
 
 ILOCZYN CECH:
 
-    droga budowy pola (6)  ×  deklaracja napięciowa rodziny wobec szyny 15 kV
+    droga budowy pola (7, z polem sprzęgła)  ×  deklaracja napięciowa rodziny wobec szyny 15 kV
                                (obejmuje / nie obejmuje)
 
 Inwentarz dróg pochodzi z pinu `test_pola_v1_przez_resolver.MIEJSCA_BUDOWY_POLA`
@@ -29,6 +29,7 @@ from enm.domain_operations import execute_domain_operation
 from network_model.catalog.switchgear import SWITCHGEAR_FAMILY_REGISTRY
 
 from tests.api.test_der_sn_documents_api import _der_sn_payload, _sn_station_enm
+from tests.enm.siec_lacznikowa import _gpz
 from tests.enm.test_brama_katalogowa_operacji_v2 import _siec_ze_stacja, _stacja_ref, _szyna_sn_ref
 from tests.enm.test_pola_v1_przez_resolver import (
     MIEJSCA_BUDOWY_POLA,
@@ -60,6 +61,25 @@ def _add_sn_bay(operacja: str, klucz: str) -> dict[str, Any]:
     )
 
 
+def _pole_sprzegla() -> dict[str, Any]:
+    """`add_sn_bay` pola sprzęgła w GPZ dwusekcyjnym (decyzja D3: pole związane z gałęzią
+    `bus_coupler`, pisarz `_zapisz_pole_sprzegla`) z polem sprzęgła rodziny modularnej."""
+    snapshot = _gpz(2)
+    gpz = next(s for s in snapshot["substations"] if s.get("station_type") == "gpz")
+    szyna = sorted(gpz["gpz_sections"], key=lambda s: s["order"])[0]["bus_ref"]
+    return execute_domain_operation(
+        snapshot,
+        "add_sn_bay",
+        {
+            "station_ref": gpz["ref_id"],
+            "bus_ref": szyna,
+            "bay_role": "COUPLER",
+            "complete_bay_template_ref": f"{RODZINA_MODULARNA}__COUPLER",
+            "switchgear_family_ref": RODZINA_MODULARNA,
+        },
+    )
+
+
 def _der_sn() -> dict[str, Any]:
     payload = _der_sn_payload()
     payload["der_topology"]["mv_field_configuration"]["bay_template_ref"] = POLE_MODULARNE
@@ -76,6 +96,7 @@ DROGI: dict[str, tuple[str, Any]] = {
         "domain_operations_v2.py:_zapisz_pole_sn",
         lambda: _add_sn_bay("add_sn_bay", "complete_bay_template_ref"),
     ),
+    "add_sn_bay_sprzeglo": ("domain_operations_v2.py:_zapisz_pole_sprzegla", _pole_sprzegla),
     "gpz": (
         "domain_operations.py:add_grid_source_sn",
         lambda: _uruchom("gpz", POLE_MODULARNE, RODZINA_MODULARNA),

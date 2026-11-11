@@ -24,7 +24,6 @@ import type {
   CatalogType,
   ConverterType,
   CTCatalogType,
-  EarthingTransformerCatalogType,
   LineType,
   LoadCatalogType,
   LVApparatusType,
@@ -279,9 +278,9 @@ const KLUCZE_PRZEKLADNIKA_PRADOWEGO = {
   ith_ka_1s: true,
   ratio_primary_a: true,
   ratio_secondary_a: true,
+  liczba_rdzeni: true,
   rct_ohm: true,
   rdzenie: true,
-  liczba_rdzeni: true,
 } as const satisfies KluczeTypu<CTCatalogType>;
 
 const KLUCZE_PRZEKLADNIKA_NAPIECIOWEGO = {
@@ -294,10 +293,10 @@ const KLUCZE_PRZEKLADNIKA_NAPIECIOWEGO = {
   has_residual_winding: true,
   rated_voltage_factor: true,
   ratio_primary_v: true,
-  ratio_secondary_v: true,
-  voltage_factor_duration_s: true,
-  uzwojenia: true,
   liczba_uzwojen: true,
+  ratio_secondary_v: true,
+  uzwojenia: true,
+  voltage_factor_duration_s: true,
 } as const satisfies KluczeTypu<VTCatalogType>;
 
 const KLUCZE_FALOWNIKA_PV = {
@@ -382,19 +381,6 @@ const KLUCZE_OGRANICZNIKA = {
 } as const satisfies KluczeTypu<SurgeArresterCatalogType>;
 
 /** Aparaty zespołu uziemiającego SN (katalog operacji `add_zespol_uziemiajacy_sn`). */
-const KLUCZE_TRANSFORMATORA_UZIEMIAJACEGO = {
-  ...KLUCZE_POZYCJI,
-  ...KLUCZE_METADANYCH_BEZ_NOTY,
-  grupa_polaczen: true,
-  r0_ohm: true,
-  s_n_kva: true,
-  s_pw_kva: true,
-  u_n_kv: true,
-  u_pw_kv: true,
-  wartosci_robocze: true,
-  x0_ohm: true,
-} as const satisfies KluczeTypu<EarthingTransformerCatalogType>;
-
 const KLUCZE_DLAWIKA_GASZACEGO = {
   ...KLUCZE_POZYCJI,
   ...KLUCZE_METADANYCH_BEZ_NOTY,
@@ -520,6 +506,7 @@ const KLUCZE_TRANSFORMATORA = {
   i0_percent: true,
   p0_kw: true,
   pk_kw: true,
+  r0_ohm: true,
   rated_power_mva: true,
   tap_max: true,
   tap_min: true,
@@ -528,6 +515,8 @@ const KLUCZE_TRANSFORMATORA = {
   vector_group: true,
   voltage_hv_kv: true,
   voltage_lv_kv: true,
+  wartosci_robocze: true,
+  x0_ohm: true,
 } as const satisfies KluczeTypu<TransformerType>;
 
 const KLUCZE_LACZNIKA = {
@@ -698,7 +687,6 @@ export const POLA_KARTY_KATEGORII: Readonly<Record<KategoriaPaneluOgolnego, read
   SYSTEM_SOURCE: klucze(KLUCZE_ZRODLA_SYSTEMOWEGO),
   SURGE_ARRESTER: klucze(KLUCZE_OGRANICZNIKA),
   SHUNT_CAPACITOR: klucze(KLUCZE_KOMPENSATORA),
-  EARTHING_TRANSFORMER: klucze(KLUCZE_TRANSFORMATORA_UZIEMIAJACEGO),
   ARC_SUPPRESSION_COIL: klucze(KLUCZE_DLAWIKA_GASZACEGO),
   NEUTRAL_EARTHING_RESISTOR: klucze(KLUCZE_REZYSTORA_UZIEMIAJACEGO),
   PTPIREE_CERTIFICATE: klucze(KLUCZE_CERTYFIKATU_PTPIREE),

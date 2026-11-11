@@ -708,17 +708,18 @@ PRZESTRZENIE_BEZ_ELEMENTU = {
         "pakiet baterii wiązany z generatorem BESS kluczem `battery_catalog_ref` — nie ma "
         "własnego elementu ENM"
     ),
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: dławik i rezystor są urządzeniami PUNKTU
-    # NEUTRALNEGO zespołu — rekordem zagnieżdżonym w `ZespolUziemiajacy` (bez własnego
-    # identyfikatora i bez własnego przyłączenia do szyny). Ich parametry (pochodzenie,
-    # wartość robocza) wyjaśnia `enm.uziemienie_sekcji` — element ENM to zespół (TU).
+    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, karta ZU-JEDEN-NOSNIK: dławik i rezystor są
+    # urządzeniami PUNKTU NEUTRALNEGO transformatora uziemiającego — rekordem zagnieżdżonym
+    # w `Transformer.hv_neutral` (bez własnego identyfikatora i bez własnego przyłączenia do
+    # szyny). Ich parametry (pochodzenie, wartość robocza) wyjaśnia `enm.uziemienie_sekcji` —
+    # element ENM to transformator uziemiający ZNyn11.
     "DLAWIK_GASZACY": (
-        "dławik gaszący jest urządzeniem punktu neutralnego zespołu uziemiającego — rekord "
-        "zagnieżdżony w zespole, bez własnego elementu ENM"
+        "dławik gaszący jest urządzeniem punktu neutralnego transformatora uziemiającego — "
+        "rekord zagnieżdżony w punkcie neutralnym, bez własnego elementu ENM"
     ),
     "REZYSTOR_UZIEMIAJACY": (
-        "rezystor uziemiający jest urządzeniem punktu neutralnego zespołu uziemiającego — "
-        "rekord zagnieżdżony w zespole, bez własnego elementu ENM"
+        "rezystor uziemiający jest urządzeniem punktu neutralnego transformatora uziemiającego "
+        "— rekord zagnieżdżony w punkcie neutralnym, bez własnego elementu ENM"
     ),
 }
 
@@ -740,7 +741,6 @@ def test_parytet_sekcji_typ_i_element_dla_kazdej_przestrzeni() -> None:
             "branches",
             "loads",
             "shunt_capacitors",
-            "zespoly_uziemiajace",
         ):
             for element in migawka.get(kolekcja, []):
                 przestrzen = element.get("catalog_namespace")

@@ -27,8 +27,15 @@ Tablica połączeń (strona HV, strona LV → połączenie sekwencji zerowej):
     (gwiazda uziem., gwiazda uziem.)  → SZEREGOWE (droga HV↔LV), Z = Z_T0 + 3Z_N,HV + 3Z_N,LV
     (gwiazda uziem., trójkąt)         → BOCZNIK na HV do ziemi,   Z = Z_T0 + 3Z_N,HV
     (trójkąt,        gwiazda uziem.)  → BOCZNIK na LV do ziemi,   Z = Z_T0 + 3Z_N,LV
-    (zygzak uziem.,  *)               → BOCZNIK na HV do ziemi
-    (*,              zygzak uziem.)   → BOCZNIK na LV do ziemi
+    (zygzak uziem.,  *)               → BOCZNIK na HV do ziemi,   Z = Z_0,zyg + 3Z_N,HV
+    (*,              zygzak uziem.)   → BOCZNIK na LV do ziemi,   Z = Z_0,zyg + 3Z_N,LV
+
+Uzwojenie zygzakowe (karta POLA-GPZ-SZABLONY, decyzja architekta): Z_0,zyg = R0 + jX0 na fazę
+z ``Transformer.r0_ohm``/``x0_ohm`` (IEC 60076-6, dane producenta albo wartość robocza katalogu),
+NIE z u_k — u_k opisuje parę uzwojeń GN–DN (transformator uziemiający 100 kVA, u_k 4 %:
+0,04·15²/0,1 = 90 Ω zamiast pojedynczych omów, zaniżony prąd ziemnozwarciowy). Brak R0/X0 na
+elemencie — wartość robocza ``pochodne.impedancja_zerowa_zygzaka_robocza_ohm`` z adnotacją
+w śladzie (zasada nr 4). Grupy bez zygzaka liczą Z_T0 z u_k bez zmian.
     pozostałe (D-D, YN-y, Y-y, ...)   → OTWARTE (brak ścieżki I0)
 
 Założenia (jawne, IEC 60909-0 § 3.3.3 / § 6):
@@ -59,8 +66,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from network_model.core.uziemienie import ETYKIETA_PL_PUNKTU_NEUTRALNEGO
+from network_model.core.uziemienie import (
+    ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
+    ETYKIETA_PL_WARIANTU_UZIEMIENIA,
+    StanAwsc,
+)
 from network_model.core.ybus import S_BASE_MVA
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
@@ -72,6 +84,13 @@ from network_model.pochodne import (
 from .grupa_polaczen import parsuj_grupe_polaczen
 from .models import GroundingConfig, Transformer
 from .nazwy_elementow import nazwa_elementu
+from .punkt_neutralny_zespolu import (
+    WyposazeniePunktuNeutralnego,
+    blad_wyposazenia_punktu_neutralnego,
+    jest_transformatorem_uziemiajacym,
+    parametry_z0_zygzaka,
+    wyposazenie_zespolu,
+)
 from .slownik_komunikatow import opis_obiektu
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 
@@ -111,8 +130,9 @@ class TransformerZeroSeqModel:
     lv_winding: WindingZeroSeq
     z0_pu: complex | None
     trace: list[dict]
-    #: Impedancja zerowa samego transformatora Z_T0 = Z_T [pu na S_base] (bez 3·Z_N) —
-    #: składnik drogi punktu neutralnego uzwojenia przy doziemieniu
+    #: Impedancja zerowa samego transformatora Z_T0 [pu na S_base] (bez 3·Z_N) — ta, która
+    #: weszła do ``z0_pu``: Z_T (rozproszenie) albo Z_0,zyg uzwojenia zygzakowego — składnik
+    #: drogi punktu neutralnego uzwojenia przy doziemieniu
     #: (``enm.uziemienie_sekcji.PunktUziemienia.z0_uzwojenia_ohm``); ``None`` dla OPEN.
     z_t0_pu: complex | None = None
     #: Impedancje punktów neutralnych uzwojeń Z_N [Ω] (bez mnożnika 3) z tej samej decyzji
@@ -120,6 +140,9 @@ class TransformerZeroSeqModel:
     #: bez drogi do ziemi.
     zn_hv_ohm: complex = 0j
     zn_lv_ohm: complex = 0j
+    #: Transformator uziemiający (``jest_transformatorem_uziemiajacym``): wyposażenie punktu
+    #: neutralnego strony górnej, z którego wynika ``zn_hv_ohm`` w stanie ``stan_awsc``.
+    wyposazenie: WyposazeniePunktuNeutralnego | None = None
 
 
 #: Strona uzwojenia w treści odmowy (projektant czyta „górne/dolne", nie skrót HV/LV).
@@ -181,6 +204,8 @@ def _neutral_grounded_and_zn(
             "konfigurację."
         )
     blad = blad_konfiguracji_uziemienia(grounding.type, grounding.r_ohm, grounding.x_ohm)
+    if blad is None:
+        blad = blad_wyposazenia_punktu_neutralnego(grounding, zespol=False, nazwa=opis_trafo)
     if blad is not None:
         raise OdmowaDanychError(
             f"{opis_trafo}: uziemienie punktu neutralnego (uzwojenie {_STRONA_PL[side]}) — "
@@ -231,11 +256,87 @@ def _fmt_c_tex(value: complex) -> str:
     return rf"{value.real:.6g} {sign} j\,{abs(value.imag):.6g}"
 
 
-def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqModel:
+def _z_sladu(z: complex | None) -> dict[str, float] | None:
+    """Liczba zespolona w śladzie WHITE BOX (JSON) — kształt ``{re, im}`` śladu sieci zerowej."""
+    return None if z is None else {"re": z.real, "im": z.imag}
+
+
+def _opis_z(z: complex | None) -> str:
+    return "brak drogi do ziemi" if z is None else f"{_fmt_c(z)} Ω"
+
+
+def _zn_zespolu(
+    trafo: Transformer, stan_awsc: StanAwsc
+) -> tuple[bool, complex, WyposazeniePunktuNeutralnego]:
+    """(uziemiony?, Z_N [Ω], wyposażenie) punktu neutralnego transformatora uziemiającego
+    z gałęzi jego wyposażenia w stanie AWSC przypadku (karta ZU-JEDEN-NOSNIK). Wyposażenie
+    niespójne (brak elementu, sprzeczna deklaracja) — odmowa nazwana."""
+    wyposazenie = wyposazenie_zespolu(trafo)
+    if wyposazenie.odmowa_pl is not None:
+        raise OdmowaDanychError(wyposazenie.odmowa_pl)
+    z_n = wyposazenie.z_n_ohm(stan_awsc)
+    if z_n is None:
+        return False, 0j, wyposazenie
+    return True, z_n, wyposazenie
+
+
+def _slad_zespolu(
+    tracer: Any,
+    trafo: Transformer,
+    nazwa: str,
+    wyposazenie: WyposazeniePunktuNeutralnego,
+    stan_awsc: StanAwsc,
+    z0_zygzaka_ohm: complex,
+) -> None:
+    """Ślad WHITE BOX bocznika zespołu uziemiającego Z_0 = Z_0,zyg + 3·Z_N [Ω] — oba stany AWSC
+    (Z.13: jX w spoczynku, R‖jX po załączeniu), Y0 ze stanu przypadku obliczeniowego."""
+    z_n = wyposazenie.z_n_ohm(stan_awsc)
+    z_n_spoczynek = wyposazenie.z_n_ohm("spoczynek")
+    z_n_zalaczony = wyposazenie.z_n_ohm("zalaczony")
+    z0 = None if z_n is None else z0_zygzaka_ohm + 3.0 * z_n
+    tracer.add(
+        key=f"z0_zespol_uziemiajacy[{trafo.ref_id}]",
+        title=(
+            f"Zespół uziemiający {nazwa}: bocznik składowej zerowej "
+            f"({ETYKIETA_PL_WARIANTU_UZIEMIENIA[wyposazenie.wariant(stan_awsc)]})"
+        ),
+        formula_latex=r"Z_{0,ZU} = Z_{0,TU} + 3 Z_N;\quad Z_N = Z_a \parallel Z_b \parallel \dots",
+        inputs={
+            "ref_id": trafo.ref_id,
+            "stan_awsc": stan_awsc,
+            "z0_tu_ohm": _z_sladu(z0_zygzaka_ohm),
+            "z_n_spoczynek_ohm": _z_sladu(z_n_spoczynek),
+            "z_n_awsc_zalaczony_ohm": _z_sladu(z_n_zalaczony),
+            "galezie": [g.to_dict() for g in wyposazenie.galezie],
+            "parametry": [p.to_dict() for p in wyposazenie.parametry],
+        },
+        substitution=(
+            f"impedancja zerowa transformatora uziemiającego {_opis_z(z0_zygzaka_ohm)}; "
+            f"impedancja punktu neutralnego w spoczynku {_opis_z(z_n_spoczynek)}, przy "
+            f"załączonej AWSC {_opis_z(z_n_zalaczony)}; impedancja zerowa zespołu "
+            f"uziemiającego ({stan_awsc}) {_opis_z(z0)}"
+        ),
+        result={"z0_ohm": _z_sladu(z0), "wariant": wyposazenie.wariant(stan_awsc)},
+        notes=(
+            "Gałęzie punktu neutralnego (dławik gaszący, rezystor wymuszający AWSC, rezystor "
+            "uziemiający, połączenie wprost) z odłącznikami w stanie z modelu, połączone "
+            "równolegle; rezystor wymuszający AWSC przewodzi wyłącznie w stanie załączonym "
+            "automatyki (przypadek obliczeniowy). Impedancja punktu neutralnego wchodzi do "
+            "obwodu zerowego potrojona (IEC 60909-0)."
+        ),
+    )
+
+
+def build_transformer_zero_seq_model(
+    trafo: Transformer, *, stan_awsc: StanAwsc = "spoczynek"
+) -> TransformerZeroSeqModel:
     """Buduje model składowej zerowej transformatora dwuuzwojeniowego.
 
     ZERO zgadywania: połączenie wyprowadzone z ``vector_group`` +
     ``hv_neutral``/``lv_neutral``. Brak grupy → OPEN (uczciwy brak danych).
+    Transformator uziemiający (``jest_transformatorem_uziemiajacym``): Z_N strony górnej
+    z gałęzi wyposażenia punktu neutralnego w stanie automatyki AWSC ``stan_awsc``
+    przypadku obliczeniowego (Case Immutability Rule) — JEDYNA droga stampowania zygzaka.
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
 
@@ -273,9 +374,16 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         grupa.dn_typ,
         grupa.dn_punkt_neutralny,
     )
-    hv_grounded, zn_hv_ohm = _neutral_grounded_and_zn(
-        trafo.hv_neutral, hv_n_letter, opis_trafo=opis_obiektu(trafo, "Transformator"), side="HV"
-    )
+    wyposazenie: WyposazeniePunktuNeutralnego | None = None
+    if jest_transformatorem_uziemiajacym(trafo):
+        hv_grounded, zn_hv_ohm, wyposazenie = _zn_zespolu(trafo, stan_awsc)
+    else:
+        hv_grounded, zn_hv_ohm = _neutral_grounded_and_zn(
+            trafo.hv_neutral,
+            hv_n_letter,
+            opis_trafo=opis_obiektu(trafo, "Transformator"),
+            side="HV",
+        )
     lv_grounded, zn_lv_ohm = _neutral_grounded_and_zn(
         trafo.lv_neutral, lv_n_letter, opis_trafo=opis_obiektu(trafo, "Transformator"), side="LV"
     )
@@ -337,7 +445,25 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         result={"z_t0_pu_sn": z_t_pu_sn, "z_t0_pu_base": z_t_pu_base},
     )
 
-    connection, z0_pu = _decide_connection(hv_winding, lv_winding, z_t_pu_base, zn_hv_pu, zn_lv_pu)
+    z_t0_pu = z_t_pu_base
+    zygzak = (
+        "HV"
+        if hv_winding == WindingZeroSeq.GROUNDED_ZIGZAG
+        else "LV" if lv_winding == WindingZeroSeq.GROUNDED_ZIGZAG else None
+    )
+    if zygzak is not None:
+        z_t0_pu = _z0_zygzaka_pu(tracer, trafo, nazwa, zygzak)
+    if wyposazenie is not None:
+        # Z_0,zyg [Ω] na napięciu górnym — ta sama baza, na której wyżej przeliczono R0/X0.
+        z_base_hv = impedancja_z_napiecia_i_mocy_ohm(trafo.uhv_kv, S_BASE_MVA)
+        if zygzak == "HV":
+            z0_zyg_ohm = z_t0_pu * z_base_hv
+        else:
+            p_r0, p_x0 = parametry_z0_zygzaka(trafo, trafo.uhv_kv)
+            z0_zyg_ohm = complex(p_r0.wartosc, p_x0.wartosc)
+        _slad_zespolu(tracer, trafo, nazwa, wyposazenie, stan_awsc, z0_zyg_ohm)
+
+    connection, z0_pu = _decide_connection(hv_winding, lv_winding, z_t0_pu, zn_hv_pu, zn_lv_pu)
 
     tracer.add(
         key=f"tr_z0_conn[{trafo.ref_id}]",
@@ -380,10 +506,60 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         lv_winding=lv_winding,
         z0_pu=z0_pu,
         trace=tracer.to_list(),
-        z_t0_pu=None if z0_pu is None else z_t_pu_base,
+        z_t0_pu=None if z0_pu is None else z_t0_pu,
         zn_hv_ohm=zn_hv_ohm,
         zn_lv_ohm=zn_lv_ohm,
+        wyposazenie=wyposazenie,
     )
+
+
+def _z0_zygzaka_pu(tracer: Any, trafo: Transformer, nazwa: str, strona: str) -> complex:
+    """Z_0 uzwojenia zygzakowego w per-unit na S_base z R0/X0 elementu (Ω na fazę na napięciu
+    strony zygzaka); brakująca składowa — wartość robocza (ślad nazywa, która)."""
+    u_kv = trafo.uhv_kv if strona == "HV" else trafo.ulv_kv
+    p_r0, p_x0 = parametry_z0_zygzaka(trafo, u_kv)
+    r0, x0 = p_r0.wartosc, p_x0.wartosc
+    robocze = [
+        etykieta
+        for etykieta, p in (("rezystancja zerowa", p_r0), ("reaktancja zerowa", p_x0))
+        if p.roboczy
+    ]
+    podstawa_robocza = next((p.podstawa_pl for p in (p_r0, p_x0) if p.roboczy), "")
+    z_base = impedancja_z_napiecia_i_mocy_ohm(u_kv, S_BASE_MVA) if u_kv > 0 else 0.0
+    z_pu = complex(r0, x0) / z_base if z_base > 0 else 0j
+    tracer.add(
+        key=f"tr_z0_zygzak[{trafo.ref_id}]",
+        title=f"Transformator {nazwa}: impedancja zerowa uzwojenia zygzakowego",
+        formula_latex=r"Z_{0,zyg} = \frac{R_0 + jX_0}{U^2 / S_{base}}",
+        inputs={
+            "ref_id": trafo.ref_id,
+            "strona": strona,
+            "r0_ohm": r0,
+            "x0_ohm": x0,
+            "u_kv": u_kv,
+            "s_base_mva": S_BASE_MVA,
+        },
+        substitution=(
+            f"impedancja zerowa uzwojenia zygzakowego {_fmt_c(complex(r0, x0))} Ω na fazę; "
+            f"{_fmt_c(z_pu)} pu na moc bazową {S_BASE_MVA:g} MVA"
+        ),
+        substitution_latex=(
+            rf"Z_{{0,zyg}} = {_fmt_c_tex(complex(r0, x0))}\ \Omega \rightarrow "
+            rf"{_fmt_c_tex(z_pu)}\ \mathrm{{pu}}\ (S_{{base}})"
+        ),
+        result={"z0_zygzaka_pu_base": z_pu},
+        notes=(
+            "Droga zerowa zygzaka z rezystancji i reaktancji zerowej na fazę (IEC 60076-6), "
+            "nie z napięcia zwarcia. "
+            + (
+                f"{' i '.join(robocze)} — wartość robocza ({podstawa_robocza}); wpisz dane "
+                "producenta w parametrach transformatora."
+                if robocze
+                else "Rezystancja i reaktancja zerowa z elementu modelu."
+            )
+        ),
+    )
+    return z_pu
 
 
 def _decide_connection(

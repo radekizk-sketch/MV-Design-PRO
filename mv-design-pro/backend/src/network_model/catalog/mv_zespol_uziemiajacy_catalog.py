@@ -1,11 +1,11 @@
-"""Katalog referencyjny elementów zespołu uziemiającego SN (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).
+"""Katalog referencyjny elementów punktu neutralnego zespołu uziemiającego SN (karta
+UX-04/POLE-ZU-SKLADOWA-ZEROWA; karta ZU-JEDEN-NOSNIK).
 
-Trzy przestrzenie katalogu — po jednej na element fizyczny zespołu (Catalog Binding Rule):
+Dwie przestrzenie katalogu — po jednej na element fizyczny punktu neutralnego (Catalog
+Binding Rule). Transformator uziemiający ZNyn11 jest transformatorem SN/nN — jego pozycje żyją
+w katalogu transformatorów (``mv_transformer_catalog.TRANSFORMATORY_UZIEMIAJACE_ZNYN11``,
+przestrzeń ``TRAFO_SN_NN``), nie tutaj:
 
-* ``TRANSFORMATOR_UZIEMIAJACY`` — transformator uziemiający ZNyn11 z uzwojeniem potrzeb
-  własnych 400 V (ENEA Zeszyt 1 §16, s. 29–30: „układ połączeń ZNyn 11 … ±5 %”, „ONAN”,
-  „napięcie znamionowe uzwojenia dolnego – 400 V”, „moc uzwojenia potrzeb własnych … nie
-  mniejsza niż 100 kVA”);
 * ``DLAWIK_GASZACY`` — dławik gaszący z płynną regulacją 10–100 % (§16 s. 31) dobrany na
   zakres minimum 40–400 A (§16 s. 29);
 * ``REZYSTOR_UZIEMIAJACY`` — rezystor punktu neutralnego sieci kablowej (§16 s. 29).
@@ -13,10 +13,9 @@ Trzy przestrzenie katalogu — po jednej na element fizyczny zespołu (Catalog B
 POZYCJE TYPOWE, NIE DANE PRODUCENTA (zasada nr 4): każda pozycja niesie mapę
 ``wartosci_robocze`` (pole → podstawa) — materializacja przenosi ją do elementu, a ocena
 oparta na takiej wartości ma jakość ``ESTIMATED`` i kompletność dowodu ``NIEPELNY``.
-Wartości wynikające wprost z §16 (zakres 40–400 A, regulacja płynna, grupa ZNyn11, 400 V,
-PW ≥ 100 kVA) są podane z podstawą; wartości, których §16 nie podaje (impedancja zerowa
-uzwojenia zygzak, moc PW ponad minimum, prąd znamionowy i czas rezystora), są jawnymi
-założeniami inżynierskimi do potwierdzenia kartą producenta.
+Wartości wynikające wprost z §16 (zakres 40–400 A, regulacja płynna) są podane z podstawą;
+wartości, których §16 nie podaje (prąd znamionowy i czas rezystora), są jawnymi założeniami
+inżynierskimi do potwierdzenia kartą producenta.
 """
 
 from __future__ import annotations
@@ -31,26 +30,11 @@ from .types import (
     ArcSuppressionCoilType,
     CatalogStatus,
     CatalogVerificationStatus,
-    EarthingTransformerType,
     NeutralEarthingResistorType,
 )
 
 _ZRODLO = "Pozycja typowa wg ENEA Zeszyt 1 §16 (02.2023) — dane robocze"
 
-_PODSTAWA_GRUPY = "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11"
-_PODSTAWA_PW = (
-    "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; "
-    "przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze"
-)
-_PODSTAWA_Z0_TU = (
-    "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω "
-    "przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
-)
-_PODSTAWA_SN_TU = (
-    "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego "
-    "400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego "
-    "dostosowana do wartości maksymalnej prądu dławika”)"
-)
 _PODSTAWA_ZAKRESU_DLAWIKA = (
     "ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja "
     "prądu kompensacyjnego 10–100 %"
@@ -76,32 +60,6 @@ def _metadane() -> dict[str, str]:
         "verification_status": CatalogVerificationStatus.REFERENCYJNY.value,
         "source_reference": _ZRODLO,
         "catalog_status": CatalogStatus.REFERENCYJNY_V1.value,
-    }
-
-
-def _transformator(u_n_kv: float, r0_ohm: float, x0_ohm: float) -> dict:
-    napiecie = f"{u_n_kv:g}"
-    return {
-        "id": f"TU_ZNYN11_{napiecie}KV_PW160",
-        "name": f"Transformator uziemiający ZNyn11 {napiecie} kV, potrzeby własne 160 kVA 0,4 kV",
-        "params": {
-            "u_n_kv": u_n_kv,
-            "s_n_kva": 4000.0,
-            "grupa_polaczen": "ZNyn11",
-            "r0_ohm": r0_ohm,
-            "x0_ohm": x0_ohm,
-            "s_pw_kva": 160.0,
-            "u_pw_kv": 0.4,
-            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: {
-                "grupa_polaczen": _PODSTAWA_GRUPY,
-                "r0_ohm": _PODSTAWA_Z0_TU,
-                "s_n_kva": _PODSTAWA_SN_TU,
-                "s_pw_kva": _PODSTAWA_PW,
-                "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": _PODSTAWA_Z0_TU,
-            },
-            **_metadane(),
-        },
     }
 
 
@@ -166,11 +124,6 @@ def _rezystor(u_n_kv: float, i_n_a: float) -> dict:
     }
 
 
-def get_all_earthing_transformer_records() -> list[dict]:
-    """Pozycje typowe transformatorów uziemiających (deterministyczne)."""
-    return [_transformator(15.0, 1.5, 6.0), _transformator(20.0, 2.0, 8.0)]
-
-
 def get_all_arc_suppression_coil_records() -> list[dict]:
     """Pozycje typowe dławików gaszących (deterministyczne)."""
     return [
@@ -200,10 +153,6 @@ def _typy(rekordy: list[dict], zbuduj: Callable[[dict[str, Any]], T]) -> list[T]
         dane.update(rekord["params"])
         wynik.append(zbuduj(dane))
     return wynik
-
-
-def get_all_earthing_transformer_types() -> list[EarthingTransformerType]:
-    return _typy(get_all_earthing_transformer_records(), EarthingTransformerType.from_dict)
 
 
 def get_all_arc_suppression_coil_types() -> list[ArcSuppressionCoilType]:

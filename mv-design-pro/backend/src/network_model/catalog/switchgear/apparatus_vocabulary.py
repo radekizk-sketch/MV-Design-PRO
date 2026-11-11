@@ -66,6 +66,8 @@ FAMILY_APPARATUS_FOR_ENM_KIND: dict[str, str] = {
 #: (drobnoziarnista: odłącznik szynowy i liniowy to osobne aparaty).
 APPARATUS_KIND_FOR_TEMPLATE_KIND: dict[str, ApparatusKind] = {
     "CB": "circuit_breaker",
+    # Rozłącznik pola RMU stacji SN/nN (`bay_template_rmu_*`).
+    "LOAD_SWITCH": "switch_disconnector",
     "DS_BUS": "disconnector_busbar",
     "DS_LINE": "disconnector_line",
     # Karta UX-04/POLE-LINIOWE-WZORZEC (ENEA Zeszyt 1, Z.11/Z.11.1): odłącznik odgałęzienia

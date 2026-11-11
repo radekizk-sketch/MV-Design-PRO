@@ -9,6 +9,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
+
 import {
   KATEGORIE_Z_DOPUSZCZENIEM_NOWYCH_POL,
   czyPozycjaDoWyboru,
@@ -70,13 +72,17 @@ describe('pozycjeDoWyboru i nota', () => {
 });
 
 describe('nazwaMediumPl i kategorie z dopuszczeniem', () => {
+  // Jeden słownik z kartą katalogu (`POLA_KODOWE_KARTY.medium`); kod spoza słownika — zdanie
+  // „wartość spoza słownika aplikacji”, nigdy kod na ekranie.
   it.each([
     ['VACUUM', 'próżnia'],
     ['vacuum', 'próżnia'],
     ['AIR', 'powietrze'],
-    ['SF6', 'SF₆'],
-    [' SF6 ', 'SF₆'],
-    ['OLEJ', 'OLEJ'],
+    ['SF6', 'gaz SF6'],
+    [' SF6 ', 'gaz SF6'],
+    ['C4-FN', 'mieszanina gazowa z fluoronitrylem C4-FN'],
+    ['c5-fk', 'mieszanina gazowa z fluoroketonem C5-FK'],
+    ['OLEJ', WZORZEC_STRINGS.wartoscSpozaSlownika],
   ])('%s → %s', (medium, nazwa) => {
     expect(nazwaMediumPl(medium)).toBe(nazwa);
   });

@@ -18,6 +18,7 @@ import logging
 
 import pytest
 from enm.dziennik_zmian import wpis_rewizji
+from enm.punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
 from enm.store import _case_path, get_enm, reset_enm_store
 
 
@@ -127,7 +128,9 @@ def test_uziemienie_szyny_sn_nie_przechodzi_na_zrodlo_na_tej_szynie():
     _zapisz_zastany("w5-c", _zastany_snapshot(z_zrodlem=True, szyna_zrodla="b_sn"))
     enm = get_enm("w5-c")
     assert enm.sources[0].neutral_grounding is None
-    assert enm.zespoly_uziemiajace == []
+    # Migracja nie tworzy transformatora uziemiającego (jedyny nośnik zespołu — karta
+    # ZU-JEDEN-NOSNIK): projektant modeluje go sam, akcja jest nazwana w dzienniku.
+    assert not any(jest_transformatorem_uziemiajacym(t) for t in enm.transformers)
     wpis = wpis_rewizji("w5-c", enm.header.revision)
     assert wpis is not None and "UTRACONE" in wpis.opis_pl and "b_sn" in wpis.opis_pl
     assert "zamodeluj zespół uziemiający" in wpis.opis_pl

@@ -173,7 +173,7 @@ def test_kazde_dopasowanie_wzorca_zawiera_jego_literal() -> None:
             continue
         trafienia = [
             m.group(0)
-            for _, tekst in (*_DOPASOWANIA, *INIEKCJE_ZU)
+            for _, tekst in (*_DOPASOWANIA, *INIEKCJE_ZU, *INIEKCJE_ZU1)
             for m in re.finditer(wzorzec, tekst)
         ]
         if not trafienia and not re.search(wzorzec, literal):
@@ -233,6 +233,57 @@ def test_czerwona_iniekcja_zu() -> None:
             plik.unlink()
 
 
+INIEKCJE_ZU1: tuple[tuple[str, str], ...] = (
+    ("backend/src/enm/models.py", "    zespoly_uziemiajace: list[ZespolUziemiajacy] = []\n"),
+    ("backend/src/enm/x.py", "class ZespolUziemiajacy(BaseModel):\n"),
+    ("backend/src/enm/y.py", "ref = zespol.odbior_pw_ref\n"),
+    ("backend/src/enm/z.py", 'if punkt.rodzaj == "x":\n    punkt_zespolu(enm)\n'),
+    ("backend/src/enm/w.py", "cfg.awsc_prad_wymuszenia_a = 30.0\n"),
+    ("backend/src/enm/v.py", 'zapis = tr.meta["zespol_uziemiajacy"]\n'),
+    ("backend/src/enm/u.py", "ZAPIS_ZESPOLU = 'zespol_uziemiajacy'\n"),
+    ("frontend/src/ui2/a.ts", "const z = enm.zespoly_uziemiajace ?? [];\n"),
+    ("frontend/src/ui2/b.ts", "const z = model.zespolyUziemiajace;\n"),
+    ("frontend/src/ui2/c.ts", "const r = zespol.odbiorPwRef;\n"),
+    ("frontend/src/ui2/d.ts", "const w = tr.meta.zespol_uziemiajacy;\n"),
+    ("backend/schemas/openapi_snapshot.json", '{"zespoly_uziemiajace": []}\n'),
+    ("frontend/e2e/zu.spec.ts", "expect(enm.zespoly_uziemiajace).toHaveLength(1);\n"),
+    # Osobna przestrzeń katalogu transformatorów uziemiających (model A) i martwy kod gotowości.
+    ("backend/src/network_model/catalog/t.py", 'NS = "TRANSFORMATOR_UZIEMIAJACY"\n'),
+    ("frontend/src/ui/catalog/e.ts", "case 'EARTHING_TRANSFORMER':\n"),
+    ("frontend/src/ui/catalog/f.ts", "let t: EarthingTransformerCatalogType;\n"),
+    ("backend/src/network_model/catalog/s.py", "class EarthingTransformerType:\n"),
+    ("backend/tests/enm/r.py", 'REF = "TU_ZNYN11_15KV_PW160"\n'),
+    ("frontend/src/ui2/g.ts", "'earthing.zespol_auxiliary_load_missing': EDYCJA,\n"),
+)
+
+
+def test_czerwona_iniekcja_zu1() -> None:
+    """Karta ZU-JEDEN-NOSNIK: każda postać skasowanego drugiego nośnika zespołu uziemiającego
+    (kolekcja modelu, klasa, wskaźnik odbioru, punkt zespołu, prąd AWSC w konfiguracji, zapis
+    w ``meta``) w backendzie, froncie, migawce kontraktu i e2e jest czerwona."""
+    with tempfile.TemporaryDirectory() as katalog:
+        tmp = Path(katalog)
+        _drzewo_z_konfiguracja(tmp)
+        for rel in (
+            (ROOT / "config" / "grep_zero_zu1_active_paths.txt")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        ):
+            rel = rel.strip()
+            if rel and not rel.startswith("#"):
+                (tmp / rel).mkdir(parents=True, exist_ok=True)
+        assert sprawdz(tmp, "zu1_") == [], "czyste drzewo ma być zielone"
+        for rel, tresc in INIEKCJE_ZU1:
+            plik = tmp / rel
+            plik.parent.mkdir(parents=True, exist_ok=True)
+            plik.write_text(tresc, encoding="utf-8")
+            naruszenia = sprawdz(tmp, "zu1_")
+            assert any(
+                rel in n for n in naruszenia
+            ), f"iniekcja {rel!r} nie została wykryta: {naruszenia}"
+            plik.unlink()
+
+
 def test_realne_drzewo_jest_zielone() -> None:
     for grupa in GRUPY:
         naruszenia = sprawdz(ROOT, grupa)
@@ -243,5 +294,6 @@ if __name__ == "__main__":
     test_czerwona_iniekcja_kazdego_wzorca()
     test_czerwona_iniekcja_w61()
     test_czerwona_iniekcja_zu()
+    test_czerwona_iniekcja_zu1()
     test_realne_drzewo_jest_zielone()
     print("test_grep_zero_guard: OK")

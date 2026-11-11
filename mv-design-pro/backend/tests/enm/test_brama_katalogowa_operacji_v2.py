@@ -448,7 +448,7 @@ def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-REF_TU = "TU_ZNYN11_15KV_PW160"
+REF_TU = "tu-sn-nn-15-04-100kva-znyn11"
 REF_DLAWIK = "DL_40_400A_15KV_CIAGLY"
 REF_REZYSTOR = "REZ_200A_15KV"
 

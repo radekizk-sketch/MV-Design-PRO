@@ -50,9 +50,9 @@ import type {
   Substation,
   SwitchBranch,
   Transformer,
-  ZespolUziemiajacy,
 } from '../../types/enm';
 import { RODZAJE_GALEZI } from '../../types/rodzajeGalezi';
+import { jestTransformatoremUziemiajacym } from '../../ui/shared/transformatoryStacji';
 import { RODZAJ_GALEZI_PL } from '../../ui/shared/rodzajGalezi';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
@@ -98,7 +98,6 @@ const KOLEKCJE: ReadonlyArray<{
   { klucz: 'loads', typ: 'odbior', typEtykieta: 'Odbiór' },
   { klucz: 'generators', typ: 'generator', typEtykieta: 'Generator' },
   { klucz: 'shunt_capacitors', typ: 'bateria_kondensatorow', typEtykieta: 'Bateria kondensatorów' },
-  { klucz: 'zespoly_uziemiajace', typ: 'zespol_uziemiajacy', typEtykieta: 'Zespół uziemiający' },
   { klucz: 'substations', typ: 'stacja', typEtykieta: 'Stacja' },
   { klucz: 'bays', typ: 'pole', typEtykieta: 'Pole' },
   { klucz: 'junctions', typ: 'wezel', typEtykieta: 'Węzeł' },
@@ -323,6 +322,7 @@ function wlasciwosciTransformatora(el: Transformer): WierszWlasciwosci[] {
     w('Prąd jałowy $I_{0}$', el.i0_percent ?? null, '%'),
     w('Grupa połączeń', el.vector_group ?? null),
     w('Jednostki równoległe', el.n_parallel ?? null),
+    ...(jestTransformatoremUziemiajacym(el) ? wlasciwosciZespolu(el) : []),
   ]);
 }
 
@@ -371,27 +371,28 @@ function wlasciwosciBaterii(el: ShuntCapacitor): WierszWlasciwosci[] {
 }
 
 /**
- * Zespół uziemiający sieci SN (ENEA Z.13 / Z.14 / Z.15): dane urządzeń punktu neutralnego
- * z modelu — transformator uziemiający, dławik gaszący, rezystor. Wariant uziemienia i Z_N
- * wyprowadza backend (`enm.uziemienie_sekcji`); tu wyłącznie odczyt pól elementu.
+ * Zespół uziemiający sieci SN (ENEA Z.13 / Z.14 / Z.15) — JEDYNY nośnik to transformator
+ * uziemiający ZNyn11 (karta ZU-JEDEN-NOSNIK): impedancja zerowa uzwojenia zygzakowego i
+ * wyposażenie punktu neutralnego `hv_neutral` (dławik gaszący, AWSC, rezystor, uziemienie
+ * bezpośrednie). Wariant uziemienia i Z_N wyprowadza backend (`enm.uziemienie_sekcji`); tu
+ * wyłącznie odczyt pól elementu.
  */
-function wlasciwosciZespolu(el: ZespolUziemiajacy): WierszWlasciwosci[] {
-  const dlawik = el.dlawik ?? null;
-  const rezystor = el.rezystor ?? null;
-  return bezNulli([
-    w('Grupa połączeń', el.grupa_polaczen ?? null),
-    w('Napięcie znamionowe', el.u_n_kv ?? null, 'kV'),
-    w('Moc znamionowa', el.s_n_kva ?? null, 'kVA'),
+function wlasciwosciZespolu(el: Transformer): (WierszWlasciwosci | null)[] {
+  const nosnik = el.hv_neutral ?? null;
+  const dlawik = nosnik?.dlawik ?? null;
+  const rezystor = nosnik?.rezystor ?? null;
+  return [
     w('Rezystancja zerowa $R_{0}$', el.r0_ohm ?? null, 'Ω'),
     w('Reaktancja zerowa $X_{0}$', el.x0_ohm ?? null, 'Ω'),
     w('Dławik: prąd minimalny', dlawik?.i_min_a ?? null, 'A'),
     w('Dławik: prąd maksymalny', dlawik?.i_max_a ?? null, 'A'),
     w('Dławik: nastawa', dlawik?.i_nastawy_a ?? null, 'A'),
+    w('AWSC: prąd wymuszany', dlawik?.awsc?.i_wymuszany_a ?? null, 'A'),
     w('Rezystor: rezystancja', rezystor?.r_ohm ?? null, 'Ω'),
     w('Rezystor: prąd znamionowy', rezystor?.i_n_a ?? null, 'A'),
     w('Rezystor: czas przepływu prądu', rezystor?.t_s ?? null, 's'),
-    w('Uziemienie bezpośrednie', el.uziemienie_bezposrednie ? 'tak' : null),
-  ]);
+    w('Uziemienie bezpośrednie', nosnik?.type === 'directly_grounded' ? 'tak' : null),
+  ];
 }
 
 /** Funkcja stacji z deklaracji (GPZ, rozdzielnica nN, rozdzielcza, odbiorcza) — to NIE jest rodzaj
@@ -580,8 +581,6 @@ function wlasciwosciKatalogoweWgTypu(
       return wlasciwosciGeneratora(element as unknown as Generator);
     case 'bateria_kondensatorow':
       return wlasciwosciBaterii(element as unknown as ShuntCapacitor);
-    case 'zespol_uziemiajacy':
-      return wlasciwosciZespolu(element as unknown as ZespolUziemiajacy);
     case 'stacja':
       return wlasciwosciStacji(element as unknown as Substation, model);
     case 'pole':

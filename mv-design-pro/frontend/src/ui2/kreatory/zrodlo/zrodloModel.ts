@@ -48,7 +48,7 @@ export interface SekcjaGpz {
   liczbaPol: number;
   /** Szablon pola odpływowego producenta (bay_template_ref z rodziny rozdzielnicy). */
   bayTemplateRef?: string | null;
-  /** Zespół uziemiający w polu ZU tej sekcji (wpis `zespoly_uziemiajace`, karta UX-04/ZU). */
+  /** Zespół uziemiający w polu ZU tej sekcji (wpis `zespoly_sekcji`, karta ZU-JEDEN-NOSNIK). */
   zespolUziemiajacy?: boolean;
 }
 
@@ -695,7 +695,7 @@ function buildGrounding(data: GridSourceFormData) {
 }
 
 /**
- * Wpisy `zespoly_uziemiajace` — ładunek `add_zespol_uziemiajacy_sn` (ten sam model co kreator
+ * Wpisy `zespoly_sekcji` — ładunek `add_zespol_uziemiajacy_sn` (ten sam model co kreator
  * zespołu) z numerem sekcji zamiast miejsca. Transformatorów WN/SN tworzonych w tej samej
  * operacji ładunek nie zna z identyfikatora — wskazuje je deklaracją
  * `wylaczenie_od_transformatora_sekcji` (tylko sekcja z transformatorem w modelu).
@@ -783,7 +783,7 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     ...(zrodloOpisujeSiec110kV(data)
       ? { zero_sequence: buildZeroSequence(data), grounding: buildGrounding(data) }
       : {}),
-    ...(sekcjeZZespolem(data).length > 0 ? { zespoly_uziemiajace: buildZespolySekcji(data) } : {}),
+    ...(sekcjeZZespolem(data).length > 0 ? { zespoly_sekcji: buildZespolySekcji(data) } : {}),
     catalog_binding: catalogBinding ?? undefined,
     gpz_line_field_apparatus: data.gpz_line_field_apparatus_catalog_ref
       ? {

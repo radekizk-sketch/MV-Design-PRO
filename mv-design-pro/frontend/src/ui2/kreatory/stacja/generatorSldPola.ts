@@ -122,6 +122,8 @@ export const RODZAJ_Z_KIND_SZABLONU: Readonly<
   Record<BayDeviceTemplateWire['kind'], RodzajAparatuBom>
 > = {
   CB: 'APARAT_GLOWNY',
+  // Rozłącznik pola RMU stacji SN/nN (szablony `bay_template_rmu_*`) — aparat główny pola.
+  LOAD_SWITCH: 'APARAT_GLOWNY',
   DS_BUS: 'ODLACZNIK_SZYNOWY',
   DS_LINE: 'ODLACZNIK_LINIOWY',
   DS_BRANCH: 'ODLACZNIK_ODGALEZIENIA',

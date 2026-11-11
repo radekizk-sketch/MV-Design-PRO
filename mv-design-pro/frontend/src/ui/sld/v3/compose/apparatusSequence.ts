@@ -285,9 +285,11 @@ function symbolKanonicznyRodzaju(kind: BayPrimaryDeviceKind): SymbolId | null {
     case 'VT':
       return 'voltageTransformer';
     case 'PHASE_TO_PHASE_VT':
-      // Przekładnik napięciowy międzyfazowy (rozładowanie baterii, U>) — symbol przekładnika
-      // napięciowego; para faz jest daną pola, nie kształtem symbolu.
-      return 'voltageTransformer';
+      // Przekładnik napięciowy międzyfazowy (rozładowanie baterii, §17) — ENEA Zeszyt 1 Zał. 16
+      // s. 96: T4 (L1-L2) i T5 (L2-L3) stoją na ZACISKACH BATERII między fazami, nie w odczepie
+      // toru pola. Rysuje je glif baterii (`capacitorBank`, `bateria.przekladnikiMiedzyfazowe`
+      // z rekordów pola); symbol w odczepie toru byłby fałszywą topologią (jak `UNBALANCE_CT`).
+      return null;
     case 'CABLE_HEAD':
       return 'cableHead';
     case 'TRANSFORMER_DEVICE':

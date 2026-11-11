@@ -23,6 +23,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import fxStaly1 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_1.json';
 import fxStaly2 from '../../../../../harness-fixtures/generated/pole_liniowe_z10_gpz_staly_w_sekcji_2.json';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
+import fxPolaGpz from '../../../../../harness-fixtures/generated/pola_gpz_szablonow.json';
 import { RAMKA_BLOKU_PRZEKAZNIKA_MARGINES } from '../../symbols/blokZabezpieczen';
 import type { PanelPolaGpz } from '../../compose/gpzAdnotacje';
 import { GRID, type V3Rect } from '../../core/grid';
@@ -44,6 +45,9 @@ const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
   ['Z.10, stałe w sekcji 1', snapshot(fxStaly1)],
   ['Z.10, stałe w sekcji 2', snapshot(fxStaly2)],
   ['Z.11.1 i Z.11', snapshot(fxZ11)],
+  // Następca 7 (oględziny zrzutu rozdzielnicy): pola Z.7, Z.12, Z.13 (ZU z ogonem punktu
+  // neutralnego i opisami po lewej toru), Z.16, Z.17 — tła rozłączne i tusz w tle na skalach LOD2.
+  ['Z.7, Z.12, Z.13, Z.16, Z.17', snapshot(fxPolaGpz)],
 ];
 const SKALE = [2.5, 1.5, 1.02, 1.0, 0.7, 0.5, 0.35] as const;
 /** Dolna krawędź LOD2 z histerezą (`canvas/camera.ts`) — najmniejsza skala sceny LOD2 w kamerze. */

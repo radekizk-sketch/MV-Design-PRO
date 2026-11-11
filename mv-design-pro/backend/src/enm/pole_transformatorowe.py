@@ -61,6 +61,7 @@ from .models import EnergyNetworkModel
 from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol
 from .slownik_komunikatow import opis_nazwy
 from .tor_pola import szyny_stacji
+from .zespol_uziemiajacy import pole_zespolu_transformatora
 
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
@@ -199,7 +200,9 @@ def transformatory_stacji(
     parytet przypięty plikiem `szynyStacjiParytet.json`, klucz `transformatory`):
 
       1. transformator blokowy źródła DER (`transformator_blokowy_der`) jest WYKLUCZONY —
-         także wtedy, gdy stacja deklaruje go w `transformer_refs`;
+         także wtedy, gdy stacja deklaruje go w `transformer_refs`; tak samo transformator
+         uziemiający, który ma swoje pole zespołu uziemiającego (`pole_zespolu_transformatora`) —
+         jest aparatem pola ZU, nie transformatorem rozdzielczym, i pola TR nie potrzebuje;
       2. dalej rozstrzyga deklaracja stacji (`transformer_refs`);
       3. przy BRAKU deklaracji — koniec transformatora na szynie stacji
          (`enm.tor_pola.szyny_stacji`: szyny główne, zaciski pól SN, końce aparatów pól nN).
@@ -216,6 +219,8 @@ def transformatory_stacji(
     wynik: list[ElementEnm] = []
     for transformator in _lista(enm, "transformers"):
         if transformator_blokowy_der(transformator, refy_blokowe):
+            continue
+        if pole_zespolu_transformatora(enm, transformator) is not None:
             continue
         if zadeklarowane:
             if _refy(transformator) & zadeklarowane:

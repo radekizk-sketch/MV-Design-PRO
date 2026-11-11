@@ -37,7 +37,6 @@ from application.proof_engine.packs.audit2_skladanie import (
 from enm.models import (
     Bay,
     Bus,
-    DlawikGaszacy,
     EnergyNetworkModel,
     ENMHeader,
     Generator,
@@ -45,9 +44,10 @@ from enm.models import (
     Substation,
     TapChanger,
     Transformer,
-    ZespolUziemiajacy,
 )
 from network_model.catalog.types import ConverterKind, ConverterType
+
+from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekordy
 
 MAGAZYN_GFM = "conv-bess-tesla-megapack-3p9mw-15kv"  # qmin<0<qmax, GRID_FORMING
 MAGAZYN_GFL = "conv-bess-1mw-2mwh-15kv"  # qmin<0<qmax, tryb sterowania nieznany
@@ -64,7 +64,7 @@ def _model(
     odbiory_mw: tuple[float, ...] = (1.0,),
     druga_stacja: bool = False,
     szyna_sn_w_stacji: bool = True,
-    zespoly: tuple[ZespolUziemiajacy, ...] = (),
+    zespoly: tuple[tuple[dict[str, Any], dict[str, Any]], ...] = (),
 ) -> EnergyNetworkModel:
     # Sposób uziemienia punktu neutralnego SN przekładników czyta JEDYNA prawda modelu
     # (`enm.uziemienie_sekcji`): szyna SN stacji + zespoły uziemiające na niej (karta
@@ -122,17 +122,25 @@ def _model(
     )
     return EnergyNetworkModel(
         header=ENMHeader(name="Audyt 2 — skladanie"),
-        buses=szyny,
+        buses=[*szyny, *(Bus.model_validate(szyna) for _, szyna in zespoly)],
         substations=stacje,
-        transformers=[transformator],
+        transformers=[transformator, *(Transformer.model_validate(zu) for zu, _ in zespoly)],
         generators=generatory,
         loads=odbiory,
-        zespoly_uziemiajace=list(zespoly),
     )
 
 
-def _zespol(ref_id: str = "zu-1", bus_ref: str = "bus-sn", **pola: Any) -> ZespolUziemiajacy:
-    return ZespolUziemiajacy(ref_id=ref_id, name=f"ZU {ref_id}", bus_ref=bus_ref, **pola)
+def _zespol(
+    ref_id: str = "zu-1", bus_ref: str = "bus-sn", wariant: str | None = "rezystor", **opcje: Any
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Zespół uziemiający (transformator ZNyn11 + szyna 0,4 kV) operacją produktu; ``wariant``
+    ``None`` — punkt neutralny bez elementu (rekord z innej drogi wczytania)."""
+    trafo, szyna = zespol_uziemiajacy_rekordy(
+        ref_id, bus_ref, wariant=wariant or "rezystor", name=f"ZU {ref_id}", **opcje
+    )
+    if wariant is None:
+        trafo["hv_neutral"] = None
+    return trafo, szyna
 
 
 def _konfiguracja_pelna(**zmiany: Any) -> dict[str, Any]:
@@ -495,35 +503,21 @@ def _dowod_vt(pakiet: dict[str, Any]) -> dict[str, Any]:
     ("zespoly", "typ"),
     [
         ((), "isolated"),
-        ((_zespol(dlawik=DlawikGaszacy(i_nastawy_a=100.0)),), "petersen_coil"),
+        ((_zespol(wariant="dlawik", i_nastawy_a=100.0),), "petersen_coil"),
         # Z.13: w spoczynku sieć skompensowana, po załączeniu AWSC z rezystorem równolegle —
         # oba stany wymagają F_v = 1,9; dowód ocenia stan najbardziej wymagający.
         (
-            (
-                _zespol(
-                    dlawik=DlawikGaszacy(
-                        i_nastawy_a=100.0, awsc={"i_wymuszany_a": 30.0}  # type: ignore[arg-type]
-                    )
-                ),
-            ),
+            (_zespol(wariant="dlawik", i_nastawy_a=100.0, awsc={"i_wymuszany_a": 30.0}),),
             "petersen_coil",
         ),
-        ((_zespol(rezystor={"r_ohm": 43.3}),), "resistor_grounded"),
-        (
-            (
-                _zespol(
-                    dlawik=DlawikGaszacy(i_nastawy_a=100.0),
-                    rezystor={"r_ohm": 43.3},  # type: ignore[arg-type]
-                ),
-            ),
-            "resistor_grounded",
-        ),
-        ((_zespol(uziemienie_bezposrednie=True),), "directly_grounded"),
+        ((_zespol(wariant="rezystor"),), "resistor_grounded"),
+        ((_zespol(wariant="dlawik_rezystor", i_nastawy_a=100.0),), "resistor_grounded"),
+        ((_zespol(wariant="bezposrednie"),), "directly_grounded"),
     ],
     ids=["izolowany", "dlawik", "dlawik_awsc", "rezystor", "dlawik_rezystor", "bezposrednie"],
 )
 def test_dowod_przekladnika_czyta_wariant_uziemienia_z_modelu(
-    zespoly: tuple[ZespolUziemiajacy, ...], typ: str
+    zespoly: tuple[tuple[dict[str, Any], dict[str, Any]], ...], typ: str
 ) -> None:
     pakiet = _pakiet(_konfiguracja_pelna(), _model(zespoly=zespoly))
     assert _dowod_vt(pakiet)["details"]["grounding_type"] == typ
@@ -531,14 +525,14 @@ def test_dowod_przekladnika_czyta_wariant_uziemienia_z_modelu(
 
 def test_zespol_za_otwartym_polem_nie_uziemia_sieci_dowod_widzi_siec_izolowana() -> None:
     # ZU na zacisku pola za otwartym łącznikiem nie leży w sieci szyny SN (topologia).
-    model = _model(zespoly=(_zespol(bus_ref="bus-zu", dlawik=DlawikGaszacy(i_nastawy_a=50.0)),))
+    model = _model(zespoly=(_zespol(bus_ref="bus-zu", wariant="dlawik", i_nastawy_a=50.0),))
     model.buses.append(Bus(ref_id="bus-zu", name="Zacisk pola ZU", voltage_kv=15.0))
     pakiet = _pakiet(_konfiguracja_pelna(), model)
     assert _dowod_vt(pakiet)["details"]["grounding_type"] == "isolated"
 
 
 def test_zespol_bez_elementu_punktu_neutralnego_to_brak_nazwany() -> None:
-    pakiet = _pakiet(_konfiguracja_pelna(), _model(zespoly=(_zespol(),)))
+    pakiet = _pakiet(_konfiguracja_pelna(), _model(zespoly=(_zespol(wariant=None),)))
     przyczyny = [b["przyczyna_pl"] for b in pakiet["braki_danych"]]
     assert any(
         "Sposób uziemienia punktu neutralnego sieci SN jest nieokreślony" in p
@@ -566,7 +560,7 @@ def test_brak_sieci_sn_stacji_to_brak_nazwany_nie_wariant_domyslny(
 
 
 def _model_dwie_sekcje(*, pole_przypisane: bool) -> EnergyNetworkModel:
-    model = _model(zespoly=(_zespol(rezystor={"r_ohm": 43.3}),))  # type: ignore[arg-type]
+    model = _model(zespoly=(_zespol(wariant="rezystor"),))
     model.buses.append(Bus(ref_id="bus-sn2", name="Szyna SN sekcja 2", voltage_kv=15.0))
     model.substations[0].bus_refs.append("bus-sn2")
     if pole_przypisane:

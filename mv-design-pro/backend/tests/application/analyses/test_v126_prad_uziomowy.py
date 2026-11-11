@@ -146,7 +146,7 @@ def _siec(wariant: str, *, z0_wn: bool) -> dict[str, Any]:
             "manual_equivalent": zastepcza,
             "transformer_count": 1,
             "transformer_catalog_ref": zu.TRAFO_WN_SN,
-            "zespoly_uziemiajace": [] if zespol is None else [zespol],
+            "zespoly_sekcji": [] if zespol is None else [zespol],
         },
     )
     assert not wynik.get("error"), wynik.get("error")

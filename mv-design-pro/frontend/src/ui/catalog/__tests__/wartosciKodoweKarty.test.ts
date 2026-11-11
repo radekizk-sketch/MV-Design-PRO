@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 
 import wyrocznia from '../../../harness-fixtures/generated/pola_kart_katalogu.json';
+import { NAZWA_PRZEZNACZENIA_RDZENIA_PL } from '../../../types/przekladniki';
 import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
 import {
   NAZWA_PRZEZNACZENIA_RDZENIA_PL,
@@ -89,6 +90,9 @@ describe('słowniki ze źródłem w backendzie = backend', () => {
 
   it('przeznaczenie rdzenia CT / uzwojenia VT = NAZWY_PRZEZNACZENIA_PL (przekladniki.py)', () => {
     expect(NAZWA_PRZEZNACZENIA_RDZENIA_PL).toEqual(wyrocznia.nazwy_z_backendu.przeznaczenie_rdzenia);
+    for (const [kod, nazwa] of Object.entries(wyrocznia.nazwy_z_backendu.przeznaczenie_rdzenia)) {
+      expect(nazwaWartosciKodowej('przeznaczenie', kod)).toBe(nazwa);
+    }
   });
 
   it('izolacja kabla w modelu (`Cable.insulation`, dziedzina szersza niż katalog) ma nazwy', () => {

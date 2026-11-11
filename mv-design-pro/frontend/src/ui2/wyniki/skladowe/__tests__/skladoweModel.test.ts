@@ -98,18 +98,21 @@ const SNAPSHOT = {
       neutral_grounding: { type: 'directly_grounded' },
     },
   ],
-  zespoly_uziemiajace: [
+  transformers: [
+    // Zespół uziemiający = transformator uziemiający ZNyn11 (karta ZU-JEDEN-NOSNIK).
     {
       id: 'z1',
       ref_id: 'zu/gpz/1',
       name: 'ZU sekcji 1',
       tags: [],
       meta: {},
-      bus_ref: 'bus/gpz/sn',
-      dlawik: { i_min_a: 40, i_max_a: 400, awsc: { i_wymuszany_a: 30 } },
+      hv_bus_ref: 'bus/gpz/sn',
+      lv_bus_ref: 'bus/gpz/zu/pw',
+      uhv_kv: 15,
+      ulv_kv: 0.4,
+      vector_group: 'ZNyn11',
+      hv_neutral: { type: 'petersen_coil', dlawik: { i_min_a: 40, i_max_a: 400, awsc: { i_wymuszany_a: 30 } } },
     },
-  ],
-  transformers: [
     {
       id: 't1',
       ref_id: 'trafo/gpz/1',
@@ -262,27 +265,73 @@ describe('uziemienie punktu neutralnego — z zamrożonej wersji układu', () =>
     expect(uziemieniePunktu(SNAPSHOT, 'bus/st1/sn')).toBeNull();
   });
 
-  // Iloczyn cech: element zespołu × opis (dane modelu, bez wyprowadzania wariantu pracy).
-  const ZESPOLY: ReadonlyArray<readonly [string, Record<string, unknown>, string, number | null]> = [
-    ['dławik', { dlawik: { i_min_a: 40, i_max_a: 400 } }, 'dławik gaszący', null],
-    ['dławik + AWSC', { dlawik: { awsc: { i_wymuszany_a: 30 } } }, 'dławik gaszący z rezystorem wymuszającym AWSC', null],
-    ['rezystor', { rezystor: { r_ohm: 43.3 } }, 'rezystor uziemiający', 43.3],
-    ['dławik ‖ rezystor', { dlawik: {}, rezystor: { r_ohm: 50 } }, 'dławik gaszący ‖ rezystor uziemiający', 50],
-    ['bezpośrednie', { uziemienie_bezposrednie: true }, 'uziemienie bezpośrednie', null],
-    ['bez elementu', {}, 'bez elementu w punkcie neutralnym (brak modelu)', null],
+  // Iloczyn cech: wyposażenie punktu neutralnego transformatora uziemiającego × opis × przyłączenie
+  // {pole ZU stacji (szyna sekcji ≠ zacisk transformatora), szyna SN wprost} (dane modelu, bez
+  // wyprowadzania wariantu pracy).
+  const ZESPOLY: ReadonlyArray<readonly [string, Record<string, unknown> | null, string, number | null]> = [
+    ['dławik', { type: 'petersen_coil', dlawik: { i_min_a: 40, i_max_a: 400 } }, 'dławik gaszący', null],
+    ['dławik + AWSC', { type: 'petersen_coil', dlawik: { awsc: { i_wymuszany_a: 30 } } }, 'dławik gaszący z rezystorem wymuszającym AWSC', null],
+    ['rezystor', { type: 'resistor_grounded', rezystor: { r_ohm: 43.3 } }, 'rezystor uziemiający', 43.3],
+    ['dławik ‖ rezystor', { type: 'petersen_coil', dlawik: {}, rezystor: { r_ohm: 50 } }, 'dławik gaszący ‖ rezystor uziemiający', 50],
+    ['bezpośrednie', { type: 'directly_grounded' }, 'uziemienie bezpośrednie', null],
+    ['bez elementu', null, 'bez elementu w punkcie neutralnym (brak modelu)', null],
   ];
-  for (const [nazwa, elementy, opis, rOhm] of ZESPOLY) {
-    it(`zespół „${nazwa}" → opis z elementów i R rezystora z modelu`, () => {
-      const snapshot = {
-        ...SNAPSHOT,
-        zespoly_uziemiajace: [{ ref_id: 'zu/x', name: 'ZU X', bus_ref: 'bus/st1/sn', ...elementy }],
-      } as unknown as EnergyNetworkModel;
-      const wpis = uziemieniePunktu(snapshot, 'bus/st1/sn');
-      expect(wpis?.opis).toBe(opis);
-      expect(wpis?.rOhm).toBe(rOhm);
-      expect(uziemieniaSieci(snapshot).filter((w) => w.strona === 'zespół uziemiający sieci SN')).toHaveLength(1);
-    });
+  for (const [nazwa, hvNeutral, opis, rOhm] of ZESPOLY) {
+    for (const przylaczenie of ['pole ZU', 'szyna SN wprost'] as const) {
+      it(`zespół „${nazwa}" × ${przylaczenie} → opis z wyposażenia i R rezystora z modelu`, () => {
+        const wPolu = przylaczenie === 'pole ZU';
+        const snapshot = {
+          ...SNAPSHOT,
+          bays: wPolu
+            ? [{ ref_id: 'pole/zu', bay_role: 'ZU', bus_ref: 'bus/st1/sn', equipment_refs: ['zu/x'] }]
+            : [],
+          transformers: [
+            ...SNAPSHOT.transformers,
+            {
+              ref_id: 'zu/x',
+              name: 'ZU X',
+              hv_bus_ref: wPolu ? 'bus/st1/zacisk' : 'bus/st1/sn',
+              lv_bus_ref: 'bus/st1/pw',
+              uhv_kv: 15,
+              ulv_kv: 0.4,
+              vector_group: 'ZNyn11',
+              hv_neutral: hvNeutral,
+            },
+          ],
+        } as unknown as EnergyNetworkModel;
+        const wpis = uziemieniePunktu(snapshot, 'bus/st1/sn');
+        expect(wpis?.element).toBe('ZU X');
+        expect(wpis?.opis).toBe(opis);
+        expect(wpis?.rOhm).toBe(rOhm);
+        const zespoly = uziemieniaSieci(snapshot).filter((w) => w.strona === 'zespół uziemiający sieci SN');
+        expect(zespoly.map((w) => w.element)).toEqual(['ZU sekcji 1', 'ZU X']);
+        // Punkt neutralny transformatora uziemiającego nie jest drugi raz stroną GN.
+        expect(uziemieniaSieci(snapshot).filter((w) => w.element === 'ZU X')).toHaveLength(1);
+      });
+    }
   }
+
+  it('zygzak bez wyprowadzonego punktu neutralnego (Zd0) nie jest zespołem uziemiającym', () => {
+    const snapshot = {
+      ...SNAPSHOT,
+      transformers: [
+        {
+          ref_id: 'zd',
+          name: 'Zd0',
+          hv_bus_ref: 'bus/st1/sn',
+          lv_bus_ref: 'bus/st1/pw',
+          uhv_kv: 15,
+          vector_group: 'Zd0',
+          hv_neutral: { type: 'directly_grounded' },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+    expect(uziemieniePunktu(snapshot, 'bus/st1/sn')).toBeNull();
+    expect(uziemieniaSieci(snapshot).map((w) => w.strona)).toEqual([
+      'punkt neutralny sieci 110 kV za granicą modelu (źródło)',
+      'strona GN',
+    ]);
+  });
 
   it('uziemieniaSieci zbiera źródło 110 kV, zespoły uziemiające i obie strony transformatora', () => {
     const wpisy = uziemieniaSieci(SNAPSHOT);

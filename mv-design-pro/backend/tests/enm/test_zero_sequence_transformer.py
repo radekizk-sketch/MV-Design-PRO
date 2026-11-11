@@ -109,6 +109,21 @@ class TestSequenceConnectionTable:
             ),
             ("Yyn0", ZeroSeqConnection.OPEN, WindingZeroSeq.OPEN, WindingZeroSeq.GROUNDED_WYE),
             ("Dd0", ZeroSeqConnection.OPEN, WindingZeroSeq.DELTA, WindingZeroSeq.DELTA),
+            # Transformator uziemiający (ENEA Zeszyt 1 §16: ZNyn11) — zygzak uziemiony po
+            # stronie górnej to bocznik zacisku górnego do ziemi niezależnie od strony dolnej.
+            (
+                "ZNyn11",
+                ZeroSeqConnection.HV_SHUNT_GROUND,
+                WindingZeroSeq.GROUNDED_ZIGZAG,
+                WindingZeroSeq.GROUNDED_WYE,
+            ),
+            (
+                "ZNd0",
+                ZeroSeqConnection.HV_SHUNT_GROUND,
+                WindingZeroSeq.GROUNDED_ZIGZAG,
+                WindingZeroSeq.DELTA,
+            ),
+            ("Zyn11", ZeroSeqConnection.OPEN, WindingZeroSeq.OPEN, WindingZeroSeq.GROUNDED_WYE),
         ],
     )
     def test_connection_table(self, vector_group, expected_conn, expected_hv, expected_lv):

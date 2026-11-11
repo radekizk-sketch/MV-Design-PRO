@@ -295,6 +295,9 @@ class TestSlownikAparatow:
             # UX-04 (Z.11 / Z.11.1 z wyłącznikiem stałym): odłącznik odgałęzienia przekładnika
             # napięciowego — w rodzinie celki ten sam odłącznik co szynowy i liniowy.
             "DS_BRANCH": "switch_disconnector",
+            # Karta SZABLONY-POL (rozszerzenie 2026-11-11): rozłącznik pola RMU stacji SN/nN
+            # (szablony `bay_template_rmu_*`) — w rodzinie celki rozłącznik.
+            "LOAD_SWITCH": "switch_disconnector",
             "ES": "earthing_switch",
             "FUSE": "fuse_set",
             "CT": "current_transformer",

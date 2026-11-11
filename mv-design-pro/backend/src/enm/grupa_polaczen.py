@@ -14,8 +14,8 @@ dostępność punktu neutralnego wyprowadzał osobny parser w
 
 Słownik jest ZAMKNIĘTY i WYPROWADZONY z reguły normy (``_generuj_slownik``,
 pin testem równości z literałem): uzwojenie GN ∈ {Y, YN, D, Z, ZN}, DN ∈
-{y, yn, d, z, zn}; grupy jednorodne (Yy, Dd, Dz) — godziny 0 i 6; grupy mieszane
-(Dy, Yd, Yz) — godziny 1, 5, 7, 11 (tablica grup wg IEC 60076-1). Litera ``N``/``n``
+{y, yn, d, z, zn}; grupy jednorodne (Yy, Dd, Dz, Zd) — godziny 0 i 6; grupy mieszane
+(Dy, Yd, Yz, Zy) — godziny 1, 5, 7, 11 (tablica grup wg IEC 60076-1). Litera ``N``/``n``
 oznacza punkt neutralny WYPROWADZONY (dostępny do uziemienia); jej brak w
 uzwojeniu gwiazdowym/zygzakowym oznacza punkt niedostępny, a trójkąt punktu
 neutralnego nie ma wcale.
@@ -75,6 +75,26 @@ GrupaPolaczenIEC60076 = Literal[
     "YNzn5",
     "YNzn7",
     "YNzn11",
+    "Zd0",
+    "Zd6",
+    "ZNd0",
+    "ZNd6",
+    "Zy1",
+    "Zy5",
+    "Zy7",
+    "Zy11",
+    "Zyn1",
+    "Zyn5",
+    "Zyn7",
+    "Zyn11",
+    "ZNy1",
+    "ZNy5",
+    "ZNy7",
+    "ZNy11",
+    "ZNyn1",
+    "ZNyn5",
+    "ZNyn7",
+    "ZNyn11",
 ]
 
 #: Słownik jako krotka (kolejność literału = kolejność w OpenAPI i na liście frontu).
@@ -91,6 +111,14 @@ _PARY_UZWOJEN: tuple[tuple[str, str, tuple[int, ...]], ...] = (
     ("D", "y", _GODZINY_MIESZANE),
     ("Y", "d", _GODZINY_MIESZANE),
     ("Y", "z", _GODZINY_MIESZANE),
+    # Zygzak po stronie GÓRNEJ — pary odwrotne do Dz i Yz (te same godziny: zamiana stron
+    # nie zmienia parzystości przesunięcia). Wymaga ich transformator uziemiający pola zespołu
+    # uziemiającego GPZ: ENEA Operator, Stacje 110 kV, Zeszyt 1 §16 s.30 — układ ZNyn11
+    # (zygzak SN z wyprowadzonym punktem neutralnym, uzwojenie potrzeb własnych 400/230 V
+    # w gwieździe z punktem neutralnym). Model składowej zerowej: zygzak uziemiony to bocznik
+    # zacisku górnego do ziemi (`zero_sequence_transformer._decide_connection`).
+    ("Z", "d", _GODZINY_JEDNORODNE),
+    ("Z", "y", _GODZINY_MIESZANE),
 )
 
 
@@ -137,7 +165,8 @@ def parsuj_grupe_polaczen(wartosc: str) -> GrupaPolaczen:
     """Rozbiór grupy ze słownika; wartość spoza słownika = ``ValueError`` nazwany.
 
     Przykłady: 'Dyn11' → (D, brak; Y, dostępny; 11); 'YNd11' → (Y, dostępny; D,
-    brak; 11); 'Yy0' → (Y, niedostępny; Y, niedostępny; 0).
+    brak; 11); 'Yy0' → (Y, niedostępny; Y, niedostępny; 0); 'ZNyn11' → (Z, dostępny; Y,
+    dostępny; 11).
     """
     if not grupa_polaczen_poprawna(wartosc):
         raise OdmowaDanychError(

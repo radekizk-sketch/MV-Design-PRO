@@ -109,7 +109,9 @@ def test_ten_sam_zbior_galezi_w_api_sladzie_i_eksportach(client: TestClient, rod
     assert wykonanie.status_code == 200 and wykonanie.json()["status"] == "DONE"
 
     wiersze = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit").json()["rows"]
-    assert len(wiersze) == 4
+    # 4 szyny SN + szyna 0,4 kV potrzeb własnych transformatora uziemiającego zespołu (karta
+    # ZU-JEDEN-NOSNIK: nośnikiem drogi zerowej jest transformator ZNyn11 z szyną dolną).
+    assert len(wiersze) == 5
     widziane_pominiete: set[str] = set()
     widziane_realne_male: set[str] = set()
     for wiersz in wiersze:
@@ -126,6 +128,12 @@ def test_ten_sam_zbior_galezi_w_api_sladzie_i_eksportach(client: TestClient, rod
         wklady = rozplyw["branch_contributions"]
         pominiete = rozplyw["wklady_pominiete"] or []
         slad = rozplyw["branch_flow_trace"]
+        if wiersz["ikss_ka"] is None:
+            # Zwarcie doziemne na szynie 0,4 kV zespołu: punkt neutralny uzwojenia dolnego bez
+            # uziemienia — brak drogi zerowej (przyczyna nazwana w wierszu), więc bez rozpływu.
+            assert rodzaj in ("SC_1F", "SC_2F_G") and wiersz["element_id"] == "zu-gpz-nn"
+            assert not rozplyw["branch_contributions"] and not rozplyw["wklady_pominiete"]
+            continue
 
         pary_wkladow = {(w["source_id"], w["branch_id"]) for w in wklady}
         pary_pominietych = {(w["source_id"], w["branch_id"]) for w in pominiete}
@@ -139,10 +147,11 @@ def test_ten_sam_zbior_galezi_w_api_sladzie_i_eksportach(client: TestClient, rod
             assert w["i_ka"] * 1000.0 < PROG_WKLADU_POMIJALNEGO_A
             assert w["tor"] in {"thevenin", "falownik"}
         # Każda para źródło×gałąź policzona przez rdzeń jest w DOKŁADNIE jednym zbiorze:
-        # sieć ma 3 gałęzie; Thevenin zawsze, falownik w 3F/2F (PV bez składowej zerowej).
+        # sieć ma 3 kable i transformator uziemiający zespołu; Thevenin zawsze, falownik
+        # w 3F/2F (PV bez składowej zerowej).
         zrodla = {s for s, _b in pary_wkladow | pary_pominietych}
         galezie = {b for _s, b in pary_wkladow | pary_pominietych}
-        assert len(galezie) == 3
+        assert len(galezie) == 4
         assert pary_wkladow | pary_pominietych == {(s, b) for s in zrodla for b in galezie}
 
         # Ślad ↔ lista: kroki Thevenina nazywają DOKŁADNIE gałęzie wkładów sieci zastępczej.

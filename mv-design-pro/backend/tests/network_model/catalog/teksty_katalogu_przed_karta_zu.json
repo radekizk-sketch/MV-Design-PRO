@@ -76,6 +76,22 @@
   "Deklaracja (dokument nieodczytany): turbina 3450 kW, wirnik 112 m; generator asynchroniczny klatkowy VND SFIG V2 – DASG 560/6M, 750 V, 1450 obr./min, izolacja H, IP54; przekształtnik pełnej mocy Vestas — strona generatora 750 V AC, strona sieci 650 V AC, S_n 4,4 MVA, U_DC 1150 V, 50/60 Hz po stronie sieci. Transformator blokowy tej konfiguracji (suchy 4000 kVA, 0,65/33 kV, Dyn5) nie wchodzi do katalogu: 33 kV nie jest napięciem sieci polskiej, a deklaracja nie podaje u_k ani strat. Zdolność bierna, częstotliwość stojana, udział zwarciowy i profil dynamiczny — brak w deklaracji (pola puste)."
  ],
  [
+  "Deklarowane: ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.29–30: grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne 400 V, moc ≥ 100 kVA — dokument nie jest dołączony do repozytorium; napięcie zwarcia, straty obciążeniowe, straty jałowe i prąd jałowy: pozycja tr-sn-nn-15-04-100kva-dyn11",
+  "Deklarowane: ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.29–30: grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne 400 V, moc ≥ 100 kVA — dokument nie jest dołączony do repozytorium; u_k, P_k, P0, i0: pozycja tr-sn-nn-15-04-100kva-dyn11"
+ ],
+ [
+  "Deklarowane: ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.29–30: grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne 400 V, moc ≥ 100 kVA — dokument nie jest dołączony do repozytorium; napięcie zwarcia, straty obciążeniowe, straty jałowe i prąd jałowy: pozycja tr-sn-nn-20-04-100kva-dyn11",
+  "Deklarowane: ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023 – 2), §16 s.29–30: grupa ZNyn11, zaczepy ±5 % (3 położenia), ONAN, uzwojenie dolne 400 V, moc ≥ 100 kVA — dokument nie jest dołączony do repozytorium; u_k, P_k, P0, i0: pozycja tr-sn-nn-20-04-100kva-dyn11"
+ ],
+ [
+  "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 (s.89) i Z.11.1 (s.91); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: prąd znamionowy krótkotrwały wytrzymywany 20 kA/1 s dla toru 200-1000 A)",
+  "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 (s.89) i Z.11.1 (s.91); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: Ith 20 kA/1 s dla toru 200-1000 A)"
+ ],
+ [
+  "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 (s.90); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: prąd znamionowy krótkotrwały wytrzymywany 20 kA/1 s dla toru 200-1000 A)",
+  "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 (s.90); IEC 61869-2; IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN: Ith 20 kA/1 s dla toru 200-1000 A)"
+ ],
+ [
   "ENEA Operator, Standard „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje dwutransformatorowe 110 kV/SN”, wersja 02.2023-2, §10.1 tab. 5, str. I 16/76 (napięcie najwyższe urządzenia 123 kV dla 110 kV)",
   "ENEA Operator, Standard „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje dwutransformatorowe 110 kV/SN”, wersja 02.2023-2, §10.1 tab. 5, str. I 16/76 (U_m = 123 kV dla 110 kV)"
  ],
@@ -276,6 +292,10 @@
   "Pozycja NORMATYWNA/TYPOWA — nie egzemplarz producenta. Transformator suchy 800 kVA: Pk = 8000.0 W i P0 = 1170.0 W to pułap Tier 2 z tab. I.2; u_k = 6 % z serii Siemens GEAFOL 20/22/24 kV, i0 = 0.6 % z tej samej serii (suchej). Dla HV 15 kV przyjęto serię Um 24 kV (tab. I.1/I.2 obejmuje Um ≤ 24 kV łącznie). Pozycję producenta dopisuje się osobnym rekordem z karty PDF."
  ],
  [
+  "Pozycja TYPOWA transformatora uziemiającego zespołu uziemiającego GPZ — nie egzemplarz producenta. Grupa, zaczepy, napięcie dolne i najmniejsza moc uzwojenia potrzeb własnych z §16 Zeszytu 1; napięcie zwarcia, straty obciążeniowe, straty jałowe i prąd jałowy — wartość robocza z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje); impedancja zerowa (rezystancja i reaktancja zerowa) na fazę po stronie SN — wartość robocza (założenie inżynierskie, `wartosci_robocze`). Rozporządzenie UE 548/2014 art. 1 ust. 2 wyłącza transformatory uziemiające z wymagań Tier 2.",
+  "Pozycja TYPOWA transformatora uziemiającego zespołu uziemiającego GPZ — nie egzemplarz producenta. Grupa, zaczepy, napięcie dolne i najmniejsza moc uzwojenia potrzeb własnych z §16 Zeszytu 1; u_k, P_k, P0, i0 — wartość robocza z pozycji 100 kVA Dyn11 tego samego napięcia (standard ich nie podaje); impedancja zerowa R0/X0 na fazę po stronie SN — wartość robocza (założenie inżynierskie, `wartosci_robocze`). Rozporządzenie UE 548/2014 art. 1 ust. 2 wyłącza transformatory uziemiające z wymagań Tier 2."
+ ],
+ [
   "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
   "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej"
  ],
@@ -330,6 +350,18 @@
  [
   "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych (prąd zwarciowy, prąd krótkotrwały wytrzymywany i prąd wyłączalny graniczny — brak danej) i bez producenta.",
   "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych (I_k, I_cw, I_cu — brak danej) i bez producenta."
+ ],
+ [
+  "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa rdzeni). Pola skalarne opisują rdzeń I. Rekord referencyjny do doboru CT. Prąd cieplny krótkotrwały podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); prąd dynamiczny wyprowadzany normowo (2,5-krotność prądu cieplnego), współczynnik bezpieczeństwa przyrządu wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta.",
+  "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa rdzeni). Pola skalarne opisują rdzeń I. Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
+ ],
+ [
+  "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa rdzenia). Rekord referencyjny do doboru CT. Prąd cieplny krótkotrwały podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); prąd dynamiczny wyprowadzany normowo (2,5-krotność prądu cieplnego), współczynnik bezpieczeństwa przyrządu wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta.",
+  "Typ ogólny OSD z rysunku standardu (przekładnia, moc, klasa rdzenia). Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
+ ],
+ [
+  "Typ ogólny OSD z rysunku standardu: rdzeń I rozliczeniowy i analizatora jakości energii (AJEE — odbiorcy > 4 MW, wytwórcy ≥ 200 kW), rdzeń II układów regulacyjnych, rdzeń III zabezpieczeniowy. Pola skalarne opisują rdzeń I. Rekord referencyjny do doboru CT. Prąd cieplny krótkotrwały podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); prąd dynamiczny wyprowadzany normowo (2,5-krotność prądu cieplnego), współczynnik bezpieczeństwa przyrządu wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta.",
+  "Typ ogólny OSD z rysunku standardu: rdzeń I rozliczeniowy i analizatora jakości energii (AJEE — odbiorcy > 4 MW, wytwórcy ≥ 200 kW), rdzeń II układów regulacyjnych, rdzeń III zabezpieczeniowy. Pola skalarne opisują rdzeń I. Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
  ],
  [
   "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
@@ -422,6 +454,10 @@
  [
   "Zasilanie GPZ 20 kV / moc zwarciowa 750 MVA / R/X 0.12",
   "Zasilanie GPZ 20 kV / Sk3 750 MVA / R/X 0.12"
+ ],
+ [
+  "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard ENEA jej nie podaje",
+  "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: |Z0| = 3·s·Uf/IN przy spadku s = 5 % napięcia fazowego i prądzie punktu neutralnego IN = 400 A (górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29), X0/R0 = 5; producent podaje Z0 na tabliczce (IEC 60076-6), standard ENEA jej nie podaje"
  ],
  [
   "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym",

@@ -813,7 +813,7 @@ describe('punkt neutralny SN z grupy transformatora 110/SN (karta GPZ-MODEL)', (
   });
 });
 
-/* Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — zespoły uziemiające sekcji GPZ (`zespoly_uziemiajace`).
+/* Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — zespoły uziemiające sekcji GPZ (`zespoly_sekcji`).
    Iloczyn cech: granica {SN, 110 kV} × sekcje z zespołem {brak, 1, obie} × liczba
    transformatorów {1, 2} × wariant {Z.13 dławik, Z.14, Z.15, bezpośrednie} × deklaracja
    wyłączenia od TR {wł., wył.}. Wpis = ładunek `add_zespol_uziemiajacy_sn` (wspólny model)
@@ -821,7 +821,7 @@ describe('punkt neutralny SN z grupy transformatora 110/SN (karta GPZ-MODEL)', (
 describe('zespoły uziemiające sekcji GPZ', () => {
   const ZESPOL = {
     ...DANE_DOMYSLNE.zespol,
-    catalog_ref: 'TU_ZNYN11_15KV_PW160',
+    catalog_ref: 'tu-sn-nn-15-04-100kva-znyn11',
     dlawik_catalog_ref: 'DL_40_400A_15KV_CIAGLY',
     rezystor_catalog_ref: 'REZ_200A_15KV',
   };
@@ -844,11 +844,11 @@ describe('zespoły uziemiające sekcji GPZ', () => {
               const payload = zbudujPayloadZrodla(dane);
               expect(kluczeSpozaKontraktu('add_grid_source_sn', payload)).toEqual([]);
               if (zaznaczone.length === 0) {
-                expect(payload).not.toHaveProperty('zespoly_uziemiajace');
+                expect(payload).not.toHaveProperty('zespoly_sekcji');
                 expect(wierszUziemieniaSn(dane).stan).toBe('ostrzezenie');
                 return;
               }
-              const wpisy = payload.zespoly_uziemiajace as Array<Record<string, unknown>>;
+              const wpisy = payload.zespoly_sekcji as Array<Record<string, unknown>>;
               expect(wpisy).toEqual(buildZespolySekcji(dane));
               expect(wpisy.map((w) => w.sekcja)).toEqual(zaznaczone);
               for (const wpis of wpisy) {

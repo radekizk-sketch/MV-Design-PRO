@@ -16,6 +16,18 @@ export type PrzeznaczenieRdzenia =
   | 'ZABEZPIECZENIA'
   | 'ROZNICOWE';
 
+/** Nazwa przeznaczenia rdzenia / uzwojenia dla projektanta — lustro
+ *  `przekladniki.NAZWY_PRZEZNACZENIA_PL` (parytet przypina `ui/catalog/__tests__/
+ *  wartosciKodoweKarty.test.ts` przez wyrocznię `pola_kart_katalogu.json`). */
+export const NAZWA_PRZEZNACZENIA_RDZENIA_PL: Readonly<Record<PrzeznaczenieRdzenia, string>> = {
+  ROZLICZENIE: 'pomiar rozliczeniowy energii',
+  POMIAR: 'pomiar techniczny i telemechanika',
+  JAKOSC_ENERGII: 'analizator jakości energii elektrycznej',
+  REGULACJA: 'regulacja napięcia',
+  ZABEZPIECZENIA: 'zabezpieczenia',
+  ROZNICOWE: 'zabezpieczenie różnicowe',
+};
+
 /** Rdzeń przekładnika prądowego (tabliczka IEC 61869-2) — lustro
  *  `network_model/catalog/przekladniki.RdzenPrzekladnikaPradowego`. ALF wyprowadza backend z klasy. */
 export interface RdzenPrzekladnikaPradowego {

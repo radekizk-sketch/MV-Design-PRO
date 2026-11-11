@@ -49,8 +49,8 @@ from enm.models import (
     Load,
     ShuntCapacitor,
     Source,
-    ZespolUziemiajacy,
 )
+from enm.punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, opcje_biegu_ze_scenariusza
 from enm.store import reset_enm_store, set_enm
 from enm.validator import ENMValidator
@@ -67,7 +67,7 @@ from tests.reference_networks.scena_pola_bkr import (
     zbuduj_gpz_z_bkr,
 )
 from tests.reference_networks.sceny_zajetosci_pol import ok, op
-from tests.utils.zespol_uziemiajacy import zespol_uziemiajacy_rekord
+from tests.utils.zespol_uziemiajacy import z_zespolem
 
 Q_N_MVAR = 1.2
 U_N_KV = 15.0
@@ -411,16 +411,14 @@ def _siec_kompensowana(bat: ShuntCapacitor | None) -> EnergyNetworkModel:
     uziemienia punktu neutralnego czyta sposób uziemienia WYŁĄCZNIE z zespołu uziemiającego
     sekcji (jedyna prawda `enm.uziemienie_sekcji`; parametr biegu go nie nadpisuje)."""
     enm = _siec_zwarcia(bat, 1.0)
-    [zespol] = enm.zespoly_uziemiajace
-    return enm.model_copy(
+    [zespol] = [t for t in enm.transformers if jest_transformatorem_uziemiajacym(t)]
+    bez_zespolu = enm.model_copy(
         update={
-            "zespoly_uziemiajace": [
-                ZespolUziemiajacy.model_validate(
-                    zespol_uziemiajacy_rekord(zespol.ref_id, zespol.bus_ref, wariant="dlawik")
-                )
-            ]
+            "transformers": [t for t in enm.transformers if t.ref_id != zespol.ref_id],
+            "buses": [b for b in enm.buses if b.ref_id != zespol.lv_bus_ref],
         }
     )
+    return z_zespolem(bez_zespolu, zespol.ref_id, zespol.hv_bus_ref, wariant="dlawik")
 
 
 def _wejscie_projektu_uziemienia(enm: EnergyNetworkModel) -> Any:
@@ -651,6 +649,24 @@ def test_stan_stopni_niezgodny_z_typem_e043_i_odmowa_assemblera_z_jednego_predyk
         "update_element_parameters",
         {"element_ref": rekord["ref_id"], "parameters": {"stopnie_zalaczone": [True, False]}},
     ).get("error")
+
+
+@pytest.mark.parametrize("zespoly", [1, 2], ids=["jeden_zespol", "dwa_zespoly"])
+def test_bateria_niezgodna_i_zespol_uziemiajacy_walidator_bez_wyjatku(zespoly: int) -> None:
+    """Regresja karty ZU-JEDEN-NOSNIK: reguły zespołu uziemiającego (W-ZU-*, bloker E-W5-04)
+    czytały ``uziemienie_sieci``, które liczy B0 baterii — bateria o stanie stopni niezgodnym
+    z liczbą stopni rzucała ``OdmowaNazwana`` z WNĘTRZA walidatora (walidacja padała zamiast
+    zgłosić E043). Podział na sieci i nośniki (``sieci_sn``) nie czyta admitancji baterii:
+    walidator zgłasza E043 i — przy dwóch zespołach w jednej sieci — E-W5-04, bez wyjątku."""
+    enm = zbuduj_gpz_z_bkr()
+    rekord = dict(bateria(enm))
+    rekord["stopnie_zalaczone"] = [True, False]
+    model = EnergyNetworkModel.model_validate({**enm, "shunt_capacitors": [rekord]})
+    for numer in range(1, zespoly + 1):
+        model = z_zespolem(model, f"zu-{numer}", rekord["bus_ref"], wariant="rezystor")
+    kody = [i.code for i in ENMValidator().validate(model).issues]
+    assert "E043" in kody
+    assert kody.count("E-W5-04") == (1 if zespoly == 2 else 0)
 
 
 def test_wyrocznia_admitancji_zgodna_z_mostem_dla_kazdej_cechy() -> None:

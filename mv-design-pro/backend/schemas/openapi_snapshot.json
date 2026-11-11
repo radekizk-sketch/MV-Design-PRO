@@ -14353,7 +14353,27 @@
         "YNzn1",
         "YNzn5",
         "YNzn7",
-        "YNzn11"
+        "YNzn11",
+        "Zd0",
+        "Zd6",
+        "ZNd0",
+        "ZNd6",
+        "Zy1",
+        "Zy5",
+        "Zy7",
+        "Zy11",
+        "Zyn1",
+        "Zyn5",
+        "Zyn7",
+        "Zyn11",
+        "ZNy1",
+        "ZNy5",
+        "ZNy7",
+        "ZNy11",
+        "ZNyn1",
+        "ZNyn5",
+        "ZNyn7",
+        "ZNyn11"
        ],
        "type": "string"
       },
@@ -22295,7 +22315,7 @@
   },
   "/api/catalog/earthing-transformer-types": {
    "get": {
-    "description": "Transformatory uziemiające ZNyn11 (TRANSFORMATOR_UZIEMIAJACY) — katalog operacji\n`add_zespol_uziemiajacy_sn` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).",
+    "description": "Transformatory uziemiające ZNyn11 — pozycje katalogu transformatorów SN/nN\n(``TRAFO_SN_NN``) z uzwojeniem górnym w zygzak z punktem neutralnym; katalog operacji\n`add_zespol_uziemiajacy_sn` (karta ZU-JEDEN-NOSNIK: zespół uziemiający jest transformatorem,\njedna przestrzeń katalogu, ten sam rekord co lista `/transformer-types`).",
     "operationId": "list_earthing_transformer_types_api_catalog_earthing_transformer_types_get",
     "responses": {
      "200": {

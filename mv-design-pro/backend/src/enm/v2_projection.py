@@ -24,8 +24,12 @@ from enm.models import (
     Transformer,
 )
 from enm.nazwy_elementow import nazwa_elementu
+from enm.punkt_neutralny_zespolu import (
+    jest_transformatorem_uziemiajacym,
+    parametry_z0_zygzaka,
+    wyposazenie_zespolu,
+)
 from enm.slownik_komunikatow import nazwa_rodzaju_generatora
-from enm.uziemienie_sekcji import punkt_zespolu
 from enm.zabezpieczenie import aparaty_sterownika, brakujace_wejscia, kody_funkcji_sterownika
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.core.uziemienie import TYP_PUNKTU_NEUTRALNEGO_WARIANTU
@@ -86,7 +90,7 @@ class V2SwitchingStateSnapshot(BaseModel):
 
 class V2ZeroSequenceConfig(BaseModel):
     element_ref: str
-    element_kind: Literal["branch", "source", "transformer", "zespol_uziemiajacy"]
+    element_kind: Literal["branch", "source", "transformer"]
     r0: float | None = None
     x0: float | None = None
     b0: float | None = None
@@ -283,6 +287,27 @@ def _build_base_switching_snapshot(enm: EnergyNetworkModel) -> V2SwitchingStateS
     )
 
 
+def _konfiguracja_zerowa_zespolu(transformer: Transformer) -> V2ZeroSequenceConfig:
+    """Transformator uziemiający (karta ZU-JEDEN-NOSNIK): Z_0 zygzaka i wariant punktu
+    neutralnego z jedynej prawdy (`enm.punkt_neutralny_zespolu`); wartości robocze
+    (Z_0 zygzaka, nastawa dławika, prąd rezystora) albo odmowa — jakość „czesciowa"."""
+    r0, x0 = parametry_z0_zygzaka(transformer, float(transformer.uhv_kv))
+    wyposazenie = wyposazenie_zespolu(transformer)
+    roboczy = r0.roboczy or x0.roboczy or any(p.roboczy for p in wyposazenie.parametry)
+    return V2ZeroSequenceConfig(
+        element_ref=transformer.ref_id,
+        element_kind="transformer",
+        r0=r0.wartosc,
+        x0=x0.wartosc,
+        grounding_type=(
+            None
+            if wyposazenie.odmowa_pl is not None
+            else TYP_PUNKTU_NEUTRALNEGO_WARIANTU[wyposazenie.wariant("spoczynek")]
+        ),
+        quality_status=("pelna" if wyposazenie.odmowa_pl is None and not roboczy else "czesciowa"),
+    )
+
+
 def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequenceConfig]:
     configs: list[V2ZeroSequenceConfig] = []
 
@@ -321,32 +346,10 @@ def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequence
             )
         )
 
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający sieci SN jest nośnikiem składowej
-    # zerowej (bocznik Z_0,TU + 3·Z_N) — wariant punktu neutralnego z jedynej prawdy
-    # (`enm.uziemienie_sekcji.punkt_zespolu`); Z_0,TU z rekordu (wartość robocza — „czesciowa").
-    napiecia = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
-    for zespol in sorted(enm.zespoly_uziemiajace, key=lambda item: item.ref_id):
-        punkt = punkt_zespolu(zespol, napiecia.get(zespol.bus_ref) or 0.0)
-        configs.append(
-            V2ZeroSequenceConfig(
-                element_ref=zespol.ref_id,
-                element_kind="zespol_uziemiajacy",
-                r0=zespol.r0_ohm,
-                x0=zespol.x0_ohm,
-                grounding_type=(
-                    None
-                    if punkt.odmowa_pl is not None
-                    else TYP_PUNKTU_NEUTRALNEGO_WARIANTU[punkt.wariant("spoczynek")]
-                ),
-                quality_status=(
-                    "pelna"
-                    if punkt.odmowa_pl is None and not punkt.dane_przyjete()
-                    else "czesciowa"
-                ),
-            )
-        )
-
     for transformer in sorted(enm.transformers, key=lambda item: item.ref_id):
+        if jest_transformatorem_uziemiajacym(transformer):
+            configs.append(_konfiguracja_zerowa_zespolu(transformer))
+            continue
         grounding = transformer.hv_neutral or transformer.lv_neutral
         configs.append(
             V2ZeroSequenceConfig(

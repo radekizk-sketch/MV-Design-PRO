@@ -172,7 +172,7 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
   });
 
   it('aparat z gazem fluorowanym: pozycja ukryta w wyborze, nota cytuje powód backendu', async () => {
-    const powod = 'Aparat Rozłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+    const powod = 'Aparat Rozłącznik SF6 wykorzystuje gaz fluorowany (SF6).';
     fetchMvApparatusTypesMock.mockReturnValueOnce(
       Promise.resolve([
         { id: 'app-sf6', name: 'Rozłącznik SF6', device_kind: 'ROZLACZNIK', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: powod, u_n_kv: 24, i_n_a: 630, breaking_capacity_ka: 20 },

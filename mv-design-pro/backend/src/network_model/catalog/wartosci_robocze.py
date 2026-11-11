@@ -1419,6 +1419,9 @@ JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ: Mapping[str, str] = {
     "r0_ohm_per_km": "Ω/km",
     "x0_ohm_per_km": "Ω/km",
     POLE_B0: "S/km",
+    # R0/X0 na fazę uzwojenia zygzakowego transformatora (``POLA_IMPEDANCJI_ZEROWEJ_TRANSFORMATORA``).
+    "r0_ohm": "Ω",
+    "x0_ohm": "Ω",
 }
 
 
@@ -1520,6 +1523,26 @@ def wyprowadz_skladowa_zerowa(
     return tuple(wynik)
 
 
+#: Impedancja zerowa uzwojenia zygzakowego transformatora uziemiającego (karta POLA-GPZ-SZABLONY,
+#: decyzja architekta): wartość robocza z `network_model.pochodne.skladowe_zerowe`
+#: (`impedancja_zerowa_zygzaka_robocza_ohm` — jedno źródło liczby i jej uzasadnienia).
+ZALOZENIE_Z0_ZYGZAKA = (
+    "impedancja zerowa uzwojenia zygzakowego — założenie inżynierskie katalogu: "
+    "moduł impedancji zerowej na fazę równy trzykrotnemu ilorazowi spadku napięcia przez prąd "
+    "punktu neutralnego, przy spadku 5 % napięcia fazowego i prądzie punktu neutralnego 400 A "
+    "(górna granica dławika gaszącego, ENEA Zeszyt 1 §16 s.29; prąd punktu neutralnego to "
+    "potrojona składowa zerowa prądu fazy), stosunek reaktancji do rezystancji "
+    "zerowej równy 5; producent podaje impedancję zerową na tabliczce (IEC 60076-6), standard "
+    "ENEA jej nie podaje"
+)
+
+#: Pola impedancji zerowej transformatora (zygzak) objęte daną przyjętą (kolejność stała).
+POLA_IMPEDANCJI_ZEROWEJ_TRANSFORMATORA: tuple[tuple[str, str], ...] = (
+    ("r0_ohm", "R0"),
+    ("x0_ohm", "X0"),
+)
+
+
 def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
     """Pole elementu niesie wartość PROJEKTANTA: tabliczka zna to pole, a element ma INNĄ wartość.
 
@@ -1541,7 +1564,9 @@ def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
 
 
 def pola_z0_robocze(
-    materialized_params: Mapping[str, Any] | None, wartosci_galezi: Mapping[str, Any]
+    materialized_params: Mapping[str, Any] | None,
+    wartosci_galezi: Mapping[str, Any],
+    pola: tuple[tuple[str, str], ...] = POLA_SKLADOWEJ_ZEROWEJ,
 ) -> tuple[tuple[str, str, str, float], ...]:
     """Pola składowej zerowej gałęzi, które NADAL są wartością roboczą katalogu.
 
@@ -1556,7 +1581,7 @@ def pola_z0_robocze(
     if not isinstance(robocze, Mapping):
         return ()
     wynik: list[tuple[str, str, str, float]] = []
-    for pole_z0, etykieta in POLA_SKLADOWEJ_ZEROWEJ:
+    for pole_z0, etykieta in pola:
         zalozenie = robocze.get(pole_z0)
         katalogowa = params.get(pole_z0)
         wartosc = wartosci_galezi.get(pole_z0)
@@ -1571,18 +1596,26 @@ def pola_z0_robocze(
 
 
 def dana_przyjeta_z0(
-    *, pole: str, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+    *,
+    pole: str,
+    etykieta: str,
+    zalozenie: str,
+    wartosc: float,
+    miejsce_pl: str,
+    element_pl: str = "odcinka",
 ) -> DanaPrzyjeta:
     """Wartość robocza składowej zerowej (z katalogu albo odcinka modelu bez składowej
-    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4); jednostka
-    z pola (``JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ``: R′0/X′0 w Ω/km, B′0 w S/km)."""
+    zerowej, ``ZALOZENIA_Z0_ODCINKA``) jako dana przyjęta werdyktu (§3c pkt 4) — gałęzi
+    (parametry odcinka) albo transformatora z uzwojeniem zygzakowym (parametry transformatora);
+    jednostka z pola (``JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ``: R′0/X′0 w Ω/km, B′0 w S/km, R0/X0
+    zygzaka w Ω na fazę)."""
     zrodlo_pl = "wartość robocza" if zalozenie in ZALOZENIA_Z0_ODCINKA else "z katalogu"
     return DanaPrzyjeta(
         nazwa_pl=f"{etykieta} {zrodlo_pl} ({miejsce_pl})",
         wartosc=Wielkosc(wartosc=wartosc, jednostka=JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ[pole]),
         powod_pl=(
-            f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
-            "albo pomiar)."
+            f"{zalozenie}. Zmień wartość: {etykieta} w parametrach {element_pl} (dane "
+            "producenta albo pomiar)."
         ),
         jakosc=FieldQuality.ESTIMATED,
     )

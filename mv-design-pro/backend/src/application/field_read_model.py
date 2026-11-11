@@ -53,7 +53,7 @@ from enm.zrodlo_napiecia_zerowego import (
     funkcje_warunkowe_szablonu_pola,
     zrodlo_u0_pola,
 )
-from network_model.core.uziemienie import TypPunktuNeutralnego
+from network_model.core.uziemienie import ROLA_UZIEMIENIA_RODZAJU_APARATU, TypPunktuNeutralnego
 from pydantic import BaseModel
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
@@ -489,7 +489,7 @@ def _build_primary_devices(
                     placement="GROUND_BRANCH",
                     is_controllable=False,
                     render_variant="kanoniczny",
-                    earthing_role="surge_ground",
+                    earthing_role=ROLA_UZIEMIENIA_RODZAJU_APARATU["SURGE_ARRESTER"],
                 )
             )
 
@@ -1159,11 +1159,11 @@ def _build_earth_fault_path(
     (`None`), nie domysł. Pole poza siecią SN (WN): opis punktu neutralnego źródła albo
     transformatora przy szynie (sieć 110 kV za granicą modelu — `Source.neutral_grounding`).
 
-    Tor napięcia zerowego i prądu zerowego — z łańcucha pomiarowego pola (encje
-    `Measurement`), a gdy łańcuch go nie niesie — z potwierdzonego źródła 3U₀ pola
+    Tor napięcia zerowego i prądu zerowego — z łańcucha pomiarowego pola (encje `Measurement`),
+    a gdy łańcuch go nie niesie — z potwierdzonego źródła 3U₀ pola
     (`enm.zrodlo_napiecia_zerowego`: przekładnik Ferrantiego pola + powiązanie z uzwojeniem
-    otwartego trójkąta przekładnika pola pomiaru napięcia, ENEA Z.10/Z.11.1/Z.17). Jedna
-    prawda o torze 3U₀ dla przypisania 67N i dla wymagań funkcji pola wytwórcy
+    otwartego trójkąta przekładnika pola pomiaru napięcia, ENEA Z.10/Z.11.1/Z.17). Jedna prawda
+    o torze 3U₀ dla przypisania 67N i dla wymagań funkcji pola wytwórcy
     (`domain.der_protection_functions` — bez toru napięcia zerowego 67N jest kwestią otwartą)."""
     punkty = sekcja.punkty_w_ruchu if sekcja is not None else ()
     # Sieć SN ma ZAWSZE rozstrzygnięty sposób uziemienia (także „izolowany” — dana modelu,

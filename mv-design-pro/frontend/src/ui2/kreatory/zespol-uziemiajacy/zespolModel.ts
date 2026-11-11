@@ -98,7 +98,7 @@ export function zbudujPayload(
   kontekst: KontekstZespolu,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
-    catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'TRANSFORMATOR_UZIEMIAJACY'),
+    catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN'),
     uziemienie_bezposrednie: data.wariant === 'bezposrednie',
     spz: data.spz,
     wylaczenie_od_transformatorow_refs: [...data.wylaczenie_od_transformatorow_refs].sort(),

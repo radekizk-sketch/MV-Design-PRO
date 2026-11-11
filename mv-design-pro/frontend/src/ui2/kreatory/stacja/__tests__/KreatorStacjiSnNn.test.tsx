@@ -352,7 +352,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
         powod_blokady_pl: null,
         dopuszczona_do_nowych_pol: false,
         powod_blokady_nowych_pol_pl:
-          'Rozdzielnica RM6 wykorzystuje gaz fluorowany (SF₆) — obiekt projektowany wymaga wykonania bez gazów fluorowanych (rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a). Akcja naprawcza: wybierz wykonanie bez gazów fluorowanych.',
+          'Rozdzielnica RM6 wykorzystuje gaz fluorowany (SF6) — obiekt projektowany wymaga wykonania bez gazów fluorowanych (rozporządzenie (UE) 2024/573, art. 13 ust. 9 lit. a). Akcja naprawcza: wybierz wykonanie bez gazów fluorowanych.',
         construction_type: 'RMU',
         tor_konfiguracji: 'BLOK_RMU',
         status: 'repo_verified',

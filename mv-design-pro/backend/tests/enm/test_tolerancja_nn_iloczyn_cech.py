@@ -99,6 +99,7 @@ from tests.enm.test_canonical_sc_c_per_pasmo import (
     N1,
     N2,
     N3,
+    ZU_NN,
     _build_mv_lv_enm,
 )
 from tests.test_eligibility_matrix import _validate_and_readiness
@@ -368,12 +369,30 @@ def _x_t() -> float:
     return math.sqrt((_TR_UK_PERCENT / 100.0) ** 2 - u_r**2)
 
 
+#: Transformator uziemiający ZNyn11 zespołu na szynie GPZ (`_build_mv_lv_enm`, karta
+#: ZU-JEDEN-NOSNIK) — jedyny nośnik drogi zerowej sieci SN. Jego strona dolna to własna wyspa
+#: nN potrzeb własnych (`ZU_NN`) z deklaracją STAŁĄ +6 %, niezależną od deklaracji
+#: transformatora rozdzielczego TR, którą zmienia ten test.
+_ZU_TRANSFORMATOR = "ZU_GPZ"
+
+
 def _galezie_transformatorow(enm: EnergyNetworkModel) -> list[TransformerBranch]:
+    """Gałęzie transformatorów ROZDZIELCZYCH sieci (bez transformatora uziemiającego)."""
     graf = map_enm_to_network_graph(enm)
     return sorted(
-        (g for g in graf.branches.values() if isinstance(g, TransformerBranch)),
+        (
+            g
+            for g in graf.branches.values()
+            if isinstance(g, TransformerBranch) and g.id != ref_to_graph_id(_ZU_TRANSFORMATOR)
+        ),
         key=lambda g: g.id,
     )
+
+
+def _galaz_zespolu(enm: EnergyNetworkModel) -> TransformerBranch:
+    galaz = map_enm_to_network_graph(enm).branches[ref_to_graph_id(_ZU_TRANSFORMATOR)]
+    assert isinstance(galaz, TransformerBranch)
+    return galaz
 
 
 @pytest.mark.parametrize("deklaracja", ["PLUS_6", "PLUS_10", "brak", "sprzeczna"])
@@ -387,6 +406,13 @@ def test_k_t_czyta_c_max_tolerancji_strony_dolnej(deklaracja: str) -> None:
     for galaz in galezie:
         oczekiwane = 0.95 * _C[("nN", tolerancja, "MAX")] / (1.0 + 0.6 * _x_t())
         assert galaz.get_kt_correction_factor() == pytest.approx(oczekiwane, rel=1e-9)
+    # Iloczyn z zespołem uziemiającym: K_T transformatora ZNyn11 czyta c_max WŁASNEJ wyspy nN
+    # (+6 %, c_max 1,05) — deklaracja i wartość robocza wyspy TR go nie dotykają.
+    zespol = _galaz_zespolu(_siec(deklaracja))
+    oczekiwane_zu = (
+        0.95 * _C[("nN", "PLUS_6", "MAX")] / (1.0 + 0.6 * zespol.get_relative_reactance_xt())
+    )
+    assert zespol.get_kt_correction_factor() == pytest.approx(oczekiwane_zu, rel=1e-9)
 
 
 def _enm_z_agregatem(tolerancja: str | None, szyna: str) -> EnergyNetworkModel:
@@ -444,7 +470,12 @@ def test_gotowosc_nie_ma_blokera_tolerancji(deklaracja: str) -> None:
     kody = {b.code for wynik in macierz.matrix for b in (*wynik.blockers, *wynik.warnings)}
     assert not {k for k in kody if "TOLERANCE" in k or "tolerancja" in k}, kody
     _tolerancja, robocza = _DEKLARACJE[deklaracja]
-    powody = [w.powod for w in wyspy_nn(enm)]
+    wyspy = wyspy_nn(enm)
+    # Wyspa potrzeb własnych transformatora uziemiającego ma deklarację stałą (powód None).
+    assert [w.powod for w in wyspy if ZU_NN in w.bus_refs] == (
+        [] if deklaracja.startswith("wyspa_zrodlo_nn") else [None]
+    )
+    powody = [w.powod for w in wyspy if ZU_NN not in w.bus_refs]
     if not robocza:
         assert powody == [None]
     elif deklaracja == "sprzeczna":
@@ -456,8 +487,11 @@ def test_gotowosc_nie_ma_blokera_tolerancji(deklaracja: str) -> None:
 @pytest.mark.parametrize("deklaracja", sorted(_DEKLARACJE))
 def test_tolerancje_wezlow_jeden_predykat(deklaracja: str) -> None:
     tolerancja, robocza = _DEKLARACJE[deklaracja]
-    mapa = tolerancje_wezlow_nn(_siec(deklaracja))
+    mapa = dict(tolerancje_wezlow_nn(_siec(deklaracja)))
     oczekiwane_wezly = {_NN_Q, _NN_K} if deklaracja.startswith("wyspa_zrodlo_nn") else {N2, N3}
+    if not deklaracja.startswith("wyspa_zrodlo_nn"):
+        # Szyna potrzeb własnych zespołu: własna wyspa nN, deklaracja stała +6 %.
+        assert mapa.pop(ZU_NN) == "PLUS_6"
     assert set(mapa) == oczekiwane_wezly  # szyny SN nie występują
     assert set(mapa.values()) == {tolerancja}
     graf = map_enm_to_network_graph(_siec(deklaracja))

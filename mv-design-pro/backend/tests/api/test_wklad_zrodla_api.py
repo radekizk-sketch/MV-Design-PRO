@@ -39,7 +39,11 @@ from tests.utils.siec_h5_wkladow_zrodel import (
 
 SEKCJA_ZRODLA = {REF_ZRODLA_L1: "bus-a", REF_ZRODLA_L2: "bus-b", REF_GENERATORA: "bus-b"}
 #: Sekcja szyny przy otwartym sprzęgle (pole jest za kablem z sekcji A).
-SEKCJA_SZYNY = {"bus-a": "bus-a", "bus-pole": "bus-a", "bus-b": "bus-b"}
+SEKCJA_SZYNY = {"bus-a": "bus-a", "bus-pole": "bus-a", "bus-b": "bus-b", "zu-a-nn": "bus-a"}
+#: Szyny 0,4 kV potrzeb własnych transformatorów uziemiających zespołów (karta ZU-JEDEN-NOSNIK):
+#: zespół w sekcji A zawsze, w sekcji B — przy otwartym sprzęgle (jeden nośnik na sieć).
+SZYNY_ZESPOLOW = {True: {"zu-a-nn"}, False: {"zu-a-nn", "zu-b-nn"}}
+SEKCJA_SZYNY_OTWARTE = {**SEKCJA_SZYNY, "zu-b-nn": "bus-b"}
 
 
 @pytest.fixture
@@ -90,8 +94,16 @@ def test_wklady_zrodel_w_rozplywie_punktu(
     assert wykonanie.status_code == 200 and wykonanie.json()["status"] == "DONE", wykonanie.text
 
     wiersze = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit").json()["rows"]
-    assert {w["element_id"] for w in wiersze} == {"bus-a", "bus-b", "bus-pole"}
+    assert {w["element_id"] for w in wiersze} == {"bus-a", "bus-b", "bus-pole"} | (
+        SZYNY_ZESPOLOW[lacznik_zamkniety]
+    )
     for wiersz in wiersze:
+        if wiersz["ikss_ka"] is None:
+            # Zwarcie doziemne na szynie 0,4 kV zespołu: punkt neutralny uzwojenia dolnego bez
+            # uziemienia — brak drogi zerowej, przyczyna nazwana w wierszu, bez wkładów.
+            assert rodzaj in ("SC_1F", "SC_2F_G")
+            assert wiersz["element_id"] in SZYNY_ZESPOLOW[lacznik_zamkniety]
+            continue
         adres = f"/api/analysis-runs/{run_id}/results/short-circuit/rozplyw"
         odpowiedz = client.get(adres, params={"target_id": wiersz["target_id"]})
         assert odpowiedz.status_code == 200, odpowiedz.text
@@ -103,7 +115,7 @@ def test_wklady_zrodel_w_rozplywie_punktu(
             assert wpis["node_id"] == SEKCJA_ZRODLA[wpis["source_id"]]
             inna_sekcja = (
                 not lacznik_zamkniety
-                and SEKCJA_ZRODLA[wpis["source_id"]] != SEKCJA_SZYNY[wiersz["element_id"]]
+                and SEKCJA_ZRODLA[wpis["source_id"]] != SEKCJA_SZYNY_OTWARTE[wiersz["element_id"]]
             )
             if inna_sekcja:
                 assert wpis["klasa"] == KLASA_WKLADU_ZRODLA_INNA_WYSPA

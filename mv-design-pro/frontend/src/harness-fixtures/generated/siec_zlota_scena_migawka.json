@@ -430,6 +430,7 @@
       "p0_kw": 18.0,
       "parameter_source": "CATALOG",
       "pk_kw": 120.0,
+      "r0_ohm": null,
       "ref_id": "tr_hv_sn",
       "sn_mva": 25.0,
       "source_mode": "KATALOG",
@@ -442,7 +443,8 @@
       "uhv_kv": 110.0,
       "uk_percent": 12.0,
       "ulv_kv": 15.0,
-      "vector_group": "YNd11"
+      "vector_group": "YNd11",
+      "x0_ohm": null
     },
     {
       "catalog_namespace": "TRAFO_SN_NN",
@@ -454,8 +456,13 @@
       "lv_bus_ref": "bus_nn",
       "lv_earthing_system": "TN-S",
       "lv_neutral": {
+        "dawca": null,
+        "dlawik": null,
         "r_ohm": null,
+        "rezystor": null,
+        "spz": false,
         "type": "directly_grounded",
+        "wylaczenie_od_transformatorow_refs": [],
         "x_ohm": null
       },
       "lv_voltage_tolerance": "PLUS_6",
@@ -467,6 +474,7 @@
       "p0_kw": null,
       "parameter_source": "CATALOG",
       "pk_kw": 6.5,
+      "r0_ohm": null,
       "ref_id": "tr_sn_nn",
       "sn_mva": 0.63,
       "source_mode": "KATALOG",
@@ -479,8 +487,8 @@
       "uhv_kv": 15.0,
       "uk_percent": 4.5,
       "ulv_kv": 0.4,
-      "vector_group": "Dyn11"
+      "vector_group": "Dyn11",
+      "x0_ohm": null
     }
-  ],
-  "zespoly_uziemiajace": []
+  ]
 }

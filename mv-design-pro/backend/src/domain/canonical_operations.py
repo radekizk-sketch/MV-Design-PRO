@@ -73,7 +73,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "gpz_section_name",
             "gpz_sections",
             "grounding",
-            "zespoly_uziemiajace",
+            "zespoly_sekcji",
             "hv_voltage_kv",
             "line_fields_per_section",
             "lv_voltage_tolerance",
@@ -844,7 +844,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "dlawik",
             "dry_run",
             "name",
-            "odbior_pw_ref",
             "rezystor",
             "spz",
             "uziemienie_bezposrednie",
@@ -1120,8 +1119,8 @@ _WIAZANIE_KATALOGOWE = KsztaltObiektu(
 #: ``test_spec_operacji_rowna_odczytom_handlera.py``. Obiekt, którego odczytów analiza nie
 #: domyka (handler odczytuje klucze wyliczane w biegu), NIE ma tu kształtu — test wylicza
 #: takie obiekty z przyczyną. Czujnik ``klucze_spoza_kontraktu`` sprawdza każdy poziom.
-#: Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: urządzenia punktu neutralnego zespołu uziemiającego
-#: (`add_zespol_uziemiajacy_sn`; wpisy `add_grid_source_sn.zespoly_uziemiajace` są ładunkami
+#: Karta ZU-JEDEN-NOSNIK: urządzenia punktu neutralnego transformatora uziemiającego
+#: (`add_zespol_uziemiajacy_sn`; wpisy `add_grid_source_sn.zespoly_sekcji` są ładunkami
 #: tej samej operacji).
 _KSZTALT_DLAWIKA_GASZACEGO = KsztaltObiektu(
     pola=frozenset(
@@ -1985,6 +1984,23 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "focus": "neutral_grounding",
         },
     ),
+    # D1 (karta POLA-GPZ-SZABLONY, ZU-JEDEN-NOSNIK): walidator E-W5-04 — jeden uziemiony nosnik
+    # punktu neutralnego w galwanicznie połączonej sieci SN (`enm.uziemienie_sekcji.nosniki_sieci`).
+    "earthing.multiple_grounded_neutrals_in_island": ReadinessCodeSpec(
+        code="earthing.multiple_grounded_neutrals_in_island",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej SN — "
+            "pozostaw jeden (pozostałe izolowane) albo otwórz sprzęgło sekcji"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "neutral_grounding",
+        },
+    ),
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający SN (walidator E-ZU-*, W-ZU-*)
     # i źródło SN z danymi uziemienia pominiętymi w obliczeniach (W-W5-02).
     "source.sn_neutral_data_ignored": ReadinessCodeSpec(
@@ -2040,16 +2056,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "tab": "parametry",
             "focus": "wylaczenie_od_transformatorow_refs",
         },
-    ),
-    "earthing.zespol_auxiliary_load_missing": ReadinessCodeSpec(
-        code="earthing.zespol_auxiliary_load_missing",
-        area=ReadinessArea.STATIONS,
-        priority=3,
-        level=ReadinessLevel.WARNING,
-        message_pl=(
-            "Uzwojenie potrzeb własnych zespołu bez odbioru potrzeb własnych na szynie zespołu"
-        ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "odbior_pw_ref"},
     ),
     "earthing.network_grounding_warning": ReadinessCodeSpec(
         code="earthing.network_grounding_warning",

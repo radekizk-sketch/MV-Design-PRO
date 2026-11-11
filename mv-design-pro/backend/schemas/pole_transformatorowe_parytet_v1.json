@@ -9,7 +9,10 @@
     "Kazdy wiersz opisuje KSZTALT MODELU i JEDEN oczekiwany werdykt. Backend buduje z niego migawke ENM,",
     "front buduje z niego wejscie sceny (snBays + transformerUnits + hasTransformer). Rozjazd predykatow",
     "wywraca test po OBU stronach — dlatego tablica jest jedna, a nie dwie kopie w dwoch jezykach.",
-    "Iloczyn cech wymagany karta (§0 pkt 4): {pole TR jest, pola TR nie ma, transformatora brak} x {ostrzezenie, marker}."
+    "Iloczyn cech wymagany karta (§0 pkt 4): {pole TR jest, pola TR nie ma, transformatora brak} x {ostrzezenie, marker}.",
+    "Transformator uziemiajacy pola ZU (karta ZU-JEDEN-NOSNIK) ma pole wlasne wtedy i tylko wtedy, gdy JEST transformatorem uziemiajacym (uzwojenie gorne ZN... w pasmie SN) i wskazuje go typowane wyposazenie pola roli ZU (Bay.equipment_refs)",
+    "(enm/zespol_uziemiajacy.py::pole_zespolu_transformatora, lustro ui/shared/transformatoryStacji.ts::poleZespoluTransformatora).",
+    "Iloczyn cech: {grupa ZN..., grupa inna} x {wskazanie w polu ZU, wskazanie w polu innej roli, brak wskazania}."
   ],
   "wiersze": [
     {
@@ -20,10 +23,17 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT", "TR"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "TR"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": false
     },
     {
@@ -34,10 +44,17 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT", "FEEDER"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "FEEDER"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": true
     },
     {
@@ -48,7 +65,11 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": null,
-        "role_pol": ["IN", "OUT", "TR"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "TR"
+        ],
         "deklaruje_transformator": false
       },
       "transformator": null,
@@ -62,7 +83,11 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": null,
-        "role_pol": ["IN", "OUT", "FEEDER"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "FEEDER"
+        ],
         "deklaruje_transformator": false
       },
       "transformator": null,
@@ -76,10 +101,15 @@
       "stacja": {
         "sn_bus_kv": 20.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN"],
+        "role_pol": [
+          "IN"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": true
     },
     {
@@ -93,7 +123,10 @@
         "role_pol": [],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": true
     },
     {
@@ -104,10 +137,17 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "MEASUREMENT", "TR"],
+        "role_pol": [
+          "IN",
+          "MEASUREMENT",
+          "TR"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": false
     },
     {
@@ -118,10 +158,18 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": null,
-        "role_pol": ["IN", "OUT", "OZE"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "OZE"
+        ],
         "deklaruje_transformator": false
       },
-      "transformator": { "hv": "obca", "lv": "obca", "blokowy_der": true },
+      "transformator": {
+        "hv": "obca",
+        "lv": "obca",
+        "blokowy_der": true
+      },
       "oczekiwane_znalezisko": false
     },
     {
@@ -132,10 +180,17 @@
       "stacja": {
         "sn_bus_kv": 15.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT"],
+        "role_pol": [
+          "IN",
+          "OUT"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn", "blokowy_der": true },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn",
+        "blokowy_der": true
+      },
       "oczekiwane_znalezisko": false
     },
     {
@@ -146,10 +201,16 @@
       "stacja": {
         "sn_bus_kv": 110.0,
         "nn_bus_kv": 15.0,
-        "role_pol": ["IN", "OUT"],
+        "role_pol": [
+          "IN",
+          "OUT"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": false
     },
     {
@@ -160,10 +221,17 @@
       "stacja": {
         "sn_bus_kv": 1.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT", "FEEDER"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "FEEDER"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": false
     },
     {
@@ -174,10 +242,17 @@
       "stacja": {
         "sn_bus_kv": 1.001,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT", "FEEDER"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "FEEDER"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": true
     },
     {
@@ -188,10 +263,17 @@
       "stacja": {
         "sn_bus_kv": 66.0,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT", "FEEDER"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "FEEDER"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": true
     },
     {
@@ -202,10 +284,156 @@
       "stacja": {
         "sn_bus_kv": 109.999,
         "nn_bus_kv": 0.4,
-        "role_pol": ["IN", "OUT", "FEEDER"],
+        "role_pol": [
+          "IN",
+          "OUT",
+          "FEEDER"
+        ],
         "deklaruje_transformator": true
       },
-      "transformator": { "hv": "sn", "lv": "nn" },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-uziemiajacy-w-polu-zu",
+      "opis_pl": "Transformator uziemiajacy ZNyn11 wskazany wyposazeniem pola ZU — aparat pola zespolu, pole TR go nie dotyczy (bez tego: falszywe W041).",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_grupa": "zn",
+      "cecha_wskazanie": "pole_zu",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [
+          "IN",
+          "ZU"
+        ],
+        "deklaruje_transformator": true
+      },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn",
+        "grupa": "ZNyn11",
+        "pole_wyposazenia": "pole-001"
+      },
+      "oczekiwane_znalezisko": false
+    },
+    {
+      "id": "tr-uziemiajacy-bez-wskazania",
+      "opis_pl": "Transformator uziemiajacy ZNyn11 w stacji z polem ZU, ktorego wyposazenie go nie wskazuje — transformator bez pola: zwykla regula W041, nie cichy wyjatek.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_grupa": "zn",
+      "cecha_wskazanie": "brak",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [
+          "IN",
+          "ZU"
+        ],
+        "deklaruje_transformator": true
+      },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn",
+        "grupa": "ZNyn11"
+      },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-uziemiajacy-w-polu-innej-roli",
+      "opis_pl": "Transformator uziemiajacy ZNyn11 wskazany wyposazeniem pola roli OUT — to nie pole zespolu, transformator bez pola: znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_grupa": "zn",
+      "cecha_wskazanie": "pole_innej_roli",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [
+          "IN",
+          "OUT"
+        ],
+        "deklaruje_transformator": true
+      },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn",
+        "grupa": "ZNyn11",
+        "pole_wyposazenia": "pole-001"
+      },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-rozdzielczy-w-polu-zu",
+      "opis_pl": "Transformator rozdzielczy (grupa inna niz ZN...) wskazany wyposazeniem pola ZU — nie jest aparatem zespolu (jeden predykat transformatora uziemiajacego), pole ZU nie domyka pola transformatorowego: znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_grupa": "inna",
+      "cecha_wskazanie": "pole_zu",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [
+          "IN",
+          "ZU"
+        ],
+        "deklaruje_transformator": true
+      },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn",
+        "pole_wyposazenia": "pole-001"
+      },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-rozdzielczy-w-polu-innej-roli",
+      "opis_pl": "Transformator rozdzielczy wskazany wyposazeniem pola roli OUT — bez pola TR: znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_grupa": "inna",
+      "cecha_wskazanie": "pole_innej_roli",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [
+          "IN",
+          "OUT"
+        ],
+        "deklaruje_transformator": true
+      },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn",
+        "pole_wyposazenia": "pole-001"
+      },
+      "oczekiwane_znalezisko": true
+    },
+    {
+      "id": "tr-rozdzielczy-obok-pola-zu",
+      "opis_pl": "Transformator rozdzielczy (bez wskazania) w stacji z polem ZU i bez pola TR — pole ZU nie domyka pola transformatorowego: znalezisko.",
+      "cecha_pole_tr": "brak",
+      "cecha_transformator": "jest",
+      "cecha_grupa": "inna",
+      "cecha_wskazanie": "brak",
+      "stacja": {
+        "sn_bus_kv": 15.0,
+        "nn_bus_kv": 0.4,
+        "role_pol": [
+          "IN",
+          "ZU"
+        ],
+        "deklaruje_transformator": true
+      },
+      "transformator": {
+        "hv": "sn",
+        "lv": "nn"
+      },
       "oczekiwane_znalezisko": true
     }
   ]

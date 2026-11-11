@@ -123,12 +123,16 @@ function wady(scene: SceneV3, enm: EnergyNetworkModel) {
 }
 
 describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłączność toru na każdej fiksturze × LOD', () => {
-  it('kontrola wejścia: 59 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
-    // Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): +1 fikstura —
-    // `harness-fixtures/generated/glowice_kablowe_pol_gpz.json` (scena głowic kablowych pól GPZ
-    // karty BKR, strona integracji); pozostałe fikstury identyczne z czubkiem karty (sonda per
-    // fikstura × LOD na obu drzewach).
-    expect(FIKSTURY).toHaveLength(59);
+  it('kontrola wejścia: 66 fikstur modelu ENM z pięciu katalogów (sceny, kanwa, v2, public, harness)', () => {
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): 58 → 59 — fikstura harnessu
+    // `pola_gpz_szablonow.json` (pola GPZ z szablonów Z.7, Z.12, Z.16, Z.17).
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY, następca 7): 59 → 63 — sceny generatora
+    // `gpz110kvPolaSzablonow`, `gpz110kvPoleZu{Z13,Z14,Z15}` (public/test-fixtures).
+    // Pomiar 2026-11-11 (karta ZU-JEDEN-NOSNIK, scalenie z gałęzią integracji): 63 → 66 —
+    // `stacjeKonstrukcjiPol.enm.json` (public/test-fixtures i sceny; dopisane na gałęzi szablonów
+    // pól po poprzednim pomiarze, pin go nie objął) oraz `glowice_kablowe_pol_gpz.json`
+    // (harness, gałąź integracji — scena głowic kablowych pól GPZ).
+    expect(FIKSTURY).toHaveLength(66);
     for (const katalog of KATALOGI) expect(FIKSTURY.some(([n]) => n.startsWith(`${katalog}/`))).toBe(true);
     // Migawki biegu (model pod `snapshot`) i fikstury kanwy (model pod `enm`) są w zbiorze.
     expect(FIKSTURY.some(([n]) => n.endsWith('pulpit_scena_migawka.json'))).toBe(true);
@@ -172,12 +176,25 @@ describe('S7 (rozstrzygnięcie przecięć) i KD-5 — węzły, mostki i rozłąc
     // z portu S odłącznika Q5 w kolumnie odgałęzienia (`…#odgalezienie-0-lateral-0`), dwa pola
     // Z.11 wykonania stałego × LOD1/LOD2; dawniej odczep kolumny nosił właściciela `…-wire-…`,
     // którego predykat kropki (`ODCZEP_WEZLA_POLA`) nie rozpoznawał — rozgałęzienie bez kropki.
-    // AKTUALIZACJA ŚWIADOMA kropek 69 → 73 (scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa
-    // integracji, 2026-11-11): sonda per fikstura × LOD na czubku karty i na drzewie scalonym —
-    // wszystkie fikstury wspólne identyczne (kropki i przecięcia), cała różnica to nowa fikstura
-    // strony integracji `glowice_kablowe_pol_gpz.json`: L0 0, L1 2, L2 2 kropki, 0 przecięć.
+    // Pomiar 2026-11-05 (karta POLA-GPZ-SZABLONY): fikstura `pola_gpz_szablonow` nie zmienia
+    // pinów, gdy przekładniki międzyfazowe T4/T5 pola Z.16 rysuje glif baterii (s. 96); rysowane
+    // dawniej jako odczep przekładnika napięciowego toru dokładały 8 fałszywych kropek (77).
+    // AKTUALIZACJA ŚWIADOMA kropek 69 → 71 (karta POLA-GPZ-SZABLONY, rysunek pola ZU z nośnika):
+    // pomiar na fiksturze `pola_gpz_szablonow` — węzeł punktu neutralnego transformatora
+    // uziemiającego Z.13 (przewód od zacisku `punktNeutralny`, ogranicznik przepięć w dół, gałąź
+    // dławika dalej w prawo: trzy ramiona toru, kropka jak na rysunku ENEA s.93) × LOD1/LOD2.
+    // AKTUALIZACJA ŚWIADOMA kropek 71 → 83 (następca 7, sceny generatora w `public/test-fixtures`):
+    // sonda per fikstura × LOD — `gpz110kvPolaSzablonow` 0/3/3 (te same trzy węzły co kopia
+    // harnessu `pola_gpz_szablonow`), `gpz110kvPoleZu{Z13,Z14,Z15}` po 0/1/1; przecięć z mostkiem
+    // nowe sceny nie mają (0 na każdym LOD), więc 113 bez zmian.
     expect(przeciecia).toBe(113);
-    expect(kropki).toBe(73);
+    // AKTUALIZACJA ŚWIADOMA kropek 83 → 95 (następca 7, oględziny zrzutu Z.14): rozgałęzienia
+    // przewodu punktu neutralnego pola ZU bez kropki (ogranicznik i zejście dławika przy
+    // gałęzi równoległej — rysunek ENEA s.93–95 ma kropki) — predykat `ODCZEP_WEZLA_POLA` zna
+    // teraz `#zespol-ogranicznik` i `#zespol-⟨gałąź⟩-zejscie`. Pomiar × LOD1/LOD2: kopia
+    // harnessu i `gpz110kvPolaSzablonow` (Z.13) po +1, `gpz110kvPoleZuZ13` +1, `Z14` +2
+    // (ogranicznik, dławik; zejście rezystora to narożnik), `Z15` +1 → 2 × 6 = 12.
+    expect(kropki).toBe(95);
   });
 });
 

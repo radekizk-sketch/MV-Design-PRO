@@ -68,6 +68,18 @@ RolaUziemnika = Literal["field_earth", "cable_screen", "structure", "neutral_poi
 
 ROLE_UZIEMNIKA: tuple[str, ...] = get_args(RolaUziemnika)
 
+#: Rola uziemienia NADAWANA aparatowi pola z jego rodzaju (`BayPrimaryDevice.kind`) przez każdą
+#: drogę budowy pola (szablon, katalog rozdzielnicy, enumeracja konfiguracji pól, plan
+#: kanoniczny, model odczytu pola) — JEDNO źródło: uziemnik pola to „uziemnik pola", ogranicznik
+#: przepięć to odgałęzienie do ziemi „gałąź uziemiająca ogranicznika". Karta POLA-GPZ-SZABLONY:
+#: droga szablonu nadawała rolę wyłącznie uziemnikowi (ogranicznik Z.7/Z.16 bez roli), choć
+#: pozostałe drogi nadawały obie — klasa „ten sam rodzaj, różne drogi", przypięta testem
+#: `tests/network_model/test_rola_uziemienia_rodzaju_aparatu.py`.
+ROLA_UZIEMIENIA_RODZAJU_APARATU: dict[str, RolaUziemnika] = {
+    "ES": "field_earth",
+    "SURGE_ARRESTER": "surge_ground",
+}
+
 ETYKIETA_PL_ROLI_UZIEMNIKA: dict[str, str] = {
     "field_earth": "uziemnik pola",
     "cable_screen": "uziemienie ekranów kabla",
@@ -194,11 +206,6 @@ def stan_awsc_z_danych(surowy: object) -> StanAwsc:
 #: Zeszyt 1 §16, Z.14) zapisany w modelu. Łącznik rezystora wymuszającego AWSC nie ma stanu
 #: w modelu — jego stan wybiera przypadek obliczeniowy (``StanAwsc``).
 StanLacznikaPunktuNeutralnego = Literal["zamkniety", "otwarty"]
-
-#: Grupa połączeń transformatora uziemiającego (Zeszyt 1 §16: „układ połączeń ZNyn 11").
-GrupaTransformatoraUziemiajacego = Literal["ZNyn11", "ZNyn5", "ZNy11", "ZNy5", "ZN"]
-
-GRUPY_TRANSFORMATORA_UZIEMIAJACEGO: tuple[str, ...] = get_args(GrupaTransformatoraUziemiajacego)
 
 #: Regulacja dławika gaszącego: płynna (nadążna, Zeszyt 1 §16 — 10–100 %) albo zaczepowa.
 RegulacjaDlawika = Literal["ciagla", "zaczepy"]

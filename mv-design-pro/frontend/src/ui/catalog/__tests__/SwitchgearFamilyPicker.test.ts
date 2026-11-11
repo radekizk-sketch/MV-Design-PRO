@@ -38,7 +38,7 @@ function rodzina(overrides: Partial<SwitchgearFamily> = {}): SwitchgearFamily {
     insulation_type: 'air',
     medium_lacznikow: 'PROZNIA',
     construction_type: 'RMU',
-    status: 'verified',
+    status: budowa ? 'verified' : 'requires_catalog',
     source_refs: ['catalog:demo'],
     notes_pl: null,
     gaz_fluorowany: false,
@@ -59,6 +59,32 @@ function rodzinaDopuszczona(budowa: boolean, nowe: boolean): SwitchgearFamily {
   });
 }
 
+describe('rodzina rozdzielnicy — predykat budowy i powód blokady (reguła backendu)', () => {
+  const przypadki = FLAGI.flatMap((budowa) =>
+    FLAGI.flatMap((nowe) => STANY.map((stan) => [budowa, nowe, stan] as const)),
+  );
+  it.each(przypadki)(
+    'do budowania %s × do nowych pól %s × stan %s: flaga stanu i powód wtedy i tylko wtedy',
+    (budowa, nowe, stan) => {
+      const r = rodzina(budowa, nowe);
+      // Pole istniejące czyta dopuszczenie do budowania; każde inne (projektowane, niepodane)
+      // — dopuszczenie do nowych pól.
+      const wolno = stan === 'ISTNIEJACY' ? budowa : nowe;
+      expect(czyRodzinaDoBudowania(r, stan)).toBe(wolno);
+      const powod = powodBlokadyRodzinyPl(r, stan);
+      if (wolno) expect(powod).toBeNull();
+      else expect(powod).toBe(stan === 'ISTNIEJACY' ? POWOD_BUDOWY : POWOD_NOWYCH);
+    },
+  );
+
+  it('domyślny stan obiektu to pole nowe (projektowane), nie istniejące', () => {
+    const r = rodzina(true, false);
+    expect(czyRodzinaDoBudowania(r)).toBe(false);
+    expect(powodBlokadyRodzinyPl(r)).toBe(POWOD_NOWYCH);
+  });
+});
+
+/** Każda konstrukcja z unii kontraktu (`satisfies` — nowa konstrukcja bez wpisu łamie tsc). */
 const KONSTRUKCJE = {
   RMU: true,
   jednoczlonowa: true,
@@ -117,6 +143,10 @@ describe('rodzina rozdzielnicy — nazwy konstrukcji', () => {
     const nazwa = CONSTRUCTION_LABELS_PL[k];
     expect(nazwa).toBeTruthy();
     expect(nazwa).not.toMatch(/_/);
+  });
+
+  it('słownik nazw nie ma konstrukcji spoza unii kontraktu', () => {
+    expect(Object.keys(CONSTRUCTION_LABELS_PL).sort()).toEqual(Object.keys(KONSTRUKCJE).sort());
   });
 });
 

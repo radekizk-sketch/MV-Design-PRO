@@ -64,6 +64,7 @@ from domain.project_archive import (
 from enm.canonical_analysis import odtworz_bieg_z_archiwum
 from enm.kompilator_grafu import BenchmarkBuildError, BladGrafuWejsciowego, kompiluj_graf
 from enm.models import EnergyNetworkModel
+from enm.punkt_neutralny_zespolu import czesci_zespolu_bez_katalogu
 from enm.scenariusze import (
     RejestrArchiwumNieprawidlowyError,
     przemapuj_rejestry_z_archiwum,
@@ -79,7 +80,6 @@ from enm.store import (
     restore_enm,
     set_enm,
 )
-from enm.uziemienie_sekcji import czesci_zespolu_bez_katalogu
 from infrastructure.persistence.repositories.canonical_run_repository import (
     CanonicalRunRepository,
 )
@@ -1200,10 +1200,11 @@ def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str
         poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
         if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
             elements_no_catalog.append(source.ref_id)
-    # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: zespół uziemiający — ten sam predykat części co E009.
+    # Karta ZU-JEDEN-NOSNIK: wyposażenie punktu neutralnego transformatora uziemiającego
+    # (dławik, rezystor) — ten sam predykat części co E009; transformator raz na liście.
     poziom_zespolu = wymagalnosc_katalogu("zespol_uziemiajacy").import_
-    for zu in model.zespoly_uziemiajace:
-        if czesci_zespolu_bez_katalogu(zu, poziom_zespolu):
+    for zu in model.transformers:
+        if czesci_zespolu_bez_katalogu(zu, poziom_zespolu) and zu.ref_id not in elements_no_catalog:
             elements_no_catalog.append(zu.ref_id)
     return elements_no_catalog
 

@@ -115,6 +115,7 @@ import {
 } from './apparatusSequence';
 import { FIELD_ROLE } from '../../v2/domain/apparatusContracts';
 import type { RolaPolaZrodlowego } from '../../v2/model/polaZModelu';
+import type { ZespolUziemiajacyPolaView } from '../../v2/model/zespolUziemiajacyPola';
 import {
   PROTECTION_FULL_LIST_LABEL_CLASS,
   czyPrzekaznikZPowiazaniamiObwodow,
@@ -475,6 +476,9 @@ interface FieldApparatusSpec {
   readonly odgalezienie?: { readonly numer: number; readonly zaPozycja: number };
   /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów — WYŁĄCZNIE pozycja `capacitorBank`. */
   readonly bateria?: GlifBaterii;
+  /** Karta POLA-GPZ-SZABLONY: uzwojenia transformatora uziemiającego pola ZU (`ZNyn11` z modelu)
+   *  — WYŁĄCZNIE pozycja `transformer2W` zespołu; przechodzą przez scenę do glifu. */
+  readonly uzwojenia?: UzwojeniaTransformatora;
   /** Rozszerzenie 5 karty UX-04: numer dyspozytorski pola (`Bay.bay_number`) — przedrostek
    *  oznaczenia aparatu na rysunku (`oznaczenieZPrzedrostkiemPola`). `null` = brak numeru. */
   readonly numerPola?: string | null;
@@ -624,11 +628,235 @@ function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparat
       bateria: {
         uklad: bay.bateria.uklad,
         przekladnikNiezrownowazenia: bay.bateria.przekladnikNiezrownowazenia,
+        przekladnikiMiedzyfazowe: bay.bateria.przekladnikiMiedzyfazowe,
       },
+    });
+  }
+  if (bay?.zespolUziemiajacy) {
+    // Karta POLA-GPZ-SZABLONY, ZU-JEDEN-NOSNIK (Zeszyt 1 Z.13–Z.15 s.93–95): transformator
+    // uziemiający ZNyn11 na zacisku końca toru pola ZU — element modelu wskazany w wyposażeniu
+    // pola (`Bay.equipment_refs`), nie rekord aparatu; gałąź punktu neutralnego (wyposażenie
+    // `hv_neutral`) i strona potrzeb własnych — `ogonZespoluUziemiajacego`.
+    stos.push({
+      symbolId: 'transformer2W',
+      parityKeys: [KLUCZ_TRANSFORMATORA_ZESPOLU],
+      uzwojenia: uzwojeniaZGrupyPolaczen(bay.zespolUziemiajacy.vectorGroup),
     });
   }
   if (rezerwa) stos.push(ZAKONCZENIE_REZERWY);
   return stos;
+}
+
+/** Klucz parytetu transformatora uziemiającego pola ZU (pozycja stosu i ogon pola). */
+const KLUCZ_TRANSFORMATORA_ZESPOLU = 'gpz.bay.earthing_transformer';
+/** Klucz parytetu gałęzi punktu neutralnego zespołu (aparaty i przewody ogona pola ZU). */
+const KLUCZ_GALEZI_PUNKTU_NEUTRALNEGO = 'gpz.bay.earthing_neutral_branch';
+/** Rozstaw kolumn gałęzi punktu neutralnego (dławik, rezystor) — 4 oczka: aparat 16 px i pas
+ *  podpisu wartości przy nim. */
+const ROZSTAW_GALEZI_ZESPOLU = 4 * GRID;
+/** Odsunięcie węzła punktu neutralnego od krawędzi symbolu transformatora (ogranicznik pod nim). */
+const ODSUNIECIE_WEZLA_ZESPOLU = 2 * GRID;
+
+/** Gałęzie punktu neutralnego zespołu w kolejności rysunku (Z.14: dławik, potem rezystor —
+ *  strona 94, gałąź rezystora z przekładnikiem po prawej). */
+function galezieZespolu(zespol: ZespolUziemiajacyPolaView): readonly ('dlawik' | 'rezystor')[] {
+  return [...(zespol.dlawik ? (['dlawik'] as const) : []), ...(zespol.rezystor ? (['rezystor'] as const) : [])];
+}
+
+/** Podpis wartości aparatu gałęzi punktu neutralnego — wartość z wyposażenia punktu
+ *  neutralnego transformatora uziemiającego (`hv_neutral.dlawik` / `rezystor`), bez niej sama
+ *  nazwa (zero domysłu, zero przeliczeń we froncie). Dławik: nastawa [A] i AWSC z prądem
+ *  wymuszanym (Z.13); rezystor: rezystancja [Ω]. */
+function podpisGaleziZespolu(zespol: ZespolUziemiajacyPolaView, galaz: 'dlawik' | 'rezystor'): string {
+  if (galaz === 'dlawik') {
+    const nastawa = zespol.iNastawyDlawikaA != null ? `dławik ${liczbaPl(zespol.iNastawyDlawikaA)} A` : 'dławik';
+    if (!zespol.awsc) return nastawa;
+    return `${nastawa} · AWSC${zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : ''}`;
+  }
+  return zespol.rOhm != null ? `$R_{N}$ ${liczbaPl(zespol.rOhm)} Ω` : 'rezystor';
+}
+
+/** Kolumny gałęzi punktu neutralnego: przesunięcie osi kolumny od węzła punktu neutralnego.
+ *  Kolejna kolumna stoi za podpisem wartości poprzedniej (podpis na prawo od aparatu) — JEDNA
+ *  funkcja dla rysunku (`ogonZespoluUziemiajacego`) i rezerwacji kolumny pola
+ *  (`szerokoscOgonaZespolu`, predykaty parami). */
+function kolumnyGaleziZespolu(
+  zespol: ZespolUziemiajacyPolaView,
+): readonly { readonly galaz: 'dlawik' | 'rezystor'; readonly dx: number; readonly podpis: number }[] {
+  const polowa = SYMBOL_DEFS.neutralEarthing.width / 2;
+  const kolumny: { galaz: 'dlawik' | 'rezystor'; dx: number; podpis: number }[] = [];
+  let dx = ROZSTAW_GALEZI_ZESPOLU;
+  for (const galaz of galezieZespolu(zespol)) {
+    const podpis = measureLabelWidth(podpisGaleziZespolu(zespol, galaz), KLASA_ETYKIETY_APARATU_GPZ);
+    kolumny.push({ galaz, dx, podpis });
+    dx += Math.max(ROZSTAW_GALEZI_ZESPOLU, snapUp(2 * polowa + podpis + GRID));
+  }
+  return kolumny;
+}
+
+/** Tabliczka transformatora uziemiającego (grupa i moc z modelu). */
+function tabliczkaTransformatoraZespolu(zespol: ZespolUziemiajacyPolaView): string {
+  return [zespol.vectorGroup, zespol.snKva != null ? `${liczbaPl(zespol.snKva)} kVA` : null]
+    .filter((t): t is string => t != null)
+    .join(' · ');
+}
+
+/** Podpis strony potrzeb własnych (napięcie szyny z modelu). */
+function podpisPotrzebWlasnych(zespol: ZespolUziemiajacyPolaView): string {
+  return zespol.napieciePotrzebWlasnychKv != null
+    ? `potrzeby własne ${liczbaPl(zespol.napieciePotrzebWlasnychKv)} kV`
+    : 'potrzeby własne';
+}
+
+/** Szerokość ogona pola ZU na prawo od toru głównego: węzeł, kolumny gałęzi i najdłuższy podpis
+ *  wartości — JEDNA funkcja rezerwacji kolumny (`fieldColumnRequiredWidth`) i rysunku. */
+function szerokoscOgonaZespolu(bay: CanonicalGpzBay): number {
+  const zespol = bay.zespolUziemiajacy;
+  if (!zespol) return 0;
+  const kolumny = kolumnyGaleziZespolu(zespol);
+  const ostatnia = kolumny[kolumny.length - 1];
+  const prawa = ostatnia ? ostatnia.dx + SYMBOL_DEFS.neutralEarthing.width / 2 + ostatnia.podpis : 0;
+  return snapUp(ODSUNIECIE_WEZLA_ZESPOLU + prawa + GRID);
+}
+
+interface OgonZespolu {
+  readonly symbols: readonly ComposedGpzSymbolInstance[];
+  readonly segments: readonly ComposedGpzSegment[];
+  readonly labels: readonly SimpleAnchoredOwnerInput[];
+}
+
+/**
+ * Ogon pola zespołu uziemiającego (Zeszyt 1 Z.13–Z.15 s.93–95) z danych nośnika: od punktu
+ * gwiazdowego uzwojenia zygzakowego w prawo do węzła, z węzła ogranicznik przepięć do ziemi i
+ * gałęzie punktu neutralnego (odłącznik, w gałęzi rezystora przekładnik prądowy, aparat
+ * uziemiający z uziomem); strona dolna transformatora schodzi do szyny potrzeb własnych.
+ * Aparaty ogona nie mają rekordów w polu (są wyposażeniem transformatora uziemiającego poza
+ * celą) — tożsamość niesie transformator (`elementRef` sceny = `transformatorRef`).
+ */
+function ogonZespoluUziemiajacego(
+  bay: CanonicalGpzBay,
+  transformator: ComposedGpzSymbolInstance,
+  meta: Pick<GpzElementMeta, 'sectionId'>,
+): OgonZespolu | null {
+  const zespol = bay.zespolUziemiajacy;
+  if (!zespol) return null;
+  const symbols: ComposedGpzSymbolInstance[] = [];
+  const segments: ComposedGpzSegment[] = [];
+  const labels: SimpleAnchoredOwnerInput[] = [];
+  const metaOgona = (przyrostek: string): GpzElementMeta => ({
+    parityKeys: [KLUCZ_GALEZI_PUNKTU_NEUTRALNEGO],
+    testId: `gpz-canonical-bay-${bay.bayRef}-zespol-${przyrostek}`,
+    sectionId: meta.sectionId,
+    bayRef: bay.bayRef,
+    voltageClass: 'sn',
+  });
+  const trDef = SYMBOL_DEFS.transformer2W;
+  const zacisk = trDef.secondaryPorts.find((p) => p.name === 'punktNeutralny')!;
+  const yN = transformator.y + zacisk.y;
+  const xPrawa = transformator.x + zacisk.x;
+  const xWezla = xPrawa + ODSUNIECIE_WEZLA_ZESPOLU;
+  const kolumny = kolumnyGaleziZespolu(zespol);
+  const galezie = kolumny.map((k) => k.galaz);
+  const xGalezi = kolumny.map((k) => xWezla + k.dx);
+  const xKonca = xGalezi.length > 0 ? xGalezi[xGalezi.length - 1] : xWezla;
+  segments.push({
+    ownerRef: `${bay.bayRef}#zespol-punkt-neutralny`,
+    points: [{ x: xPrawa, y: yN }, { x: xKonca, y: yN }],
+    meta: metaOgona('punkt-neutralny'),
+  });
+  // Ogranicznik przepięć w punkcie neutralnym (rysunek: pod węzłem, do ziemi).
+  const sa = { symbolId: 'surgeArrester' as const, x: xWezla - SYMBOL_DEFS.surgeArrester.width / 2, y: yN + GRID };
+  symbols.push({ ...sa, ports: portsInWorld(sa.symbolId, sa.x, sa.y), meta: metaOgona('ogranicznik') });
+  segments.push({
+    ownerRef: `${bay.bayRef}#zespol-ogranicznik`,
+    points: [{ x: xWezla, y: yN }, { x: xWezla, y: yN + GRID }],
+    meta: metaOgona('ogranicznik-przewod'),
+  });
+  galezie.forEach((galaz, i) => {
+    const x = xGalezi[i];
+    let y = yN + GRID;
+    const ds = { symbolId: 'disconnector' as const, x: x - SYMBOL_DEFS.disconnector.width / 2, y };
+    symbols.push({ ...ds, state: 'closed', ports: portsInWorld(ds.symbolId, ds.x, ds.y), meta: metaOgona(`${galaz}-odlacznik`) });
+    segments.push({
+      ownerRef: `${bay.bayRef}#zespol-${galaz}-zejscie`,
+      points: [{ x, y: yN }, { x, y }],
+      meta: metaOgona(`${galaz}-zejscie`),
+    });
+    y += SYMBOL_DEFS.disconnector.height;
+    if (galaz === 'rezystor') {
+      // Przekładnik prądowy gałęzi rezystora (Z.14/Z.15 — wejście Io>, Io>> zabezpieczenia).
+      const ct = { symbolId: 'currentTransformer' as const, x: x - SYMBOL_DEFS.currentTransformer.width / 2, y: y + GRID };
+      symbols.push({ ...ct, ports: portsInWorld(ct.symbolId, ct.x, ct.y), meta: metaOgona('rezystor-przekladnik') });
+      segments.push({
+        ownerRef: `${bay.bayRef}#zespol-rezystor-przekladnik`,
+        points: [{ x, y }, { x, y: y + GRID }],
+        meta: metaOgona('rezystor-przekladnik-przewod'),
+      });
+      labels.push({
+        ownerRef: `${bay.bayRef}#zespol-rezystor-przekladnik-oznaczenie`,
+        ownerKind: 'apparatus',
+        text: 'T2',
+        labelClass: KLASA_ETYKIETY_APARATU_GPZ,
+        anchor: { x: x + SYMBOL_DEFS.currentTransformer.width / 2, y: y + GRID + SYMBOL_DEFS.currentTransformer.height / 2 },
+        placement: 'right',
+      });
+      y += GRID + SYMBOL_DEFS.currentTransformer.height;
+    }
+    const ne = { symbolId: 'neutralEarthing' as const, x: x - SYMBOL_DEFS.neutralEarthing.width / 2, y: y + GRID };
+    symbols.push({
+      ...ne,
+      earthingKind: galaz === 'dlawik' ? 'coil' : 'resistor',
+      ports: portsInWorld(ne.symbolId, ne.x, ne.y),
+      meta: metaOgona(`${galaz}-aparat`),
+    });
+    segments.push({
+      ownerRef: `${bay.bayRef}#zespol-${galaz}-aparat`,
+      points: [{ x, y }, { x, y: y + GRID }],
+      meta: metaOgona(`${galaz}-aparat-przewod`),
+    });
+    labels.push({
+      ownerRef: `${bay.bayRef}#zespol-${galaz}-wartosc`,
+      ownerKind: 'apparatus',
+      text: podpisGaleziZespolu(zespol, galaz),
+      labelClass: KLASA_ETYKIETY_APARATU_GPZ,
+      anchor: { x: x + SYMBOL_DEFS.neutralEarthing.width / 2, y: y + GRID + 12 },
+      placement: 'right',
+    });
+  });
+  // Strona dolna — zasilanie potrzeb własnych (rysunek: przewód w dół „Zasilanie potrzeb
+  // własnych 400/230 V AC”): odbiór na szynie potrzeb własnych modelu, strzałka odbioru.
+  const xTr = transformator.x + trDef.width / 2;
+  const yDol = transformator.y + trDef.height;
+  const odbior = { symbolId: 'loadArrow' as const, x: xTr - SYMBOL_DEFS.loadArrow.width / 2, y: yDol + 2 * GRID };
+  symbols.push({ ...odbior, ports: portsInWorld(odbior.symbolId, odbior.x, odbior.y), meta: metaOgona('potrzeby-wlasne') });
+  // Przewód strony dolnej należy do TRANSFORMATORA (element modelu z zapisu pary): symbol
+  // transformatora w stosie pola niesie ref pola (`meta.bayRef` wygrywa w scenie), a reguła
+  // kompletności rysunku liczy transformator jako narysowany po refie właściciela prymitywu.
+  segments.push({
+    ownerRef: `${zespol.transformatorRef}#potrzeby-wlasne`,
+    points: [{ x: xTr, y: yDol }, { x: xTr, y: odbior.y }],
+    meta: metaOgona('potrzeby-wlasne-przewod'),
+  });
+  labels.push({
+    ownerRef: `${bay.bayRef}#zespol-potrzeby-wlasne-podpis`,
+    ownerKind: 'apparatus',
+    text: podpisPotrzebWlasnych(zespol),
+    labelClass: KLASA_ETYKIETY_APARATU_GPZ,
+    anchor: { x: odbior.x, y: odbior.y + SYMBOL_DEFS.loadArrow.height / 2 },
+    placement: 'left',
+  });
+  const tabliczka = tabliczkaTransformatoraZespolu(zespol);
+  if (tabliczka) {
+    labels.push({
+      ownerRef: `${bay.bayRef}#zespol-tabliczka`,
+      ownerKind: 'apparatus',
+      text: tabliczka,
+      labelClass: KLASA_ETYKIETY_APARATU_GPZ,
+      anchor: { x: transformator.x, y: transformator.y + trDef.height / 2 },
+      placement: 'left',
+    });
+  }
+  return { symbols, segments, labels };
 }
 
 /** Pochodzenie stosu pola GPZ (audytor DOM `data-apparatus-source`, ta sama oś co stacje). */
@@ -802,6 +1030,7 @@ function buildFieldStack(
       y,
       ...daneRekordu(spec),
       ...(spec.bateria ? { bateria: spec.bateria } : {}),
+      ...(spec.uzwojenia ? { uzwojenia: spec.uzwojenia } : {}),
       ports,
       meta: metaPozycji(spec, index),
     };
@@ -1290,7 +1519,10 @@ function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldAppa
   // F10.1: pełna szerokość planu (tor główny + rozszerzenie boczne ES/VT/SA).
   const footprint = gpzFieldPlanFootprint(spec);
   const sidecar = designation ? GRID + measureLabelWidth(designation, 't3') : 0;
-  return pasyOpisowPolaGpz(spec).szerokosc + footprint.width + sidecar + gpzBayAnnotationWidth(bay);
+  return (
+    pasyOpisowPolaGpz(spec).szerokosc + footprint.width + sidecar + gpzBayAnnotationWidth(bay)
+    + szerokoscOgonaZespolu(bay)
+  );
 }
 
 /** Recenzja NO-GO 2026-07-17 pkt 8: numeracja pól w nagłówku — dane
@@ -2537,6 +2769,34 @@ function composeGpzPrzebieg(
           meta: { parityKeys: [], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
         });
       });
+      // Karta POLA-GPZ-SZABLONY: pole ZU — transformator uziemiający na końcu toru (pozycja
+      // stosu bez rekordu aparatu) dostaje przewód z wyjścia ostatniego aparatu toru, gałąź
+      // punktu neutralnego i stronę potrzeb własnych (`ogonZespoluUziemiajacego`).
+      const indeksTrZespolu = stack.pozycje.findIndex(
+        (p) => !p.boczny && p.spec.parityKeys.includes(KLUCZ_TRANSFORMATORA_ZESPOLU),
+      );
+      if (indeksTrZespolu >= 0) {
+        const trZespolu = stack.pozycje[indeksTrZespolu].instance;
+        const poprzedni = stack.pozycje.slice(0, indeksTrZespolu).reverse().find((p) => !p.boczny && p.odgalezienie == null);
+        const wyjscie = poprzedni
+          ? Object.values(poprzedni.instance.ports).find((port) => port.dir === 'S')
+          : undefined;
+        const wejscieTr = trZespolu.ports.hv;
+        if (wyjscie && wejscieTr && wyjscie.y < wejscieTr.y) {
+          segments.push({
+            ownerRef: `${field.bay.bayRef}#zespol-doprowadzenie`,
+            points: [{ x: wyjscie.x, y: wyjscie.y }, { x: wejscieTr.x, y: wejscieTr.y }],
+            meta: { parityKeys: ['gpz.bay.power_path'], sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
+          });
+        }
+        const ogon = ogonZespoluUziemiajacego(field.bay, trZespolu, { sectionId: layout.section.sectionId });
+        if (ogon) {
+          symbols.push(...ogon.symbols);
+          ogon.symbols.forEach((instance) => tag([...instance.meta.parityKeys, 'gpz.bay']));
+          segments.push(...ogon.segments);
+          fieldDesignations.push(...ogon.labels);
+        }
+      }
 
       const powerPathMeta: GpzElementMeta = {
         parityKeys: ['gpz.bay.power_path'],

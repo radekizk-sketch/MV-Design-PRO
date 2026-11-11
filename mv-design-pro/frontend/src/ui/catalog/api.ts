@@ -25,7 +25,6 @@ import type {
   SourceSystemCatalogType,
   SwitchEquipmentType,
   ShuntCapacitorCatalogType,
-  EarthingTransformerCatalogType,
   ArcSuppressionCoilCatalogType,
   NeutralEarthingResistorCatalogType,
   SurgeArresterCatalogType,
@@ -88,7 +87,6 @@ export type CatalogListItem =
   | BranchPointCatalogType
   | SurgeArresterCatalogType
   | ShuntCapacitorCatalogType
-  | EarthingTransformerCatalogType
   | ArcSuppressionCoilCatalogType
   | NeutralEarthingResistorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
@@ -322,6 +320,9 @@ export interface SygnalPolaWzorca {
   readonly kierunek: 'WEJSCIE' | 'WYJSCIE';
   readonly obwod: 'WYLACZNIK' | 'OKREZNY' | 'NADRZEDNY';
   readonly sterownik_pola: boolean;
+  /** Sygnały pola połączone na rysunku wprost z tym sygnałem (np. „OW2 od zabezpieczeń str.
+   *  110 kV” → OW2, ENEA Z.7 s.86) — lustro `SygnalPola.polaczony_z`. */
+  readonly polaczony_z: readonly string[];
   readonly znaczenie_pl: string | null;
   readonly weryfikacja: StatusWeryfikacjiWzorca;
   readonly uwaga: string | null;
@@ -484,9 +485,14 @@ export async function fetchShuntCapacitorTypes(): Promise<ShuntCapacitorCatalogT
   return fetchCatalogJson<ShuntCapacitorCatalogType[]>('/api/catalog/shunt-capacitor-types');
 }
 
-/** Transformatory uziemiające ZNyn11 — katalog operacji `add_zespol_uziemiajacy_sn`. */
-export async function fetchEarthingTransformerTypes(): Promise<EarthingTransformerCatalogType[]> {
-  return fetchCatalogJson<EarthingTransformerCatalogType[]>('/api/catalog/earthing-transformer-types');
+/**
+ * Transformatory uziemiające — pozycje katalogu transformatorów SN/nN (`TRAFO_SN_NN`) z grupą
+ * połączeń ZN (uzwojenie górne w zygzak z wyprowadzonym punktem neutralnym), wybrane jednym
+ * predykatem backendu; katalog operacji `add_zespol_uziemiajacy_sn`. Ten sam rekord co lista
+ * `fetchTransformerTypes` (jeden nośnik zespołu uziemiającego: transformator).
+ */
+export async function fetchEarthingTransformerTypes(): Promise<TransformerType[]> {
+  return fetchCatalogJson<TransformerType[]>('/api/catalog/earthing-transformer-types');
 }
 
 /** Dławiki gaszące — katalog operacji `add_zespol_uziemiajacy_sn`. */
@@ -790,9 +796,6 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'SHUNT_CAPACITOR':
       types = await fetchShuntCapacitorTypes();
-      break;
-    case 'EARTHING_TRANSFORMER':
-      types = await fetchEarthingTransformerTypes();
       break;
     case 'ARC_SUPPRESSION_COIL':
       types = await fetchArcSuppressionCoilTypes();

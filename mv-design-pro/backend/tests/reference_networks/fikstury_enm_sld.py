@@ -17,6 +17,10 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
   przypisania zabezpieczeń (koordynacja z karty V12K-220, dopisana w modelu, bo żadna
   operacja domenowa nie buduje pól GPZ z listą aparatów pierwotnych);
 * ``stacjaPolePomiarowe`` — stacja B z polem pomiarowym (przekładnik napięciowy);
+* ``stacjeKonstrukcjiPol`` (scena + ``public``) — cztery stacje sekcyjne D (pola IN, OUT,
+  sprzęgło, TR) po jednej na konstrukcję pola wg aparatu z katalogu: wyłącznik, rozłącznik,
+  rozłącznik bezpiecznikowy, odłącznik — tor pól z szablonu roli (`enm.aparaty_pol_sn`,
+  karta SZABLONY-POL);
 * ``s95GpzSwiezy`` — sam GPZ zaraz po ``add_grid_source_sn``;
 * ``s92Bieg`` + nakładki ``s92Zwarcie``/``s92Rozplyw`` — dwa odcinki + szablon stacji
   przelotowej 1250 kVA, biegi kanoniczne zwarcia i rozpływu
@@ -27,6 +31,9 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami;
 * ``gpz110kvBkr``, ``gpz110kvBkrGwiazdaUziemiona`` (``public``) — GPZ 110/15 kV z polem
   baterii kondensatorów (``scena_pola_bkr``, karta UX-04/POLE-BKR-MODEL);
+* ``gpz110kvPolaSzablonow``, ``gpz110kvPoleZu{Z13,Z14,Z15}`` (``public``) — GPZ 110/15 kV
+  z polami z szablonów ENEA Zeszyt 1 i po jednym polu zespołu uziemiającego na wariant
+  (karta POLA-GPZ-SZABLONY);
 * ``stacjaPomiar1000`` — dwa odcinki + szablon stacji 1000 kVA z pomiarem rozliczeniowym
   (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
@@ -67,6 +74,10 @@ from tests.reference_networks.budowa_przez_api import (
     port_odgalezny,
     segmenty_korytarza,
     wiazanie,
+)
+from tests.reference_networks.scena_geometrii_stacji import (
+    zbuduj_gpz_pola_szablonow,
+    zbuduj_gpz_pole_zespolu,
 )
 from tests.reference_networks.scena_pola_bkr import zbuduj_gpz_z_bkr
 from tests.utils.biegi import wykonaj_bieg
@@ -361,6 +372,48 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
             # rekordów Load"; z odpływami magazyn modelu dokłada odbiory katalogowe).
         },
     )
+    return b.migawka()
+
+
+#: Konstrukcje pól stacji wg rodzaju aparatu głównego z katalogu (`enm.aparaty_pol_sn`).
+KONSTRUKCJE_POL_STACJI: tuple[tuple[str, str], ...] = (
+    ("S-WYL", "sw-cb-abb-vd4-17kv-630a"),
+    ("S-ROZL", "sw-ls-ogolny-prozniowy-24kv-630a"),
+    ("S-BEZP", "sw-fuse-eti-vv-17kv-63a"),
+    ("S-ODL", "sw-ds-abb-ojs-17kv-630a"),
+)
+
+
+def _stacje_konstrukcji_pol(b: KlientBudowy) -> dict[str, Any]:
+    """Cztery stacje sekcyjne D na kolejnych odcinkach, każda z polami IN, OUT, sprzęgła i TR,
+    z innym aparatem pól: tor pól z szablonu roli wg konstrukcji (wyłącznikowa — szablon
+    kanoniczny z przekładnikiem prądowym i funkcjami EAZ; rozłącznikowa — pole RMU)."""
+    b.gpz_110kv(1)
+    for numer in range(len(KONSTRUKCJE_POL_STACJI)):
+        b.odcinek_magistrali(120 + 40 * numer, f"Magistrala {numer + 1}")
+    for numer, (nazwa, aparat) in enumerate(KONSTRUKCJE_POL_STACJI):
+        b.operacja(
+            "insert_station_on_segment_sn",
+            {
+                "segment_id": segmenty_korytarza(b.migawka())[2 * numer],
+                "field_apparatus_catalog_ref": aparat,
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "station": {
+                    "station_type": "D",
+                    "station_name": nazwa,
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
+                "sn_fields": [
+                    {"field_role": "LINIA_IN"},
+                    {"field_role": "LINIA_OUT"},
+                    {"field_role": "SPRZEGLO"},
+                    {"field_role": "TRANSFORMATOROWE"},
+                ],
+                "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            },
+        )
     return b.migawka()
 
 
@@ -719,6 +772,11 @@ _SIECI: tuple[tuple[tuple[str, ...], str, Callable[[KlientBudowy], dict[str, Any
         _stacja_pole_pomiarowe,
     ),
     (
+        (f"{SCENA}/stacjeKonstrukcjiPol.enm.json", f"{PUBLICZNE}/stacjeKonstrukcjiPol.enm.json"),
+        "Stacje — konstrukcje pól",
+        _stacje_konstrukcji_pol,
+    ),
+    (
         (f"{SCENA}/stacjaPomiar1000.enm.json",),
         "Stacja z pomiarem za ZKSN",
         _stacja_pomiar_1000,
@@ -769,6 +827,16 @@ def render_fikstur_enm_sld() -> dict[str, str]:
         # `scena_pola_bkr`, operacje domenowe) — harness zrzutów glifu baterii w obu motywach.
         for plik, nazwa, cechy in _SCENY_BKR:
             tresci[f"{PUBLICZNE}/{plik}.enm.json"] = _plik_enm(zbuduj_gpz_z_bkr(**cechy), nazwa)
+        # Karta POLA-GPZ-SZABLONY: pola GPZ z szablonów ENEA Zeszyt 1 (Z.7, Z.12, Z.13, Z.16, Z.17)
+        # i po jednej scenie na wariant pola zespołu uziemiającego (Z.13–Z.15) — harness zrzutów
+        # pól GPZ w obu motywach (`e2e/pola-gpz-zrzuty-screenshot.spec.ts`).
+        tresci[f"{PUBLICZNE}/gpz110kvPolaSzablonow.enm.json"] = _plik_enm(
+            zbuduj_gpz_pola_szablonow(), "GPZ z polami z szablonów ENEA"
+        )
+        for wariant in ("Z13", "Z14", "Z15"):
+            tresci[f"{PUBLICZNE}/gpz110kvPoleZu{wariant}.enm.json"] = _plik_enm(
+                zbuduj_gpz_pole_zespolu(wariant), f"GPZ z polem zespołu uziemiającego {wariant}"
+            )
         tresci[f"{PUBLICZNE}/nnBoardDemo.enm.json"] = _plik_enm(
             _nn_board_demo(KlientBudowy(klient, "Stacja z rozdzielnicą nN")),
             "Stacja z rozdzielnicą nN",

@@ -30,12 +30,12 @@ const LACZNIKI = [
   {
     id: 'sw-sf6-a', name: 'Rozłącznik SF6 A', manufacturer: 'X', un_kv: 24, in_a: 630, ik_ka: null, icw_ka: 16,
     medium: 'SF6', gaz_fluorowany: true, dopuszczony_do_nowych_pol: false,
-    powod_blokady_nowych_pol_pl: 'Aparat Rozłącznik SF6 A wykorzystuje gaz fluorowany (SF₆).',
+    powod_blokady_nowych_pol_pl: 'Aparat Rozłącznik SF6 A wykorzystuje gaz fluorowany (SF6).',
   },
   {
     id: 'sw-sf6-b', name: 'Rozłącznik SF6 B', manufacturer: 'X', un_kv: 24, in_a: 630, ik_ka: null, icw_ka: 16,
     medium: 'SF6', gaz_fluorowany: true, dopuszczony_do_nowych_pol: false,
-    powod_blokady_nowych_pol_pl: 'Aparat Rozłącznik SF6 B wykorzystuje gaz fluorowany (SF₆).',
+    powod_blokady_nowych_pol_pl: 'Aparat Rozłącznik SF6 B wykorzystuje gaz fluorowany (SF6).',
   },
   {
     id: 'sw-vac', name: 'Rozłącznik próżniowy', manufacturer: 'Y', un_kv: 24, in_a: 630, ik_ka: null, icw_ka: 16,

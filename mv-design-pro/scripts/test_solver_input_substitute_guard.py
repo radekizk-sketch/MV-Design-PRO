@@ -2051,7 +2051,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `contract_fields()` na `1465336df` (4374) i na drzewie karty (4419). Roznica zbiorow -3
     # (trzy nazwy skasowanego katalogu wariantow uziemienia audytu 2 i jego pola referencji
     # w konfiguracji stacji — druga prawda punktu neutralnego, pilnowana przez grep-zero), +48 (pola encji
-    # `ZespolUziemiajacy` i jej aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
+    # zespolu uziemiajacego i jego aparatow: transformator uziemiajacy, dlawik, AWSC, rezystory;
     # payloady operacji zespolu; trzy przestrzenie katalogu aparatow zespolu; wejscie solvera
     # skladowej zerowej `y0_bus`/`node_index`/`galezie_sieci`/`brak_wyniku_zerowego`; kontekst
     # V12.6 `uziemienie_sn`/`prad_dlawikow_a`). PASS niezmieniony.

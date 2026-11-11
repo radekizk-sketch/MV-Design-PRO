@@ -409,9 +409,9 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   SHUNT_CAPACITOR: [],
   BRANCH_POLE: [],
   ZKSN: [],
-  // Katalogi aparatów zespołu uziemiającego SN — przeglądane w kreatorze zespołu
-  // uziemiającego i w przeglądarce katalogu budowy sieci, bez zakładki tutaj.
-  EARTHING_TRANSFORMER: [],
+  // Katalogi aparatów punktu neutralnego zespołu uziemiającego SN — przeglądane w kreatorze
+  // zespołu uziemiającego i w przeglądarce katalogu budowy sieci, bez zakładki tutaj
+  // (transformator uziemiający jest pozycją zakładki TRANSFORMER — przestrzeń TRAFO_SN_NN).
   ARC_SUPPRESSION_COIL: [],
   NEUTRAL_EARTHING_RESISTOR: [],
   // PTPIREE_CERTIFICATE ma WŁASNĄ ścieżkę pobierania (strona serwerowa,

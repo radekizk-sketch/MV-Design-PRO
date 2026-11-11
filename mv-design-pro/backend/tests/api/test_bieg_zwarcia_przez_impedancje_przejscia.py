@@ -31,7 +31,7 @@ from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
 from tests.utils.biegi import wykonaj_bieg
-from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
+from tests.utils.zespol_uziemiajacy import dodaj_zespol_o_impedancji_zerowej
 
 BASE_URL = "/api/execution"
 UN_KV = 15.0
@@ -87,97 +87,91 @@ def _zasiej_siec(case_id: str) -> None:
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
 
-    set_enm(
-        case_id,
-        EnergyNetworkModel.model_validate(
+    dane: dict = {
+        "header": {
+            "name": "Sieć sondy ręcznej",
+            "enm_version": "1.0",
+            "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "revision": 1,
+            "hash_sha256": "",
+        },
+        "buses": [
             {
-                "header": {
-                    "name": "Sieć sondy ręcznej",
-                    "enm_version": "1.0",
-                    "defaults": {"frequency_hz": 50, "unit_system": "SI"},
-                    "created_at": "2024-01-01T00:00:00Z",
-                    "updated_at": "2024-01-01T00:00:00Z",
-                    "revision": 1,
-                    "hash_sha256": "",
-                },
-                "buses": [
-                    {
-                        "id": "00000000-0000-0000-0000-000000000201",
-                        "ref_id": "bus-main",
-                        "name": "Szyna zasilania",
-                        "tags": [],
-                        "meta": {},
-                        "voltage_kv": UN_KV,
-                        "phase_system": "3ph",
-                    },
-                    {
-                        "id": "00000000-0000-0000-0000-000000000202",
-                        "ref_id": "bus-1",
-                        "name": "Koniec linii",
-                        "tags": [],
-                        "meta": {},
-                        "voltage_kv": UN_KV,
-                        "phase_system": "3ph",
-                    },
-                ],
-                "branches": [
-                    {
-                        "id": "00000000-0000-0000-0000-000000000203",
-                        "ref_id": "linia-1",
-                        "name": "Linia sondy",
-                        "tags": [],
-                        "meta": {},
-                        "type": "line_overhead",
-                        "from_bus_ref": "bus-main",
-                        "to_bus_ref": "bus-1",
-                        "status": "closed",
-                        "catalog_ref": "LINIA_SN_TEST",
-                        "parameter_source": "CATALOG",
-                        "length_km": DLUGOSC_KM,
-                        "r_ohm_per_km": R_KM,
-                        "x_ohm_per_km": X_KM,
-                        "b_siemens_per_km": 0.0,
-                        "r0_ohm_per_km": 3 * R_KM,
-                        "x0_ohm_per_km": 3 * X_KM,
-                        "b0_siemens_per_km": 0.0,
-                    }
-                ],
-                "sources": [
-                    {
-                        "id": "00000000-0000-0000-0000-000000000204",
-                        "tags": [],
-                        "meta": {},
-                        **gpz_source_record(
-                            ref_id="src-grid",
-                            name="Zasilanie GPZ",
-                            bus_ref="bus-main",
-                            voltage_kv=UN_KV,
-                            sk3_mva=SK_MVA,
-                            rx_ratio=RX_Q,
-                        ),
-                    }
-                ],
-                # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół
-                # uziemiający szyny zasilania (bocznik Z0 = 3·Z_Q — wartość, którą dawniej
-                # udawał Z0/Z1 = 3 równoważnika SN); zwarcie doziemne dostępne w modelu.
-                "zespoly_uziemiajace": [
-                    zespol_o_impedancji_zerowej(
-                        "zu-gpz", "bus-main", r0_ohm=3 * Z_Q.real, x0_ohm=3 * Z_Q.imag
-                    )
-                ],
-                "transformers": [],
-                "loads": [],
-                "generators": [],
-                "substations": [],
-                "bays": [],
-                "junctions": [],
-                "corridors": [],
-                "measurements": [],
-                "protection_assignments": [],
-                "branch_points": [],
+                "id": "00000000-0000-0000-0000-000000000201",
+                "ref_id": "bus-main",
+                "name": "Szyna zasilania",
+                "tags": [],
+                "meta": {},
+                "voltage_kv": UN_KV,
+                "phase_system": "3ph",
+            },
+            {
+                "id": "00000000-0000-0000-0000-000000000202",
+                "ref_id": "bus-1",
+                "name": "Koniec linii",
+                "tags": [],
+                "meta": {},
+                "voltage_kv": UN_KV,
+                "phase_system": "3ph",
+            },
+        ],
+        "branches": [
+            {
+                "id": "00000000-0000-0000-0000-000000000203",
+                "ref_id": "linia-1",
+                "name": "Linia sondy",
+                "tags": [],
+                "meta": {},
+                "type": "line_overhead",
+                "from_bus_ref": "bus-main",
+                "to_bus_ref": "bus-1",
+                "status": "closed",
+                "catalog_ref": "LINIA_SN_TEST",
+                "parameter_source": "CATALOG",
+                "length_km": DLUGOSC_KM,
+                "r_ohm_per_km": R_KM,
+                "x_ohm_per_km": X_KM,
+                "b_siemens_per_km": 0.0,
+                "r0_ohm_per_km": 3 * R_KM,
+                "x0_ohm_per_km": 3 * X_KM,
+                "b0_siemens_per_km": 0.0,
             }
-        ),
+        ],
+        "sources": [
+            {
+                "id": "00000000-0000-0000-0000-000000000204",
+                "tags": [],
+                "meta": {},
+                **gpz_source_record(
+                    ref_id="src-grid",
+                    name="Zasilanie GPZ",
+                    bus_ref="bus-main",
+                    voltage_kv=UN_KV,
+                    sk3_mva=SK_MVA,
+                    rx_ratio=RX_Q,
+                ),
+            }
+        ],
+        "transformers": [],
+        "loads": [],
+        "generators": [],
+        "substations": [],
+        "bays": [],
+        "junctions": [],
+        "corridors": [],
+        "measurements": [],
+        "protection_assignments": [],
+        "branch_points": [],
+    }
+    # Karta ZU-JEDEN-NOSNIK: drogę zerową sieci SN niesie transformator uziemiający zespołu na
+    # szynie zasilania (bocznik Z0 = 3·Z_Q — wartość, którą dawniej udawał Z0/Z1 = 3
+    # równoważnika SN); zwarcie doziemne dostępne w modelu.
+    dodaj_zespol_o_impedancji_zerowej(
+        dane, "zu-gpz", "bus-main", r0_ohm=3 * Z_Q.real, x0_ohm=3 * Z_Q.imag
     )
+    set_enm(case_id, EnergyNetworkModel.model_validate(dane))
 
 
 def _utworz_scenariusz(

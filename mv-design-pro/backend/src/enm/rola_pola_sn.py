@@ -29,7 +29,8 @@ from typing import Literal, get_args
 #: `enm.domain_ops_models` i zbiór w `domain_operations_v2._normalize_sn_bay_role`).
 #: ``ZU`` — pole zespołu uziemiającego (ENEA Zeszyt 1 §16, rys. Z.13/Z.14/Z.15): tor pola
 #: kończy się transformatorem uziemiającym (port ``transformator_uziemiajacy``; element
-#: fizyczny ``EnergyNetworkModel.zespoly_uziemiajace``). ``BKR`` — pole baterii kondensatorów
+#: fizyczny — transformator ZNyn11 z wyposażeniem punktu neutralnego w ``hv_neutral``,
+#: karta ZU-JEDEN-NOSNIK). ``BKR`` — pole baterii kondensatorów
 #: równoległych SN (ENEA Operator, Stacje 110 kV, Zeszyt 1, §13 s. 23 i Zał. 16).
 RolaPolaModelu = Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "ZU", "BKR"]
 ROLE_POLA_MODELU: tuple[str, ...] = get_args(RolaPolaModelu)
@@ -51,6 +52,7 @@ RolaKanonicznaPolaSn = Literal[
     "FW_SN",
     "ZESPOL_UZIEMIAJACY",
     "BATERIA_KONDENSATOROW",
+    "ZESPOL_UZIEMIAJACY",
 ]
 ROLE_KANONICZNE_POLA_SN: tuple[str, ...] = get_args(RolaKanonicznaPolaSn)
 

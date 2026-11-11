@@ -29,13 +29,13 @@ from enm.models import (
     BayPrimaryDevice,
 )
 from enm.wyposazenie_pola import (
-    NAZWY_RODZAJOW_APARATU_POLA_PL,
     PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
     RODZAJE_Z_GALEZIA,
     RODZAJE_Z_ROLA_UZIEMIENIA,
 )
+from network_model.catalog.rodzaje_aparatury import NAZWY_RODZAJOW_APARATU_POLA_PL
 
 _FRONT = Path(__file__).resolve().parents[3] / "frontend" / "src"
 _WYPOSAZENIE_TS = (_FRONT / "ui" / "field" / "wyposazeniePola.ts").read_text(encoding="utf-8")

@@ -46,12 +46,13 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
                 {"order": 0, "name": "Sekcja A", "line_field_name": "Pole liniowe A"},
                 {"order": 1, "name": "Sekcja B", "line_field_name": "Pole liniowe B"},
             ],
-            # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: uziemienie sieci SN to zespół uziemiający
-            # sekcji (pole ZU + zespół), nie opis na równoważniku SN.
-            "zespoly_uziemiajace": [
+            # Uziemienie sieci SN to zespół uziemiający sekcji (pole ZU + transformator
+            # uziemiający ZNyn11 z rezystorem w punkcie neutralnym — karta ZU-JEDEN-NOSNIK),
+            # nie opis na równoważniku SN.
+            "zespoly_sekcji": [
                 {
                     "sekcja": 1,
-                    "catalog_ref": "TU_ZNYN11_15KV_PW160",
+                    "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
                     "rezystor": {"catalog_ref": "REZ_500A_15KV"},
                 }
             ],
@@ -69,8 +70,13 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert sorted(b["bay_role"] for b in snapshot["bays"]) == ["FEEDER", "FEEDER", "ZU"]
     assert {b["substation_ref"] for b in snapshot["bays"]} == {snapshot["substations"][0]["ref_id"]}
     # Karta GPZ-MODEL: równoważnik z katalogu źródeł stoi na szynach SN — granicą modelu
-    # są szyny SN, transformatory 110/SN nie są elementami modelu obliczeniowego.
-    assert snapshot["transformers"] == []
+    # są szyny SN, transformatory 110/SN nie są elementami modelu obliczeniowego. Jedyny
+    # transformator to transformator uziemiający zespołu sekcji 1 na zacisku pola ZU.
+    [zu] = [b for b in snapshot["bays"] if b["bay_role"] == "ZU"]
+    [tr] = snapshot["transformers"]
+    assert tr["vector_group"] == "ZNyn11"
+    assert tr["ref_id"] in zu["equipment_refs"]
+    assert tr["hv_neutral"]["rezystor"]["catalog_ref"] == "REZ_500A_15KV"
 
     source = snapshot["sources"][0]
     substation = snapshot["substations"][0]
@@ -88,13 +94,10 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert "grounding" not in substation["meta"]
     assert "zero_sequence" not in substation["meta"]
     assert source.get("neutral_grounding") is None
-    (zespol,) = snapshot["zespoly_uziemiajace"]
-    assert zespol["rezystor"]["catalog_ref"] == "REZ_500A_15KV"
-    pole_zu = next(b for b in snapshot["bays"] if b["ref_id"] == zespol["bay_ref"])
-    assert pole_zu["bay_role"] == "ZU"
-    # Zespół stoi na zacisku toru pola ZU (za wyłącznikiem pola), pole na szynie sekcji 1.
-    assert zespol["bus_ref"] == pole_zu["terminal_bus_ref"]
-    assert pole_zu["gpz_section_id"] == sections[0]["section_id"]
+    # Transformator uziemiający stoi na zacisku toru pola ZU (za wyłącznikiem pola), pole na
+    # szynie sekcji 1.
+    assert tr["hv_bus_ref"] == zu["terminal_bus_ref"]
+    assert zu["gpz_section_id"] == sections[0]["section_id"]
     assert substation["meta"]["short_circuit_mode"] == "SHORT_CIRCUIT_POWER"
 
     assert sections[0]["name"] == "Sekcja A"

@@ -110,9 +110,6 @@ const DOZWOLONE: Readonly<Record<string, string>> = {
   'oze-source-harness-main.tsx|NAMES[archetype] ?? archetype':
     'Strona-uprząż zrzutów e2e (`oze-source-harness.html`), nie ekran produktu — archetyp jest '
     + 'tu kluczem scenariusza zrzutu.',
-  'ui/sld/v3/compose/gpz.ts|return symbolId;':
-    'Przyrostek identyfikatora testowego (`data-testid`) aparatu toru transformatora GPZ, nie '
-    + 'tekst ekranu — symbol spoza skrótów jest tu kluczem technicznym DOM.',
   'ui/sld/v3/export/exportPalette.ts|map.get(hit) ?? hit':
     'Podmiana kolorów w znacznikach SVG eksportu: dopasowany kolor spoza mapy palety zostaje '
     + 'sam sobą (wartość atrybutu SVG, nie tekst ekranu).',

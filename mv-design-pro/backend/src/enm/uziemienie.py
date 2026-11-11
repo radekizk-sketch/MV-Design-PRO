@@ -40,7 +40,9 @@ KLUCZE_META_STACJI_USUWANE: tuple[str, ...] = ("grounding", "zero_sequence")
 
 
 def blad_konfiguracji_uziemienia(
-    typ: str | None, r_ohm: float | None, x_ohm: float | None
+    typ: str | None,
+    r_ohm: float | None,
+    x_ohm: float | None,
 ) -> str | None:
     """Komunikat błędu spójności konfiguracji punktu neutralnego albo ``None``.
 
@@ -52,6 +54,10 @@ def blad_konfiguracji_uziemienia(
     Treść trafia do projektanta (karta #142): pole formularza nazwane jak w kreatorze
     źródła (``ui2/kreatory/zrodlo/strings.ts`` ``uziemienieR``/``uziemienieX``), bez
     nazwy pola kontraktu.
+
+    Nie dotyczy punktu neutralnego transformatora uziemiającego: jego Z_N opisują gałęzie
+    wyposażenia (dławik, rezystor, AWSC — ``enm.punkt_neutralny_zespolu``, karta
+    ZU-JEDEN-NOSNIK), nie R_N/X_N.
     """
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):
         return (

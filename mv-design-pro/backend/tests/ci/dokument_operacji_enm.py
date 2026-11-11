@@ -717,7 +717,7 @@ KROKI: tuple[Krok, ...] = (
                 "bus_refs"
             ][0],
             "name": "Zespół uziemiający GPZ",
-            "catalog_ref": "TU_ZNYN11_15KV_PW160",
+            "catalog_ref": "tu-sn-nn-15-04-100kva-znyn11",
             "dlawik": {"catalog_ref": "DL_40_400A_15KV_CIAGLY", "i_nastawy_a": 120.0},
             "rezystor": {"catalog_ref": "REZ_200A_15KV"},
         },

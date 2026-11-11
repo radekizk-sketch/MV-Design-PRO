@@ -174,6 +174,10 @@ def _pei_min_tab_i7(sr_mva: float) -> float:
 
 
 def _niezgodny_z_tier2(params: dict[str, Any]) -> bool:
+    if not tr.objety_tier2(params):
+        # Transformator uziemiający (art. 1 ust. 2 rozporządzenia 548/2014) — poza Tier 2.
+        assert params["vector_group"] == "ZNyn11", params
+        return False
     sr_kva = params["rated_power_mva"] * 1000.0
     if sr_kva > 3150.0:
         # tab. I.7 — transformatory dużej mocy (tu wyłącznie WN 110 kV, olejowe)
@@ -207,10 +211,12 @@ def test_pomiar_przekroczen_tier2() -> None:
     """Pomiar 2026-10-15: 50 pozycji przekracza Tier 2 (10 WN/SN + 24 SN/nN jednostek
     istniejących + 16 polskich deklaracji); 193 są zgodne (192 normatywne — po rundzie 3
     także 18 blokowych 0,48 kV, po karcie KATALOG-TURBINY-TOR-V112 także 18 blokowych
-    0,65 kV — + karta Siemens GEAFOL Neo, której straty gwarantowane są równe pułapowi)."""
+    0,65 kV — + karta Siemens GEAFOL Neo, której straty gwarantowane są równe pułapowi).
+    Karta POLA-GPZ-SZABLONY: + 2 transformatory uziemiające ZNyn11 poza Tier 2 (art. 1 ust. 2)."""
     wszystkie = tr.get_all_transformer_types()
     niezgodne = [r["id"] for r in wszystkie if _niezgodny_z_tier2(r["params"])]
-    assert len(wszystkie) == 243
+    assert len(wszystkie) == 245
+    assert len([r for r in wszystkie if not tr.objety_tier2(r["params"])]) == 2
     assert len(niezgodne) == 50
 
 
@@ -455,9 +461,14 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     minimalne łączników 110 kV karty KATALOG-APARATURA-WN (wyłącznik, odłącznik). Pomiar
     2026-10-28: 7855 = 7853 + 2 rozłączniki próżniowe typu ogólnego karty
     UX-04/POLE-LINIOWE-WZORZEC. Pomiar 2026-10-29: 7857 = 7855 + 2 przekładniki prądowe typu
-    ogólnego OSD pól liniowych GPZ (ENEA Z.10/Z.11.1 i Z.11) tej samej karty."""
+    ogólnego OSD pól liniowych GPZ (ENEA Z.10/Z.11.1 i Z.11) tej samej karty. Pomiar
+    2026-11-05: 7866 = 7857 + 9 przekładników prądowych typu ogólnego OSD pól GPZ karty
+    POLA-GPZ-SZABLONY (Z.7 s.86 i Z.12 s.92 — po cztery warianty przekładni z gwiazdką tabeli
+    „Uwaga”: 1000, 1600, 800, 1200 A; Z.16 s.96 — 100/5 A, trzy rdzenie). Ta sama karta:
+    7869 = 7866 + przekładnik prądowy 100/5 A pola zespołu uziemiającego (Z.13 s.93) + 2
+    transformatory uziemiające ZNyn11 15/0,4 i 20/0,4 kV (§16 s.29–30)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7857
+    assert len(rekordy) == 7869
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

@@ -29,16 +29,11 @@ from application.analyses.v126_gotowosc import (
     uzupelnij_parametry_z_modelu,
 )
 from application.analyses.v126_katalog import KATALOG_ANALIZ_V126, nazwa_parametru_pl
-from enm.models import (
-    DlawikGaszacy,
-    EnergyNetworkModel,
-    ENMHeader,
-    RezystorUziemiajacy,
-    ZespolUziemiajacy,
-)
+from enm.models import EnergyNetworkModel, ENMHeader, Transformer
 from solver_input.v126_contracts import V126AnalysisType, build_v126_input_from_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
+from tests.utils.zespol_uziemiajacy import z_zespolem
 
 #: Wzorzec identyfikatora Pythona z podkreśleniem — DOKŁADNIE ten sam, którego
 #: pilnuje `frontend/.../prezentacja.straznik.test.tsx` (reguła „identyfikator
@@ -61,14 +56,34 @@ def _zlota_siec_z_zespolem(wariant: str = "dlawik") -> EnergyNetworkModel:
     ``rezystor`` albo ``bez_elementu`` (zespół bez elementu w punkcie neutralnym — brak MODELU).
     """
     enm = build_golden_enm().model_copy(deep=True)
-    zespol = ZespolUziemiajacy(
-        ref_id="zu_gpz", name="Zespół uziemiający GPZ", bus_ref="bus_sn_main"
+    u_kv = next(b.voltage_kv for b in enm.buses if b.ref_id == "bus_sn_main")
+    # Karta ZU-JEDEN-NOSNIK: zespół = transformator uziemiający ZNyn11 (operacja produktu,
+    # pozycje katalogu); „bez_elementu” — punkt neutralny bez elementu (rekord z innej drogi
+    # wczytania niż operacja produktu, która takiego zespołu nie zapisze).
+    enm = z_zespolem(
+        enm,
+        "zu_gpz",
+        "bus_sn_main",
+        wariant="rezystor" if wariant == "rezystor" else "dlawik",
+        u_kv=u_kv,
+        i_nastawy_a=100.0 if wariant == "dlawik" else None,
+        name="Zespół uziemiający GPZ",
     )
-    if wariant == "dlawik":
-        zespol.dlawik = DlawikGaszacy(i_min_a=40.0, i_max_a=400.0, i_nastawy_a=100.0)
-    elif wariant == "rezystor":
-        zespol.rezystor = RezystorUziemiajacy(r_ohm=43.3)
-    enm.zespoly_uziemiajace = [zespol]
+    if wariant == "bez_elementu":
+        enm = enm.model_copy(
+            update={
+                "transformers": [
+                    (
+                        Transformer.model_validate(
+                            {**t.model_dump(mode="json"), "hv_neutral": None}
+                        )
+                        if t.ref_id == "zu_gpz"
+                        else t
+                    )
+                    for t in enm.transformers
+                ]
+            }
+        )
     return enm
 
 

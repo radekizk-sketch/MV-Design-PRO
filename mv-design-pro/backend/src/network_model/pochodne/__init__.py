@@ -57,6 +57,8 @@ from network_model.pochodne.skladowe_symetryczne import (
 from network_model.pochodne.skladowe_zerowe import (
     impedancja_punktu_neutralnego_ohm,
     impedancja_rozproszenia_transformatora_pu,
+    impedancja_zerowa_zygzaka_robocza_ohm,
+    reaktancja_dlawika_dostrojonego_ohm,
 )
 from network_model.pochodne.wielkosci_pochodne import (
     SQRT2,
@@ -101,6 +103,7 @@ __all__ = [
     "reaktancja_dlawika_ohm",
     "rezystancja_z_pradu_ohm",
     "stopien_rozstrojenia",
+    "impedancja_zerowa_zygzaka_robocza_ohm",
     "a_na_ka",
     "calka_joule_ka2s",
     "czlon_wykladniczy_kappa",
@@ -154,6 +157,7 @@ __all__ = [
     "skladowa_spadku_napiecia_procent",
     "spadek_procentowy_przy_innym_napieciu",
     "susceptancja_z_pojemnosci_s_per_km",
+    "reaktancja_dlawika_dostrojonego_ohm",
     "tan_phi_z_cos_phi",
     "udzial_mocy_biernej_pu",
     "v_na_kv",

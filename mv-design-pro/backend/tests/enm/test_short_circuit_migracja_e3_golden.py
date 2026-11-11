@@ -36,12 +36,11 @@ from enm.models import (
     ENMHeader,
     Source,
     Transformer,
-    ZespolUziemiajacy,
 )
 from enm.store import reset_enm_store, set_enm
 
 from tests.catalog_test_helpers import gpz_source_record
-from tests.utils.zespol_uziemiajacy import zespol_o_impedancji_zerowej
+from tests.utils.zespol_uziemiajacy import z_zespolem_o_impedancji_zerowej
 
 N0 = "N0_GPZ_SN"
 N1 = "N1_SZYNA_SN"
@@ -86,7 +85,7 @@ def _build_golden_enm(name: str) -> EnergyNetworkModel:
     `tests/enm/test_enm_mapping.py::test_converter_contributes_to_short_circuit`
     — dublowanie tej fizyki tu wymagaloby pelnej stacji nN (Substation/Bay,
     `connection_variant` + `station_ref`) bez nowej tresci dowodowej."""
-    return EnergyNetworkModel(
+    model = EnergyNetworkModel(
         header=ENMHeader(name=name),
         buses=[
             Bus(ref_id=N0, name="GPZ 15 kV", voltage_kv=_UN_SN_KV),
@@ -154,15 +153,11 @@ def _build_golden_enm(name: str) -> EnergyNetworkModel:
                 )
             ),
         ],
-        # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: drogę zerową sieci SN niesie zespół uziemiający
-        # na szynie GPZ (równoważnik SN nie opisuje Z0) — ten sam bocznik R0 + jX0.
-        zespoly_uziemiajace=[
-            ZespolUziemiajacy.model_validate(
-                zespol_o_impedancji_zerowej(
-                    "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
-                )
-            )
-        ],
+    )
+    # Karta ZU-JEDEN-NOSNIK: drogę zerową sieci SN niesie transformator uziemiający zespołu
+    # na szynie GPZ (równoważnik SN nie opisuje Z0) — ten sam bocznik R0 + jX0.
+    return z_zespolem_o_impedancji_zerowej(
+        model, "ZU_GPZ", N0, r0_ohm=_R0_SOURCE_OHM, x0_ohm=_X0_SOURCE_OHM
     )
 
 

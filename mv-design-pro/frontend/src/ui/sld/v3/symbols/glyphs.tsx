@@ -30,7 +30,11 @@ import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/c
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
 import type { UkladPolaczenBaterii } from '../../../../types/enm';
-import { PORTY_APARATU_POLA, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatuPola';
+import {
+  PORTY_APARATU_POLA,
+  RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+  RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+} from '../compose/rodzajeAparatuPola';
 import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
 import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, posuwZnakuEm, zasiegPionowyTuszu } from '../core/text';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../canvas/camera';
@@ -271,6 +275,8 @@ export interface GlyphProps {
 export interface GlifBaterii {
   readonly uklad: UkladPolaczenBaterii | null;
   readonly przekladnikNiezrownowazenia: boolean;
+  /** Liczba rekordów `PHASE_TO_PHASE_VT` pola (0 — brak znaku przekładników międzyfazowych). */
+  readonly przekladnikiMiedzyfazowe?: number;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -703,6 +709,18 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={27} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={16} y1={38} x2={16} y2={40} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <OznaczenieUzwojen glif={props} />
+      {/* Karta POLA-GPZ-SZABLONY: wyprowadzenie punktu neutralnego uzwojenia ZYGZAKOWEGO
+          (transformator uziemiający ZNyn11, Zeszyt 1 Z.13–Z.15) — od okręgu górnego do zacisku
+          `punktNeutralny` na prawej krawędzi. Tylko zygzak z wyprowadzonym punktem (dana modelu). */}
+      {props.uzwojenia?.stan === 'znane'
+        && props.uzwojenia.gorne.rodzaj === 'zygzak'
+        && props.uzwojenia.gorne.punktNeutralny && (
+        <line
+          x1={16 + Math.sqrt(11 * 11 - 3 * 3)} y1={16} x2={32} y2={16}
+          stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+          data-punkt-neutralny="wyprowadzony"
+        />
+      )}
       {/* TR2W-BEZ-POLA (§0.C.5): marker stanu NIEKOMPLETNEGO — transformator
        *  przyłączony do szyny SN bez pola transformatorowego. Narożnik strony
        *  WN (u góry, przy punkcie przyłączenia — tam wchodzi pion z szyny),
@@ -1836,6 +1854,12 @@ const QET_GLYPHS: Readonly<Record<QetSymbolPolaSnId, (props: GlyphProps) => JSX.
  *  • brak danej — znak „?" (układ nieokreślony w modelu; obliczenie przyjmuje wartość
  *    roboczą, którą pokazują dane przyjęte, nie rysunek).
  */
+/** Położenia przekładników międzyfazowych w glifie baterii (poza okładkami x 6–26). */
+const POZYCJE_PRZEKLADNIKOW_MIEDZYFAZOWYCH: ReadonlyArray<{ readonly x: number; readonly para: string }> = [
+  { x: 2.5, para: 'L1-L2' },
+  { x: 29.5, para: 'L2-L3' },
+];
+
 function gwiazda(cx: number, cy: number, r: number): string {
   const dx = r * Math.sin(Math.PI / 3);
   const dy = r * Math.cos(Math.PI / 3);
@@ -1847,12 +1871,31 @@ export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
   const s = stroke(props);
   const uklad = props.bateria?.uklad ?? null;
   const zPrzekladnikiem = uklad === 'PODWOJNA_GWIAZDA_IZOLOWANA' && props.bateria?.przekladnikNiezrownowazenia === true;
+  // Rysunek źródła ma dwie pary faz (L1-L2, L2-L3); rekordów ponad dwa nie ma gdzie postawić
+  // bez wymyślania pary L3-L1 — atrybut `data-przekladniki-miedzyfazowe` niesie liczbę z modelu.
+  const liczbaMiedzyfazowych = props.bateria?.przekladnikiMiedzyfazowe ?? 0;
   return (
     <g
       {...glyphGroupProps('capacitorBank', props)}
       data-uklad-baterii={uklad ?? 'NIEOKRESLONY'}
       data-przekladnik-niezrownowazenia={zPrzekladnikiem ? 'tak' : 'nie'}
     >
+      {liczbaMiedzyfazowych > 0 && (
+        <g data-przekladniki-miedzyfazowe={liczbaMiedzyfazowych}>
+          {/* Węzeł na doprowadzeniu baterii (s. 96: przekładniki przyłączone za ogranicznikiem,
+              na zaciskach baterii) i przekładniki międzyfazowe — znak przekładnika napięciowego
+              (EN 60617 06-13-01, dwa okręgi); pierwszy L1-L2 po lewej, drugi L2-L3 po prawej. */}
+          <circle cx={16} cy={3} r={1.2} fill={s} stroke="none" />
+          {POZYCJE_PRZEKLADNIKOW_MIEDZYFAZOWYCH.slice(0, liczbaMiedzyfazowych).map(({ x, para }) => (
+            <g key={para} data-rodzaj-aparatu={RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO} data-para-faz={para}>
+              <line x1={16} y1={3} x2={x} y2={3} stroke={s} strokeWidth={w} />
+              <line x1={x} y1={3} x2={x} y2={4} stroke={s} strokeWidth={w} />
+              <circle cx={x} cy={6} r={2} fill="none" stroke={s} strokeWidth={w} />
+              <circle cx={x} cy={9} r={2} fill="none" stroke={s} strokeWidth={w} />
+            </g>
+          ))}
+        </g>
+      )}
       {/* Kondensator (PN-EN 60617-4 04-02-01): doprowadzenie, dwie okładki, doprowadzenie. */}
       <line x1={16} y1={0} x2={16} y2={6} stroke={s} strokeWidth={w} />
       <line x1={6} y1={6} x2={26} y2={6} stroke={s} strokeWidth={w} data-okladka-kondensatora="1" />

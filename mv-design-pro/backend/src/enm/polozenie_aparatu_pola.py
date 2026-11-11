@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import Any
 
 from network_model.catalog.rodzaje_aparatury import (
+    NAZWY_RODZAJOW_APARATU_POLA_PL,
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
     RODZAJE_LACZNIKOW_POLA,
     STAN_UZIEMIONY,
@@ -52,7 +53,6 @@ from .models import Bay
 from .pola import napis_lub_none, zmien_pole
 from .pola import pole as pole_modelu
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
-from .wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL
 
 __all__ = ["POLOZENIA_APARATU_POLA", "set_bay_apparatus_position"]
 

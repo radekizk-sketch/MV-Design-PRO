@@ -63,6 +63,9 @@ const RODZAJE_REKORDU = {
   VOLTAGE_INDICATOR: true,
   UNBALANCE_CT: true,
   PHASE_TO_PHASE_VT: true,
+  THREE_POSITION_SWITCH: true,
+  CORE_BALANCE_CT: true,
+  VOLTAGE_INDICATOR: true,
 } as const satisfies Record<BayPrimaryDeviceKind, true>;
 
 const KATALOGI: KatalogiKarty = {

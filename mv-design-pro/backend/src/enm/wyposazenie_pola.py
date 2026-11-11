@@ -70,6 +70,7 @@ from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU
 from network_model.catalog.przekladniki import RdzenPrzekladnikaPradowego, zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import (
     KLUCZ_ODGALEZIENIA,
+    NAZWY_RODZAJOW_APARATU_POLA_PL,
     OPIS_WYKONANIA_APARATU_PL,
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
     RODZAJ_PRZEKLADNIKA_FERRANTIEGO,
@@ -99,7 +100,7 @@ from .domain_operations import (
 )
 from .katalog_projektu import katalog_biezacy
 from .kopia_graniczna import kopia_graniczna_enm
-from .models import NAZWY_RODZAJOW_APARATU_POLA_PL, RODZAJE_GALEZI_APARATU, BayPrimaryDevice
+from .models import RODZAJE_GALEZI_APARATU, BayPrimaryDevice
 from .pola import aparaty_po_wymianie, czy_pole_nn, poziom_pol, zmien_pole
 from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
@@ -166,9 +167,6 @@ RODZAJE_STEROWALNE: frozenset[str] = _SWITCHABLE_PRIMARY_KINDS
 _UMIEJSCOWIENIA: frozenset[str] = frozenset(
     get_args(BayPrimaryDevice.model_fields["placement"].annotation)
 )
-
-#: Nazwa rodzaju aparatu w zdaniu dla projektanta — jedno źródło w `enm.models` (walidator
-#: aparatu pola nazywa rodzaj słowem, nie kodem; scalenie do drzewa integracji 2026-11-11).
 
 
 def stan_danych_aparatu(aparat: Mapping[str, Any] | BayPrimaryDevice) -> StanDanychAparatu:
@@ -720,6 +718,17 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     # stan, aparat wymieniony albo dodany jest nową instancją — projektowaną.
     aparaty = aparaty_po_wymianie(rekord.get("primary_devices") or [], aparaty)
     zmien_pole(nowy, bay_ref, primary_devices=aparaty, **zmiany)
+    # Karta POLA-GPZ-SZABLONY: szablon pola zespołu uziemiającego wyznacza wariant uziemienia
+    # (Z.13 dławik, Z.14 dławik ∥ rezystor, Z.15 rezystor) — zmiana szablonu zmienia nośnik
+    # punktu neutralnego transformatora tym samym krokiem (jedna operacja = jedna rewizja).
+    if rekord.get("bay_role") == "ZU" and szablon_po != rekord.get("bay_template_ref"):
+        from network_model.catalog.bay_templates import WARIANT_SZABLONU_ZESPOLU
+
+        from .domain_operations_v2 import zmien_wariant_zespolu
+
+        wariant = WARIANT_SZABLONU_ZESPOLU.get(str(szablon_po))
+        if wariant is not None:
+            zmien_wariant_zespolu(nowy, bay_ref, wariant)  # type: ignore[arg-type]
     # Gałąź łącznika wskazana aparatem pola (`linked_ref`) to TEN SAM fizyczny aparat — jej stan
     # obiektu jest stanem aparatu (jedno źródło: `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`).
     stany_galezi = {

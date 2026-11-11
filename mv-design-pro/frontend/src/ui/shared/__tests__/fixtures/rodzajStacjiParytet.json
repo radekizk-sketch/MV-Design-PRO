@@ -1180,6 +1180,50 @@
         }
       }
     },
+    "public/test-fixtures/stacjeKonstrukcjiPol.enm.json": {
+      "/enm": {
+        "stn/2ce032113d90f37386a82675b3ae0c98/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/4d84096aaf69c9866b8e136ad5c15ab0/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/9630950e707a2878a07aa704bf7e9e2b/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/c4506e1b6783cd565afaded38b5dbb05/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        }
+      }
+    },
     "scripts/demo-oze-sc/demoOzeSc.enm.json": {
       "/enm": {
         "stn/2e9ad8cea5ffb5dae61d214086d2aa29/station": {
@@ -4212,6 +4256,50 @@
           "rodzaj": "terminal",
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": true
+        }
+      }
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/stacjeKonstrukcjiPol.enm.json": {
+      "/enm": {
+        "stn/2ce032113d90f37386a82675b3ae0c98/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/4d84096aaf69c9866b8e136ad5c15ab0/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/9630950e707a2878a07aa704bf7e9e2b/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/c4506e1b6783cd565afaded38b5dbb05/station": {
+          "deklaracja": "sectional",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma pole sprzęgła sekcji",
+          "rodzaj": "sectional",
+          "sprzeglo": true,
+          "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         }
       }

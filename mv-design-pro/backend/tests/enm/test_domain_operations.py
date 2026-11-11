@@ -816,9 +816,15 @@ class TestNnFieldAdapters:
         galaz = _find_by_ref(result["snapshot"], "branches", spec["equipment_refs"][0])
         assert galaz is not None and wylacznik["linked_ref"] == galaz["ref_id"]
 
-    def test_add_sn_bay_stacja_sn_nn_bez_szablonu_bez_aparatow(self):
+    def test_add_sn_bay_stacja_sn_nn_bez_szablonu_tor_szablonu_kanonicznego_roli(self):
         """Para predykatu z testem wyżej: wzorzec Z.10 dotyczy WYŁĄCZNIE pól sekcji GPZ
-        (`gpz_section_id`). Pole stacji SN/nN bez szablonu nie zyskuje aparatów z domysłu."""
+        (`gpz_section_id`). KOREKTA (rozszerzenie karty SZABLONY-POL 2026-11-11): pole stacji
+        SN/nN bez szablonu dostaje tor szablonu KANONICZNEGO roli (`SZABLON_KANONICZNY_ROLI` —
+        ten sam, z którego ma funkcje EAZ; `enm.aparaty_pol_sn`), nie wzorzec GPZ, a szablon
+        pola zostaje niezadeklarowany (projektant go nie wybrał). Intencja (zero aparatów spoza
+        jednego źródła) bez zmian: dawny pusty tor rysował pole samym łącznikiem."""
+        from network_model.catalog.bay_templates import BAY_TEMPLATE_LINE_OUT
+
         _, snapshot = _build_gpz_plus_segments(2)
         wynik = execute_domain_operation(
             enm_dict=snapshot,
@@ -859,7 +865,16 @@ class TestNnFieldAdapters:
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         spec = _pola_sn_stacji(result["snapshot"], stacja["ref_id"])[-1]
         assert not spec.get("gpz_section_id")
-        assert spec["primary_devices"] == []
+        assert [(d["designation"], d["kind"]) for d in spec["primary_devices"]] == [
+            (d.designation_q, k)
+            for d, k in zip(
+                BAY_TEMPLATE_LINE_OUT.devices,
+                ["DS", "CB", "CT", "DS", "ES", "CABLE_HEAD"],
+                strict=True,
+            )
+        ]
+        wylacznik = next(d for d in spec["primary_devices"] if d["kind"] == "CB")
+        assert wylacznik["linked_ref"] == spec["equipment_refs"][0]
         assert not spec.get("bay_template_ref")
 
     def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):

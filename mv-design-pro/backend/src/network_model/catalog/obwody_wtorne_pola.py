@@ -41,6 +41,7 @@ __all__ = [
     "OPIS_NAPEDU_PL",
     "POLA_POWIAZAN_APARATU",
     "RODZAJ_APARATU_WEJSCIA",
+    "RODZAJE_WEJSCIA_POZA_POLEM",
     "NapedAparatuPola",
     "RodzajNapedu",
     "ObwodyWtornePola",
@@ -75,6 +76,10 @@ NAPEDY_RODZAJU_APARATU: dict[str, tuple[RodzajNapedu, ...]] = {
     "THREE_POSITION_SWITCH": ("ZASOBNIKOWY_RECZNY",),
 }
 
+#: Skrót ruchowy obwodu wyłączającego wyłącznika na rysunkach pól ENEA Zeszyt 1 (OW, OW1, OW2)
+#: — oznaczenie obwodu (kod), nie słowo; nazwy sygnałów „OW od …” składa się z tej stałej.
+SKROT_OBWODU_WYLACZAJACEGO = "OW"
+
 #: Opis napędu dla karty pola i raportu (symbol normy w opisie, bez skrótów projektu).
 OPIS_NAPEDU_PL: dict[RodzajNapedu, str] = {
     "SILNIKOWY": "napęd silnikowy (M, EN 60617 02-13-26)",
@@ -92,7 +97,15 @@ RODZAJ_APARATU_WEJSCIA: dict[str, str] = {
     "RDZEN_CT": "CT",
     "UZWOJENIE_VT": "VT",
     "PRZEKLADNIK_FERRANTIEGO": "CORE_BALANCE_CT",
+    "PRZEKLADNIK_NIEZROWNOWAZENIA": "UNBALANCE_CT",
+    "PRZEKLADNIK_MIEDZYFAZOWY": "PHASE_TO_PHASE_VT",
 }
+
+#: Rodzaje wejść, których przekładnik NIE jest aparatem pola (leży w punkcie neutralnym
+#: transformatora uziemiającego, poza celą — Z.14 s.94, Z.15 s.95). JEDNO źródło dla walidatora
+#: szablonu (bez wymogu aparatu), materializacji powiązań na aparatach (bez aparatu do związania)
+#: i odczytu pola (opis z nośnika). Rozłączne z ``RODZAJ_APARATU_WEJSCIA`` (przypina test).
+RODZAJE_WEJSCIA_POZA_POLEM: frozenset[str] = frozenset({"PRZEKLADNIK_PUNKTU_NEUTRALNEGO"})
 
 _ZW: StatusWeryfikacji = "ZWERYFIKOWANE_NA_RYSUNKU"
 _OT: StatusWeryfikacji = "ODCZYT_TEKSTU"
@@ -103,10 +116,24 @@ class WejscieFunkcjiEaz(BaseModel):
     """Źródło wielkości pomiarowej albo sygnału wejściowego funkcji EAZ.
 
     ``RDZEN_CT`` / ``UZWOJENIE_VT`` — aparat szablonu (``aparat`` = oznaczenie, ``numer`` =
-    numer rdzenia/uzwojenia jak na rysunku, od 1); ``PRZEKLADNIK_FERRANTIEGO`` — aparat
-    szablonu (bez numeru); ``SYGNAL`` — sygnał pola (``sygnal`` = nazwa z `SygnalPola`)."""
+    numer rdzenia/uzwojenia jak na rysunku, od 1); ``PRZEKLADNIK_FERRANTIEGO``,
+    ``PRZEKLADNIK_NIEZROWNOWAZENIA`` (połączenie międzygwiazdowe baterii, Z.16) i
+    ``PRZEKLADNIK_MIEDZYFAZOWY`` (przekładnik napięciowy międzyfazowy baterii, Z.16) — aparat
+    szablonu (bez numeru); ``PRZEKLADNIK_PUNKTU_NEUTRALNEGO`` — przekładnik prądowy w gałęzi
+    rezystora punktu neutralnego transformatora uziemiającego (Z.14, Z.15): leży poza celą pola,
+    opisuje go nośnik punktu neutralnego transformatora (``Transformer.hv_neutral``), więc NIE
+    jest aparatem pola (``RODZAJE_WEJSCIA_POZA_POLEM``); ``SYGNAL`` — sygnał pola (``sygnal`` =
+    nazwa z `SygnalPola`)."""
 
-    rodzaj: Literal["RDZEN_CT", "UZWOJENIE_VT", "PRZEKLADNIK_FERRANTIEGO", "SYGNAL"]
+    rodzaj: Literal[
+        "RDZEN_CT",
+        "UZWOJENIE_VT",
+        "PRZEKLADNIK_FERRANTIEGO",
+        "PRZEKLADNIK_NIEZROWNOWAZENIA",
+        "PRZEKLADNIK_MIEDZYFAZOWY",
+        "PRZEKLADNIK_PUNKTU_NEUTRALNEGO",
+        "SYGNAL",
+    ]
     aparat: str | None = None
     numer: int | None = Field(default=None, ge=1)
     sygnal: str | None = None
@@ -158,6 +185,10 @@ class SygnalPola(BaseModel):
     obwod: Literal["WYLACZNIK", "OKREZNY", "NADRZEDNY"]
     # Sygnał prowadzony na rysunku do bloku „Sterownik pola" (poza funkcjami EAZ).
     sterownik_pola: bool = False
+    # Sygnały pola, z którymi rysunek łączy ten sygnał WPROST linią, bez bloku pośredniego
+    # (Z.7 s.86: wejście „OW2 od zabezpieczeń str. 110 kV” → obwód OW2 wyłącznika; Z.16 s.96:
+    # obwód okrężny „Wył. od zab. TR” → obwody OW1, OW2). Oba końce są wtedy użyte.
+    polaczony_z: list[str] = Field(default_factory=list)
     znaczenie_pl: str | None = None
     weryfikacja: StatusWeryfikacji
     uwaga: str | None = None
@@ -252,6 +283,13 @@ class ObwodyWtornePola(BaseModel):
                         f"Powiązanie {p.funkcja}: {wejscie.sygnal!r} nie jest wejściem pola."
                     )
                 uzyte.add(wejscie.sygnal)
+        for s in self.sygnaly:
+            for cel in s.polaczony_z:
+                if cel not in sygnaly or cel == s.nazwa:
+                    raise ValueError(
+                        f"Sygnał {s.nazwa!r}: połączenie z {cel!r}, którego pole nie ma."
+                    )
+                uzyte.update((s.nazwa, cel))
         osierocone = [
             s.nazwa for s in self.sygnaly if s.nazwa not in uzyte and not s.sterownik_pola
         ]
@@ -720,6 +758,633 @@ OBWODY_WTORNE_WYKONANIA_POLA: dict[str, ObwodyWtornePola] = {
     wykonanie: _obwody_wykonania(wykonanie) for wykonanie in ("Z10", "Z11_1", "Z11")
 }
 
+
+# ---------------------------------------------------------------------------
+# Karta POLA-GPZ-SZABLONY: obwody wtórne pól GPZ spoza pola liniowego — ZWERYFIKOWANE ZE
+# ŹRÓDŁEM: obraz strony PDF Zeszytu 1 (wersja 02.2023 – 2, SHA-256 467547d5…a862368b49b27c6ce
+# 92f164ba488) w 200 dpi, wycinki 2026-11-05: Z.7 s.86, Z.12 s.92, Z.16 s.96. Status
+# ``ZWERYFIKOWANE_NA_RYSUNKU`` — linia, strzałka albo napis widoczny na rysunku (kierunek sygnału
+# = grot strzałki); ``INTERPRETACJA`` — tylko tam, gdzie rysunek relacji nie rysuje (uzasadnienie
+# w ``uwaga``). Konwencja rysunku przyjęta jak na Z.10 (s.89): ukośny odcinek pionu bloku do
+# linii OW/ZW = połączenie z tą linią; ukośne odgałęzienie linii przekładnika = rozgałęzienie
+# tego samego obwodu; linia bez ukośnika przecina inną bez połączenia. Raport porównania:
+# `docs/standards/ENEA_Z1_110KV_SOURCE_VERIFICATION.md`.
+# ---------------------------------------------------------------------------
+
+_UWAGA_NAPEDU_Q_TROJPOLOZENIOWEGO = (
+    "przy łączniku trójpołożeniowym kwadrat na kreskowanym sprzężeniu mechanicznym z nożem "
+    "(kształt EN 60617 02-13-20 — napęd energią zmagazynowaną), od kwadratu kreskowany odcinek "
+    "zakończony poprzeczką (kształt EN 60617 02-13-01 — napęd ręczny) — ten sam znak co na Z.10 "
+    "(s.89); rodzaj napędu odczytany z kształtu znaku wg EN 60617, rysunek go nie opisuje słownie"
+)
+#: Rdzeń zabezpieczeniowy wspólny dla bloków sterownika pola, do których rysunek nie prowadzi
+#: osobnej linii prądowej (ZS, LRW) — ta sama konwencja co pole liniowe (Z.10).
+_UWAGA_RDZEN_WSPOLNY = _UWAGA_WSPOLNE_WEJSCIE_PRADOWE
+
+
+def _napedy_pola_gpz(
+    rysunek: str, lacznik_trojpolozeniowy: tuple[str, ...]
+) -> list[NapedAparatuPola]:
+    return [
+        NapedAparatuPola(
+            aparat="Q0",
+            rodzaj_aparatu="CB",
+            naped="SILNIKOWY",
+            weryfikacja=_ZW,
+            uwaga=f"{rysunek}: okrąg z literą M sprzężony z nożem wyłącznika",
+        ),
+        *(
+            NapedAparatuPola(
+                aparat=oznaczenie,
+                rodzaj_aparatu="THREE_POSITION_SWITCH",
+                naped="ZASOBNIKOWY_RECZNY",
+                weryfikacja=_ZW,
+                uwaga=f"{rysunek}: {_UWAGA_NAPEDU_Q_TROJPOLOZENIOWEGO}",
+            )
+            for oznaczenie in lacznik_trojpolozeniowy
+        ),
+    ]
+
+
+def _s(
+    nazwa: str,
+    kierunek: Literal["WEJSCIE", "WYJSCIE"],
+    obwod: Literal["WYLACZNIK", "OKREZNY", "NADRZEDNY"],
+    *,
+    sterownik: bool = False,
+    znaczenie: str | None = None,
+    polaczony_z: tuple[str, ...] = (),
+    weryfikacja: StatusWeryfikacji = _ZW,
+    uwaga: str | None = None,
+) -> SygnalPola:
+    return SygnalPola(
+        nazwa=nazwa,
+        kierunek=kierunek,
+        obwod=obwod,
+        sterownik_pola=sterownik,
+        znaczenie_pl=znaczenie,
+        polaczony_z=list(polaczony_z),
+        weryfikacja=weryfikacja,
+        uwaga=uwaga,
+    )
+
+
+def _sygnaly_wspolne_gpz(wyjscia_wylacznika: tuple[str, ...]) -> list[SygnalPola]:
+    """Sygnały wspólne rysunków Z.7, Z.12, Z.16 (Z.13–Z.15 — tak samo): obwody wyłącznika,
+    zasilanie i łącza sterownika (górna krawędź), obwody okrężne „+AwUp, Up, Aw, Al"."""
+    return [
+        *(
+            _s(
+                nazwa,
+                "WYJSCIE",
+                "WYLACZNIK",
+                sterownik=True,
+                znaczenie=f"obwód wyłączający {nazwa[-1]} wyłącznika",
+            )
+            for nazwa in wyjscia_wylacznika
+        ),
+        _s(
+            "ZW",
+            "WYJSCIE",
+            "WYLACZNIK",
+            sterownik=True,
+            znaczenie="polecenie załączenia wyłącznika",
+        ),
+        _s("Topologia", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            "Zasilanie",
+            "WEJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+            znaczenie="napięcie pomocnicze sterownika (biegun dodatni i ujemny)",
+        ),
+        _s(
+            "SSiN",
+            "WYJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+            znaczenie="łącze do systemu sterowania i nadzoru stacji",
+            weryfikacja=_IN,
+            uwaga="rozwinięcie skrótu wg terminologii ENEA, rysunek podaje sam skrót",
+        ),
+        _s("Łącze inżynierskie", "WYJSCIE", "NADRZEDNY", sterownik=True),
+        _s("+AwUp", "WEJSCIE", "OKREZNY", sterownik=True),
+        *(_s(nazwa, "WYJSCIE", "OKREZNY", sterownik=True) for nazwa in ("Up", "Aw", "Al")),
+    ]
+
+
+_UL_SEKCJI = "UL1, UL2, UL3, N"
+_Z_ZZ_SEKCJI = "Z, Zz"
+
+
+def _ul_sekcji(nazwa: str = _UL_SEKCJI, *, sterownik: bool = True) -> SygnalPola:
+    return _s(
+        nazwa,
+        "WEJSCIE",
+        "OKREZNY",
+        sterownik=sterownik,
+        znaczenie="napięcia fazowe szyn sekcji",
+        uwaga="Z.17 (s.97) wyprowadza na ten obwód uzwojenie II przekładnika pola pomiaru "
+        "napięcia sekcji",
+    )
+
+
+def _z_zz_sekcji() -> SygnalPola:
+    return _s(
+        _Z_ZZ_SEKCJI,
+        "WEJSCIE",
+        "OKREZNY",
+        znaczenie="napięcie zerowe sieci z obwodu okrężnego (wejście napięcia zerowego zabezpieczenia "
+        "ziemnozwarciowego)",
+        uwaga="Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (otwarty trójkąt) "
+        "przekładnika pola pomiaru napięcia sekcji",
+    )
+
+
+def _ziemnozwarciowe(
+    rysunek: str, rdzen: int, wyjscia: tuple[str, ...]
+) -> list[PowiazanieFunkcjiEaz]:
+    """Blok „Zab. ziemnozw." ze znakiem kierunku (↦), linia rdzenia ``rdzen`` i obwodu „Z, Zz"
+    — kierunkowe 67N widoczne na rysunku; kryterium prądowe 51N wydzielone jak na Z.10."""
+    return [
+        _zabezpieczenie(
+            "51N",
+            "Zab. ziemnozw. t1, t2 (kryterium prądowe Io)",
+            [_ct("T1", rdzen)],
+            wyjscia=wyjscia,
+            weryfikacja=_IN,
+            uwaga=f"{rysunek}: linia rdzenia {rdzen} do bloku „Zab. ziemnozw.” jest na rysunku; "
+            "kryterium prądowe bez kierunku jako osobna funkcja (51N) — ta sama konwencja co "
+            "pole liniowe Z.10 (decyzja właściciela 2026-10-29)",
+        ),
+        _zabezpieczenie(
+            "67N",
+            "Zab. ziemnozw. (kierunkowe) t1, t2",
+            [_ct("T1", rdzen), _sygnal(_Z_ZZ_SEKCJI)],
+            wyjscia=wyjscia,
+            weryfikacja=_ZW,
+        ),
+    ]
+
+
+def _zabezpieczenie(
+    funkcja: str,
+    blok: str,
+    wejscia: list[WejscieFunkcjiEaz],
+    *,
+    wyjscia: tuple[str, ...] = ("OW1", "OW2"),
+    wylacznik: str | None = "Q0",
+    weryfikacja: StatusWeryfikacji = _ZW,
+    uwaga: str | None = None,
+) -> PowiazanieFunkcjiEaz:
+    return PowiazanieFunkcjiEaz(
+        funkcja=funkcja,
+        blok_rysunku=blok,
+        wejscia=wejscia,
+        wyjscia=list(wyjscia),
+        wylacznik=wylacznik,
+        weryfikacja=weryfikacja,
+        uwaga=uwaga,
+    )
+
+
+#: Z.7 s.86 — pole transformatora 110 kV/SN, strona SN. Blok sterownika: t1/I>, t2/I>>,
+#: kolumna bez napisu (pion do OW1), ZS (t, Izs>>), LRW, „Sterownik pola”; poza sterownikiem
+#: bloki „Zabezpieczenie różnicowe transformatora”, „Pomiary lokalne str. SN”, „ARN”, „Układ
+#: pomiarowy bilansowo-kontrolny / Analizator jakości energii”. Piony t1, t2, ZS, LRW
+#: i kolumny bez napisu łączą się (ukośnikiem) wyłącznie z OW1; OW2 zasila wprost wejście „OW2
+#: od zabezpieczeń str. 110 kV”; ZW i OW1 — także sterownik pola.
+_OBWODY_Z7 = ObwodyWtornePola(
+    podstawa=f"{_Z1}, Z.7 s.86",
+    napedy=_napedy_pola_gpz("Z.7 s.86", ("Q1",)),
+    powiazania=[
+        _zabezpieczenie("51", "I> t1", [_ct("T1", 4)], wyjscia=("OW1",)),
+        _zabezpieczenie("50", "I>> t2", [_ct("T1", 4)], wyjscia=("OW1",)),
+        _zabezpieczenie(
+            "ZS",
+            "ZS t Izs>>",
+            [
+                _ct("T1", 4, _IN, _UWAGA_RDZEN_WSPOLNY),
+                _sygnal("Blokowanie ZS"),
+                _sygnal(f"{SKROT_OBWODU_WYLACZAJACEGO} od ZS do łącznika szyn"),
+            ],
+            wyjscia=("OW1", "WZS", "Zadziałanie Izs>> od łącznika szyn"),
+            uwaga=None,
+        ),
+        _zabezpieczenie("50BF", "LRW", [_sygnal("Pobudzenie LRW")], wyjscia=("OW1",)),
+        _zabezpieczenie(
+            "87T",
+            "Zabezpieczenie różnicowe transformatora",
+            [_ct("T1", 3)],
+            wyjscia=("OW2",),
+            weryfikacja=_IN,
+            uwaga="rysunek prowadzi rdzeń III do bloku i nie rysuje jego wyjścia; wyłączenie Q0 "
+            "obwodem OW2 przez wejście „OW2 od zabezpieczeń str. 110 kV” (blok zabezpieczenia "
+            "różnicowego obejmuje obie strony transformatora, Z.6 s.85)",
+        ),
+        _zabezpieczenie(
+            "90",
+            "ARN",
+            [
+                _ct(
+                    "T1",
+                    2,
+                    uwaga="rdzeń II (6 żył) do bloku „Pomiary lokalne str. SN”, z niego linia "
+                    "do bloku ARN",
+                ),
+                _vt(
+                    "T3",
+                    3,
+                    uwaga="uzwojenie III do bloku ARN; ukośne odgałęzienie tej samej linii "
+                    "(4 żyły) do bloku „Sterownik pola”",
+                ),
+            ],
+            wyjscia=("Regulacja zaczepów",),
+            wylacznik=None,
+            weryfikacja=_IN,
+            uwaga="bloki i wejścia na rysunku; wyjścia bloku ARN (polecenia przełącznika zaczepów "
+            "transformatora) rysunek nie rysuje",
+        ),
+    ],
+    sygnaly=[
+        *_sygnaly_wspolne_gpz(("OW1", "OW2")),
+        _s(
+            "Zadziałanie Izs>> od łącznika szyn",
+            "WYJSCIE",
+            "NADRZEDNY",
+            uwaga="napis i grot strzałki jak na rysunku (grot od bloku ZS w górę); §26.9.9 — "
+            "równoczesne pobudzenie IZS>> w polu TR i I> w polu łącznika szyn wyłącza łącznik "
+            "szyn i blokuje SZR SN",
+        ),
+        _s(
+            f"{SKROT_OBWODU_WYLACZAJACEGO} od ZS do łącznika szyn",
+            "WEJSCIE",
+            "NADRZEDNY",
+            uwaga="napis i grot strzałki jak na rysunku (grot w dół, do bloku ZS)",
+        ),
+        _s("Blokowanie SZR", "WYJSCIE", "NADRZEDNY", sterownik=True),
+        _s(f"{SKROT_OBWODU_WYLACZAJACEGO} od SZR", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s("ZW od SZR", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            "OW2 od zabezpieczeń str. 110 kV",
+            "WEJSCIE",
+            "NADRZEDNY",
+            polaczony_z=("OW2",),
+            uwaga="linia z górnej krawędzi wprost do obwodu OW2 wyłącznika, bez sterownika",
+        ),
+        _s(
+            f"{SKROT_OBWODU_WYLACZAJACEGO} od zabezpieczeń str. 110 kV",
+            "WEJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+        ),
+        _s("ZW sterownikiem str. 110 kV", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            f"{SKROT_OBWODU_WYLACZAJACEGO} sterownikiem str. 110 kV",
+            "WEJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+        ),
+        _s("Wyłączenie pól SN z generacją", "WYJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            "Regulacja zaczepów",
+            "WYJSCIE",
+            "NADRZEDNY",
+            znaczenie="polecenia regulatora napięcia do napędu przełącznika zaczepów",
+            weryfikacja=_IN,
+            uwaga="rysunek nie rysuje wyjścia bloku ARN; sygnał wprowadzony, bo regulator "
+            "napięcia transformatora działa na przełącznik zaczepów",
+        ),
+        _s(
+            "Pobudzenie LRW",
+            "WEJSCIE",
+            "OKREZNY",
+            znaczenie="pobudzenie lokalnej rezerwy wyłącznikowej z pól rozdzielni",
+        ),
+        _s("WZS", "WYJSCIE", "OKREZNY", znaczenie="wyłączenie od zabezpieczenia szyn"),
+        _s(
+            "Blokowanie ZS",
+            "WEJSCIE",
+            "OKREZNY",
+            znaczenie="blokowanie zabezpieczenia szyn od pobudzenia I> pól odpływowych (§26.9.9)",
+        ),
+    ],
+    obwody_przekladnikow=[
+        PrzypisanieObwoduPrzekladnika(
+            aparat="T1",
+            numer=1,
+            odbiornik_pl="układ pomiarowy bilansowo-kontrolny",
+            weryfikacja=_ZW,
+        ),
+        PrzypisanieObwoduPrzekladnika(
+            aparat="T3",
+            numer=1,
+            odbiornik_pl="układ pomiarowy bilansowo-kontrolny, analizator jakości energii",
+            weryfikacja=_ZW,
+        ),
+        PrzypisanieObwoduPrzekladnika(
+            aparat="T3", numer=2, odbiornik_pl="pomiary lokalne strony SN", weryfikacja=_ZW
+        ),
+    ],
+)
+
+#: Z.12 s.92 — pole łącznika szyn SN. Rdzeń I → t1/I>, t2/I>>; rdzeń II → blok „Zab. ziemnozw.”
+#: (t1, t2, znak kierunku) z obwodem „Z,Zz”; piony t1, t2 (I), bloku ziemnozwarciowego i LRW
+#: łączą się z linią „OW1, OW2”, sterownik pola — z „OW1, OW2” i ZW.
+_OBWODY_Z12 = ObwodyWtornePola(
+    podstawa=f"{_Z1}, Z.12 s.92",
+    napedy=_napedy_pola_gpz("Z.12 s.92", ("Q1", "Q2")),
+    powiazania=[
+        _zabezpieczenie("51", "I> t1", [_ct("T1", 1)]),
+        _zabezpieczenie("50", "I>> t2", [_ct("T1", 1)]),
+        *_ziemnozwarciowe("Z.12 s.92", 2, ("OW1", "OW2")),
+        _zabezpieczenie(
+            "ZS",
+            "ZS",
+            [_ct("T1", 1, _IN, _UWAGA_RDZEN_WSPOLNY)],
+            wyjscia=("Blokowanie ZS",),
+            wylacznik=None,
+        ),
+        _zabezpieczenie(
+            "50BF",
+            "LRW",
+            [_ct("T1", 1, _IN, _UWAGA_RDZEN_WSPOLNY)],
+            wyjscia=("OW1", "OW2", "Pobudzenie LRW"),
+        ),
+    ],
+    sygnaly=[
+        *_sygnaly_wspolne_gpz(("OW1", "OW2")),
+        _ul_sekcji(),
+        _z_zz_sekcji(),
+        _s(
+            "Pobudzenie LRW",
+            "WYJSCIE",
+            "OKREZNY",
+            znaczenie="pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni",
+        ),
+        _s(
+            "Blokowanie ZS",
+            "WYJSCIE",
+            "OKREZNY",
+            znaczenie="sygnał blokowania logicznego zabezpieczenia szyn",
+        ),
+    ],
+)
+
+#: Z.16 s.96 — pole baterii kondensatorów równoległych SN. Rdzeń I (8 żył) → układ pomiarowy
+#: bilansowo-kontrolny; rdzeń II → t1/I>, t2/I>>; rdzeń III → „Zab. ziemnozw.” (znak kierunku)
+#: z „Z,Zz”; przekładnik niezrównoważenia (punkty gwiazd) → Ir>; obwód „UL1,UL2,UL3,N, Pom.en.”
+#: → U> i układ pomiarowy. Przekładniki międzyfazowe L1-L2, L2-L3 (SN/0,1 kl. 3P) nie mają linii
+#: do sterownika — rozładowanie baterii (§17). Piony I>, I>>, t1, t2, Ir> (szara), ZS (szara),
+#: LRW (szara), kolumny bez napisu i sterownika łączą się z „OW1, OW2”; bloku U> — nie.
+_OBWODY_Z16 = ObwodyWtornePola(
+    podstawa=f"{_Z1}, Z.16 s.96",
+    napedy=_napedy_pola_gpz("Z.16 s.96", ("Q1",)),
+    powiazania=[
+        _zabezpieczenie("51", "I> t1", [_ct("T1", 2)]),
+        _zabezpieczenie("50", "I>> t2", [_ct("T1", 2)]),
+        *_ziemnozwarciowe("Z.16 s.96", 3, ("OW1", "OW2")),
+        _zabezpieczenie(
+            "60N",
+            "Ir>",
+            [
+                WejscieFunkcjiEaz(
+                    rodzaj="PRZEKLADNIK_NIEZROWNOWAZENIA", aparat="T6", weryfikacja=_ZW
+                )
+            ],
+        ),
+        _zabezpieczenie(
+            "59",
+            "U>",
+            [_sygnal("UL1, UL2, UL3, N, Pom. en.")],
+            weryfikacja=_IN,
+            uwaga="wejście U> z obwodu okrężnego „UL1,UL2,UL3,N, Pom.en.” jest na rysunku; pion "
+            "bloku U> do linii „OW1, OW2” na rysunku nie dochodzi — wyłączenie baterii przez "
+            "zabezpieczenie nadnapięciowe U>T to treść §26.9.7",
+        ),
+        _zabezpieczenie(
+            "ZS",
+            "ZS",
+            [_ct("T1", 2, _IN, _UWAGA_RDZEN_WSPOLNY)],
+            wyjscia=("OW1", "OW2", "Blokowanie ZS"),
+        ),
+        _zabezpieczenie(
+            "50BF",
+            "LRW",
+            [_ct("T1", 2, _IN, _UWAGA_RDZEN_WSPOLNY)],
+            wyjscia=("OW1", "OW2", "Pobudzenie LRW"),
+        ),
+    ],
+    sygnaly=[
+        *_sygnaly_wspolne_gpz(("OW1", "OW2")),
+        _s("Sterowanie zegarem", "WEJSCIE", "NADRZEDNY", sterownik=True),
+        _s(
+            "Wył. od zab. TR",
+            "WEJSCIE",
+            "OKREZNY",
+            znaczenie="wyłączenie od zabezpieczeń transformatora",
+            polaczony_z=("OW1", "OW2"),
+            uwaga="linia obwodu okrężnego wprost do linii „OW1, OW2” (szara), bez sterownika",
+        ),
+        _ul_sekcji("UL1, UL2, UL3, N, Pom. en.", sterownik=False),
+        _z_zz_sekcji(),
+        _s(
+            "Pobudzenie LRW",
+            "WYJSCIE",
+            "OKREZNY",
+            znaczenie="pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni",
+        ),
+        _s(
+            "Blokowanie ZS",
+            "WYJSCIE",
+            "OKREZNY",
+            znaczenie="sygnał blokowania logicznego zabezpieczenia szyn",
+        ),
+    ],
+    obwody_przekladnikow=[
+        PrzypisanieObwoduPrzekladnika(
+            aparat="T1",
+            numer=1,
+            odbiornik_pl="układ pomiarowy bilansowo-kontrolny (z napięciem obwodu „UL1,UL2,UL3,N, "
+            "Pom.en.”)",
+            weryfikacja=_ZW,
+        ),
+    ],
+)
+
+#: Wspólne dla Z.13–Z.15 (s.93–95, obrazy stron 200 dpi): pole zespołu uziemiającego SN. Rdzeń I
+#: (4 żyły, „100/5, I 15 VA; kl. 5P20”) → blok t1/I>, t2/I>> (czerwona linia ze strzałką);
+#: blok t1/Io>, t2/Io>>, ZS, LRW, „Sterownik pola”; piony I>, I>>, Io>, Io>> i sterownika łączą
+#: się z linią OW1 (rysunki mają WYŁĄCZNIE OW1), sterownik — z ZW; obwody okrężne „UL1,UL2,UL3,N”
+#: (4 żyły) i „Z,Zz” (2 żyły) niebieskimi liniami do sterownika; blok „BTI | BTII” transformatora
+#: uziemiającego połączony linią ze sterownikiem pola.
+_UWAGA_IO_Z13 = (
+    "Z.13 s.93: rysunek nie prowadzi do bloku Io>, Io>> osobnej linii prądowej (przekładnik "
+    "w uziemieniu dławika jest połączony wyłącznie z regulatorem dławika) — kryterium zerowoprądowe "
+    "z rdzenia I (suma prądów fazowych) jako interpretacja; napięcie zerowe z obwodu „Z,Zz”"
+)
+_UWAGA_IO_REZYSTORA = (
+    "czerwona linia ze strzałką od przekładnika prądowego w gałęzi rezystora punktu neutralnego "
+    "do bloku Io>, Io>>; przekładnik leży poza celą pola (opisuje go nośnik punktu neutralnego "
+    "transformatora uziemiającego)"
+)
+
+
+def _io_zespolu(rysunek: str, z_rezystorem: bool) -> list[PowiazanieFunkcjiEaz]:
+    """Bloki t1/Io>, t2/Io>> (51N, 50N): Z.14, Z.15 — z przekładnika gałęzi rezystora (linia na
+    rysunku), Z.13 — interpretacja z rdzenia I."""
+    if z_rezystorem:
+        wejscie = WejscieFunkcjiEaz(
+            rodzaj="PRZEKLADNIK_PUNKTU_NEUTRALNEGO",
+            aparat="T2",
+            weryfikacja=_ZW,
+            uwaga=f"{rysunek}: {_UWAGA_IO_REZYSTORA}",
+        )
+        return [
+            _zabezpieczenie("51N", "Io> t1", [wejscie], wyjscia=("OW1",)),
+            _zabezpieczenie("50N", "Io>> t2", [wejscie], wyjscia=("OW1",)),
+        ]
+    return [
+        _zabezpieczenie(
+            kod,
+            blok,
+            [_ct("T1", 1, _IN, _UWAGA_IO_Z13)],
+            wyjscia=("OW1",),
+            weryfikacja=_IN,
+            uwaga=_UWAGA_IO_Z13,
+        )
+        for kod, blok in (("51N", "Io> t1"), ("50N", "Io>> t2"))
+    ]
+
+
+def _obwody_zespolu_uziemiajacego(rysunek: str, wariant: str) -> ObwodyWtornePola:
+    """Obwody wtórne pola zespołu uziemiającego wariantu ``Z13`` / ``Z14`` / ``Z15``."""
+    z_rezystorem = wariant in ("Z14", "Z15")
+    powiazania = [
+        _zabezpieczenie("51", "I> t1", [_ct("T1", 1)], wyjscia=("OW1",)),
+        _zabezpieczenie("50", "I>> t2", [_ct("T1", 1)], wyjscia=("OW1",)),
+        *_io_zespolu(rysunek, z_rezystorem),
+        _zabezpieczenie(
+            "ZS",
+            "ZS",
+            [_ct("T1", 1, _IN, _UWAGA_RDZEN_WSPOLNY)],
+            wyjscia=("Blokowanie ZS",),
+            wylacznik=None,
+        ),
+        _zabezpieczenie(
+            "50BF",
+            "LRW",
+            [_ct("T1", 1, _IN, _UWAGA_RDZEN_WSPOLNY)],
+            wyjscia=("Pobudzenie LRW",),
+            wylacznik=None,
+        ),
+    ]
+    if wariant == "Z15":
+        powiazania.append(
+            _zabezpieczenie(
+                "79",
+                "SPZ",
+                [
+                    _ct(
+                        "T1",
+                        1,
+                        _IN,
+                        "rysunek nie prowadzi do bloku SPZ linii prądowej; SPZ transformatora "
+                        "uziemiającego po wyłączeniu od zabezpieczeń pola (§26.9.6 — tylko sieć "
+                        "uziemiona przez rezystor)",
+                    )
+                ],
+                wyjscia=("ZW",),
+            )
+        )
+    sygnaly = [
+        *_sygnaly_wspolne_gpz(("OW1",)),
+        _ul_sekcji(),
+        _s(
+            _Z_ZZ_SEKCJI,
+            "WEJSCIE",
+            "OKREZNY",
+            sterownik=True,
+            znaczenie="napięcie zerowe sieci z obwodu okrężnego",
+            uwaga="Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (otwarty trójkąt) "
+            "przekładnika pola pomiaru napięcia sekcji",
+        ),
+        _s(
+            "BTI, BTII",
+            "WEJSCIE",
+            "NADRZEDNY",
+            sterownik=True,
+            znaczenie="zabezpieczenia technologiczne transformatora uziemiającego (dwa stopnie)",
+            weryfikacja=_IN,
+            uwaga=f"{rysunek}: blok „BTI | BTII” przy transformatorze połączony linią ze "
+            "sterownikiem pola; rysunek nie opisuje słownie znaczenia skrótu ani kierunku — "
+            "przyjęto sygnał stopni zabezpieczeń transformatora do sterownika",
+        ),
+        _s(
+            "Pobudzenie LRW",
+            "WYJSCIE",
+            "OKREZNY",
+            znaczenie="pobudzenie lokalnej rezerwy wyłącznikowej rozdzielni",
+        ),
+        _s(
+            "Blokowanie ZS",
+            "WYJSCIE",
+            "OKREZNY",
+            znaczenie="sygnał blokowania logicznego zabezpieczenia szyn",
+        ),
+    ]
+    if wariant in ("Z13", "Z14"):
+        sygnaly.append(
+            _s(
+                "ZAWSC",
+                "WYJSCIE",
+                "OKREZNY",
+                sterownik=True,
+                znaczenie="załączenie automatyki wymuszania składowej czynnej (AWSC)",
+                weryfikacja=_IN,
+                uwaga=f"{rysunek}: rysunek podaje sam skrót; rozwinięcie wg §16 s.30 (AWSC "
+                "z rezystorem wymuszającym)",
+            )
+        )
+    if wariant == "Z13":
+        sygnaly.append(
+            _s(
+                "Regulator dławika",
+                "WYJSCIE",
+                "NADRZEDNY",
+                sterownik=True,
+                znaczenie="łącze sterownika pola z regulatorem dławika (regulacja nadążna, §16)",
+                weryfikacja=_IN,
+                uwaga="Z.13 s.93: blok „Regulator dławika” poza sterownikiem — dwie linie do "
+                "sterownika, wejścia z przekładnika w uziemieniu dławika (czerwona linia) "
+                "i z uzwojenia 100 V dławika, wyjście SSiN; regulator nie jest funkcją "
+                "zabezpieczeniową, rysunek nie opisuje treści łącza",
+            )
+        )
+    return ObwodyWtornePola(
+        podstawa=f"{_Z1}, {rysunek}",
+        napedy=_napedy_pola_gpz(rysunek, ("Q1",)),
+        powiazania=powiazania,
+        sygnaly=sygnaly,
+    )
+
+
+#: Z.13 s.93 — sieć uziemiona przez dławik z automatyczną regulacją dostrojenia.
+_OBWODY_Z13 = _obwody_zespolu_uziemiajacego("Z.13 s.93", "Z13")
+#: Z.14 s.94 — układ równoległy dławik, rezystor.
+_OBWODY_Z14 = _obwody_zespolu_uziemiajacego("Z.14 s.94", "Z14")
+#: Z.15 s.95 — sieć uziemiona przez rezystor.
+_OBWODY_Z15 = _obwody_zespolu_uziemiajacego("Z.15 s.95", "Z15")
+
+#: Obwody wtórne wzorców pól GPZ spoza pola liniowego (klucz = rysunek Zeszytu 1).
+OBWODY_WTORNE_POL_GPZ: dict[str, ObwodyWtornePola] = {
+    "Z7": _OBWODY_Z7,
+    "Z12": _OBWODY_Z12,
+    "Z13": _OBWODY_Z13,
+    "Z14": _OBWODY_Z14,
+    "Z15": _OBWODY_Z15,
+    "Z16": _OBWODY_Z16,
+}
 
 #: Pole rekordu aparatu pola wyprowadzane z obwodów wtórnych wzorca (`napedy_aparatow_pola`).
 #: Powiązania funkcja→przekładnik i funkcja→wyłącznik NIE są polami aparatu: niesie je JEDYNY

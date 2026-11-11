@@ -655,7 +655,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
     cleanup();
     renderWithQueryClient(<InspectorEngineeringView />);
     // Symbol bez rekordu aparatu: karta pola z rekordami aparatów — wśród nich głowica kablowa,
-    // z której projektant wyprowadza ciąg (rysunek jej nie pokazuje, model ją ma).
+    // z której projektant wyprowadza ciąg.
     const karta = await screen.findByTestId('inspektor-karta');
     expect(karta.getAttribute('data-rodzaj-karty')).toBe('pole');
     expect(within(karta).getAllByText(/^Głowica kablowa/).length).toBeGreaterThan(0);
