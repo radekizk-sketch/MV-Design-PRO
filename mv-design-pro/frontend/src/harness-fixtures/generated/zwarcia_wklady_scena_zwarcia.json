@@ -277,7 +277,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "cba1fd7be92eb54181264f0e2fc5b326fb7399daa9864e06c32abede60a090d0",
+    "input_hash": "8c85925959441caaee9e6befb303de2c918e69f01d709da8d6056ff05c4b483c",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -649,7 +649,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "118114aa7f33d95564bb40523cba540cf52ccd30666e4b895daeb2ddcfa5e0b6",
+    "input_hash": "5884b950302061debeb3b0a8d577c26201f93b381ee6611c20e5e0162cf366ef",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -1003,7 +1003,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "05cea7c8ec66b898c2a59165104a3b8f2e4bb1ca1dfe9c5aa3fe8e6617b4549a",
+    "input_hash": "1ceac717698340b90569d1794b5a2213b0d756525f911461f75e1cb8b36f9af4",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -1375,7 +1375,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "f6c57d56f4c29b2c78414b3cfb09ef07e9e6ea2247c63978a871b19811bdca14",
+    "input_hash": "9a0fe6a912e3e26e3a5c587f87b11f8faa24b1a86ecf571b37c18442fdb70ebf",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
@@ -1747,7 +1747,7 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "da87612f5037ba34b4191b9be21cb041b2fbc2d2c59ee1291c1a84232f41a3a3",
+    "input_hash": "f5e19f5d1143b756df92995716018c94f7fb98c932bfd3decaba01efe7754d12",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,

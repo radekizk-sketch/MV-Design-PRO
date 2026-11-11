@@ -584,6 +584,15 @@
       }
     },
     {
+      "area": "SOURCES",
+      "code": "earthing.multiple_grounded_neutrals_in_island",
+      "fix_navigation": {
+        "focus": "neutral_grounding",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "STATIONS",
       "code": "earthing.network_grounding_warning",
       "fix_navigation": {
@@ -597,15 +606,6 @@
       "code": "earthing.neutral_grounding_inconsistent",
       "fix_navigation": {
         "focus": "neutral_grounding",
-        "panel": "inspector",
-        "tab": "parametry"
-      }
-    },
-    {
-      "area": "STATIONS",
-      "code": "earthing.zespol_auxiliary_load_missing",
-      "fix_navigation": {
-        "focus": "odbior_pw_ref",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1783,11 +1783,6 @@
     {
       "action_type": "SELECT_CATALOG",
       "modal_type": null,
-      "panel": null
-    },
-    {
-      "action_type": "SELECT_CATALOG",
-      "modal_type": null,
       "panel": "catalog"
     },
     {
@@ -1805,6 +1800,7 @@
     "E-W5-01": "earthing.neutral_grounding_inconsistent",
     "E-W5-02": "transformer.vector_group_invalid",
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
+    "E-W5-04": "earthing.multiple_grounded_neutrals_in_island",
     "E-ZU-01": "earthing.zespol_bus_invalid",
     "E-ZU-02": "earthing.zespol_neutral_undefined",
     "E001": "source.grid_supply_missing",
@@ -1821,7 +1817,6 @@
     "W-W5-02": "source.sn_neutral_data_ignored",
     "W-ZU-01": "earthing.zespol_spz_without_resistor",
     "W-ZU-02": "earthing.zespol_transformer_trip_missing",
-    "W-ZU-03": "earthing.zespol_auxiliary_load_missing",
     "W-ZU-04": "earthing.network_grounding_warning",
     "W-ZU-05": "earthing.zespol_direct_earthing",
     "W-ZU-06": "earthing.zespol_voltage_mismatch",

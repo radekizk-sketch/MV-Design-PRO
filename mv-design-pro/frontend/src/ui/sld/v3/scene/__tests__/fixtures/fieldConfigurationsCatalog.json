@@ -618,6 +618,15 @@
       "bay_role": "BKR",
       "config_ref": "kanoniczny:bay_template_gpz_bateria_kondensatorow_enea_z16",
       "field_role": "BATERIA_KONDENSATOROW",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "60N",
+        "59",
+        "ZS",
+        "50BF"
+      ],
       "group": "kompensacyjne",
       "main_path": true,
       "name": "Pole baterii kondensatorów",
@@ -814,15 +823,6 @@
           "symbol_ref": "symbol:unbalance_ct"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "60N",
-        "59",
-        "ZS",
-        "50BF"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_bateria_kondensatorow_enea_z16",
@@ -834,6 +834,13 @@
       "bay_role": "COUPLER",
       "config_ref": "kanoniczny:bay_template_gpz_lacznik_szyn_enea_z12",
       "field_role": "SPRZEGLO",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF"
+      ],
       "group": "sprzeglowe",
       "main_path": true,
       "name": "Pole sprzęgła",
@@ -966,13 +973,6 @@
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:voltage_indicator"
         }
-      ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "ZS",
-        "50BF"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -3256,6 +3256,14 @@
       "bay_role": "TR",
       "config_ref": "kanoniczny:bay_template_gpz_transformator_sn_enea_z7",
       "field_role": "TRANSFORMATOROWE",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "ZS",
+        "50BF",
+        "87T",
+        "90"
+      ],
       "group": "transformatorowe",
       "main_path": true,
       "name": "Pole transformatorowe",
@@ -3512,14 +3520,6 @@
           "symbol_ref": "symbol:surge_arrester"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "ZS",
-        "50BF",
-        "87T",
-        "90"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_transformator_sn_enea_z7",
@@ -3531,6 +3531,14 @@
       "bay_role": "ZU",
       "config_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
       "field_role": "ZESPOL_UZIEMIAJACY",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "50N",
+        "ZS",
+        "50BF"
+      ],
       "group": "uziemiajace",
       "main_path": true,
       "name": "Pole zespołu uziemiającego",
@@ -3622,14 +3630,6 @@
           "symbol_ref": "symbol:surge_arrester"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "50N",
-        "ZS",
-        "50BF"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_zespol_uziemiajacy_dlawik_enea_z13",
@@ -3641,6 +3641,14 @@
       "bay_role": "ZU",
       "config_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14",
       "field_role": "ZESPOL_UZIEMIAJACY",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "50N",
+        "ZS",
+        "50BF"
+      ],
       "group": "uziemiajace",
       "main_path": true,
       "name": "Pole zespołu uziemiającego",
@@ -3732,14 +3740,6 @@
           "symbol_ref": "symbol:surge_arrester"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "50N",
-        "ZS",
-        "50BF"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_zespol_uziemiajacy_dlawik_rezystor_enea_z14",
@@ -3751,6 +3751,15 @@
       "bay_role": "ZU",
       "config_ref": "kanoniczny:bay_template_gpz_zespol_uziemiajacy_rezystor_enea_z15",
       "field_role": "ZESPOL_UZIEMIAJACY",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "50N",
+        "ZS",
+        "50BF",
+        "79"
+      ],
       "group": "uziemiajace",
       "main_path": true,
       "name": "Pole zespołu uziemiającego",
@@ -3841,15 +3850,6 @@
           "render_variant": "qet_en60617",
           "symbol_ref": "symbol:surge_arrester"
         }
-      ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "50N",
-        "ZS",
-        "50BF",
-        "79"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -4245,6 +4245,7 @@
       "bay_role": "COUPLER",
       "config_ref": "kanoniczny:bay_template_rmu_coupler",
       "field_role": "SPRZEGLO",
+      "funkcje_eaz": [],
       "group": "sprzeglowe",
       "main_path": true,
       "name": "Pole sprzęgła (rozłącznikowe)",
@@ -4285,7 +4286,6 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_rmu_coupler",
@@ -4297,6 +4297,7 @@
       "bay_role": "FEEDER",
       "config_ref": "kanoniczny:bay_template_rmu_line_branch",
       "field_role": "FEEDER",
+      "funkcje_eaz": [],
       "group": "specjalne",
       "main_path": true,
       "name": "Pole odgałęźne (rozłącznikowe)",
@@ -4356,7 +4357,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_rmu_line_branch",
@@ -4368,6 +4368,7 @@
       "bay_role": "IN",
       "config_ref": "kanoniczny:bay_template_rmu_line_in",
       "field_role": "LINIA_IN",
+      "funkcje_eaz": [],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wejściowe (rozłącznikowe)",
@@ -4427,7 +4428,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_rmu_line_in",
@@ -4439,6 +4439,7 @@
       "bay_role": "OUT",
       "config_ref": "kanoniczny:bay_template_rmu_line_out",
       "field_role": "LINIA_OUT",
+      "funkcje_eaz": [],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe (rozłącznikowe)",
@@ -4498,7 +4499,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_rmu_line_out",
@@ -4510,6 +4510,7 @@
       "bay_role": "TR",
       "config_ref": "kanoniczny:bay_template_rmu_transformer",
       "field_role": "TRANSFORMATOROWE",
+      "funkcje_eaz": [],
       "group": "transformatorowe",
       "main_path": true,
       "name": "Pole transformatorowe (rozłącznik bezpiecznikowy)",
@@ -4588,7 +4589,6 @@
           "symbol_ref": "symbol:transformer_device"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_rmu_transformer",

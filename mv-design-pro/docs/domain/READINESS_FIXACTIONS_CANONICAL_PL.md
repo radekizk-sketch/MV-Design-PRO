@@ -70,6 +70,7 @@ Wszystkie **197** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `source.voltage_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowe napięcie źródła zasilania | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
 | `connection.power_flow_missing` | SOURCES | 2 | WARNING | Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić warunki przyłączenia | panel: `analizy`, tab: `rozplyw` |
 | `connection.power_limit_missing` | SOURCES | 2 | WARNING | Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `moc_przylaczeniowa_mw` |
+| `earthing.multiple_grounded_neutrals_in_island` | SOURCES | 2 | BLOCKER | Dwa uziemione nośniki punktu neutralnego w jednej wyspie galwanicznej SN — pozostaw jeden (pozostałe izolowane) albo otwórz sprzęgło sekcji | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez rezystancji uziemienia, dławik bez reaktancji albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
@@ -169,7 +170,6 @@ Wszystkie **197** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `bay.settlement_core_missing` | STATIONS | 3 | WARNING | Pole wymaga pomiaru rozliczeniowego i analizatora jakości energii (wytwórca ≥ 200 kW albo odbiorca > 4 MW), a przekładnik prądowy nie ma rdzenia rozliczeniowego | panel: `inspector`, tab: `pola` |
 | `bay.switching_execution_insulation_mismatch` | STATIONS | 3 | WARNING | Wykonanie łączników pola nie jest dopuszczone w izolacji rozdzielnicy — łącznik trójpołożeniowy przy szynie wymaga izolacji gazowej bez gazów fluorowanych albo stało-powietrznej | panel: `inspector`, tab: `pola` |
 | `bay.ufls_in_bay_with_generation` | STATIONS | 3 | WARNING | Pole z generacją ma samoczynne częstotliwościowe odciążenie — SCO nie uruchamia się w liniach z jednostkami wytwórczymi | panel: `inspector`, tab: `pola` |
-| `earthing.zespol_auxiliary_load_missing` | STATIONS | 3 | WARNING | Uzwojenie potrzeb własnych zespołu bez odbioru potrzeb własnych na szynie zespołu | panel: `inspector`, tab: `parametry`, focus: `odbior_pw_ref` |
 | `earthing.zespol_direct_earthing` | STATIONS | 3 | WARNING | Uziemienie bezpośrednie punktu neutralnego sieci SN poza rozwiązaniami §16 | panel: `inspector`, tab: `parametry`, focus: `uziemienie_bezposrednie` |
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
@@ -260,17 +260,17 @@ Wszystkie **197** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 110 |
-| WARNING | 78 |
+| BLOCKER | 111 |
+| WARNING | 77 |
 | INFO | 9 |
 | **Razem** | **197** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 20 |
+| SOURCES | 21 |
 | TOPOLOGY | 7 |
 | CATALOGS | 58 |
-| STATIONS | 43 |
+| STATIONS | 42 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |

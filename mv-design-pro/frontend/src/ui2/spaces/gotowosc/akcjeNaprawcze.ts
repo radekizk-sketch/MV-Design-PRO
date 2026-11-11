@@ -105,7 +105,11 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
  * integracji po scaleniu karty delt scenariusza zabezpieczeń: 196 kodów strony integracji (183 kody
  * kart zespołu uziemiającego SN i UX-04/POLE-BKR-MODEL + 13 kodów karty pola liniowego — 11 kodów
  * `bay.*` i 2 kody stanu obiektu w katalogu) + 1 kod strony delt
- * (`conductor.thermal_data_inconsistent`, karta KD6). Brak wpisu dla kodu
+ * (`conductor.thermal_data_inconsistent`, karta KD6); scalenie karty ZU-JEDEN-NOSNIK (pomiar
+ * zbiorów `READINESS_CODES` 2026-11-11): 197 bez zmiany liczby — kod zespołu bez odbioru
+ * potrzeb własnych (kod dawnego nośnika zespołu w rodzinie `earthing.*`) skasowany,
+ * kod wielu uziemionych punktów neutralnych w wyspie
+ * (`earthing.multiple_grounded_neutrals_in_island`) dodany. Brak wpisu dla kodu
  * z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */

@@ -1375,12 +1375,6 @@ KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
     # Szablony pól i ich obwody wtórne są danymi katalogu zapisanymi w kodzie (rysunki ENEA
     # Zeszyt 1); odmowa walidacji definicji trafia do autora danych katalogu, który poprawia
     # wpis po kodzie funkcji EAZ, którego sam użył — kod spoza słownika nie ma nazwy słownej.
-    "network_model/catalog/bay_templates.py:nieznane": (
-        "kody funkcji EAZ definicji szablonu pola spoza słownika `FUNKCJE_EAZ`"
-    ),
-    "network_model/catalog/obwody_wtorne_pola.py:nieznane": (
-        "kody funkcji EAZ powiązań obwodów wtórnych definicji spoza słownika `FUNKCJE_EAZ`"
-    ),
     "api/catalog.py:sorted(pozycje)": "slugi rodzin w ścieżce `GET …/przeglad-wiarygodnosci/{rodzina}`",
     "api/enm.py:sorted(_OP_DISPATCH.keys())": "nazwy operacji pola `op` żądania API modelu",
     "application/analyses/odpowiedz_osd.py:sorted(_COMMANDS)": (
@@ -2659,11 +2653,6 @@ def _echo_odrzuconej_wartosci(zrodlo: str, wezel: ast.AST, rodzice: dict[int, as
 #: (``moduł:wyrażenie`` → uzasadnienie; żywotność i warunek: ``test_wylaczenia_sklejen_sa_zywe``
 #: oraz test przy wpisie).
 WYLICZENIA_BEZ_ETYKIETY: dict[str, str] = {
-    "application/xlsx_import/importer.py:stan": (
-        "stan obiektu z kolumny `stan` arkusza szyn — zapis, który projektant sam wpisał i którego "
-        "słownik `stan_obiektu_z_arkusza` nie rozpoznał; komunikat cytuje go, żeby wskazał "
-        "komórkę do poprawy (ten sam wzorzec co `rodzaj` odcinka)"
-    ),
     "application/xlsx_import/importer.py:rodzaj": (
         "rodzaj odcinka z kolumny arkusza (`LINIA`/`KABEL`) — słowo, które projektant sam "
         "wpisał w arkuszu; komunikat cytuje jego zapis, żeby wskazał komórkę do poprawy"

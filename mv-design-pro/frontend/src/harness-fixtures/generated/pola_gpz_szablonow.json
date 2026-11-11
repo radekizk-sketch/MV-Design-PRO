@@ -145,8 +145,6 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -192,15 +190,6 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "50BF",
-              "79",
-              "SCO"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus",
@@ -235,13 +224,6 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -286,8 +268,6 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -318,8 +298,6 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -354,10 +332,6 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::5",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51N"
-            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
@@ -384,16 +358,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "ZS",
-          "50BF",
-          "79",
-          "SCO"
-        ],
-        "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -405,8 +369,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -454,8 +417,6 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -501,15 +462,6 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "50BF",
-              "79",
-              "SCO"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus",
@@ -544,13 +496,6 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -595,8 +540,6 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -627,8 +570,6 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -663,10 +604,6 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::5",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51N"
-            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
@@ -693,16 +630,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "ZS",
-          "50BF",
-          "79",
-          "SCO"
-        ],
-        "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -714,8 +641,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -763,8 +689,6 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -810,15 +734,6 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "50BF",
-              "79",
-              "SCO"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus",
@@ -853,13 +768,6 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -904,8 +812,6 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -936,8 +842,6 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -972,10 +876,6 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::5",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51N"
-            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
@@ -1002,16 +902,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "ZS",
-          "50BF",
-          "79",
-          "SCO"
-        ],
-        "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -1023,8 +913,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -1072,8 +961,6 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -1119,15 +1006,6 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "50BF",
-              "79",
-              "SCO"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus",
@@ -1162,13 +1040,6 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -1213,8 +1084,6 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -1245,8 +1114,6 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -1281,10 +1148,6 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::5",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51N"
-            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
@@ -1311,16 +1174,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "ZS",
-          "50BF",
-          "79",
-          "SCO"
-        ],
-        "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -1332,8 +1185,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -1371,8 +1223,6 @@
             "designation": "PF0",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -1403,8 +1253,6 @@
             "designation": "Q1",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -1450,14 +1298,6 @@
             "designation": "Q0",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "ZS",
-              "50BF",
-              "87T"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device",
@@ -1492,8 +1332,6 @@
             "designation": "Q5",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -1539,8 +1377,6 @@
             "designation": "GK1",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -1575,10 +1411,6 @@
             "designation": "T3",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::5",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "90"
-            ],
             "is_controllable": false,
             "kind": "VT",
             "linked_ref": null,
@@ -1639,14 +1471,6 @@
             "designation": "T1",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::6",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "ZS",
-              "87T",
-              "90"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -1720,8 +1544,6 @@
             "designation": "PF1",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::7",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -1752,8 +1574,6 @@
             "designation": "GK",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::8",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -1788,8 +1608,6 @@
             "designation": "F1",
             "device_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::9",
             "earthing_role": "surge_ground",
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "SURGE_ARRESTER",
             "linked_ref": null,
@@ -1816,15 +1634,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "ZS",
-          "50BF",
-          "87T",
-          "90"
-        ],
-        "protection_ref": null,
         "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -1834,8 +1643,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -1877,8 +1685,6 @@
             "designation": "PF0",
             "device_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -1909,8 +1715,6 @@
             "designation": "Q1",
             "device_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -1956,13 +1760,6 @@
             "designation": "Q0",
             "device_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "50BF"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001",
@@ -1997,14 +1794,6 @@
             "designation": "T1",
             "device_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "51N",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -2058,8 +1847,6 @@
             "designation": "Q2",
             "device_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -2105,8 +1892,6 @@
             "designation": "PF2",
             "device_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::5",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -2133,14 +1918,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "ZS",
-          "50BF"
-        ],
-        "protection_ref": null,
         "ref_id": "sn/994edd314b81c184804f9bed08331496/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -2150,8 +1927,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -2190,8 +1966,6 @@
             "designation": "Q1",
             "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -2237,13 +2011,6 @@
             "designation": "Q0",
             "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "50N"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_device",
@@ -2278,15 +2045,6 @@
             "designation": "T1",
             "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "51N",
-              "50N",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -2331,8 +2089,6 @@
             "designation": "F1",
             "device_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::3",
             "earthing_role": "surge_ground",
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "SURGE_ARRESTER",
             "linked_ref": null,
@@ -2359,15 +2115,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "50N",
-          "ZS",
-          "50BF"
-        ],
-        "protection_ref": null,
         "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -2377,8 +2124,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay_terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -2416,8 +2162,6 @@
             "designation": "Q1",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
@@ -2463,16 +2207,6 @@
             "designation": "Q0",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [
-              "51",
-              "50",
-              "51N",
-              "60N",
-              "59",
-              "ZS",
-              "50BF"
-            ],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay_device",
@@ -2507,14 +2241,6 @@
             "designation": "T1",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "51",
-              "50",
-              "51N",
-              "ZS",
-              "50BF"
-            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
@@ -2577,8 +2303,6 @@
             "designation": "PF1",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -2609,8 +2333,6 @@
             "designation": "GK",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::4",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -2645,8 +2367,6 @@
             "designation": "F1",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::5",
             "earthing_role": "surge_ground",
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "SURGE_ARRESTER",
             "linked_ref": null,
@@ -2677,8 +2397,6 @@
             "designation": "T4",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::6",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "PHASE_TO_PHASE_VT",
             "linked_ref": null,
@@ -2713,8 +2431,6 @@
             "designation": "T5",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::7",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "PHASE_TO_PHASE_VT",
             "linked_ref": null,
@@ -2749,10 +2465,6 @@
             "designation": "T6",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::8",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [
-              "60N"
-            ],
             "is_controllable": false,
             "kind": "UNBALANCE_CT",
             "linked_ref": null,
@@ -2779,16 +2491,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N",
-          "60N",
-          "59",
-          "ZS",
-          "50BF"
-        ],
-        "protection_ref": null,
         "ref_id": "sn/2628199620b4b49a291f7ece9293cd78/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -2798,8 +2500,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay_terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -2837,8 +2538,6 @@
             "designation": "Q1",
             "device_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::0",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay_device",
@@ -2873,8 +2572,6 @@
             "designation": "PF1",
             "device_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::1",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
@@ -2905,8 +2602,6 @@
             "designation": "GK1",
             "device_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::2",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -2941,8 +2636,6 @@
             "designation": "T1",
             "device_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VT",
             "linked_ref": null,
@@ -2998,15 +2691,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "59",
-          "27",
-          "59N",
-          "81U",
-          "SCO",
-          "81R"
-        ],
-        "protection_ref": null,
         "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -3016,8 +2700,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       }
     ],
     "branch_points": [],
@@ -3025,6 +2708,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
         "id": "09c46ccf-a235-5d88-90e9-188cf7603a15",
         "materialized_params": {
@@ -3057,6 +2741,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3070,6 +2755,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "1ca2f013-9ca4-5bc5-a6a4-be6ac3b1eac8",
         "materialized_params": {
@@ -3102,6 +2788,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3115,6 +2802,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "1fd8a818-555b-5c5d-8820-387dfcf6db21",
         "materialized_params": {
@@ -3147,6 +2835,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3160,6 +2849,7 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "309dec99-0684-5afa-8924-2bfe2631f98d",
         "materialized_params": null,
@@ -3180,6 +2870,7 @@
         "parameter_source": null,
         "r_ohm": 0.0,
         "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device",
+        "rodzaj_obwodu_nn": null,
         "source_mode": null,
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3194,6 +2885,7 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "52221505-fc42-5e85-9f18-0522773d3229",
         "materialized_params": null,
@@ -3214,6 +2906,7 @@
         "parameter_source": null,
         "r_ohm": 0.0,
         "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/bay_device",
+        "rodzaj_obwodu_nn": null,
         "source_mode": null,
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3228,6 +2921,7 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "629e1bfc-5a68-50b0-9dea-acc9469ca12d",
         "materialized_params": null,
@@ -3248,6 +2942,7 @@
         "parameter_source": null,
         "r_ohm": 0.0,
         "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay_device",
+        "rodzaj_obwodu_nn": null,
         "source_mode": null,
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3262,6 +2957,7 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "70d633ea-f1fd-5611-9767-580dce8544e6",
         "materialized_params": null,
@@ -3277,6 +2973,7 @@
         "parameter_source": null,
         "r_ohm": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001",
+        "rodzaj_obwodu_nn": null,
         "source_mode": null,
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3290,6 +2987,7 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
         "id": "d9fbc3ea-bc77-51ad-9d25-141f7978b888",
         "materialized_params": {
@@ -3322,6 +3020,7 @@
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus",
+        "rodzaj_obwodu_nn": null,
         "source_mode": "KATALOG",
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3335,6 +3034,7 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
+        "czas_wylaczenia_zwarcia_s": null,
         "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "id": "f22a3a3a-f836-5067-bae4-519047d3e142",
         "materialized_params": null,
@@ -3355,6 +3055,7 @@
         "parameter_source": null,
         "r_ohm": 0.0,
         "ref_id": "sn/2628199620b4b49a291f7ece9293cd78/bay_device",
+        "rodzaj_obwodu_nn": null,
         "source_mode": null,
         "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
@@ -3661,7 +3362,893 @@
     ],
     "loads": [],
     "measurements": [],
-    "protection_assignments": [],
+    "protection_assignments": [
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          },
+          {
+            "kod": "79",
+            "ref": "79",
+            "wlaczona": true
+          },
+          {
+            "kod": "SCO",
+            "ref": "SCO",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "8aa1d189-ffe3-55d6-8407-bf14044e3c6f",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
+            ],
+            "funkcja_ref": "79",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
+            ],
+            "funkcja_ref": "SCO",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe GPZ 1.1",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::2",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::5",
+          "i0_uklad": "FERRANTI",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          },
+          {
+            "kod": "79",
+            "ref": "79",
+            "wlaczona": true
+          },
+          {
+            "kod": "SCO",
+            "ref": "SCO",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "64946370-557c-5f21-bdf1-445401973d69",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
+            ],
+            "funkcja_ref": "79",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
+            ],
+            "funkcja_ref": "SCO",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe GPZ 1.2",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::2",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::5",
+          "i0_uklad": "FERRANTI",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          },
+          {
+            "kod": "79",
+            "ref": "79",
+            "wlaczona": true
+          },
+          {
+            "kod": "SCO",
+            "ref": "SCO",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "3ac71ede-b513-5dad-bf43-4caea9ac68d1",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
+            ],
+            "funkcja_ref": "79",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
+            ],
+            "funkcja_ref": "SCO",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe GPZ 2.1",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::2",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::5",
+          "i0_uklad": "FERRANTI",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          },
+          {
+            "kod": "79",
+            "ref": "79",
+            "wlaczona": true
+          },
+          {
+            "kod": "SCO",
+            "ref": "SCO",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "4465de29-c81e-57cd-af12-30ab39fb88a7",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
+            ],
+            "funkcja_ref": "79",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
+            ],
+            "funkcja_ref": "SCO",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe GPZ 2.2",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::2",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::5",
+          "i0_uklad": "FERRANTI",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          },
+          {
+            "kod": "87T",
+            "ref": "87T",
+            "wlaczona": true
+          },
+          {
+            "kod": "90",
+            "ref": "90",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "30102a8d-0710-5981-b47d-1ebb89a49ddb",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+            ],
+            "funkcja_ref": "87T",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+            ],
+            "funkcja_ref": "ZS",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay_device"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole transformatorowe",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::6",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": "HOLMGREEN",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": "sn/069942a0b7f549bb9f3f8ec98b6db8a1/bay::dev::5"
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "sn/994edd314b81c184804f9bed08331496/bay",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "77d8cf3f-f121-5703-81ea-16e95ca77494",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole sprzęgła",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "sn/994edd314b81c184804f9bed08331496/bay/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "sn/994edd314b81c184804f9bed08331496/bay::dev::3",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": "HOLMGREEN",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "50N",
+            "ref": "50N",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "16ccaab1-7030-5647-a591-21a8fdaa2c79",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "sn/0bf78717aa7856b192940aa50a10c074/bay_device"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/0bf78717aa7856b192940aa50a10c074/bay_device"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/0bf78717aa7856b192940aa50a10c074/bay_device"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/0bf78717aa7856b192940aa50a10c074/bay_device"
+            ],
+            "funkcja_ref": "50N",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole zespołu uziemiającego",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "sn/0bf78717aa7856b192940aa50a10c074/bay/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "sn/0bf78717aa7856b192940aa50a10c074/bay::dev::2",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": "HOLMGREEN",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "60N",
+            "ref": "60N",
+            "wlaczona": true
+          },
+          {
+            "kod": "59",
+            "ref": "59",
+            "wlaczona": true
+          },
+          {
+            "kod": "ZS",
+            "ref": "ZS",
+            "wlaczona": true
+          },
+          {
+            "kod": "50BF",
+            "ref": "50BF",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "a9694735-0b1c-5efd-bcf3-a86044782264",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "60N",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "59",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "50BF",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "sn/2628199620b4b49a291f7ece9293cd78/bay_device"
+            ],
+            "funkcja_ref": "ZS",
+            "pobudza_spz": false
+          }
+        ],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole baterii kondensatorów",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "sn/2628199620b4b49a291f7ece9293cd78/bay/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::2",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": "HOLMGREEN",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "59",
+            "ref": "59",
+            "wlaczona": true
+          },
+          {
+            "kod": "27",
+            "ref": "27",
+            "wlaczona": true
+          },
+          {
+            "kod": "59N",
+            "ref": "59N",
+            "wlaczona": true
+          },
+          {
+            "kod": "81U",
+            "ref": "81U",
+            "wlaczona": true
+          },
+          {
+            "kod": "SCO",
+            "ref": "SCO",
+            "wlaczona": true
+          },
+          {
+            "kod": "81R",
+            "ref": "81R",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "b821712a-7817-5b36-90ce-f6520ecbae21",
+        "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole pomiarowe",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
+        }
+      }
+    ],
     "shunt_capacitors": [],
     "sources": [
       {

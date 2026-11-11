@@ -424,23 +424,6 @@
       "uklad_polaczen",
       "verification_status"
     ],
-    "EARTHING_TRANSFORMER": [
-      "catalog_status",
-      "contract_version",
-      "grupa_polaczen",
-      "id",
-      "manufacturer",
-      "name",
-      "r0_ohm",
-      "s_n_kva",
-      "s_pw_kva",
-      "source_reference",
-      "u_n_kv",
-      "u_pw_kv",
-      "verification_status",
-      "wartosci_robocze",
-      "x0_ohm"
-    ],
     "ARC_SUPPRESSION_COIL": [
       "catalog_status",
       "contract_version",
@@ -583,6 +566,7 @@
       "name",
       "p0_kw",
       "pk_kw",
+      "r0_ohm",
       "rated_power_mva",
       "source_reference",
       "tap_max",
@@ -593,7 +577,9 @@
       "verification_note",
       "verification_status",
       "voltage_hv_kv",
-      "voltage_lv_kv"
+      "voltage_lv_kv",
+      "wartosci_robocze",
+      "x0_ohm"
     ],
     "SWITCH_EQUIPMENT": [
       "card_field_status",
@@ -824,9 +810,6 @@
       "NC_RfG_typ_C",
       "NC_RfG_typ_D"
     ],
-    "grupa_polaczen": [
-      "ZNyn11"
-    ],
     "i_th_pochodzenie": [
       "producent",
       "referencyjny"
@@ -868,6 +851,7 @@
       "POMIAR",
       "REGULACJA",
       "ROZLICZENIE",
+      "ROZNICOWE",
       "ZABEZPIECZENIA"
     ],
     "ptpiree_status": [
@@ -915,7 +899,8 @@
     ],
     "vector_group": [
       "Dyn11",
-      "Yd11"
+      "Yd11",
+      "ZNyn11"
     ],
     "verification_status": [
       "CZESCIOWO_ZWERYFIKOWANY",

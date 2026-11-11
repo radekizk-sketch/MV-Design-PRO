@@ -123,8 +123,13 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: 163/21 → 162/20 — pomiar
     # `mypy src` na stronie integracji i na drzewie scalonym; zdjęty 1 błąd `assignment`
     # w `enm/pole_katalogowe.py` (opis przy `BASELINE_*` w guardzie), zero nowych.
-    assert modul.BASELINE_ERRORS == 162
-    assert modul.BASELINE_FILES == 20
+    # Scalenie karty delt scenariusza zabezpieczeń do drzewa integracji: 162/20 → 159/19 — pomiar
+    # `mypy src --no-incremental` na pierwszym rodzicu i na drzewie scalonym; zdjęte dokładnie
+    # 3 błędy `arg-type` w `application/protection_read_model.py` (opis przy `BASELINE_*`
+    # w guardzie), zero nowych. Scalenie karty ZU-JEDEN-NOSNIK: 159/19 bez zmiany (multizbiór
+    # błędów identyczny z pierwszym rodzicem).
+    assert modul.BASELINE_ERRORS == 159
+    assert modul.BASELINE_FILES == 19
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
