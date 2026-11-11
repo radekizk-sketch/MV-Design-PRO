@@ -73,7 +73,7 @@
  *    `energizedByTestId` → rysunek bazowy mono (spec §6 P5) — „Bez danych →
  *    mono" zachowane.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ElementType } from '../../../types';
@@ -188,7 +188,9 @@ import {
   SCIEZKA_KADRU_TOP_PX,
   SLD_CANVAS_DOCK_INSETS,
   stationInternalPanelWidthPx,
+  TOOLBAR_TLO_WYSOKOSC_PX,
   type CanvasToolbarGroupId,
+  type SzerokosciPaska,
 } from './toolbarLayout';
 // K2 (UI-04): kadrowanie zakresu pracy, historia kadrów, mini-ścieżka kontekstu.
 import { useKadrowanieWidoku } from './useKadrowanieWidoku';
@@ -1288,6 +1290,7 @@ const TESTID_GRUPY: Readonly<Record<CanvasToolbarGroupId, string>> = {
   drzewo: 'sld-v3-hierarchy-tree-dock',
   uklady: 'sld-v3-der-palette',
   widok: 'sld-v3-view-dock',
+  widokDodatki: 'sld-v3-view-extra-dock',
   eksport: 'sld-v3-export-dock',
 };
 
@@ -2524,7 +2527,30 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
    */
   // KD-8 poz. 2: układ pasa narzędzi wyliczony z REALNEJ szerokości kanwy —
   // czysta funkcja, więc ta sama szerokość zawsze daje ten sam układ.
-  const ukladPaska = useMemo(() => layoutCanvasToolbar(size.width), [size.width]);
+  //
+  // SLD-CZYTELNOSC-STACJI: szerokości grup z POMIARU DOM rzędu każdej grupy
+  // (`data-toolbar-row`) — szacunek z etykiet (`toolbarLayout.ts`) obowiązuje
+  // tylko do pierwszego pomiaru. Pomiar po każdym renderze, stan zmieniany
+  // wyłącznie przy zmianie wartości (bez pętli renderów). Grupa zwinięta zachowuje
+  // ostatni pomiar (z pasa albo z otwartego menu), więc układ nie oscyluje.
+  const pasekRef = useRef<HTMLDivElement | null>(null);
+  const [szerokosciPaska, setSzerokosciPaska] = useState<SzerokosciPaska>({});
+  useLayoutEffect(() => {
+    const pasek = pasekRef.current;
+    if (!pasek) return;
+    const zmierzone: Record<string, number> = {};
+    for (const rzad of Array.from(pasek.querySelectorAll<HTMLElement>('[data-toolbar-row]'))) {
+      const id = rzad.getAttribute('data-toolbar-row');
+      const w = rzad.getBoundingClientRect().width;
+      if (id && Number.isFinite(w) && w > 0) zmierzone[id] = Math.ceil(w);
+    }
+    setSzerokosciPaska((poprzednie) => {
+      const nowe: Record<string, number> = { ...poprzednie, ...zmierzone };
+      const rozne = Object.keys(nowe).some((k) => nowe[k] !== (poprzednie as Record<string, number>)[k]);
+      return rozne ? nowe : poprzednie;
+    });
+  });
+  const ukladPaska = useMemo(() => layoutCanvasToolbar(size.width, szerokosciPaska), [size.width, szerokosciPaska]);
 
   const zawartoscGrup: Readonly<Record<CanvasToolbarGroupId, JSX.Element>> = {
     drzewo: (
@@ -2535,7 +2561,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           data-testid="sld-v3-hierarchy-tree-toggle"
           aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
           title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
+          data-toolbar-row="drzewo"
         >
           {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
         </button>
@@ -2545,7 +2572,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       </>
     ),
     uklady: (
-      <div className="flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg">
+      <div
+        className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg"
+        data-toolbar-row="uklady"
+      >
         <span style={{ fontSize: 9, color: 'var(--mvd-muted)', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
           UKŁADY PV/BESS/FW:
         </span>
@@ -2575,7 +2605,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     ),
     widok: (
       <>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1 whitespace-nowrap" data-toolbar-row="widok">
           {/* K2 (§0.2): „Dopasuj widok" = ZAKRES BIEŻĄCEJ PRACY — zaznaczenie
               (pojedyncze albo wielokrotne); bez zaznaczenia cała sieć. */}
           <button
@@ -2616,10 +2646,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             }}
             data-testid="sld-v3-fit-sheet"
             title="Pokaż cały arkusz rysunkowy"
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+            className={KLASA_PRZYCISKU_DOKU}
           >
             Cały arkusz
           </button>
+        </div>
+      </>
+    ),
+    // SLD-CZYTELNOSC-STACJI: dodatki widoku (tryb, legenda, nawigator) w osobnej
+    // grupie paska — przy wąskiej kanwie idą do menu PRZED poleceniami kadru.
+    widokDodatki: (
+      <>
+        <div className="flex shrink-0 items-center gap-1 whitespace-nowrap" data-toolbar-row="widokDodatki">
           {/* K2b §0.4: tryb widoku kanwy (ten sam stan co menu Widok powłoki). */}
           <button
             type="button"
@@ -2643,7 +2681,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             aria-expanded={legendPanelOpen}
             aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
             title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+            className={KLASA_PRZYCISKU_DOKU}
           >
             {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
           </button>
@@ -2661,7 +2699,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             disabled={snapshot === null}
             aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
             title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
+            className={KLASA_PRZYCISKU_DOKU}
           >
             {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
           </button>
@@ -2670,13 +2708,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       </>
     ),
     eksport: (
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1 whitespace-nowrap" data-toolbar-row="eksport">
         <button
           type="button"
           onClick={handleExportSvg}
           data-testid="sld-v3-export-svg"
           title="Eksportuj schemat SLD jako plik SVG"
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           ↓ SVG
         </button>
@@ -2693,7 +2731,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
             współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
         <label
-          className="flex h-7 cursor-pointer items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
+          className="flex h-7 shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded border border-scada-border bg-scada-panel/95 px-2 text-[11px] text-scada-text shadow-lg"
           title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
         >
           <input
@@ -2880,7 +2918,17 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           się do menu „Narzędzia" — nigdy nie nakładają. Panele rozwijane
           (drzewo, legenda) otwierają się POD swoją grupą, w tej samej
           kolumnie. */}
+      {/* SLD-CZYTELNOSC-STACJI: TŁO pasa narzędzi — strefa wyłączona z kadru
+          (`TOOLBAR_TLO_WYSOKOSC_PX` = górny inset kamery), więc rysunek nie
+          prześwituje między przyciskami ani nad nimi. */}
       <div
+        aria-hidden="true"
+        data-testid="sld-v3-toolbar-tlo"
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 border-b border-scada-border bg-scada-panel"
+        style={{ height: TOOLBAR_TLO_WYSOKOSC_PX }}
+      />
+      <div
+        ref={pasekRef}
         className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-start gap-2"
         data-testid="sld-v3-toolbar"
         data-toolbar-collapsed={ukladPaska.collapsed.join(',') || 'brak'}
@@ -2903,6 +2951,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             {zawartoscGrup.widok}
           </div>
         )}
+        {isToolbarGroupExpanded(ukladPaska, 'widokDodatki') && (
+          <div
+            className="pointer-events-auto flex flex-col items-end gap-1"
+            data-testid={TESTID_GRUPY.widokDodatki}
+            data-toolbar-group="widokDodatki"
+          >
+            {zawartoscGrup.widokDodatki}
+          </div>
+        )}
         {isToolbarGroupExpanded(ukladPaska, 'eksport') && (
           <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.eksport} data-toolbar-group="eksport">
             {zawartoscGrup.eksport}
@@ -2917,7 +2974,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               aria-expanded={toolbarMenuOpen}
               aria-label={toolbarMenuOpen ? 'Zamknij menu narzędzi kanwy' : 'Otwórz menu narzędzi kanwy'}
               title="Narzędzia kanwy zwinięte przy tej szerokości"
-              className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+              className={KLASA_PRZYCISKU_DOKU}
+              data-toolbar-row="menu"
             >
               {toolbarMenuOpen ? '▾ Narzędzia' : '▸ Narzędzia'}
             </button>
@@ -2978,7 +3036,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           aria-expanded={proofPanelOpen}
           aria-label={proofPanelOpen ? 'Zamknij panel dowodów inżynierskich' : 'Otwórz panel dowodów inżynierskich'}
           title={proofPanelOpen ? 'Zamknij panel dowodów' : 'Dowody inżynierskie (8)'}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           {proofPanelOpen ? '▾ Dowody (8)' : '▸ Dowody (8)'}
         </button>
@@ -3003,7 +3061,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           data-testid="sld-v3-layer-panel-toggle"
           aria-label={layerPanelOpen ? 'Zamknij panel warstw' : `Otwórz panel warstw (${CANVAS_LAYER_IDS.length})`}
           title={layerPanelOpen ? 'Zamknij panel warstw' : `Warstwy (${CANVAS_LAYER_IDS.length})`}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          className={KLASA_PRZYCISKU_DOKU}
         >
           {layerPanelOpen ? '▾ Warstwy' : `▴ Warstwy (${CANVAS_LAYER_IDS.length})`}
         </button>

@@ -143,7 +143,12 @@ import {
   wysrodkujSlotNaPrzesle,
   COLUMN_GAP,
 } from '../layout/segments';
-import { MIN_PARALLEL_CABLE_CLEARANCE, MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
+import {
+  MIN_PARALLEL_CABLE_CLEARANCE,
+  MIN_SUBTREE_CLEARANCE,
+  ROUTE_SUBLEVEL_STEP,
+  TOP_LEVEL_FIELD_CLEARANCE,
+} from '../layout/clearances';
 import {
   planSheetRows,
   SHEET_MAX_ASPECT,
@@ -417,7 +422,7 @@ const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
  *  WIELE laterali (branchPos > 0), każdy kolejny kanał tej samej szczeliny
  *  jest odsunięty o dodatkowy `LATERAL_CHANNEL_STEP` (degeneracja (c):
  *  „dwa zejścia w tej samej szczelinie" — rozsunięcie w ramach szczeliny). */
-const LATERAL_CHANNEL_STEP = GRID;
+const LATERAL_CHANNEL_STEP = ROUTE_SUBLEVEL_STEP;
 
 /** S9-1: lewy margines arkusza dla wierszy `k > 0` (wiersz 0 zaczyna się za
  *  blokiem GPZ). Musi być ≥ 2×GRID, bo rynna zejścia łącznika biegnie
@@ -1924,7 +1929,7 @@ function stripTopYOf(layout: RowLayout): number {
  * się (co router już wspiera, `route.ts` `classifyRouteNodes`).
  */
 function trunkCorridorYOf(layout: RowLayout): number {
-  return stripTopYOf(layout) + GRID;
+  return stripTopYOf(layout) + ROUTE_SUBLEVEL_STEP;
 }
 
 /**
@@ -4149,7 +4154,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const overRowY = snapToGrid(rowTopYOf(rowLayout) - 2 * GRID);
       const col0 = rowLayout.columnsResult.columns[0];
       const gutterX = snapToGrid(col0.x - 2 * GRID);
-      const underY = trunkCorridorYOf(rowLayout) + GRID;
+      const underY = trunkCorridorYOf(rowLayout) + ROUTE_SUBLEVEL_STEP;
       // Ta sama łamana na KAŻDYM poziomie szczegółu (KD-5/S1 „jedna kotwica":
       // bbox świata musi być identyczny na L0 i L2). Różni się WYŁĄCZNIE
       // ostatnie podejście: na L1/L2 tor wchodzi w głowicę OD DOŁU (§22.3 —
@@ -4729,8 +4734,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (originPort.x === channelX) return [{ x: channelX, y: originPort.y }];
       return [
         { x: originPort.x, y: originPort.y },
-        { x: originPort.x, y: originPort.y + GRID },
-        { x: channelX, y: originPort.y + GRID },
+        { x: originPort.x, y: originPort.y + ROUTE_SUBLEVEL_STEP },
+        { x: channelX, y: originPort.y + ROUTE_SUBLEVEL_STEP },
       ];
     };
 
@@ -5006,7 +5011,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         }
         const col0 = layout.columnsResult.columns[0];
         const gutterX = snapToGrid(col0.x - 2 * GRID);
-        const underY = trunkCorridorYOf(layout) + GRID;
+        const underY = trunkCorridorYOf(layout) + ROUTE_SUBLEVEL_STEP;
         return [
           ...descentHead(stripTopY),
           { x: channelX, y: dy },
@@ -5963,10 +5968,11 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
     .map((s) => s.meta?.ownerRef)
     // F13.1 (spec §21.1): `#hv-bus` — szyna 110 kV GPZ objęta TĄ SAMĄ
     // dyscypliną zakazu anonimowej szyny (forma „Szyna WN · V kV").
-    // Recenzja NO-GO 2026-07-17 pkt 6: `#lv-bus` (szyna nN stacji) jest
-    // OPISANA wierszem pasma nazw B5 („Szyna nN · 0,4 kV", `composeStation`
-    // `rows` — kolizyjnie bezpieczne z konstrukcji rezerwacji B5), NIE luźną
-    // etykietą busbar-voltage — dlatego celowo POZA parowaniem tej wyroczni.
+    // Recenzja NO-GO 2026-07-17 pkt 6 + SLD-CZYTELNOSC-STACJI: `#lv-bus`
+    // (szyna nN stacji) jest opisana ALBO etykietą przy zacisku
+    // (`#lv-bus-voltage`, parowana niżej), ALBO wierszem pasma nazw B5 — o
+    // miejscu decyduje jeden predykat (`lvBusLabelAtTerminal`), więc odcinek
+    // bez luźnej etykiety nie jest tu luką (opis stoi w paśmie).
     .filter((ref): ref is string => ref != null && (ref.endsWith('#sn-bus') || ref.endsWith('#bus-primary') || ref.endsWith('#hv-bus')));
   for (const busRef of busRefs) {
     const labelRef = busRef.endsWith('#sn-bus')
@@ -6003,6 +6009,20 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
         gaps.push({ reason: 'label-without-bus', ownerRef, detail: `oczekiwany odcinek szyny producenta „${busRef}" nieobecny` });
       } else if (!PRODUCER_BUS_LABEL_TEXT_PATTERN.test(label.text)) {
         gaps.push({ reason: 'malformed-text', ownerRef, detail: `tekst „${label.text}" niezgodny z „Szyna nN"/„Szyna nN · V kV" (szyna producenta nie jest sekcją stacji)` });
+      }
+      continue;
+    }
+    // SLD-CZYTELNOSC-STACJI: podpis szyny nN STACJI przy zacisku
+    // (`compose/station.ts`, `lvBusLabelAtTerminal`) — para `#lv-bus-voltage`
+    // ↔ `#lv-bus` tej samej stacji, ta sama zamknięta gramatyka nN co szyna
+    // producenta. Brak etykiety przy zacisku nie jest luką: podpis stoi wtedy
+    // w paśmie nazw (ten sam predykat decyduje o obu miejscach).
+    if (ownerRef.endsWith('#lv-bus-voltage')) {
+      const busRef = ownerRef.replace(/#lv-bus-voltage$/, '#lv-bus');
+      if (!segmentRefs.has(busRef)) {
+        gaps.push({ reason: 'label-without-bus', ownerRef, detail: `oczekiwany odcinek zacisku nN „${busRef}" nieobecny` });
+      } else if (!PRODUCER_BUS_LABEL_TEXT_PATTERN.test(label.text)) {
+        gaps.push({ reason: 'malformed-text', ownerRef, detail: `tekst „${label.text}" niezgodny z „Szyna nN"/„Szyna nN · V kV"` });
       }
       continue;
     }

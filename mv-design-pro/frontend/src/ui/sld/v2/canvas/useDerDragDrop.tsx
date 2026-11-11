@@ -94,6 +94,10 @@ export function DerPaletteButton(props: DerPaletteButtonProps): JSX.Element {
         fontWeight: 700,
         cursor: disabled ? 'not-allowed' : active ? 'grabbing' : 'grab',
         marginRight: 4,
+        // SLD-CZYTELNOSC-STACJI: etykieta w jednym wierszu, przycisk nie ściskany
+        // przez rząd paska (szerokość rzędu mierzy kanwa — `toolbarLayout.ts`).
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
         opacity: disabled ? 0.5 : 1,
         boxShadow: active ? `0 0 8px ${color}` : 'none',
       }}

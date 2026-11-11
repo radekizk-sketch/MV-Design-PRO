@@ -714,6 +714,11 @@ export function planSceneLabels(
   scale: number,
   sheet: SheetOutline,
   podlogaCelu?: PodlogaOpisowCelu,
+  /** Poziom szczegółu sceny `labels`. Na `lod ≥ 1` opisy danych są powiększane do
+   *  progu czytelności w suficie proporcji (`core/text.ts` `isLabelHiddenAtScale`),
+   *  na `0` ukrywane progiem. Kanwa i tusz etykiet kamery (`zakresKadru.ts`) podają
+   *  poziom, z którego zbudowano scenę — jedna reguła dla obu (predykaty parami). */
+  lod: 0 | 1 | 2 = 0,
 ): LabelRenderPlan {
   if (!Number.isFinite(scale) || scale <= 0) {
     return {
@@ -756,7 +761,7 @@ export function planSceneLabels(
     // (`lodClassOf`). Reszta logiki (progi, powiększanie, kolizje) bez zmiany
     // — od tego miejsca w dół etykieta „unresolved" idzie tą samą ścieżką co
     // etykieta klasy `'tozsamosc'`/`'L0'` zawsze szła.
-    if (label.unresolved !== true && isLabelHiddenAtScale(label.labelRole, label.labelClass, scale)) {
+    if (label.unresolved !== true && isLabelHiddenAtScale(label.labelRole, label.labelClass, scale, lod)) {
       return 'ukryta';
     }
     // PROPORCJE: rozmiar pisma z JEDNEGO źródła obu granic (`core/text.ts`

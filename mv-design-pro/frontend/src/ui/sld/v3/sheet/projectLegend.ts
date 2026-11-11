@@ -5,7 +5,7 @@
  * Zastępuje `buildDefaultLegend()` (`sheet/Frame.tsx`, stały, ślepy na
  * zawartość projektu — zestaw 12 symboli + 3 wpisy linii ZAWSZE identyczny,
  * niezależnie od tego, co jest naprawdę narysowane) jako źródło treści dla:
- *  - panelu legendy kanwy v3 na żądanie (`sld-v3-view-dock`,
+ *  - panelu legendy kanwy v3 na żądanie (`sld-v3-view-extra-dock`,
  *    `SldCanvasV3Workspace.tsx`),
  *  - opcji eksportu „Dołącz legendę" (`SldExportFormatMenu` przez
  *    `SldCanvasV3Workspace.handleExportSvg`).

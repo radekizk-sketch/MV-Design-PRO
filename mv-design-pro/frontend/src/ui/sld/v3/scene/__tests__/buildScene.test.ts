@@ -1250,9 +1250,23 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
     // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
     // `id.localeCompare`, nie trasowanie.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
+    // SLD-CZYTELNOSC-STACJI (2026-11-11): 23168/46400/46400 → 22512/46904/46904 — ZAMIERZONA
+    // zmiana układu (ocena właściciela widoku stacji 0/10). DOWÓD 2×2 (sonda tej karty,
+    // kod bazy `0a19e5c19` vs kod karty, ta sama fikstura):
+    //  · SAM krok podpoziomów tras `ROUTE_SUBLEVEL_STEP` 8 → 16 (`layout/clearances.ts`;
+    //    równoległe trasy ≥ 8 px ekranu na dolnym brzegu L1, skala 0,51) przy zacisku nN
+    //    bazy: 23168/47560/47560 — L0 ±0, L1/L2 +1160 (korytarze pnia, przejścia pod
+    //    stacją i drugi kanał punktu odgałęźnego głębiej o 8).
+    //  · SAM zacisk nN (≥ portal + 2·GRID) z podpisem szyny nN PRZY zacisku zamiast wiersza
+    //    pasma nazw (`planLvTerminal`, `lvBusLabelAtTerminal`) przy kroku bazy:
+    //    22512/45744/45744 — −656 jednolicie (pasmo nazw niższe o wiersz t4, inna
+    //    rezerwacja szerokości bloku stacji przestawia pakowanie wierszy arkusza).
+    //  · Oba: 22512/46904/46904 (= −656 + 1160 na L1/L2). Reguła „nie-rosnąca" §15.1
+    //    świadomie nie spełniona na L1/L2 — czytelność odstępu tras ma pierwszeństwo
+    //    (§15.1 „redukcja jest ograniczeniem MIĘKKIM").
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22512);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46904);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46904);
   });
 });
 
@@ -1361,7 +1375,15 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
       // S9-8: dowód pozytywny nowej własności — opis sekcji stacji niesie
       // IDENTYFIKATOR STACJI jako człon wiodący (GPZ, który kodu nie ma,
       // zachowuje formę „Sekcja N · V kV"/„Szyna WN · V kV").
-      const zStacji = busbarLabels.filter((l) => l.ownerRef.startsWith('stn/'));
+      // SLD-CZYTELNOSC-STACJI (2026-11-11): podpis szyny nN stoi PRZY zacisku `#lv-bus`
+      // jako `busbar-voltage` (`#lv-bus-voltage`); to nie jest sekcja SN, więc człon
+      // stacji go nie dotyczy — jego format („Szyna nN · V kV") i parowanie z `#lv-bus`
+      // sprawdza wyrocznia produkcyjna `busbarLabelGaps` wyżej.
+      const zSzynNn = busbarLabels.filter((l) => l.ownerRef.endsWith('#lv-bus-voltage'));
+      expect(zSzynNn.length).toBeGreaterThan(0);
+      const zStacji = busbarLabels.filter(
+        (l) => l.ownerRef.startsWith('stn/') && !l.ownerRef.endsWith('#lv-bus-voltage'),
+      );
       expect(zStacji.length).toBeGreaterThan(0);
       expect(zStacji.every((l) => /^S\d+ · Sekcja \d+/.test(l.text))).toBe(true);
       // S9-12 (audyt C-8 — „dwa różne obiekty z identycznym opisem w jednym

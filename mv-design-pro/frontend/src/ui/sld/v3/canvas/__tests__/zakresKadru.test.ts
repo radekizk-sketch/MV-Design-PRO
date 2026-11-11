@@ -499,6 +499,9 @@ describe('K2b: podłoga opisów celu w planie etykiet', () => {
       scale,
       sheetSizeFor(sceny[lod]),
       refy ? podlogaOpisowCelu(refy) : undefined,
+      // SLD-CZYTELNOSC-STACJI: poziom sceny jak w kanwie (`SldCanvasV3`, `effectiveLod`)
+      // i w tuszu kadru (`prostokatyZakresu`) — plan testu = plan produkcji.
+      lod,
     );
   const refyStacji = (st: string) => new Set(dostepny(zakresCelu('stacja', enm, [st], sceny[2])).refy);
 

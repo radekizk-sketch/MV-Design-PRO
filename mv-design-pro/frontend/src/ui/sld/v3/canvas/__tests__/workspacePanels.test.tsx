@@ -321,9 +321,18 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
 // wyrocznie czystej funkcji `sheet/__tests__/projectLegend.test.ts`).
 // ---------------------------------------------------------------------------
 
+/**
+ * SLD-CZYTELNOSC-STACJI: legenda, tryb widoku i nawigator żyją w grupie DODATKÓW widoku
+ * (`sld-v3-view-extra-dock`), która przy kanwie 800 px idzie do menu „Narzędzia” (pasek
+ * mierzy szerokości grup — `toolbarLayout.ts`). Testy funkcji legendy i nawigatora renderują
+ * kanwę, na której ta grupa jest rozwinięta; zwijanie do menu pokrywa
+ * `toolbarLayout.contract.test.ts` i spec e2e `sld-czytelnosc-stacji.spec.ts`.
+ */
+const SZEROKOSC_Z_DODATKAMI_WIDOKU = 1400;
+
 describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   it('domyślnie (bez interakcji) legenda NIE jest częścią kanwy — brak grupy `sld-sheet-legend` w DOM', () => {
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     expect(container.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
     // Dok istnieje i przycisk informuje o liczbie wpisów — fixtura ma
     // symbole/odcinki, więc panel nie byłby pusty, gdyby otworzyć.
@@ -333,7 +342,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   });
 
   it('otwarcie panelu (dok `sld-v3-view-dock`) pokazuje WYŁĄCZNIE symbole obecne w fixturze — fixtura ma agregat (loads[]), więc "Odbiór (zagregowany)" jest obecny', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
 
     fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
@@ -368,13 +377,13 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
   it('"overhead" (linia napowietrzna) jest w panelu dokładnie wtedy, gdy scena rysuje odcinek napowietrzny', () => {
     const scene = buildSceneV3(enm, 2);
     expect(scene.segments.some((seg) => seg.meta?.lineType === 'overhead')).toBe(true);
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
     expect(screen.getByTestId('sld-v3-legend-panel-item-overhead')).toBeInTheDocument();
   });
 
   it('zamknięcie panelu (drugi klik) przywraca kanwę do stanu bez legendy — dok zostaje, panel znika', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     const toggle = screen.getByTestId('sld-v3-legend-toggle');
 
     fireEvent.click(toggle);
@@ -395,7 +404,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
     vi.stubGlobal('Blob', blobCtorSpy);
 
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     rozwinZwinieteNarzedzia();
     const checkbox = screen.getByTestId('sld-v3-export-include-legend') as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
@@ -421,7 +430,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
     vi.stubGlobal('Blob', blobCtorSpy);
 
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-v3-export-include-legend'));
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
@@ -440,17 +449,17 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
 
 describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', () => {
   it('domyślnie nawigator jest ZWINIĘTY — schemat nie traci ani piksela', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     expect(screen.queryByTestId('sld-v3-minimap-dock')).toBeNull();
     expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
-    // Przełącznik żyje w TYM SAMYM doku widoku co „Dopasuj widok"/„Legenda"
-    // (jedno miejsce na sterowanie widokiem — scalony dok K11-A/K12).
-    const dock = screen.getByTestId('sld-v3-view-dock');
+    // Przełącznik żyje w doku DODATKÓW widoku obok „Legendy” i trybu widoku
+    // (karta SLD-CZYTELNOSC-STACJI rozdzieliła dok widoku na kadr i dodatki).
+    const dock = screen.getByTestId('sld-v3-view-extra-dock');
     expect(within(dock).getByTestId('sld-v3-minimap-toggle')).toBeInTheDocument();
   });
 
   it('rozwinięcie pokazuje nawigator z kształtami REALNEJ sceny i prostokątem kadru', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
 
     const panel = screen.getByTestId('sld-v3-minimap-panel');
@@ -468,7 +477,7 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
   });
 
   it('wskazanie w nawigatorze PRZESUWA kadr kamery, NIE zmieniając skali (kontrakt K11-B §0.1)', () => {
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
 
     const canvas = container.querySelector('[data-testid="sld-canvas-v3"]')!;
@@ -504,7 +513,7 @@ describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', ()
   });
 
   it('zwinięcie (drugi klik) chowa nawigator — dok zostaje', () => {
-    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    render(<SldCanvasV3Workspace width={SZEROKOSC_Z_DODATKAMI_WIDOKU} height={600} lodOverride={2} />);
     const toggle = screen.getByTestId('sld-v3-minimap-toggle');
     fireEvent.click(toggle);
     expect(screen.getByTestId('sld-v3-minimap-panel')).toBeInTheDocument();

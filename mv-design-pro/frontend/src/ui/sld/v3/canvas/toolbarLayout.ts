@@ -21,7 +21,7 @@
  */
 
 /** Identyfikatory grup w KOLEJNOŚCI rysowania (od lewej). */
-export type CanvasToolbarGroupId = 'drzewo' | 'uklady' | 'widok' | 'eksport';
+export type CanvasToolbarGroupId = 'drzewo' | 'uklady' | 'widok' | 'widokDodatki' | 'eksport';
 
 export interface CanvasToolbarGroup {
   readonly id: CanvasToolbarGroupId;
@@ -39,36 +39,120 @@ export interface CanvasToolbarGroup {
 }
 
 /**
- * Minima POLICZONE z realnej treści rzędu (font mono 10 px ⇒ ≈ 6,2 px na znak;
- * `px-2` = 16 px obudowy; odstęp wewnętrzny 4 px), zaokrąglone w górę do 4 px:
- *  - drzewo  „▸ Drzewo układu" ................................ 111 → 116
- *  - układy  etykieta + 3 przyciski PV/BESS/FW (＋ … ) ......... 476 → 480
- *  - widok   „⌖ Dopasuj widok" (15 zn. → 109) + rozwijacz „▾" menu
- *            „Dopasuj do…" (1 → 23) + „← Wstecz" (8 → 66, polecenie
- *            „Poprzedni widok") + „Cały arkusz" (11 → 85)
- *            + „▸ Legenda (NN)" (14 → 103) + „▸ Nawigator" (11 → 85)
- *            + 5 odstępów po 4 px (karta K2: polecenia kadru i historii
- *            kadrów w tym samym doku widoku; menu jako przycisk dzielony
- *            przy „Dopasuj widok", żeby dok widoku nie zwijał się na
- *            kanwie 800 px) ............................................ 491 → 492
- *  - eksport „↓ SVG" + menu formatów + „Dołącz legendę" ....... 314 → 320
+ * SLD-CZYTELNOSC-STACJI (ocena właściciela 0/10, 2026-11-11) — SZEROKOŚCI GRUP
+ * Z ETYKIET, NIE Z LITERAŁÓW. Do tej karty minima były wpisanymi liczbami
+ * „policzonymi” dla kroju mono 10 px i nieaktualnej listy przycisków (brak
+ * „Widok: roboczy”, licznik legendy na sztywno dwucyfrowy). Rzeczywisty rząd
+ * był szerszy od slotu, więc flex ŚCISKAŁ przyciski i etykiety zawijały się do
+ * dwóch wierszy ucinanych przez `h-7` („Drzewo / układu”), a ostatni przycisk
+ * („Narzędzia”) wypadał za krawędź kanwy — pomiar e2e „przed”: 8 z 8 przycisków
+ * doku zawiniętych przy kanwie 820 px (okno 1440×900 z otwartym inspektorem).
+ *
+ * Teraz szerokość grupy pochodzi z JEDNEJ funkcji liczonej z etykiet rzędu
+ * (`szacunekSzerokosciGrup`, krój interfejsu `KLASA_PRZYCISKU_DOKU`), a kanwa
+ * zastępuje szacunek POMIAREM DOM rzędu każdej grupy, gdy tylko grupa została
+ * narysowana (`SldCanvasV3Workspace`, `data-toolbar-row`). Przyciski mają
+ * `whitespace-nowrap shrink-0`, więc rząd nie zawija się nigdy, a nadmiar idzie
+ * do menu „Narzędzia”.
+ */
+/** Średnia szerokość glifu kroju interfejsu przy piśmie przycisku doku (11 px,
+ *  półgruby) [px] — współczynnik 0,62 × rozmiar, ten sam co pomiar tekstu
+ *  rysunku (`core/text.ts`), zaokrąglony W GÓRĘ (szacunek ma nie zaniżać). */
+const ZNAK_PRZYCISKU_PX = 7;
+/** Obudowa przycisku doku [px]: `px-2` (2×8) + obramowanie (2×1). */
+const OBUDOWA_PRZYCISKU_PX = 18;
+/** Odstęp przycisków w rzędzie grupy [px] — `gap-1`. */
+const ODSTEP_W_GRUPIE_PX = 4;
+
+/** Szerokość przycisku doku dla etykiety [px] (szacunek z etykiety). */
+export function szerokoscPrzyciskuDoku(etykieta: string): number {
+  return [...etykieta].length * ZNAK_PRZYCISKU_PX + OBUDOWA_PRZYCISKU_PX;
+}
+
+function szerokoscRzedu(etykiety: readonly string[], dodatek = 0): number {
+  const suma = etykiety.reduce((s, e) => s + szerokoscPrzyciskuDoku(e), 0);
+  return Math.ceil((suma + ODSTEP_W_GRUPIE_PX * Math.max(0, etykiety.length - 1) + dodatek) / 4) * 4;
+}
+
+/** Stan etykiet zmiennych rzędu (licznik legendy, tryb widoku). */
+export interface StanEtykietPaska {
+  readonly licznikLegendy: number;
+  readonly trybWidoku: 'roboczy' | 'arkusz';
+}
+
+/** Najszerszy stan etykiet — szacunek domyślny (np. testy czystej funkcji). */
+export const STAN_ETYKIET_NAJSZERSZY: StanEtykietPaska = { licznikLegendy: 99, trybWidoku: 'roboczy' };
+
+/** Etykiety rzędu każdej grupy — TE SAME teksty, które rysuje `SldCanvasV3Workspace`. */
+export function etykietyGrup(stan: StanEtykietPaska): Readonly<Record<CanvasToolbarGroupId, readonly string[]>> {
+  return {
+    drzewo: ['▸ Drzewo układu'],
+    uklady: ['UKŁADY PV/BESS/FW:', '＋ PV (fotowoltaika)', '＋ BESS (magazyn)', '＋ FW (wiatr)'],
+    widok: ['⌖ Dopasuj widok', '▾', '← Wstecz', 'Cały arkusz'],
+    widokDodatki: [
+      stan.trybWidoku === 'roboczy' ? 'Widok: roboczy' : 'Widok: arkusz',
+      `▸ Legenda (${stan.licznikLegendy})`,
+      '▸ Nawigator',
+    ],
+    eksport: ['↓ SVG', 'Eksportuj schemat ▾', '☐ Dołącz legendę'],
+  };
+}
+
+/** Etykieta przycisku menu zwiniętych grup. */
+export const ETYKIETA_MENU_NARZEDZI = '▸ Narzędzia';
+
+/** Szerokości grup z etykiet [px] — szacunek, który pomiar DOM zastępuje. */
+export function szacunekSzerokosciGrup(stan: StanEtykietPaska): Readonly<Record<CanvasToolbarGroupId, number>> {
+  const e = etykietyGrup(stan);
+  return {
+    drzewo: szerokoscRzedu(e.drzewo),
+    // Rząd układów ma własne obramowanie z `px-2` (16 + 2) wokół etykiety i przycisków.
+    uklady: szerokoscRzedu(e.uklady, OBUDOWA_PRZYCISKU_PX),
+    widok: szerokoscRzedu(e.widok),
+    widokDodatki: szerokoscRzedu(e.widokDodatki),
+    eksport: szerokoscRzedu(e.eksport),
+  };
+}
+
+const SZACUNEK_NAJSZERSZY = szacunekSzerokosciGrup(STAN_ETYKIET_NAJSZERSZY);
+
+/**
+ * Grupa „Widok” jest rozdzielona na polecenia KADRU (dopasuj, historia, arkusz —
+ * używane przy każdej czynności) i DODATKI widoku (tryb, legenda, nawigator).
+ * Pomiar: przy kanwie 795 px (okno 1440×900 z otwartym inspektorem) cały dok
+ * widoku nie mieścił się obok drzewa i menu, więc zwinięcie całej grupy chowało
+ * „Dopasuj widok” do menu; po rozdzieleniu do menu idą najpierw dodatki.
  */
 export const CANVAS_TOOLBAR_GROUPS: readonly CanvasToolbarGroup[] = [
-  { id: 'drzewo', label: 'Drzewo układu', minWidth: 116, rank: 4 },
-  { id: 'uklady', label: 'Układy PV/BESS/FW', minWidth: 480, rank: 2 },
-  { id: 'widok', label: 'Widok', minWidth: 492, rank: 3 },
-  { id: 'eksport', label: 'Eksport', minWidth: 320, rank: 1 },
+  { id: 'drzewo', label: 'Drzewo układu', minWidth: SZACUNEK_NAJSZERSZY.drzewo, rank: 5 },
+  { id: 'uklady', label: 'Układy PV/BESS/FW', minWidth: SZACUNEK_NAJSZERSZY.uklady, rank: 2 },
+  { id: 'widok', label: 'Widok', minWidth: SZACUNEK_NAJSZERSZY.widok, rank: 4 },
+  { id: 'widokDodatki', label: 'Tryb widoku, legenda, nawigator', minWidth: SZACUNEK_NAJSZERSZY.widokDodatki, rank: 3 },
+  { id: 'eksport', label: 'Eksport', minWidth: SZACUNEK_NAJSZERSZY.eksport, rank: 1 },
 ];
 
 /** Odstęp między grupami [px] — `gap-2` Tailwinda. */
 export const TOOLBAR_GAP_PX = 8;
 /** Margines pasa od krawędzi kanwy [px] — `left-3`/`right-3`. */
 export const TOOLBAR_EDGE_PX = 12;
-/** Szerokość przycisku „Narzędzia ▾" [px] (pojawia się TYLKO przy zwinięciu). */
-export const TOOLBAR_MENU_WIDTH_PX = 116;
+/** Szerokość przycisku „Narzędzia" [px] (pojawia się TYLKO przy zwinięciu) —
+ *  z etykiety, jak szerokości grup. */
+export const TOOLBAR_MENU_WIDTH_PX = szerokoscRzedu([ETYKIETA_MENU_NARZEDZI]);
 
 /** Wysokość rzędu kontrolek doku [px] — `h-7` Tailwinda. */
 export const TOOLBAR_ROW_HEIGHT_PX = 28;
+
+/**
+ * SLD-CZYTELNOSC-STACJI — TŁO PASA NARZĘDZI. Przyciski doku stoją na kanwie z
+ * odstępami (`gap-2`, `gap-1`), więc rysunek PRZEŚWITYWAŁ między nimi i nad
+ * nimi (zrzut właściciela: rama strefy GPZ i odpływy przechodzące przez pasek).
+ * Pas górny kanwy o wysokości insetu kamery (`SLD_CANVAS_DOCK_INSETS.top`) jest
+ * strefą WYŁĄCZONĄ z kadru — dopasowanie widoku nigdy nie kładzie tam treści —
+ * więc dostaje nieprzezroczyste tło: to, co pod nim leży, i tak jest poza kadrem
+ * (przesunięcie albo przybliżenie kółkiem), a pasek przestaje być nakładką na rysunek.
+ * Jedna wartość dla tła i insetu kamery — nie mogą się rozjechać.
+ */
+export const TOOLBAR_TLO_WYSOKOSC_PX = TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX + TOOLBAR_EDGE_PX / 2;
 
 /**
  * S9-8 (audyt, „obszar bezpieczny pod dokami UI") — PASY ZASŁONIĘTE kanwy.
@@ -100,9 +184,11 @@ export const SLD_CANVAS_DOCK_INSETS: {
   readonly bottom: number;
   readonly left: number;
 } = {
-  top: TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX,
+  top: TOOLBAR_TLO_WYSOKOSC_PX,
   right: 0,
-  bottom: TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX,
+  // Ten sam rachunek u dołu (`bottom-3` + rząd kontrolek + pół marginesu) — kadr
+  // symetryczny względem pasów doków.
+  bottom: TOOLBAR_TLO_WYSOKOSC_PX,
   left: 0,
 };
 
@@ -114,6 +200,7 @@ export const SLD_CANVAS_DOCK_INSETS: {
  * boczny), więc cel kadru nie chowa się pod ścieżką.
  */
 export const SCIEZKA_KADRU_TOP_PX = TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX + 6;
+
 export const SCIEZKA_KADRU_INSET_PX = TOOLBAR_ROW_HEIGHT_PX + 6;
 
 /** K2: szerokość panelu komunikatu kadru (tor zasilania) przy prawej krawędzi
@@ -163,15 +250,25 @@ export interface CanvasToolbarLayout {
   readonly menuSlot: CanvasToolbarSlot | null;
 }
 
+/** Szerokości grup [px] użyte przez układ — pomiar DOM rzędu grupy (kanwa) albo
+ *  szacunek z etykiet (`szacunekSzerokosciGrup`); `menu` = przycisk „Narzędzia". */
+export type SzerokosciPaska = Readonly<Partial<Record<CanvasToolbarGroupId | 'menu', number>>>;
+
 /**
  * Rozkłada pas narzędzi na dostępnej szerokości.
  *
  * Zasada: rozwinięte zostają grupy o najwyższej randze, które MIESZCZĄ SIĘ
- * w całości; reszta idzie do menu. Wynik jest funkcją wyłącznie szerokości —
- * ta sama szerokość zawsze daje ten sam układ (P7 determinizm).
+ * w całości; reszta idzie do menu. Wynik jest funkcją wyłącznie szerokości
+ * kanwy i szerokości grup — te same wejścia zawsze dają ten sam układ (P7).
+ * Szerokość grupy: `szerokosci[id]` (pomiar), gdy dodatnia i skończona, inaczej
+ * szacunek z etykiet w najszerszym stanie (`CanvasToolbarGroup.minWidth`).
  */
-export function layoutCanvasToolbar(availableWidth: number): CanvasToolbarLayout {
+export function layoutCanvasToolbar(availableWidth: number, szerokosci: SzerokosciPaska = {}): CanvasToolbarLayout {
   const width = Number.isFinite(availableWidth) ? Math.max(0, availableWidth) : 0;
+  const zmierzona = (wartosc: number | undefined, szacunek: number): number =>
+    wartosc !== undefined && Number.isFinite(wartosc) && wartosc > 0 ? Math.ceil(wartosc) : szacunek;
+  const szerokoscGrupy = (g: CanvasToolbarGroup): number => zmierzona(szerokosci[g.id], g.minWidth);
+  const szerokoscMenu = zmierzona(szerokosci.menu, TOOLBAR_MENU_WIDTH_PX);
   const kolejnoscZwijania = [...CANVAS_TOOLBAR_GROUPS].sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
 
   let rozwiniete = [...CANVAS_TOOLBAR_GROUPS];
@@ -180,7 +277,7 @@ export function layoutCanvasToolbar(availableWidth: number): CanvasToolbarLayout
   const potrzebna = (grupy: readonly CanvasToolbarGroup[], zMenu: boolean): number => {
     const pozycje = grupy.length + (zMenu ? 1 : 0);
     if (pozycje === 0) return TOOLBAR_EDGE_PX * 2;
-    const suma = grupy.reduce((s, g) => s + g.minWidth, 0) + (zMenu ? TOOLBAR_MENU_WIDTH_PX : 0);
+    const suma = grupy.reduce((s, g) => s + szerokoscGrupy(g), 0) + (zMenu ? szerokoscMenu : 0);
     return suma + TOOLBAR_GAP_PX * (pozycje - 1) + TOOLBAR_EDGE_PX * 2;
   };
 
@@ -196,11 +293,12 @@ export function layoutCanvasToolbar(availableWidth: number): CanvasToolbarLayout
   const slots: CanvasToolbarSlot[] = [];
   let x = TOOLBAR_EDGE_PX;
   for (const grupa of rozwiniete) {
-    slots.push({ id: grupa.id, x, width: grupa.minWidth });
-    x += grupa.minWidth + TOOLBAR_GAP_PX;
+    const w = szerokoscGrupy(grupa);
+    slots.push({ id: grupa.id, x, width: w });
+    x += w + TOOLBAR_GAP_PX;
   }
   const menuSlot: CanvasToolbarSlot | null =
-    zwiniete.length > 0 ? { id: 'eksport', x, width: TOOLBAR_MENU_WIDTH_PX } : null;
+    zwiniete.length > 0 ? { id: 'eksport', x, width: szerokoscMenu } : null;
 
   return {
     slots,

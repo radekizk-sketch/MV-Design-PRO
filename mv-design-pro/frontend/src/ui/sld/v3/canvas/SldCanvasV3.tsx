@@ -36,7 +36,7 @@ import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth, measureTextWidth, screenFixedFontSize } from '../core/text';
-import { GRID } from '../core/grid';
+import { GRID, rectsOverlap } from '../core/grid';
 import { planSceneLabels, type PlannedLabel } from './labelLegibility';
 import {
   LABEL_OWNER_ELEMENT_KIND,
@@ -2869,9 +2869,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const labelPlan = useMemo(
     () =>
       isLayerVisible('labels', layerVisibility)
-        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize, podlogaCelu)
+        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale, sheetSize, podlogaCelu, effectiveLod)
         : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
-    [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu],
+    [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu, effectiveLod],
   );
   // K2b §0.2 (b): opisy CELU ukryte przez plan (próg czytelności, sufit
   // proporcji, brak miejsca) i najmniejsza wysokość narysowanego opisu celu na
@@ -2933,6 +2933,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // osobnego wskaźnika ekranowego dla kolizji layoutu — poza zakresem tej
   // karty (T3, „dopiero po zieleni T0–T2 i re-werdykcie").
   const niewidoczneOpisy = hiddenUnreadableLabels + labelPlan.droppedIdentity.length;
+  // SLD-CZYTELNOSC-STACJI: kanał audytu „opisy niewidoczne W KADRZE" — ukryte
+  // (dane) i porzucone (tożsamość), których slot sceny leży w widocznym obszarze
+  // kamery. Licznik ogólny obejmuje całą scenę (także stacje poza ekranem), więc
+  // nie odpowiada na pytanie projektanta „czy na tym, co widzę, czegoś brakuje".
+  const ukryteWKadrze = useMemo(() => {
+    const s = camera.transform.scale;
+    if (!Number.isFinite(s) || s <= 0) return 0;
+    const lewyGorny = screenToWorld({ x: 0, y: 0 }, camera.transform);
+    const widok = { x: lewyGorny.x, y: lewyGorny.y, width: viewportSize.width / s, height: viewportSize.height / s };
+    return [...labelPlan.hiddenDetail, ...labelPlan.droppedIdentity].filter((l) => rectsOverlap(l.rect, widok)).length;
+  }, [labelPlan, camera.transform, viewportSize]);
 
   // RAMKA-TNIE-PODPISY (drugi objaw): DOLNY PAS CHROMU liczony JEDNĄ funkcją
   // (`canvas/chromeLayout.ts`). Podpisy arkusza („Widok: …", „Skala …") jadą z
@@ -3629,6 +3640,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           data-testid="sld-v3-labels"
           data-hidden-unreadable={hiddenUnreadableLabels}
           data-dropped-identity={labelPlan.droppedIdentity.length}
+          data-ukryte-opisy-w-kadrze={ukryteWKadrze}
         >
           {labelPlan.drawn.map((planned) =>
             pozaKadrem(planned.label.ownerRef) ? (

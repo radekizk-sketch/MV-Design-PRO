@@ -19,8 +19,12 @@ import {
   TOOLBAR_EDGE_PX,
   TOOLBAR_FULL_WIDTH_PX,
   TOOLBAR_GAP_PX,
+  etykietyGrup,
   isToolbarGroupExpanded,
   layoutCanvasToolbar,
+  STAN_ETYKIET_NAJSZERSZY,
+  szacunekSzerokosciGrup,
+  szerokoscPrzyciskuDoku,
   type CanvasToolbarLayout,
 } from '../toolbarLayout';
 
@@ -115,5 +119,52 @@ describe('pas narzędzi kanwy — rozłączność przy każdej szerokości', () 
         expect(rects[i].x).toBeGreaterThanOrEqual(rects[i - 1].x + rects[i - 1].width);
       }
     }
+  });
+});
+
+/**
+ * SLD-CZYTELNOSC-STACJI (ocena właściciela 0/10, 2026-11-11): szerokości grup z ETYKIET
+ * (krój interfejsu) i z POMIARU DOM, nie z literałów. Dawne minima (np. 492 px doku widoku
+ * „policzone” bez „Widok: roboczy”) były mniejsze od realnego rzędu, więc przyciski zawijały
+ * etykiety na dwa wiersze ucinane przez `h-7`, a „Narzędzia” wypadało za kanwę.
+ */
+describe('pas narzędzi kanwy — szerokości z etykiet i z pomiaru', () => {
+  it('minimum każdej grupy = szacunek z etykiet w najszerszym stanie (licznik legendy dwucyfrowy, „Widok: roboczy”)', () => {
+    const szacunek = szacunekSzerokosciGrup(STAN_ETYKIET_NAJSZERSZY);
+    for (const g of CANVAS_TOOLBAR_GROUPS) {
+      expect(g.minWidth, g.id).toBe(szacunek[g.id]);
+      // Każda etykieta rzędu mieści się w szacunku grupy (szacunek nie zaniża żadnego przycisku).
+      const etykiety = etykietyGrup(STAN_ETYKIET_NAJSZERSZY)[g.id];
+      const suma = etykiety.reduce((s, e) => s + szerokoscPrzyciskuDoku(e), 0);
+      expect(g.minWidth, g.id).toBeGreaterThanOrEqual(suma);
+    }
+  });
+
+  it('licznik legendy i tryb widoku zmieniają szacunek dodatków widoku (etykieta zmienna wchodzi do szerokości)', () => {
+    const krotki = szacunekSzerokosciGrup({ licznikLegendy: 8, trybWidoku: 'arkusz' });
+    const dlugi = szacunekSzerokosciGrup({ licznikLegendy: 18, trybWidoku: 'roboczy' });
+    expect(dlugi.widokDodatki).toBeGreaterThan(krotki.widokDodatki);
+  });
+
+  it('pomiar DOM zastępuje szacunek: grupa zmierzona szerzej zwija się wcześniej, węższa — później', () => {
+    const szerokosc = 900;
+    const bezPomiaru = layoutCanvasToolbar(szerokosc);
+    const szerzej = layoutCanvasToolbar(szerokosc, { widok: 2000 });
+    expect(isToolbarGroupExpanded(szerzej, 'widok')).toBe(false);
+    const wezej = layoutCanvasToolbar(szerokosc, { uklady: 10, eksport: 10, widokDodatki: 10 });
+    expect(wezej.collapsed.length).toBeLessThanOrEqual(bezPomiaru.collapsed.length);
+    // Pomiar zerowy/niewiarygodny (jsdom, grupa jeszcze nienarysowana) nie zastępuje szacunku.
+    expect(JSON.stringify(layoutCanvasToolbar(szerokosc, { widok: 0, drzewo: Number.NaN }))).toBe(
+      JSON.stringify(bezPomiaru),
+    );
+  });
+
+  it('przy kanwie 795 px (okno 1440×900 z otwartym inspektorem) polecenia kadru zostają w pasie, dodatki idą do menu', () => {
+    const uklad = layoutCanvasToolbar(795);
+    expect(isToolbarGroupExpanded(uklad, 'drzewo')).toBe(true);
+    expect(isToolbarGroupExpanded(uklad, 'widok')).toBe(true);
+    expect(uklad.collapsed).toContain('widokDodatki');
+    const ostatni = uklad.menuSlot ?? uklad.slots[uklad.slots.length - 1];
+    expect(ostatni.x + ostatni.width + TOOLBAR_EDGE_PX).toBeLessThanOrEqual(795);
   });
 });

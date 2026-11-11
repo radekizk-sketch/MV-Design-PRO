@@ -280,9 +280,17 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
   //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
   //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
+  // AKTUALIZACJA ŚWIADOMA (SLD-CZYTELNOSC-STACJI, 2026-11-11): czytelność widoku stacji.
+  // DOWÓD (sonda: symbole rodzaj + ownerRef + x + y, odcinki punkty, etykiety tekst + x + y;
+  // kod bazy `0a19e5c19` vs kod karty): symbole 11/11 identyczne na L1 i L2; różnią się
+  // WYŁĄCZNIE (a) zacisk `#lv-bus` 16 → 48 (x 976–992 → 960–1008; zacisk ≥ portal + 2·GRID),
+  // (b) podpis „Szyna nN · 0,4 kV" z wiersza pasma nazw (`#name-row-3`) PRZY prawym końcu
+  // zacisku (`#lv-bus-voltage`, x 1024, oś szyny), wiersz „granica modelu" wyżej o 14,
+  // (c) przejście kabla pod stacją (`segment_L`/`segment_R` + koniec otwarty) głębiej o 8
+  // (`ROUTE_SUBLEVEL_STEP` 16). Ramka 1144×790 → 1144×776.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '8f135f305dd1d8a38421e664f4c320c8',
-    2: '6de64cfc159da38853215a96aaf0f5d0',
+    1: 'c4f279e5ec5f7dc1a76b89bb4fb9a58b',
+    2: '0e48c4f2202f38c71fe386aaa28a3e10',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

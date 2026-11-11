@@ -249,9 +249,30 @@ export function isLabelReadableAtScale(cls: LabelClass, scale: number): boolean 
  * przeskalowana do rozmiaru minimalnego, patrz `minReadableFontSize`).
  * Jedyne miejsce, które wolno pytać o ukrycie etykiety (warstwa renderu ORAZ
  * licznik „Ukryto N opisów" — jedna prawda, bez dwóch reguł).
+ *
+ * SLD-CZYTELNOSC-STACJI (ocena właściciela 0/10, 2026-11-11) — PODŁOGA OPISÓW
+ * DANYCH NA POZIOMACH ROBOCZYCH. Do tej karty dane znikały z SAMEGO progu
+ * skali, więc w widoku stacji (L1, skala 0,5–1,1) ginęła prawie cała treść
+ * techniczna: t2 wymaga skali ≥ 0,82, t3 ≥ 1,0, t4 ≥ 1,125. Podłoga 13 px
+ * działała tylko w kadrze CELU (`canvas/zakresKadru.ts`), więc wynik zależał od
+ * drogi dojścia (dwuklik ≠ przybliżenie kółkiem ≠ „Dopasuj widok” na polu).
+ * Rozstrzygnięcie: na poziomach `lod ≥ 1` (pola i aparaty narysowane) dane są
+ * POWIĘKSZANE do progu czytelności w suficie proporcji klasy — tą samą funkcją
+ * co tożsamość (`enlargedFontSizeWithinProportion`) — a znikają wyłącznie, gdy
+ * sufit na to nie pozwala albo plan nie znajdzie miejsca (realna kolizja). Na
+ * poziomie przeglądu (`lod = 0`) zostaje reguła KD-8: dane ukrywa próg, bo
+ * przegląd niesie tożsamość, a nie parametry (zbitka danych kilkudziesięciu
+ * stacji była przyczyną KD-8 poz. 5). Na L1/L2 sufit nie jest osiągalny: dolna
+ * granica histerezy L1 (0,51) wymaga powiększenia t4 o 1,96×, sufit to 3×.
  */
-export function isLabelHiddenAtScale(role: LabelRole, cls: LabelClass, scale: number): boolean {
-  return role === 'dane' && !isLabelReadableAtScale(cls, scale);
+export function isLabelHiddenAtScale(
+  role: LabelRole,
+  cls: LabelClass,
+  scale: number,
+  lod: 0 | 1 | 2 = 0,
+): boolean {
+  if (role !== 'dane' || isLabelReadableAtScale(cls, scale)) return false;
+  return lod === 0 || enlargedFontSizeWithinProportion(cls, scale) === null;
 }
 
 /**

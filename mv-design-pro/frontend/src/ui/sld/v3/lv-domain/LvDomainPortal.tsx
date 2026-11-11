@@ -132,14 +132,14 @@ export function LvDomainPortal({
       ) : error ? (
         <div
           data-testid="lv-domain-portal-error"
-          className="p-6 pr-24 font-mono-eng text-sm text-status-important"
+          className="p-6 pr-24 text-sm text-status-important"
         >
           {error}
         </div>
       ) : (
         <div
           data-testid="lv-domain-portal-loading"
-          className="p-6 pr-24 font-mono-eng text-sm text-scada-muted"
+          className="p-6 pr-24 text-sm text-scada-muted"
         >
           Ładowanie domeny nN…
         </div>

@@ -150,3 +150,43 @@ export const MIN_FIELD_EXIT_CLEARANCE = GRID;
  * daje ~8 px ekranu przy tej samej skali — podpis czyta się jako OSOBNY od toru.
  */
 export const BUSBAR_LABEL_PATH_CLEARANCE = 2 * GRID;
+
+/**
+ * SLD-CZYTELNOSC-STACJI (ocena właściciela 0/10, 2026-11-11) — najmniejszy
+ * odstęp dwóch równoległych tras toru [px EKRANU], przy którym oko rozróżnia
+ * je jako dwa obwody: trzy grubości kreski toru SN (~2,4 px przy podłodze
+ * wagi, `segmentStrokeWidthForScale`) z zaokrągleniem w górę.
+ *
+ * DLACZEGO PIKSELE EKRANU, A NIE JEDNOSTKI ŚWIATA. Do tej karty sub-poziomy
+ * korytarza pod stacją (odejście lateralu, korytarz międzystacyjny, przejście
+ * pod stacją docelową) i kolejne kanały zejść tej samej szczeliny leżały co
+ * `GRID` = 8 j.św. — wartość z siatki rysunku, nie z czytelności. Przy skali
+ * widoku stacji 0,82 (kółko do L1) dawało to 6,5 px, a przy dolnej granicy
+ * histerezy L1 (0,51) 4,1 px: odpływ magistrali i odpływ odgałęzienia zlewały
+ * się w jedną grubą kreskę (zrzut właściciela, stacja odgałęźna S01).
+ */
+export const MIN_PARALLEL_ROUTE_SCREEN_PX = 8;
+
+/**
+ * Najmniejsza skala kamery, przy której rysowane są sub-poziomy korytarza i
+ * kanały zejść jako osobne trasy: dolny brzeg histerezy wejścia w L1
+ * (`DEFAULT_LOD_THRESHOLDS.l0Max − LOD_HYSTERESIS_MARGIN` = 0,6 − 0,15·0,6
+ * = 0,51, `canvas/camera.ts`). Na L0 korytarz degeneruje do osi magistrali
+ * (`interStationCorridorY`), więc niższych skal ta reguła nie dotyczy. Spójność
+ * z kamerą przypina test `layout/__tests__/odstepTras.test.ts` (warstwa
+ * układu nie importuje kamery — kierunek zależności scena → kanwa jest zakazany).
+ */
+export const MIN_ROUTE_SEPARATION_SCALE = 0.51;
+
+/**
+ * Krok sub-poziomów korytarza i kanałów zejść [j.św.] — WYPROWADZONY z
+ * czytelności ekranowej: najmniejsza wielokrotność `GRID`, która przy
+ * `MIN_ROUTE_SEPARATION_SCALE` daje co najmniej `MIN_PARALLEL_ROUTE_SCREEN_PX`
+ * (8 / 0,51 = 15,7 → 16 = 2×GRID). Jedna stała dla WSZYSTKICH miejsc tej klasy
+ * (`scene/buildScene.ts`): `trunkCorridorYOf`, przejście pod stacją (`underY`
+ * lateralu i łącznika arkusza), drugi i kolejny kanał z punktu odgałęźnego
+ * (`descentHead`) oraz `LATERAL_CHANNEL_STEP` (kanały zejść tej samej szczeliny
+ * i szczeliny GPZ).
+ */
+export const ROUTE_SUBLEVEL_STEP =
+  Math.ceil(MIN_PARALLEL_ROUTE_SCREEN_PX / MIN_ROUTE_SEPARATION_SCALE / GRID) * GRID;

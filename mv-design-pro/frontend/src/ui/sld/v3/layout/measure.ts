@@ -294,6 +294,9 @@ export const LV_PORTAL_DROP_HEIGHT = 2 * GRID;
  *  odbioru | pion trunku DER): gabaryty nie mogą się stykać, bo
  *  `symbolWireCollisions` czyta styk symbolu z kreską jako kolizję. */
 const LV_TERMINAL_GAP = GRID;
+/** Połowa najmniejszej długości zacisku nN [j.św.]: pół portalu + `GRID` —
+ *  szyna wystaje poza portal z obu stron (`planLvTerminal`). */
+export const LV_TERMINAL_MIN_HALF = LV_PORTAL_WIDTH / 2 + GRID;
 /** Bufor pod portalem (jak `DER_ROW_BOTTOM_BUFFER`). */
 const LV_PORTAL_BOTTOM_BUFFER = GRID;
 
@@ -351,9 +354,14 @@ export function planLvTerminal(
 ): LvTerminalPlan {
   const minX = Math.min(...portXs);
   const maxX = Math.max(...portXs);
-  const coreLeft = minX === maxX ? minX - GRID : minX;
-  const coreRight = minX === maxX ? maxX + GRID : maxX;
-  const axisX = snapToGrid((coreLeft + coreRight) / 2);
+  // SLD-CZYTELNOSC-STACJI: zacisk nN jest SZYNĄ, nie kreską. Do tej karty rdzeń
+  // jednego transformatora miał ±GRID (16 j.św. — 13 px ekranu w widoku stacji,
+  // węższy od portalu nN, który z niego zwisa: pomiar e2e „przed” 13,1–22,8 px).
+  // Rdzeń obejmuje teraz co najmniej portal z marginesem GRID z każdej strony
+  // (`LV_TERMINAL_MIN_HALF`), także przy wielu transformatorach blisko siebie.
+  const axisX = snapToGrid((minX + maxX) / 2);
+  const coreLeft = Math.min(minX, axisX - LV_TERMINAL_MIN_HALF);
+  const coreRight = Math.max(maxX, axisX + LV_TERMINAL_MIN_HALF);
   const portalRight = axisX + LV_PORTAL_WIDTH / 2;
   const rightOfCore = Math.max(coreRight, portalRight);
   const loadDropX = opts.hasLoad
@@ -890,14 +898,41 @@ function multiSectionColumnLayout(
   return out;
 }
 
+/**
+ * SLD-CZYTELNOSC-STACJI — gdzie stoi podpis szyny nN („Szyna nN · 0,4 kV").
+ * Do tej karty ZAWSZE w paśmie nazw stacji (B5), pod blokiem, daleko od
+ * zacisku, który opisuje (zrzut właściciela: „Szyna nN · 0,4 kV” pod nazwą
+ * stacji, nie przy szynie). Teraz — PRZY zacisku `#lv-bus`, na prawo od jego
+ * końca, gdy kolumna transformatora jest SKRAJNIE PRAWĄ kolumną bloku (tam na
+ * prawo od zacisku nie biegnie zejście żadnego pola, więc podpis nie przecina
+ * toru; rezerwację szerokości dokłada `requiredStationWidth`). Gdy na prawo od
+ * transformatora stoi pole (TR nie musi być ostatnią kolumną), jego zejście
+ * kablowe przechodzi przez poziom zacisku — podpis zostaje wtedy w paśmie nazw.
+ *
+ * JEDEN predykat dla kompozycji (etykieta przy zacisku albo wiersz pasma),
+ * wysokości pasma nazw i rezerwacji szerokości (reguła KLASA §3).
+ */
+export function lvBusLabelAtTerminal(station: StationColumnsInput): boolean {
+  if (!stationHasLvSide(station)) return false;
+  const portXs = lvTerminalPortXs(station);
+  if (portXs.length === 0) return false;
+  const osie = stationSnColumnLayout(station, 0).map((p) => p.centerX);
+  return Math.max(...portXs) >= Math.max(...osie);
+}
+
+/** Klasa pisma podpisu szyny nN przy zacisku — t4, jak wiersz pasma nazw, który zastępuje. */
+export const LV_BUS_LABEL_CLASS = 't4' as const;
+
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
  *  `requiredStationWidth`, ta sama pula co nazwa/kod/kVA/typ). */
 function lvSideNameRowWidths(
-  station: Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad' | 'hasTransformer'>,
+  station: StationColumnsInput & Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad' | 'hasTransformer'>,
 ): number[] {
   if (!stationHasLvSide(station)) return [];
   return [
-    measureLabelWidth(stationLvBusbarLabelText(station.nnVoltageKv), 't4'),
+    ...(lvBusLabelAtTerminal(station)
+      ? []
+      : [measureLabelWidth(stationLvBusbarLabelText(station.nnVoltageKv), LV_BUS_LABEL_CLASS)]),
     station.aggregatedLvLoad
       ? measureLabelWidth(stationLvLoadLabelText(station.aggregatedLvLoad), 't4')
       : measureLabelWidth(LV_MODEL_BOUNDARY_TEXT, 't4'),
@@ -1306,7 +1341,7 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
   if (station.stationTypeLabel) height += LABEL_LINE_HEIGHT_T4;
   // pkt 6 (recenzja NO-GO 2026-07-17): dwa wiersze strony nN (szyna nN +
   // odbiór/granica modelu) — TA SAMA kolejność co `composeStation` `rows`.
-  if (stationHasLvSide(station)) height += 2 * LABEL_LINE_HEIGHT_T4;
+  if (stationHasLvSide(station)) height += (lvBusLabelAtTerminal(station) ? 1 : 2) * LABEL_LINE_HEIGHT_T4;
   return height;
 }
 
@@ -1343,7 +1378,21 @@ export function requiredStationWidth(station: StationMeasureInput): number {
     const portalRight = plan.portalCenterX + LV_PORTAL_WIDTH / 2;
     const loadRight = plan.loadDropX != null ? plan.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0;
     const derRowRight = nnDer.length > 0 ? plan.derRowStartX + derRowFootprint(nnDer).width : 0;
-    blockWidth = Math.max(blockWidth, portalRight - GRID, loadRight - GRID, derRowRight - GRID);
+    // SLD-CZYTELNOSC-STACJI: podpis szyny nN przy zacisku (`lvBusLabelAtTerminal`)
+    // — na prawo od końca zacisku z prześwitem toru; ta sama geometria co
+    // `composeStation` (kotwica `busRight`, `placement:'right'`).
+    const lvBusLabelRight = lvBusLabelAtTerminal(station)
+      ? plan.busRight + BUSBAR_LABEL_PATH_CLEARANCE
+        + measureLabelWidth(stationLvBusbarLabelText(station.nnVoltageKv), LV_BUS_LABEL_CLASS)
+      : 0;
+    blockWidth = Math.max(
+      blockWidth,
+      portalRight - GRID,
+      loadRight - GRID,
+      derRowRight - GRID,
+      plan.busRight - GRID,
+      lvBusLabelRight - GRID,
+    );
   }
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];

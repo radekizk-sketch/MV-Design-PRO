@@ -89,6 +89,8 @@ import {
   stationLvBusbarLabelText,
   stationLvLoadLabelText,
   stationPortCaptionHeight,
+  lvBusLabelAtTerminal,
+  LV_BUS_LABEL_CLASS,
   type StationMeasureInput,
 } from '../layout/measure';
 import {
@@ -1850,6 +1852,22 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         { x: plan.busRight, y: busY },
       ],
     });
+    // SLD-CZYTELNOSC-STACJI: podpis szyny nN PRZY zacisku (na prawo od jego
+    // końca), gdy kolumna TR jest skrajnie prawą kolumną bloku — jeden
+    // predykat z rezerwacją szerokości i wysokością pasma nazw
+    // (`lvBusLabelAtTerminal`, `layout/measure.ts`). Para etykieta↔szyna:
+    // `#lv-bus-voltage` ↔ `#lv-bus` (`busbarLabelGaps`, `scene/buildScene.ts`).
+    if (lvBusLabelAtTerminal(station)) {
+      busbarLabels.push({
+        ownerRef: `${station.id}#lv-bus-voltage`,
+        ownerKind: 'busbar-voltage',
+        text: stationLvBusbarLabelText(station.nnVoltageKv),
+        labelClass: LV_BUS_LABEL_CLASS,
+        anchor: { x: plan.busRight, y: busY },
+        placement: 'right',
+        clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+      });
+    }
     lvPorts.forEach((p, index) => {
       segments.push({
         ownerRef: `${station.id}#lv-drop-${index}`,
@@ -2059,7 +2077,11 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   if (hasLvSection && lvPorts.length > 0) {
     // Podpis szyny nN („Szyna nN · 0,4 kV") to NAPIĘCIE SZYNY — ta sama klasa
     // co `busbar-voltage` szyn SN/WN, tyle że niesiona wierszem pasma nazw.
-    rows.push({ text: stationLvBusbarLabelText(station.nnVoltageKv), labelClass: 't4', role: 'tozsamosc' });
+    // SLD-CZYTELNOSC-STACJI: wiersz pasma tylko wtedy, gdy podpis nie stoi przy
+    // zacisku (`lvBusLabelAtTerminal` — ten sam predykat co etykieta wyżej).
+    if (!lvBusLabelAtTerminal(station)) {
+      rows.push({ text: stationLvBusbarLabelText(station.nnVoltageKv), labelClass: LV_BUS_LABEL_CLASS, role: 'tozsamosc' });
+    }
     rows.push({
       text: station.aggregatedLvLoad
         ? stationLvLoadLabelText(station.aggregatedLvLoad)

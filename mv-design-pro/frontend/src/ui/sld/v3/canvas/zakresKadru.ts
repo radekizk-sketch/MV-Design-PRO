@@ -831,7 +831,7 @@ export function prostokatyZakresu(
             maxY: Math.max(box.maxY, r.y + r.height),
           }
         : { minX: r.x, minY: r.y, maxX: r.x + r.width, maxY: r.y + r.height };
-    const plan = planSceneLabels(scena.labels, sceneObstacleRects(scena), scale, sheetSizeFor(scena), podloga);
+    const plan = planSceneLabels(scena.labels, sceneObstacleRects(scena), scale, sheetSizeFor(scena), podloga, lod);
     for (const narysowana of plan.drawn) {
       const klucze = kluczePrzynaleznosci(narysowana.label.ownerRef);
       if (nalezyDoZakresu(narysowana.label.ownerRef, refyCelu)) cel = dolacz(cel, narysowana.rect);

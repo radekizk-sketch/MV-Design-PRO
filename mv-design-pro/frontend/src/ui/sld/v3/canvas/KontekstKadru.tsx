@@ -13,7 +13,7 @@ import { CELE_MENU_KADRU, ETYKIETA_CELU_KADRU, type CelKadru, type PoziomSciezki
 
 /** Klasa przycisków pasa narzędzi kanwy (ta sama co pozostałe kontrolki doku widoku). */
 export const KLASA_PRZYCISKU_DOKU =
-  'h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40';
+  'h-7 shrink-0 whitespace-nowrap rounded border border-scada-border bg-scada-panel/95 px-2 text-[11px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40';
 
 export function MenuDopasujDo(props: {
   readonly dostepnosc: Readonly<Record<CelKadru, DostepnoscCelu>>;
@@ -152,7 +152,7 @@ export function PasekKontekstuKadru(props: {
           >
             ◀
           </button>
-          <span className="font-mono-eng" data-testid="sld-v3-stacja-licznik">
+          <span className="tabular-nums" data-testid="sld-v3-stacja-licznik">
             {indeksStacji + 1}/{stacje.length}
           </span>
           <button
