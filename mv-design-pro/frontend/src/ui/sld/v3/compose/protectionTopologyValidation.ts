@@ -91,6 +91,8 @@ export interface ProtectionTopologyDomainContext {
    *  strefy — `undefined` = protection assignment tego pola nie niesie
    *  żadnego CT (87T nie sprawdza liczby CT, dotychczasowe uproszczenie). */
   readonly ctZoneRefs?: readonly string[];
+  /** Transformator wskazany przez pole elementem modelu (`PoleWalidacjiTopologii.transformatorWPolu`). */
+  readonly transformatorWPolu?: boolean;
 }
 
 const REASON_LABEL_PL: Readonly<Record<ProtectionTopologyGapReason, string>> = {
@@ -127,7 +129,8 @@ export function protectionFunctionTopologyGaps(
   if (!primaryDevices || primaryDevices.length === 0) return [];
 
   const hasCoreBalanceCt = primaryDevices.some((d) => d.kind === 'CORE_BALANCE_CT');
-  const hasTransformer = primaryDevices.some((d) => d.kind === 'TRANSFORMER_DEVICE');
+  const hasTransformer =
+    primaryDevices.some((d) => d.kind === 'TRANSFORMER_DEVICE') || domainContext?.transformatorWPolu === true;
   const hasI0Source = primaryDevices.some((d) => d.kind === 'CT');
 
   const gaps: ProtectionTopologyGap[] = [];
@@ -167,6 +170,10 @@ export interface PoleWalidacjiTopologii {
     readonly ctRefsSecondary?: readonly string[];
   };
   readonly zrodloU0?: ZrodloU0PolaView;
+  /** Pole wskazuje transformator elementem modelu (`Bay.equipment_refs`), a nie rekordem aparatu
+   *  — pole TR GPZ (ENEA Z.7, karta UX-04/ROZDZIELNICA-SN-KOREKTA): transformator 110 kV/SN jest
+   *  gałęzią modelu rysowaną w torze transformatora, nie aparatem pola. */
+  readonly transformatorWPolu?: boolean;
 }
 
 /**
@@ -185,5 +192,9 @@ export function brakiTopologiiFunkcjiPola(
   const ctZoneRefs = (marking?.ctRefsSecondary?.length ?? 0) > 0
     ? [...new Set([...(marking?.ctRef != null ? [marking.ctRef] : []), ...(marking?.ctRefsSecondary ?? [])])]
     : undefined;
-  return protectionFunctionTopologyGaps(codes, bay.primaryDevices, { zrodloU0: bay.zrodloU0, ctZoneRefs });
+  return protectionFunctionTopologyGaps(codes, bay.primaryDevices, {
+    zrodloU0: bay.zrodloU0,
+    ctZoneRefs,
+    ...(bay.transformatorWPolu ? { transformatorWPolu: true } : {}),
+  });
 }

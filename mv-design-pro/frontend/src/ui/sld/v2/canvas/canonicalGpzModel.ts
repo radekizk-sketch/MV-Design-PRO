@@ -179,6 +179,8 @@ export interface CanonicalGpzBay {
    *  (obwód okrężny „Z, Zz", ENEA Z.10/Z.11.1) i ostrzeżenie 67N bez potwierdzonego źródła.
    *  `undefined` = pole bez powiązania i bez funkcji wymagającej źródła. */
   readonly zrodloU0?: ZrodloU0PolaView;
+  /** Pole wskazuje transformator elementem modelu (`Bay.equipment_refs`) — pole TR GPZ (Z.7). */
+  readonly transformatorWPolu?: boolean;
 }
 
 export type BayFieldRole =
@@ -226,6 +228,12 @@ export interface CanonicalGpzCoupler {
   readonly rodzaj?: 'wylacznik' | 'lacznik';
   /** Pole sprzęgła wskazujące gałąź (`null`/brak = brak rekordu pola). */
   readonly bayRef?: string | null;
+  /** Rekord pola sprzęgła (aparaty łącznika szyn, ENEA Z.12) — `null`/brak = brak rekordu pola;
+   *  wtedy rysunek niesie sam łącznik gałęzi `bus_coupler` w osi szyn. */
+  readonly pole?: CanonicalGpzBay | null;
+  /** Sekcja szyny pola sprzęgła (`Bay.bus_ref`) — początek obchodu toru pola; `null` = szyna pola
+   *  nie jest szyną sekcji. */
+  readonly sekcjaPola?: string | null;
 }
 
 export interface CanonicalGpzTransformer {

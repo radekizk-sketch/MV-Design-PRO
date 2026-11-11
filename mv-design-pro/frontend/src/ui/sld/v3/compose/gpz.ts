@@ -1675,7 +1675,50 @@ function symbolSprzegla(coupler: CanonicalGpzCoupler): 'lineBreaker' | 'lineSwit
 }
 
 function szerokoscPasaSprzegla(coupler: CanonicalGpzCoupler): number {
+  const celki = celkiSprzegla(coupler);
+  if (celki) return snapUp(celki.a.szerokosc + FIELD_GAP + celki.b.szerokosc + 2 * FIELD_GAP);
   return snapUp(Math.max(SYMBOL_DEFS[symbolSprzegla(coupler)].width, measureLabelWidth(coupler.designation, 't3')) + 2 * FIELD_GAP);
+}
+
+/** Celka układu sprzęgła: aparaty (w kolejności od JEJ szyny), szerokość kolumny i pasy opisów. */
+interface CelkaSprzegla {
+  readonly spec: readonly FieldApparatusSpec[];
+  readonly szerokosc: number;
+  readonly pasy: number;
+  readonly torGlowny: number;
+}
+
+/**
+ * Karta UX-04/ROZDZIELNICA-SN-KOREKTA (pkt 2) — pole łącznika szyn jako JEDEN układ (ENEA Z.12
+ * s.92: szyna sekcji A → wskaźnik napięcia, łącznik trójpołożeniowy, wyłącznik z napędem,
+ * przekładnik prądowy → łącznik trójpołożeniowy, wskaźnik napięcia → szyna sekcji B; Z.2 s.78:
+ * realizacja w dwóch celkach ŁS 1 i ŁS 2 objętych jedną ramką). Tor pola sprzęgła z rekordów
+ * aparatów (obchód portów od szyny sekcji lewej, `specyfikacjaPolaGpz`) dzieli się za OSTATNIM
+ * wyłącznikiem albo przekładnikiem prądowym toru: celka sekcji lewej wisi pod szyną lewą
+ * (kolejność od szyny lewej), celka sekcji prawej — pod szyną prawą (ta sama droga czytana od
+ * szyny prawej, więc każdy symbol ma swoją szynę u góry: bez odwracania symboli). Celki łączy
+ * przewód pod nimi — sekcje łączą się WYŁĄCZNIE przez aparaturę pola (szyny między celkami nie
+ * biegną). `null` — pole bez rekordów aparatów albo bez wyłącznika/przekładnika w torze, albo bez
+ * aparatu po stronie sekcji prawej; wtedy rysunek niesie łącznik gałęzi `bus_coupler` w osi szyn.
+ */
+function celkiSprzegla(coupler: CanonicalGpzCoupler): { readonly a: CelkaSprzegla; readonly b: CelkaSprzegla } | null {
+  const pole = coupler.pole;
+  if (!pole || (pole.primaryDevices ?? []).length === 0) return null;
+  const spec = specyfikacjaPolaGpz(pole);
+  if (spec.some((s) => s.odgalezienie != null)) return null;
+  const glowne = torGlownyPolaGpz(spec);
+  const ostatni = [...glowne].reverse().find((i) => spec[i].device?.kind === 'CB' || spec[i].device?.kind === 'CT');
+  if (ostatni === undefined) return null;
+  const a = spec.slice(0, ostatni + 1);
+  const b = spec.slice(ostatni + 1).reverse();
+  if (!glowne.some((i) => i > ostatni)) return null;
+  const celka = (s: readonly FieldApparatusSpec[], oznaczenie: string): CelkaSprzegla => ({
+    spec: s,
+    szerokosc: snapUp(fieldColumnRequiredWidth(pole, s, oznaczenie)),
+    pasy: pasyOpisowPolaGpz(s).szerokosc,
+    torGlowny: gpzFieldPlanFootprint(s).mainStack.width,
+  });
+  return { a: celka(a, coupler.designation), b: celka(b, '') };
 }
 
 /** Połowa szerokości etykiety sekcji (etykieta wyśrodkowana na lewym końcu szyny). */
@@ -2953,6 +2996,126 @@ function composeGpzPrzebieg(
     const zejscia = zejsciaBlokuZrodel(zrodla.length, koniecTresci);
     return Math.max(koniecTresci, zejscia[zejscia.length - 1]!);
   };
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (pkt 2, `celkiSprzegla`): układ łącznika szyn w dwóch
+  // celkach pasa sprzęgła. Celka sekcji lewej i celka sekcji prawej wiszą pod końcami SWOICH szyn
+  // (szyna sekcji dochodzi do zejścia swojej celki), przewód pod celkami domyka tor pola. Szyny
+  // między celkami nie biegną — stan otwarty łącznika widać na jego kaflu, a sekcje łączy wyłącznie
+  // aparatura pola. Oznaczenie, opisy aparatów, przekładnie i blok zabezpieczeń — te same funkcje co
+  // pole sekcji (`kolumnyOpisowPolaGpz`, `adnotacjePolaGpz`).
+  const rysujUkladSprzegla = (
+    coupler: CanonicalGpzCoupler,
+    pole: CanonicalGpzBay,
+    celki: { readonly a: CelkaSprzegla; readonly b: CelkaSprzegla },
+    pas: { readonly lewo: number; readonly prawo: number },
+    lewa: (typeof sectionLayouts)[number],
+    prawa: (typeof sectionLayouts)[number],
+    gapStart: number,
+    gapEnd: number,
+  ): void => {
+    // Celka szyny pola (początek obchodu toru) stoi pod swoją sekcją; druga — pod drugą.
+    const poleNaPrawej = coupler.sekcjaPola === prawa.section.sectionId;
+    const [celkaLewa, celkaPrawa] = poleNaPrawej ? [celki.b, celki.a] : [celki.a, celki.b];
+    const lewaKrawedz = snapUp(pas.lewo + FIELD_GAP);
+    const uklad = [
+      { celka: celkaLewa, sekcja: lewa, leftX: lewaKrawedz },
+      { celka: celkaPrawa, sekcja: prawa, leftX: lewaKrawedz + celkaLewa.szerokosc + FIELD_GAP },
+    ];
+    const topY = snBusY + GRID;
+    const stosy = uklad.map(({ celka, sekcja, leftX }, k) => {
+      const centerX = snapToGrid(leftX + celka.pasy + celka.torGlowny / 2);
+      const odSzynyPola = celka === celki.a;
+      const stack = buildFieldStack(
+        celka.spec,
+        centerX,
+        topY,
+        // Wyłącznik układu niesie tożsamość sprzęgła (`gpz-canonical-coupler-⟨gałąź⟩`) — ten sam
+        // identyfikator co dawny glif w osi szyn (nakładki, wyniki, zaznaczenie).
+        (_i, id) =>
+          rodzajSymbolu(id) === 'breaker'
+            ? `gpz-canonical-coupler-${coupler.couplerId}`
+            : `gpz-canonical-coupler-${coupler.couplerId}-${k === 0 ? 'l' : 'p'}-${id}`,
+        { sectionId: sekcja.section.sectionId, bayRef: pole.bayRef, couplerRef: coupler.couplerId },
+        // Porty ENM opisują obchód od szyny pola — przewody z portów w celce tej szyny; celka
+        // drugiej szyny czyta tę samą drogę od końca (aparaty stykają się portami N/S stosu).
+        odSzynyPola ? { przewodyZPortow: true } : {},
+      );
+      return { celka, sekcja, leftX, centerX, stack };
+    });
+    const powerPath = (sectionId: string): GpzElementMeta => ({
+      parityKeys: ['gpz.coupler', 'gpz.bay.power_path'],
+      sectionId,
+      bayRef: pole.bayRef,
+      couplerRef: coupler.couplerId,
+    });
+    tag(['gpz.coupler', 'gpz.bay.power_path']);
+    stosy.forEach(({ celka, sekcja, leftX, centerX, stack }, k) => {
+      symbols.push(...stack.instances);
+      stack.instances.forEach((instance) =>
+        tag([...instance.meta.parityKeys, 'gpz.coupler', ...(rodzajSymbolu(instance.symbolId) === 'breaker' ? ['gpz.apparatus.cb'] : [])]),
+      );
+      stack.branchSegments.forEach((branch, bi) => {
+        segments.push({
+          ownerRef: `${pole.bayRef}#${branch.ownerSuffix ?? `lateral-${k}-${bi}`}`,
+          points: branch.points,
+          meta: { parityKeys: [], sectionId: sekcja.section.sectionId, bayRef: pole.bayRef },
+        });
+      });
+      stack.wireSegments.forEach((wire, wi) => {
+        segments.push({ ownerRef: `${pole.bayRef}#wire-${k}-${wi}`, points: wire.points, meta: powerPath(sekcja.section.sectionId) });
+      });
+      // Zejście z szyny do pierwszego aparatu celki i szyna sekcji dociągnięta do zejścia.
+      const zejscie = punktyZejsciaDoPortu(snBusY, stack.topPort);
+      segments.push({ ownerRef: `${pole.bayRef}#descent-${k}`, points: zejscie, meta: powerPath(sekcja.section.sectionId) });
+      const xZejscia = zejscie[0].x;
+      segments.push({
+        ownerRef: `${coupler.couplerId}#tie-${k === 0 ? 'a' : 'b'}`,
+        points:
+          k === 0
+            ? [{ x: gapStart, y: snBusY }, { x: Math.max(gapStart, xZejscia), y: snBusY }]
+            : [{ x: Math.min(gapEnd, xZejscia), y: snBusY }, { x: gapEnd, y: snBusY }],
+        meta: { parityKeys: ['gpz.coupler'], sectionId: sekcja.section.sectionId },
+      });
+      const kolumnaPrzekladni = kolumnyOpisowPolaGpz(pole, celka.spec, stack, centerX);
+      if (k === 0) {
+        // Oznaczenie układu przy celce lewej — jak oznacznik pola sekcji (prawa strona toru).
+        fieldDesignations.push({
+          ownerRef: `${coupler.couplerId}#designation`,
+          ownerKind: 'apparatus',
+          text: coupler.designation,
+          labelClass: 't3',
+          anchor: {
+            x: snapToGrid(centerX - celka.torGlowny / 2 + gpzFieldPlanFootprint(celka.spec).width),
+            y: stack.topPort.y + labelLineHeight('t3') / 2,
+          },
+          placement: 'right',
+        });
+      }
+      // Blok zabezpieczeń układu stoi przy celce z wyłącznikiem (tor wyzwalania do wyłącznika).
+      if (stack.instances.some((instance) => rodzajSymbolu(instance.symbolId) === 'breaker')) {
+        adnotacjePolaGpz(
+          pole,
+          stack.instances,
+          leftX + celka.szerokosc,
+          { sectionId: sekcja.section.sectionId, bayRef: pole.bayRef, couplerRef: coupler.couplerId },
+          kolumnaPrzekladni,
+        );
+      }
+    });
+    // Przewód pod celkami — domknięcie toru pola między końcami obu celek.
+    const [l, p] = stosy;
+    const dolY = snapUp(Math.max(l.stack.bottomPort.y, p.stack.bottomPort.y) + GRID);
+    segments.push({
+      ownerRef: `${pole.bayRef}#polaczenie-celek`,
+      points: [
+        { x: l.stack.bottomPort.x, y: l.stack.bottomPort.y },
+        { x: l.stack.bottomPort.x, y: dolY },
+        { x: p.stack.bottomPort.x, y: dolY },
+        { x: p.stack.bottomPort.x, y: p.stack.bottomPort.y },
+      ],
+      meta: powerPath(lewa.section.sectionId),
+    });
+  };
+
   props.couplers.forEach((coupler) => {
     const leftLayout = sectionById.get(coupler.leftSectionId);
     const rightLayout = sectionById.get(coupler.rightSectionId);
@@ -2964,6 +3127,14 @@ function composeGpzPrzebieg(
     // Wyłącznik sprzęgła na środku pasa sprzęgła (za blokiem źródła sekcji lewej, przed
     // etykietą sekcji prawej — `layoutSections`), gdy sekcje sąsiadują w porządku `order`.
     const pas = sectionLayouts[sectionLayouts.indexOf(first) + 1] === second ? first.pasSprzegla : null;
+    const celki =
+      pas && (coupler.sekcjaPola === first.section.sectionId || coupler.sekcjaPola === second.section.sectionId)
+        ? celkiSprzegla(coupler)
+        : null;
+    if (pas && celki && coupler.pole) {
+      rysujUkladSprzegla(coupler, coupler.pole, celki, pas, first, second, gapStart, gapEnd);
+      return;
+    }
     const midX = snapToGrid(pas ? (pas.lewo + pas.prawo) / 2 : (gapStart + gapEnd) / 2);
     // GEOMETRIA-STACJI (Z-07/Z-08): sprzęgło = gałąź `bus_coupler` modelu, glif TORU
     // POZIOMEGO w osi szyny w stanie z gałęzi; łącznik szyn dochodzi z obu stron do portów
@@ -3576,6 +3747,16 @@ function composeGpzPrzebieg(
     });
   // GPZ-PARYTET cz. 3 (pkt 2): pola toru transformatora (WN TR, TR) z modelu mają kartę
   // w tabeli „Pola GPZ" jak każde pole — po przeniesieniu z sekcji do wieży nie znikają.
+  // Pole sprzęgła narysowane układem celek (`rysujUkladSprzegla`) ma kartę i tło jak każde pole.
+  props.couplers.forEach((coupler) => {
+    if (!coupler.pole || !symbols.some((sym) => sym.meta.bayRef === coupler.pole!.bayRef)) return;
+    polaTabeli.push({
+      bayRef: coupler.pole.bayRef,
+      oznaczenie: coupler.designation.trim() || null,
+      rola: coupler.pole.rolaPola,
+      plakietki: coupler.pole.statusFlags,
+    });
+  });
   props.transformers.forEach((transformer) => {
     for (const pole of [transformer.poleWn, transformer.poleTr]) {
       if (!pole) continue;

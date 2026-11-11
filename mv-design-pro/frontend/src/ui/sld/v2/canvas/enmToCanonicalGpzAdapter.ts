@@ -170,7 +170,15 @@ export function buildCanonicalGpzProps(
   );
   // GEOMETRIA-STACJI (Z-07): pole sprzęgła wskazujące narysowane sprzęgło NIE jest osobnym
   // polem sekcji — jego oznaczenie i aparat niesie sprzęgło (jedno miejsce na rysunku).
-  const couplers = buildCouplers(substation, allBays, enm.branches ?? []);
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (pkt 2, ENEA Z.12 s.92, Z.2 s.78): pole sprzęgła niesie
+  // aparaty łącznika szyn (rekordy `primary_devices`) — kompozycja rysuje z nich JEDEN układ
+  // (celka sekcji lewej i celka sekcji prawej połączone pod szynami), nie samotny glif na szynie.
+  const bayById = new Map(allBays.map((bay) => [bay.ref_id, bay]));
+  const couplers = buildCouplers(substation, allBays, enm.branches ?? []).map((coupler) => {
+    const bay = coupler.bayRef ? bayById.get(coupler.bayRef) : undefined;
+    const sekcjaPola = bay ? (substation.gpz_sections ?? []).find((sec) => sec.bus_ref === bay.bus_ref)?.section_id ?? null : null;
+    return { ...coupler, pole: bay ? buildBay(bay, protectionCtx) : null, sekcjaPola };
+  });
   const polaSprzegiel = new Set(couplers.map((c) => c.bayRef).filter((ref): ref is string => ref != null));
   const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id) && !polaSprzegiel.has(bay.ref_id));
 
@@ -187,7 +195,16 @@ export function buildCanonicalGpzProps(
   // Każdy transformator stacji rysuje się torem transformatora; pole TR przypisane wyżej
   // niesie stan łączników i tożsamość pola toru (dawniej transformator z polem TR był
   // pomijany, a szablon pola TR w sekcji nie miał symbolu transformatora — znikał z rysunku).
-  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, (tr) => ({
+  // Karta UX-04/ROZDZIELNICA-SN-KOREKTA (pkt 1): transformator 110 kV/SN przyłącza się do sekcji
+  // przez SWOJE pole TR — strona dolna na zacisku pola (`Bay.terminal_bus_ref`), pole na szynie
+  // sekcji. Sekcja transformatora: szyna strony dolnej, gdy jest szyną sekcji, albo szyna pola TR,
+  // którego zaciskiem jest strona dolna (lustro `enm/topology.szyny_sekcji_transformatorow_gpz`).
+  const szynaSekcjiTransformatora = (tr: Transformer): string => {
+    if (sectionIdByLvBusRef.has(tr.lv_bus_ref)) return tr.lv_bus_ref;
+    const pole = polaTrSn.get(tr.ref_id);
+    return pole && pole.terminal_bus_ref === tr.lv_bus_ref ? pole.bus_ref : tr.lv_bus_ref;
+  };
+  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, szynaSekcjiTransformatora, (tr) => ({
     poleTr: polaTrSn.has(tr.ref_id) ? buildBay(polaTrSn.get(tr.ref_id)!, protectionCtx) : null,
     poleWn: polaTrWn.has(tr.ref_id) ? buildBay(polaTrWn.get(tr.ref_id)!, protectionCtx) : null,
   }));
@@ -370,6 +387,7 @@ function przypiszPolaTr(
 function buildTransformers(
   transformers: readonly Transformer[],
   sectionIdByLvBusRef: ReadonlyMap<string, string>,
+  szynaSekcji: (tr: Transformer) => string,
   polaToru: (tr: Transformer) => Pick<CanonicalGpzTransformer, 'poleTr' | 'poleWn'>,
 ): CanonicalGpzTransformer[] {
   return transformers
@@ -387,7 +405,7 @@ function buildTransformers(
       // niekompletna, mimo że model je NIÓSŁ.
       ukPercent: tr.uk_percent ?? null,
       pkKw: tr.pk_kw ?? null,
-      lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
+      lvSectionId: sectionIdByLvBusRef.get(szynaSekcji(tr)) ?? null,
       hvBusRef: tr.hv_bus_ref ?? null,
       // SLD-02 (V12K-091): adnotacja OLTC/DETC z kanonicznego tap_changer
       // (reuse buildOltcAnnotation; null gdy brak regulacji).
@@ -593,6 +611,11 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4): źródło 3U₀ funkcji 67N
     // z wejścia 3U₀ sterownika pola, ta sama funkcja co pola stacji.
     ...zrodloU0Deskryptora(protectionCtx, bay),
+    // Karta UX-04/ROZDZIELNICA-SN-KOREKTA: pole TR wskazujące transformator modelu — 87T ma
+    // transformator w strefie (dawniej „brak transformatora” przy każdym polu TR GPZ).
+    ...((bay.equipment_refs ?? []).some((ref) => protectionCtx.transformers.some((tr) => tr.ref_id === ref))
+      ? { transformatorWPolu: true }
+      : {}),
   };
 }
 
@@ -770,8 +793,15 @@ function deriveSnNeutralEarthing(
     if (nosnik.dlawik) return { kind: 'coil', ...(rezystor ? { rOhm } : {}) };
     if (rezystor) return { kind: 'resistor', rOhm };
   }
+  // Strona dolna transformatora 110 kV/SN na szynie sekcji albo na zacisku pola TR sekcji (karta
+  // UX-04/ROZDZIELNICA-SN-KOREKTA — transformator w swoim polu; to samo przypisanie co adapter wyżej).
+  const zaciskiPolTr = new Set(
+    (bays ?? [])
+      .filter((bay) => bay.bay_role === 'TR' && szynySn.has(bay.bus_ref) && bay.terminal_bus_ref)
+      .map((bay) => bay.terminal_bus_ref as string),
+  );
   const uzwojenie = [...transformers]
-    .filter((tr) => szynySn.has(tr.lv_bus_ref) && tr.lv_neutral)
+    .filter((tr) => (szynySn.has(tr.lv_bus_ref) || zaciskiPolTr.has(tr.lv_bus_ref)) && tr.lv_neutral)
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))[0]?.lv_neutral;
   if (!uzwojenie) return null;
   const kind =
