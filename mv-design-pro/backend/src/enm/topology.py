@@ -228,21 +228,43 @@ def szyny_sekcji_gpz(snapshot: EnergyNetworkModel | Mapping[str, object]) -> fro
     )
 
 
+def szyny_sekcji_transformatorow_gpz(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> dict[str, str]:
+    """`ref_id` transformatora → szyna sekcji SN GPZ, do której przyłącza go jego strona dolna:
+    wprost (strona dolna na szynie sekcji) albo przez pole roli ``TR`` tej sekcji (strona dolna
+    na zacisku pola, `Bay.terminal_bus_ref`; karta UX-04/ROZDZIELNICA-SN-KOREKTA — każdy
+    transformator 110 kV/SN w swoim polu SN). JEDNO źródło przypisania transformatora do sekcji
+    dla walidatora, operacji GPZ i odczytów — dwa niezależne warunki („szyna sekcji” i „zacisk
+    pola TR”) w konsumentach byłyby predykatami rozjeżdżającymi się przy pierwszej zmianie."""
+    sekcje = szyny_sekcji_gpz(snapshot)
+    zaciski_pol_tr = {
+        str(_pole(pole, "terminal_bus_ref")): str(_pole(pole, "bus_ref"))
+        for pole in _kolekcja(snapshot, "bays")
+        if _pole(pole, "bay_role") == "TR"
+        and _pole(pole, "terminal_bus_ref")
+        and str(_pole(pole, "bus_ref")) in sekcje
+    }
+    wynik: dict[str, str] = {}
+    for t in _kolekcja(snapshot, "transformers"):
+        lv = str(_pole(t, "lv_bus_ref"))
+        szyna = lv if lv in sekcje else zaciski_pol_tr.get(lv)
+        if szyna is not None:
+            wynik[str(_pole(t, "ref_id"))] = szyna
+    return wynik
+
+
 def transformatory_zasilajace_gpz(
     snapshot: EnergyNetworkModel | Mapping[str, object],
 ) -> frozenset[str]:
-    """`ref_id` transformatorów WN/SN zasilających GPZ — strona dolna na szynie sekcji SN GPZ.
+    """`ref_id` transformatorów WN/SN zasilających GPZ — strona dolna na szynie sekcji SN GPZ
+    albo na zacisku pola TR tej sekcji (`szyny_sekcji_transformatorow_gpz`).
 
     Karta GPZ-MODEL: JEDNO źródło predykatu dla walidatora (E066 — transformator GPZ bez
     zasilania od strony 110 kV) i dla operacji, które szukają transformatora „stacji"
     (transformator blokowy źródła przekształtnikowego): transformator zasilający GPZ jest
     granicą zasilania sieci SN, nigdy transformatorem blokowym ani stacyjnym SN/nN."""
-    sekcje = szyny_sekcji_gpz(snapshot)
-    return frozenset(
-        str(_pole(t, "ref_id"))
-        for t in _kolekcja(snapshot, "transformers")
-        if str(_pole(t, "lv_bus_ref")) in sekcje
-    )
+    return frozenset(szyny_sekcji_transformatorow_gpz(snapshot))
 
 
 def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:

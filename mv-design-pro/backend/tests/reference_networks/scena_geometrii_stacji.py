@@ -38,6 +38,7 @@ import copy
 from typing import Any
 
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.topology import transformatory_zasilajace_gpz
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
     BAY_TEMPLATES_GPZ_POLA,
@@ -59,6 +60,9 @@ ZRODLO_110KV: dict[str, Any] = {
     "rx_ratio": 0.1,
 }
 TRAFO_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
+#: Bateria kondensatorów pól BKR scen (1,2 Mvar, 15 kV, podwójna gwiazda izolowana, 1 stopień) —
+#: jedno źródło dla sceny pól z szablonów i sceny pola BKR (`scena_pola_bkr`).
+BATERIA_POLA_BKR = "KOMP_SN_1V2_15KV"
 
 
 def _kable(enm: dict[str, Any]) -> list[dict[str, Any]]:
@@ -391,6 +395,11 @@ def zbuduj_gpz_pola_szablonow() -> dict[str, Any]:
     enm = zbuduj_gpz_110kv()
     sekcja = sorted({b["gpz_section_id"] for b in enm["bays"] if b.get("gpz_section_id")})[0]
     for szablon in BAY_TEMPLATES_GPZ_POLA:
+        if szablon.bay_role == "TR":
+            # Pola TR (Z.7) tworzy `add_grid_source_sn` razem z transformatorami — po jednym na
+            # transformator w jego sekcji (karta UX-04/ROZDZIELNICA-SN-KOREKTA, pkt 1); drugie
+            # pole TR dołożone tu byłoby duplikatem bez transformatora.
+            continue
         if (
             szablon.bay_role == "ZU"
             and szablon.template_id != SZABLON_WARIANTU_ZESPOLU["Z13"].template_id
@@ -398,7 +407,36 @@ def zbuduj_gpz_pola_szablonow() -> dict[str, Any]:
             # Jeden zespół uziemiający w wyspie galwanicznej SN (Zeszyt 1 §16, bloker E-W5-04):
             # scena niesie wariant Z.13; Z.14 i Z.15 ćwiczą testy pola zespołu.
             continue
-        enm, _ = dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
+        enm, pole_ref = dodaj_pole_gpz_z_szablonu(enm, sekcja, szablon)
+        if szablon.bay_role == "BKR":
+            # Bateria kondensatorów na zacisku końca toru pola (Zeszyt 1 §17, Zał. 16 s.96) —
+            # ta sama operacja co scena pola BKR (`scena_pola_bkr`); pole BKR bez baterii nie
+            # ma obiektu, który zasila.
+            zacisk = next(b for b in enm["bays"] if b["ref_id"] == pole_ref)["terminal_bus_ref"]
+            enm = ok(
+                op(
+                    enm,
+                    "add_shunt_compensator_sn",
+                    {"bus_ref": zacisk, "catalog_ref": BATERIA_POLA_BKR},
+                )
+            )
+            # IRiESD II.4.5.4.4.2: każde wyłączenie pola SN TR wyłącza baterię — transformatory
+            # zasilające GPZ (sprzęgło zamknięte, sekcję 1 zasilają TR1 i TR2).
+            bateria = next(c for c in enm["shunt_capacitors"] if c["bus_ref"] == zacisk)
+            enm = ok(
+                op(
+                    enm,
+                    "update_element_parameters",
+                    {
+                        "element_ref": bateria["ref_id"],
+                        "parameters": {
+                            "wylaczenie_od_transformatorow": sorted(
+                                transformatory_zasilajace_gpz(enm)
+                            )
+                        },
+                    },
+                )
+            )
     return enm
 
 

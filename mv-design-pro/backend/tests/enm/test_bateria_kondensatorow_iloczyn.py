@@ -53,6 +53,7 @@ from enm.models import (
 from enm.punkt_neutralny_zespolu import jest_transformatorem_uziemiajacym
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, opcje_biegu_ze_scenariusza
 from enm.store import reset_enm_store, set_enm
+from enm.topology import szyny_sekcji_transformatorow_gpz
 from enm.validator import ENMValidator
 from network_model.core.bateria_kondensatorow import UKLADY_POLACZEN_BATERII
 from network_model.odmowa_danych import OdmowaNazwana
@@ -600,7 +601,10 @@ def test_walidator_sprzeglo_otwarte_wystarcza_transformator_sekcji() -> None:
     enm = zbuduj_gpz_z_bkr()
     tr = sorted(t["ref_id"] for t in enm["transformers"])
     szyna_1 = gpz(enm)["gpz_sections"][0]["bus_ref"]
-    [tr1] = [t["ref_id"] for t in enm["transformers"] if t["lv_bus_ref"] == szyna_1]
+    # Sekcja transformatora z jednego źródła (strona dolna na szynie albo na zacisku pola TR).
+    [tr1] = [
+        ref for ref, szyna in szyny_sekcji_transformatorow_gpz(enm).items() if szyna == szyna_1
+    ]
     enm = ok(
         op(
             enm,

@@ -30,11 +30,11 @@ from network_model.catalog.rodzaje_aparatury import (
     RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
 )
 
-from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_110kv
+from tests.reference_networks.scena_geometrii_stacji import BATERIA_POLA_BKR, zbuduj_gpz_110kv
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, ok, op
 
 #: Pozycja katalogu baterii sceny (1,2 Mvar, 15 kV, podwójna gwiazda izolowana, 1 stopień).
-BATERIA_KATALOG = "KOMP_SN_1V2_15KV"
+BATERIA_KATALOG = BATERIA_POLA_BKR
 #: Pozycje katalogu przekładników pola (przestrzenie CT i VT katalogu bieżącego).
 PRZEKLADNIK_PRADOWY = "ct_50_1_0_5_5va_arteche"
 PRZEKLADNIK_NAPIECIOWY = "vt_15kv_100v_05_abb"
@@ -54,11 +54,6 @@ def pole_bkr(enm: dict[str, Any]) -> dict[str, Any]:
 
 def bateria(enm: dict[str, Any]) -> dict[str, Any]:
     return next(iter(enm["shunt_capacitors"]))
-
-
-def transformatory_sekcji(enm: dict[str, Any], numer_sekcji: int) -> list[str]:
-    szyna = gpz(enm)["gpz_sections"][numer_sekcji - 1]["bus_ref"]
-    return sorted(t["ref_id"] for t in enm["transformers"] if t["lv_bus_ref"] == szyna)
 
 
 def wyposazenie_pola(

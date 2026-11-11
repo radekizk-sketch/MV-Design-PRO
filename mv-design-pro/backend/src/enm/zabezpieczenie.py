@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, FunkcjaEaz
 from network_model.catalog.obwody_wtorne_pola import (
     RODZAJ_APARATU_WEJSCIA,
+    RODZAJE_WEJSCIA_POZA_POLEM,
     ObwodyWtornePola,
 )
 from network_model.catalog.przekladniki import zaczepy_przekladnika
@@ -513,7 +514,10 @@ def _wiazania_z_obwodow(
                     wyzwolenia.setdefault(p.funkcja, []).append(wylacznik_obwodu)
             zerowe = "3I0" in FUNKCJE_EAZ[p.funkcja].wejscia_wymagane
             for w in p.wejscia:
-                if w.aparat is None:
+                if w.aparat is None or w.rodzaj in RODZAJE_WEJSCIA_POZA_POLEM:
+                    # Przekładnik spoza celi pola (gałąź rezystora punktu neutralnego, Z.14/Z.15)
+                    # nie jest aparatem pola — ten sam predykat co walidacja szablonu
+                    # (`bay_templates._sprawdz_obwody_wtorne`) i ocena pola (`pole_liniowe_gpz`).
                     continue
                 ref = po_oznaczeniu.get((w.aparat, RODZAJ_APARATU_WEJSCIA[w.rodzaj]))
                 if ref is None:

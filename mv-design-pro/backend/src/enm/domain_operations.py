@@ -29,6 +29,7 @@ from network_model.catalog.audit2_catalogs import (
     tap_changer_fields_from_catalog,
 )
 from network_model.catalog.bay_templates import (
+    BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7,
     BAY_TEMPLATE_TRANSFORMER,
     funkcje_eaz_szablonu,
     szablon_domyslny_pola_liniowego_gpz,
@@ -177,7 +178,7 @@ from .slownik_komunikatow import (
     pole,
 )
 from .stan_normalny import RODZAJE_GALEZI_LACZNIKA
-from .topology import punkty_podzialu_korytarza
+from .topology import punkty_podzialu_korytarza, szyny_sekcji_transformatorow_gpz
 from .topology_ops import (
     create_branch,
     create_device,
@@ -620,6 +621,10 @@ INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
     "add_grid_source_sn": (
         "źródło i transformator WN/SN: _materialize_catalog_payload; "
         "aparat pola liniowego: _brama_katalogowa_aparatu_sn"
+    ),
+    "_utworz_pola_tr_gpz": (
+        "wyłącznik pola TR GPZ (karta UX-04/ROZDZIELNICA-SN-KOREKTA): pozycja aparatu pól "
+        "wołającego `add_grid_source_sn` przeszła _brama_katalogowa_aparatu_sn"
     ),
     "continue_trunk_segment_sn": "odcinek magistrali: _materialize_catalog_payload",
     "start_branch_segment_sn": "odcinek odgałęzienia: _materialize_catalog_payload",
@@ -4768,6 +4773,159 @@ def _resolve_manual_source_equivalent(
 # ---------------------------------------------------------------------------
 
 
+def _utworz_pola_tr_gpz(
+    enm: dict[str, Any],
+    *,
+    seed: str,
+    substation_ref: str,
+    gpz_sections: list[dict[str, Any]],
+    transformer_refs: list[str],
+    line_field_apparatus: dict[str, Any] | None,
+    voltage_kv: float,
+    switchgear_family_ref: str | None,
+    manufacturer_ref: str | None,
+) -> list[tuple[str, list[tuple[str, str]]]] | dict[str, Any]:
+    """Pole TR (rola ``TR``, szablon ENEA Z.7) każdego transformatora 110 kV/SN GPZ w jego sekcji
+    (karta UX-04/ROZDZIELNICA-SN-KOREKTA, opis w `add_grid_source_sn`). Zwraca listę
+    (ref pola, [(ref utworzonego elementu, rodzaj zdarzenia)]) albo odpowiedź odmowy.
+
+    Gałąź wyłącznika pola powstaje WYŁĄCZNIE z aparatu pól GPZ z katalogu, którego rodzaj jest
+    wyłącznikiem (Z.7: wyłącznik z napędem w torze pola) — bez niego pole wskazuje transformator
+    rekordem, a strona SN transformatora zostaje na szynie sekcji (ta sama reguła co pola
+    liniowe GPZ bez aparatu: brak pozycji katalogowej = brak gałęzi, nie gałąź zmyślona)."""
+    from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
+
+    transformatory = {
+        t.get("ref_id"): t for t in enm.get("transformers", []) if isinstance(t, dict)
+    }
+    sekcje_wg_id = {s["section_id"]: s for s in gpz_sections}
+    z_galezia = (
+        line_field_apparatus is not None
+        and _gpz_line_field_branch_type(line_field_apparatus["apparatus_kind"]) == "breaker"
+    )
+    wynik: list[tuple[str, list[tuple[str, str]]]] = []
+    for numer, transformer_ref in enumerate(transformer_refs, start=1):
+        transformator = transformatory[transformer_ref]
+        sekcja = sekcje_wg_id[transformator["meta"]["gpz_section_id"]]
+        bay_ref = _make_id("gpz", seed, f"transformer/{numer:03d}/bay")
+        nazwa_tr = nazwa_nadana(transformator.get("name")) or f"TR{numer}"
+        bay_name = f"Pole transformatora {nazwa_tr}"
+        utworzone: list[tuple[str, str]] = []
+        galaz: dict[str, Any] | None = None
+        zacisk: str | None = None
+        equipment_refs: list[str] = []
+        if z_galezia:
+            assert line_field_apparatus is not None
+            zacisk = _make_id("gpz", seed, f"transformer/{numer:03d}/bay/terminal")
+            wynik_wezla = create_node(
+                enm,
+                {
+                    "ref_id": zacisk,
+                    "name": f"Zacisk pola {bay_name}",
+                    "voltage_kv": voltage_kv,
+                    "tags": ["helper_bus", "field_terminal"],
+                    "meta": {
+                        "visual_role": "FIELD_TERMINAL",
+                        "render_on_sld": False,
+                        "show_in_project_tree": False,
+                        "field_ref": bay_ref,
+                        "station_ref": substation_ref,
+                        "port_kind": "transformer",
+                        "gpz_section_id": sekcja["section_id"],
+                    },
+                },
+            )
+            if not wynik_wezla.success:
+                return _error_response(
+                    "Nie udało się utworzyć zacisku pola transformatora GPZ: "
+                    f"{wynik_wezla.issues[0].message_pl if wynik_wezla.issues else '?'}",
+                    "source.field_terminal_failed",
+                )
+            enm.update(wynik_wezla.enm)
+            utworzone.append((zacisk, "FIELD_TERMINAL_CREATED_SN"))
+            apparatus_ref = _make_id("gpz", seed, f"transformer/{numer:03d}/bay/apparatus")
+            binding = line_field_apparatus["catalog_binding"]
+            galaz = {
+                "ref_id": apparatus_ref,
+                "name": f"Wyłącznik {bay_name}",
+                "type": "breaker",
+                "from_bus_ref": sekcja["bus_ref"],
+                "to_bus_ref": zacisk,
+                "status": "closed",
+                "r_ohm": 0.0,
+                "x_ohm": 0.0,
+                "catalog_ref": line_field_apparatus["catalog_ref"],
+                "tags": ["gpz_field_device"],
+                "meta": {
+                    "field_ref": bay_ref,
+                    "station_ref": substation_ref,
+                    "bay_role": "TR",
+                    "apparatus_kind": line_field_apparatus["apparatus_kind"],
+                    "terminal_bus_ref": zacisk,
+                    "render_on_sld": False,
+                    "show_in_project_tree": False,
+                    "requires_catalog_binding": False,
+                    "catalog_binding": copy.deepcopy(binding),
+                },
+                "materialized_params": copy.deepcopy(line_field_apparatus["materialized_params"]),
+            }
+            _apply_catalog_metadata(galaz, binding, default_namespace="APARAT_SN")
+            wynik_galezi = create_branch(enm, galaz)
+            if not wynik_galezi.success:
+                return _error_response(
+                    "Nie udało się utworzyć wyłącznika pola transformatora GPZ: "
+                    f"{wynik_galezi.issues[0].message_pl if wynik_galezi.issues else '?'}",
+                    "source.field_apparatus_failed",
+                )
+            enm.update(wynik_galezi.enm)
+            utworzone.append((apparatus_ref, "FIELD_DEVICE_CREATED_SN"))
+            equipment_refs.append(apparatus_ref)
+            # Strona SN transformatora na zacisku pola — transformator obiektu ``enm`` (create_*
+            # zwraca kopię modelu, więc rekord czytany ponownie).
+            for t in enm.get("transformers", []):
+                if isinstance(t, dict) and t.get("ref_id") == transformer_ref:
+                    t["lv_bus_ref"] = zacisk
+        equipment_refs.append(transformer_ref)
+        aparaty, konfiguracja, szablon = _aparaty_pola_liniowego_gpz(
+            field_ref=bay_ref,
+            bay_role="TR",
+            bay_template_ref=BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7.template_id,
+            switchgear_family_ref=switchgear_family_ref,
+            napiecie_szyny_kv=voltage_kv,
+            galaz_aparatu=galaz,
+        )
+        dodaj_pole(
+            enm,
+            zbuduj_pole(
+                ref_id=bay_ref,
+                name=bay_name,
+                bay_role="TR",
+                bus_ref=sekcja["bus_ref"],
+                substation_ref=substation_ref,
+                terminal_bus_ref=zacisk,
+                gpz_section_id=sekcja["section_id"],
+                equipment_refs=equipment_refs,
+                funkcje_eaz=_resolve_bay_template_protection_codes(manufacturer_ref, szablon, "TR"),
+                bay_template_ref=szablon,
+                switchgear_family_ref=switchgear_family_ref,
+                manufacturer_ref=manufacturer_ref,
+                primary_devices=aparaty,
+                config_id=konfiguracja,
+                tags=["gpz_transformer_field"],
+                meta={
+                    "transformer_ref": transformer_ref,
+                    "gpz_section_order": sekcja["order"],
+                    "source_field_kind": "TRANSFORMER",
+                    **({"default_device_ref": galaz["ref_id"]} if galaz is not None else {}),
+                },
+                stan_obiektu="PROJEKTOWANY",
+            ),
+        )
+        utworzone.append((bay_ref, "BAY_CREATED_SN"))
+        wynik.append((bay_ref, utworzone))
+    return wynik
+
+
 def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj źródło zasilania (GPZ) — pierwszy krok budowy sieci SN."""
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
@@ -5517,6 +5675,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
 
     pola_gpz: list[dict[str, Any]] = []
+
     for idx, section in enumerate(gpz_sections):
         section_field_names_raw = section.get("line_field_names")
         section_field_names = (
@@ -5722,6 +5881,46 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 )
             )
 
+    # Pola TR dopisane PO polach liniowych: kolejność zapisu pól liniowych (indeks pola
+    # liniowego GPZ, `pole_gpz`) nie zależy od liczby transformatorów.
+    # Karta UX-04/ROZDZIELNICA-SN-KOREKTA (pkt 1, werdykt właściciela 0/10 z 2026-11-11): KAŻDY
+    # transformator 110 kV/SN przyłącza się do swojej sekcji SN przez SWOJE pole SN (ENEA
+    # Zeszyt 1 §13 — 2 pola TR rozdzielni; Zał. 2 s.78 — pola 7/8 „TR 1”/„TR 2”; Zał. 7 s.86 —
+    # tor pola). Do tej karty strona SN transformatora stała WPROST na szynie sekcji, a pole TR
+    # dokładane operacją `add_sn_bay` było osobnym polem z wiszącym zaciskiem (dwa pola TR na
+    # rysunku, transformator schodził do szyn poza swoim polem). Pole TR powstaje tu RAZEM
+    # z transformatorem: rekord pola roli ``TR`` wskazuje transformator (`equipment_refs`), a gdy
+    # GPZ ma aparat pól z katalogu wyłącznikowego — gałąź wyłącznika pola (szyna sekcji → zacisk
+    # pola) i strona SN transformatora na zacisku pola (wyłącznik pola rozdziela transformator
+    # i sekcję także w obliczeniach). Wyposażenie pola wg szablonu Z.7 (wartości robocze
+    # przekładników — ZASADA NR 4), zmiana szablonu/aparatów — `set_bay_equipment`.
+    pola_tr_gpz = _utworz_pola_tr_gpz(
+        new_enm,
+        seed=seed,
+        substation_ref=substation_ref,
+        gpz_sections=gpz_sections,
+        transformer_refs=gpz_transformer_refs,
+        line_field_apparatus=line_field_apparatus,
+        voltage_kv=float(voltage_kv),
+        switchgear_family_ref=gpz_switchgear_family_ref,
+        manufacturer_ref=gpz_manufacturer_ref,
+    )
+    if isinstance(pola_tr_gpz, dict):
+        return pola_tr_gpz
+    for ref_pola_tr, utworzone_pola_tr in pola_tr_gpz:
+        for element_ref, rodzaj_zdarzenia in utworzone_pola_tr:
+            created.append(element_ref)
+            ev_seq += 1
+            events.append(
+                {"event_seq": ev_seq, "event_type": rodzaj_zdarzenia, "element_id": element_ref}
+            )
+        audit.append(
+            {
+                "step": ev_seq,
+                "action": "Utworzono pole transformatora 110 kV/SN w sekcji GPZ",
+                "element_id": ref_pola_tr,
+            }
+        )
     # Create substation (GPZ)
     new_enm.setdefault("substations", []).append(
         {
@@ -5829,11 +6028,13 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 nazwa_nadana(wpis.get("name")) or f"Zespół uziemiający sekcji {int(wpis['sekcja'])}"
             )
             if wpis.get("wylaczenie_od_transformatora_sekcji") is True:
+                # Transformator sekcji — strona dolna na szynie sekcji albo na zacisku pola TR
+                # sekcji (jedno źródło przypisania, `topology.szyny_sekcji_transformatorow_gpz`).
+                sekcje_transformatorow = szyny_sekcji_transformatorow_gpz(new_enm)
                 ladunek_zespolu["wylaczenie_od_transformatorow_refs"] = sorted(
-                    t["ref_id"]
-                    for t in new_enm.get("transformers", [])
-                    if t.get("ref_id") in gpz_transformer_refs
-                    and t.get("lv_bus_ref") == szyna_sekcji
+                    ref
+                    for ref in gpz_transformer_refs
+                    if sekcje_transformatorow.get(ref) == szyna_sekcji
                 )
             wynik_zespolu = add_zespol_uziemiajacy_sn(
                 new_enm, {**ladunek_zespolu, "bay_ref": pole_zu_ref}

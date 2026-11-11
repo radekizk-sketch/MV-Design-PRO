@@ -124,6 +124,7 @@ from .topology import (
     derive,
     podziel_krawedzie,
     punkty_podzialu_korytarza,
+    szyny_sekcji_transformatorow_gpz,
     transformatory_zasilajace_gpz,
 )
 from .tor_pola import (
@@ -348,6 +349,7 @@ def transformatory_gpz_bez_zasilania_wn(
     w górę — żaden z nich nie jest fikcją. Wynik: (transformator, GPZ, szyna górna),
     kolejność po `ref_id` transformatora."""
     sekcje_gpz = _sekcje_gpz_wg_szyny(enm)
+    szyna_sekcji_trafa = szyny_sekcji_transformatorow_gpz(enm)
     refy_gpz = transformatory_zasilajace_gpz(enm)
     trafa_gpz = sorted(
         (t for t in enm.transformers if t.ref_id in refy_gpz), key=lambda t: t.ref_id
@@ -366,7 +368,7 @@ def transformatory_gpz_bez_zasilania_wn(
         for element in kolekcja
     }
     return [
-        (trafo, sekcje_gpz[trafo.lv_bus_ref][0], trafo.hv_bus_ref)
+        (trafo, sekcje_gpz[szyna_sekcji_trafa[trafo.ref_id]][0], trafo.hv_bus_ref)
         for trafo in trafa_gpz
         if szyny_zywe.isdisjoint(skladowa_szyny.get(trafo.hv_bus_ref, (trafo.hv_bus_ref,)))
     ]

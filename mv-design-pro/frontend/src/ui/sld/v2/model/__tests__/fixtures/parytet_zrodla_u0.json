@@ -201,6 +201,166 @@
         },
         {
           "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
+        },
+        {
+          "bay_number": null,
           "bay_role": "MEASUREMENT",
           "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
           "funkcja_pomiaru": "NAPIECIA_SZYN",
@@ -452,6 +612,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -677,6 +917,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -933,6 +1333,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -1158,6 +1638,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -1458,6 +2098,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -1725,6 +2445,166 @@
         },
         {
           "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
+        },
+        {
+          "bay_number": null,
           "bay_role": "MEASUREMENT",
           "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
           "funkcja_pomiaru": "NAPIECIA_SZYN",
@@ -1980,6 +2860,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -2205,6 +3165,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         }
       ],
       "nazwa": "z10_iniekcja_aparat_nieobecny",
@@ -2417,6 +3537,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -2642,6 +3842,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -2898,6 +4258,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -3123,6 +4563,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -3379,6 +4979,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -3598,6 +5278,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -3854,6 +5694,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -4073,6 +5993,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         }
       ],
       "nazwa": "z10_iniekcja_bez_ferrantiego_i_bez_z17",
@@ -4281,6 +6361,86 @@
             "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::2",
             "i0_ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::5",
             "i0_uklad": "FERRANTI"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
           }
         },
         {
@@ -4645,6 +6805,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -5063,6 +7383,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -5424,6 +7824,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -5844,6 +8404,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -6205,6 +8845,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -6669,6 +9469,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -7069,6 +9949,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -7491,6 +10531,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -7852,6 +10972,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         }
       ],
       "nazwa": "z11_1_iniekcja_aparat_nieobecny",
@@ -8228,6 +11508,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -8589,6 +11949,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -9009,6 +12529,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -9370,6 +12970,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -9790,6 +13550,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -10145,6 +13985,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -10565,6 +14565,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -10920,6 +15000,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         }
       ],
       "nazwa": "z11_1_iniekcja_bez_ferrantiego_i_bez_z17",
@@ -11295,6 +15535,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -11656,6 +15976,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -12076,6 +16556,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -12437,6 +16997,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -12857,6 +17577,86 @@
           }
         },
         {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
+          }
+        },
+        {
           "bay_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay",
           "funkcje": [
             {
@@ -13218,6 +18018,166 @@
             }
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR1 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay"
+        },
+        {
+          "bay_number": null,
+          "bay_role": "TR",
+          "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+          "funkcja_pomiaru": null,
+          "name": "Pole transformatora TR2 110/15 kV",
+          "primary_devices": [
+            {
+              "designation": "PF0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::0",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::1",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q0",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::2",
+              "kind": "CB",
+              "uzwojenia": []
+            },
+            {
+              "designation": "Q5",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::3",
+              "kind": "THREE_POSITION_SWITCH",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::4",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "T3",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5",
+              "kind": "VT",
+              "uzwojenia": [
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                },
+                {
+                  "otwarty_trojkat": false
+                }
+              ]
+            },
+            {
+              "designation": "T1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+              "kind": "CT",
+              "uzwojenia": []
+            },
+            {
+              "designation": "PF1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::7",
+              "kind": "VOLTAGE_INDICATOR",
+              "uzwojenia": []
+            },
+            {
+              "designation": "GK",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::8",
+              "kind": "CABLE_HEAD",
+              "uzwojenia": []
+            },
+            {
+              "designation": "F1",
+              "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::9",
+              "kind": "SURGE_ARRESTER",
+              "uzwojenia": []
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay"
         },
         {
           "bay_number": null,
@@ -13633,6 +18593,86 @@
             "i0_ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::9",
             "i0_uklad": "FERRANTI",
             "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/001/bay::dev::5"
+          }
+        },
+        {
+          "bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay",
+          "funkcje": [
+            {
+              "kod": "51",
+              "ref": "51",
+              "wlaczona": true
+            },
+            {
+              "kod": "50",
+              "ref": "50",
+              "wlaczona": true
+            },
+            {
+              "kod": "ZS",
+              "ref": "ZS",
+              "wlaczona": true
+            },
+            {
+              "kod": "50BF",
+              "ref": "50BF",
+              "wlaczona": true
+            },
+            {
+              "kod": "87T",
+              "ref": "87T",
+              "wlaczona": true
+            },
+            {
+              "kod": "90",
+              "ref": "90",
+              "wlaczona": true
+            }
+          ],
+          "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay/sterownik",
+          "wejscia": {
+            "ct_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::6",
+            "vt_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/transformer/002/bay::dev::5"
           }
         },
         {

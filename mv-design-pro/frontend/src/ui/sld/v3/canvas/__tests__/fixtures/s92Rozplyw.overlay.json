@@ -211,6 +211,49 @@
       "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/substation",
       "severity": "INFO"
     },
+    "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/bay": {
+      "badges": [],
+      "kind": "bay",
+      "metrics": {
+        "I_A": {
+          "code": "I_A",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "A",
+          "value": 10.1191402899
+        },
+        "LOADING_PCT": {
+          "code": "LOADING_PCT",
+          "format_hint": "fixed1",
+          "source": "solver",
+          "unit": "%",
+          "value": 1.05161190666
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": -0.250673363595
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": -0.0789059335597
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9940640192
+        }
+      },
+      "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/bay",
+      "severity": "INFO"
+    },
     "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn": {
       "badges": [],
       "kind": "branch",

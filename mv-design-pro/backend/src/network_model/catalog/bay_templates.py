@@ -1389,12 +1389,16 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
             placement="OFF_PATH",
             podstawa=f"ENEA Z.17 (s.97) — wskaźnik napięcia; {_PODSTAWA_P13} — wskaźniki stacjonarne",
         ),
+        # Z.17 (s.97): przekładnik napięciowy jest KOŃCEM toru pola — tor od łącznika
+        # trójpołożeniowego schodzi w dół i przez złącze wtykowe dochodzi do przekładnika; wskaźnik
+        # napięcia odchodzi z węzła toru w bok. Pole nie ma odgałęzienia przekładnika (brak łącznika
+        # odgałęzienia, jak w Z.7/Z.11) — do karty UX-04/ROZDZIELNICA-SN-KOREKTA szablon niósł złącze
+        # i przekładnik jako odgałęzienie, a rysunek stawiał wskaźnik napięcia w osi toru.
         BayDeviceTemplate(
             kind="CABLE_HEAD",
             designation_q="GK1",
             position=2,
-            placement="OFF_PATH",
-            odgalezienie=ODGALEZIENIE_PRZEKLADNIKA_NAPIECIOWEGO,
+            placement="DOWNSTREAM",
             podstawa=(
                 "ENEA Z.17 (s.97) — złącze wtykowe przekładnika; §13 (s.26) — gniazda dla "
                 "bezpośredniego przyłączenia przekładników napięciowych, bez wkładek "
@@ -1405,8 +1409,7 @@ BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
             kind="VT",
             designation_q="T1",
             position=3,
-            placement="OFF_PATH",
-            odgalezienie=ODGALEZIENIE_PRZEKLADNIKA_NAPIECIOWEGO,
+            placement="DOWNSTREAM",
             uzwojenia=list(UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17),
             podstawa=(
                 "ENEA Z.17 (s.97) — przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3, "

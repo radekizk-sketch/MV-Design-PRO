@@ -286,5 +286,12 @@ def pole_gpz(enm: dict[str, Any], indeks: int = 0) -> str:
 
     for stacja in enm["substations"]:
         if stacja.get("station_type") == "gpz":
-            return str(pola_stacji(enm, stacja["ref_id"])[indeks]["ref_id"])
+            # Wyłącznie pola liniowe (rola OUT/FEEDER): GPZ niesie też pola TR transformatorów
+            # (karta UX-04/ROZDZIELNICA-SN-KOREKTA), które nie są polami odpływowymi.
+            liniowe = [
+                pole
+                for pole in pola_stacji(enm, stacja["ref_id"])
+                if str(pole.get("bay_role") or "").upper() in {"OUT", "FEEDER"}
+            ]
+            return str(liniowe[indeks]["ref_id"])
     raise BladBudowy("brak GPZ w migawce")

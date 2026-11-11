@@ -34,6 +34,8 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``gpz110kvPolaSzablonow``, ``gpz110kvPoleZu{Z13,Z14,Z15}`` (``public``) — GPZ 110/15 kV
   z polami z szablonów ENEA Zeszyt 1 i po jednym polu zespołu uziemiającego na wariant
   (karta POLA-GPZ-SZABLONY);
+* ``stacjeTypowAbcd`` (``public``) — GPZ dwusekcyjny i cztery stacje SN/nN typu B, C, D, A
+  (karta UX-04/ROZDZIELNICA-SN-KOREKTA, zrzuty parytetu rozdzielnic SN);
 * ``stacjaPomiar1000`` — dwa odcinki + szablon stacji 1000 kVA z pomiarem rozliczeniowym
   (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
@@ -417,6 +419,44 @@ def _stacje_konstrukcji_pol(b: KlientBudowy) -> dict[str, Any]:
     return b.migawka()
 
 
+#: Rodzaje stacji SN/nN sceny ``stacjeTypowAbcd`` (litera rodzaju, nazwa, pola SN roli) — typ A
+#: (końcowa), B (przelotowa), C (odgałęźna), D (sekcyjna ze sprzęgłem); pola domyślne rodzaju
+#: z operacji `insert_station_on_segment_sn`.
+RODZAJE_STACJI_ABCD: tuple[tuple[str, str], ...] = (
+    ("B", "Stacja B"),
+    ("C", "Stacja C"),
+    ("D", "Stacja D"),
+    ("A", "Stacja A"),
+)
+
+
+def _stacje_typow_abcd(b: KlientBudowy) -> dict[str, Any]:
+    """Karta UX-04/ROZDZIELNICA-SN-KOREKTA: GPZ 110/15 kV dwusekcyjny (TR1 → sekcja 1, TR2 →
+    sekcja 2) i cztery stacje SN/nN typu B, C, D, A na kolejnych odcinkach magistrali — scena
+    zrzutów parytetu rozdzielnic SN stacji (te same aparaty pól co GPZ, inna konfiguracja)."""
+    b.gpz_110kv(2, sections_count=2)
+    for numer in range(len(RODZAJE_STACJI_ABCD)):
+        b.odcinek_magistrali(150 + 50 * numer, f"Magistrala {numer + 1}")
+    for numer, (rodzaj, nazwa) in enumerate(RODZAJE_STACJI_ABCD):
+        b.operacja(
+            "insert_station_on_segment_sn",
+            {
+                "segment_id": segmenty_korytarza(b.migawka())[2 * numer],
+                "field_apparatus_catalog_ref": APARAT_POLA_SN,
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "station": {
+                    "station_type": rodzaj,
+                    "station_name": nazwa,
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
+                "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            },
+        )
+    return b.migawka()
+
+
 def _s95_gpz_swiezy(b: KlientBudowy) -> dict[str, Any]:
     b.gpz_110kv(1)
     return b.migawka()
@@ -780,6 +820,11 @@ _SIECI: tuple[tuple[tuple[str, ...], str, Callable[[KlientBudowy], dict[str, Any
         (f"{SCENA}/stacjaPomiar1000.enm.json",),
         "Stacja z pomiarem za ZKSN",
         _stacja_pomiar_1000,
+    ),
+    (
+        (f"{PUBLICZNE}/stacjeTypowAbcd.enm.json",),
+        "Stacje SN/nN typu A, B, C, D",
+        _stacje_typow_abcd,
     ),
 )
 
