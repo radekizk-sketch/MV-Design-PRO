@@ -120,8 +120,9 @@ this structure snapshot and the inventory differ, the inventory wins.
 │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   └── e2e/                  # Playwright end-to-end tests
 ```
-Poza drzewem w `src/` leżą też `modules/sld/`, `harness-fixtures/` i wejścia uprzęży zrzutowych
-`*-harness-main.tsx` (pomiar `git ls-files` 2026-11-11).
+Poza drzewem w `src/` leżą też `harness-fixtures/` i wejścia uprzęży zrzutowych
+`*-harness-main.tsx` (pomiar `git ls-files` 2026-11-11; `modules/sld/` skasowany kartą ZU —
+martwy moduł cdse, 0 konsumentów).
 
 ## Polecenia (z `mv-design-pro/frontend`)
 ```bash

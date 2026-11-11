@@ -569,9 +569,9 @@ def test_wejscie_pakietu_para_z0_i_przyczyny_z_jednego_zrodla() -> None:
         "a_operator": complex(-0.5, math.sqrt(3) / 2),
         "tk_s": 1.0,
     }
-    with pytest.raises(ValueError, match="jedno źródło"):
+    with pytest.raises(AssertionError, match="jedno źródło"):
         SCAsymmetricalPackInput(**wspolne, z0_ohm=None)
-    with pytest.raises(ValueError, match="jedno źródło"):
+    with pytest.raises(AssertionError, match="jedno źródło"):
         SCAsymmetricalPackInput(**wspolne, z0_ohm=0j, brak_wyniku_zerowego={"kod": "x"})
 
 
@@ -653,5 +653,5 @@ def test_dowod_2f_bez_z0_nie_wypisuje_z0() -> None:
             step_number=1, equation_id="EQ_SC1_005", z1=1j, z2=1j, z0=None, z_equiv=1j
         ),
     ):
-        with pytest.raises(ValueError, match="składowej zerowej"):
+        with pytest.raises(AssertionError, match="składowej zerowej"):
             wywolanie()

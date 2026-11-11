@@ -2125,7 +2125,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (tekstowe reguly wyprowadzen weryfikatora) oraz pola `V`, `W`, `m`, `ohm`, `s` dawnego
     # wymiaru jednostki `UnitDimension` weryfikatora. Zadne z nich nie jest dana wejsciowa
     # solvera. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4504." in wyjscie, wyjscie
+    # Scalenie kart PRZERWA-ZEROWA i ZU w drzewie integracji 2026-11: 4504 -> 4505 — POMIAR
+    # guardem na drzewie scalonym (karta ZU sama: 4504). +1: `brak_wyniku_zerowego`
+    # (`SCAsymmetricalPackInput`, karta PRZERWA-ZEROWA) — przyczyna braku wyniku zerowego punktu
+    # (para z `z0_ohm`, jedno źródło), nie liczba podstawiona za nieobecna dana. PASS
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4505." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

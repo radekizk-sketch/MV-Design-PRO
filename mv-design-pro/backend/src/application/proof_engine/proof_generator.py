@@ -1483,8 +1483,10 @@ class ProofGenerator:
         wcześniej. Krok nie podstawia więc nigdy liczby zastępczej za brak Z_0.
         """
         if z0 is None:
-            raise ValueError(
-                f"Krok {equation_id} wymaga impedancji składowej zerowej Z_0 — punkt bez wyniku "
+            # Błąd programu: pakiet i wielkości SC1 odmawiają wcześniej, krok bez toru zerowego
+            # nie powstaje dla punktu bez wyniku zerowego.
+            raise AssertionError(
+                f"Krok {equation_id} wymaga impedancji składowej zerowej — punkt bez wyniku "
                 "zerowego ma wyłącznie dowód zwarcia dwufazowego."
             )
         return z0

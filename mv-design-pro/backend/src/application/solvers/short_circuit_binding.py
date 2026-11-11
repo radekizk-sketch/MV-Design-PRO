@@ -358,7 +358,10 @@ def zwarcie_niesymetryczne_ze_snapshotu(
                 z_f_ohm=z_f_ohm,
                 granica_b01=True,
             )
-        with nazwy_w_odmowach_rdzenia(wejscie_2f.solve_graph), odmowa_rdzenia_b01():
+        # Bez granicy `odmowa_rdzenia_b01`: obejmuje ona wyłącznie bezpośrednie wywołanie
+        # rdzenia, a rdzeń IEC 60909 odmawia rekordem strukturalnym (decyzja O-59) — jak
+        # w biegu kanonicznym (`enm.canonical_analysis`), który woła tę samą dyspozycję.
+        with nazwy_w_odmowach_rdzenia(wejscie_2f.solve_graph):
             wynik_2f = wynik_zwarcia_punktu(
                 wejscie_2f,
                 fault_node_id,

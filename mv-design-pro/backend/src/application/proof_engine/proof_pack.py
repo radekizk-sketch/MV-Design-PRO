@@ -286,7 +286,10 @@ def zbuduj_zip_zbiorczy(
     odmowy = odmowy or {}
     wspolne = sorted(set(pakiety) & set(odmowy))
     if wspolne:
-        raise ValueError(f"Wpis pakietu zbiorczego jest jednocześnie dowodem i odmową: {wspolne}")
+        # Błąd programu (jeden wpis = albo dowód, albo odmowa), nie odmowa danych projektanta.
+        raise AssertionError(
+            f"Wpis pakietu zbiorczego jest jednocześnie dowodem i odmową: {wspolne}"
+        )
     # Kolejność: dowody po nazwie (bez zmian bajtów pakietów bez odmów), potem odmowy po nazwie.
     wpisy: list[tuple[str, bytes]] = [
         (f"pakiet_dowodowy/{nazwa}.zip", pakiety[nazwa]) for nazwa in sorted(pakiety)

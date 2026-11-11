@@ -103,9 +103,11 @@ class SCAsymmetricalPackInput:
 
     def __post_init__(self) -> None:
         if (self.z0_ohm is None) != (self.brak_wyniku_zerowego is not None):
-            raise ValueError(
-                "Pakiet zwarć niesymetrycznych: brak Z0 wymaga nazwanej przyczyny braku "
-                "wyniku zerowego, a przyczyna wyklucza Z0 (jedno źródło pary pól)."
+            # Błąd programu (niezmiennik pary pól), nie odmowa danych projektanta.
+            raise AssertionError(
+                "Pakiet zwarć niesymetrycznych: brak impedancji składowej zerowej wymaga "
+                "nazwanej przyczyny braku wyniku zerowego, a przyczyna wyklucza impedancję "
+                "składową zerową (jedno źródło pary pól)."
             )
 
 

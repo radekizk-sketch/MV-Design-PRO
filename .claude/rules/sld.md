@@ -4,7 +4,6 @@ paths:
   - "mv-design-pro/frontend/src/ui/sld-editor/**"
   - "mv-design-pro/frontend/src/ui/sld-overlay/**"
   - "mv-design-pro/frontend/src/engine/sld-layout/**"
-  - "mv-design-pro/frontend/src/modules/sld/**"
   - ".github/workflows/sld-determinism.yml"
 ---
 
