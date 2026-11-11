@@ -28,9 +28,13 @@ from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
     NAGLOWEK_ODMOW_URZADZEN_PL,
+    NAGLOWEK_WARUNKOW_67N_PL,
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
+    NAGLOWEK_ZRODEL_WYMAGAN_PL,
     NAGLOWKI_NASTAW_PL,
+    NAGLOWKI_WARUNKOW_67N_PL,
     NAGLOWKI_ZIEMNOZWARCIOWYCH_PL,
+    NAGLOWKI_ZRODEL_WYMAGAN_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
@@ -42,6 +46,8 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
+    wiersze_warunkow_67n,
+    wiersze_zrodel_wymagan,
     zdania_funkcji_nieocenianych,
     zdania_odmow_urzadzen,
     zdanie_ziemnozwarciowe,
@@ -513,6 +519,31 @@ def export_protection_coordination_to_pdf(
             "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie",
         )
         y -= line_height
+    # Warunki 67N i źródła wymagań — te same wiersze co DOCX i ekran (warstwa prezentacji).
+    ziemne = result.get("ziemnozwarciowe")
+    for naglowek, kolumny, szerokosci, wiersze_tab in (
+        (
+            NAGLOWEK_WARUNKOW_67N_PL,
+            NAGLOWKI_WARUNKOW_67N_PL,
+            [40 * mm, 18 * mm, 40 * mm, 20 * mm, 22 * mm, 18 * mm, 14 * mm],
+            wiersze_warunkow_67n(ziemne),
+        ),
+        (
+            NAGLOWEK_ZRODEL_WYMAGAN_PL,
+            NAGLOWKI_ZRODEL_WYMAGAN_PL,
+            [22 * mm, 18 * mm, 45 * mm, 85 * mm],
+            wiersze_zrodel_wymagan(ziemne),
+        ),
+    ):
+        if not wiersze_tab:
+            continue
+        y -= section_spacing / 2
+        y = check_page_break(20 * mm)
+        draw_text(naglowek, left_margin, font_size=11, bold=True)
+        y -= 2 * mm
+        draw_table_row(list(kolumny), szerokosci, left_margin, bold=True, font_size=7)
+        for wiersz_tab in wiersze_tab:
+            draw_table_row(list(wiersz_tab), szerokosci, left_margin, font_size=7)
 
     # ==========================================================================
     # 10) FOOTER

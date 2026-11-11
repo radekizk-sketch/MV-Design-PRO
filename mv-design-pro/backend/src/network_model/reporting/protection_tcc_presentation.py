@@ -20,6 +20,7 @@ from collections.abc import Callable
 from typing import Any
 
 from network_model.catalog.funkcje_eaz import etykieta_funkcji_eaz
+from network_model.catalog.wartosci_robocze import liczba_pl
 from network_model.nazwy import nazwa_nadana
 
 #: Kod podstawy oznaczajacy krzywa policzona ze wzoru przekaznikowego.
@@ -286,6 +287,75 @@ def zdanie_ziemnozwarciowe(rekord: dict[str, Any]) -> str:
     ``zdania_brakow`` (podmiot raz, lista nazw nastaw, jedno wezwanie) — raport nie dokleja ich
     drugi raz ani nie składa po jednym zdaniu na brak."""
     return f"{rekord['nazwa_urzadzenia_pl']}: {rekord['ocena']['wyjasnienie']['zdanie_pl']}"
+
+
+#: Warunki działania 67N (jedna lista ewaluatora ``warunki_dzialania``: U0, próg, kierunek,
+#: sektor, kryterium trybu, czas) dla najgorszego doziemienia w polu i poza polem — ta sama
+#: tabela co szczegóły wiersza na ekranie (``warunki_67n``).
+NAGLOWEK_WARUNKOW_67N_PL = "Warunki działania zabezpieczeń kierunkowych 67N (koniunkcja)"
+NAGLOWKI_WARUNKOW_67N_PL: tuple[str, ...] = (
+    "Pole",
+    "Doziemienie",
+    "Warunek",
+    "Wartość",
+    "Nastawa",
+    "Zapas",
+    "Spełniony",
+)
+_ROLA_PL = {"W_POLU": "w polu", "POZA_POLEM": "poza polem"}
+
+
+def _liczba_warunku(wartosc: float | None, jednostka: str) -> str:
+    """Liczba warunku z jednostką; ``None`` — bez ograniczenia (czas pobudzenia nieograniczony)."""
+    if wartosc is None:
+        return "bez ograniczenia"
+    return f"{liczba_pl(wartosc)} {jednostka}".strip()
+
+
+def wiersze_warunkow_67n(ziemne: dict[str, Any] | None) -> list[tuple[str, ...]]:
+    """Wiersze tabeli warunków 67N: każdy wiersz rodziny z ``warunki_67n`` × rola × warunek,
+    w kolejności wyniku i listy warunków (deterministycznie). Zero liczenia — liczby z rekordu."""
+    wynik: list[tuple[str, ...]] = []
+    for w in (ziemne or {}).get("wiersze") or []:
+        for rola, warunki in (w.get("warunki_67n") or {}).items():
+            for warunek in warunki:
+                jednostka = str(warunek.get("jednostka") or "")
+                wynik.append(
+                    (
+                        f"{w['pole_pl']} · {w.get('etykieta_pl') or w['kod']}",
+                        _ROLA_PL.get(rola, rola),
+                        str(warunek["opis_pl"]),
+                        _liczba_warunku(warunek.get("wartosc"), jednostka),
+                        f"{warunek.get('relacja', '')} "
+                        f"{_liczba_warunku(warunek.get('nastawa'), jednostka)}".strip(),
+                        _liczba_warunku(warunek.get("zapas"), jednostka),
+                        "tak" if warunek["spelniony"] else "nie",
+                    )
+                )
+    return wynik
+
+
+#: Tabela źródeł wymagań (``zrodla_wymagan`` wyniku — jedna tabela ``ZRODLA_WYMAGAN_EAZ``):
+#: wartość, stan źródła (ENEA zweryfikowane / założenie / niezweryfikowane) i odwołanie.
+NAGLOWEK_ZRODEL_WYMAGAN_PL = "Źródła wymagań zabezpieczeń ziemnozwarciowych"
+NAGLOWKI_ZRODEL_WYMAGAN_PL: tuple[str, ...] = ("Wielkość", "Wartość", "Stan źródła", "Odwołanie")
+
+
+def wiersze_zrodel_wymagan(ziemne: dict[str, Any] | None) -> list[tuple[str, str, str, str]]:
+    """Wiersze tabeli źródeł bez przekształceń stanu; współczynnik bezwymiarowy bez jednostki."""
+    wynik: list[tuple[str, str, str, str]] = []
+    for z in (ziemne or {}).get("zrodla_wymagan") or []:
+        wartosc = z.get("wartosc")
+        jednostka = "" if z.get("jednostka") in (None, "1") else str(z["jednostka"])
+        wynik.append(
+            (
+                str(z["symbol"]),
+                NIE_DOTYCZY if wartosc is None else f"{liczba_pl(wartosc)} {jednostka}".strip(),
+                str(z["stan_pl"]),
+                str(z["odwolanie_pl"]),
+            )
+        )
+    return wynik
 
 
 #: Nagłówek sekcji raportu z urządzeniami nadprądowymi, których ocena jest wstrzymana brakami.

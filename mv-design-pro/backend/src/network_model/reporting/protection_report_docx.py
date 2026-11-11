@@ -28,9 +28,13 @@ from network_model.reporting.docx_determinism import make_docx_bytes_determinist
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
     NAGLOWEK_ODMOW_URZADZEN_PL,
+    NAGLOWEK_WARUNKOW_67N_PL,
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
+    NAGLOWEK_ZRODEL_WYMAGAN_PL,
     NAGLOWKI_NASTAW_PL,
+    NAGLOWKI_WARUNKOW_67N_PL,
     NAGLOWKI_ZIEMNOZWARCIOWYCH_PL,
+    NAGLOWKI_ZRODEL_WYMAGAN_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
@@ -42,6 +46,8 @@ from network_model.reporting.protection_tcc_presentation import (
     wiersz_ziemnozwarciowy,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
+    wiersze_warunkow_67n,
+    wiersze_zrodel_wymagan,
     zdania_funkcji_nieocenianych,
     zdania_odmow_urzadzen,
     zdanie_ziemnozwarciowe,
@@ -384,6 +390,24 @@ def export_protection_coordination_to_docx(
             "Brak funkcji ziemnozwarciowych i stacji z węzłem SN w ocenie",
             style="No Spacing",
         )
+    # Warunki 67N i źródła wymagań — te same wiersze co PDF i ekran (warstwa prezentacji).
+    ziemne = result.get("ziemnozwarciowe")
+    for naglowek, kolumny, wiersze_tab in (
+        (NAGLOWEK_WARUNKOW_67N_PL, NAGLOWKI_WARUNKOW_67N_PL, wiersze_warunkow_67n(ziemne)),
+        (NAGLOWEK_ZRODEL_WYMAGAN_PL, NAGLOWKI_ZRODEL_WYMAGAN_PL, wiersze_zrodel_wymagan(ziemne)),
+    ):
+        if not wiersze_tab:
+            continue
+        doc.add_heading(naglowek, level=2)
+        tabela = doc.add_table(rows=1, cols=len(kolumny))
+        tabela.style = "Table Grid"
+        for i, h in enumerate(kolumny):
+            tabela.rows[0].cells[i].text = h
+            tabela.rows[0].cells[i].paragraphs[0].runs[0].bold = True
+        for wiersz_tab in wiersze_tab:
+            komorki = tabela.add_row().cells
+            for i, wartosc in enumerate(wiersz_tab):
+                komorki[i].text = wartosc
 
     doc.add_paragraph()
 

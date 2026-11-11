@@ -19,7 +19,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from application.analyses.protection.ocena_ziemnozwarciowa import KRYTERIA_ZIEMNOZWARCIOWE
+from application.analyses.protection.ocena_ziemnozwarciowa import (
+    KOLEJNOSC_WARUNKOW,
+    KRYTERIA_ZIEMNOZWARCIOWE,
+)
 from enm.models import EnergyNetworkModel
 from network_model.reporting.protection_tcc_presentation import (
     NAGLOWEK_ZIEMNOZWARCIOWYCH_PL,
@@ -136,3 +139,99 @@ def test_pdf_rysuje_wiersz_i_zdanie_kazdego_rekordu(
         for komorka in (wiersz[3], wiersz[5]):
             assert komorka[:12] in tekst
         assert " ".join(zdanie_ziemnozwarciowe(rekord).split()) in tekst
+
+
+# --- warunki 67N i źródła wymagań (wymagania właściciela 1 i 3 w raporcie) -----------------
+
+
+def _liczba_warunkow(ziemne: dict[str, Any]) -> int:
+    return sum(
+        len(warunki)
+        for w in ziemne.get("wiersze") or []
+        for warunki in (w.get("warunki_67n") or {}).values()
+    )
+
+
+@pytest.mark.parametrize(("sposob", "rezystancja_ohm"), WARIANTY)
+def test_raporty_niosa_warunki_67n_i_zrodla_wymagan(
+    sposob: str, rezystancja_ohm: float | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ILOCZYN: format {DOCX, PDF} × sieć {izolowany, rezystor}: tabela warunków 67N ma po
+    wierszu na każdy warunek każdej roli doziemienia (sześć reguł listy ewaluatora), tabela
+    źródeł — po wierszu na każde źródło z wyniku, stan źródła bez przemapowania; DOCX
+    i PDF niosą TE SAME wiersze (jedna funkcja prezentacji)."""
+    from docx import Document
+    from network_model.reporting.protection_report_docx import (
+        export_protection_coordination_to_docx,
+    )
+    from network_model.reporting.protection_tcc_presentation import (
+        NAGLOWEK_WARUNKOW_67N_PL,
+        NAGLOWEK_ZRODEL_WYMAGAN_PL,
+        NAGLOWKI_WARUNKOW_67N_PL,
+        NAGLOWKI_ZRODEL_WYMAGAN_PL,
+        wiersze_warunkow_67n,
+        wiersze_zrodel_wymagan,
+    )
+
+    wynik = _wynik(sposob, rezystancja_ohm)
+    ziemne = wynik["ziemnozwarciowe"]
+    warunki = wiersze_warunkow_67n(ziemne)
+    zrodla = wiersze_zrodel_wymagan(ziemne)
+    assert len(warunki) == _liczba_warunkow(ziemne) > 0
+    dane = [
+        x
+        for w in ziemne["wiersze"]
+        for lista in (w.get("warunki_67n") or {}).values()
+        for x in lista
+    ]
+    assert [(r[2], r[6]) for r in warunki] == [
+        (x["opis_pl"], "tak" if x["spelniony"] else "nie") for x in dane
+    ]
+    assert {r[6] for r in warunki} == {"tak", "nie"}, "scena ma warunki spełnione i niespełnione"
+    # Każda rola niesie pełną listę ewaluatora (TRYB tylko w trybie rzutu) — raport nie gubi reguł.
+    for w in ziemne["wiersze"]:
+        for lista in (w.get("warunki_67n") or {}).values():
+            klucze = {x["klucz"] for x in lista}
+            assert {"U0", "PROG", "KIERUNEK", "SEKTOR", "CZAS"} <= klucze <= set(KOLEJNOSC_WARUNKOW)
+    assert len(zrodla) == len(ziemne["zrodla_wymagan"]) > 0
+    assert [z[2] for z in zrodla] == [z["stan_pl"] for z in ziemne["zrodla_wymagan"]]
+    assert {z["stan"] for z in ziemne["zrodla_wymagan"]} >= {
+        "ENEA_ZWERYFIKOWANE",
+        "ZALOZENIE_INZYNIERSKIE",
+        "NIEZWERYFIKOWANE",
+    }
+
+    with tempfile.TemporaryDirectory() as katalog:
+        sciezka = Path(katalog) / "raport.docx"
+        export_protection_coordination_to_docx(wynik, sciezka, deterministic=True)
+        dokument = Document(str(sciezka))
+    naglowki = [p.text for p in dokument.paragraphs if p.style.name.startswith("Heading")]
+    assert {NAGLOWEK_WARUNKOW_67N_PL, NAGLOWEK_ZRODEL_WYMAGAN_PL} <= set(naglowki)
+    for kolumny, oczekiwane in (
+        (NAGLOWKI_WARUNKOW_67N_PL, warunki),
+        (NAGLOWKI_ZRODEL_WYMAGAN_PL, zrodla),
+    ):
+        tabela = next(
+            t for t in dokument.tables if tuple(c.text for c in t.rows[0].cells) == kolumny
+        )
+        assert [tuple(c.text for c in w.cells) for w in tabela.rows[1:]] == oczekiwane
+
+    import network_model.reporting.protection_report_pdf as modul_pdf
+    from reportlab.pdfgen.canvas import Canvas
+
+    narysowane: list[str] = []
+    oryginal = Canvas.drawString
+
+    def szpieg(self: Canvas, x: float, y: float, tekst: str, *a: Any, **k: Any) -> Any:
+        narysowane.append(tekst)
+        return oryginal(self, x, y, tekst, *a, **k)
+
+    monkeypatch.setattr(Canvas, "drawString", szpieg)
+    with tempfile.TemporaryDirectory() as katalog:
+        modul_pdf.export_protection_coordination_to_pdf(wynik, Path(katalog) / "raport.pdf")
+    assert {NAGLOWEK_WARUNKOW_67N_PL, NAGLOWEK_ZRODEL_WYMAGAN_PL} <= set(narysowane)
+    tekst = " ".join(" ".join(narysowane).split())
+    for wiersz in [*warunki, *zrodla]:
+        # Komórki zawijane do szerokości kolumny — sprawdzamy pierwsze słowo każdej komórki.
+        for komorka in wiersz:
+            assert komorka.split()[0] in tekst, (wiersz, komorka)
