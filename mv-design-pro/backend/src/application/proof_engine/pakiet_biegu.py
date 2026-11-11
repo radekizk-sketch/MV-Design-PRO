@@ -378,7 +378,7 @@ _ZAWARTOSC_BEZ_ODCINKA_PL = (
 
 def _zawartosc_linii_pl(linia: LiniaWNModelu) -> str:
     return (
-        f"Dowód parametrów linii 110 kV {linia.nazwa}: R′, X′, B′ i Z′0 z geometrii słupa "
+        f"Dowód parametrów linii 110 kV {linia.nazwa}: rezystancja, reaktancja, susceptancja i impedancja zerowa z geometrii słupa "
         f"({rozroznik_linii(linia.branch_ref)}.zip)"
     )
 

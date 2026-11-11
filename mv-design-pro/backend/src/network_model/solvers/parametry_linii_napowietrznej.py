@@ -615,8 +615,9 @@ def oblicz_parametry_linii(dane: WejscieParametrowLinii) -> ParametryLiniiNapowi
             ),
             wynik=WielkoscSladu(r"R'_{\theta}", r_theta, "Ω/km"),
             podstawa_pl=(
-                "IEC 60909-0:2016, wzór R_L(θ_e) (α = 0,004 1/K dla miedzi, aluminium i stopów "
-                "aluminium); θ — temperatura dopuszczalna długotrwale przewodu"
+                "IEC 60909-0:2016, wzór rezystancji przewodu w temperaturze (współczynnik "
+                "temperaturowy 0,004 1/K dla miedzi, aluminium i stopów aluminium); temperatura "
+                "— dopuszczalna długotrwale przewodu"
             ),
         )
     )
@@ -880,7 +881,7 @@ def oblicz_parametry_linii(dane: WejscieParametrowLinii) -> ParametryLiniiNapowi
                 WielkoscSladu(r"\frac{\omega\mu_0}{2\pi}", wsp * _KILOMETR_M, "Ω/km"),
             ),
             wynik=WielkoscSladu("X'_1", x1_kontrolne, "Ω/km"),
-            podstawa_pl="wzór klasyczny linii transponowanej (wpływ ziemi znosi się w Z′1)",
+            podstawa_pl="wzór klasyczny linii transponowanej (wpływ ziemi znosi się w impedancji zgodnej)",
         )
     )
 

@@ -34,6 +34,7 @@ import {
   getMultiEditPlaceholder,
   type ElementData,
 } from './multi-edit-helpers';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Types
@@ -508,7 +509,7 @@ function PropertyFieldRow({ field, onFieldChange, mode, canEdit }: PropertyField
       {/* Label */}
       <div className="flex-1 min-w-0">
         <span className="text-xs text-gray-600">
-          {field.label}
+          <TekstZWzorami tekst={field.label} />
           {getSourceIndicator() && (
             <span className="text-gray-400 ml-1">{getSourceIndicator()}</span>
           )}

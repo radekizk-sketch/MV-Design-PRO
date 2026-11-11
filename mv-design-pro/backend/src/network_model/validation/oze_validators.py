@@ -322,13 +322,16 @@ def validate_bess_parameters(
             ValidationIssue(
                 code="oze.bess_ksc_out_of_range",
                 message=(
-                    f"BESS '{generator.name}' — współczynnik k_sc = {generator.k_sc} "
+                    f"BESS '{generator.name}' — współczynnik udziału zwarciowego {generator.k_sc} "
                     f"poza dopuszczalnym zakresem [1.0, 2.0]"
                 ),
                 severity=Severity.WARNING,
                 element_id=generator.id,
                 field="k_sc",
-                suggested_fix=("Ustaw k_sc w zakresie 1.0-2.0 " "(typowo 1.1 dla falownika BESS)"),
+                suggested_fix=(
+                    "Ustaw współczynnik udziału zwarciowego w zakresie 1.0-2.0 "
+                    "(typowo 1.1 dla falownika BESS)"
+                ),
             )
         )
 

@@ -248,8 +248,8 @@ def test_poziom_izolacji_u_m_wobec_u_s_sieci(droga: str, napiecie_sieci_kv: floa
         )
         if u_m < u_s:
             assert wynik.get("error_code") == kod, (pozycja, u_m, wynik)
-            assert f"U_s = {u_s:g} kV" in wynik["error"], wynik["error"]
-            assert f"U_m = {u_m:g} kV" in wynik["error"], wynik["error"]
+            assert f"napięcia najwyższego sieci {u_s:g} kV" in wynik["error"], wynik["error"]
+            assert f"napięcie najwyższe urządzenia {u_m:g} kV" in wynik["error"], wynik["error"]
         else:
             assert not wynik.get("error"), (pozycja, u_m, wynik)
 

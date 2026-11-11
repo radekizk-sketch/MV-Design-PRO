@@ -512,7 +512,7 @@ function buildBranchPointSubject(
  *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
  *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */
 const DER_CONTROL_MODE_LABEL_PL: Readonly<Record<string, string>> = {
-  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
+  STALY_COS_PHI: 'Stały współczynnik mocy $\\cos\\varphi$',
   Q_OD_U: 'Regulacja Q(U)',
   P_OD_U: 'Regulacja P(U)',
   REGULACJA_NAPIECIA: 'Regulacja napięcia (U = const)',
@@ -530,7 +530,7 @@ function regulacjaQFields(generator: Generator): CardField[] {
   const label = DER_CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode;
   const fields: CardField[] = [{ key: 'tryb_regulacji_q', label: 'Tryb regulacji Q', value: label }];
   if (controlMode === 'STALY_COS_PHI' && typeof meta.cos_phi === 'number') {
-    fields.push({ key: 'cos_phi_nastawa', label: 'Nastawa cosφ', value: meta.cos_phi });
+    fields.push({ key: 'cos_phi_nastawa', label: 'Nastawa $\\cos\\varphi$', value: meta.cos_phi });
   }
   if (
     (controlMode === 'Q_OD_U' || controlMode === 'P_OD_U') &&

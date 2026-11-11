@@ -157,7 +157,7 @@ class ProtectedElementContext:
             "transformer_rated_power_mva": self.transformer_rated_power_mva,
             "transformer_voltage_hv_kv": self.transformer_voltage_hv_kv,
             "transformer_voltage_lv_kv": self.transformer_voltage_lv_kv,
-            "transformer_side": self.transformer_side.value if self.transformer_side else None,
+            "transformer_side": (self.transformer_side.value if self.transformer_side else None),
             "connection_rated_current_a": self.connection_rated_current_a,
         }
 
@@ -194,9 +194,9 @@ class BaseValues:
     def __post_init__(self) -> None:
         """Validate invariants."""
         if self.un_kv is None and self.source_un != BaseValueSourceUn.UNKNOWN:
-            raise ValueError("un_kv is None but source_un is not UNKNOWN")
+            raise ValueError("brak `un_kv` przy źródle `source_un` innym niż UNKNOWN")
         if self.in_a is None and self.source_in != BaseValueSourceIn.UNKNOWN:
-            raise ValueError("in_a is None but source_in is not UNKNOWN")
+            raise ValueError("brak `in_a` przy źródle `source_in` innym niż UNKNOWN")
 
     @property
     def un_v(self) -> float | None:
@@ -303,7 +303,9 @@ class ProtectionSetpoint:
                 raise ValueError(f"Dla bazy {self.basis.value} wymagany jest multiplier")
         if self.basis == ProtectionSetpointBasis.ABS:
             if self.abs_value is None:
-                raise ValueError("Dla bazy ABS wymagana jest wartość abs_value")
+                raise ValueError(
+                    "Dla bazy ABS wymagana jest wartość bezwzględna (pole `abs_value`)"
+                )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -343,6 +345,9 @@ class ProtectionComputedValue:
     value: float
     unit: ProtectionComputedUnit
     computed_from: str
+    #: To samo podstawienie jako wzór dla `MathRenderer` (pole addytywne, pomijane, gdy brak);
+    #: `computed_from` niesie je słowami.
+    computed_from_latex: str | None = None
 
     def __post_init__(self) -> None:
         """Validate computed value invariants."""
@@ -351,11 +356,14 @@ class ProtectionComputedValue:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
-        return {
+        wynik: dict[str, Any] = {
             "value": self.value,
             "unit": self.unit,
             "computed_from": self.computed_from,
         }
+        if self.computed_from_latex is not None:
+            wynik["computed_from_latex"] = self.computed_from_latex
+        return wynik
 
 
 # =============================================================================
@@ -379,8 +387,8 @@ SOURCE_IN_LABELS_PL: dict[BaseValueSourceIn, str] = {
 }
 
 SETPOINT_BASIS_LABELS_PL: dict[ProtectionSetpointBasis, str] = {
-    ProtectionSetpointBasis.UN: "Napięcie znamionowe (Un)",
-    ProtectionSetpointBasis.IN: "Prąd znamionowy (In)",
+    ProtectionSetpointBasis.UN: "Napięcie znamionowe",
+    ProtectionSetpointBasis.IN: "Prąd znamionowy",
     ProtectionSetpointBasis.HZ: "Częstotliwość bazowa (fn)",
     ProtectionSetpointBasis.ABS: "Wartość bezwzględna",
 }

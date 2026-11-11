@@ -908,15 +908,15 @@ class TransformerBranch(Branch):
             ValueError: If any required input is out of range.
         """
         if self.rated_power_mva <= 0:
-            raise OdmowaDanychError("rated_power_mva must be > 0")
+            raise OdmowaDanychError("moc znamionowa transformatora musi być dodatnia")
         if self.uk_percent <= 0:
-            raise OdmowaDanychError("uk_percent must be > 0")
+            raise OdmowaDanychError("napięcie zwarcia transformatora musi być dodatnie")
         if self.pk_kw < 0:
-            raise OdmowaDanychError("pk_kw must be >= 0")
+            raise OdmowaDanychError("straty obciążeniowe transformatora nie mogą być ujemne")
         if self.voltage_lv_kv <= 0:
-            raise OdmowaDanychError("voltage_lv_kv must be > 0")
+            raise OdmowaDanychError("napięcie strony dolnej transformatora musi być dodatnie")
         if self.voltage_hv_kv <= 0:
-            raise OdmowaDanychError("voltage_hv_kv must be > 0")
+            raise OdmowaDanychError("napięcie strony górnej transformatora musi być dodatnie")
 
     def get_short_circuit_impedance_pu(self) -> complex:
         """
@@ -1275,10 +1275,10 @@ def odmowa_gdy_pk_sprzeczne_z_uk(
     """
     if r_pu > z_pu:
         raise OdmowaDanychError(
-            f"Sprzeczne dane transformatora: straty obciążeniowe P_k = {pk_kw} kW przy "
-            f"S_n = {rated_power_mva} MVA dają rezystancję {r_pu:.6g} p.u. większą niż "
-            f"impedancja zwarciowa z napięcia zwarcia u_k = {uk_percent} % "
-            f"({z_pu:.6g} p.u.). Popraw P_k albo u_k w karcie katalogowej transformatora."
+            f"Sprzeczne dane transformatora: straty obciążeniowe {pk_kw} kW przy mocy "
+            f"znamionowej {rated_power_mva} MVA dają rezystancję {r_pu:.6g} p.u. większą niż "
+            f"impedancja zwarciowa z napięcia zwarcia {uk_percent} % "
+            f"({z_pu:.6g} p.u.). Popraw straty obciążeniowe albo napięcie zwarcia w karcie katalogowej transformatora."
         )
 
 

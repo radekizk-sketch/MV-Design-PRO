@@ -273,7 +273,8 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               ok,
               message_pl: ok
                 ? ''
-                : 'Siec skompensowana (Petersena) wymaga VT (faza-ziemia) z U_th >= 1.9.',
+                : 'Sieć skompensowana (Petersena) wymaga przekładnika napięciowego (faza-ziemia) '
+                  + 'o współczynniku napięciowym co najmniej 1.9 wg IEC 61869-3.',
             }),
           } as Response;
         }
@@ -312,7 +313,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               i_th_ok: true,
               message_pl: iDynOk
                 ? 'OK: aparatura wytrzymała.'
-                : 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
+                : 'BLOKER: prąd udarowy 70,0 kA > 63,0 kA (limit) — przekroczenie '
                   + 'wytrzymałości dynamicznej.',
               utilization_dyn_percent: 0,
               utilization_th_percent: 0,
@@ -373,7 +374,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
 
       const validation = await screen.findByTestId('withstand-POLE-01');
       expect(validation.getAttribute('data-withstand-ok')).toBe('false');
-      expect(validation.textContent).toContain('I_dyn');
+      expect(validation.textContent).toContain('prąd udarowy');
     });
 
     it('walidacja VT OK gdy U_th=1.9 dla sieci skompensowanej', async () => {

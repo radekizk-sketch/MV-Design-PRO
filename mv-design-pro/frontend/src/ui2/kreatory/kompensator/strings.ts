@@ -83,13 +83,13 @@ export const KOMPENSATOR_STRINGS = {
     'Moc baterii dobiera się do deficytu mocy biernej i profilu obciążenia; przy bateriach '
     + 'stopniowanych/dławikach istotne są prądy załączania i rezonans z indukcyjnością sieci.',
   teoriaPodstawa:
-    'Podstawa: PN-EN 60871 (baterie kondensatorów SN), IRiESD (współczynnik mocy tgφ).',
+    'Podstawa: PN-EN 60871 (baterie kondensatorów SN), IRiESD (współczynnik mocy $\\operatorname{tg}\\varphi$).',
   teoriaJakCzytac:
     'Krzywa = moc bierna baterii w funkcji napięcia (Q rośnie z kwadratem U). Punkt znamionowy '
-    + '(1,0; 1,0) = wartość katalogowa; przy napięciu 0,9 pu bateria oddaje tylko ~0,81 Qn, przy '
-    + '1,05 pu ~1,10 Qn. Rzeczywistą moc bierną w punkcie pracy liczy rozpływ dla napięcia z sieci.',
+    + '(1,0; 1,0) = wartość katalogowa; przy napięciu 0,9 pu bateria oddaje tylko ~0,81 $Q_{n}$, przy '
+    + '1,05 pu ~1,10 $Q_{n}$. Rzeczywistą moc bierną w punkcie pracy liczy rozpływ dla napięcia z sieci.',
   wykresQuAria: 'Charakterystyka Q(U) baterii kondensatorów (Q proporcjonalne do kwadratu napięcia)',
-  wykresQuOsU: 'Napięcie U/Un [pu]',
-  wykresQuOsQ: 'Moc bierna Q/Qn',
+  wykresQuOsU: 'Napięcie U/$U_{n}$ [pu]',
+  wykresQuOsQ: 'Moc bierna Q/$Q_{n}$',
   wykresQuPunkt: 'znamionowy',
 } as const;

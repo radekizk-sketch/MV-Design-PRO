@@ -25,7 +25,7 @@ export const MAGISTRALA_STRINGS = {
   ekranUziemienie: 'Uziemienie ekranu kabla',
   ekranUziemieniePomoc:
     'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + 'Katalogowe $R_{0}$/$X_{0}$ obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
     + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   nazwa: 'Nazwa odcinka',
@@ -36,7 +36,7 @@ export const MAGISTRALA_STRINGS = {
   pradPomoc:
     'Prąd płynący przez odcinek (z odbiorami dalej w ciągu). Bez niego obciążalność nie zostanie '
     + 'oceniona, a spadek napięcia backend policzy przy prądzie równym obciążalności typu.',
-  cosPhi: 'Współczynnik mocy cosφ',
+  cosPhi: 'Współczynnik mocy $\\cos\\varphi$',
 
   // Parametry katalogu (odczyt).
   paramR: 'Rezystancja R',
@@ -50,7 +50,7 @@ export const MAGISTRALA_STRINGS = {
   paramC: 'Pojemność C',
   paramB: 'Susceptancja B',
   paramIzolacja: 'Izolacja',
-  paramIthPowrot: 'Ith żyły powrotnej (1 s)',
+  paramIthPowrot: '$I_{th}$ żyły powrotnej (1 s)',
   paramSekcjaNormowa: 'Parametry normowe do obliczeń',
 
   // Podgląd (backend R1).
@@ -108,7 +108,7 @@ export const MAGISTRALA_STRINGS = {
   ocenaBlad: 'Nie udało się pobrać oceny doboru odcinka.',
   ocenaWskazowka: 'Pełne karty oceny (wynik, limit z podstawą, margines, zakres ważności): krok „Długość i podgląd".',
   ocenaIthPomoc:
-    'Wytrzymałość cieplna zwarciowa ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
+    'Wytrzymałość cieplna zwarciowa ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) — sprawdzana po biegu zwarciowym; katalog podaje $I_{th}$ żyły powrotnej.',
 
   // Uczciwy stan zerowy: brak startu ciągu.
   brakStartuTytul: 'Brak miejsca startu ciągu',
@@ -148,7 +148,7 @@ export const MAGISTRALA_STRINGS = {
   teoriaOpisKabelLinia:
     'Kabel a linia napowietrzna różnią się parametrami normowymi do obliczeń: kabel ma większą '
     + 'pojemność doziemną C (prąd ładowania, model π), niższą reaktancję X, żyłę powrotną/ekran '
-    + '(wytrzymałość cieplna Ith przy zwarciu doziemnym) oraz izolację wyznaczającą temperaturę '
+    + '(wytrzymałość cieplna $I_{th}$ przy zwarciu doziemnym) oraz izolację wyznaczającą temperaturę '
     + 'dopuszczalną (XLPE 90°C / PVC 70°C). Linia napowietrzna ma susceptancję B (małą), wyższą '
     + 'reaktancję X, brak żyły powrotnej i wyższą obciążalność (chłodzenie powietrzem). Dlatego '
     + 'zestaw parametrów pokazany poniżej zależy od rodzaju odcinka.',

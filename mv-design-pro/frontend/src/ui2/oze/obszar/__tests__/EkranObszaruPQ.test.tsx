@@ -20,6 +20,7 @@ import {
   widokObszaruFixture,
 } from './fixtures';
 import { OBSZAR_STRINGS } from '../strings';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const pobierzObszar = vi.fn();
 const pobierzKonwertery = vi.fn();
@@ -167,13 +168,13 @@ describe('EkranObszaruPQ — nakładka krzywej producenta (kryterium 2)', () => 
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     await screen.findByTestId('mvd-obszar-wynik');
     // Nakładka domyślnie wyłączona.
-    expect(screen.queryByText(OBSZAR_STRINGS.legendaProdMax)).not.toBeInTheDocument();
+    expect(screen.queryByText(poTekscieZWzorami(OBSZAR_STRINGS.legendaProdMax))).not.toBeInTheDocument();
     // Opcje typów wczytane asynchronicznie z katalogu.
     await screen.findByRole('option', { name: /Sungrow/ });
     fireEvent.change(screen.getByTestId('mvd-obszar-typ'), {
       target: { value: 'conv-pv-card-sungrow-sg3150u-mv' },
     });
-    expect(screen.getByText(OBSZAR_STRINGS.legendaProdMax)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(OBSZAR_STRINGS.legendaProdMax))).toBeInTheDocument();
   });
 });
 

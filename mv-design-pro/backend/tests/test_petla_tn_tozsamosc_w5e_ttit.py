@@ -38,16 +38,39 @@ POLA_C_WYNIKU = ("c_min", "c_max", "c_zrodlo_min", "c_zrodlo_max")
 POLA_C_KROKU = ("c_zrodlo_min", "c_zrodlo_max")
 
 
+#: Karta UX-04/ZU (decyzja architekta 2026-11-04): metoda kroku słowami, wzór w addytywnym
+#: `method_latex`. Jedyna zmiana treści śladu TN — para (dawny zapis w fiksturze, nowa proza,
+#: wzór LaTeX); poza nią ślad bit w bit jak w fiksturze.
+METODY_KARTY_ZU = {
+    "sum_components": (
+        "Z_loop = Σ(R_i + jX_i)",
+        "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+        r"Z_{loop} = \sum_{i} (R_{i} + jX_{i})",
+    ),
+    "compute_ik": (
+        "I_k = c * U_n / |Z_loop|",
+        "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez "
+        "moduł impedancji pętli",
+        r"I_{k} = \frac{c \cdot U_{n}}{|Z_{loop}|}",
+    ),
+}
+
+
+def _krok_przed_karta(krok: dict) -> dict:
+    kopia = dict(krok)
+    if krok.get("step") == "compute_ik":
+        kopia = {k: v for k, v in kopia.items() if k not in POLA_C_KROKU}
+    if krok.get("step") in METODY_KARTY_ZU:
+        dawny, proza, latex = METODY_KARTY_ZU[krok["step"]]
+        assert kopia["method"] == proza
+        assert kopia.pop("method_latex") == latex
+        kopia["method"] = dawny
+    return kopia
+
+
 def _bez_pol_addytywnych_c(wynik: dict) -> dict:
     kopia = {k: v for k, v in wynik.items() if k not in POLA_C_WYNIKU}
-    kopia["white_box_trace"] = [
-        (
-            {k: v for k, v in krok.items() if k not in POLA_C_KROKU}
-            if krok.get("step") == "compute_ik"
-            else krok
-        )
-        for krok in wynik["white_box_trace"]
-    ]
+    kopia["white_box_trace"] = [_krok_przed_karta(krok) for krok in wynik["white_box_trace"]]
     return kopia
 
 

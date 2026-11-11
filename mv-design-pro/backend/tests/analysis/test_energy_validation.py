@@ -857,9 +857,13 @@ class TestWhiteBoxTrace:
         assert r"\frac{|I_{od}|}{I_{r,od}}" in item.white_box[0]["latex"]
         assert r"\frac{|I_{do}|}{I_{r,do}}" in item.white_box[0]["latex"]
         # Karta #145: zdanie po polsku — przecinek dziesiętny, zacisk nazwany słowem.
-        assert "|I_od| = 0,4500 kA" in item.white_box[1]["tekst"]  # prąd zacisku od (PF)
-        assert "|I_do| = 0,4400 kA" in item.white_box[1]["tekst"]  # prąd zacisku do (PF)
-        assert "I_r,od = 0,5000 kA" in item.white_box[1]["tekst"]  # In z danych galezi
+        assert (
+            "prąd zacisku początkowego 0,4500 kA" in item.white_box[1]["tekst"]
+        )  # prąd zacisku od (PF)
+        assert "końcowego 0,4400 kA" in item.white_box[1]["tekst"]  # prąd zacisku do (PF)
+        assert (
+            "prąd znamionowy zacisku początkowego 0,5000 kA" in item.white_box[1]["tekst"]
+        )  # In z danych galezi
         assert "decyduje zacisk początkowy" in item.white_box[1]["tekst"]
         assert item.white_box[1]["latex"] is None  # pochodzenie danych = tekst
         assert "90,00 %" in item.white_box[2]["tekst"]

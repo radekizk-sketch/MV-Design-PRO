@@ -58,7 +58,8 @@ PODSTAWA_POMINIECIA_SKLADOWA_ZGODNA_PL = (
     "rozładowania baterii kondensatorów równoległych nie wchodzi do prądu zwarciowego "
     "niezależnie od chwili zwarcia (punkt normy o kondensatorach i odbiorach nieobrotowych; "
     "numer punktu nie został zweryfikowany ze źródłem); jedynym napięciem czynnym sieci jest "
-    "zastępcze źródło c·U_n/√3 w miejscu zwarcia (pkt 5.3.1)"
+    "zastępcze źródło napięcia (współczynnik napięciowy razy napięcie fazowe) w miejscu "
+    "zwarcia (pkt 5.3.1)"
 )
 
 #: Podstawa udziału baterii w składowej zerowej i w prądzie pojemnościowym sieci.

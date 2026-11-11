@@ -375,7 +375,7 @@
       "powod_pl": "Analiza koordynacji liczy charakterystyki i czasy, ale nie wystawia werdyktu selektywności na poziomie całego modelu — ocena należy do projektanta na ekranie koordynacji."
     },
     {
-      "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+      "kryterium_pl": "Wytrzymałość aparatury (wyłączalność, wytrzymałość dynamiczna i cieplna) na całym modelu",
       "etap": "E4",
       "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },

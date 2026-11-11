@@ -109,7 +109,7 @@ export function SldCanonPresetG2({ companion }: { companion: SldOzeArchetypeComp
       <line x1={pvX} y1={busY + 53} x2={pvX} y2={busY + 70} stroke={NN_BUS} strokeWidth={1.8} />
       <InverterSym x={pvX} y={busY + 87} />
       {lbl(pvX, busY + 120, `PV ${pvKw} kW`, AMBER, 11, 800, 'middle')}
-      {lbl(pvX, busY + 133, `falownik IBG · Ik″ ≈ ${fmt(faln, 2)} kA`, TXT2, 9, 700, 'middle')}
+      {lbl(pvX, busY + 133, `falownik IBG · $I_{k}''$ ≈ ${fmt(faln, 2)} kA`, TXT2, 9, 700, 'middle')}
 
       {/* ── odbiór (local load) ── */}
       <line x1={loadX} y1={busY} x2={loadX} y2={busY + 60} stroke={NN_BUS} strokeWidth={1.8} />

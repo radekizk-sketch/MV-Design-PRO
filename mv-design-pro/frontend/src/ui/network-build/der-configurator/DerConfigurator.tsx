@@ -10,6 +10,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 
 import type { GeneratorConnectionVariant } from '../../../types/enm';
 import { punktPrzylaczeniaOpisPl, type ConnectionSide, type SnConnectionPointKind } from '../station-der';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import { DerPccVariantInfo } from './DerPccVariantInfo';
 
@@ -110,7 +111,7 @@ const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> 
       'Nie wpisuj parametrów z ręki, jeżeli istnieje pozycja katalogowa.',
     ],
     'plant-controller': [
-      'Ustaw Q(U), P(f), cos phi i ewentualne ograniczenie eksportu.',
+      'Ustaw Q(U), P(f), $\\cos\\varphi$ i ewentualne ograniczenie eksportu.',
       'Regulacja ma być zgodna z wybranym profilem operatora.',
     ],
     'frt-hvrt': [
@@ -308,7 +309,9 @@ function DefaultCard({
         {DEFAULT_CARD_HINTS[derKind][cardId].map((item) => (
           <li key={item} className="flex gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-scada-sn" />
-            <span>{item}</span>
+            <span>
+              <TekstZWzorami tekst={item} />
+            </span>
           </li>
         ))}
       </ul>

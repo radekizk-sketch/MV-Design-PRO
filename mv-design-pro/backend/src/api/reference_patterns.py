@@ -351,15 +351,31 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
     c.setFont("DejaVuSans", 9)
     artifacts = data.get("artifacts", {})
     artifact_items = [
-        ("Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"),
+        ("Czas zwarcia sumaryczny", artifacts.get("tk_total_s"), "s"),
         ("Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A"),
         ("Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
-        ("I_min okna nastaw (pierwotna)", artifacts.get("window_i_min_primary_a"), "A"),
-        ("I_max okna nastaw (pierwotna)", artifacts.get("window_i_max_primary_a"), "A"),
+        (
+            "Dolna granica okna nastaw (strona pierwotna)",
+            artifacts.get("window_i_min_primary_a"),
+            "A",
+        ),
+        (
+            "Górna granica okna nastaw (strona pierwotna)",
+            artifacts.get("window_i_max_primary_a"),
+            "A",
+        ),
         ("Zalecana nastawa I>>", artifacts.get("recommended_setting_primary_a"), "A"),
         ("Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
-        ("Kryterium limitujące I_min", artifacts.get("limiting_criterion_min"), ""),
-        ("Kryterium limitujące I_max", artifacts.get("limiting_criterion_max"), ""),
+        (
+            "Kryterium wyznaczające dolną granicę okna nastaw",
+            artifacts.get("limiting_criterion_min"),
+            "",
+        ),
+        (
+            "Kryterium wyznaczające górną granicę okna nastaw",
+            artifacts.get("limiting_criterion_max"),
+            "",
+        ),
     ]
 
     for label, value, unit in artifact_items:
@@ -528,9 +544,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
             else:
                 row[1].text = f"{value} {unit}".strip()
 
-    add_artifact_row(
-        thermal_table, "Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"
-    )
+    add_artifact_row(thermal_table, "Czas zwarcia sumaryczny", artifacts.get("tk_total_s"), "s")
     add_artifact_row(thermal_table, "Prąd znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A")
     add_artifact_row(
         thermal_table, "Prąd dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"
@@ -552,12 +566,15 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     add_artifact_row(
         window_table,
-        "I_min (selektywność, pierwotna)",
+        "Dolna granica okna nastaw (selektywność, strona pierwotna)",
         artifacts.get("window_i_min_primary_a"),
         "A",
     )
     add_artifact_row(
-        window_table, "I_max (okno, pierwotna)", artifacts.get("window_i_max_primary_a"), "A"
+        window_table,
+        "Górna granica okna nastaw (strona pierwotna)",
+        artifacts.get("window_i_max_primary_a"),
+        "A",
     )
     add_artifact_row(
         window_table,
@@ -569,10 +586,14 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         window_table, "Okno nastaw prawidłowe", "Tak" if artifacts.get("window_valid") else "Nie"
     )
     add_artifact_row(
-        window_table, "Kryterium limitujące I_min", artifacts.get("limiting_criterion_min")
+        window_table,
+        "Kryterium wyznaczające dolną granicę okna nastaw",
+        artifacts.get("limiting_criterion_min"),
     )
     add_artifact_row(
-        window_table, "Kryterium limitujące I_max", artifacts.get("limiting_criterion_max")
+        window_table,
+        "Kryterium wyznaczające górną granicę okna nastaw",
+        artifacts.get("limiting_criterion_max"),
     )
 
     doc.add_paragraph()

@@ -172,7 +172,7 @@ export function transformerNameplateLabel(t: {
   readonly vector_group?: string | null;
   readonly uk_percent: number;
 }): string {
-  return `${plNumber(Math.round(t.sn_mva * 1000))} kVA · ${plNumber(t.uhv_kv)}/${plNumber(t.ulv_kv)} kV · ${t.vector_group ?? '—'} · uk = ${plNumber(t.uk_percent)}%`;
+  return `${plNumber(Math.round(t.sn_mva * 1000))} kVA · ${plNumber(t.uhv_kv)}/${plNumber(t.ulv_kv)} kV · ${t.vector_group ?? '—'} · $u_{k}$ = ${plNumber(t.uk_percent)}%`;
 }
 
 /** Tożsamość systemu SN: poziom napięcia + źródła systemu (z modelu). */
@@ -197,10 +197,10 @@ export function anchorDetailLabel(rownowaznik: UpstreamEquivalentSnapshot | unde
     const powod = rownowaznik.missing_data.length
       ? rownowaznik.missing_data.map((kod) => OPIS_BRAKU_ROWNOWAZNIKA_PL[kod] ?? kod).join('; ')
       : 'brak danych';
-    return `Sk″/Ik″ SN: brak danych — ${powod}`;
+    return `$S_{k}''$/$I_{k}''$ SN: brak danych — ${powod}`;
   }
-  const sk = rownowaznik.sk_mva != null ? `Sk″ SN = ${plFixed(rownowaznik.sk_mva, 1)} MVA` : 'Sk″ SN = —';
-  const ik = rownowaznik.ikss_ka != null ? `Ik″ SN = ${plFixed(rownowaznik.ikss_ka, 2)} kA` : 'Ik″ SN = —';
+  const sk = rownowaznik.sk_mva != null ? `$S_{k}''$ SN = ${plFixed(rownowaznik.sk_mva, 1)} MVA` : '$S_{k}\'\'$ SN = —';
+  const ik = rownowaznik.ikss_ka != null ? `$I_{k}''$ SN = ${plFixed(rownowaznik.ikss_ka, 2)} kA` : '$I_{k}\'\'$ SN = —';
   const scenariusz = rownowaznik.scenario_id ?? 'MAX';
   return `${sk} · ${ik} (${scenariusz})`;
 }

@@ -15,6 +15,8 @@ import { MathInline } from '../../../../ui/proof/MathRenderer';
 import type { DefinicjaParametru } from './types';
 
 export interface ParametrRowProps {
+  /** Klucz pola API (`uk_percent`) — identyfikator wiersza (`data-pole`). */
+  klucz: string;
   definicja: DefinicjaParametru;
   wartosc: unknown;
 }
@@ -35,15 +37,17 @@ export function formatujWartosc(definicja: DefinicjaParametru, wartosc: unknown)
   });
 }
 
-export function ParametrRow({ definicja, wartosc }: ParametrRowProps): JSX.Element {
+export function ParametrRow({ klucz, definicja, wartosc }: ParametrRowProps): JSX.Element {
   const tekstWartosci = formatujWartosc(definicja, wartosc);
   return (
-    <div className="mvd-katalog__param" data-pole={definicja.symbol}>
+    <div className="mvd-katalog__param" data-pole={klucz}>
       <div>
         <span className="mvd-katalog__param-symbol">
           <MathInline latex={definicja.symbolLatex} />
         </span>
-        <span>{definicja.etykieta}</span>
+        <span>
+          <TekstZWzorami tekst={definicja.etykieta} />
+        </span>
         <span className="mvd-katalog__param-def">
           <TekstZWzorami tekst={definicja.definicja} /> ({definicja.norma})
         </span>

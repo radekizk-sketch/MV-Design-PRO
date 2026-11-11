@@ -12,7 +12,7 @@ export const PRZYPISANIE_KATALOGU_STRINGS = {
   elementTytul: 'Element docelowy',
   element: 'Element',
   elementPomoc: 'Element modelu, do którego przypisujesz typ. Po przypisaniu backend materializuje '
-    + 'parametry znamionowe z katalogu (np. R, X, In).',
+    + 'parametry znamionowe z katalogu (np. R, X, $I_{n}$).',
   przestrzen: 'Przestrzeń katalogowa',
   przestrzenAuto: 'Wyznaczana automatycznie z typu elementu',
 

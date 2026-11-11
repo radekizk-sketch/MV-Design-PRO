@@ -38,6 +38,7 @@ import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
 import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -72,8 +73,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-zdol-stan mvd-zdol-stan--blad' : 'mvd-zdol-stan'}
       data-testid={testid}
     >
-      <p className="mvd-zdol-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-zdol-stan-desc">{opis}</p>}
+      <p className="mvd-zdol-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-zdol-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

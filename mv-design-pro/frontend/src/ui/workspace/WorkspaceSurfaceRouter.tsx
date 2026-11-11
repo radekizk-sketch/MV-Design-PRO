@@ -146,6 +146,8 @@ import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 import { szynyStacji } from '../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
+import { MathInline } from '../proof/MathRenderer';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -567,8 +569,8 @@ function buildShortCircuitAnalysisRows(rows: readonly ShortCircuitRow[]): Analys
       name: targetLabel,
       voltage: faultType,
       input: 'IEC 60909; dane z wyniku serwerowego',
-      resultA: `${formatNullableResult("Ik''", row.ikss_ka, 'kA', 2)}; ${formatNullableResult('ip', row.ip_ka, 'kA', 2)}`,
-      resultB: `${formatNullableResult('Ith', row.ith_ka, 'kA', 2)}; ${formatNullableResult("Sk''", row.sk_mva, 'MVA', 3)}`,
+      resultA: `${formatNullableResult("$I_{k}''$", row.ikss_ka, 'kA', 2)}; ${formatNullableResult('$i_{p}$', row.ip_ka, 'kA', 2)}`,
+      resultB: `${formatNullableResult('$I_{th}$', row.ith_ka, 'kA', 2)}; ${formatNullableResult("$S_{k}''$", row.sk_mva, 'MVA', 3)}`,
       status: complete ? `${formatFlags(row.flags)}; uzasadnienie dostępne` : 'wynik częściowy: brak kompletu wartości',
     };
   });
@@ -821,7 +823,7 @@ function buildAnalysisTableRows(
       type: 'Transformator',
       name: transformer.name || transformer.ref_id,
       voltage: `${formatTechnicalNumber(transformer.uhv_kv, 'kV')} / ${formatTechnicalNumber(transformer.ulv_kv, 'kV')}`,
-      input: `Sn ${formatTechnicalNumber(transformer.sn_mva, 'MVA')}; uk ${formatTechnicalNumber(transformer.uk_percent, '%')}; katalog: ${formatCatalogRef(transformer.catalog_ref)}`,
+      input: `$S_{n}$ ${formatTechnicalNumber(transformer.sn_mva, 'MVA')}; $u_{k}$ ${formatTechnicalNumber(transformer.uk_percent, '%')}; katalog: ${formatCatalogRef(transformer.catalog_ref)}`,
       resultA: 'obciążenie: nie wyznaczono',
       resultB: 'straty/P/Q: nie wyznaczono',
       status: resultStatus,
@@ -871,7 +873,9 @@ function AnalysisDataTable({
             <tr>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Typ</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Obiekt</th>
-              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">U_n / wariant</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">
+                <MathInline latex="U_n" /> / wariant
+              </th>
               <th className="min-w-[260px] border-b border-slate-200 px-3 py-2">Dane wejściowe</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 1</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 2</th>
@@ -884,9 +888,15 @@ function AnalysisDataTable({
                 <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">{row.type}</td>
                 <td className="px-3 py-2">{row.name}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.voltage}</td>
-                <td className="px-3 py-2 text-slate-600">{row.input}</td>
-                <td className="whitespace-nowrap px-3 py-2">{row.resultA}</td>
-                <td className="whitespace-nowrap px-3 py-2">{row.resultB}</td>
+                <td className="px-3 py-2 text-slate-600">
+                  <TekstZWzorami tekst={row.input} />
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  <TekstZWzorami tekst={row.resultA} />
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  <TekstZWzorami tekst={row.resultB} />
+                </td>
                 <td className="px-3 py-2 text-amber-700">{row.status}</td>
               </tr>
             ))}
@@ -922,7 +932,7 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
           {rows.map((row) => (
             <tr key={row.label}>
               <th className="w-52 bg-slate-100 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
-                {row.label}
+                <TekstZWzorami tekst={row.label} />
               </th>
               <td className="px-3 py-2 text-slate-900">{row.value}</td>
             </tr>
@@ -2293,9 +2303,15 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                 <div className="font-semibold">Stacja: {row.stationNazwa}</div>
                 <div className="mt-1 text-[11px]">{row.summaryPl}</div>
                 <div className="mt-1 grid grid-cols-3 gap-2 font-mono text-[10px]">
-                  <span>P_export: {row.details.p_export_kw.toFixed(0)} kW</span>
-                  <span>P_import: {row.details.p_import_kw.toFixed(0)} kW</span>
-                  <span>P_net: {row.details.p_net_export_kw.toFixed(0)} kW</span>
+                  <span>
+                    <MathInline latex="P_{\text{eksport}}" />: {row.details.p_export_kw.toFixed(0)} kW
+                  </span>
+                  <span>
+                    <MathInline latex="P_{\text{import}}" />: {row.details.p_import_kw.toFixed(0)} kW
+                  </span>
+                  <span>
+                    <MathInline latex="P_{\text{netto}}" />: {row.details.p_net_export_kw.toFixed(0)} kW
+                  </span>
                 </div>
               </div>
             ))}
@@ -2586,7 +2602,9 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               <div className="mt-1 text-sm font-medium text-slate-800">
                 {pt.labelPl}
               </div>
-              <div className="mt-1 text-xs text-slate-500">{pt.descriptionPl}</div>
+              <div className="mt-1 text-xs text-slate-500">
+                <TekstZWzorami tekst={pt.descriptionPl} />
+              </div>
             </div>
           ))}
         </div>
@@ -2615,7 +2633,7 @@ const PROOF_PACK_TYPES = [
   {
     id: 'SC3F_IEC60909',
     labelPl: 'Zwarcie 3-fazowe',
-    descriptionPl: 'IEC 60909, Ik″/ip/Ith z śladem Y-bus + Z-thevenin.',
+    descriptionPl: 'IEC 60909, $I_{k}\'\'$/$i_{p}$/$I_{th}$ z śladem Y-bus + Z-thevenin.',
   },
   {
     id: 'SC1F_IEC60909',

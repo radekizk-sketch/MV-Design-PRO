@@ -187,7 +187,10 @@ def test_iloczyn_cech_status_oceny_rowny_statusowi_jadra(
             assert "ct.accuracy_limit_missing" in kody
         assert "nie sprawdzono" in wynik.powod_pl
     else:
-        assert "ALF_eff" in wynik.powod_pl and "granic" in wynik.powod_pl
+        assert (
+            "efektywny współczynnik graniczny dokładności" in wynik.powod_pl
+            and "granic" in wynik.powod_pl
+        )
 
 
 def test_przyklad_z_karty_ten_sam_status_co_jadro_z_wyjasnieniem(katalog_z_rct: None) -> None:
@@ -209,8 +212,8 @@ def test_przyklad_z_karty_ten_sam_status_co_jadro_z_wyjasnieniem(katalog_z_rct: 
     # Zdanie dla projektanta: prąd nasycenia, ALF_eff, przyczyny (obciążenie, R_ct), zapas.
     assert "1157,8947 A" in wynik.powod_pl
     assert "5,7895" in wynik.powod_pl
-    assert "S_2obl 20 VA" in wynik.powod_pl
-    assert "R_ct 0,15 Ω" in wynik.powod_pl
+    assert "obciążenie obwodu wtórnego 20 VA" in wynik.powod_pl
+    assert "rezystancji uzwojenia wtórnego 0,15 Ω" in wynik.powod_pl
     assert "−1,7105" in wynik.powod_pl or "-1,7105" in wynik.powod_pl
 
 

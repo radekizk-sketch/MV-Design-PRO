@@ -8,6 +8,7 @@
 
 import { PAD, RamkaWykresu, VBH, VBW, px, py } from '../rama';
 import { TRANSFORMATOR_STRINGS as T } from './strings';
+import { TekstSvgZWzorami } from '../../../ui/proof/TekstSvgZWzorami';
 
 export interface WykresAvrProps {
   tapMin: number;
@@ -59,7 +60,7 @@ export function WykresAvr({ tapMin, tapMax, tapNeutral, stepPct, dbFrac }: Wykre
         ))}
       {dbFrac !== null ? (
         <text x={px(1) - 4} y={py(ny(1)) - 5} textAnchor="end" className="mvd-wykres-znak">
-          {T.avrZadane}
+          <TekstSvgZWzorami tekst={T.avrZadane} />
         </text>
       ) : null}
     </svg>

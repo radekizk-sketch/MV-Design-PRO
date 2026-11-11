@@ -277,7 +277,7 @@ class P14PowerFlowProof:
         if data.v_min_pu < 0.9 or data.v_max_pu > 1.1:
             warnings.append(
                 f"Napięcia poza typowym zakresem: "
-                f"U_min={data.v_min_pu:.4f} p.u., U_max={data.v_max_pu:.4f} p.u."
+                f"minimalne {data.v_min_pu:.4f} p.u., maksymalne {data.v_max_pu:.4f} p.u."
             )
 
         # Build summary
@@ -417,7 +417,7 @@ class P14PowerFlowProof:
                 "max_mismatch": "p.u.",
                 "tolerance": "p.u.",
             },
-            derivation="p.u. < p.u. -> —",
+            derivation_latex=r"\mathrm{p.u.} < \mathrm{p.u.} \rightarrow \text{bez jednostki}",
         )
 
         return ProofStep(
@@ -490,7 +490,7 @@ class P14PowerFlowProof:
                 "p_load": "MW",
                 "p_losses": "MW",
             },
-            derivation="MW = MW + MW",
+            derivation_latex=r"\mathrm{MW} = \mathrm{MW} + \mathrm{MW}",
         )
 
         return ProofStep(
@@ -565,7 +565,7 @@ class P14PowerFlowProof:
                 "q_load": "Mvar",
                 "q_losses": "Mvar",
             },
-            derivation="Mvar = Mvar + Mvar",
+            derivation_latex=r"\mathrm{Mvar} = \mathrm{Mvar} + \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -639,7 +639,7 @@ class P14PowerFlowProof:
                 "v_min": "p.u.",
                 "v_max": "p.u.",
             },
-            derivation="p.u. <= p.u. <= p.u. -> —",
+            derivation_latex=r"\mathrm{p.u.} \le \mathrm{p.u.} \le \mathrm{p.u.} \rightarrow \text{bez jednostki}",
         )
 
         return ProofStep(

@@ -274,7 +274,7 @@ function SzczegolyTechniczne({ obiekt }: { obiekt: ObiektInspektora }) {
       </h4>
       <div className="mvd-insp-kv-grid">
         <div className="mvd-insp-kv-row">
-          <span className="mvd-insp-kv-label">Id</span>
+          <span className="mvd-insp-kv-label">Identyfikator</span>
           <span className="mvd-insp-kv-value">
             <span className="mvd-insp-num">{obiekt.id}</span>
           </span>

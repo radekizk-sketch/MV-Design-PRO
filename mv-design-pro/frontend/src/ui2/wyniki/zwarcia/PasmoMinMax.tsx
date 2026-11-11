@@ -78,7 +78,9 @@ function BlokStronyPasma({
         data-testid={`mvd-zwarcia-pasmo-brak-${scenariusz.toLowerCase()}`}
       >
         <h4 className="mvd-zwarcia-pasmo-strona-tytul"><TekstZWzorami tekst={etykietaScenariusza} /></h4>
-        <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.pasmoBrakScenariusz(scenariusz)}</p>
+        <p className="mvd-zwarcia-wklady-brak-title">
+          <TekstZWzorami tekst={ZWARCIA_STRINGS.pasmoBrakScenariusz(scenariusz)} />
+        </p>
         {powodNiedostepnosciPl && (
           <p className="mvd-zwarcia-wklady-brak-desc">{powodNiedostepnosciPl}</p>
         )}

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Wzory kroków śladu definiowane po stronie UI (pole `formula_latex` → `SladAnalizy` →
  * `MathInline`) są CZYSTYM LaTeX-em, który KaTeX składa bez błędu.

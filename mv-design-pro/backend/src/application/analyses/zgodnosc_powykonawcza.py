@@ -361,14 +361,14 @@ def _porownaj_punkt(
             wiersz["werdykt"] = _BRAK_WYNIKU
             wiersz["slad_pl"] = [
                 f"Brak kompletu danych modelowych dla węzła '{nazwa}' "
-                "(u_pu lub napięcie znamionowe)."
+                "(napięcie względne lub napięcie znamionowe)."
             ]
             return wiersz
         model = u_pu * u_n
         odchylka = wartosc_pomiar - model
         model_mag = abs(model)
         slad_model = (
-            f"Model U = u · U_n (napięcie względne · znamionowe) = "
+            f"Napięcie modelu (napięcie względne razy znamionowe) = "
             f"{u_pu:.6f} × {u_n:.6f} = {model:.6f} kV"
         )
         slad_pomiar = f"Pomiar U = {wartosc_pomiar:.6f} kV"

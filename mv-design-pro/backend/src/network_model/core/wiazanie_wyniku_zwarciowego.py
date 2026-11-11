@@ -248,7 +248,9 @@ class WiazanieWynikuZwarciowego:
         """
         roznice: list[str] = []
         if run_id is not None and str(run_id) != self.run_id:
-            roznice.append(f"run_id: przedłożono {run_id!r}, wiązanie niesie {self.run_id!r}")
+            roznice.append(
+                f"identyfikator przebiegu: przedłożono {run_id!r}, wiązanie niesie {self.run_id!r}"
+            )
         if snapshot_id is not None and str(snapshot_id) != self.snapshot_id:
             roznice.append(
                 f"snapshot_id: przedłożono {snapshot_id!r}, wiązanie niesie {self.snapshot_id!r}"

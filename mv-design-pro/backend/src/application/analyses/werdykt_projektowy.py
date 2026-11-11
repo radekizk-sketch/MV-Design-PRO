@@ -456,7 +456,7 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
         ),
     },
     {
-        "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+        "kryterium_pl": "Wytrzymałość aparatury (wyłączalność, wytrzymałość dynamiczna i cieplna) na całym modelu",
         "etap": "E4",
         "powod_pl": (
             "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego "

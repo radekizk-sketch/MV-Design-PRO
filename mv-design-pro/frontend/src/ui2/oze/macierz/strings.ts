@@ -136,7 +136,7 @@ export const MACIERZ_STRINGS = {
   panelTytul: 'Dane wejściowe modułu (bieg „co-jeśli")',
   panelOpis:
     'Wartości odczytane z zatwierdzonego modelu przypadku (wiązania krzywych i modelu dynamicznego, ' +
-    'statyzm, martwa strefa, cos φ i zakres mocy biernej z danych źródła, deklaracje modułu, art. 4, ' +
+    'statyzm, martwa strefa, $\\cos\\varphi$ i zakres mocy biernej z danych źródła, deklaracje modułu, art. 4, ' +
     'data umowy, nastawy) są oznaczone „z modelu"; pozostałe wartości deklaruje projektant — nie ' +
     'modyfikują modelu sieci. Pole puste = brak danej (ocena niewykonana z nazwanym brakiem), nigdy ' +
     'wartość typowa.',

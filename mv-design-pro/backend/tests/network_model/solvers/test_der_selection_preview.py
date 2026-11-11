@@ -290,7 +290,7 @@ def test_napiecie_aparatu_pola_wobec_napiecia_najwyzszego_sieci(
     assert (result.proposal is not None) is przyjety
     if not przyjety:
         assert [r.reason_code for r in result.rejected] == ["napiecie_aparatu_za_niskie"]
-        assert "U_s" in result.rejected[0].reason_pl
+        assert "napięcia najwyższego sieci" in result.rejected[0].reason_pl
 
 
 # ---------------------------------------------------------------------------

@@ -60,7 +60,7 @@ class TestLvBehindStationTransformer:
                 connection_variant="LV_BEHIND_STATION_TRANSFORMER",
                 blocking_transformer_ref="tr_1",
             )
-        assert "station_ref" in str(exc_info.value)
+        assert "wskazania stacji" in str(exc_info.value)
 
     def test_missing_blocking_transformer_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
@@ -68,7 +68,7 @@ class TestLvBehindStationTransformer:
                 connection_variant="LV_BEHIND_STATION_TRANSFORMER",
                 station_ref="sub_1",
             )
-        assert "blocking_transformer_ref" in str(exc_info.value)
+        assert "transformatora blokowego" in str(exc_info.value)
 
 
 class TestDedicatedMvConnection:
@@ -91,7 +91,7 @@ class TestDedicatedMvConnection:
                 connection_variant="DEDICATED_MV_CONNECTION",
                 station_ref="sub_1",
             )
-        assert "DEDICATED_MV_CONNECTION" in str(exc_info.value)
+        assert "dedykowane przyłącze SN" in str(exc_info.value)
 
 
 class TestNnSide:
@@ -106,7 +106,7 @@ class TestNnSide:
     def test_missing_station_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             _gen(connection_variant="nn_side")
-        assert "station_ref" in str(exc_info.value)
+        assert "wskazania stacji" in str(exc_info.value)
 
     def test_with_blocking_transformer_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
@@ -115,7 +115,7 @@ class TestNnSide:
                 station_ref="sub_1",
                 blocking_transformer_ref="tr_1",
             )
-        assert "blocking_transformer_ref" in str(exc_info.value)
+        assert "transformatora blokowego" in str(exc_info.value)
 
 
 class TestBlockTransformer:
@@ -129,7 +129,7 @@ class TestBlockTransformer:
     def test_missing_blocking_transformer_ref_raises(self) -> None:
         with pytest.raises(ValidationError) as exc_info:
             _gen(connection_variant="block_transformer")
-        assert "blocking_transformer_ref" in str(exc_info.value)
+        assert "transformatora blokowego" in str(exc_info.value)
 
     def test_with_optional_station_ref_is_valid(self) -> None:
         gen = _gen(

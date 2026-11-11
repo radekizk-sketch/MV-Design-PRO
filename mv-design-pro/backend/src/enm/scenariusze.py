@@ -221,7 +221,10 @@ class Nastawa(BaseModel):
     @model_validator(mode="after")
     def _co_najmniej_jedno(self) -> Nastawa:
         if self.p_mw is None and self.q_mvar is None:
-            raise ValueError("Nastawa bez żadnej wartości (p_mw/q_mvar) nie jest nadpisaniem")
+            raise ValueError(
+                "Nastawa bez żadnej wartości (moc czynna `p_mw`, moc bierna `q_mvar`) nie jest "
+                "nadpisaniem"
+            )
         return self
 
 
@@ -249,7 +252,8 @@ class NastawaDynamiczna(BaseModel):
     def _co_najmniej_jedno(self) -> NastawaDynamiczna:
         if self.p_mw is None and self.q_mvar is None and self.u_pu is None:
             raise ValueError(
-                "NastawaDynamiczna bez żadnej wartości (p_mw/q_mvar/u_pu) nie jest komenda"
+                "Nastawa dynamiczna bez żadnej wartości (moc czynna `p_mw`, moc bierna "
+                "`q_mvar`, napięcie `u_pu`) nie jest komendą"
             )
         return self
 
@@ -301,8 +305,8 @@ class Zwarcie(BaseModel):
         if (self.bus_ref is None) == (self.element_ref is None):
             raise ValueError(
                 "Zwarcie: podaj dokładnie jedno miejsce — `bus_ref` (zwarcie w węźle) albo "
-                "`element_ref` z `polozenie_wzgledne` (zwarcie w linii/kablu w x*L); "
-                f"podano bus_ref={self.bus_ref!r}, element_ref={self.element_ref!r}."
+                "`element_ref` z `polozenie_wzgledne` (zwarcie w linii/kablu w ułamku długości); "
+                f"podano `bus_ref` {self.bus_ref!r}, `element_ref` {self.element_ref!r}."
             )
         if (self.element_ref is None) != (self.polozenie_wzgledne is None):
             raise ValueError(
@@ -312,8 +316,9 @@ class Zwarcie(BaseModel):
             )
         if self.t_usuniecia_s is not None and self.t_usuniecia_s <= self.t_s:
             raise ValueError(
-                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi być później niż "
-                f"t_s ({self.t_s}) — zwarcie nie może być usunięte przed wystąpieniem."
+                f"Zwarcie: chwila usunięcia ({self.t_usuniecia_s} s) musi być późniejsza niż "
+                f"chwila wystąpienia ({self.t_s} s) — zwarcie nie może być usunięte przed "
+                "wystąpieniem."
             )
         if (self.t_usuniecia_s is None) != (self.sposob_usuniecia is None):
             raise ValueError(
@@ -717,15 +722,15 @@ class ScenariuszDynamiczny(BaseModel):
             for segment in self.stanowisko.profil:
                 if _koniec_segmentu(segment) > self.horyzont_s:
                     raise ValueError(
-                        f"ScenariuszDynamiczny: segment profilu {segment.rodzaj!r} w t_s="
-                        f"{segment.t_s} kończy się w {_koniec_segmentu(segment)} s, poza "
-                        f"horyzont_s ({self.horyzont_s})."
+                        f"Scenariusz dynamiczny: segment profilu {segment.rodzaj!r} od chwili "
+                        f"{segment.t_s} s kończy się w {_koniec_segmentu(segment)} s, poza "
+                        f"horyzontem symulacji ({self.horyzont_s} s)."
                     )
         for zdarzenie in self.zdarzenia:
             if zdarzenie.t_s > self.horyzont_s:
                 raise ValueError(
-                    f"ScenariuszDynamiczny: zdarzenie {zdarzenie.rodzaj!r} w t_s="
-                    f"{zdarzenie.t_s} wykracza poza horyzont_s ({self.horyzont_s})."
+                    f"Scenariusz dynamiczny: zdarzenie {zdarzenie.rodzaj!r} w chwili "
+                    f"{zdarzenie.t_s} s wykracza poza horyzont symulacji ({self.horyzont_s} s)."
                 )
             if (
                 isinstance(zdarzenie, Zwarcie)
@@ -733,9 +738,9 @@ class ScenariuszDynamiczny(BaseModel):
                 and zdarzenie.t_usuniecia_s > self.horyzont_s
             ):
                 raise ValueError(
-                    f"ScenariuszDynamiczny: zwarcie w t_s={zdarzenie.t_s} ma "
-                    f"t_usuniecia_s={zdarzenie.t_usuniecia_s} poza horyzont_s "
-                    f"({self.horyzont_s})."
+                    f"Scenariusz dynamiczny: zwarcie w chwili {zdarzenie.t_s} s ma chwilę "
+                    f"usunięcia {zdarzenie.t_usuniecia_s} s poza horyzontem symulacji "
+                    f"({self.horyzont_s} s)."
                 )
         return self
 
@@ -936,17 +941,22 @@ class OperatingScenario(BaseModel):
     @model_validator(mode="after")
     def _bez_duplikatow(self) -> OperatingScenario:
         if len(set(self.out_of_service)) != len(self.out_of_service):
-            raise ValueError("out_of_service zawiera powtórzony ref_id")
+            raise ValueError("Lista elementów wyłączonych (`out_of_service`) ma powtórzony element")
         if any(not ref for ref in self.switch_states):
-            raise ValueError("switch_states: pusty ref_id")
+            raise ValueError("Stany łączników (`switch_states`): pusty identyfikator łącznika")
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
-            raise ValueError("injections/probe_shunts zawierają powtórzony ref_id sondy")
+            raise ValueError(
+                "Wstrzyknięcia i sondy (`injections`, `probe_shunts`) mają powtórzony "
+                "identyfikator sondy"
+            )
         for ref, mnoznik in self.gen_scaling.items():
             if not ref:
-                raise ValueError("gen_scaling: pusty ref_id")
+                raise ValueError("Skalowanie generacji (`gen_scaling`): pusty identyfikator")
             if mnoznik < 0.0:
-                raise ValueError(f"gen_scaling[{ref!r}]: mnożnik ujemny ({mnoznik})")
+                raise ValueError(
+                    f"Skalowanie generacji (`gen_scaling`) dla {ref!r}: mnożnik ujemny ({mnoznik})"
+                )
         return self
 
     @property

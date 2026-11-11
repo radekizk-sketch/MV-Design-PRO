@@ -10,6 +10,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 interface KafelProps {
   tytul: string;
@@ -55,7 +56,7 @@ export function KafelWiersz({
 }) {
   return (
     <div className="mvd-kafel-kv-row">
-      <span className="mvd-kafel-kv-label">{etykieta}</span>
+      <span className="mvd-kafel-kv-label"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-kafel-kv-value">{children}</span>
     </div>
   );

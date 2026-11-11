@@ -48,6 +48,7 @@ const ZAPAD_DOMYSLNY: ParaZapaduFrt = { glebokoscPu: 0.05, czasS: 0.15 };
 
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type StanZasobu =
   | { readonly rodzaj: 'idle' }
@@ -75,8 +76,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-frt-stan mvd-frt-stan--blad' : 'mvd-frt-stan'}
       data-testid={testid}
     >
-      <p className="mvd-frt-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-frt-stan-desc">{opis}</p>}
+      <p className="mvd-frt-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-frt-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -150,7 +151,7 @@ function WynikSekwencji({
               </dd>
             </div>
             <div className="mvd-frt-zal-para">
-              <dt>{FRT_STRINGS.sekwKontekstMocZwarciowa}</dt>
+              <dt><TekstZWzorami tekst={FRT_STRINGS.sekwKontekstMocZwarciowa} /></dt>
               <dd className="mvd-num">
                 {kontekst.s_sc_mva === null
                   ? FRT_STRINGS.kreska
@@ -341,7 +342,7 @@ export function SekcjaSekwencjiZapadow({
               <span className="mvd-frt-sekw-edytor-tytul">
                 {FRT_STRINGS.sekwKontekstDoborTytul}
               </span>
-              <p className="mvd-frt-pole-opis">{FRT_STRINGS.sekwKontekstDoborOpis}</p>
+              <p className="mvd-frt-pole-opis"><TekstZWzorami tekst={FRT_STRINGS.sekwKontekstDoborOpis} /></p>
               <div className="mvd-frt-sekw-pole">
                 <label htmlFor="mvd-frt-sekw-run">{FRT_STRINGS.sekwKontekstRunEtykieta}</label>
                 <select

@@ -75,7 +75,8 @@
             "I_setting_A": 27.6
           },
           "passed": true,
-          "requirement": "k_cz >= 1.5",
+          "requirement": "współczynnik czułości nie mniejszy od 1,5",
+          "requirement_latex": "k_{cz} \\geq 1{,}5",
           "result": {
             "sensitivity_ratio": 244.19
           },
@@ -170,7 +171,7 @@
         }
       ],
       "validation_notes": [
-        "Brak dopuszczalnego zakresu nastaw I>>: I_min_sel = 10261 A > min(I_max_th, I_max_cz) = 6642 A"
+        "Brak dopuszczalnego zakresu nastaw stopnia I>>: najmniejsza nastawa selektywna 10261 A przekracza mniejszą z granic — cieplnej i czułościowej — równą 6642 A."
       ]
     },
     "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L",
@@ -182,8 +183,8 @@
       "limiting_criterion_max": "sensitivity",
       "limiting_criterion_min": "selectivity",
       "recommendations_pl": [
-        "Okno nastaw jest sprzeczne (I_min = 10.26 kA > I_max = 6.64 kA).",
-        "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (next_bus_id)."
+        "Okno nastaw jest sprzeczne (dolna granica 10.26 kA przekracza górną 6.64 kA).",
+        "Możliwe rozwiązania: obniż współczynnik bezpieczeństwa, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (pole `next_bus_id`)."
       ],
       "trace": [
         {

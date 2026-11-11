@@ -29,10 +29,10 @@
       "application": "protection",
       "accuracy_limit_factor": 10.0,
       "verification_status": "REFERENCYJNY",
-      "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
+      "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, prąd dynamiczny równy 2,5-krotności prądu cieplnego, współczynnik bezpieczeństwa przyrządu) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
       "catalog_status": "REFERENCYJNY_V1",
       "contract_version": "2.0",
-      "verification_note": "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
+      "verification_note": "Rekord referencyjny do doboru CT. Prąd cieplny krótkotrwały podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); prąd dynamiczny wyprowadzany normowo (2,5-krotność prądu cieplnego), współczynnik bezpieczeństwa przyrządu wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
     },
     "wynik": {
       "kryteria": [
@@ -72,9 +72,9 @@
         {
           "kod": "ct.alf_katalogowy",
           "nazwa_pl": "ALF katalogowy wobec prądu zwarciowego",
-          "podstawa_pl": "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego (IEC 61869-2) — nie rozstrzyga nasycenia rdzenia.",
+          "podstawa_pl": "Warunek KONIECZNY: współczynnik graniczny dokładności nie mniejszy od krotności początkowego prądu zwarciowego względem prądu znamionowego pierwotnego, bez obciążenia wtórnego (IEC 61869-2) — nie rozstrzyga nasycenia rdzenia.",
           "werdykt": "informacja",
-          "wymagane": "ALF ≥ 45.2 (Ik″ 9.04 kA / In 200 A)",
+          "wymagane": "ALF ≥ 45.2 (prąd zwarciowy 9.04 kA / prąd znamionowy pierwotny 200 A)",
           "dostepne": "ALF 10",
           "komentarz_pl": "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego (S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, nie ten warunek konieczny.",
           "kody_gotowosci": [],
@@ -83,20 +83,21 @@
         {
           "kod": "ct.alf",
           "nazwa_pl": "Nasycenie rdzenia (bilans mocy wtórnej)",
-          "podstawa_pl": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+          "podstawa_pl": "IEC 61869-2: obciążenie obwodu wtórnego to suma mocy aparatów i strat w przewodach; efektywny współczynnik graniczny dokładności skalowany stosunkiem mocy znamionowej powiększonej o straty własne do obciążenia powiększonego o straty własne",
           "werdykt": "brak_danych",
-          "wymagane": "ALF_eff ≥ 45.2",
+          "wymagane": "efektywny współczynnik graniczny dokładności nie mniejszy niż 45.2",
           "dostepne": null,
           "komentarz_pl": "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej",
           "kody_gotowosci": [
             "ct.secondary_circuit_missing"
           ],
-          "slad": []
+          "slad": [],
+          "wymagane_latex": "ALF_{eff} \\geq 45.2"
         },
         {
           "kod": "ct.wytrzymalosc_cieplna",
           "nazwa_pl": "Wytrzymałość cieplna zwarciowa",
-          "podstawa_pl": "Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).",
+          "podstawa_pl": "Prąd cieplny krótkotrwały (1 s) nie mniejszy od prądu zwarciowego pomnożonego przez pierwiastek z czasu zwarcia — równoważność cieplna prądu zwarcia (IEC 61869-2).",
           "werdykt": "brak_danych",
           "wymagane": null,
           "dostepne": "20.0 kA / 1 s",
@@ -107,7 +108,7 @@
         {
           "kod": "ct.wytrzymalosc_dynamiczna",
           "nazwa_pl": "Wytrzymałość dynamiczna",
-          "podstawa_pl": "Idyn ≥ ip — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2).",
+          "podstawa_pl": "Prąd dynamiczny nie mniejszy od prądu udarowego — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2).",
           "werdykt": "spelnione",
           "wymagane": "19.57 kA",
           "dostepne": "50.0 kA",

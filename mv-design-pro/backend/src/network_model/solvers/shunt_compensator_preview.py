@@ -20,7 +20,11 @@ from dataclasses import dataclass
 
 from network_model.odmowa_danych import OdmowaDanychError
 
-_FORMULA_REF = "B = Q / U² ; I_c = Q / (√3·U)"
+_FORMULA_REF = (
+    "susceptancja baterii to moc bierna przez kwadrat napięcia znamionowego; prąd "
+    "znamionowy to moc bierna przez pierwiastek z trzech razy napięcie znamionowe"
+)
+_FORMULA_LATEX = r"B = \frac{Q}{U^{2}};\quad I_{c} = \frac{Q}{\sqrt{3} \cdot U}"
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,7 @@ class ShuntCompensatorPreviewResult:
     susceptance_siemens: float
     rated_current_a: float
     formula_ref: str
+    formula_latex: str
 
 
 def compute_shunt_compensator_preview(
@@ -59,4 +64,5 @@ def compute_shunt_compensator_preview(
         susceptance_siemens=susceptance_siemens,
         rated_current_a=rated_current_a,
         formula_ref=_FORMULA_REF,
+        formula_latex=_FORMULA_LATEX,
     )

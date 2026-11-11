@@ -104,13 +104,14 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
                             f"Źródło '{nazwa_elementu(source, 'sources')}' "
-                            "nie ma parametrów zwarciowych (brak Sk'', Ik'' lub R/X)."
+                            "nie ma parametrów zwarciowych (brak mocy zwarciowej, prądu zwarciowego "
+                            "albo stosunku R/X)."
                         ),
                         element_ref=source.get("ref_id"),
                         wizard_step_hint="K2",
                         suggested_fix=(
-                            "Wprowadź moc zwarciową Sk'' (lub prąd Ik'') albo impedancję "
-                            "R+jX źródła."
+                            "Wprowadź moc zwarciową (albo prąd zwarciowy) albo impedancję "
+                            "źródła."
                         ),
                     )
                 )
@@ -202,7 +203,7 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K5_UK_ZERO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Trafo {nazwa_elementu(t, 'transformers')}: uk% = 0",
+                    message_pl=f"Transformator {nazwa_elementu(t, 'transformers')}: napięcie zwarcia równe 0",
                     element_ref=t.get("ref_id"),
                     wizard_step_hint="K5",
                 )
@@ -212,7 +213,7 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
                 WizardIssue(
                     code="K5_SN_ZERO",
                     severity=IssueSeverity.BLOCKER,
-                    message_pl=f"Trafo {nazwa_elementu(t, 'transformers')}: Sn = 0",
+                    message_pl=f"Transformator {nazwa_elementu(t, 'transformers')}: moc znamionowa równa 0",
                     element_ref=t.get("ref_id"),
                     wizard_step_hint="K5",
                 )
@@ -297,7 +298,8 @@ def _skladowa_zerowa_linii(
     line: dict[str, Any], napiecia: dict[str, float | None]
 ) -> SkladowaZerowaOdcinka:
     """Składowa zerowa odcinka rekordu kreatora — ta sama reguła wartości roboczej co sieć
-    zerowa zwarć (``enm.skladowa_zerowa_galezi``), pasmo z napięcia szyny początku odcinka."""
+    zerowa zwarć (``enm.skladowa_zerowa_galezi``), pasmo z napięcia szyny początku odcinka.
+    """
     return skladowa_zerowa_odcinka(
         kabel=line.get("type") == "cable",
         napiecie_kv=napiecia.get(str(line.get("from_bus_ref"))),
@@ -340,10 +342,10 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
                 code="K7_LINES_NO_Z0",
                 severity=IssueSeverity.INFO,
                 message_pl=(
-                    f"{len(lines_no_z0)} gałęzi bez impedancji zerowej Z0 w modelu — "
-                    "obliczenia przyjmują wartość roboczą (SN: R′0 = 3·R′1, X′0 = 3·X′1; kabel "
-                    "nN: R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE); wpisz R′0/X′0 odcinka z karty "
-                    "producenta albo z pomiaru"
+                    f"{len(lines_no_z0)} gałęzi bez impedancji zerowej w modelu — "
+                    "obliczenia przyjmują wartość roboczą (SN: trzykrotność składowej zgodnej; "
+                    "kabel nN: składowa zgodna powiększona o trzykrotność żyły powrotnej PE/PEN); "
+                    "wpisz rezystancję i reaktancję zerową odcinka z karty producenta albo z pomiaru"
                     + (
                         f" ({len(lines_bez_podstawy)} bez podstawy wartości roboczej — zwarcia "
                         "doziemne niedostępne)"
@@ -359,7 +361,7 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
             WizardIssue(
                 code="K7_SRC_NO_Z0",
                 severity=IssueSeverity.INFO,
-                message_pl=f"{len(src_no_z0)} źródeł bez impedancji zerowej Z0",
+                message_pl=f"{len(src_no_z0)} źródeł bez impedancji zerowej",
                 wizard_step_hint="K7",
             )
         )
@@ -406,7 +408,7 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
     all_lines_z0 = all(_skladowa_zerowa_linii(line, napiecia).znana for line in lines)
     sc1f_missing = list(sc3f_missing)
     if not all_lines_z0:
-        sc1f_missing.append("Brak Z0 w gałęziach bez podstawy wartości roboczej")
+        sc1f_missing.append("Brak impedancji zerowej w gałęziach bez podstawy wartości roboczej")
 
     # Load flow
     lf_missing: list[str] = []

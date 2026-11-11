@@ -72,7 +72,7 @@ export interface EkranOcenyProps {
 function WierszPodstawy({ etykieta, children, testid }: { etykieta: string; children: React.ReactNode; testid?: string }) {
   return (
     <div className="mvd-ocena-podstawa-wiersz" data-testid={testid}>
-      <span className="mvd-ocena-podstawa-etyk">{etykieta}</span>
+      <span className="mvd-ocena-podstawa-etyk"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-ocena-podstawa-wartosc">{children}</span>
     </div>
   );

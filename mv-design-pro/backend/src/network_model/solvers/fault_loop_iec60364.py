@@ -263,7 +263,7 @@ def _validate_input(data: FaultLoopInput) -> None:
             )
             raise OdmowaDanychError(
                 f"Układ {data.network_type.value}: pętla zwarcia doziemnego wymaga danych "
-                "TT/IT (uziomy R_A/R_B i I_Δn dla TT; pojemności doziemne i częstotliwość dla "
+                "TT/IT (uziomy instalacji i stacji oraz znamionowy prąd różnicowy dla TT; pojemności doziemne i częstotliwość dla "
                 "IT) — brak danej nie jest zastępowany wartością."
             )
     elif data.dane_tt_it is not None:
@@ -309,7 +309,8 @@ def zsumuj_skladowe_petli(
     )
     krok = {
         "step": "sum_components",
-        "method": "Z_loop = Σ(R_i + jX_i)",
+        "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+        "method_latex": r"Z_{loop} = \sum_{i} (R_{i} + jX_{i})",
         "components": [{"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm} for c in components],
         "result": {
             "r_total_ohm": z_loop_complex.real,
@@ -379,15 +380,19 @@ def prad_z_petli(
             },
         )
         raise OdmowaDanychError(
-            f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
-            "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
-            "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
+            f"Impedancja pętli {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
+            "fizycznie niemożliwa (przypadek zdegenerowany). Realna pętla nN ma "
+            "impedancję ≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
         )
     ik_min = (c.c_min * u_v) / z_magnitude
     ik_max = (c.c_max * u_v) / z_magnitude
     krok = {
         "step": "compute_ik",
-        "method": "I_k = c * U_n / |Z_loop|",
+        "method": (
+            "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez "
+            "moduł impedancji pętli"
+        ),
+        "method_latex": r"I_{k} = \frac{c \cdot U_{n}}{|Z_{loop}|}",
         "c_min": c.c_min,
         "c_max": c.c_max,
         "c_zrodlo_min": c.zrodlo_min,

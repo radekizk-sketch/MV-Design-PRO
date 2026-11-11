@@ -63,7 +63,7 @@ class SolverInputIssue(BaseModel):
     code: str = Field(..., description="Stable machine code (e.g. E-D01, SI-001)")
     severity: SolverInputIssueSeverity
     message: str = Field(..., description="Technical description")
-    element_ref: str | None = Field(default=None, description="Affected element ref_id")
+    element_ref: str | None = Field(default=None, description="Affected element `ref_id`")
     field_path: str | None = Field(default=None, description="Affected field path")
 
     model_config = {"frozen": True}
@@ -242,7 +242,7 @@ class SimplifiedGridSource(BaseModel):
     - docs/audit/ENGINEER_WORKFLOW_AUDIT.md § 3.1
     """
 
-    sk_mva: float = Field(..., gt=0.0, description="Moc zwarciowa S″k po stronie SN [MVA]")
+    sk_mva: float = Field(..., gt=0.0, description="Moc zwarciowa po stronie SN [MVA]")
     r_x_ratio: float = Field(
         default=0.1, ge=0.0, description="Stosunek R/X po stronie SN (typowo 0.1 dla SN)"
     )

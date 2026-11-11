@@ -903,8 +903,8 @@ def _sprawdz_graf(graf: GrafDoKompilacji) -> dict[str, SzynaSpec]:
         szyny_zrodel.add(zrodlo.lit)
         if zrodlo.sk3_mva is None and zrodlo.ik3_ka is None:
             raise BladGrafuWejsciowego(
-                f"{opis_rodzaju_i_nazwy('źródło', zrodlo.name)}: podaj moc zwarciową Sk'' albo "
-                "prąd zwarciowy Ik''"
+                f"{opis_rodzaju_i_nazwy('źródło', zrodlo.name)}: podaj moc zwarciową albo "
+                "prąd zwarciowy"
             )
     for odbior in graf.odbiory:
         if odbior.lit not in szyny:

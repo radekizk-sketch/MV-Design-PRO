@@ -285,6 +285,9 @@ export interface KrokMigotania {
   readonly formula_latex: string;
   readonly substitution_pl: string;
   readonly result_pl: string;
+  /** Podstawienie i wynik jako wzór (MathRenderer); proza `*_pl` niesie to samo słowami. */
+  readonly substitution_latex?: string;
+  readonly result_latex?: string;
 }
 
 /**
@@ -387,6 +390,9 @@ export interface KrokArcFlash {
   readonly result_pl: string;
   readonly unit_check_pl: string;
   readonly table_ref: string | null;
+  /** Podstawienie i wynik jako wzór (pola addytywne backendu, pomijane, gdy brak). */
+  readonly substitution_latex?: string;
+  readonly result_latex?: string;
 }
 
 /** Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy). */
@@ -605,7 +611,10 @@ export interface PozycjaCieplna {
 export interface KryteriumCieplne {
   readonly kod: string;
   readonly nazwa_pl: string;
+  /** Warunek słowami. */
   readonly warunek_pl: string;
+  /** Warunek w zapisie LaTeX — renderuje `MathInline` (addytywne). */
+  readonly warunek_latex?: string;
   readonly wartosc: number | null;
   readonly granica: number | null;
   readonly jednostka: string;
@@ -616,7 +625,10 @@ export interface KryteriumCieplne {
 export interface ZalecenieCieplne {
   readonly kod: string;
   readonly dzialanie_pl: string;
+  /** Wzór działania słowami. */
   readonly wzor: string;
+  /** Wzór działania w zapisie LaTeX — renderuje `MathInline` (addytywne). */
+  readonly wzor_latex?: string;
   readonly wartosc_docelowa: number;
   readonly jednostka: string;
   readonly wartosc_obecna: number | null;

@@ -45,7 +45,7 @@ describe('resultLabelTemplates — rejestr treści (analiza × klasa elementu)',
       'DELTA_U_PCT',
       'COS_PHI',
     ]);
-    expect(prefixesOf(specs)).toEqual(['obc.', 'I', 'P', 'Q', 'ΔU', 'cosφ']);
+    expect(prefixesOf(specs)).toEqual(['obc.', 'I', 'P', 'Q', 'ΔU', '$\\cos\\varphi$']);
     // ΔU formatowane jak skalar z jednostką; cosφ bezwymiarowe (bez jednostki).
     expect(specs[4].format(metric(3.2, '%', 'fixed2'))).toBe('3,20 %');
     expect(specs[5].format(metric(0.98, '', 'fixed2'))).toBe('0,98');
@@ -83,7 +83,7 @@ describe('resultLabelTemplates — rejestr treści (analiza × klasa elementu)',
     // strzałkach wkładu (nie duplikujemy tekstem) — patrz rejestr braków R4.
     const specs = selectResultLabelSpecs('short_circuit', 'bus');
     expect(codesOf(specs)).toEqual(['IK_3F_A', 'IP_A', 'ITH_A', 'SK_MVA']);
-    expect(prefixesOf(specs)).toEqual(['Ik″', 'ip', 'Ith', 'Sk']);
+    expect(prefixesOf(specs)).toEqual(["$I_{k}''$", '$i_{p}$', '$I_{th}$', "$S_{k}''$"]);
     // Sk formatowane jak skalar z jednostką (MVA).
     expect(specs[3].format(metric(120.5, 'MVA', 'fixed2'))).toBe('120,50 MVA');
   });

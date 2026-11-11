@@ -64,6 +64,8 @@ export interface KrokSladu {
   readonly substitution?: string;
   readonly result?: Record<string, unknown>;
   readonly requirement?: string;
+  /** Wymaganie jako wzór (MathRenderer); `requirement` niesie je słowami. */
+  readonly requirement_latex?: string;
   readonly passed?: boolean;
 }
 

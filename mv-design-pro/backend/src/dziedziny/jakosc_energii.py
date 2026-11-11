@@ -121,7 +121,8 @@ class ZakresPasma(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "jakosc.wpis",
-                    f"Pasmo wpisu wymaga f_min < f_max ({self.f_min_hz} ≥ {self.f_max_hz} Hz).",
+                    f"Pasmo wpisu wymaga dolnej granicy mniejszej od górnej "
+                    f"({self.f_min_hz} ≥ {self.f_max_hz} Hz).",
                 )
             )
         return self
@@ -205,7 +206,8 @@ class WymaganieJakosciEnergii(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "jakosc.wpis",
-                    f"Wpis '{self.ident}': limit w % bez odniesienia (U_1, U_N, U_C, I_L, I_N) — "
+                    f"Wpis '{self.ident}': limit w % bez odniesienia (napięcie podstawowe, znamionowe, "
+                    "deklarowane, prąd obciążenia albo znamionowy) — "
                     "goły procent jest niejednoznaczny.",
                 )
             )

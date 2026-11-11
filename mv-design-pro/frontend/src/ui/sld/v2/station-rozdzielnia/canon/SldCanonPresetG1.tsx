@@ -88,7 +88,7 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
       <RelayBox x={X.p1 - 99} y={310} />
       <line x1={X.p1 - 87} y1={310} x2={X.p1 - 9} y2={310} stroke={CYAN} strokeWidth={1.3} strokeDasharray="3 3" />
       {lbl(X.p1 - 180, 333, '−A14 e²TANGO-800', CYAN, 10, 700)}
-      {lbl(X.p1 - 180, 346, 'I>> · I0> · G0> · U<> · f<>', TXT_MUTED, 9, 600)}
+      {lbl(X.p1 - 180, 346, 'I>> · $I_{0}$> · G0> · U<> · f<>', TXT_MUTED, 9, 600)}
       <UziemnikIEC x={X.p1} y={340} />
       {lbl(X.p1 + 40, 358, 'Q3 uziemnik (IEC)', TXT_MUTED, 9.5, 600)}
       {lbl(X.p1 - 175, 397, '3×YHAKXS 1×70/25 [12/20kV] → T1', TXT_MUTED, 9.5, 600)}
@@ -171,7 +171,7 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 730, `INW ${i + 1}`, AMBER, 11, 800, 'middle')}
           {lbl(fx, 743, 'SUN2000-330KTL · 330 kW', TXT_MUTED, 8, 600, 'middle')}
           {lbl(fx, 756, 'P ≈ 0,25 MW', TXT2, 9, 700, 'middle')}
-          {lbl(fx, 769, `Ik″ 3f ≈ ${fmt(invShare, 2)} kA`, TXT2, 9, 700, 'middle')}
+          {lbl(fx, 769, `$I_{k}''$ 3f ≈ ${fmt(invShare, 2)} kA`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
       {lbl(807, 794, 'zabezpieczenia falowników: anti-islanding · U<> · f<> · df/dt', TXT_MUTED, 9.5, 600, 'middle')}

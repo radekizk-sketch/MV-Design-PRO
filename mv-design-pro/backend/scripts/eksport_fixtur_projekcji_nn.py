@@ -178,7 +178,8 @@ def tresc_do_zapisu(sciezka: Path, projekcja: dict[str, Any]) -> str:
     Gdy świeża projekcja różni się od pliku na dysku wyłącznie w tolerancji
     międzymaszynowej (``roznice_z_tolerancja`` — predykat testu), zapisywane są LICZBY Z
     DYSKU przepuszczone przez regułę zapisu: regeneracja na innej maszynie nie wnosi do
-    repo szumu ostatnich cyfr, a plik będący punktem stałym reguły zostaje bajt w bajt."""
+    repo szumu ostatnich cyfr, a plik będący punktem stałym reguły zostaje bajt w bajt.
+    """
     tresc = json_fikstury(projekcja)
     if not sciezka.exists():
         return tresc
@@ -188,7 +189,40 @@ def tresc_do_zapisu(sciezka: Path, projekcja: dict[str, Any]) -> str:
     zapisana = json.loads(na_dysku)
     if not roznice_z_tolerancja(zapisana, projekcja):
         return json_fikstury(zapisana)
-    return tresc
+    return json_fikstury(zakotwicz_liscie(zapisana, projekcja))
+
+
+def zakotwicz_liscie(zapisana: object, projekcja: object) -> object:
+    """Świeża projekcja z KOTWICĄ PER LIŚĆ (karta ZU, 2026-11-04).
+
+    Projekcja zmieniła się ponad tolerancję (tekst, stan, liczba), więc plik idzie ze
+    świeżej treści — ale liczba, która pod tą samą ścieżką różni się od zapisu na dysku
+    wyłącznie w tolerancji międzymaszynowej (``roznice_z_tolerancja`` — TEN SAM predykat co
+    test i rozstrzygnięcie całego pliku), zostaje zapisem z dysku. Bez tego zmiana jednego
+    tekstu wnosiła szum ostatnich cyfr tej maszyny do każdej liczby pliku. Odcisk
+    ``projection_hash`` zawsze świeży (test sprawdza go spójnością z treścią)."""
+    if isinstance(zapisana, dict) and isinstance(projekcja, dict):
+        return {
+            klucz: (
+                wartosc
+                if klucz == "projection_hash" or klucz not in zapisana
+                else zakotwicz_liscie(zapisana[klucz], wartosc)
+            )
+            for klucz, wartosc in projekcja.items()
+        }
+    if isinstance(zapisana, list) and isinstance(projekcja, list):
+        if len(zapisana) != len(projekcja):
+            return projekcja
+        return [zakotwicz_liscie(a, b) for a, b in zip(zapisana, projekcja, strict=True)]
+    liczby = (
+        isinstance(zapisana, int | float)
+        and isinstance(projekcja, int | float)
+        and not isinstance(zapisana, bool)
+        and not isinstance(projekcja, bool)
+    )
+    if liczby and not roznice_z_tolerancja(zapisana, projekcja):
+        return zapisana
+    return projekcja
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,18 +1,47 @@
 /*
  * Ślad WHITE BOX testu NC RfG renderowany INLINE (scalenie U3/U4 #5).
- * Wzory testów zgodności to zapis ASCII z solvera (`ncrfg_ptpiree/engine.py`,
- * np. „U_sim(t) >= U_LVRT,profile(t)") — NIE LaTeX, więc świadomie NIE używamy
- * okna dowodu (MathBlock/KaTeX). Kanon kroku zachowany: Wzór → Dane →
- * Podstawienie → Wynik → Weryfikacja jednostek. Zero ocen własnych.
+ * Rdzeń (`ncrfg_ptpiree/engine.py`, B-01) pisze wzór zapisem ASCII/Unicode; LaTeX TEGO
+ * SAMEGO wzoru wydaje katalog testów (`wzory_sladu_latex`, rejestr
+ * `application/ncrfg_compliance/wzory_sladu.py` z testem kompletności wyprowadzonym z AST
+ * rdzenia). Wzór z wpisem renderuje się przez KaTeX (`MathBlock`) — kontrakt prezentacji
+ * inżynierskiej; zapis rdzenia zostaje tylko jako stan awaryjny, gdy katalog nie dotarł.
+ * Weryfikację jednostek renderuje tak samo: zdanie słowami + algebra jednostek przez KaTeX
+ * (`jednostki_sladu` z katalogu). Kanon kroku zachowany: Wzór → Dane → Podstawienie → Wynik → Weryfikacja jednostek.
+ * Zero ocen własnych.
  */
 
-import type { KrokSladuNcRfg } from '../ncrfg/typy';
+import { MathBlock, MathInline } from '../../../ui/proof/MathRenderer';
+import type { JednostkiKrokuSladu, KrokSladuNcRfg } from '../ncrfg/typy';
 import { MACIERZ_STRINGS, opiszMetryke } from './strings';
 
 type KrokSladu = KrokSladuNcRfg;
 
 export interface SladTestuProps {
   readonly kroki: readonly KrokSladu[];
+  /** Zapis wzoru rdzenia → LaTeX (`KatalogNcRfg.wzory_sladu_latex`). */
+  readonly wzoryLatex: Readonly<Record<string, string>>;
+  /**
+   * Tekst weryfikacji jednostek rdzenia → zdanie słowami + algebra jednostek w LaTeX
+   * (`KatalogNcRfg.jednostki_sladu`). Algebra jednostek („% − % = pp") nie trafia na ekran
+   * jako tekst: zdanie stoi słowami, a równanie jednostek renderuje KaTeX.
+   */
+  readonly jednostkiSladu: Readonly<Record<string, JednostkiKrokuSladu>>;
+}
+
+function WeryfikacjaJednostek({ wpis, zapisRdzenia }: { wpis: JednostkiKrokuSladu | undefined; zapisRdzenia: string }) {
+  // Katalog nie dotarł (stan awaryjny) — zapis rdzenia jako zapis techniczny, jak przy wzorze.
+  if (wpis === undefined) return <code className="mvd-oze-num">{zapisRdzenia}</code>;
+  return (
+    <span data-testid="mvd-oze-slad-jednostki">
+      {wpis.opis_pl}
+      {wpis.latex !== null ? (
+        <>
+          {' '}
+          <MathInline latex={wpis.latex} />
+        </>
+      ) : null}
+    </span>
+  );
 }
 
 function Pole({ etykieta, dzieci }: { etykieta: string; dzieci: React.ReactNode }) {
@@ -39,7 +68,7 @@ function Wartosci({ dane }: { dane: Readonly<Record<string, unknown>> }) {
   );
 }
 
-export function SladTestu({ kroki }: SladTestuProps): JSX.Element {
+export function SladTestu({ kroki, wzoryLatex, jednostkiSladu }: SladTestuProps): JSX.Element {
   if (kroki.length === 0) {
     return (
       <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-slad-pusty">
@@ -53,7 +82,13 @@ export function SladTestu({ kroki }: SladTestuProps): JSX.Element {
         <li key={`${krok.step}-${krok.key}`} className="mvd-oze-slad-krok">
           <Pole
             etykieta={MACIERZ_STRINGS.sladWzor}
-            dzieci={<code className="mvd-oze-num">{krok.formula}</code>}
+            dzieci={
+              wzoryLatex[krok.formula] !== undefined ? (
+                <MathBlock latex={wzoryLatex[krok.formula]} />
+              ) : (
+                <code className="mvd-oze-num">{krok.formula}</code>
+              )
+            }
           />
           <Pole etykieta={MACIERZ_STRINGS.sladDane} dzieci={<Wartosci dane={krok.data} />} />
           {krok.substitution ? (
@@ -66,7 +101,12 @@ export function SladTestu({ kroki }: SladTestuProps): JSX.Element {
           {krok.unit_check ? (
             <Pole
               etykieta={MACIERZ_STRINGS.sladJednostki}
-              dzieci={<span>{krok.unit_check}</span>}
+              dzieci={
+                <WeryfikacjaJednostek
+                  wpis={jednostkiSladu[krok.unit_check]}
+                  zapisRdzenia={krok.unit_check}
+                />
+              }
             />
           ) : null}
         </li>

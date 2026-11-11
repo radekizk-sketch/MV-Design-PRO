@@ -60,8 +60,8 @@ KOD_TYP_NIEKOMPLETNY = "catalog.type_incomplete"
 KOD_KARTA_POWTORZONA = "catalog.duplicate_id"
 #: Pole znamionowe rekordu konwertera → opis dla człowieka (treść odmowy nie niesie klucza).
 OPISY_POL_ZNAMIONOWYCH: dict[str, str] = {
-    "sn_mva": "moc znamionowa pozorna S_n",
-    "pmax_mw": "moc czynna maksymalna P_max",
+    "sn_mva": "moc znamionowa pozorna",
+    "pmax_mw": "moc czynna maksymalna",
     "e_kwh": "pojemność energetyczna E",
 }
 

@@ -67,8 +67,8 @@ function Stan({
 }) {
   return (
     <div className="mvd-skladowe-stan" data-testid={testid} data-tone={tone} role={tone === 'error' ? 'alert' : undefined}>
-      <h4>{tytul}</h4>
-      <p>{opis}</p>
+      <h4><TekstZWzorami tekst={tytul} /></h4>
+      <p><TekstZWzorami tekst={opis} /></p>
       {akcja && onAkcja && (
         <button type="button" className="mvd-skladowe-akcja" data-testid={`${testid}-akcja`} onClick={onAkcja}>
           {akcja}
@@ -89,7 +89,7 @@ function WartoscSkladowej({
 }) {
   return (
     <div className="mvd-skladowe-wartosc" data-testid={testid}>
-      <dt>{etykieta}</dt>
+      <dt><TekstZWzorami tekst={etykieta} /></dt>
       <dd className="mvd-num">
         {wartosc ? `${fmtZespolona(wartosc)} ${T.jednOhm}` : T.kreska}
       </dd>
@@ -181,7 +181,7 @@ export function EkranSkladowych() {
 
           <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-tabela">
             <h4>{T.tabelaTytul}</h4>
-            <p className="mvd-skladowe-nota">{T.tabelaOpis}</p>
+            <p className="mvd-skladowe-nota"><TekstZWzorami tekst={T.tabelaOpis} /></p>
             {/* F-K4 (znalezisko Z4): ten ekran nie ma kryterium naruszenia
                 (raportowalność jest zawsze pozytywna), więc akcja jest INSPEKCYJNA —
                 „Pokaż na schemacie", nie „Popraw". Nazwanie jej naprawą wmawiałoby
@@ -214,7 +214,7 @@ export function EkranSkladowych() {
           </section>
 
           <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-skladowe">
-            <h4>{T.skladoweTytul}</h4>
+            <h4><TekstZWzorami tekst={T.skladoweTytul} /></h4>
             <p className="mvd-skladowe-nota">{T.skladoweOpis}</p>
             {!skladowe ? (
               // RESULT-FIRST: brak składowych i w wyniku, i w śladzie. Rozróżnij
@@ -222,7 +222,7 @@ export function EkranSkladowych() {
               // ślad dostępny lecz bez kroku „Zk" dla punktu.
               !dane?.slad ? (
                 <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-slad-niedostepny">
-                  {T.skladoweSladNiedostepny}
+                  <TekstZWzorami tekst={T.skladoweSladNiedostepny} />
                 </p>
               ) : (
                 <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-brak-kroku">
@@ -238,8 +238,8 @@ export function EkranSkladowych() {
                     <WartoscSkladowej etykieta={T.skladowaZ0} wartosc={skladowe.z0} testid="mvd-skladowe-z0" />
                   ) : (
                     <div className="mvd-skladowe-wartosc" data-testid="mvd-skladowe-z0-brak">
-                      <dt>{T.skladowaZ0}</dt>
-                      <dd>{T.skladoweBrakZ0}</dd>
+                      <dt><TekstZWzorami tekst={T.skladowaZ0} /></dt>
+                      <dd><TekstZWzorami tekst={T.skladoweBrakZ0} /></dd>
                     </div>
                   )}
                 </dl>
@@ -453,7 +453,7 @@ export function EkranSkladowych() {
 
       <div className="mvd-skladowe-stopka">
         <span className="mvd-skladowe-lbl">{T.nastepnyEyebrow}</span>
-        <p>{T.nastepnyOpis}</p>
+        <p><TekstZWzorami tekst={T.nastepnyOpis} /></p>
         <button
           type="button"
           className="mvd-skladowe-powrot"

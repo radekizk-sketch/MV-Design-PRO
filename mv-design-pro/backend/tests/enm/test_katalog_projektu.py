@@ -212,5 +212,5 @@ def test_rekord_bez_obciazalnosci_nie_staje_sie_typem_z_zerem() -> None:
     params = {k: v for k, v in _LINIA["params"].items() if k != "rated_current_a"}
     sekcja = _sekcja(line_types=[{**_LINIA, "params": params}])
     # Karta #142: brakujące pole etykietą tabliczki, nie kluczem rekordu.
-    with pytest.raises(BladKataloguProjektu, match="„Imax \\[A\\]”"):
+    with pytest.raises(BladKataloguProjektu, match="„Prąd maksymalny”"):
         katalog_dla_modelu({"katalog_projektu": sekcja})

@@ -339,7 +339,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     // pkt 3: ekwiwalent na szynach SN mówi to WPROST, a napięcie tabliczki
     // jest napięciem szyny źródła (15 kV) — spójne z Sk″/Ik″.
     expect(label!.rows[1].text).toBe('Ekwiwalent sieci zasilającej');
-    expect(label!.rows[2].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV');
+    expect(label!.rows[2].text).toBe("$S_{k}''$ 250 MVA · $I_{k}''$ 9,62 kA · 15 kV");
   });
 
   // CV-4.3 K7: gdy ENM niesie dane scenariusza MIN, tabliczka rozdziela
@@ -353,7 +353,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
-    expect(label!.rows[2].text).toBe('Sk″maks 250 / Sk″min 150 MVA · Ik″maks 9,62 / Ik″min 5,8 kA · 15 kV');
+    expect(label!.rows[2].text).toBe("$S_{k,\\max}''$ 250 / $S_{k,\\min}''$ 150 MVA · $I_{k,\\max}''$ 9,62 / $I_{k,\\min}''$ 5,8 kA · 15 kV");
   });
 
   // CV-4.3 K7c: napięcie zadane szyny bilansującej dokleja CZWARTY, niezależny
@@ -367,7 +367,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
-    expect(label!.rows[2].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV · Uzad 1,06 pu');
+    expect(label!.rows[2].text).toBe("$S_{k}''$ 250 MVA · $I_{k}''$ 9,62 kA · 15 kV · $U_{\\text{zad}}$ 1,06 pu");
   });
 
   // Iloczyn cech: u_set_pu × scenariusz MIN jednocześnie na tabliczce — oba
@@ -386,7 +386,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
     expect(label).toBeDefined();
     expect(label!.rows[2].text).toBe(
-      'Sk″maks 250 / Sk″min 150 MVA · Ik″maks 9,62 / Ik″min 5,8 kA · 15 kV · Uzad 0,95 pu',
+      "$S_{k,\\max}''$ 250 / $S_{k,\\min}''$ 150 MVA · $I_{k,\\max}''$ 9,62 / $I_{k,\\min}''$ 5,8 kA · 15 kV · $U_{\\text{zad}}$ 0,95 pu",
     );
   });
 
@@ -402,7 +402,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     const composition = composeGpz(props, { x: 0, y: 0 });
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'tr-1#label');
     // pkt 4 (recenzja NO-GO 2026-07-17): uk%/Pk z danych ENM na tabliczce TR.
-    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', 'Yd11 · 25 MVA', '110/15 kV', 'uk 11% · Pk 120 kW']);
+    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', 'Yd11 · 25 MVA', '110/15 kV', '$u_{k}$ 11% · $P_{k}$ 120 kW']);
   });
 
   it('transformator BEZ vector_group (null) ⇒ etykieta pomija grupę połączeń (uczciwy brak, nie fabrykuje)', () => {
@@ -412,7 +412,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
       'gpz-1');
     const composition = composeGpz(props, { x: 0, y: 0 });
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'tr-1#label');
-    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', '25 MVA', '110/15 kV', 'uk 11% · Pk 120 kW']);
+    expect(label!.rows.map((r) => r.text)).toEqual(['TR1', '25 MVA', '110/15 kV', '$u_{k}$ 11% · $P_{k}$ 120 kW']);
   });
 
   it('brak TR w ENM ⇒ adapter nie niesie transformatora, kompozycja bez kolumny WN (missingData)', () => {

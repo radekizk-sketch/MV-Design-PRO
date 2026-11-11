@@ -342,12 +342,12 @@ def test_measurement_rejects_nonpositive_sigma() -> None:
 
 
 def test_flow_measurement_requires_bus_j() -> None:
-    with pytest.raises(ValueError, match="bus_j"):
+    with pytest.raises(ValueError, match="węzła końcowego gałęzi"):
         Measurement(MeasurementType.P_FLOW, 0, value=0.1, sigma=0.01)
 
 
 def test_injection_measurement_rejects_bus_j() -> None:
-    with pytest.raises(ValueError, match="bus_j"):
+    with pytest.raises(ValueError, match="węzła końcowego gałęzi"):
         Measurement(MeasurementType.P_INJECTION, 0, value=0.1, sigma=0.01, bus_j=1)
 
 

@@ -96,7 +96,7 @@ def run_sanity_checks(
         ...             operator=ProtectionSetpointOperator.GT,
         ...             multiplier=1.2,
         ...             unit="pu",
-        ...             display_pl="1,2×In",
+        ...             display_pl="1,2-krotność prądu znamionowego",
         ...         ),
         ...     ),
         ... ]

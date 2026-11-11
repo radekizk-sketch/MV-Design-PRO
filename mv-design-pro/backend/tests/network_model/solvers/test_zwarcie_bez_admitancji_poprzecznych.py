@@ -528,7 +528,10 @@ def test_iniekcja_bez_b0_w_skladowej_zerowej_odmawia_zamiast_liczyc(z_b1: bool) 
         assert doziemienie["kompletnosc_dowodu"] == "NIEPELNY"
         if z_b1:
             assert doziemienie["prad_a"] is not None and doziemienie["brak_pl"] is None
-            assert any("B′0" in d["nazwa_pl"] for d in doziemienie["dane_przyjete"])
+            assert any(
+                "Susceptancja jednostkowa składowej zerowej" in d["nazwa_pl"]
+                for d in doziemienie["dane_przyjete"]
+            )
         else:
             assert doziemienie["prad_a"] is None and doziemienie["i_c_a"] is None
             assert "nieoznaczalny" in doziemienie["brak_pl"]

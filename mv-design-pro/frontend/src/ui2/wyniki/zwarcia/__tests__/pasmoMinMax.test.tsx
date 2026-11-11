@@ -14,6 +14,7 @@ import type { PasmoZwarciaOdpowiedz, StronaPasmaOdpowiedz } from '../api';
 import { PasmoMinMax } from '../PasmoMinMax';
 import { ZWARCIA_STRINGS } from '../strings';
 import { shortCircuitResultsFixture, shortCircuitRowFixture } from './fixtures';
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 
 function stronaFixture(over: Partial<StronaPasmaOdpowiedz> = {}): StronaPasmaOdpowiedz {
   return {
@@ -143,6 +144,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
               z_q_abs_ohm: 0.66,
               z_q_ohm: { re: 0.0657, im: 0.6568 },
               formula: 'Z_Q = c·U_nQ²/S″_kQ',
+              formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}}',
             },
           ],
         }),
@@ -165,6 +167,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
               z_q_abs_ohm: 1.0,
               z_q_ohm: { re: 0.196, im: 0.9806 },
               formula: 'Z_Q = c·U_nQ²/S″_kQ',
+              formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}}',
             },
           ],
         }),
@@ -179,6 +182,12 @@ describe('PasmoMinMax — obie strony dostępne', () => {
     expect(within(blokMax).getByText('250,0 MVA')).toBeInTheDocument(); // S''kQ max
     expect(within(blokMin).getByTestId('mvd-zwarcia-zrodla')).toBeInTheDocument();
     expect(within(blokMin).getByText('150,0 MVA')).toBeInTheDocument(); // S''kQ min
+    // Kolumna „Wzór": KaTeX z `formula_latex`, nie spłaszczony zapis `formula` (karta ZU).
+    for (const blok of [blokMax, blokMin]) {
+      const tabela = within(blok).getByTestId('mvd-zwarcia-zrodla');
+      expect(tabela.querySelector('.katex')).not.toBeNull();
+      expect(tabela).not.toHaveTextContent('Z_Q = c·U_nQ²/S″_kQ');
+    }
   });
 
   it('ta sama rewizja obu stron: BEZ ostrzeżenia świeżości', async () => {
@@ -222,11 +231,16 @@ describe('PasmoMinMax — strona niedostępna (uczciwe stany, akcja „Uruchom")
     await waitFor(() => expect(screen.getByTestId('mvd-zwarcia-pasmo-brak-min')).toBeInTheDocument());
 
     const blokBrak = screen.getByTestId('mvd-zwarcia-pasmo-brak-min');
-    expect(within(blokBrak).getByText(ZWARCIA_STRINGS.pasmoBrakScenariusz('MIN'))).toBeInTheDocument();
+    expect(tekstZrodlowy(blokBrak)).toContain(ZWARCIA_STRINGS.pasmoBrakScenariusz('MIN'));
     expect(within(blokBrak).getByText(dane.powod_niedostepnosci_pl!)).toBeInTheDocument();
     const akcja = within(blokBrak).getByTestId('mvd-zwarcia-pasmo-min-akcja');
     expect(akcja).toBeInTheDocument();
-    expect(akcja).toHaveTextContent(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MIN'));
+    expect(tekstZrodlowy(akcja)).toBe(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MIN'));
+    // Nazwa dostępna przycisku niesie odczyt symbolu (`role="math"`), podpowiedź — tekst bez `$`.
+    // jsdom nie liczy `display` dla `<span>` (pusty ciąg ≠ `inline`), więc dom-accessibility-api
+    // otacza KAŻDY element potomny spacją — przeglądarka składa „(cmin)” bez spacji.
+    expect(akcja).toHaveAccessibleName(/^Uruchom bieg MIN \(\s*cmin\s*\)$/);
+    expect(akcja.getAttribute('title')).toContain('minimalnym (cmin)');
     expect(akcja).not.toBeDisabled();
 
     // Strona MAX (kotwica) zostaje dostępna mimo braku pary.
@@ -250,6 +264,6 @@ describe('PasmoMinMax — strona niedostępna (uczciwe stany, akcja „Uruchom")
     const akcja = within(screen.getByTestId('mvd-zwarcia-pasmo-brak-max')).getByTestId(
       'mvd-zwarcia-pasmo-max-akcja',
     );
-    expect(akcja).toHaveTextContent(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MAX'));
+    expect(tekstZrodlowy(akcja)).toBe(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MAX'));
   });
 });

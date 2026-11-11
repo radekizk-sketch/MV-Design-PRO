@@ -29,6 +29,7 @@ import {
   type BilansGpzWartosci,
   type GpzAdnotacje,
 } from '../compose/gpzAdnotacje';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import { useSldPalette } from '../theme/palette';
 import type { GpzWynikiOverlay, WynikiPolaGpz } from './gpzWyniki';
 
@@ -86,7 +87,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
       fontSize={typo.fontSize}
       fontWeight={typo.fontWeight}
     >
-      {tresc}
+      <TekstSvgZWzorami tekst={tresc} />
     </text>
   );
 

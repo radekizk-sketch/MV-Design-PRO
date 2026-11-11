@@ -94,6 +94,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from application.proof_engine.zapis_jednostek import jednostka_latex
 from network_model.catalog.wartosci_robocze import (
     WIELKOSCI_ZWARCIOWE,
     zdanie_parametru_maszyny_pl,
@@ -466,7 +467,7 @@ def ostrzezenie_poza_zakresem_iec60909(z_f_ohm: complex) -> str:
     oceniony (zakres IEC 60909) i do czego nie wolno go użyć (SI-117).
     """
     return (
-        f"Zwarcie przez impedancję przejścia Z_f = {z_f_ohm.real:.4f} + j{z_f_ohm.imag:.4f} Ω "
+        f"Zwarcie przez impedancję przejścia {z_f_ohm.real:.4f} + j{z_f_ohm.imag:.4f} Ω "
         "— wynik poza zakresem IEC 60909-0 (norma definiuje prąd zwarcia metalicznego). "
         "Nie jest podstawą doboru aparatury, wytrzymałości zwarciowej, nastaw zabezpieczeń "
         "nadprądowych, koordynacji, dowodu regulacyjnego ani analizy łuku elektrycznego."
@@ -830,7 +831,8 @@ class ProofGenerator:
         ostrzezenia_tb: list[str] = []
         if data.tb_zrodlo is not None and data.tb_zrodlo.get("wartosc_robocza"):
             ostrzezenia_tb.append(
-                "I_b i i_DC policzone przy czasie wyłączenia t_b będącym wartością roboczą "
+                "Prąd wyłączeniowy i składowa nieokresowa policzone przy czasie wyłączenia będącym "
+                "wartością roboczą "
                 f"(wynik obliczeniowy na danej przyjętej): {data.tb_zrodlo.get('opis_pl')}"
             )
         # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim — jedno zdanie z solvera.
@@ -1470,7 +1472,7 @@ class ProofGenerator:
         real = value.real
         imag = value.imag
         sign = "+" if imag >= 0 else "-"
-        return f"{real:.4f} {sign} j{abs(imag):.4f}\\,\\text{{{unit}}}"
+        return f"{real:.4f} {sign} j{abs(imag):.4f}\\,{jednostka_latex(unit)}"
 
     @staticmethod
     def _z0_kroku_doziemnego(z0: complex | None, equation_id: str) -> complex:
@@ -1900,7 +1902,7 @@ class ProofGenerator:
             expected_unit="Ω",
             computed_unit="Ω",
             input_units={"Z_th": "Ω"},
-            derivation="Ω = Ω ✓",
+            derivation_latex=r"\Omega = \Omega",
         )
 
         return ProofStep(
@@ -3470,7 +3472,7 @@ class ProofGenerator:
             expected_unit="kV",
             computed_unit="kV",
             input_units={"U_meas": "kV", "U_ref": "kV"},
-            derivation="kV - kV = kV ✓",
+            derivation_latex=r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}",
         )
 
         return ProofStep(
@@ -3523,7 +3525,7 @@ class ProofGenerator:
                 t_prev = sorted_points[idx - 1].t_h
                 t_curr = sorted_points[idx].t_h
                 if t_curr <= t_prev:
-                    raise ValueError("Czasy t_h muszą być ściśle rosnące bez duplikatów.")
+                    raise ValueError("Czasy godzinowe muszą być ściśle rosnące bez duplikatów.")
 
                 delta_t = t_curr - t_prev
                 p_loss = sorted_points[idx].p_loss_kw
@@ -3816,17 +3818,17 @@ class ProofGenerator:
 
         if data.element_kind in (LoadElementKind.LINE, LoadElementKind.CABLE):
             if data.in_a is None:
-                raise ValueError("Brak prądu znamionowego in_a dla linii/kabla.")
+                raise ValueError("Brak prądu znamionowego linii albo kabla.")
         elif data.element_kind == LoadElementKind.TRANSFORMER:
             if data.sn_mva is None:
-                raise ValueError("Brak mocy znamionowej sn_mva dla transformatora.")
+                raise ValueError("Brak mocy znamionowej transformatora.")
         else:
             raise ValueError(f"Nieobsługiwany element_kind: {data.element_kind}")
 
         if data.u_ll_kv is None:
             raise ValueError("Brak napięcia międzyfazowego u_ll_kv.")
         if data.p_mw is None or data.q_mvar is None:
-            raise ValueError("Brak mocy czynnej/biernej p_mw/q_mvar.")
+            raise ValueError("Brak mocy czynnej albo biernej.")
 
         s_mva = math.sqrt(data.p_mw**2 + data.q_mvar**2)
 
@@ -4885,7 +4887,7 @@ class ProofGenerator:
             expected_unit="kV",
             computed_unit="kV",
             input_units={"ΔU": "kV", "U_dead": "kV"},
-            derivation="kV ± kV = kV ✓",
+            derivation_latex=r"\mathrm{kV} \pm \mathrm{kV} = \mathrm{kV}",
         )
 
         return ProofStep(
@@ -4932,7 +4934,7 @@ class ProofGenerator:
             expected_unit="Mvar",
             computed_unit="Mvar",
             input_units={"k_Q": "Mvar/kV", "s(U)": "kV"},
-            derivation="Mvar/kV · kV = Mvar ✓",
+            derivation_latex=r"\mathrm{Mvar}/\mathrm{kV} \cdot \mathrm{kV} = \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -4981,7 +4983,7 @@ class ProofGenerator:
             expected_unit="Mvar",
             computed_unit="Mvar",
             input_units={"Q_raw": "Mvar", "Q_min": "Mvar", "Q_max": "Mvar"},
-            derivation="Mvar = Mvar ✓",
+            derivation_latex=r"\mathrm{Mvar} = \mathrm{Mvar}",
         )
 
         return ProofStep(
@@ -5040,7 +5042,7 @@ class ProofGenerator:
             expected_unit="kV",
             computed_unit="kV",
             input_units={"Q_cmd": "Mvar", "ΔU_X": "%", "ΔU": "%"},
-            derivation="Mvar → % → kV (VDROP link) ✓",
+            derivation_latex=r"\mathrm{Mvar} \rightarrow \% \rightarrow \mathrm{kV} \quad \text{(powiązanie ze spadkiem napięcia)}",
         )
 
         return ProofStep(

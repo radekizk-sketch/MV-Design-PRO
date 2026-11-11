@@ -37,7 +37,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       upper_ka: 50.0,
       in_range: true,
       status: 'w paśmie wiarygodności',
-      why_pl: "Ik'' = 12.5 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+      why_pl: 'Początkowy prąd zwarciowy 12.5 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).',
       blocks_osd_package: false,
     },
     {
@@ -52,7 +52,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       in_range: false,
       status: 'poza zakresem wiarygodności',
       why_pl:
-        "Ik'' = 116.0 kA przekracza górną granicę wiarygodności 50.0 kA dla SN (15.0 kV) — wartość fizycznie wątpliwa. Zablokowane przed wejściem do pakietu OSD.",
+        'Początkowy prąd zwarciowy 116.0 kA przekracza górną granicę wiarygodności 50.0 kA dla SN (15.0 kV) — wartość fizycznie wątpliwa. Zablokowane przed wejściem do pakietu OSD.',
       blocks_osd_package: true,
     },
     {
@@ -66,7 +66,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       upper_ka: null,
       in_range: false,
       status: 'dane niekompletne',
-      why_pl: "Brak poprawnego napięcia lub Ik'' do oceny wiarygodności.",
+      why_pl: 'Brak poprawnego napięcia lub początkowego prądu zwarciowego do oceny wiarygodności.',
       blocks_osd_package: false,
     },
   ],
@@ -134,10 +134,10 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       // Ślad WHITE BOX per pozycja (R2-A; struktura R3-D) — kształt 1:1 z buildera.
       white_box: [
         {
-          tekst: 'Wzór: odchylenie = |U − U_n| / U_n · 100 %',
+          tekst: 'Wzór: odchylenie napięcia od znamionowego odniesione do napięcia znamionowego, w procentach',
           latex: '\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%',
         },
-        { tekst: 'Dane: U = 13,2000 kV (wynik rozpływu), U_n = 15,0000 kV', latex: null },
+        { tekst: 'Dane: napięcie 13,2000 kV (wynik rozpływu), napięcie znamionowe 15,0000 kV', latex: null },
         {
           tekst: 'Wynik: odchylenie = 12,00 %',
           latex:
@@ -324,7 +324,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         deviation_pct: 1.3333,
         in_range: true,
         status: 'w paśmie wiarygodności',
-        why_pl: 'U = 15.2 kV mieści się w paśmie [13.500; 16.500] kV (Un = 15.0 kV ± 10 %).',
+        why_pl: 'Napięcie 15.2 kV mieści się w paśmie [13.500; 16.500] kV (napięcie znamionowe 15.0 kV ± 10 %).',
       },
       {
         target_id: 'bus-B',
@@ -337,13 +337,13 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         in_range: false,
         status: 'poza zakresem wiarygodności',
         why_pl:
-          'U = 20.0 kV jest poza pasmem [13.500; 16.500] kV (Un = 15.0 kV ± 10 %, odchylenie '
+          'Napięcie 20.0 kV jest poza pasmem [13.500; 16.500] kV (napięcie znamionowe 15.0 kV ± 10 %, odchylenie '
           + '33.33 %) — wynik fizycznie wątpliwy (błąd modelu/jednostek?).',
       },
     ],
     norm_ref:
       'PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) '
-      + '— zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.',
+      + '— zmiany napięcia zasilającego w warunkach normalnej pracy: napięcie znamionowe ± 10 %.',
     band_pct: 10.0,
     summary: { credible_count: 1, out_of_range_count: 1, incomplete_count: 0 },
   },
@@ -517,7 +517,8 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
     {
       norma: 'PN-HD 60364-4-43',
       punkt: '§ 434.5.2',
-      tresc_pl: 'Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k.',
+      tresc_pl:
+        'Warunek adiabatyczny doboru przekroju ze względu na zwarcie: przekrój nie mniejszy od pierwiastka z całki Joule\'a (kwadrat prądu razy czas) podzielonego przez współczynnik k.',
     },
     {
       norma: 'IEC 60949',
@@ -567,7 +568,8 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           {
             kod: 'i2t',
             nazwa_pl: 'Energia cieplna zwarcia',
-            warunek_pl: 'I²·t ≤ k²·S²',
+            warunek_pl: 'energia zwarcia nie większa od wytrzymałości cieplnej żyły',
+            warunek_latex: String.raw`I^{2} t \le k^{2} S^{2}`,
             wartosc: 56250000,
             granica: 127238400,
             jednostka: 'A²·s',
@@ -576,7 +578,8 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           {
             kod: 'przekroj_minimalny',
             nazwa_pl: 'Przekrój minimalny żyły',
-            warunek_pl: 'S ≥ S_min',
+            warunek_pl: 'przekrój nie mniejszy od minimalnego z warunku cieplnego',
+            warunek_latex: String.raw`S \ge S_{min}`,
             wartosc: 120,
             granica: 79.8,
             jednostka: 'mm²',

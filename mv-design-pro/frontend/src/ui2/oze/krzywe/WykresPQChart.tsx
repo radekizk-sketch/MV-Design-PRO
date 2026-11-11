@@ -17,6 +17,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+
+import { legendaZWzorami } from '../../shared/legendaZWzorami';
 import type { PunktWykresuPQ } from './krzyweModel';
 import { KRZYWE_STRINGS, fmtMWPQ, fmtMvarPQ } from './strings';
 
@@ -95,7 +97,7 @@ export function WykresPQChart({
         />
         <Tooltip content={<DymekPQ />} />
         {/* Legenda u góry — dolna kolidowała z podpisem osi X (insideBottom). */}
-        <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
+        <Legend formatter={legendaZWzorami} verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
         <ReferenceLine
           y={wymaganieMax}
           stroke="var(--mvd-warn)"

@@ -31,15 +31,15 @@ KOD_IMPEDANCJA_NIESKONCZONA = "sc.impedancja_zwarcia_nieskonczona"
 #: Kod → zdanie dla projektanta (bez identyfikatorów; element wskazuje odwołanie odmowy).
 OPISY_ODMOW_IMPEDANCJI: dict[str, str] = {
     KOD_IMPEDANCJA_POJEMNOSCIOWA: (
-        "Reaktancja przejścia X_f w miejscu zwarcia jest ujemna (przejście pojemnościowe) — "
-        "zwarcie przez impedancję przyjmuje X_f ≥ 0."
+        "Reaktancja przejścia w miejscu zwarcia jest ujemna (przejście pojemnościowe) — "
+        "zwarcie przez impedancję przyjmuje reaktancję nieujemną."
     ),
     KOD_REZYSTANCJA_UJEMNA: (
-        "Rezystancja przejścia R_f w miejscu zwarcia jest ujemna — zwarcie przez impedancję "
-        "przyjmuje R_f ≥ 0."
+        "Rezystancja przejścia w miejscu zwarcia jest ujemna — zwarcie przez impedancję "
+        "przyjmuje rezystancję nieujemną."
     ),
     KOD_IMPEDANCJA_NIESKONCZONA: (
-        "Impedancja przejścia Z_f w miejscu zwarcia wymaga skończonych liczb R_f i X_f [Ω]."
+        "Impedancja przejścia w miejscu zwarcia wymaga skończonej rezystancji i reaktancji [Ω]."
     ),
 }
 

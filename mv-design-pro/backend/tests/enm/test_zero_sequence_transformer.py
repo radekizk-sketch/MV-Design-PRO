@@ -157,6 +157,21 @@ class TestSequenceConnectionTable:
         assert any("parse" in k for k in keys)
         assert any("conn" in k for k in keys)
 
+    @pytest.mark.parametrize(
+        ("vector_group", "latex_z0"),
+        [("YNd11", r"Z_{0} = "), ("Yy0", r"Z_{0} \rightarrow \infty")],
+    )
+    def test_podstawienie_polaczenia_slowami_wzor_w_latex(self, vector_group, latex_z0):
+        """Droga zerowa istnieje i nie istnieje: podstawienie słowami, wzór w
+        `substitution_latex` (decyzja architekta 2026-11-04)."""
+        trace = build_transformer_zero_seq_model(_mk_transformer(vector_group)).trace
+        krok = next(s for s in trace if "conn" in s["key"])
+        assert "impedancja zerowa" in krok["substitution"]
+        assert "Z0" not in krok["substitution"]
+        assert krok["substitution_latex"].startswith(latex_z0)
+        krok_zt = next(s for s in trace if "_zt[" in s["key"])
+        assert krok_zt["substitution_latex"].startswith(r"Z_{T0} = ")
+
 
 # ---------------------------------------------------------------------------
 # 1b) Audyt fizyki fala F: zakaz fabrykacji Z_N brakującej dla urządzeń
@@ -173,14 +188,14 @@ class TestGroundingImpedanceNoFabrication:
         """Cewka Petersena bez podanej reaktancji X_N MUSI zgłosić błąd danych,
         NIE cicho przyjąć X_N=0 (co dałoby uziemienie bezpośrednie)."""
         trafo = _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="petersen_coil"))
-        with pytest.raises(ValueError, match="Petersena wymaga dodatniej reaktancji"):
+        with pytest.raises(ValueError, match="Petersena wymaga dodatniej wartości"):
             build_transformer_zero_seq_model(trafo)
 
     def test_resistor_grounded_missing_r_ohm_raises_not_defaults_to_zero(self):
         """Rezystor NER bez podanej rezystancji R_N MUSI zgłosić błąd danych,
         NIE cicho przyjąć R_N=0 (co dałoby uziemienie bezpośrednie)."""
         trafo = _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="resistor_grounded"))
-        with pytest.raises(ValueError, match="rezystor wymaga dodatniej rezystancji"):
+        with pytest.raises(ValueError, match="rezystor wymaga dodatniej wartości"):
             build_transformer_zero_seq_model(trafo)
 
     def test_petersen_coil_with_x_ohm_dominates_z0_not_zero(self):
@@ -562,7 +577,7 @@ class TestLineShuntCapacitanceZ0:
         enm, graph, *_ = _build_isolated_cable_network(
             b0_siemens_per_km=-1.0e-6, lv_neutral=_PUNKTY_NEUTRALNE["rezystor"]
         )
-        with pytest.raises(OdmowaDanychError, match="B′0 .* jest ujemna"):
+        with pytest.raises(OdmowaDanychError, match="susceptancja doziemna .* jest ujemna"):
             zbuduj_siec_zerowa(enm, graph)
 
     @pytest.mark.parametrize("b0", [1.0e-4, 0.0, None], ids=["b0", "b0_zero", "b0_brak"])

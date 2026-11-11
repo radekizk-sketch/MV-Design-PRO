@@ -12,6 +12,7 @@ import type { ConverterType } from '../../../../ui/catalog/types';
 import { DoborToruSn } from '../DoborToruSn';
 import type { CableLayingConditions } from '../derSelectionApi';
 import { DANE_DER_SN_DOMYSLNE, type DerSnFormData } from '../zrodloOzeModel';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const KONWERTER: ConverterType = {
   id: 'conv-pv-500',
@@ -294,7 +295,7 @@ describe('DoborToruSn — przypadek pracy toru (V12K-203)', () => {
     // Domyślnie cos φ = 1 ⇒ sin φ = 0 ⇒ człon bierny zeruje się. Kontrolka, która nie
     // może nic zmienić, nie udaje działającej (zakaz kontrolek pozornych).
     expect(screen.getByTestId('mvd-kreator-oze-dobor-charakter-q')).toBeDisabled();
-    expect(screen.getByText(/Przy cos φ = 1 falownik nie wymienia mocy biernej/)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(/Przy \$\\cos\\varphi\$ = 1 falownik nie wymienia mocy biernej/))).toBeInTheDocument();
   });
 
   it('wzrost napięcia jest NAZWANY, a wartość pokazana jako moduł zmiany', async () => {

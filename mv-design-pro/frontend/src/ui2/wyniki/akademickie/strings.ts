@@ -374,7 +374,7 @@ export const AKADEMICKIE_STRINGS = {
   odnThduIeee519: 'Współczynnik THDu dopuszczalny wg IEEE 519',
   odnTddIeee519: 'Współczynnik TDD domyślny wg IEEE 519',
   odnHarmonicznaRzedu: (rzad: string): string => `Harmoniczna rzędu ${rzad} — poziom dopuszczalny`,
-  odnPoziomIzolacji: (um: string): string => `Napięcie najwyższe urządzenia Um = ${um} kV`,
+  odnPoziomIzolacji: (um: string): string => `Napięcie najwyższe urządzenia $U_{m}$ = ${um} kV`,
   odnPoziomIzolacjiWartosc: (bil: string, u50: string): string =>
     `napięcie udarowe piorunowe (BIL) ${bil} kV; napięcie wytrzymywane 50 Hz ${u50} kV`,
   odnElementLinia: 'Linia napowietrzna SN',

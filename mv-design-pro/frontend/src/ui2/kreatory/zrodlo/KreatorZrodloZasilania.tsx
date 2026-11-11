@@ -863,7 +863,7 @@ export function KreatorZrodloZasilania() {
       {krok === 'transformatory' && zTransformatorami ? (
         <>
         <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
-          <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
+          <KreatorInfo><TekstZWzorami tekst={T.transformatoryOpis} /></KreatorInfo>
           <PoleWyboru
             etykieta={T.liczbaTrafo}
             wartosc={String(dane.transformer_count)}
@@ -1147,7 +1147,7 @@ export function KreatorZrodloZasilania() {
             onZmiana={(v) => zmien('thermal_time_s', v ?? 0)}
             krok={0.1}
             min={0.1}
-            pomoc="Czas trwania zwarcia do sprawdzenia wytrzymałości cieplnej Ith (feeder do backendu)."
+            pomoc="Czas trwania zwarcia do sprawdzenia wytrzymałości cieplnej $I_{th}$ (feeder do backendu)."
             blad={bladDlaPola('thermal_time_s')}
             testid="mvd-kreator-zrodlo-tk"
           />

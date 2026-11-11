@@ -39,10 +39,10 @@
       ],
       "code": "E-D06",
       "hints": [
-        "Uzupełnij dane impedancji zerowej (R0, X0) dla gałęzi",
-        "Lub przypisz typ z katalogu zawierający dane Z0"
+        "Uzupełnij rezystancję i reaktancję zerową gałęzi",
+        "Lub przypisz typ z katalogu zawierający dane impedancji zerowej"
       ],
-      "message_pl": "Zwarcie jednofazowe niedostępne — 2 gałęzi bez danych Z0 (impedancja zerowa)",
+      "message_pl": "Zwarcie jednofazowe niedostępne — 2 gałęzi bez danych impedancji zerowej",
       "severity": "WARN"
     },
     {
@@ -52,9 +52,9 @@
       ],
       "code": "W-D01",
       "hints": [
-        "Uzupełnij dane Z0 lub przypisz typy z katalogu"
+        "Uzupełnij dane impedancji zerowej lub przypisz typy z katalogu"
       ],
-      "message_pl": "2 gałęzi bez danych impedancji zerowej (Z0). Analiza zwarcia jednofazowego może być niedostępna",
+      "message_pl": "2 gałęzi bez danych impedancji zerowej. Analiza zwarcia jednofazowego może być niedostępna",
       "severity": "WARN"
     },
     {

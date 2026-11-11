@@ -15,6 +15,7 @@
 
 import { PrzegladDowodu } from '../dowod';
 import { useNazwaObiektu } from '../wzorzec';
+import { MathInline } from '../../../ui/proof/MathRenderer';
 import type {
   DowodCieplnyResponse,
   NormaCieplna,
@@ -23,6 +24,7 @@ import type {
 } from './api';
 import { ikonaWarunku, ocenaWarunkuPL } from './jakoscModel';
 import { JAKOSC_STRINGS, fmtLiczba, fmtWartosc } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface PanelDowoduCieplnegoProps {
   pozycja: PozycjaCieplna;
@@ -44,6 +46,19 @@ function Werdykt({ status }: { status: StatusWarunku }) {
 }
 
 /** Energia zwarcia ma rząd 10⁷ A²·s — skala „mln" zamiast piętnastu cyfr. */
+/**
+ * Warunek albo wzór działania: zapis z pola `*_latex` przez `MathInline`, gdy backend go podał;
+ * proza słowami zostaje opisem (`title`). Bez pola LaTeX — sama proza.
+ */
+function ZapisWarunku({ proza, latex }: { proza: string; latex?: string }) {
+  if (latex === undefined) return <>{proza}</>;
+  return (
+    <span title={proza}>
+      <MathInline latex={latex} />
+    </span>
+  );
+}
+
 function fmtEnergiaPelna(wartosc: number | null): string {
   if (wartosc === null) return JAKOSC_STRINGS.kreska;
   if (Math.abs(wartosc) >= 1_000_000) return `${fmtLiczba(wartosc / 1_000_000, 3)} mln A²·s`;
@@ -82,23 +97,31 @@ export function PanelDowoduCieplnego({
       {/* --- Pełny bilans (uwaga 2) --- */}
       <dl className="mvd-cieplny-bilans" data-testid="mvd-jakosc-cieplna-bilans">
         <div>
-          <dt>Prąd zwarciowy I_th</dt>
+          <dt>
+            Prąd zwarciowy <MathInline latex="I_{th}" />
+          </dt>
           <dd className="mvd-num">
             {pozycja.i_fault_a === null ? JAKOSC_STRINGS.kreska : `${fmtWartosc(pozycja.i_fault_a)} A`}
           </dd>
         </div>
         <div>
-          <dt>Czas wyłączenia t</dt>
+          <dt>
+            Czas wyłączenia <MathInline latex="t" />
+          </dt>
           <dd className="mvd-num">
             {czas?.tk_s == null ? JAKOSC_STRINGS.kreska : `${fmtLiczba(czas.tk_s, 3)} s`}
           </dd>
         </div>
         <div>
-          <dt>Energia zwarcia I²·t</dt>
+          <dt>
+            Energia zwarcia <MathInline latex="I^2 \cdot t" />
+          </dt>
           <dd className="mvd-num">{fmtEnergiaPelna(pozycja.i2t_a2s)}</dd>
         </div>
         <div>
-          <dt>Dopuszczalna energia k²·S²</dt>
+          <dt>
+            Dopuszczalna energia <MathInline latex="k^2 \cdot S^2" />
+          </dt>
           <dd className="mvd-num">{fmtEnergiaPelna(pozycja.i2t_dopuszczalne_a2s)}</dd>
         </div>
         <div>
@@ -138,7 +161,9 @@ export function PanelDowoduCieplnego({
               {pozycja.kryteria.map((kryterium) => (
                 <tr key={kryterium.kod}>
                   <td>{kryterium.nazwa_pl}</td>
-                  <td className="mvd-mono">{kryterium.warunek_pl}</td>
+                  <td>
+                    <ZapisWarunku proza={kryterium.warunek_pl} latex={kryterium.warunek_latex} />
+                  </td>
                   <td className="mvd-num">
                     {kryterium.wartosc === null
                       ? JAKOSC_STRINGS.kreska
@@ -178,7 +203,9 @@ export function PanelDowoduCieplnego({
               {pozycja.zalecenia.map((zalecenie) => (
                 <tr key={zalecenie.kod}>
                   <td>{zalecenie.dzialanie_pl}</td>
-                  <td className="mvd-mono">{zalecenie.wzor}</td>
+                  <td>
+                    <ZapisWarunku proza={zalecenie.wzor} latex={zalecenie.wzor_latex} />
+                  </td>
                   <td className="mvd-num">
                     {zalecenie.wartosc_obecna === null
                       ? JAKOSC_STRINGS.kreska
@@ -233,7 +260,9 @@ export function PanelDowoduCieplnego({
           <h4>{JAKOSC_STRINGS.sekcjaMaterial}</h4>
           <dl className="mvd-cieplny-bilans">
             <div>
-              <dt>Współczynnik k</dt>
+              <dt>
+                Współczynnik <MathInline latex="k" />
+              </dt>
               <dd className="mvd-num">
                 {k.k_a_s05_per_mm2 === null
                   ? JAKOSC_STRINGS.kreska
@@ -290,7 +319,7 @@ export function PanelDowoduCieplnego({
           <p className="mvd-cieplny-opis">{k.tozsamosc_pl}</p>
           {k.zrodlo_k === 'WYPROWADZONE_IEC60949' && (
             <p className="mvd-cieplny-brak" data-testid="mvd-jakosc-cieplna-k-wyprowadzone">
-              {JAKOSC_STRINGS.ostrzezenieKWyprowadzone}
+              <TekstZWzorami tekst={JAKOSC_STRINGS.ostrzezenieKWyprowadzone} />
             </p>
           )}
           {k.granica_temperatury_pl && (

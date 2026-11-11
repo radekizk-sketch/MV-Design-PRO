@@ -101,8 +101,8 @@ _J_MINUTY = "min"
 _J_SEKUNDY = "s"
 _J_HZ = "Hz"
 _J_BEZWYMIAROWA = "1"
-_J_Q = "p.u. (P_n modułu)"
-_J_U = "p.u. (U_n)"
+_J_Q = "p.u. (moc znamionowa modułu)"
+_J_U = "p.u. (napięcie znamionowe)"
 _J_KW = "kW"
 
 _NIEPEWNOSC_DEKLARACJI = Niepewnosc(
@@ -227,7 +227,7 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T08",
-        ability_pl="Tryb regulacji współczynnika mocy cosφ",
+        ability_pl="Tryb regulacji współczynnika mocy",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
         zdolnosc_id="ncrfg_ptpiree.reactive_voltage_mode",
@@ -541,7 +541,7 @@ class NcRfgPtpireeSolver:
             element_ref=modul.der_ref,
             nazwa_pl=modul.der_name or modul.der_ref,
             opis_pl=(
-                f"{typ_pl} ({NAZWA_TECHNOLOGII_PL[technologia]}), P_max "
+                f"{typ_pl} ({NAZWA_TECHNOLOGII_PL[technologia]}), moc maksymalna "
                 f"{format_liczba(modul.p_max_kw)} kW, napięcie przyłączenia "
                 f"{format_liczba(modul.voltage_kv)} kV"
             ),
@@ -631,7 +631,7 @@ class NcRfgPtpireeSolver:
                 "wymagania_testu": [w.id for w in wymagania],
                 "zakres_procedury": list(definicja.default_for_modules),
                 "wymagany_bez_certyfikatu": list(definicja.required_without_certificate_for),
-                "certyfikat_rekord": None if k.certyfikat is None else k.certyfikat.rekord_id,
+                "certyfikat_rekord": (None if k.certyfikat is None else k.certyfikat.rekord_id),
             },
             f"dotyczy = {stosowalnosc.dotyczy}",
             {"dotyczy": stosowalnosc.dotyczy, "powod_pl": stosowalnosc.powod_pl},
@@ -792,7 +792,7 @@ class NcRfgPtpireeSolver:
         Warunek strefy martwej i odpowiedź ΔP w punkcie częstotliwości testu są zapisane w
         śladzie informacyjnie — procedura nie rozróżnia ich jako osobnych testów."""
         modul, odpowiedz = k.modul, k.profile.frequency_response
-        kryteria, f_n = k.profile.kryteria_akceptacji, k.profile.czestotliwosc_znamionowa_hz
+        kryteria, f_n = (k.profile.kryteria_akceptacji, k.profile.czestotliwosc_znamionowa_hz)
         identyfikator = {"T01": "lfsm_o", "T02": "lfsm_u", "T03": "fsm"}[definicja.test_id]
         spec = _Specyfikacja(
             kryterium_id=f"{identyfikator}.statyzm",
@@ -972,11 +972,12 @@ class NcRfgPtpireeSolver:
         czas_odniesienia = (1 - udzial) / _ulamek(odpowiedz.ramp_rate_pct_per_min)
         dopuszczalny = max(krotnosc * czas_odniesienia, minimum)
         spec = _Specyfikacja(
-            kryterium_id="regulacja_p.czas_ustalenia" if t05 else "zmniejszenie_generacji.czas",
+            kryterium_id=("regulacja_p.czas_ustalenia" if t05 else "zmniejszenie_generacji.czas"),
             kryterium=Kryterium(
                 opis_pl=(
                     f"{definicja.ability_pl}: czas przejścia do "
-                    f"{format_liczba(udzial * _PROCENT)} % P_max przy zadeklarowanym tempie zmiany mocy"
+                    f"{format_liczba(udzial * _PROCENT)} % mocy maksymalnej przy zadeklarowanym "
+                    "tempie zmiany mocy"
                 ),
                 warunek_latex=(
                     r"t = \frac{1 - u}{r} \le \max\left(k \cdot \frac{1 - u}{r_{\mathrm{wym}}},"
@@ -1097,7 +1098,7 @@ class NcRfgPtpireeSolver:
         relacja: Relacja = "NIE_WIECEJ" if dolna else "NIE_MNIEJ"
         wartosc_modulu = modul.q_range_pct_pn_min if dolna else modul.q_range_pct_pn_max
         wartosc_wymagana = bierna.q_range_pct_pn_min if dolna else bierna.q_range_pct_pn_max
-        strona = "dolna (Q_min)" if dolna else "górna (Q_max)"
+        strona = "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
         spec.kryterium = Kryterium(
             opis_pl=(
                 f"{definicja.ability_pl}: pokrycie wymaganego zakresu mocy biernej — strona "
@@ -1146,7 +1147,8 @@ class NcRfgPtpireeSolver:
                     "q_min_kvar": spec.metrics["q_min_kvar"],
                     "q_max_kvar": spec.metrics["q_max_kvar"],
                 },
-                "p.u. (P_n) − p.u. (P_n) = p.u. (P_n); kW · p.u. = kvar.",
+                "jednostka względna mocy znamionowej minus jednostka względna mocy znamionowej daje "
+                "jednostkę względną mocy znamionowej; kilowaty razy jednostka względna dają kvar.",
             )
         )
         return spec
@@ -1190,7 +1192,7 @@ class NcRfgPtpireeSolver:
                 },
                 f"{format_liczba(modul.cos_phi_min)} ≤ {format_liczba(bierna.cos_phi_min)}",
                 {},
-                "cosφ jest bezwymiarowy.",
+                "Współczynnik mocy jest bezwymiarowy.",
             )
         )
         return spec
@@ -1250,7 +1252,7 @@ class NcRfgPtpireeSolver:
             symbol_latex=r"P_{\min}",
             wartosc=_logiczna(spojna),
             punkt_krytyczny_pl=(
-                f"P_min = {format_liczba(modul.p_min_kw)} kW, P_max = "
+                f"moc minimalna {format_liczba(modul.p_min_kw)} kW, moc maksymalna "
                 f"{format_liczba(modul.p_max_kw)} kW"
             ),
             metoda="DEKLARACJA",
@@ -1264,7 +1266,8 @@ class NcRfgPtpireeSolver:
 
         Dla modułu typu innego niż A wymaganie formalnie wynika z art. 14 ust. 2 (bez czasu
         w rozporządzeniu) — procedura stosuje ten sam czas, więc podstawa limitu ma stan
-        najsłabszej z podstaw (czas z NC RfG i kryteria akceptacji procedury) z uwagą."""
+        najsłabszej z podstaw (czas z NC RfG i kryteria akceptacji procedury) z uwagą.
+        """
         modul = k.modul
         wymaganie = k.profile.zaprzestanie_generacji
         podstawa = wymaganie.zrodlo
@@ -1348,7 +1351,7 @@ class NcRfgPtpireeSolver:
         nazwa = "zapadu" if lvrt else "wzrostu"
         relacja_pl = "nie niższe niż obwiednia LVRT" if lvrt else "nie wyższe niż obwiednia HVRT"
         spec = _Specyfikacja(
-            kryterium_id="frt.pozostanie_w_pracy_lvrt" if lvrt else "frt.pozostanie_w_pracy_hvrt",
+            kryterium_id=("frt.pozostanie_w_pracy_lvrt" if lvrt else "frt.pozostanie_w_pracy_hvrt"),
             kryterium=Kryterium(
                 opis_pl=(
                     f"Pozostanie modułu w pracy podczas {nazwa} napięcia (moduł nie odłączony przez "
@@ -1361,7 +1364,7 @@ class NcRfgPtpireeSolver:
                     f"{', '.join(poziomy.lvrt_typy if lvrt else poziomy.hvrt_typy)}): "
                     f"{_obwiednia_pl(punkty)}"
                 ),
-                warunek_wstepny_podstawa=poziomy.lvrt_zrodlo if lvrt else poziomy.hvrt_zrodlo,
+                warunek_wstepny_podstawa=(poziomy.lvrt_zrodlo if lvrt else poziomy.hvrt_zrodlo),
             ),
             braki=[_BRAK_BIEGU_DYNAMIKI],
         )
@@ -1372,7 +1375,7 @@ class NcRfgPtpireeSolver:
                 "moduł przyłączony ∀t, gdy U(t) " + ("≥" if lvrt else "≤") + " U_obwiedni(t)",
                 {
                     "obwiednia": [p.model_dump(mode="json") for p in punkty],
-                    "deklaracja_krzywej": modul.has_lvrt_curve if lvrt else modul.has_hvrt_curve,
+                    "deklaracja_krzywej": (modul.has_lvrt_curve if lvrt else modul.has_hvrt_curve),
                     "deklaracja_modelu_dynamicznego": modul.has_dynamic_model,
                 },
                 "brak przebiegu U(t) i stanu przyłączenia modułu z biegu dynamiki — "
@@ -1438,7 +1441,10 @@ class NcRfgPtpireeSolver:
         spec = _Specyfikacja(
             kryterium_id="szybki_prad_bierny.wzmocnienie",
             kryterium=Kryterium(
-                opis_pl=f"{definicja.ability_pl}: wzmocnienie prądu biernego ΔI_q / ΔU",
+                opis_pl=(
+                    f"{definicja.ability_pl}: wzmocnienie prądu biernego (przyrost prądu "
+                    "biernego odniesiony do zmiany napięcia)"
+                ),
                 warunek_latex=r"K_{\mathrm{FRT}} = \frac{\Delta I_q}{\Delta U} \ge K_{\min}",
                 relacja="NIE_MNIEJ",
             ),
@@ -1472,7 +1478,8 @@ class NcRfgPtpireeSolver:
                     "wzmocnienie_minimalne": kryteria.k_frt_min,
                     "spadek_napiecia_testu_pu": kryteria.spadek_napiecia_testu_frt_pu,
                 },
-                "brak przebiegu I_q(t) z biegu dynamiki — wartość zadeklarowana informacyjnie",
+                "brak przebiegu prądu biernego w czasie z biegu dynamiki — wartość zadeklarowana "
+                "informacyjnie",
                 {},
                 "p.u. / p.u. = 1.",
             )
@@ -1561,7 +1568,7 @@ class NcRfgPtpireeSolver:
                 relacja="LOGICZNE",
             ),
         )
-        komunikacja, rejestrator = modul.has_scada_communication, modul.has_disturbance_recorder
+        komunikacja, rejestrator = (modul.has_scada_communication, modul.has_disturbance_recorder)
         spec.dane.extend(
             _flagi(
                 ("komunikacja z operatorem (has_scada_communication)", komunikacja),
@@ -1663,7 +1670,7 @@ class NcRfgPtpireeSolver:
             lines.extend(
                 [
                     f"Moduł: {module.der_name or module.der_ref}",
-                    f"Operator: {module.operator_name_pl}; P_max: "
+                    f"Operator: {module.operator_name_pl}; moc czynna maksymalna: "
                     f"{format_wielkosc(Wielkosc(wartosc=module.p_max_kw, jednostka=_J_KW))}",
                     f"Klasyfikacja: {module.klasyfikacja.powod_pl}",
                     f"Technologia: {NAZWA_TECHNOLOGII_PL[module.technologia]}",

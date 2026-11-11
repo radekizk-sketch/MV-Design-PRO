@@ -115,7 +115,7 @@ describe('R3 — pochodne severity + mapowanie wielkości (czyste)', () => {
     expect(resultLabelLineQuantity('Q')).toBe('Q');
     expect(resultLabelLineQuantity('S')).toBe('S');
     expect(resultLabelLineQuantity('I')).toBe('I');
-    expect(resultLabelLineQuantity('Ik″')).toBe('I');
+    expect(resultLabelLineQuantity("$I_{k}''$")).toBe('I');
     expect(resultLabelLineQuantity('U')).toBe('U');
     expect(resultLabelLineQuantity('δ')).toBe('U');
     expect(resultLabelLineQuantity('obc.')).toBe('loading');

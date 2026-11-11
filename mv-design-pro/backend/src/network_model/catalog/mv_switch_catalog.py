@@ -94,7 +94,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=20kA @ 630A)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 12 kV, prąd wyłączalny zwarciowy 20 kA przy prądzie znamionowym 630 A)",
             "contract_version": "2.0",
         },
     },
@@ -113,7 +113,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=25kA @ 1250A)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 12 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
             "contract_version": "2.0",
         },
     },
@@ -132,7 +132,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 40.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=40kA @ 2500A, VD4 12.25.40 p275)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 12 kV, prąd wyłączalny zwarciowy 40 kA przy prądzie znamionowym 2500 A, VD4 12.25.40 p275)",
             "contract_version": "2.0",
         },
     },
@@ -152,7 +152,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=17.5kV, Isc=20kA @ 630A)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 17,5 kV, prąd wyłączalny zwarciowy 20 kA przy prądzie znamionowym 630 A)",
             "contract_version": "2.0",
         },
     },
@@ -171,7 +171,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=17.5kV, Isc=25kA @ 1250A)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 17,5 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
             "contract_version": "2.0",
         },
     },
@@ -191,7 +191,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=24kV, Isc=20kA @ 630A)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 24 kV, prąd wyłączalny zwarciowy 20 kA przy prądzie znamionowym 630 A)",
             "contract_version": "2.0",
         },
     },
@@ -210,7 +210,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=24kV, Isc=25kA @ 1250A)",
+            "source_reference": "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 24 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
             "contract_version": "2.0",
         },
     },
@@ -249,7 +249,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano Isc=25 kA, najmniejszy realny Ir dla 25 kA to 800 A (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
+            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano prąd wyłączalny zwarciowy 25 kA, najmniejszy realny prąd znamionowy dla 25 kA to 800 A (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
             "contract_version": "2.0",
         },
     },
@@ -268,7 +268,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 25.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 karta katalogowa / Siemens 3AH5 katalog HG 11.05 (2017) str.13 (Ur=17.5kV, Isc=25kA @ 1250A)",
+            "source_reference": "Siemens 3AH5 karta katalogowa / Siemens 3AH5 katalog HG 11.05 (2017) str.13 (napięcie znamionowe 17,5 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
             "contract_version": "2.0",
         },
     },
@@ -287,7 +287,7 @@ SWITCH_CIRCUIT_BREAKERS: list[dict[str, Any]] = [
             "i_cu_ka": 20.0,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od Ir=1250 A (800 A występuje wyłącznie z 16 kA); zachowano Isc=20 kA (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
+            "source_reference": "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od prądu znamionowego 1250 A (800 A występuje wyłącznie z 16 kA); zachowano prąd wyłączalny zwarciowy 20 kA (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
             "contract_version": "2.0",
         },
     },
@@ -336,7 +336,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozłącznik bez Isc — brak zdolności wyłączania z definicji urządzenia)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 12 kV; rozłącznik bez prądu wyłączalnego zwarciowego — brak zdolności wyłączania z definicji urządzenia)",
             "contract_version": "2.0",
         },
     },
@@ -355,7 +355,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozłącznik bez Isc)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 12 kV; rozłącznik bez prądu wyłączalnego zwarciowego)",
             "contract_version": "2.0",
         },
     },
@@ -375,7 +375,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozłącznik bez Isc)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 24 kV; rozłącznik bez prądu wyłączalnego zwarciowego)",
             "contract_version": "2.0",
         },
     },
@@ -394,7 +394,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "i_cu_ka": None,
             "verification_status": "ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
-            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozłącznik bez Isc)",
+            "source_reference": "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 24 kV; rozłącznik bez prądu wyłączalnego zwarciowego)",
             "contract_version": "2.0",
         },
     },
@@ -906,7 +906,7 @@ ZRODLO_ENEA_ZESZYT_1 = (
     "dwutransformatorowe 110 kV/SN”, wersja 02.2023-2"
 )
 _ENEA_TAB2 = f"{ZRODLO_ENEA_ZESZYT_1}, §8.1 tab. 2, str. I 14/76"
-_ENEA_TAB5 = f"{ZRODLO_ENEA_ZESZYT_1}, §10.1 tab. 5, str. I 16/76 (U_m = 123 kV dla 110 kV)"
+_ENEA_TAB5 = f"{ZRODLO_ENEA_ZESZYT_1}, §10.1 tab. 5, str. I 16/76 (napięcie najwyższe urządzenia 123 kV dla 110 kV)"
 _ZALOZENIE_LACZNIKA_110KV = (
     "założenie: typ minimalny łącznika topologii zasilania 110 kV (decyzja właściciela "
     "2026-10-22: 110 kV jako granica zasilania GPZ) — klasa napięcia i prąd znamionowy "
@@ -952,7 +952,7 @@ def _lacznik_110kv(
             "verification_note": (
                 "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd "
                 "znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych "
-                "(I_k, I_cw, I_cu — brak danej) i bez producenta."
+                "(prąd zwarciowy, prąd krótkotrwały wytrzymywany i prąd wyłączalny graniczny — brak danej) i bez producenta."
             ),
             "contract_version": "2.0",
         },

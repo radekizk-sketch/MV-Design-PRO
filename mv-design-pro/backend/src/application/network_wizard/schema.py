@@ -40,7 +40,7 @@ class WizardIssue(BaseModel):
     code: str = Field(..., description="Kod problemu (np. K2_NO_SOURCE)")
     severity: IssueSeverity
     message_pl: str = Field(..., description="Komunikat po polsku")
-    element_ref: str | None = Field(default=None, description="ref_id elementu")
+    element_ref: str | None = Field(default=None, description="Identyfikator `ref_id` elementu")
     wizard_step_hint: str | None = Field(default=None, description="Krok kreatora (K1-K10)")
     suggested_fix: str | None = Field(default=None, description="Sugestia naprawy")
 

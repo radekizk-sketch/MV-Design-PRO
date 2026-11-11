@@ -4093,12 +4093,12 @@ def _resolve_manual_source_equivalent(
         if sk3_mva is None and ik3_ka is None:
             if input_side == "HV_110":
                 return _error_response(
-                    "Ręczna umowa równoważna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk″ "
-                    "albo prądu Ik″ na szynie 110 kV.",
+                    "Ręczna umowa równoważna GPZ WN/SN wymaga dodatniej mocy zwarciowej "
+                    "albo prądu zwarciowego na szynie 110 kV.",
                     "source.manual_equivalent_incomplete",
                 )
             return _error_response(
-                "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej Sk″ albo prądu Ik″.",
+                "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej albo prądu zwarciowego.",
                 "source.manual_equivalent_incomplete",
             )
         if rx_ratio is None:
@@ -4110,13 +4110,15 @@ def _resolve_manual_source_equivalent(
         # tu odrzucany na wejściu operacji, żeby model nigdy nie niósł sprzeczności).
         if sk3_min_mva is not None and sk3_mva is not None and sk3_min_mva > sk3_mva:
             return _error_response(
-                f"Sk3 min ({sk3_min_mva:g} MVA) przekracza Sk3 max ({sk3_mva:g} MVA) — dane "
+                f"Minimalna moc zwarciowa ({sk3_min_mva:g} MVA) przekracza maksymalną "
+                f"({sk3_mva:g} MVA) — dane "
                 "scenariusza minimalnego muszą być nie większe niż maksymalnego.",
                 "source.manual_equivalent_invalid",
             )
         if ik3_min_ka is not None and ik3_ka is not None and ik3_min_ka > ik3_ka:
             return _error_response(
-                f"Ik3 min ({ik3_min_ka:g} kA) przekracza Ik3 max ({ik3_ka:g} kA) — dane "
+                f"Minimalny prąd zwarciowy ({ik3_min_ka:g} kA) przekracza maksymalny "
+                f"({ik3_ka:g} kA) — dane "
                 "scenariusza minimalnego muszą być nie większe niż maksymalnego.",
                 "source.manual_equivalent_invalid",
             )
@@ -4405,7 +4407,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "sieci SN — usuń typ uziemienia i impedancję zerową źródła, a uziemienie "
                 "sieci SN zamodeluj zespołem uziemiającym sekcji (dławik gaszący, rezystor "
                 "albo oba równolegle — ENEA Zeszyt 1 §16) albo uziemieniem punktu "
-                "neutralnego uzwojenia SN transformatora. Opis punktu neutralnego i Z0 "
+                "neutralnego uzwojenia SN transformatora. Opis punktu neutralnego i impedancję zerową "
                 "podaje się dla równoważnika po stronie 110 kV.",
                 "source.sn_neutral_not_on_source",
             )
@@ -6319,7 +6321,7 @@ def _materialize_station_auxiliary_load(
             q_kvar = moc_bierna_z_czynnej_i_cos_phi(p_kw, cp)
     if q_kvar is None:
         return _error_response(
-            "Potrzeby własne stacji: brak mocy biernej i brak cosφ, z którego dałoby się ją "
+            "Potrzeby własne stacji: brak mocy biernej i brak współczynnika mocy, z którego dałoby się ją "
             f"wyprowadzić — uzupełnij pole {pole('station_auxiliary.cos_phi')}.",
             "load.q_missing",
         )

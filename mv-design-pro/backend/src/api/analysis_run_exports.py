@@ -434,7 +434,7 @@ def _linie_dynamiki(dynamika: dict[str, Any], table_id: str, limit: int) -> list
                 )
             ]
             linie.append(
-                f"t={_fmt_liczba(zdarzenie.get('t_wykonany_s'))} s | "
+                f"czas $t$ = {_fmt_liczba(zdarzenie.get('t_wykonany_s'))} s | "
                 f"{rodzaj or '—'} | "
                 f"{_nazwa_elementu_dynamiki(dynamika, zdarzenie.get('ref'))} | "
                 f"przyczyna: {opis.get('przyczyna_pl') or '—'} | "
@@ -452,7 +452,7 @@ def _linie_dynamiki(dynamika: dict[str, Any], table_id: str, limit: int) -> list
             jednostka = opis.get("jednostka") or ""
             zacisk = f" (zacisk {opis['zacisk']})" if opis.get("zacisk") else ""
             linie.append(
-                f"t={_fmt_liczba(przekroczenie.get('t_s'))} s | "
+                f"czas $t$ = {_fmt_liczba(przekroczenie.get('t_s'))} s | "
                 f"detektor „{przekroczenie.get('dozor')}” | "
                 f"{opis.get('wielkosc_pl') or przekroczenie.get('wielkosc')}{zacisk} | "
                 f"{_nazwa_elementu_dynamiki(dynamika, opis.get('element_ref'))} | "
@@ -647,18 +647,93 @@ def _fmt_liczba(value: Any) -> str:
 # panel "Bilans IEC 60909" w UI (ZWARCIA-PRO F5, pkt 13 karty wlasciciela).
 # Pola czytane 1:1 z wierszy kanonicznych `build_short_circuit_results`
 # (enm/canonical_analysis) — zero fizyki w warstwie raportowej.
-_SC_BILANS_POLA: tuple[tuple[str, str, str], ...] = (
-    ("Rk", "rk_ohm", "Ohm"),
-    ("Xk", "xk_ohm", "Ohm"),
-    ("|Zk|", "zk_ohm", "Ohm"),
-    ("X/R", "xr_ratio", ""),
-    ("kappa", "kappa", ""),
-    ("c", "c_factor", ""),
-    ("Un", "un_kv", "kV"),
-    ("tk", "tk_s", "s"),
-    ("tb", "tb_s", "s"),
-    ("I2t", "i2t_ka2s", "kA2s"),
+#: Wielkość raportu: (nazwa słowami, symbol LaTeX, klucz wiersza, jednostka). Komórka raportu
+#: tekstowego to nazwa słowami i symbol w zapisie LaTeX — ten sam format wzoru co linie
+#: „Wzór:" kroków wywodu (generator PDF/DOCX nie składa LaTeX-a, pokazuje jego zapis).
+_SC_BILANS_POLA: tuple[tuple[str, str, str, str], ...] = (
+    ("rezystancja zwarciowa", "R_{k}", "rk_ohm", "Ω"),
+    ("reaktancja zwarciowa", "X_{k}", "xk_ohm", "Ω"),
+    ("moduł impedancji zwarciowej", "|Z_{k}|", "zk_ohm", "Ω"),
+    ("stosunek reaktancji do rezystancji", "X/R", "xr_ratio", ""),
+    ("współczynnik udaru", "\\kappa", "kappa", ""),
+    ("współczynnik napięciowy", "c", "c_factor", ""),
+    ("napięcie znamionowe", "U_{n}", "un_kv", "kV"),
+    ("czas zwarcia", "t_{k}", "tk_s", "s"),
+    ("czas wyłączenia", "t_{b}", "tb_s", "s"),
+    ("całka Joule'a", "I^{2}t", "i2t_ka2s", "kA²s"),
 )
+
+#: Prądy i moc zwarciowa wiersza zwarciowego (ten sam układ krotki co bilans).
+_SC_GLOWNE_POLA: tuple[tuple[str, str, str, str], ...] = (
+    ("prąd zwarciowy początkowy", "I''_{k}", "ikss_ka", "kA"),
+    ("prąd udarowy", "i_{p}", "ip_ka", "kA"),
+    ("prąd zastępczy cieplny", "I_{th}", "ith_ka", "kA"),
+    # Karta SC-IB-ITH-ZRODLA: składowa nieokresowa w chwili wyłączenia obok prądu
+    # wyłączeniowego symetrycznego (IEC 60909-0 rozdz. 10) — „—" wyłącznie dla wiersza bez
+    # solvera.
+    ("prąd wyłączeniowy symetryczny", "I_{b}", "ib_ka", "kA"),
+    ("składowa nieokresowa", "i_{DC}(t_{b})", "i_dc_ka", "kA"),
+    ("prąd zwarciowy ustalony", "I_{k}", "ik_ka", "kA"),
+    ("moc zwarciowa początkowa", "S''_{k}", "sk_mva", "MVA"),
+)
+
+#: Liczba wielkości w jednej linii raportu — linia PDF jest obcinana do 155 znaków.
+_WIELKOSCI_W_LINII = 3
+
+
+def _wielkosc_pl(nazwa: str, symbol_latex: str, wartosc: Any, jednostka: str) -> str:
+    """Komórka raportu tekstowego: nazwa słowami, symbol w zapisie LaTeX, wartość, jednostka."""
+    return f"{nazwa} ${symbol_latex}$ = {_fmt_liczba(wartosc)} {jednostka}".rstrip()
+
+
+def _linie_wielkosci(
+    row_data: dict[str, Any], pola: tuple[tuple[str, str, str, str], ...]
+) -> list[str]:
+    """Wielkości wiersza po `_WIELKOSCI_W_LINII` w linii (deterministyczny podział)."""
+    komorki = [
+        _wielkosc_pl(nazwa, symbol, row_data.get(klucz), jednostka)
+        for nazwa, symbol, klucz, jednostka in pola
+    ]
+    return [
+        " | ".join(komorki[i : i + _WIELKOSCI_W_LINII])
+        for i in range(0, len(komorki), _WIELKOSCI_W_LINII)
+    ]
+
+
+def _linia_szyny(row_data: dict[str, Any]) -> str:
+    """Linia szyny rozpływu (raport DOCX i PDF — jedno źródło)."""
+    return " | ".join(
+        [
+            nazwa_nadana(row_data.get("name")) or "—",
+            _wielkosc_pl("napięcie", "U", row_data.get("u_pu"), "pu"),
+            _wielkosc_pl("kąt napięcia", "\\delta", row_data.get("angle_deg"), "°"),
+        ]
+    )
+
+
+def _linia_galezi(row_data: dict[str, Any]) -> str:
+    """Linia gałęzi rozpływu (raport DOCX i PDF — jedno źródło)."""
+    return " | ".join(
+        [
+            nazwa_nadana(row_data.get("name")) or "—",
+            _wielkosc_pl("prąd", "I", row_data.get("i_a"), "A"),
+            _wielkosc_pl("moc czynna", "P", row_data.get("p_mw"), "MW"),
+            _wielkosc_pl("moc bierna", "Q", row_data.get("q_mvar"), "Mvar"),
+        ]
+    )
+
+
+def _linia_stanu_fazowego(row_data: dict[str, Any]) -> str:
+    """Linia stanu fazowego punktu (raport DOCX i PDF — jedno źródło)."""
+    return " | ".join(
+        [
+            nazwa_nadana(row_data.get("target_name")) or "—",
+            _wielkosc_pl("napięcie fazy A", "U_{A}", row_data.get("ua_kv"), "kV"),
+            _wielkosc_pl("napięcie fazy B", "U_{B}", row_data.get("ub_kv"), "kV"),
+            _wielkosc_pl("napięcie fazy C", "U_{C}", row_data.get("uc_kv"), "kV"),
+            f"asymetria napięcia {_fmt_liczba(row_data.get('voltage_unbalance_percent'))} %",
+        ]
+    )
 
 
 def slady_linii_wn_biegu(run: CanonicalRun) -> list[dict[str, Any]]:
@@ -725,21 +800,11 @@ def _krok_wywodu_linie(step: dict[str, Any], index: int) -> list[str]:
     return lines
 
 
-def _sc_row_glowne_linia(row_data: dict[str, Any]) -> str:
-    """Glowna linia wiersza zwarciowego: prady i moc zwarciowa (kanoniczne kA/MVA)."""
-    return " | ".join(
-        [
-            nazwa_nadana(row_data.get("target_name")) or "—",
-            f"Ik''={_fmt_liczba(row_data.get('ikss_ka'))} kA",
-            f"ip={_fmt_liczba(row_data.get('ip_ka'))} kA",
-            f"Ith={_fmt_liczba(row_data.get('ith_ka'))} kA",
-            f"Ib={_fmt_liczba(row_data.get('ib_ka'))} kA",
-            # Karta SC-IB-ITH-ZRODLA: składowa nieokresowa i_DC(t_b) obok I_b symetrycznego
-            # (IEC 60909-0 rozdz. 10) przy t_b punktu — „—" wyłącznie dla wiersza bez solvera.
-            f"iDC(tb)={_fmt_liczba(row_data.get('i_dc_ka'))} kA",
-            f"Ik={_fmt_liczba(row_data.get('ik_ka'))} kA",
-            f"Sk''={_fmt_liczba(row_data.get('sk_mva'))} MVA",
-        ]
+def _sc_row_glowne_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
+    """Linie główne wiersza zwarciowego: nazwa punktu, prądy i moc zwarciowa (kA/MVA)."""
+    return (
+        nazwa_nadana(row_data.get("target_name")) or "—",
+        *_linie_wielkosci(row_data, _SC_GLOWNE_POLA),
     )
 
 
@@ -750,17 +815,7 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
     limitu szerokosci strony — format deterministyczny.
     """
 
-    def _czesc(pola: tuple[tuple[str, str, str], ...]) -> str:
-        parts = []
-        for label, key, unit in pola:
-            value = _fmt_liczba(row_data.get(key))
-            parts.append(f"{label}={value} {unit}".rstrip())
-        return " | ".join(parts)
-
-    linie: tuple[str, ...] = (
-        "Bilans IEC 60909: " + _czesc(_SC_BILANS_POLA[:5]),
-        _czesc(_SC_BILANS_POLA[5:]),
-    )
+    linie: tuple[str, ...] = ("Bilans IEC 60909:", *_linie_wielkosci(row_data, _SC_BILANS_POLA))
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: podstawa c punktu (tabela 1 IEC 60909-0 dla
     # pasma/scenariusza albo nadpisanie z uzasadnieniem) — osobna linia (szerokość PDF).
     zrodlo_c = row_data.get("c_zrodlo")
@@ -770,7 +825,7 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
     # — osobna linia; t_b ze scenariusza projektanta nie dodaje linii (raport bez zmian).
     zrodlo_tb = row_data.get("tb_zrodlo")
     if isinstance(zrodlo_tb, dict) and zrodlo_tb.get("opis_pl"):
-        linie = (*linie, f"Czas wyłączenia tb: {zrodlo_tb['opis_pl']}")
+        linie = (*linie, f"Czas wyłączenia: {zrodlo_tb['opis_pl']}")
     # Karta PODSTAWA-Q: μ/q maszyn wyznaczone na założeniu inżynierskim — osobna linia na
     # założenie (szerokość PDF); I_b na samej normie nie dodaje linii (raport bez zmian).
     zalozenia = row_data.get("zalozenia_zaniku")
@@ -778,7 +833,7 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
         linie = (
             *linie,
             *(
-                f"Założenie krzywej zaniku Ib: {zdanie_zalozenia_krzywej_pl(wpis)}"
+                f"Założenie krzywej zaniku prądu wyłączeniowego: {zdanie_zalozenia_krzywej_pl(wpis)}"
                 for wpis in zalozenia
                 if isinstance(wpis, dict)
             ),
@@ -817,18 +872,18 @@ def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
     linie = [
         f"Doziemienie sieci ({doziemienie.get('tryb_pl')}): "
         f"{doziemienie.get('charakter_pl')} = {_fmt_liczba(doziemienie.get('prad_a'))} A"
-        f" | I_C={_fmt_liczba(doziemienie.get('i_c_a'))} A"
-        f" | I_L={_fmt_liczba(doziemienie.get('i_l_a'))} A"
-        f" | I_w={_fmt_liczba(doziemienie.get('i_w_a'))} A"
+        f" | prąd pojemnościowy {_fmt_liczba(doziemienie.get('i_c_a'))} A"
+        f" | prąd dławika {_fmt_liczba(doziemienie.get('i_l_a'))} A"
+        f" | prąd wymuszony {_fmt_liczba(doziemienie.get('i_w_a'))} A"
         + (
-            f" | v={_fmt_liczba(doziemienie.get('rozstrojenie'))}"
+            f" | rozstrojenie kompensacji $v$ = {_fmt_liczba(doziemienie.get('rozstrojenie'))}"
             if doziemienie.get("rozstrojenie") is not None
             else ""
         ),
-        f"Napięcia przy doziemieniu: U0={_fmt_liczba(doziemienie.get('u0_v'))} V"
-        f" | U_b={_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
-        f" | U_c={_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
-        f" | k={_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
+        f"Napięcia przy doziemieniu: składowa zerowa {_fmt_liczba(doziemienie.get('u0_v'))} V"
+        f" | faza B {_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
+        f" | faza C {_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
+        f" | współczynnik zwarcia doziemnego {_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
         f"Podstawa doziemienia: {doziemienie.get('podstawa_pl')}",
         # Ślad WHITE BOX trybu (model nazwany krokami: I_C, I_N, prąd trybu, napięcia).
         *(
@@ -1044,36 +1099,20 @@ def export_run_report_docx_response(
             if table_id == "buses":
                 rows = (results_section.get("buses", {}) or {}).get("rows", [])[: limits["rows"]]
                 for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                nazwa_nadana(row_data.get("name")) or "—",
-                                f"U={_fmt_liczba(row_data.get('u_pu'))} pu",
-                                f"kąt={_fmt_liczba(row_data.get('angle_deg'))} deg",
-                            ]
-                        )
-                    )
+                    doc.add_paragraph(_linia_szyny(row_data))
             elif table_id == "branches":
                 rows = (results_section.get("branches", {}) or {}).get("rows", [])[: limits["rows"]]
                 for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                nazwa_nadana(row_data.get("name")) or "—",
-                                f"I={row_data.get('i_a') or '—'} A",
-                                f"P={row_data.get('p_mw') or '—'} MW",
-                                f"Q={row_data.get('q_mvar') or '—'} Mvar",
-                            ]
-                        )
-                    )
+                    doc.add_paragraph(_linia_galezi(row_data))
             elif table_id == "short_circuit":
                 rows = (results_section.get("short_circuit", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]
                 for row_data in rows:
                     # ZWARCIA-PRO F5: pelny bilans IEC 60909 1:1 z wierszy
-                    # kanonicznych (TEN SAM zakres co UI) — trzy linie na punkt.
-                    doc.add_paragraph(_sc_row_glowne_linia(row_data))
+                    # kanonicznych (TEN SAM zakres co UI) — linie na punkt.
+                    for linia_glowna in _sc_row_glowne_linie(row_data):
+                        doc.add_paragraph(linia_glowna)
                     for linia_bilansu in _sc_row_bilans_linie(row_data):
                         doc.add_paragraph(linia_bilansu)
             elif table_id == "phase_state":
@@ -1081,17 +1120,7 @@ def export_run_report_docx_response(
                     : limits["rows"]
                 ]
                 for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                nazwa_nadana(row_data.get("target_name")) or "—",
-                                f"UA={row_data.get('ua_kv') or '—'} kV",
-                                f"UB={row_data.get('ub_kv') or '—'} kV",
-                                f"UC={row_data.get('uc_kv') or '—'} kV",
-                                f"Asymetria U={row_data.get('voltage_unbalance_percent') or '—'} %",
-                            ]
-                        )
-                    )
+                    doc.add_paragraph(_linia_stanu_fazowego(row_data))
             elif table_id in TABELE_DYNAMIKI:
                 for linia in _linie_dynamiki(
                     results_section.get("dynamika") or {}, str(table_id), limits["rows"]
@@ -1230,32 +1259,27 @@ def export_run_report_pdf_response(
                 for row_data in (results_section.get("buses", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
-                    draw_line(
-                        f"{nazwa_nadana(row_data.get('name')) or '—'}: U={_fmt_liczba(row_data.get('u_pu'))} pu, kąt={_fmt_liczba(row_data.get('angle_deg'))} deg"
-                    )
+                    draw_line(_linia_szyny(row_data))
             elif table.get("table_id") == "branches":
                 for row_data in (results_section.get("branches", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
-                    draw_line(
-                        f"{nazwa_nadana(row_data.get('name')) or '—'}: I={row_data.get('i_a') or '—'} A, P={row_data.get('p_mw') or '—'} MW"
-                    )
+                    draw_line(_linia_galezi(row_data))
             elif table.get("table_id") == "short_circuit":
                 for row_data in (results_section.get("short_circuit", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
                     # ZWARCIA-PRO F5: pelny bilans IEC 60909 1:1 z wierszy
-                    # kanonicznych (TEN SAM zakres co UI) — trzy linie na punkt.
-                    draw_line(_sc_row_glowne_linia(row_data))
+                    # kanonicznych (TEN SAM zakres co UI) — linie na punkt.
+                    for linia_glowna in _sc_row_glowne_linie(row_data):
+                        draw_line(linia_glowna)
                     for linia_bilansu in _sc_row_bilans_linie(row_data):
                         draw_line(linia_bilansu, size=8)
             elif table.get("table_id") == "phase_state":
                 for row_data in (results_section.get("phase_state", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
-                    draw_line(
-                        f"{nazwa_nadana(row_data.get('target_name')) or '—'}: UA={row_data.get('ua_kv') or '—'} kV, UB={row_data.get('ub_kv') or '—'} kV, UC={row_data.get('uc_kv') or '—'} kV"
-                    )
+                    draw_line(_linia_stanu_fazowego(row_data))
             elif table.get("table_id") in TABELE_DYNAMIKI:
                 for linia in _linie_dynamiki(
                     results_section.get("dynamika") or {},
@@ -1587,8 +1611,7 @@ def build_nn_circuit_report_section(
                 iz_katalogowe = branch.materialized_params.get("i_max_a")
             wpis["iz_katalogowe_a"] = iz_katalogowe
             wpis["iz_prime_a"] = (
-                "niedostępne — wymaga warunków ułożenia (G-D1), "
-                "poza zakresem sekcji minimalnej P0"
+                "niedostępne — wymaga warunków ułożenia (G-D1), " "poza zakresem sekcji minimalnej"
             )
         odcinki.append(wpis)
 
@@ -1645,7 +1668,7 @@ def build_nn_circuit_report_section(
     else:
         dobor = {
             "status": "niedostępne",
-            "reason_pl": "Dobór wymaga ib_a i iz_prime_a jako parametrów wejściowych.",
+            "reason_pl": "Dobór wymaga prądu obliczeniowego i obciążalności skorygowanej jako parametrów wejściowych.",
             "provenance": provenance,
         }
 

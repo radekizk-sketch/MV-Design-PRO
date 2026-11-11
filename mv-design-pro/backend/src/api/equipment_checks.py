@@ -107,6 +107,7 @@ class CtBurdenResponse(BaseModel):
     wariant_alf: str | None = None
     readiness_codes: list[str] = Field(default_factory=list)
     formula_ref: str
+    formula_latex: str
     assumptions: list[str] = Field(default_factory=list)
     white_box_trace: list[SladKroku] = Field(default_factory=list)
     # Echo danych katalogowych — projektant musi widziec, CZYM policzono werdykt.
@@ -160,6 +161,7 @@ def sprawdz_bilans_ct(request: CtBurdenRequest) -> CtBurdenResponse:
         wariant_alf=wynik.wariant_alf,
         readiness_codes=list(wynik.readiness_codes),
         formula_ref=wynik.formula_ref,
+        formula_latex=wynik.formula_latex,
         assumptions=list(wynik.assumptions),
         white_box_trace=[SladKroku(**krok) for krok in wynik.white_box_trace],
         pozycja_katalogowa=pozycja.name,
@@ -207,6 +209,7 @@ class VtBurdenResponse(BaseModel):
     kategoria_uzwojenia: str | None = None
     readiness_codes: list[str] = Field(default_factory=list)
     formula_ref: str
+    formula_latex: str
     assumptions: list[str] = Field(default_factory=list)
     white_box_trace: list[SladKroku] = Field(default_factory=list)
     pozycja_katalogowa: str
@@ -280,6 +283,7 @@ def sprawdz_bilans_vt(request: VtBurdenRequest) -> VtBurdenResponse:
         kategoria_uzwojenia=wynik.kategoria_uzwojenia,
         readiness_codes=list(wynik.readiness_codes),
         formula_ref=wynik.formula_ref,
+        formula_latex=wynik.formula_latex,
         assumptions=list(wynik.assumptions),
         white_box_trace=[SladKroku(**krok) for krok in wynik.white_box_trace],
         pozycja_katalogowa=pozycja.name,
@@ -308,6 +312,7 @@ class CableAgingResponse(BaseModel):
     typ_izolacji: str | None = None
     readiness_codes: list[str] = Field(default_factory=list)
     formula_ref: str
+    formula_latex: str
     assumptions: list[str] = Field(default_factory=list)
     white_box_trace: list[SladKroku] = Field(default_factory=list)
     pozycja_katalogowa: str
@@ -354,6 +359,7 @@ def sprawdz_starzenie_kabla(request: CableAgingRequest) -> CableAgingResponse:
         typ_izolacji=wynik.typ_izolacji,
         readiness_codes=list(wynik.readiness_codes),
         formula_ref=wynik.formula_ref,
+        formula_latex=wynik.formula_latex,
         assumptions=list(wynik.assumptions),
         white_box_trace=[SladKroku(**krok) for krok in wynik.white_box_trace],
         pozycja_katalogowa=nazwa,
@@ -382,6 +388,7 @@ class TransformerLossesResponse(BaseModel):
     udzial_strat_jalowych: float | None = None
     readiness_codes: list[str] = Field(default_factory=list)
     formula_ref: str
+    formula_latex: str
     assumptions: list[str] = Field(default_factory=list)
     white_box_trace: list[SladKroku] = Field(default_factory=list)
     pozycja_katalogowa: str
@@ -421,6 +428,7 @@ def policz_straty_transformatora(request: TransformerLossesRequest) -> Transform
         udzial_strat_jalowych=wynik.udzial_strat_jalowych,
         readiness_codes=list(wynik.readiness_codes),
         formula_ref=wynik.formula_ref,
+        formula_latex=wynik.formula_latex,
         assumptions=list(wynik.assumptions),
         white_box_trace=[SladKroku(**krok) for krok in wynik.white_box_trace],
         pozycja_katalogowa=pozycja.name,

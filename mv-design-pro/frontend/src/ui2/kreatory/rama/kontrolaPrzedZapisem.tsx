@@ -5,6 +5,7 @@
 
 import type { WierszGotowosci } from './model';
 import type { StanProbyOperacji } from './probaOperacji';
+import { TekstZWzorami } from './tekstZWzorami';
 
 export const PROBA_STRINGS = {
   wiersz: 'Kontrola modelu',
@@ -69,7 +70,7 @@ export function KontrolaPrzedZapisem({ proba, testid }: KontrolaPrzedZapisemProp
       data-testid={testid}
       data-stan={proba.stan}
     >
-      {komunikat}
+      <TekstZWzorami tekst={komunikat} />
     </p>
   );
 }

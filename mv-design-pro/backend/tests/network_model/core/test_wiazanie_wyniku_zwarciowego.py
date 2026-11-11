@@ -235,7 +235,7 @@ def test_niezgodnosci_run_id_rozny() -> None:
     w = _wiazanie()
     roznice = w.niezgodnosci(run_id="inny-run")
     assert len(roznice) == 1
-    assert "run_id" in roznice[0]
+    assert "identyfikator przebiegu" in roznice[0]
 
 
 def test_niezgodnosci_wynik_rozny_wskazuje_liczby() -> None:

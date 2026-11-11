@@ -44,11 +44,11 @@ _PODSTAWA_PW = (
 )
 _PODSTAWA_Z0_TU = (
     "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω "
-    "przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+    "przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
 )
 _PODSTAWA_SN_TU = (
     "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego "
-    "400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego "
+    "400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego "
     "dostosowana do wartości maksymalnej prądu dławika”)"
 )
 _PODSTAWA_ZAKRESU_DLAWIKA = (
@@ -60,7 +60,10 @@ _PODSTAWA_PRADU_REZYSTORA = (
     "założenie robocze: prąd znamionowy rezystora sieci kablowej (§16 s. 29 nie podaje "
     "wartości) — do potwierdzenia analizą przepięć i działania zabezpieczeń ziemnozwarciowych"
 )
-_PODSTAWA_R = "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f"
+_PODSTAWA_R = (
+    "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu "
+    "fazowym"
+)
 _PODSTAWA_CZASU = (
     "założenie robocze: dopuszczalny czas przepływu prądu znamionowego 10 s — do "
     "potwierdzenia kartą producenta"

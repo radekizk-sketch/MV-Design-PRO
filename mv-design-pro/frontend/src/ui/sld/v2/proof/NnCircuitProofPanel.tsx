@@ -18,6 +18,7 @@
 import { useCallback, useState } from 'react';
 import { useAppStateStore } from '../../../app-state';
 import { downloadLvCircuitVerificationPack, type NnCircuitProofRequest } from './nnCircuitProofApi';
+import { MathInline } from '../../../proof/MathRenderer';
 
 type Stan = 'idle' | 'loading' | 'success' | 'error';
 
@@ -276,7 +277,9 @@ export function NnCircuitProofPanel({ className }: NnCircuitProofPanelProps) {
             </select>
           </label>
           <label className="flex flex-col gap-0.5">
-            <span>Ik″max [kA] (opcjonalnie)</span>
+            <span>
+              <MathInline latex="I_{k,\max}''" /> [kA] (opcjonalnie)
+            </span>
             <input
               type="number"
               step="any"

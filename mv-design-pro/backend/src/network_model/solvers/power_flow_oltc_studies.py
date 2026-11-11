@@ -574,9 +574,9 @@ def _krok_brakow_profilu(kody: tuple[str, ...]) -> dict[str, Any]:
     """Krok wywodu nazywajacy BRAKUJACE dane modelu (zamiast werdyktu z domyslu)."""
     braki: list[str] = []
     if KOD_BRAK_NAPIECIA_DOCELOWEGO in kody:
-        braki.append("napięcia zadanego regulatora U_zad (model, przełącznik zaczepów)")
+        braki.append("napięcia zadanego regulatora (model, przełącznik zaczepów)")
     if KOD_BRAK_PASMA_REGULATORA in kody:
-        braki.append("pasma nieczułości regulatora ΔU_db (model, przełącznik zaczepów)")
+        braki.append("pasma nieczułości regulatora (model, przełącznik zaczepów)")
     return _krok(
         "Kryterium pasma: nieustalone dla co najmniej jednego regulatora — brakuje "
         f"{' oraz '.join(braki)}. Brakującej danej nie zastępujemy żadną wartością "
@@ -889,22 +889,22 @@ def _krok_kryterium(criterion: FeasibilityCriterion) -> dict[str, Any]:
         if not criterion.available:
             return _krok(
                 "Kryterium dopuszczalności pozycji: niedostępne — badanie nie ma "
-                "napięcia docelowego U_cel, więc odchyłki nie ma od czego liczyć."
+                "napięcia docelowego, więc odchyłki nie ma od czego liczyć."
             )
         cel = criterion.target_kv if criterion.target_kv is not None else float("nan")
         return _krok(
             "Kryterium dopuszczalności pozycji: rozpływ zbieżny i zmierzona odchyłka "
-            f"od U_cel = {_pl(cel, 3)} kV (źródło: parametr badania); pozycje ocenia "
-            "sama odchyłka J(n), bez dodatkowego pasma.",
+            f"od napięcia docelowego {_pl(cel, 3)} kV (źródło: parametr badania); pozycje "
+            "ocenia sama odchyłka (funkcja celu), bez dodatkowego pasma.",
             r"J(n) = \left|U(n) - U_{cel}\right|",
         )
     # voltage_deadband
     if not criterion.available:
         braki: list[str] = []
         if KOD_BRAK_NAPIECIA_DOCELOWEGO in criterion.readiness_codes:
-            braki.append("napięcia docelowego U_cel (parametr badania)")
+            braki.append("napięcia docelowego (parametr badania)")
         if KOD_BRAK_PASMA_REGULATORA in criterion.readiness_codes:
-            braki.append("pasma nieczułości regulatora ΔU_db (model, przełącznik zaczepów)")
+            braki.append("pasma nieczułości regulatora (model, przełącznik zaczepów)")
         return _krok(
             "Kryterium dopuszczalności pozycji: niedostępne — brakuje "
             f"{' oraz '.join(braki)}. Pasma akceptacji nie zastępujemy żadną wartością "
@@ -915,9 +915,10 @@ def _krok_kryterium(criterion: FeasibilityCriterion) -> dict[str, Any]:
     polowa = criterion.half_band_kv if criterion.half_band_kv is not None else float("nan")
     return _krok(
         "Kryterium dopuszczalności pozycji: napięcie szyny regulowanej mieści się w "
-        f"paśmie nieczułości regulatora ΔU_db = {_pl(pasmo, 3)} kV (źródło: przełącznik "
-        f"zaczepów w modelu) wokół U_cel = {_pl(cel, 3)} kV (źródło: parametr badania), "
-        f"czyli |U(n) − U_cel| ≤ {_pl(polowa, 3)} kV. Konwencja połowy pasma jak w pętli "
+        f"paśmie nieczułości regulatora {_pl(pasmo, 3)} kV (źródło: przełącznik "
+        f"zaczepów w modelu) wokół napięcia docelowego {_pl(cel, 3)} kV (źródło: parametr "
+        f"badania), czyli odchyłka napięcia od docelowego nie większa niż {_pl(polowa, 3)} kV. "
+        "Konwencja połowy pasma jak w pętli "
         "regulatora.",
         rf"\left|U(n) - {cel:.3f}\right| \le \frac{{{pasmo:.3f}}}{{2}}"
         rf" = {polowa:.3f}\ \text{{kV}}",
@@ -946,7 +947,11 @@ def _wywod_optymalizacji(
         ),
     ]
     if objective == "maintain_voltage":
-        cel_txt = f"U_cel = {_pl(target_kv, 3)} kV" if target_kv is not None else "U_cel = brak"
+        cel_txt = (
+            f"napięcie docelowe {_pl(target_kv, 3)} kV"
+            if target_kv is not None
+            else "napięcie docelowe: brak"
+        )
         kroki.append(
             _krok(
                 f"Wzór: funkcja celu utrzymania napięcia; {cel_txt}.",
@@ -984,7 +989,7 @@ def _wywod_optymalizacji(
         kroki.append(
             _krok(
                 "Wzór: funkcja celu minimalizacji strat czynnych; kara za przełączenie "
-                f"k_prz = {_pl(switch_penalty_mw_per_step, 4)} MW/krok, n0 = {initial}.",
+                f"{_pl(switch_penalty_mw_per_step, 4)} MW/krok, pozycja początkowa {initial}.",
                 r"J(n) = P_{str}(n) + k_{prz} \cdot \left|n - n_{0}\right|",
             )
         )

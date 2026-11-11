@@ -476,7 +476,8 @@ class PradWylaczeniowy:
     @property
     def zalozenia_zaniku(self) -> list[dict[str, Any]]:
         """Krzywe zaniku wkładów tego punktu o podstawie założenia inżynierskiego (karta
-        PODSTAWA-Q) — wyprowadzone z tych samych śladów, które dały μ i q (jedno źródło)."""
+        PODSTAWA-Q) — wyprowadzone z tych samych śladów, które dały μ i q (jedno źródło).
+        """
         return zalozenia_krzywych_wkladow(wklad for wklad, _ in self.zaniki)
 
 
@@ -665,7 +666,8 @@ class ShortCircuitIEC60909Solver:
         """Pochodzenie t_b w wierszu wyniku (``None`` dla t_b projektanta) z flagą
         ``ib_z_udzialem_maszyn``: I_b zależy od t_b wyłącznie przez zanik prądów maszyn
         wirujących (μ, q — IEC 60909-0:2016 rozdz. 9), więc konsument oceny wyłączania wie,
-        czy wartość robocza t_b stoi za porównywanym I_b, czy tylko za informacyjną i_DC."""
+        czy wartość robocza t_b stoi za porównywanym I_b, czy tylko za informacyjną i_DC.
+        """
         zrodlo = ShortCircuitIEC60909Solver._zrodlo_tb_wyniku(czas_tb)
         if zrodlo is None:
             return None
@@ -716,8 +718,8 @@ class ShortCircuitIEC60909Solver:
             )
         tekst = (
             f"Suma fazorowa wkładów źródeł {fmt_c(suma)} A, prąd członów poprzecznych gałęzi "
-            f"{fmt_c(czlony)} A, razem {fmt_c(razem)} A wobec I_k''(Th) = "
-            f"{fmt(ik_thevenin_a)} A; {reszta}."
+            f"{fmt_c(czlony)} A, razem {fmt_c(razem)} A wobec początkowego prądu zwarciowego "
+            f"źródła zastępczego Thevenina {fmt(ik_thevenin_a)} A; {reszta}."
         )
         tekst_latex = (
             f"{fmt_cl(suma)} + {fmt_cl(czlony)} = {fmt_cl(razem)}"
@@ -1067,13 +1069,15 @@ class ShortCircuitIEC60909Solver:
             uwagi = {
                 PRZYPADEK_IB_BEZ_MASZYN: (
                     "Zwarcie odległe od generatora (brak maszyn wirujących w sieci): składowa "
-                    "okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). Źródła "
-                    "przekształtnikowe są źródłami prądowymi bez zaniku — ich udział wchodzi "
-                    "do Ib w całości."
+                    "okresowa nie zanika, prąd wyłączeniowy symetryczny równa się początkowemu "
+                    "prądowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). Źródła przekształtnikowe "
+                    "są źródłami prądowymi bez zaniku — ich udział wchodzi do prądu "
+                    "wyłączeniowego w całości."
                 ),
                 PRZYPADEK_IB_NIESYMETRYCZNE: (
-                    "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' "
-                    "(zanik strumienia maszyn nie jest uwzględniany)."
+                    "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje prąd "
+                    "wyłączeniowy symetryczny równy początkowemu prądowi zwarciowemu (zanik "
+                    "strumienia maszyn nie jest uwzględniany)."
                 ),
             }[wylaczeniowy.przypadek]
             tracer.add(
@@ -1134,12 +1138,15 @@ class ShortCircuitIEC60909Solver:
             substitution_latex=podstawienie,
             result={"ib_a": wylaczeniowy.ib_a},
             notes=(
-                "Zwarcie z udziałem maszyn wirujących (IEC 60909-0:2016, rozdz. 9): od Ik'' "
-                "odejmuje się zanik składowej okresowej każdej maszyny; μ z krotności "
-                "Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny "
-                "synchronicznej, q z mocy na parę biegunów dla asynchronicznej; ΔU''_m — spadek "
-                "na reaktancji podprzejściowej maszyny. Źródła przekształtnikowe wchodzą do "
-                "Ik'' i Ib bez zaniku."
+                "Zwarcie z udziałem maszyn wirujących (IEC 60909-0:2016, rozdz. 9): od "
+                "początkowego prądu zwarciowego odejmuje się zanik składowej okresowej każdej "
+                "maszyny; współczynnik zanikania μ z krotności początkowego prądu zwarciowego "
+                "maszyny względem jej prądu znamionowego (oba na zaciskach maszyny) i z "
+                "minimalnego czasu zwłoki równego czasowi wyłączenia, współczynnik q = 1 dla "
+                "maszyny synchronicznej, q z mocy na parę biegunów dla asynchronicznej; spadek "
+                "napięcia na reaktancji podprzejściowej maszyny wyznacza jej udział w zaniku. "
+                "Źródła przekształtnikowe wchodzą do początkowego prądu zwarciowego i prądu "
+                "wyłączeniowego bez zaniku."
                 + ShortCircuitIEC60909Solver._uwaga_tb(wylaczeniowy.czas_tb)
                 + ShortCircuitIEC60909Solver._uwaga_zalozen_zaniku(zalozenia)
             ),
@@ -1174,7 +1181,7 @@ class ShortCircuitIEC60909Solver:
         )
         tracer.add(
             key="iDC",
-            title="Składowa nieokresowa prądu zwarciowego w chwili t_b",
+            title="Składowa nieokresowa prądu zwarciowego w chwili wyłączenia",
             formula_latex=wzor,
             inputs={
                 "ikss_a": skladowa.ikss_a,
@@ -1189,10 +1196,10 @@ class ShortCircuitIEC60909Solver:
             substitution_latex=podstawienie,
             result={"i_dc_a": skladowa.i_dc_a},
             notes=(
-                "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny "
-                "wirujące); źródła przekształtnikowe nie mają składowej nieokresowej "
-                "(IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we "
-                "współczynniku κ." + ShortCircuitIEC60909Solver._uwaga_tb(czas_tb)
+                "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć "
+                "zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej "
+                "nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia "
+                "co we współczynniku κ." + ShortCircuitIEC60909Solver._uwaga_tb(czas_tb)
             ),
         )
 
@@ -1218,7 +1225,8 @@ class ShortCircuitIEC60909Solver:
                 "poza_zakresem_iec60909": True,
             },
             notes=(
-                "Norma IEC 60909 definiuje prąd zwarciowy dla zwarcia metalicznego (Z_f = 0). "
+                "Norma IEC 60909 definiuje prąd zwarciowy dla zwarcia metalicznego (impedancja "
+                "przejścia równa zeru). "
                 "Wynik ze zwarcia przez impedancję przejścia jest poza zakresem normy: nie jest "
                 "podstawą doboru wytrzymałości zwarciowej ani pakietu dowodowego aparatury."
             ),
@@ -1243,7 +1251,9 @@ class ShortCircuitIEC60909Solver:
         if z0 is None:
             # Nieosiągalne: `compute_equivalent_impedance` wymaga Z_0 dla 1F i 2F+G, zanim
             # powstanie ślad. Jawny błąd programu zamiast cichego zera we wzorze śladu.
-            raise ValueError(f"Z0 is required for {short_circuit_type.value} loop formula")
+            raise ValueError(
+                f"wzór pętli zwarcia {short_circuit_type.value} wymaga impedancji zerowej"
+            )
         z0_val = z0
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             return (
@@ -1311,10 +1321,13 @@ class ShortCircuitIEC60909Solver:
             },
             notes=(
                 "Pętla szeregowa (3F, 2F, 1F) z impedancją metaliczną w pierwszej ćwiartce: "
-                "warunek wynika z algebry. Zwarcie dwufazowe z ziemią: Z_f w gałęzi równoległej "
-                "składowej zerowej — stosunek podany bez twierdzenia. Wkład falowników "
-                "przeniesiony do miejsca zwarcia mnożony przez tłumienie pętli "
-                "|Z_k(0)|/|Z_k(Z_f)| — dla 3F to dokładna superpozycja Z_kj/(Z_kk + Z_f)."
+                "warunek wynika z algebry. Zwarcie dwufazowe z ziemią: impedancja przejścia "
+                "w gałęzi równoległej składowej zerowej — stosunek podany bez twierdzenia. "
+                "Wkład falowników przeniesiony do miejsca zwarcia mnożony przez tłumienie pętli "
+                "(moduł impedancji pętli metalicznej przez moduł impedancji pętli z impedancją "
+                "przejścia) — dla 3F to dokładna superpozycja: impedancja wzajemna węzła "
+                "falownika i węzła zwarcia przez sumę impedancji własnej węzła zwarcia "
+                "i impedancji przejścia."
             ),
         )
 
@@ -1705,7 +1718,11 @@ class ShortCircuitIEC60909Solver:
                 "ik_thevenin_a": ik_thevenin_a,
                 "n_nodes": int(z_bus.shape[0]),
             },
-            substitution=f"i_inj[{fault_index}] = -1 (pu); V = Z_bus @ i_inj",
+            substitution=(
+                f"wymuszenie jednostkowe w węźle zwarcia (indeks {fault_index}) równe minus "
+                "jeden w jednostkach względnych; napięcia węzłowe z iloczynu macierzy "
+                "impedancji węzłowych i wektora wymuszeń"
+            ),
             substitution_latex=f"\\underline{{i}}_{{inj,{fault_index}}} = -1",
             result={"v_nodes_pu": [complex(v) for v in v_nodes]},
             notes=(
@@ -1822,8 +1839,9 @@ class ShortCircuitIEC60909Solver:
                 "fraction_sum": fraction_sum_into_fault,
             },
             notes=(
-                "KCL: suma modułów współczynników gałęzi wchodzących do węzła "
-                "zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+                "Prawo Kirchhoffa dla prądów: suma modułów współczynników gałęzi wchodzących "
+                "do węzła zwarcia = 1, więc suma prądów gałęziowych równa się początkowemu "
+                "prądowi zwarciowemu źródła zastępczego Thevenina."
             ),
         )
         pominiete.sort(key=lambda item: (item.source_id, item.branch_id))
@@ -1982,7 +2000,8 @@ class ShortCircuitIEC60909Solver:
                         "ik_thevenin_a": ik_thevenin_a,
                     },
                     substitution=(
-                        "Źródło w innej wyspie niż węzeł zwarcia — Z_kf = 0 z topologii, I = 0 A."
+                        "Źródło w innej wyspie niż węzeł zwarcia — impedancja wzajemna równa "
+                        "zeru z topologii, wkład 0 A."
                     ),
                     substitution_latex=r"\underline{Z}_{kf} = 0 \Rightarrow \underline{I}_{Q,k} = 0",
                     result={
@@ -2117,8 +2136,10 @@ class ShortCircuitIEC60909Solver:
                 "bilans_domkniety": bilans_domkniety,
             },
             notes=(
-                "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − "
-                "I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora "
+                "Kryterium: moduł różnicy między sumą wkładów źródeł (z pominiętymi) "
+                "powiększoną o prąd członów poprzecznych a początkowym prądem zwarciowym "
+                "źródła zastępczego Thevenina nie przekracza większej z wartości: 1e-9 tego "
+                "prądu albo 1e-6 A. Tekst podstawienia: część fazora "
                 "o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum "
                 "arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem "
                 "dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — "
@@ -2130,7 +2151,7 @@ class ShortCircuitIEC60909Solver:
                 "`admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony "
                 "są zerowe. Źródło pominięte albo "
                 "dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła "
-                "przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per "
+                "przekształtnikowe nie są bocznikami macierzy — wkład każdego falownika stoi per "
                 "źródło w liście `contributions` wyniku. Rozkład "
                 "w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, "
                 "tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa "
@@ -2231,7 +2252,7 @@ class ShortCircuitIEC60909Solver:
         """
         ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
-            raise ValueError("c_factor must be > 0")
+            raise ValueError("współczynnik napięciowy musi być dodatni")
         z_f = ShortCircuitIEC60909Solver._sprawdz_impedancje_przejscia(z_f_ohm, fault_node_id)
 
         core = compute_equivalent_impedance(
@@ -2332,7 +2353,7 @@ class ShortCircuitIEC60909Solver:
         w warstwie wiązania — rdzeń nie ma wartości domyślnej ani gałęzi „brak t_b".
         """
         if tk_s <= 0:
-            raise ValueError("tk_s must be > 0")
+            raise ValueError("czas trwania zwarcia musi być dodatni")
         petla = ShortCircuitIEC60909Solver._petla_zwarcia(
             short_circuit_type=short_circuit_type,
             graph=graph,
@@ -2392,7 +2413,7 @@ class ShortCircuitIEC60909Solver:
             ik_total_a=ik_total,
             tlumienie_petli=tlumienie_petli,
         )
-        branch_contributions, branch_flow_trace, wklady_pominiete, wklady_zrodel, slad_zrodel = (
+        (branch_contributions, branch_flow_trace, wklady_pominiete, wklady_zrodel, slad_zrodel) = (
             ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
@@ -2496,7 +2517,7 @@ class ShortCircuitIEC60909Solver:
         ``z_f_ohm`` (karta OD-14): Zk = Z1 + Z2 + Z0 + 3·Zf.
         """
         if z0_bus is None:
-            raise ValueError("Z0 bus matrix is required for 1F fault computation")
+            raise ValueError("zwarcie 1F wymaga macierzy impedancji zerowej sieci")
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
             short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
             graph=graph,
@@ -2557,7 +2578,7 @@ class ShortCircuitIEC60909Solver:
         ``z_f_ohm`` (karta OD-14): Zk = Z1 + Z2·(Z0 + 3Zf)/(Z2 + Z0 + 3Zf).
         """
         if z0_bus is None:
-            raise ValueError("Z0 bus matrix is required for 2F+G fault computation")
+            raise ValueError("zwarcie 2F+G wymaga macierzy impedancji zerowej sieci")
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
             short_circuit_type=ShortCircuitType.TWO_PHASE_GROUND,
             graph=graph,

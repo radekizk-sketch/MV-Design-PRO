@@ -35,14 +35,14 @@ describe('<SzczegolySzablonu /> — panel szczegółów (karta §2)', () => {
         label_pl: 'Transformatory 110/SN poza modelem (równoważnik na szynach SN)',
       },
       grid_source_options: [
-        { catalog_ref: 'src-gpz-15kv-200mva-rx010', label_pl: 'Zasilanie GPZ 15 kV Sk3 200 MVA', namespace: 'ZRODLO_SN', default: false, badge_pl: null },
-        { catalog_ref: 'src-gpz-15kv-250mva-rx010', label_pl: 'Zasilanie GPZ 15 kV Sk3 250 MVA', namespace: 'ZRODLO_SN', default: true, badge_pl: null },
+        { catalog_ref: 'src-gpz-15kv-200mva-rx010', label_pl: 'Zasilanie GPZ 15 kV, moc zwarciowa 200 MVA', namespace: 'ZRODLO_SN', default: false, badge_pl: null },
+        { catalog_ref: 'src-gpz-15kv-250mva-rx010', label_pl: 'Zasilanie GPZ 15 kV, moc zwarciowa 250 MVA', namespace: 'ZRODLO_SN', default: true, badge_pl: null },
       ],
     });
     const { container } = render(<SzczegolySzablonu szablon={szablon} onZastosuj={() => {}} />);
     const rownowaznik = screen.getByTestId('mvd-szczegoly-rownowaznik');
     expect(rownowaznik.textContent).toContain(SZABLONY_STRINGS.szczegolyRownowaznik);
-    expect(rownowaznik.textContent).toContain('Zasilanie GPZ 15 kV Sk3 250 MVA');
+    expect(rownowaznik.textContent).toContain('Zasilanie GPZ 15 kV, moc zwarciowa 250 MVA');
     expect(rownowaznik.textContent).toContain('domyślny');
     expect(container.textContent).toContain('Transformatory 110/SN poza modelem');
   });

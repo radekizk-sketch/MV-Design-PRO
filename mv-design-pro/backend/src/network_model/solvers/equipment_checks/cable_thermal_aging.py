@@ -50,7 +50,11 @@ READINESS_CABLE_OPERATING_TEMPERATURE_MISSING = "cable.operating_temperature_mis
 #: Krok temperaturowy reguly Montsingera [°C] — podwojenie szybkosci starzenia.
 KROK_MONTSINGERA_C = 10.0
 
-_FORMULA_REF = "V = 2^((θ_pracy − θ_zn)/10);  L_wzgl = 1/V"
+_FORMULA_REF = (
+    "reguła Montsingera: współczynnik starzenia podwaja się co 10 °C ponad temperaturę "
+    "znamionową izolacji; względna żywotność jest jego odwrotnością"
+)
+_FORMULA_LATEX = r"V = 2^{(\theta_{pracy} - \theta_{zn})/10};\quad L_{wzgl} = 1/V"
 
 
 @dataclass(frozen=True)
@@ -83,6 +87,7 @@ class CableThermalAgingResult:
     typ_izolacji: str | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = ()
 
@@ -139,8 +144,8 @@ def check_cable_thermal_aging(data: CableThermalAgingInput) -> CableThermalAging
         assumptions=(
             "Regula Montsingera („regula 10 stopni”): kazde +10 °C ponad temperature "
             "znamionowa PODWAJA szybkosc starzenia izolacji.",
-            f"Temperatura odniesienia θ_zn = {theta_zn} °C pochodzi z pozycji katalogowej "
-            f"kabla (izolacja {izolacja}), nie z wartosci typowej.",
+            f"Temperatura odniesienia {theta_zn} °C pochodzi z pozycji katalogowej "
+            f"kabla (izolacja {izolacja}), nie z wartości typowej.",
             "Wspolczynnik jest WZGLEDNY — opisuje stosunek szybkosci starzenia do "
             "warunkow znamionowych, nie zywotnosc bezwzgledna w latach.",
             "Rachunek zaklada stala temperature pracy; praca zmienna wymaga scalkowania "

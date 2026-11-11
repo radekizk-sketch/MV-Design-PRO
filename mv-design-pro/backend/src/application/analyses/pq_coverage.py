@@ -80,7 +80,7 @@ _DER_KIND_Z_RODZAJU: dict[ConverterKind, PtpireeDerKind] = {
     ConverterKind.BESS: "BESS",
 }
 _BRAK_KRZYWEJ_PL = (
-    "krzywa zdolności P–Q producenta (pole pq_curve) w karcie katalogowej typu {typ} — bez niej "
+    "krzywa zdolności P–Q producenta (pole `pq_curve`) w karcie katalogowej typu {typ} — bez niej "
     "obszaru zdolności urządzenia nie ma z czym porównać"
 )
 _NIEPEWNOSC = Niepewnosc(
@@ -115,7 +115,8 @@ def _mvar(value: float) -> str:
 def _stosowalnosc(converter: ConverterType, profile: NcRfgProfile) -> Stosowalnosc:
     """Stosowalność wymagania zakresu Q do typu: magazyn energii przy wymaganiu z rozporządzenia
     2016/631 — nie dotyczy (predykat ``stosowalnosc_wymagania``); pozostałe technologie —
-    dotyczy, typ modułu rozstrzyga ocena wymagań modułu (tu przedmiotem jest typ urządzenia)."""
+    dotyczy, typ modułu rozstrzyga ocena wymagań modułu (tu przedmiotem jest typ urządzenia).
+    """
     technologia = technologia_modulu(_DER_KIND_Z_RODZAJU[converter.kind], "PPM")
     podstawa = profile.reactive_power.zrodlo
     if technologia == "MAGAZYN" and podstawa.rodzaj in RODZAJE_Z_ROZPORZADZENIA:
@@ -138,7 +139,8 @@ def _stosowalnosc(converter: ConverterType, profile: NcRfgProfile) -> Stosowalno
 
 def _status_danych(converter: ConverterType, pn_mw: float) -> StatusDanych:
     """Kompletność wg danych: moc odniesienia Pn z karty o jakości innej niż karta techniczna
-    jest daną przyjętą bez walidacji (jakość z mapy jakości karty, nigdy z założenia)."""
+    jest daną przyjętą bez walidacji (jakość z mapy jakości karty, nigdy z założenia).
+    """
     status = resolve_card_field_quality_map(converter)["pmax_mw"]
     if status.quality is FieldQuality.DATASHEET:
         return StatusDanych(stan="ZWALIDOWANE")
@@ -146,7 +148,7 @@ def _status_danych(converter: ConverterType, pn_mw: float) -> StatusDanych:
         stan="UNVALIDATED_INPUT",
         dane_przyjete=(
             DanaPrzyjeta(
-                nazwa_pl="moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania",
+                nazwa_pl="moc znamionowa czynna typu (pole `pmax_mw`) — moc odniesienia wymagania",
                 wartosc=Wielkosc(wartosc=_round(pn_mw), jednostka="MW"),
                 powod_pl=f"jakość danej karty katalogowej: {status.quality.label_pl}",
                 jakosc=status.quality,
@@ -157,7 +159,7 @@ def _status_danych(converter: ConverterType, pn_mw: float) -> StatusDanych:
 
 def _punkt_krytyczny_pl(punkty: list[dict[str, Any]], krytyczny: dict[str, Any]) -> str:
     dolna = krytyczny["zapas_dolny_mvar"] <= krytyczny["zapas_gorny_mvar"]
-    strona = "dolna (Q_min)" if dolna else "górna (Q_max)"
+    strona = "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
     tekst = (
         f"P = {format_liczba(krytyczny['p_mw'])} MW, strona {strona}: producent "
         f"{_mvar(krytyczny['q_min_mvar'])} … {_mvar(krytyczny['q_max_mvar'])}, wymagane "
@@ -234,9 +236,9 @@ def _ocena(
             podstawa=podstawa,
             zakres_stosowalnosci_pl=(
                 f"wymagany zakres mocy biernej operatora {profile.operator_name_pl}: "
-                f"[{format_liczba(profile.reactive_power.q_range_pct_pn_min)} · Pn, "
-                f"{format_liczba(profile.reactive_power.q_range_pct_pn_max)} · Pn] = "
-                f"[{_mvar(q_wym_min)}, {_mvar(q_wym_max)}] przy Pn = "
+                f"od {format_liczba(profile.reactive_power.q_range_pct_pn_min)} do "
+                f"{format_liczba(profile.reactive_power.q_range_pct_pn_max)} mocy znamionowej, "
+                f"czyli od {_mvar(q_wym_min)} do {_mvar(q_wym_max)} przy mocy znamionowej "
                 f"{format_liczba(_round(pn_mw))} MW, w każdym punkcie mocy czynnej krzywej"
             ),
             wersja_profilu=profile.wersja_profilu,
@@ -312,7 +314,7 @@ def build_pq_coverage_view(converter: ConverterType, profile: NcRfgProfile) -> d
             f"zapasem: {sum(1 for pt in punkty if pt['margines_mvar'] < 0.0)} z {len(punkty)}"
         )
     else:
-        wynik_sladu = "brak punktów krzywej producenta (pq_curve) — porównanie niewykonane"
+        wynik_sladu = "brak punktów krzywej producenta (pole `pq_curve`) — porównanie niewykonane"
 
     return {
         "typ_katalogowy": {
@@ -333,8 +335,8 @@ def build_pq_coverage_view(converter: ConverterType, profile: NcRfgProfile) -> d
             "q_wymagane_min_mvar": _round(q_wym_min),
             "q_wymagane_max_mvar": _round(q_wym_max),
             "opis": (
-                "Prostokątne wymaganie zakresu Q operatora: "
-                "[udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
+                "Prostokątne wymaganie zakresu mocy biernej operatora: od udziału minimalnego "
+                "do udziału maksymalnego mocy znamionowej w każdym punkcie pracy."
             ),
         },
         "punkty": punkty,

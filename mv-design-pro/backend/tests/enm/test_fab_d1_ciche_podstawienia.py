@@ -50,7 +50,7 @@ def test_require_transformer_fields_brak_jednego_pola_odrzuca_kodem() -> None:
     assert blad is not None
     assert blad["error_code"] == "transformer.field_missing"
     # Karta #142: nazwa pola formularza, bez klucza kontraktu i identyfikatora elementu.
-    assert "„Straty obciążeniowe Pk”" in blad["error"]
+    assert "„Straty obciążeniowe”" in blad["error"]
     assert "pk_kw" not in blad["error"]
     assert blad["snapshot"] is None
 
@@ -61,7 +61,7 @@ def test_require_transformer_fields_brak_wielu_pol_wymienia_wszystkie_naraz() ->
     blad = _require_transformer_fields(tabliczka)
     assert blad is not None
     assert blad["error_code"] == "transformer.field_missing"
-    for oczekiwane in ("„Moc znamionowa”", "„Napięcie DN”", "„Straty obciążeniowe Pk”"):
+    for oczekiwane in ("„Moc znamionowa”", "„Napięcie DN”", "„Straty obciążeniowe”"):
         assert oczekiwane in blad["error"]
     for klucz in ("sn_mva", "ulv_kv", "pk_kw"):
         assert klucz not in blad["error"]

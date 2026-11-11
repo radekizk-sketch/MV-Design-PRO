@@ -662,7 +662,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   'E-25': screen({
     id: 'E-25',
     labelFull: 'Charakterystyki regulacyjne',
-    labelShort: 'Q(U), cos φ(P)',
+    labelShort: 'Q(U), $\\cos\\varphi$(P)',
     areaId: 'ZRODLA_PRZYLACZENIA',
     icon: 'ikona-ekran-charakterystyki-regulacyjne',
     canonicalRoute: '/workspace/sources/regulation-curves',

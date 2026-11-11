@@ -37,6 +37,7 @@
 import './rozplyw.css';
 import { ROZPLYW_STRINGS } from './strings';
 import { useWynikRozplywu } from './adapters/rozplywAdapter';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export function RegulacjaOze() {
   const { wynik } = useWynikRozplywu();
@@ -58,8 +59,8 @@ export function RegulacjaOze() {
         className="mvd-rozplyw-pusty"
         data-testid="mvd-rozplyw-regulacja-oze-niedostepne"
       >
-        <p className="mvd-rozplyw-pusty-title">{ROZPLYW_STRINGS.regulacjaOzeTytul}</p>
-        <p className="mvd-rozplyw-pusty-desc">{ROZPLYW_STRINGS.regulacjaOzeOpis}</p>
+        <p className="mvd-rozplyw-pusty-title"><TekstZWzorami tekst={ROZPLYW_STRINGS.regulacjaOzeTytul} /></p>
+        <p className="mvd-rozplyw-pusty-desc"><TekstZWzorami tekst={ROZPLYW_STRINGS.regulacjaOzeOpis} /></p>
         <p className="mvd-rozplyw-pusty-desc">{ROZPLYW_STRINGS.regulacjaOzeOpisUzupelnienie}</p>
         <p
           className="mvd-rozplyw-pusty-desc"

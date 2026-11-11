@@ -504,8 +504,8 @@ function Komorka({
 
   const trescWartosci = (
     <span className="mvd-wyn-cell-val">
-      {wartosc}
-      {jednostka && <span className="mvd-wyn-unit">{jednostka}</span>}
+      {typeof wartosc === 'string' ? <TekstZWzorami tekst={wartosc} /> : wartosc}
+      {jednostka && <span className="mvd-wyn-unit"><TekstZWzorami tekst={jednostka} /></span>}
     </span>
   );
 

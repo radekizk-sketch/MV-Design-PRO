@@ -208,8 +208,8 @@ def split_zip_constant_part(
             # would ever add the constant part back. Refuse loudly instead of
             # dropping the generation of the bus (defect A1: never a silent loss).
             raise ValueError(
-                f"ZIP split declared for bus {spec.node_id} without zip_coeffs: "
-                "the constant part could not be restored"
+                f"Podział ZIP zadeklarowany dla węzła {spec.node_id} bez `zip_coeffs`: "
+                "części stałej mocy nie da się odtworzyć"
             )
         p_spec[idx] = p_base_pu
         q_spec[idx] = q_base_pu
@@ -338,7 +338,7 @@ def zip_coeffs_from_materialized_params(
         v0_pu=float(params.get("v0_pu", 1.0)),
         k_pf=float(params.get("k_pf", 0.0)),
         k_qf=float(params.get("k_qf", 0.0)),
-        f0_hz=float(params["f0_hz"]) if params.get("f0_hz") is not None else f_studium_hz,
+        f0_hz=(float(params["f0_hz"]) if params.get("f0_hz") is not None else f_studium_hz),
     )
     if coeffs.is_constant_power() and not coeffs.has_frequency_dependence():
         return None

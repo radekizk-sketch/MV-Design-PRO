@@ -178,7 +178,7 @@ class EnergyValidationBuilder:
         ir_od_ka = a_na_ka(wynik.prad_znamionowy_od_a)
         ir_do_ka = a_na_ka(wynik.prad_znamionowy_do_a)
         zrodlo_znamionowych = (
-            "S_n i U_n strony transformatora"
+            "moc i napięcie znamionowe strony transformatora"
             if isinstance(branch, TransformerBranch)
             else "obciążalność gałęzi"
         )
@@ -197,11 +197,12 @@ class EnergyValidationBuilder:
             status=status,
             why_pl=why,
             white_box=_white_box_progowe(
-                "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %",
+                "obciążenie = większy z ilorazów prądu zacisku przez jego prąd znamionowy · 100 %",
                 r"\varepsilon = \max\left(\frac{|I_{od}|}{I_{r,od}}, "
                 r"\frac{|I_{do}|}{I_{r,do}}\right) \cdot 100\%",
-                f"|I_od| = {_pl(i_od_ka, 4)} kA, |I_do| = {_pl(i_do_ka, 4)} kA (wynik rozpływu), "
-                f"I_r,od = {_pl(ir_od_ka, 4)} kA, I_r,do = {_pl(ir_do_ka, 4)} kA "
+                f"prąd zacisku początkowego {_pl(i_od_ka, 4)} kA, końcowego {_pl(i_do_ka, 4)} kA "
+                f"(wynik rozpływu), prąd znamionowy zacisku początkowego {_pl(ir_od_ka, 4)} kA, "
+                f"końcowego {_pl(ir_do_ka, 4)} kA "
                 f"({zrodlo_znamionowych}); decyduje zacisk "
                 f"{_ZACISK_PL[wynik.zacisk_decydujacy]}",
                 rf"\varepsilon = \max\left(\frac{{{i_od_ka:.4f}}}{{{ir_od_ka:.4f}}}, "
@@ -267,9 +268,10 @@ class EnergyValidationBuilder:
                     status=status,
                     why_pl=why,
                     white_box=_white_box_progowe(
-                        "odchylenie = |U − U_n| / U_n · 100 %",
+                        "odchylenie napięcia od znamionowego odniesione do napięcia znamionowego, w procentach",
                         r"\delta U = \frac{|U - U_n|}{U_n} \cdot 100\%",
-                        f"U = {_pl(u_kv, 4)} kV (wynik rozpływu), U_n = {_pl(u_nom_kv, 4)} kV",
+                        f"napięcie {_pl(u_kv, 4)} kV (wynik rozpływu), napięcie znamionowe "
+                        f"{_pl(u_nom_kv, 4)} kV",
                         rf"\delta U = \frac{{|{u_kv:.4f} - {u_nom_kv:.4f}|}}{{{u_nom_kv:.4f}}} \cdot 100\% = {delta_pct:.2f}\%",
                         f"odchylenie = {_pl(delta_pct, 2)} %",
                         config.voltage_warn_pct,
@@ -335,9 +337,10 @@ class EnergyValidationBuilder:
                 status=status,
                 why_pl=why,
                 white_box=_white_box_progowe(
-                    "straty = |P_strat / P_bil| · 100 %",
+                    "moduł strat mocy czynnej odniesiony do mocy węzła bilansującego, w procentach",
                     r"\Delta P\% = \left|\frac{P_{\text{strat}}}{P_{\text{slack}}}\right| \cdot 100\%",
-                    f"P_strat = {_pl(p_loss_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                    f"straty mocy czynnej {_pl(p_loss_pu, 6)} j.w., moc czynna węzła bilansującego "
+                    f"{_pl(p_slack_pu, 6)} j.w. "
                     "(wynik rozpływu, węzeł bilansujący)",
                     rf"\Delta P\% = \left|\frac{{{p_loss_pu:.6f}}}{{{p_slack_pu:.6f}}}\right| \cdot 100\% = {loss_pct:.2f}\%",
                     f"straty = {_pl(loss_pct, 2)} %",
@@ -384,13 +387,18 @@ class EnergyValidationBuilder:
 
         if cos_phi >= 0.9:
             status = EnergyValidationStatus.PASS
-            why = f"cosφ = {_pl(cos_phi, 3)} ≥ 0,9 — bilans mocy biernej prawidłowy."
+            why = f"Współczynnik mocy {_pl(cos_phi, 3)} ≥ 0,9 — bilans mocy biernej prawidłowy."
         elif cos_phi >= 0.8:
             status = EnergyValidationStatus.WARNING
-            why = f"cosφ = {_pl(cos_phi, 3)} — bilans mocy biernej na granicy akceptowalności."
+            why = (
+                f"Współczynnik mocy {_pl(cos_phi, 3)} — bilans mocy biernej na granicy "
+                "akceptowalności."
+            )
         else:
             status = EnergyValidationStatus.FAIL
-            why = f"cosφ = {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
+            why = (
+                f"Współczynnik mocy {_pl(cos_phi, 3)} < 0,8 — nadmierny pobór mocy biernej z sieci."
+            )
 
         return [
             EnergyValidationItem(
@@ -406,18 +414,24 @@ class EnergyValidationBuilder:
                 why_pl=why,
                 white_box=(
                     _krok(
-                        "Wzór: tgφ = |Q_bil / P_bil|; cosφ = cos(arctg(tgφ))",
+                        "Wzór: współczynnik mocy z ilorazu mocy biernej i czynnej węzła "
+                        "bilansującego",
                         r"\cos\varphi = \cos\!\left(\arctan\left|\frac{Q_{\text{slack}}}{P_{\text{slack}}}\right|\right)",
                     ),
                     _krok(
-                        f"Dane: Q_bil = {_pl(q_slack_pu, 6)} j.w., P_bil = {_pl(p_slack_pu, 6)} j.w. "
+                        f"Dane: moc bierna węzła bilansującego {_pl(q_slack_pu, 6)} j.w., moc "
+                        f"czynna {_pl(p_slack_pu, 6)} j.w. "
                         "(wynik rozpływu, węzeł bilansujący)"
                     ),
                     _krok(
-                        f"Wynik: tgφ = {_pl(tan_phi, 4)}, cosφ = {_pl(cos_phi, 3)}",
+                        f"Wynik: tangens kąta mocy {_pl(tan_phi, 4)}, współczynnik mocy "
+                        f"{_pl(cos_phi, 3)}",
                         rf"\tan\varphi = {tan_phi:.4f} \Rightarrow \cos\varphi = {cos_phi:.3f}",
                     ),
-                    _krok("Progi: ostrzeżenie cosφ < 0,9, przekroczenie cosφ < 0,8"),
+                    _krok(
+                        "Progi: ostrzeżenie przy współczynniku mocy poniżej 0,9, przekroczenie "
+                        "poniżej 0,8"
+                    ),
                     _krok(f"Porównanie z progami: {why}"),
                 ),
             )

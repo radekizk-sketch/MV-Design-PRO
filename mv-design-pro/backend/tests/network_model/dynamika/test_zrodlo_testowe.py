@@ -179,7 +179,7 @@ def test_zrodlo_idealne_narzuca_napiecie_i_czestotliwosc_wezla(nazwa: str) -> No
         ((RampaNapiecia(0.2, 0.1, 0.0),), "czas trwania"),
         ((RampaNapiecia(0.2, 0.1, -1.0),), "czas trwania"),
         ((SkokNapiecia(0.2, -0.1),), "amplitude"),
-        ((SkokFazy(-0.1, 10.0),), "przed t = 0"),
+        ((SkokFazy(-0.1, 10.0),), "przed chwilą zero"),
         ((SkokFazy(0.1, math.nan),), "liczbą skończoną"),
     ],
 )

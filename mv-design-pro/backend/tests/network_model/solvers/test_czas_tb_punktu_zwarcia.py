@@ -354,7 +354,8 @@ def test_czas_wlasny_z_karty_daje_tb_projektowe_bez_zalozenia_punktu(
     karta_z_czasem_wlasnym: None,
 ) -> None:
     """Czas własny z karty katalogowej: t_b z pól nie jest wartością roboczą — wiersz bez
-    jakości ESTIMATED, punkt poza listą założenia (pozostałe punkty biegu nadal na niej)."""
+    jakości ESTIMATED, punkt poza listą założenia (pozostałe punkty biegu nadal na niej).
+    """
     zrodlo, run = _zrodlo_tb({"a": 0.30, "b": 0.50})
     assert zrodlo["pochodzenie"] == "Z_POL" and zrodlo["wartosc_robocza"] is False
     assert zrodlo["jakosc"] is None and zrodlo["czas_wlasny_pochodzenie"] == "KATALOG"
@@ -370,7 +371,10 @@ def test_czas_wlasny_roboczy_przenosi_sie_na_pochodzenie_tb() -> None:
     zrodlo, _ = _zrodlo_tb({"a": 0.30})
     assert zrodlo["czas_wlasny_pochodzenie"] == "PROPOZYCJA"
     assert zrodlo["wartosc_robocza"] is True and zrodlo["jakosc"] == "ESTIMATED"
-    assert "Czas własny wyłącznika jest wartością roboczą, więc t_b też" in zrodlo["opis_pl"]
+    assert (
+        "Czas własny wyłącznika jest wartością roboczą, więc czas wyłączenia też"
+        in zrodlo["opis_pl"]
+    )
 
 
 def test_pola_nie_przy_szynie_punktu_nie_wplywaja_na_inne_punkty() -> None:
@@ -430,22 +434,28 @@ def test_determinizm_dwa_biegi_i_kolejnosc_pol(rodzaj: str) -> None:
 #: scalone): ta sama liczba liści wyniku (322–342), różne WYŁĄCZNIE identyfikatory
 #: (``fault_node_id``, ``branch_id``, klucz ``KT[...]``, ``proof_ref``; 12 liści, 14 dla
 #: topologii z przekształtnikiem); każda liczba, t_b i ślad poza identyfikatorami bez zmian.
+#: Przeliczone 2026-11-04 (karta ZU, punkt 4 — proza śladu słowami): sonda na wszystkich 15
+#: parach, baza karty ``01c5def16`` (odtwarza dokładnie poprzednie piny) kontra drzewo karty:
+#: zero różnic liczbowych i identyfikatorów; różnią się WYŁĄCZNIE teksty śladu
+#: ``white_box_trace[].notes`` (60 liści: „od początkowego prądu zwarciowego" zamiast
+#: „od Ik''") i ``white_box_trace[].title`` (30 liści: „w chwili wyłączenia" zamiast
+#: „w chwili t_b").
 ODCISKI_BAZY: dict[tuple[str, float], str] = {
-    ("asynchroniczna", 0.02): "8a42d17014e5c4abdbc5bc5fec2a304632fc417002c9116321e132e868e6dc11",
-    ("asynchroniczna", 0.1): "d290090c4feeaaaf60a221a8edf158acf634f8c9f8b54a8ffc2fd1cbf0076fc0",
-    ("asynchroniczna", 0.25): "6077280acec6ccdb4b7d86c3a7334feceaa9ed71a1b313022a288819d1b328aa",
-    ("dfig", 0.02): "2cd0533baf191e21478605ee970a7d54ba86cbdd30ec0f6ae727dc16b519abd2",
-    ("dfig", 0.1): "caed7d4eed0395a75e63428e551eb27c2a0178053bcd7ed6f2776a0fe3bc7fdf",
-    ("dfig", 0.25): "bdea837f6223c00498210e2329c44a2c6a46b099bff898cc87b0c0edf1e1b473",
-    ("odlegla", 0.02): "5571975a564c7e4c1a232eed01865c1af7cf0c56d3a1c9ccc4c94224cec5bab1",
-    ("odlegla", 0.1): "9a60b7af8234e2c2257d48acb1682b50a28dda24d42a40339206e4e392dca1ca",
-    ("odlegla", 0.25): "52413525d9264dee01344e45138454d9323929d5d352af06851ce7dfc59cc34a",
-    ("przeksztaltnik", 0.02): "0a64278c823ece7b8d96928d2d8d5b444cb19b92503188c0afbfc0785205b659",
-    ("przeksztaltnik", 0.1): "ab6188590b10b1e8d0e239e3aa88d87481c080601513537370c8266daa577625",
-    ("przeksztaltnik", 0.25): "8a71ea4da22d13d21f9058b4137917dd2a0bebade67254ae916484f5011bd05c",
-    ("synchroniczna", 0.02): "8270e7643078d93d06f564c921c20928b9cdaf73ed07795e427afd2761592bbd",
-    ("synchroniczna", 0.1): "47579bee01f1fb84cf8e4f3ac62e98122ef6267603bbd060396b58b5e70373d6",
-    ("synchroniczna", 0.25): "a36c50160178517ac187b73d6d7616bb0de34a943232eef41915de63ce825fc1",
+    ("asynchroniczna", 0.02): "46feec68b39f61f49772f4f2d82453f62ccaac505315add3b16f8c90948b1a3b",
+    ("asynchroniczna", 0.1): "487236ead54a3601c8a009aa447390fef24d8039fada24af9e1a29e740034ffb",
+    ("asynchroniczna", 0.25): "92ab63b4d99a7e459bc6163d99f3c970b780f8a48d9b7a8363d42885ca812889",
+    ("dfig", 0.02): "7b246b1af71aa9a6eefd569af84db5681d042df2c17d82750cc883c251ca3407",
+    ("dfig", 0.1): "6f34c6b51ebcefd7ccb65cd28ad8479f78e85237c91cf19e3889a684051714c4",
+    ("dfig", 0.25): "7d9386c41a2555761d3a3cf53a64fc4aa1aec1f1ea802de5d7afe6cfaf4dcf5d",
+    ("odlegla", 0.02): "789b33384a9bc25c0020a57499fe3930f8c43948fb0f90ac15df88859d833297",
+    ("odlegla", 0.1): "c27b5bfe6606b4776d43b074be0e7e09459633c991681f476e1a6ec8f9bdd179",
+    ("odlegla", 0.25): "f48bcfc38f216592d1a6d4af6f7b5999e60441183b9760fe18e418d48ace063b",
+    ("przeksztaltnik", 0.02): "c77542e7ebcfe4c001292cf947851ab521471a0bc4b3da5973c1bae6e4a30e80",
+    ("przeksztaltnik", 0.1): "d6430792ee0e97f1e7584bee9e4a44fda9dce308ad3feb370acfd9df3329335d",
+    ("przeksztaltnik", 0.25): "5b62685672b0d7b3a7e26854b53f2da087afbb1be245809db9379702079eb240",
+    ("synchroniczna", 0.02): "ec75790960bbd4b62e677a07bba825e2cdb51940c16732a28c990cb0b5d9900d",
+    ("synchroniczna", 0.1): "1126555a60c33540fa7edab15d4bf5e480d5d45dc77fef1431273021b9c492fe",
+    ("synchroniczna", 0.25): "55539b0109f7fb0b0103ff453a1a85a653b4dda22f5290d3d8cc79f433db7bdc",
 }
 
 
@@ -551,7 +561,7 @@ def test_wklady_t_min_i_zrodlo_z_tego_samego_rozstrzygniecia_co_wiersz_biegu(rod
     (wklad,) = dane["contributions"]
     assert wklad["mu"] == pytest.approx(_mu_reczne(wklad["ratio_ik_ir"], tb_s), abs=1e-9)
 
-    prefiks = "Czas t_min (= t_b punktu zwarcia): "
+    prefiks = "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. "
     zdania = [k["tekst"] for k in dane["wywod"] if k["tekst"].startswith(prefiks)]
     zdania_sekcji = [
         k["tekst"] for k in dane["wywod_sekcje"][0]["kroki"] if k["tekst"].startswith(prefiks)

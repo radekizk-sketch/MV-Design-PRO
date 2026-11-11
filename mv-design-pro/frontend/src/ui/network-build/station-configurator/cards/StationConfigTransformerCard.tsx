@@ -14,13 +14,14 @@ import {
   klasaTransformatoraPrzelacznika,
   selectTapChangersForTransformer,
 } from '../../station-der/catalogs';
+import { MathInline } from '../../../proof/MathRenderer';
+import { tekstBezWzorow } from '../../../../ui2/kreatory/rama/tekstZWzorami';
 import type { TapChangerItem } from '../../station-der/audit2-api';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
   readonly name: string;
   readonly manufacturer?: string;
-  readonly summary: string;
   readonly ratedPowerMva: number;
   readonly voltageHvKv: number;
   readonly voltageLvKv: number;
@@ -97,7 +98,7 @@ function selectTapChangersForTransformerByVoltage(
 
 function optionLabel(option: StationTransformerCatalogOption): string {
   const kva = Math.round(option.ratedPowerMva * 1000).toLocaleString('pl-PL');
-  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup}, uk ${option.ukPercent}%`;
+  return `${option.name} - ${kva} kVA, ${option.voltageHvKv}/${option.voltageLvKv} kV, ${option.vectorGroup}, $u_{k}$ ${option.ukPercent}%`;
 }
 
 export function StationConfigTransformerCard(
@@ -187,7 +188,7 @@ export function StationConfigTransformerCard(
                       {catalogOptions.map((option) => (
                         <option key={option.id} value={option.id}>
                           {option.recommended ? 'Rekomendowany: ' : ''}
-                          {optionLabel(option)}
+                          {tekstBezWzorow(optionLabel(option))}
                         </option>
                       ))}
                     </select>
@@ -223,7 +224,9 @@ export function StationConfigTransformerCard(
             })()}
             <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1">
               <label className="flex flex-col">
-                <span className="text-scada-muted">Sn [MVA]</span>
+                <span className="text-scada-muted">
+                  Moc znamionowa <MathInline latex="S_n" /> [MVA]
+                </span>
                 <input
                   type="number"
                   step="0.1"
@@ -234,11 +237,15 @@ export function StationConfigTransformerCard(
                 />
               </label>
               <div>
-                <span className="text-scada-muted">U_HV / U_LV: </span>
+                <span className="text-scada-muted">
+                  Napięcia znamionowe <MathInline latex="U_{rHV}" /> / <MathInline latex="U_{rLV}" />:{' '}
+                </span>
                 <span className="font-mono">{tr.uhvKv} / {tr.ulvKv} kV</span>
               </div>
               <label className="flex flex-col">
-                <span className="text-scada-muted">U_LV (multi-voltage)</span>
+                <span className="text-scada-muted">
+                  Napięcie strony dolnej <MathInline latex="U_{rLV}" />
+                </span>
                 <select
                   data-testid={`tr-ulv-${tr.transformerId}`}
                   value={tr.ulvKv}
@@ -268,7 +275,9 @@ export function StationConfigTransformerCard(
                 </select>
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">u_k [%]</span>
+                <span className="text-scada-muted">
+                  Napięcie zwarcia <MathInline latex="u_k" /> [%]
+                </span>
                 <input
                   type="number"
                   step="0.1"
@@ -279,7 +288,9 @@ export function StationConfigTransformerCard(
                 />
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">P_k [kW]</span>
+                <span className="text-scada-muted">
+                  Straty obciążeniowe <MathInline latex="P_k" /> [kW]
+                </span>
                 <input
                   type="number"
                   step="0.1"
@@ -289,7 +300,9 @@ export function StationConfigTransformerCard(
                 />
               </label>
               <label className="flex flex-col">
-                <span className="text-scada-muted">P_0 [kW]</span>
+                <span className="text-scada-muted">
+                  Straty jałowe <MathInline latex="P_0" /> [kW]
+                </span>
                 <input
                   type="number"
                   step="0.01"

@@ -1562,7 +1562,7 @@ def test_tabliczka_z_zawyzona_moca_jest_odrzucana() -> None:
     assert wynik.get("snapshot") is None
     # Karta #142: pole tabliczki etykietą i pozycja katalogu nazwą — bez klucza i ref.
     tresc = str(wynik.get("error"))
-    assert "„Pmax [MW]”" in tresc and "„PCS BESS 2 MW / 0.4 kV nN”" in tresc, tresc
+    assert "„Moc czynna maksymalna”" in tresc and "„PCS BESS 2 MW / 0.4 kV nN”" in tresc, tresc
     assert "pmax_mw" not in tresc and REF_BESS not in tresc, tresc
 
 
@@ -1699,7 +1699,7 @@ def test_brama_api_porownuje_swoja_materializacje_z_modelem() -> None:
     assert rozbieznosc is not None
     assert rozbieznosc["code"] == "catalog.gate_result_mismatch"
     # Karta #142: parametr etykietą tabliczki, bez klucza kontraktu.
-    assert "„Un [kV]”" in rozbieznosc["message_pl"]
+    assert "„Napięcie znamionowe”" in rozbieznosc["message_pl"]
     assert "un_kv" not in rozbieznosc["message_pl"]
 
     # ZAKRES: ten sam skażony element POZA listą zmian tej operacji nie może
@@ -1754,7 +1754,7 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
     szczegol = odpowiedz.json()["detail"]
     assert szczegol["code"] == "catalog.gate_result_mismatch", szczegol
     # Karta #142: parametr etykietą tabliczki, bez klucza kontraktu.
-    assert "„Un [kV]”" in szczegol["message_pl"]
+    assert "„Napięcie znamionowe”" in szczegol["message_pl"]
     assert "un_kv" not in szczegol["message_pl"]
     # Odrzucenie BEZ SKUTKU: model nie drgnął.
     po = klient.get(f"/api/cases/{case_id}/enm").json()

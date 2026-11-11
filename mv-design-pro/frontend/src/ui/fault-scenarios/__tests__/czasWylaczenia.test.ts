@@ -35,7 +35,7 @@ describe('czasWylaczeniaZPola', () => {
     expect(wynik.ok).toBe(false);
     if (!wynik.ok) {
       expect(wynik.kod).toBe(KOD_CZAS_TB_NIEPOPRAWNY);
-      expect(wynik.blad).toContain('Czas wyłączenia t_b');
+      expect(wynik.blad).toContain('Czas wyłączenia $t_b$');
     }
   });
 });

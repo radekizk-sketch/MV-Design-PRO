@@ -162,7 +162,8 @@ def test_rekord_z_api_z_zerem_zamiast_braku_danej_jest_odrzucony() -> None:
 
 def test_zaden_rekord_katalogu_nie_niesie_zera_ani_liczby_w_wielkosci_niewlasciwej() -> None:
     """Pin danych: w ŻADNYM rekordzie łącznika i ŻADNEJ pozycji APARAT_SN nie ma zera, a
-    wielkość niewłaściwa rodzajowi jest ``None`` (zero nie jest zapisem „nie dotyczy”)."""
+    wielkość niewłaściwa rodzajowi jest ``None`` (zero nie jest zapisem „nie dotyczy”).
+    """
     zera: list[tuple[str, str]] = []
     niewlasciwe: list[tuple[str, str]] = []
     rekordy = get_all_switch_equipment_types()
@@ -279,7 +280,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
     assert all(
         o["limit"] is None or o["limit"]["wartosc"]["wartosc"] > 0 for o in oceny.values()
     ), oceny
-    dynamiczna, cieplna, wylaczanie = oceny["dynamiczna"], oceny["cieplna"], oceny["wylaczanie"]
+    dynamiczna, cieplna, wylaczanie = (oceny["dynamiczna"], oceny["cieplna"], oceny["wylaczanie"])
     if rodzaj == "FUSE":
         # „Nie dotyczy” z rodzaju (IEC 62271-105 § 4.5–4.6), NIE „brak danych”: status,
         # wyjaśnienie bez braków znamion i bez kodu gotowości „pozycja bez znamion”.
@@ -297,7 +298,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert dynamiczna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert dynamiczna["limit"] is None
         assert any(
-            "nie niesie prądu szczytowego I_p" in b
+            "nie niesie prądu szczytowego wytrzymywanego" in b
             for b in dynamiczna["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.pozycja_bez_znamion_wytrzymalosci" in pole["kody_gotowosci"]
@@ -310,7 +311,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert cieplna["limit"] is None
         assert any(
-            "nie niesie prądu krótkotrwałego I_th" in b
+            "nie niesie prądu krótkotrwałego wytrzymywanego" in b
             for b in cieplna["wyjasnienie"]["czego_brakuje"]
         )
     elif rodzaj == "CIRCUIT_BREAKER":
@@ -328,7 +329,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert wylaczanie["status_maszynowy"] == "NIE_OCENIONO"
         assert wylaczanie["limit"] is None
         assert any(
-            "nie niesie znamionowej zdolności wyłączania zwarciowej I_cu" in b
+            "nie niesie znamionowej zdolności wyłączania zwarciowej" in b
             for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.brak_zdolnosci_wylaczania" in pole["kody_gotowosci"]

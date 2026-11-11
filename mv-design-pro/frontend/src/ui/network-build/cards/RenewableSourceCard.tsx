@@ -146,7 +146,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
           ? [
               {
                 key: 'p_min',
-                label: 'P min',
+                label: 'Moc czynna minimalna $P_{\\min}$',
                 value:
                   generator.limits.p_min_mw != null
                     ? generator.limits.p_min_mw * 1000
@@ -156,7 +156,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'p_max',
-                label: 'P max',
+                label: 'Moc czynna maksymalna $P_{\\max}$',
                 value:
                   generator.limits.p_max_mw != null
                     ? generator.limits.p_max_mw * 1000
@@ -166,7 +166,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'q_min',
-                label: 'Q min',
+                label: 'Moc bierna minimalna $Q_{\\min}$',
                 value:
                   generator.limits.q_min_mvar != null
                     ? generator.limits.q_min_mvar * 1000
@@ -176,7 +176,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'q_max',
-                label: 'Q max',
+                label: 'Moc bierna maksymalna $Q_{\\max}$',
                 value:
                   generator.limits.q_max_mvar != null
                     ? generator.limits.q_max_mvar * 1000
@@ -255,7 +255,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
                     },
                     {
                       key: 'blocking_tr_uk',
-                      label: 'Uk trafo blokowego',
+                      label: '$u_{k}$ trafo blokowego',
                       value: blockingTransformer.uk_percent,
                       unit: '%',
                       source: 'catalog' as const,

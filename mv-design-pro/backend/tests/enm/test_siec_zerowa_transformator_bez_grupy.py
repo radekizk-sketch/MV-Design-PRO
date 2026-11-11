@@ -107,7 +107,7 @@ def test_transformator_bez_grupy_daje_brak_danych_w_kazdej_stycznej_skladowej(
             assert "Uzupełnij grupę połączeń transformatora" in zdanie
             assert any("grupa połączeń" in c for c in brak["wyjasnienie"]["czego_brakuje"])
         if "odc1" in elementy:
-            assert "Uzupełnij R′0 i X′0 gałęzi" in zdanie
+            assert "Uzupełnij jednostkową rezystancję i reaktancję zerową gałęzi" in zdanie
         if przyczyna == "brak_danych":
             assert "zwarcie doziemne nie płynie" not in zdanie
 

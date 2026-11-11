@@ -88,27 +88,27 @@ SEMANTIC_ALIASES: dict[str, SemanticAlias] = {
     "ikss_ka": SemanticAlias(
         alias_pl="prąd wyłączalny",
         target_key="ikss_ka",
-        notes="I_k'' wg IEC 60909",
+        notes="początkowy prąd zwarciowy wg IEC 60909",
     ),
     "ip_ka": SemanticAlias(
         alias_pl="prąd udarowy",
         target_key="ip_ka",
-        notes="i_p wg IEC 60909",
+        notes="prąd udarowy wg IEC 60909",
     ),
     "ith_ka": SemanticAlias(
         alias_pl="prąd cieplny",
         target_key="ith_ka",
-        notes="I_th wg IEC 60909",
+        notes="prąd zastępczy cieplny wg IEC 60909",
     ),
     "idyn_ka": SemanticAlias(
         alias_pl="prąd dynamiczny",
         target_key="idyn_ka",
-        notes="I_dyn; jeśli brak, używa ip_ka jako proxy (BINDING: I_dyn = i_p)",
+        notes="prąd dynamiczny; jeśli brak, przyjmuje się prąd udarowy (BINDING)",
     ),
     "sk_mva": SemanticAlias(
         alias_pl="moc zwarciowa",
         target_key="sk_mva",
-        notes="S_k'' wg IEC 60909",
+        notes="moc zwarciowa wg IEC 60909",
     ),
 }
 
@@ -150,7 +150,9 @@ class EquationDefinition:
         name_pl: Nazwa równania po polsku
         standard_ref: Odniesienie do normy
         symbols: Lista symboli użytych w równaniu
-        unit_derivation: Ścieżka derywacji jednostek
+        unit_derivation_latex: Wyprowadzenie jednostki wyniku z jednostek danych w zapisie
+            LaTeX (`\\mathrm{kV}/\\Omega = \\mathrm{kA}`) — blok wzoru kroku „Weryfikacja
+            jednostek" eksportu LaTeX/PDF; pusty, gdy wynik nie jest wielkością z jednostką
         notes: Opcjonalne notatki
     """
 
@@ -159,7 +161,7 @@ class EquationDefinition:
     name_pl: str
     standard_ref: str
     symbols: tuple[SymbolDefinition, ...]
-    unit_derivation: str = ""
+    unit_derivation_latex: str = ""
     notes: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -169,7 +171,7 @@ class EquationDefinition:
             "name_pl": self.name_pl,
             "standard_ref": self.standard_ref,
             "symbols": [s.to_dict() for s in self.symbols],
-            "unit_derivation": self.unit_derivation,
+            "unit_derivation_latex": self.unit_derivation_latex,
             "notes": self.notes,
         }
 
@@ -262,24 +264,39 @@ class ProofValue:
         )
 
 
+#: Zapis jednostki wielkości bezwymiarowej w rejestrze i w jednostkach wartości dowodu.
+JEDNOSTKI_BEZWYMIAROWE = frozenset({"—", "-", ""})
+
+
+def _jednostka_slowami(jednostka: str) -> str:
+    return "bez jednostki" if jednostka.strip() in JEDNOSTKI_BEZWYMIAROWE else jednostka
+
+
 @dataclass(frozen=True)
 class UnitCheckResult:
     """
-    Wynik weryfikacji spójności jednostek.
+    Wynik weryfikacji spójności jednostek kroku dowodu.
+
+    Kontrakt prezentacji inżynierskiej: wyprowadzenie jednostek jest WZOREM, więc idzie polem
+    `derivation_latex` (blok wzoru eksportu LaTeX/PDF); proza kroku („zgodność jednostek: …")
+    jest słowami (`opis_pl`) i wynika z tych samych pól, które ocenia flaga `passed`
+    (jednostka wyprowadzona, jednostka wyniku) — flaga nigdy nie stoi bez wyjaśnienia.
 
     Attributes:
-        passed: Czy weryfikacja jednostek przeszła pomyślnie
+        passed: Czy jednostka wyprowadzona z jednostek danych równa się jednostce wyniku
         expected_unit: Oczekiwana jednostka wyniku
-        computed_unit: Jednostka obliczona z jednostek wejściowych
+        computed_unit: Jednostka wyprowadzona z jednostek wejściowych
         input_units: Jednostki wartości wejściowych
-        derivation: Ścieżka derywacji jednostek (np. "kV / Ω = kA")
+        derivation_latex: Wyprowadzenie jednostek w zapisie LaTeX
+            (`\\mathrm{kV}/\\Omega = \\mathrm{kA}`); pusty, gdy krok nie ma wielkości
+            z jednostką (wynik jest stanem) albo gdy dla równania nie ma reguły wyprowadzenia
     """
 
     passed: bool
     expected_unit: str
     computed_unit: str
     input_units: dict[str, str] = field(default_factory=dict)
-    derivation: str = ""
+    derivation_latex: str = ""
 
     def __hash__(self) -> int:
         return hash(
@@ -288,8 +305,39 @@ class UnitCheckResult:
                 self.expected_unit,
                 self.computed_unit,
                 tuple(sorted(self.input_units.items())),
-                self.derivation,
+                self.derivation_latex,
             )
+        )
+
+    @property
+    def opis_pl(self) -> str:
+        """Weryfikacja jednostek słowami: co porównano, z jakim wynikiem i dlaczego.
+
+        Cztery przypadki rozłączne — para (`passed`, obecność wyprowadzenia):
+        wyprowadzenie zgodne, wyprowadzenie niezgodne, krok bez wielkości z jednostką
+        (wynik jest stanem oceny) i równanie bez reguły wyprowadzenia (zgodności nie sprawdzono
+        — brak reguły nie jest zgodnością).
+        """
+        wyprowadzona = _jednostka_slowami(self.computed_unit)
+        wyniku = _jednostka_slowami(self.expected_unit)
+        if not self.derivation_latex:
+            if self.passed:
+                return (
+                    "Weryfikacja jednostek nie dotyczy tego kroku: wynik jest stanem oceny, "
+                    "nie wielkością z jednostką."
+                )
+            return (
+                "Brak reguły wyprowadzenia jednostek dla tego równania — zgodności jednostek "
+                "nie sprawdzono."
+            )
+        if self.passed:
+            return (
+                f"Zgodność jednostek: jednostka wyprowadzona z jednostek danych ({wyprowadzona}) "
+                f"jest równa jednostce wyniku ({wyniku})."
+            )
+        return (
+            f"Niezgodność jednostek: jednostka wyprowadzona z jednostek danych ({wyprowadzona}) "
+            f"różni się od jednostki wyniku ({wyniku})."
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -298,7 +346,8 @@ class UnitCheckResult:
             "expected_unit": self.expected_unit,
             "computed_unit": self.computed_unit,
             "input_units": dict(sorted(self.input_units.items())),
-            "derivation": self.derivation,
+            "derivation_latex": self.derivation_latex,
+            "opis_pl": self.opis_pl,
         }
 
 

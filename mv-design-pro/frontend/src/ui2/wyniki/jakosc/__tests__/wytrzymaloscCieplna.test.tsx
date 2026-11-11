@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { SekcjaWytrzymaloscCieplna } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { przebiegTestowy } from './fixtures';
@@ -40,7 +40,8 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       {
         kod: 'prad_dopuszczalny',
         nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
-        warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
+        warunek_pl: 'prąd zastępczy cieplny nie większy od prądu dopuszczalnego dla czasu zwarcia',
+        warunek_latex: String.raw`I_{th} \le I_{dop}(t) = I_{th(1s)} / \sqrt{t}`,
         wartosc: 15000,
         granica: 13160,
         jednostka: 'A',
@@ -49,7 +50,8 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       {
         kod: 'energia_cieplna',
         nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
-        warunek_pl: 'I²·t ≤ k²·S²',
+        warunek_pl: 'energia zwarcia nie większa od wytrzymałości cieplnej żyły',
+        warunek_latex: String.raw`I^{2} t \le k^{2} S^{2}`,
         wartosc: 56_250_000,
         granica: 64_000_000,
         jednostka: 'A²·s',
@@ -61,7 +63,8 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       {
         kod: 'zwieksz_przekroj',
         dzialanie_pl: 'Zwiększ przekrój żyły',
-        wzor: 'S ≥ I·√t / k',
+        wzor: 'przekrój co najmniej prąd razy pierwiastek z czasu przez k',
+        wzor_latex: String.raw`S \ge I \cdot \sqrt{t} / k`,
         wartosc_docelowa: 79.8,
         jednostka: 'mm²',
         wartosc_obecna: 70,
@@ -135,7 +138,7 @@ function odpowiedz(items: readonly PozycjaCieplna[]): WytrzymaloscCieplnaRespons
       {
         norma: 'PN-HD 60364-4-43',
         punkt: '§ 434.5.2',
-        tresc_pl: 'Warunek adiabatyczny doboru przekroju: S ≥ √(I²·t) / k.',
+        tresc_pl: 'Warunek adiabatyczny doboru przekroju: przekrój nie mniejszy od pierwiastka z całki Joule\'a przez k.',
       },
     ],
     czasy_wylaczenia: {
@@ -467,7 +470,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
         key: 'conductor_thermal_k_factor',
         title: 'Współczynnik materiałowy k żyły',
         inputs: {},
-        substitution: '$$k = 143$$',
+        // Kształt z solvera (`conductor_thermal_withstand`): podstawienie jako LaTeX w
+        // `substitution_latex`, nie jako proza z ogranicznikami w `substitution`.
+        substitution_latex: 'k = 143',
         result: {},
         notes: 'k = Jth(1 s).',
       },
@@ -501,8 +506,14 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
     fireEvent.click(screen.getByText('Magistrala L-01'));
 
     const kryteria = await screen.findByTestId('mvd-jakosc-cieplna-kryteria');
-    expect(kryteria.textContent).toContain('I_th ≤ I_dop(t) = I_th(1s)/√t');
-    expect(kryteria.textContent).toContain('I²·t ≤ k²·S²');
+    // Warunki idą przez MathRenderer z pól `warunek_latex`; proza słowami jest opisem.
+    const wzory = within(kryteria).getAllByTestId('math-rendered');
+    expect(wzory.map((w) => w.getAttribute('data-latex'))).toEqual([
+      String.raw`I_{th} \le I_{dop}(t) = I_{th(1s)} / \sqrt{t}`,
+      String.raw`I^{2} t \le k^{2} S^{2}`,
+    ]);
+    expect(kryteria.textContent).not.toContain('I_th');
+    expect(kryteria.querySelector('[title^="energia zwarcia"]')).not.toBeNull();
     // Ikona towarzyszy tekstowi — sam kolor nie może nieść werdyktu.
     expect(kryteria.textContent).toContain(JAKOSC_STRINGS.ikonaNaruszone);
   });
@@ -514,7 +525,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
 
     const zalecenia = await screen.findByTestId('mvd-jakosc-cieplna-zalecenia');
     expect(zalecenia.textContent).toContain('Zwiększ przekrój żyły');
-    expect(zalecenia.textContent).toContain('S ≥ I·√t / k');
+    const wzor = within(zalecenia).getByTestId('math-rendered');
+    expect(wzor.getAttribute('data-latex')).toBe(String.raw`S \ge I \cdot \sqrt{t} / k`);
+    expect(zalecenia.querySelector('[title^="przekrój co najmniej"]')).not.toBeNull();
     expect(zalecenia.textContent).toContain('79,8');
   });
 

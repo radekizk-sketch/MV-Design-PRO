@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Każdy wzór LaTeX odpowiedzi backendu utrwalonej w fixturach harnessu składa się w KaTeX
  * w trybie ŚCISŁYM (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5).

@@ -1449,6 +1449,10 @@
       "title": "Assumptions",
       "type": "array"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -1539,6 +1543,7 @@
     "required": [
      "status",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "CableAgingResponse",
@@ -2541,7 +2546,7 @@
      },
      "overload_ratio_required": {
       "default": 1.2,
-      "description": "Wymagany iloraz przeciążalności I_s/I_rob",
+      "description": "Wymagany iloraz przeciążalności (nastawa do prądu roboczego)",
       "minimum": 1.0,
       "title": "Overload Ratio Required",
       "type": "number"
@@ -2562,7 +2567,7 @@
      },
      "sensitivity_ratio_required": {
       "default": 1.5,
-      "description": "Wymagany iloraz czułości I_min/I_s",
+      "description": "Wymagany iloraz czułości (minimalny prąd zwarciowy do nastawy)",
       "minimum": 1.0,
       "title": "Sensitivity Ratio Required",
       "type": "number"
@@ -3012,6 +3017,10 @@
       "title": "Assumptions",
       "type": "array"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -3199,6 +3208,7 @@
      "status_obciazenia",
      "status_nasycenia",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "CtBurdenResponse",
@@ -4873,13 +4883,13 @@
     "description": "Impedancja przejścia w miejscu zwarcia Z_f = R_f + jX_f [Ω] (karta OD-14).\n\nReguły R_f ≥ 0 i X_f ≥ 0 egzekwuje domena (`domain.fault_scenario.FaultImpedance`) —\njedno źródło z rdzeniem IEC 60909; naruszenie wraca jako odmowa nazwana 422 z kodem.",
     "properties": {
      "r_f_ohm": {
-      "description": "Rezystancja przejścia R_f w miejscu zwarcia [Ω], R_f ≥ 0",
+      "description": "Rezystancja przejścia w miejscu zwarcia [Ω], nieujemna",
       "title": "R F Ohm",
       "type": "number",
       "x-unit": "Ω"
      },
      "x_f_ohm": {
-      "description": "Reaktancja przejścia X_f w miejscu zwarcia [Ω], X_f ≥ 0",
+      "description": "Reaktancja przejścia w miejscu zwarcia [Ω], nieujemna",
       "title": "X F Ohm",
       "type": "number",
       "x-unit": "Ω"
@@ -10463,7 +10473,7 @@
         "type": "null"
        }
       ],
-      "description": "Opcje solvera (tolerance, max_iter, trace_level, etc.)",
+      "description": "Opcje solvera: `tolerance`, `max_iter`, `trace_level`",
       "title": "Options"
      },
      "study_case_id": {
@@ -13261,7 +13271,7 @@
         "type": "null"
        }
       ],
-      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+      "description": "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",
@@ -13324,12 +13334,12 @@
         "type": "null"
        }
       ],
-      "description": "Czas wyłączenia t_b [s] scenariusza (najkrótszy czas zabezpieczenia + wyłącznika); brak = t_b punktu z pól lokalnych albo wartość robocza 0,1 s",
+      "description": "Czas wyłączenia [s] scenariusza (najkrótszy czas zabezpieczenia + wyłącznika); brak = czas wyłączenia punktu z pól lokalnych albo wartość robocza 0,1 s",
       "title": "Tb S"
      },
      "tk_s": {
       "default": 1.0,
-      "description": "Czas trwania zwarcia t_k [s]",
+      "description": "Czas trwania zwarcia [s]",
       "title": "Tk S",
       "type": "number"
      }
@@ -13378,7 +13388,7 @@
         "type": "null"
        }
       ],
-      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+      "description": "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",
@@ -13518,7 +13528,7 @@
         "type": "null"
        }
       ],
-      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+      "description": "Impedancja przejścia biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; impedancja niezerowa = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",
@@ -13990,7 +14000,7 @@
         "type": "null"
        }
       ],
-      "description": "Czas wyłączenia t_b [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika (prąd wyłączeniowy Ib i składowa nieokresowa iDC, IEC 60909-0); brak = t_b rozstrzygany w punkcie zwarcia: najkrótszy czas pól lokalnych, inaczej wartość robocza z jawnym źródłem normowym (założenie biegu fault.czas_tb_wartosc_robocza)",
+      "description": "Czas wyłączenia [s] — najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika (prąd wyłączeniowy i składowa nieokresowa, IEC 60909-0); brak = czas rozstrzygany w punkcie zwarcia: najkrótszy czas pól lokalnych, inaczej wartość robocza z jawnym źródłem normowym (założenie biegu fault.czas_tb_wartosc_robocza)",
       "title": "Breaking Time Seconds",
       "x-unit": "s"
      },
@@ -14012,7 +14022,7 @@
       "description": "Ręczne nadpisanie c z uzasadnieniem (opcjonalne)"
      },
      "scenariusz": {
-      "description": "Scenariusz zwarciowy: MAX (Ik''max) albo MIN (Ik''min)",
+      "description": "Scenariusz zwarciowy: MAX (maksymalny prąd zwarciowy) albo MIN (minimalny)",
       "enum": [
        "MAX",
        "MIN"
@@ -14022,7 +14032,7 @@
      },
      "stan_awsc": {
       "default": "spoczynek",
-      "description": "Stan automatyki wymuszania składowej czynnej (AWSC) sieci skompensowanej w tym przypadku: spoczynek — dławik gaszący sam (Z_N = jX_L), zalaczony — rezystor wymuszający równolegle z dławikiem (Z_N = R‖jX_L); ENEA Zeszyt 1 §16, rys. Z.13",
+      "description": "Stan automatyki wymuszania składowej czynnej (AWSC) sieci skompensowanej w tym przypadku: spoczynek — dławik gaszący sam (impedancja punktu neutralnego to reaktancja dławika), zalaczony — rezystor wymuszający równolegle z dławikiem; ENEA Zeszyt 1 §16, rys. Z.13",
       "enum": [
        "spoczynek",
        "zalaczony"
@@ -14032,7 +14042,7 @@
      },
      "thermal_time_seconds": {
       "default": 1.0,
-      "description": "Czas trwania zwarcia t_k [s]",
+      "description": "Czas trwania zwarcia [s]",
       "title": "Thermal Time Seconds",
       "type": "number"
      }
@@ -14065,6 +14075,10 @@
    },
    "ShuntCompensatorPreviewResponse": {
     "properties": {
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -14096,7 +14110,8 @@
      "reactive_power_var",
      "susceptance_siemens",
      "rated_current_a",
-     "formula_ref"
+     "formula_ref",
+     "formula_latex"
     ],
     "title": "ShuntCompensatorPreviewResponse",
     "type": "object"
@@ -15440,6 +15455,10 @@
       ],
       "title": "Beta Optymalny"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -15552,6 +15571,7 @@
     "required": [
      "status",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "TransformerLossesResponse",
@@ -16132,6 +16152,10 @@
       ],
       "title": "Delta U V"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -16308,6 +16332,7 @@
      "status_obciazenia",
      "status_spadku",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "VtBurdenResponse",
@@ -16990,7 +17015,7 @@
        ],
        "type": "string"
       },
-      "description": "Łącznik (ref_id) → położenie w scenariuszu",
+      "description": "Łącznik (`ref_id`) → położenie w scenariuszu",
       "minProperties": 1,
       "title": "Switch States",
       "type": "object"
@@ -27088,7 +27113,7 @@
   },
   "/api/power-flow-comparisons": {
    "post": {
-    "description": "P20c: Porównuje dwa PowerFlowRun i generuje deterministyczny ranking problemów.\n\n**Walidacje:**\n- Oba runy muszą istnieć\n- Oba runy muszą mieć status FINISHED\n- Oba runy muszą należeć do tego samego projektu\n\n**Zwraca:**\n- PowerFlowComparisonResult z:\n  - bus_diffs: porównanie per szyna (posortowane po bus_id)\n  - branch_diffs: porównanie per gałąź (posortowane po branch_id)\n  - ranking: lista problemów posortowana wg severity (5->1)\n  - summary: statystyki porównania\n\n**Cache:**\n- Ta sama para (A, B) -> ten sam comparison_id\n- A->B != B->A (kierunkowe)",
+    "description": "Porównuje dwa przebiegi rozpływu mocy i generuje deterministyczny ranking problemów.\n\n**Walidacje:**\n- Oba runy muszą istnieć\n- Oba runy muszą mieć status FINISHED\n- Oba runy muszą należeć do tego samego projektu\n\n**Zwraca:**\n- PowerFlowComparisonResult z:\n  - `bus_diffs`: porównanie per szyna (posortowane po `bus_id`)\n  - `branch_diffs`: porównanie per gałąź (posortowane po `branch_id`)\n  - ranking: lista problemów posortowana wg severity (5->1)\n  - summary: statystyki porównania\n\n**Cache:**\n- Ta sama para (A, B) -> ten sam `comparison_id`\n- A->B != B->A (kierunkowe)",
     "operationId": "create_power_flow_comparison_api_power_flow_comparisons_post",
     "requestBody": {
      "content": {

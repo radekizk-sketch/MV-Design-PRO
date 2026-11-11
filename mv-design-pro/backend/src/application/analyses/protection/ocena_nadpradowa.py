@@ -173,11 +173,11 @@ FUNKCJE_OCENIANE: tuple[str, ...] = ("overcurrent_51", "overcurrent_50")
 #: wyznacza. Odpowiedź na oba to osobny tor (rozpływ składowej zerowej, kierunek).
 FUNKCJE_NIEOCENIANE: dict[str, str] = {
     "earth_fault_50N": (
-        "Funkcja ziemnozwarciowa 50N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu "
+        "Funkcja ziemnozwarciowa 50N widzi potrojony prąd składowej zerowej toru, a rozpływ biegu "
         "zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
     ),
     "earth_fault_51N": (
-        "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu "
+        "Funkcja ziemnozwarciowa 51N widzi potrojony prąd składowej zerowej toru, a rozpływ biegu "
         "zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
     ),
     "directional_67": (
@@ -1824,6 +1824,7 @@ def _opis_nasycenia(wynik: CtBurdenResult, *, alf_wymagany: float, i1n_a: float)
         "moc_wewnetrzna_va": wynik.moc_wewnetrzna_va,
         "readiness_codes": list(wynik.readiness_codes),
         "formula_ref": wynik.formula_ref,
+        "formula_latex": wynik.formula_latex,
         "assumptions": list(wynik.assumptions),
         "white_box_trace": list(wynik.white_box_trace),
     }
@@ -1833,20 +1834,26 @@ def _dane_jadra_pl(wejscie: CtBurdenInput, wynik: CtBurdenResult) -> str:
     """Z czego jądro policzyło ALF_eff — zdanie, które mówi, DLACZEGO rdzeń się nasyca."""
     czesci = [
         f"ALF {_liczba(float(wejscie.alf))}" if wejscie.alf is not None else "ALF nieznany",
-        f"S_n {_liczba(float(wejscie.sn_va))} VA" if wejscie.sn_va is not None else "",
         (
-            f"obciążenie obwodu wtórnego S_2obl {_liczba(wynik.moc_obliczeniowa_va)} VA"
+            f"moc znamionowa przekładnika {_liczba(float(wejscie.sn_va))} VA"
+            if wejscie.sn_va is not None
+            else ""
+        ),
+        (
+            f"obciążenie obwodu wtórnego {_liczba(wynik.moc_obliczeniowa_va)} VA"
             if wynik.moc_obliczeniowa_va is not None
             else ""
         ),
     ]
     if wynik.moc_wewnetrzna_va is not None and wejscie.rct_ohm is not None:
         czesci.append(
-            f"moc uzwojenia S_w {_liczba(wynik.moc_wewnetrzna_va)} VA "
-            f"z R_ct {_liczba(wejscie.rct_ohm)} Ω"
+            f"moc wewnętrzna uzwojenia {_liczba(wynik.moc_wewnetrzna_va)} VA "
+            f"z rezystancji uzwojenia wtórnego {_liczba(wejscie.rct_ohm)} Ω"
         )
     else:
-        czesci.append("wariant uproszczony bez R_ct — katalog nie niesie rezystancji uzwojenia")
+        czesci.append(
+            "wariant bez rezystancji uzwojenia wtórnego — katalog nie niesie rezystancji uzwojenia"
+        )
     return ", ".join(c for c in czesci if c)
 
 
@@ -1877,16 +1884,17 @@ def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> Wiarygodno
         granica = nasycenie["granica_nasycenia_a"]
         dane = _dane_jadra_pl(wejscie, wynik)
         uzasadnienie = (
-            f"ALF_eff = {_liczba(wynik.alf_efektywny)} ({dane}); wymagane ALF_wym = I/I₁n = "
-            f"{_liczba(prad_a)}/{_liczba(i1n)} = {_liczba(alf_wymagany)}; zapas ALF_eff − "
-            f"ALF_wym = {_liczba(wynik.zapas_alf)}"
+            f"Efektywny współczynnik graniczny dokładności {_liczba(wynik.alf_efektywny)} ({dane}); "
+            f"wymagany: prąd {_liczba(prad_a)} A podzielony przez prąd znamionowy pierwotny "
+            f"{_liczba(i1n)} A = {_liczba(alf_wymagany)}; zapas {_liczba(wynik.zapas_alf)}"
         )
         if wynik.status_nasycenia == STATUS_FAIL:
             return WiarygodnoscPunktu(
                 wiarygodnosc=NIEWIARYGODNY,
                 powod_pl=(
                     f"prąd {_liczba(prad_a)} A przekracza granicę nasycenia przekładnika "
-                    f"ALF_eff·I₁n = {_liczba(granica)} A ({uzasadnienie}) — rdzeń nasyca się, "
+                    f"(efektywny współczynnik graniczny dokładności razy prąd znamionowy pierwotny) "
+                    f"{_liczba(granica)} A ({uzasadnienie}) — rdzeń nasyca się, "
                     "czas zadziałania i margines są niewiarygodne"
                 ),
                 nasycenie=nasycenie,
@@ -1895,7 +1903,8 @@ def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> Wiarygodno
             wiarygodnosc=WIARYGODNY,
             powod_pl=(
                 f"prąd {_liczba(prad_a)} A nie przekracza granicy nasycenia przekładnika "
-                f"ALF_eff·I₁n = {_liczba(granica)} A ({uzasadnienie})"
+                f"(efektywny współczynnik graniczny dokładności razy prąd znamionowy pierwotny) "
+                f"{_liczba(granica)} A ({uzasadnienie})"
             ),
             nasycenie=nasycenie,
         )

@@ -1541,8 +1541,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -1610,8 +1610,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -1813,8 +1813,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -1879,8 +1879,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -1993,8 +1993,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2059,8 +2059,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2262,8 +2262,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2328,8 +2328,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2442,8 +2442,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2508,8 +2508,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2711,8 +2711,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2777,8 +2777,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -2999,8 +2999,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -3065,8 +3065,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -3287,8 +3287,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -3353,8 +3353,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
@@ -4349,7 +4349,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "edf6f57f7f5dce64a8b72ee2a880b0a40734a2d44a271a27a7acdf428502bc18",
+      "hash_sha256": "e138277a051249d9af4f4d404771e7b39027e984232c2f063ac8369018f3dcd4",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"

@@ -415,7 +415,7 @@ def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
     cieplna = _ocena(pole, "cieplna")
     assert cieplna["status_maszynowy"] == "SPELNIA"
     assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
-    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("T_k = 0.36 s")
+    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("czas wyłączenia 0.36 s")
     dane = _dane_przyjete(cieplna)
     assert [d["wartosc"] for d in dane] == [{"wartosc": 0.06, "jednostka": "s"}]
     assert dane[0]["jakosc"] == "ESTIMATED"

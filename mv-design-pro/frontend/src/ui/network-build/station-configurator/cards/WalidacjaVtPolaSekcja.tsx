@@ -28,6 +28,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { MathInline } from '../../../proof/MathRenderer';
 import { fetchVtTypes } from '../../../catalog/api';
 import { fetchUziemienieSnStacji, validateVtGroundingApi } from '../../station-der/audit2-api';
 
@@ -208,7 +209,12 @@ export function WalidacjaVtPolaSekcja({
           <span className="font-mono-eng">{wiersz.bayDesignation}</span>
           {' · '}
           {wiersz.nazwaTypu ?? 'typ spoza katalogu'}
-          {wiersz.wspolczynnik !== null && ` · F_v = ${wiersz.wspolczynnik}`}
+          {wiersz.wspolczynnik !== null && (
+            <>
+              {' · '}
+              <MathInline latex="F_v" /> = {wiersz.wspolczynnik}
+            </>
+          )}
           {' — '}
           {wiersz.ok === true ? 'zgodny z siecią o tym sposobie uziemienia' : wiersz.komunikat}
         </p>

@@ -65,7 +65,7 @@ class WpisCzasuWylaczenia:
 
 _PODSTAWA_TN_FINALNE = (
     "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla "
-    "układu TN, obwody odbiorcze, wg pasma U0). Zweryfikowano w dwóch "
+    "układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch "
     "niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — "
     "TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/"
     "iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / "
@@ -88,7 +88,7 @@ TABLICA_TN_ODBIORCZE: dict[str, WpisCzasuWylaczenia] = {
 _PODSTAWA_TN_ROZDZIELCZE = (
     "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i "
     "obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od "
-    "pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / "
+    "pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / "
     "Professional Electrician, „The requirements for automatic disconnection "
     "in case of a fault” (professional-electrician.com/technical/"
     "the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); "
@@ -104,7 +104,7 @@ CZAS_TN_ROZDZIELCZY = WpisCzasuWylaczenia(5.0, _PODSTAWA_TN_ROZDZIELCZE)
 # ---------------------------------------------------------------------------
 
 _PODSTAWA_TT_FINALNE = (
-    "IEC 60364-4-41 Tab. 41.1, układ TT, obwody odbiorcze, wg pasma U0. "
+    "IEC 60364-4-41 Tab. 41.1, układ TT, obwody odbiorcze, wg pasma napięcia fazowego. "
     "Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) NAPIT / "
     "Professional Electrician, „The requirements for automatic disconnection "
     "in case of a fault” — cytuje 0,2 s (TT, 230 V) wprost; (2) "
@@ -122,7 +122,7 @@ TABLICA_TT_ODBIORCZE: dict[str, WpisCzasuWylaczenia] = {
 
 _PODSTAWA_TT_ROZDZIELCZE = (
     "IEC 60364-4-41 §411.3.2.4 — obwody rozdzielcze i pozostałe w układzie TT: "
-    "czas wyłączenia 1 s (selektywność RCD), NIEZALEŻNY od pasma U0. "
+    "czas wyłączenia 1 s (selektywność RCD), NIEZALEŻNY od pasma napięcia fazowego. "
     "Zweryfikowano w dwóch niezależnych źródłach: (1) WebSearch (industrial "
     "monitor direct / cytat normy) — „for all other circuits, the maximum "
     "disconnection time is fixed to 1 s”; (2) rcddisconnectiontime.co.uk, "
@@ -160,7 +160,7 @@ def pasmo_dla_u0(u0_v: float) -> str:
     tol = _TOLERANCJA_GRANICY_PASMA_V
     if u0_v <= 50.0:
         raise OdmowaDanychError(
-            f"U0={u0_v} V ≤ 50 V — poza zakresem Tab. 41.1 (reżim SELV/PELV, "
+            f"Napięcie fazowe {u0_v} V ≤ 50 V — poza zakresem Tab. 41.1 (reżim SELV/PELV, "
             "ochrona nie opiera się na samoczynnym wyłączeniu)."
         )
     if u0_v <= 120.0 + tol:

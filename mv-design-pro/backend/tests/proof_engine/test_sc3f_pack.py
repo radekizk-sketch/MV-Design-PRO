@@ -150,7 +150,7 @@ def test_synchronous_machine_bez_tb_wartosc_robocza_daje_ib_maszyn_i_ostrzezenie
     # Zdanie o t_b — nie samo słowo „wartość robocza": od karty PODSTAWA-Q dowód niesie też
     # wartości robocze parametrów maszyny (x″d, cos φ_rG bez tabliczki) w OBU biegach, bo nie
     # zależą od t_b.
-    zdanie_tb = "czasie wyłączenia t_b będącym wartością roboczą"
+    zdanie_tb = "czasie wyłączenia będącym wartością roboczą"
     assert any(zdanie_tb in w for w in roboczy.proof_sc3f.summary.warnings)
     assert not any(zdanie_tb in w for w in podany.proof_sc3f.summary.warnings)
     for dowod in (roboczy, podany):

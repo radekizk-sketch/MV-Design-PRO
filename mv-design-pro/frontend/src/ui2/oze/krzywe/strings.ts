@@ -35,9 +35,9 @@ export const KRZYWE_STRINGS = {
   // Założenia (część wyniku)
   zalozeniaTyp: 'Typ falownika',
   zalozeniaOperator: 'Operator OSD',
-  zalozeniaPn: 'Moc odniesienia Pn',
-  zalozeniaSn: 'Moc pozorna Sn',
-  zalozeniaUdzialQ: 'Wymagany udział Q (± Pn)',
+  zalozeniaPn: 'Moc odniesienia $P_{n}$',
+  zalozeniaSn: 'Moc pozorna $S_{n}$',
+  zalozeniaUdzialQ: 'Wymagany udział Q (± $P_{n}$)',
   zalozeniaWymaganie: 'Wymagane pasmo Q',
   zalozeniaLiczbaPunktow: 'Liczba punktów krzywej',
 
@@ -53,10 +53,10 @@ export const KRZYWE_STRINGS = {
   wykresTytul: 'Krzywa zdolności P–Q — pasmo producenta i wymaganie operatora',
   wykresOsX: 'Moc czynna P',
   wykresOsY: 'Moc bierna Q',
-  legendaQMax: 'Producent Q max (indukcyjna)',
-  legendaQMin: 'Producent Q min (pojemnościowa)',
-  legendaWymMax: 'Wymaganie Q max',
-  legendaWymMin: 'Wymaganie Q min',
+  legendaQMax: 'Producent $Q_{\\max}$ (indukcyjna)',
+  legendaQMin: 'Producent $Q_{\\min}$ (pojemnościowa)',
+  legendaWymMax: 'Wymaganie $Q_{\\max}$',
+  legendaWymMin: 'Wymaganie $Q_{\\min}$',
 
   // Ślad WHITE BOX
   sladTytul: 'Ślad weryfikacji (pełna jawność obliczeń)',

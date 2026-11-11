@@ -157,7 +157,7 @@ export function odstepstwaPropozycji(
   ) {
     warnings.push(
       `Wybrany aparat pola SN różni się od propozycji systemu (${field.name}, ` +
-        `In ${field.in_a} A).`,
+        `$I_{n}$ ${field.in_a} A).`,
     );
   }
   return warnings;

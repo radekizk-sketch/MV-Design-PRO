@@ -325,7 +325,8 @@ def zalozenia_linii_wn(enm: EnergyNetworkModel, scenario: str | None) -> tuple[d
                 "code": KOD_GEOMETRIA_ROBOCZA,
                 "element_ref": linia.ref_id,
                 "message_pl": (
-                    f"{nazwa_elementu(linia, 'branches')}: R′, X′, B′ i Z′0 linii 110 kV policzone z "
+                    f"{nazwa_elementu(linia, 'branches')}: rezystancja, reaktancja, susceptancja i "
+                    f"impedancja zerowa linii 110 kV policzone z "
                     f"geometrii słupa z wartościami roboczymi. {opisy} Zmień wartość: "
                     "geometria słupa w parametrach linii."
                 ),

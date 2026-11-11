@@ -302,7 +302,7 @@ export function KreatorZrodlaOze() {
     [konwerteryTech],
   );
   const opcjeAparaty = useMemo(
-    () => aparaty.map((a) => ({ id: a.id, etykieta: `${a.name} · Un ${a.u_n_kv} kV · In ${a.i_n_a} A` })),
+    () => aparaty.map((a) => ({ id: a.id, etykieta: `${a.name} · $U_{n}$ ${a.u_n_kv} kV · $I_{n}$ ${a.i_n_a} A` })),
     [aparaty],
   );
   const opcjeTransformatory = useMemo(
@@ -1227,7 +1227,7 @@ export function KreatorZrodlaOze() {
       {krok === 'zapis' && faza === 'formularz' ? (
         <>
           <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-oze-zapis">
-            <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
+            <KreatorInfo><TekstZWzorami tekst={T.downstreamOpis} /></KreatorInfo>
             <KreatorSiatka kolumny={2}>
               <RzadWartosci etykieta={T.wierszStacja} wartosc={kontekst.station_label || '—'} />
               <RzadWartosci etykieta={T.wierszTechnologia} wartosc={technologiaLabel(dane.source_technology)} />

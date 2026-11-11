@@ -141,10 +141,10 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
           <line x1={fx} y1={513} x2={fx} y2={540} stroke={NN_BUS} strokeWidth={2} />
           <WindGen x={fx} y={552} />
           {lbl(fx, 580, `${turbMw} MW · Typ 4 (PMSG)`, AMBER, 10, 800, 'middle')}
-          {lbl(fx, 593, `~/= → ◯G · Ik″ ≈ ${fmt(faln / nTurb, 2)} kA`, TXT2, 9, 700, 'middle')}
+          {lbl(fx, 593, `~/= → ◯G · $I_{k}''$ ≈ ${fmt(faln / nTurb, 2)} kA`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 614, '0,69 kV: za przekształtnikiem (IBG, prąd ograniczony k·In) — NIE maszyna', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 614, '0,69 kV: za przekształtnikiem (IBG, prąd ograniczony k·$I_{n}$) — NIE maszyna', TXT_MUTED, 9, 600, 'middle')}
 
       {/* ── node ① — collector 15 kV ── */}
       <NodeReadout x={X.node} y={236} n={1} title={`kolektor SN · ${colKv} kV`}

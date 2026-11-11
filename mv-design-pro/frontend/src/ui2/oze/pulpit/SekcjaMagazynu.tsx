@@ -102,7 +102,7 @@ export function SekcjaMagazynu({ der, szczegolyAudytowe }: SekcjaMagazynuProps):
             </span>
           </div>
           <div className="mvd-oze-metryka">
-            <span>{PULPIT_STRINGS.magazynCosphi}</span>
+            <span><TekstZWzorami tekst={PULPIT_STRINGS.magazynCosphi} /></span>
             <span className="mvd-oze-num">
               {formatCosphi(dopasowanie.rekord.cosphi_min, dopasowanie.rekord.cosphi_max)}
             </span>

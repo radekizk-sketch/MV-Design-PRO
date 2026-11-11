@@ -523,7 +523,10 @@ def test_prad_pojemnosciowy_bateria_i_kabel_bez_b0_gotowosc_i_solver_zgodne(
         "neutral_earthing_design", {"result": wynik}, nazwy={}
     )["result"]
     assert powierzchnia["kompletnosc_dowodu"] == "NIEPELNY"
-    assert any(d["nazwa_pl"].startswith("B′0") for d in wynik["dane_przyjete"])
+    assert any(
+        d["nazwa_pl"].startswith("Susceptancja jednostkowa składowej zerowej")
+        for d in wynik["dane_przyjete"]
+    )
 
 
 # ---------------------------------------------------------------------------

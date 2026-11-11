@@ -91,10 +91,10 @@ export const ROZPLYW_STRINGS = {
   // wariant B, zero fabrykacji, mapa aneks J5 / domena 5 #1 / domena 3 #10).
   analizaRegulacjaOze: 'Rozpływ mocy — regulacja mocy biernej falowników',
   regulacjaOzeTytul:
-    'Wykres „Q wstrzyknięte w biegu vs prawo Q(U)/cosφ(P)" niedostępny',
+    'Wykres „Q wstrzyknięte w biegu vs prawo Q(U)/$\\cos\\varphi$(P)" niedostępny',
   regulacjaOzeOpis:
     'Wynik obliczenia rozpływu (metodą Newtona-Raphsona, Gaussa-Seidla albo rozprzężoną) ' +
-    'nie zapisuje dla poszczególnych źródeł trybu regulacji (stały cosφ, cosφ(P), Q(U)), ' +
+    'nie zapisuje dla poszczególnych źródeł trybu regulacji (stały $\\cos\\varphi$, $\\cos\\varphi$(P), Q(U)), ' +
     'wstrzykniętej mocy biernej, napięcia w punkcie pracy ani informacji o osiągnięciu ' +
     'ograniczenia Q — dlatego wykresu punktu pracy na tle prawa regulacji nie da się ' +
     'narysować z tego przebiegu.',

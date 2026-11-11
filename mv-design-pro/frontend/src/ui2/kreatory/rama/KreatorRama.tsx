@@ -89,10 +89,10 @@ export function KreatorRama({
       <header className="mvd-kreator-head">
         <div className="mvd-kreator-head-gora">
           <div>
-            <span className="mvd-kreator-eyebrow">{eyebrow}</span>
-            <h2 className="mvd-kreator-tytul">{tytul}</h2>
+            <span className="mvd-kreator-eyebrow"><TekstZWzorami tekst={eyebrow} /></span>
+            <h2 className="mvd-kreator-tytul"><TekstZWzorami tekst={tytul} /></h2>
           </div>
-          {odznaka ? <span className="mvd-kreator-odznaka">{odznaka}</span> : null}
+          {odznaka ? <span className="mvd-kreator-odznaka"><TekstZWzorami tekst={odznaka} /></span> : null}
         </div>
         <p className="mvd-kreator-cel"><TekstZWzorami tekst={cel} /></p>
         {kroki && kroki.length > 0 ? (
@@ -125,7 +125,7 @@ export function KreatorRama({
             <div className="mvd-kreator-glowna">
               {bladGlobalny ? (
                 <p className="mvd-kreator-blad" role="alert" data-testid="mvd-kreator-blad">
-                  {bladGlobalny}
+                  <TekstZWzorami tekst={bladGlobalny} />
                 </p>
               ) : null}
               {children}
@@ -137,7 +137,7 @@ export function KreatorRama({
         <div className="mvd-kreator-cialo">
           {bladGlobalny ? (
             <p className="mvd-kreator-blad" role="alert" data-testid="mvd-kreator-blad">
-              {bladGlobalny}
+              <TekstZWzorami tekst={bladGlobalny} />
             </p>
           ) : null}
           {children}
@@ -158,7 +158,7 @@ export function KreatorRama({
                 {krokWstecz.etykieta}
               </button>
             ) : null}
-            {licznikKrokow ? <span className="mvd-kreator-stopka-licznik">{licznikKrokow}</span> : null}
+            {licznikKrokow ? <span className="mvd-kreator-stopka-licznik"><TekstZWzorami tekst={licznikKrokow} /></span> : null}
             {krokDalej ? (
               <button
                 type="button"
@@ -174,7 +174,7 @@ export function KreatorRama({
         ) : null}
         {walidacja ? (
           <span className="mvd-kreator-stopka-walidacja" data-testid="mvd-kreator-walidacja">
-            {walidacja}
+            <TekstZWzorami tekst={walidacja} />
           </span>
         ) : null}
         <button
@@ -212,7 +212,7 @@ export function KreatorSekcja({ tytul, nota, children, testid }: KreatorSekcjaPr
   return (
     <section className="mvd-kreator-sekcja" data-testid={testid}>
       <div className="mvd-kreator-sekcja-head">
-        <span className="mvd-kreator-sekcja-tytul">{tytul}</span>
+        <span className="mvd-kreator-sekcja-tytul"><TekstZWzorami tekst={tytul} /></span>
         {nota ? <span className="mvd-kreator-sekcja-nota"><TekstZWzorami tekst={nota} /></span> : null}
       </div>
       <div className="mvd-kreator-sekcja-cialo">{children}</div>

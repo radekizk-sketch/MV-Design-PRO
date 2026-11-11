@@ -48,6 +48,7 @@ import {
   type StatusKonfiguracji,
 } from './podgladRozdzielnicy';
 import { STACJA_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 export interface PodgladRozdzielnicySnProps {
   snFields: readonly StationSnFieldTemplate[];
@@ -112,7 +113,7 @@ function NaglowekPakietu({ naglowek }: { naglowek: NaglowekRozdzielnicy }) {
       <dl className="mvd-podglad-naglowek-dane">
         {pozycje.map((p) => (
           <div key={p.etykieta} className="mvd-podglad-naglowek-pozycja">
-            <dt>{p.etykieta}</dt>
+            <dt><TekstZWzorami tekst={p.etykieta} /></dt>
             <dd>{p.wartosc ?? T.naglowekBrakDanej}</dd>
           </div>
         ))}

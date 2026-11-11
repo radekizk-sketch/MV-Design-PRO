@@ -53,7 +53,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'ERROR',
     code: 'OC_OVERLAP',
-    message_pl: 'Nakladanie sie progow I> i I>> (I> >= I>>): prog I>=600 A >= prog I>>=500 A',
+    message_pl: 'Próg I> (600 A) jest większy lub równy progowi I>> (500 A)',
     element_id: 'switch-001',
     element_type: 'Switch',
     function_ansi: '50/51',
@@ -68,7 +68,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'WARN',
     code: 'OC_I_GT_TOO_LOW',
-    message_pl: 'Prog I> zbyt niski (< 1,0×In): 0,8×In = 402 A',
+    message_pl: 'Próg I> (0,8 $I_n$ = 402 A) jest zbyt niski (< 1,0 $I_n$)',
     element_id: 'switch-002',
     element_type: 'Switch',
     function_ansi: '51',
@@ -84,7 +84,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'ERROR',
     code: 'VOLT_OVERLAP',
-    message_pl: 'Nakladanie sie progow U< i U> (U< >= U>): U<=0,9×Un >= U>=0,85×Un',
+    message_pl: 'Próg U< (0,9 $U_n$) jest większy lub równy progowi U> (0,85 $U_n$)',
     element_id: 'connection_node-001',
     element_type: 'Bus',
     function_ansi: '27/59',
@@ -99,7 +99,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'WARN',
     code: 'FREQ_F_LT_TOO_LOW',
-    message_pl: 'Prog f< zbyt niski (< 45 Hz): 44,5 Hz',
+    message_pl: 'Próg f< (44,5 Hz) jest zbyt niski (< 45 Hz)',
     element_id: 'connection_node-001',
     element_type: 'Bus',
     function_ansi: '81U',
@@ -113,7 +113,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'INFO',
     code: 'GEN_PARTIAL_ANALYSIS',
-    message_pl: 'Brak danych bazowych — analiza czesciowa (brak In dla strony WN)',
+    message_pl: 'Brak wartości $I_n$ — analiza prądowa częściowa',
     element_id: 'trafo-001',
     element_type: 'TransformerBranch',
     function_ansi: '87',
@@ -124,7 +124,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'WARN',
     code: 'SPZ_NO_TRIP_FUNCTION',
-    message_pl: 'SPZ aktywne bez funkcji wyzwalajacej — brak I> lub I>> do wyzwolenia SPZ',
+    message_pl: 'SPZ (Samoczynne Ponowne Załączenie) jest aktywne, ale brak funkcji wyzwalającej',
     element_id: 'connection_node-001',
     element_type: 'Bus',
     function_ansi: '79',
@@ -135,7 +135,7 @@ export const SANITY_CHECK_FIXTURES: ProtectionSanityCheckResult[] = [
   {
     severity: 'ERROR',
     code: 'OC_MISSING_IN',
-    message_pl: 'Brak wartosci In dla nastawy pradowej — nie mozna obliczyc progow',
+    message_pl: 'Brak wartości $I_n$ dla nastawy prądowej',
     element_id: 'line-001',
     element_type: 'LineBranch',
     function_ansi: '50/51',

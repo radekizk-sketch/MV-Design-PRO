@@ -50,7 +50,7 @@ class PowerFlowRunCreateRequest(BaseModel):
 
     options: dict[str, Any] | None = Field(
         default=None,
-        description="Opcje solvera (tolerance, max_iter, trace_level, etc.)",
+        description="Opcje solvera: `tolerance`, `max_iter`, `trace_level`",
     )
 
 
@@ -562,10 +562,10 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         bus_table.style = "Table Grid"
         header = bus_table.rows[0].cells
         header[0].text = "ID szyny"
-        header[1].text = "V [pu]"
+        header[1].text = "Napięcie [pu]"
         header[2].text = "Kąt [deg]"
-        header[3].text = "P_inj [MW]"
-        header[4].text = "Q_inj [Mvar]"
+        header[3].text = "Moc czynna wstrzykiwana [MW]"
+        header[4].text = "Moc bierna wstrzykiwana [Mvar]"
         for cell in header:
             for paragraph in cell.paragraphs:
                 for run in paragraph.runs:

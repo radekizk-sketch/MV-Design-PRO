@@ -79,7 +79,7 @@ describe('etykiety szyn i linii mówią jednym zapisem', () => {
     // dziesiętny, bez zer nieznaczących) — `liczbaRysunkuPl`, jedna konwencja.
     expect(stationBusbarLabelText(15, 'S01')).toBe('S01 · Sekcja 1 · 15 kV');
     expect(stationBusbarLabelText(10.5, 'S01')).toContain('10,5 kV');
-    expect(formatRatedVoltageKv(20)).toBe('Un=20 kV');
-    expect(formatRatedVoltageKv(10.5)).toBe('Un=10,5 kV');
+    expect(formatRatedVoltageKv(20)).toBe('$U_{n}$=20 kV');
+    expect(formatRatedVoltageKv(10.5)).toBe('$U_{n}$=10,5 kV');
   });
 });

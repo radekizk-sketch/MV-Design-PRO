@@ -198,7 +198,7 @@ def test_dwa_zrodla_i_transformator_od_strony_lv() -> None:
                 szyny=_szyny(("B1", 15.0)),
                 zrodla=(_zrodlo(sk3_mva=None),),
             ),
-            "Sk'' albo",
+            "moc zwarciową albo",
         ),
         (
             GrafDoKompilacji(

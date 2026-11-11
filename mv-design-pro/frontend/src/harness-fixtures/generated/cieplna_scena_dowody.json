@@ -67,7 +67,7 @@
           "inputs": {},
           "substitution": "",
           "result": {},
-          "notes": "Brak danych do rachunku: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
+          "notes": "Brak danych do rachunku: Brak wytrzymałości cieplnej przewodu w katalogu (prąd albo gęstość prądu jednosekundowego) — uzupełnij pozycję katalogową.",
           "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
         }
       ]

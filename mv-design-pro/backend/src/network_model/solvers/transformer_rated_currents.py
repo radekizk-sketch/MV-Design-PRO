@@ -21,13 +21,14 @@ class TransformerRatedCurrentsResult:
 
     primary_current_a: float
     secondary_current_a: float
-    formula_ref: str = "I = S_n / (√3·U_n)"
+    formula_ref: str = r"I = \frac{S_{n}}{\sqrt{3}\,U_{n}}"
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-            "S_n = moc znamionowa transformatora (przeliczona kVA -> VA).",
-            "U_n = napiecie znamionowe uzwojenia (przeliczone kV -> V, miedzyfazowe).",
-            "I_1 = S_n/(√3·U_1n); I_2 = S_n/(√3·U_2n) (bez uwzglednienia obciazenia).",
+            "Układ 3-fazowy symetryczny; współczynnik linii √3.",
+            "Moc znamionowa transformatora przeliczona z kVA na VA.",
+            "Napięcie znamionowe uzwojenia przeliczone z kV na V (międzyfazowe).",
+            "Prąd każdej strony z mocy znamionowej i napięcia znamionowego tej strony (bez "
+            "uwzględnienia obciążenia).",
         )
     )
 

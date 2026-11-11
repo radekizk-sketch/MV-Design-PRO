@@ -94,10 +94,12 @@ ale znaczenie kanału nie może się zgubić w jednym słowniku."""
 class KanalDynamicznyV2(BaseModel):
     """Opis jednego kanalu szeregu czasowego (bez probek — te w API na zadanie)."""
 
-    klucz: str = Field(min_length=1, description="Klucz kanału (np. 'u_pu@b12', 'omega_pu@g1').")
+    klucz: str = Field(min_length=1, description="Klucz kanału (np. `u_pu@b12`, `omega_pu@g1`).")
     przestrzen: PrzestrzenKanalu
     jednostka: str = Field(min_length=1, description="Jednostka fizyczna (pu, Hz, s, MW, Mvar...).")
-    element_ref: str | None = Field(default=None, description="Ref_id elementu ENM, gdy dotyczy.")
+    element_ref: str | None = Field(
+        default=None, description="Identyfikator `ref_id` elementu ENM, gdy dotyczy."
+    )
     opis_pl: str = Field(min_length=1, description="Opis po polsku (bez kodów projektowych).")
 
     model_config = {"frozen": True, "extra": "forbid"}

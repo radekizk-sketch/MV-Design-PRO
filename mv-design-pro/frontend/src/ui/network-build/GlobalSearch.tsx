@@ -15,6 +15,7 @@ import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
 import { podpisStacjiPl } from '../shared/rodzajStacji';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
 import { useSelectionStore } from '../selection';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Types
@@ -142,7 +143,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           category: 'transformers',
           categoryLabel: CATEGORY_LABELS.transformers,
           elementType: 'TransformerBranch',
-          detail: `${t.sn_mva} MVA, uk=${t.uk_percent}%`,
+          detail: `${t.sn_mva} MVA, $u_{k}$=${t.uk_percent}%`,
         });
       }
     }
@@ -354,7 +355,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-800 truncate">{item.name}</p>
                       <p className="text-[10px] text-gray-400 truncate">
-                        {item.detail}
+                        <TekstZWzorami tekst={item.detail} />
                       </p>
                     </div>
                     <span className="text-[10px] text-gray-400 flex-shrink-0">

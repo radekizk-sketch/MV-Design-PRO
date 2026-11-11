@@ -1011,7 +1011,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "5639d1d0bdbeb64e63e5c2824d960f2f32dccafbb50932d69d8d5291ed693af1",
+  "projection_hash": "fb5a9a7de13cd87579d8d5fb4890fb36473f95a2928e2307655c533f3ef38903",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1081,7 +1081,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1098,7 +1098,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1115,7 +1115,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1156,7 +1156,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0564541584,
                         "r_total_ohm": 0.0539673132,
@@ -1171,7 +1172,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 4295.29232,
                       "ik_min_a": 3886.21686,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0564541584
@@ -1230,7 +1232,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1247,7 +1249,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1264,7 +1266,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1305,7 +1307,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0105201131,
                         "r_total_ohm": 0.00268731316,
@@ -1320,7 +1323,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23049.8579,
                       "ik_min_a": 20854.6334,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105201131
@@ -1383,7 +1387,7 @@
                   {
                     "jednostka": "MVA",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "parametr": "sn_mva",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -1400,7 +1404,7 @@
                   {
                     "jednostka": "p.u. (S_rG, U_rG)",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "parametr": "xd_subtransient_pu",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -1417,7 +1421,7 @@
                   {
                     "jednostka": "1",
                     "nazwa_pl": "znamionowy współczynnik mocy",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "parametr": "cos_phi",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -1458,7 +1462,8 @@
                         "x_ohm": 0.000355039727
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.0843283089,
                       "r_total_ohm": 0.0826841132,
@@ -1473,7 +1478,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 2875.51258,
                     "ik_min_a": 2601.65424,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.0843283089
@@ -1495,7 +1501,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "wartosc": {
                       "jednostka": "MVA",
                       "wartosc": 0.1
@@ -1504,7 +1510,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "wartosc": 0.15
@@ -1513,7 +1519,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "1",
                       "wartosc": 0.8
@@ -1524,7 +1530,7 @@
                 "ik1_min_a": 2601.65424,
                 "margines": null,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.7 A > Inf=125.0 A (wkładka gG 100 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy t_wymagany=5 s SWZ (rozdzielczy, pasmo U0 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki Inf/If (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (7200 s), NIE w t_wymagany SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe). Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 2601.7 A większy od prądu niezadziałania 125.0 A (wkładka gG 100 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy wymaganym czasie wyłączenia 5 s SWZ (rozdzielczy, pasmo napięcia względem ziemi 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania przy czasie umownym (1-4 h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki prądu niezadziałania i zadziałania (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (7200 s), NIE w wymaganym czasie SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe). Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "nierozstrzygalne",
                 "status_danych": "UNVALIDATED_INPUT",
@@ -1533,7 +1539,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
@@ -1546,18 +1552,18 @@
                       "if_a": 160.0,
                       "in_a": 100.0,
                       "inf_a": 125.0,
-                      "opis_pl": "I=2601.65 A >= If=160 A (1.6×In) — norma (IEC 60269-1) gwarantuje stopienie wkładki w czasie umownym <= 7200 s (dokładny czas nieokreślony dwoma punktami kontrolnymi — tylko górna granica).",
+                      "opis_pl": "Prąd 2601.65 A nie mniejszy od prądu zadziałania 160 A (1.6-krotność prądu znamionowego) — norma (IEC 60269-1) gwarantuje stopienie wkładki w czasie umownym nie dłuższym niż 7200 s (dokładny czas nieokreślony dwoma punktami kontrolnymi — tylko górna granica).",
                       "standard": "IEC 60269-1",
                       "step": "FUSE_GG_GATE",
                       "t_umowny_s": 7200.0,
-                      "zrodlo_czasu_umownego": "IEC 60269-1 struktura czasu umownego wg zakresu In — źródło: zbiorcze wyszukiwanie techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — 1h(In<=63A)/2h(63<In<=160A)/3h(160<In<=400A)/4h(In>400A).",
-                      "zrodlo_mnoznikow": "IEC 60269-1 (Inf=1,25×In, If=1,6×In dla In>16 A) — zweryfikowane podwójnie: (1) zbiorcze źródła techniczne (Schneider Electric Electrical Installation Guide, electrical-installation.org/enwiki/Elementary_switching_devices; viox.com/iec-60269-low-voltage-fuse-selection-guide-gg-am-nh); (2) elektro.info.pl, „Bezpieczniki topikowe do zabezpieczeń instalacji niskiego napięcia” (cytat wprost: Inf=1,25×In, If=1,6×In dla gG)."
+                      "zrodlo_czasu_umownego": "IEC 60269-1 struktura czasu umownego wg zakresu prądu znamionowego — źródło: zbiorcze wyszukiwanie techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — 1 h do 63 A, 2 h od 63 A do 160 A, 3 h od 160 A do 400 A, 4 h powyżej 400 A prądu znamionowego.",
+                      "zrodlo_mnoznikow": "IEC 60269-1 (prąd niezadziałania 1,25-krotność, prąd zadziałania 1,6-krotność prądu znamionowego dla prądu znamionowego powyżej 16 A) — zweryfikowane podwójnie: (1) zbiorcze źródła techniczne (Schneider Electric Electrical Installation Guide, electrical-installation.org/enwiki/Elementary_switching_devices; viox.com/iec-60269-low-voltage-fuse-selection-guide-gg-am-nh); (2) elektro.info.pl, „Bezpieczniki topikowe do zabezpieczeń instalacji niskiego napięcia” (cytat wprost: prąd niezadziałania 1,25-krotność, prąd zadziałania 1,6-krotność prądu znamionowego dla gG)."
                     },
                     "step": "aparat_wkladka_gg_bramka_konwencjonalna"
                   },
                   {
                     "bramka_t_wymagany_a": null,
-                    "status_zrodel": "Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.",
+                    "status_zrodel": "Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania przy czasie umownym (1-4 h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.",
                     "step": "aparat_wkladka_gg_bramka_t_wymagany",
                     "t_wymagany_s": 5.0
                   },
@@ -1620,7 +1626,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1637,7 +1643,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1654,7 +1660,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1695,7 +1701,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0913135687,
                         "r_total_ohm": 0.0894873132,
@@ -1710,7 +1717,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 2655.54305,
                       "ik_min_a": 2402.63419,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0913135687
@@ -1769,7 +1777,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1786,7 +1794,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1803,7 +1811,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -1844,7 +1852,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0105201131,
                         "r_total_ohm": 0.00268731316,
@@ -1859,7 +1868,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23049.8579,
                       "ik_min_a": 20854.6334,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105201131
@@ -1922,7 +1932,7 @@
                   {
                     "jednostka": "MVA",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "parametr": "sn_mva",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -1939,7 +1949,7 @@
                   {
                     "jednostka": "p.u. (S_rG, U_rG)",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "parametr": "xd_subtransient_pu",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -1956,7 +1966,7 @@
                   {
                     "jednostka": "1",
                     "nazwa_pl": "znamionowy współczynnik mocy",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "parametr": "cos_phi",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -1997,7 +2007,8 @@
                         "x_ohm": 0.000355039727
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.139285692,
                       "r_total_ohm": 0.138095313,
@@ -2012,7 +2023,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 1740.93339,
                     "ik_min_a": 1575.13021,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.139285692
@@ -2034,7 +2046,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "wartosc": {
                       "jednostka": "MVA",
                       "wartosc": 0.1
@@ -2043,7 +2055,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "wartosc": 0.15
@@ -2052,7 +2064,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "1",
                       "wartosc": 0.8
@@ -2063,7 +2075,7 @@
                 "ik1_min_a": 1575.13021,
                 "margines": 2.50020669,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=1575.1 A ≥ Ia=630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1575.1 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
                 "status_danych": "UNVALIDATED_INPUT",
@@ -2072,7 +2084,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma U0). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
+                    "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
@@ -2082,14 +2094,15 @@
                     "ia_a": 630.0,
                     "in_a": 63.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika (IEC 60898-1, G-D4)",
+                    "method_latex": "I_{a} = k_{m,\\max} \\cdot I_{n}",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
                     "ia_a": 630.0,
                     "ik1_min_a": 1575.13021,
                     "margines": 2.50020669,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }
@@ -2143,7 +2156,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2160,7 +2173,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2177,7 +2190,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2218,7 +2231,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0564541584,
                         "r_total_ohm": 0.0539673132,
@@ -2233,7 +2247,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 4295.29232,
                       "ik_min_a": 3886.21686,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0564541584
@@ -2292,7 +2307,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2309,7 +2324,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2326,7 +2341,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2367,7 +2382,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0105201131,
                         "r_total_ohm": 0.00268731316,
@@ -2382,7 +2398,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23049.8579,
                       "ik_min_a": 20854.6334,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105201131
@@ -2445,7 +2462,7 @@
                   {
                     "jednostka": "MVA",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "parametr": "sn_mva",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -2462,7 +2479,7 @@
                   {
                     "jednostka": "p.u. (S_rG, U_rG)",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "parametr": "xd_subtransient_pu",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -2479,7 +2496,7 @@
                   {
                     "jednostka": "1",
                     "nazwa_pl": "znamionowy współczynnik mocy",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "parametr": "cos_phi",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -2520,7 +2537,8 @@
                         "x_ohm": 0.000355039727
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.0843283089,
                       "r_total_ohm": 0.0826841132,
@@ -2535,7 +2553,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 2875.51258,
                     "ik_min_a": 2601.65424,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.0843283089
@@ -2557,7 +2576,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "wartosc": {
                       "jednostka": "MVA",
                       "wartosc": 0.1
@@ -2566,7 +2585,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "wartosc": 0.15
@@ -2575,7 +2594,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "1",
                       "wartosc": 0.8
@@ -2586,7 +2605,7 @@
                 "ik1_min_a": 2601.65424,
                 "margines": 2.60165424,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 2601.7 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 5 s z Tab. 41.1 (rozdzielczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "spełnia",
                 "status_danych": "UNVALIDATED_INPUT",
@@ -2595,7 +2614,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
@@ -2605,14 +2624,15 @@
                     "ia_a": 1000.0,
                     "in_a": 100.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika (IEC 60898-1, G-D4)",
+                    "method_latex": "I_{a} = k_{m,\\max} \\cdot I_{n}",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
                     "ia_a": 1000.0,
                     "ik1_min_a": 2601.65424,
                     "margines": 2.60165424,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }
@@ -2666,7 +2686,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2683,7 +2703,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2700,7 +2720,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2741,7 +2761,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0564541584,
                         "r_total_ohm": 0.0539673132,
@@ -2756,7 +2777,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 4295.29232,
                       "ik_min_a": 3886.21686,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0564541584
@@ -2815,7 +2837,7 @@
                     {
                       "jednostka": "MVA",
                       "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "parametr": "sn_mva",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2832,7 +2854,7 @@
                     {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "parametr": "xd_subtransient_pu",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2849,7 +2871,7 @@
                     {
                       "jednostka": "1",
                       "nazwa_pl": "znamionowy współczynnik mocy",
-                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                      "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                       "parametr": "cos_phi",
                       "pochodzenie": "PROPOZYCJA",
                       "source_id": "QF-G1_zrodlo",
@@ -2890,7 +2912,8 @@
                           "x_ohm": 0.000355039727
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0105201131,
                         "r_total_ohm": 0.00268731316,
@@ -2905,7 +2928,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 23049.8579,
                       "ik_min_a": 20854.6334,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0105201131
@@ -2968,7 +2992,7 @@
                   {
                     "jednostka": "MVA",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "parametr": "sn_mva",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -2985,7 +3009,7 @@
                   {
                     "jednostka": "p.u. (S_rG, U_rG)",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "parametr": "xd_subtransient_pu",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -3002,7 +3026,7 @@
                   {
                     "jednostka": "1",
                     "nazwa_pl": "znamionowy współczynnik mocy",
-                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "parametr": "cos_phi",
                     "pochodzenie": "PROPOZYCJA",
                     "source_id": "QF-G1_zrodlo",
@@ -3043,7 +3067,8 @@
                         "x_ohm": 0.000355039727
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.0843283089,
                       "r_total_ohm": 0.0826841132,
@@ -3058,7 +3083,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 2875.51258,
                     "ik_min_a": 2601.65424,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.0843283089
@@ -3080,7 +3106,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "wartosc": {
                       "jednostka": "MVA",
                       "wartosc": 0.1
@@ -3089,7 +3115,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "p.u. (S_rG, U_rG)",
                       "wartosc": 0.15
@@ -3098,7 +3124,7 @@
                   {
                     "jakosc": "ESTIMATED",
                     "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
-                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+                    "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "wartosc": {
                       "jednostka": "1",
                       "wartosc": 0.8
@@ -3109,7 +3135,7 @@
                 "ik1_min_a": 2601.65424,
                 "margines": 2.60165424,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2601.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 2601.7 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 5 s z Tab. 41.1 (rozdzielczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1” 0,1 MVA; reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1” 0,15 p.u. (S_rG, U_rG); znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1” 0,8 1 — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "spełnia",
                 "status_danych": "UNVALIDATED_INPUT",
@@ -3118,7 +3144,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
@@ -3128,14 +3154,15 @@
                     "ia_a": 1000.0,
                     "in_a": 100.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika (IEC 60898-1, G-D4)",
+                    "method_latex": "I_{a} = k_{m,\\max} \\cdot I_{n}",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
                     "ia_a": 1000.0,
                     "ik1_min_a": 2601.65424,
                     "margines": 2.60165424,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }
@@ -3165,7 +3192,7 @@
         {
           "jakosc": "ESTIMATED",
           "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Agregat G1”",
-          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
           "wartosc": {
             "jednostka": "MVA",
             "wartosc": 0.1
@@ -3174,7 +3201,7 @@
         {
           "jakosc": "ESTIMATED",
           "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Agregat G1”",
-          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
           "wartosc": {
             "jednostka": "p.u. (S_rG, U_rG)",
             "wartosc": 0.15
@@ -3183,7 +3210,7 @@
         {
           "jakosc": "ESTIMATED",
           "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Agregat G1”",
-          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
           "wartosc": {
             "jednostka": "1",
             "wartosc": 0.8
@@ -3201,7 +3228,7 @@
         {
           "jednostka": "MVA",
           "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
           "parametr": "sn_mva",
           "pochodzenie": "PROPOZYCJA",
           "source_id": "QF-G1_zrodlo",
@@ -3218,7 +3245,7 @@
         {
           "jednostka": "p.u. (S_rG, U_rG)",
           "nazwa_pl": "reaktancja podprzejściowa nasycona",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
           "parametr": "xd_subtransient_pu",
           "pochodzenie": "PROPOZYCJA",
           "source_id": "QF-G1_zrodlo",
@@ -3235,7 +3262,7 @@
         {
           "jednostka": "1",
           "nazwa_pl": "znamionowy współczynnik mocy",
-          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+          "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
           "parametr": "cos_phi",
           "pochodzenie": "PROPOZYCJA",
           "source_id": "QF-G1_zrodlo",
@@ -3270,7 +3297,7 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+      "z0_missing_reason_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych).",
       "z0_ohm": null,
       "z1_ohm": {
         "r": 0.099895812,

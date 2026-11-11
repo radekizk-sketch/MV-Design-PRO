@@ -52,6 +52,7 @@ import {
   naWierszePunktowZwarciowych,
   przebiegiZwarciowe,
 } from './zwarciePorownanieModel';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type StanPorownania = 'bezczynny' | 'wtrakcie' | 'blad';
 
@@ -153,7 +154,7 @@ export function TrybZwarciowy({ szczegolyAudytowe }: TrybZwarciowyProps) {
     <div className="mvd-por" data-testid="mvd-porz-ekran">
       <header className="mvd-por-head">
         <div className="mvd-por-head-main">
-          <p className="mvd-por-sub">{SZ.podtytul}</p>
+          <p className="mvd-por-sub"><TekstZWzorami tekst={SZ.podtytul} /></p>
         </div>
       </header>
 
@@ -250,7 +251,7 @@ export function TrybZwarciowy({ szczegolyAudytowe }: TrybZwarciowyProps) {
               >
                 {nakladkaWTrakcie ? SZ.pokazNaSchemacieWTrakcie : SZ.pokazNaSchemacie}
               </button>
-              <p className="mvd-por-schemat-opis">{SZ.pokazNaSchemacieOpis}</p>
+              <p className="mvd-por-schemat-opis"><TekstZWzorami tekst={SZ.pokazNaSchemacieOpis} /></p>
             </>
           )}
           {bladNakladki && (
@@ -283,7 +284,7 @@ function SelektorPrzebiegu({
 }: SelektorPrzebieguProps) {
   return (
     <label className="mvd-por-pole">
-      <span className="mvd-por-pole-etyk">{etykieta}</span>
+      <span className="mvd-por-pole-etyk"><TekstZWzorami tekst={etykieta} /></span>
       <select
         className="mvd-por-select"
         value={wybrany}

@@ -44,6 +44,7 @@ prints the companions as JSON to stdout.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import math
 import os
@@ -1155,7 +1156,7 @@ def _oze_sc_bus(
         entry["source_contribution"] = {
             "machine_type": "IBG",
             "model": (
-                "IEC 60909 §6.7 — źródło prądowe ograniczone (k·I_rated), "
+                "IEC 60909 §6.7 — źródło prądowe ograniczone (krotność prądu znamionowego), "
                 "sprowadzone przez przekładnię"
             ),
             "ik_contribution_ka": round(_ibg_referred_a(graph, un_kv) / 1000.0, 3),
@@ -1167,11 +1168,13 @@ def _oze_sc_bus(
     )
     is_sync = machine_type == "SYNCHRONOUS"
     if is_sync:
-        model = "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za Z″ (zanik μ)"
+        model = "IEC 60909-0:2016 §6.3/§6.6 — maszyna synchroniczna za impedancją podprzejściową (zanik μ)"
     elif machine_type == "DFIG":
-        model = "IEC 60909-0:2016 §6.7/§6.6 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M (zanik μ·q)"
+        model = "IEC 60909-0:2016 §6.7/§6.6 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za impedancją silnika (zanik μ·q)"
     else:
-        model = "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za Z_M (zanik μ·q)"
+        model = (
+            "IEC 60909-0:2016 §6.7/§6.6 — maszyna asynchroniczna za impedancją silnika (zanik μ·q)"
+        )
     entry["source_contribution"] = {
         "machine_type": machine_type,
         "model": model,
@@ -1408,7 +1411,7 @@ def build_g1() -> dict[str, Any]:
         technology="PV",
         machine_type="IBG",
         nc_class="A",
-        control_mode="cosφ=const",
+        control_mode="$\\cos\\varphi$ = const",
         p_zainst_kw=55.0,
         pn_ac_kw=50.0,
         p_przylacz_kw=50.0,
@@ -1556,7 +1559,7 @@ def build_g3() -> dict[str, Any]:
             technology="PV",
             machine_type="IBG",
             nc_class="C",
-            control_mode="cosφ(P)",
+            control_mode="$\\cos\\varphi(P)$",
             p_zainst_kw=1650.0,
             pn_ac_kw=1500.0,
             p_przylacz_kw=1500.0,
@@ -1619,7 +1622,7 @@ _BUK1_COORDINATION: list[dict[str, Any]] = [
         "code": "I>",
         "name": "nadprądowe od przeciążeń",
         "inverter": "tech. producenta",
-        "relay_sn": "1,2 I_bSN = 6 A → 48 A SN / 5 s",
+        "relay_sn": "1,2 × prąd bazowy SN = 6 A → 48 A SN / 5 s",
         "measure": "SN",
         "trips": "SN Q0 pole 1",
     },
@@ -1628,7 +1631,7 @@ _BUK1_COORDINATION: list[dict[str, Any]] = [
         "code": "I>>",
         "name": "nadprądowe zwarciowe",
         "inverter": "tech. producenta",
-        "relay_sn": "4 I_bSN = 20 A → 160 A SN / 0,1 s",
+        "relay_sn": "4 × prąd bazowy SN = 20 A → 160 A SN / 0,1 s",
         "measure": "SN",
         "trips": "SN Q0 pole 1",
     },
@@ -1636,8 +1639,8 @@ _BUK1_COORDINATION: list[dict[str, Any]] = [
         "lp": 3,
         "code": "Ust I>",
         "name": "przed wzrostem napięcia",
-        "inverter": "1,1 Un = 880 V (16,5 kV) / 5 s",
-        "relay_sn": "1,12 U_bSN = 112 V → 16,80 kV / 3 s",
+        "inverter": "1,1 × napięcie znamionowe = 880 V (16,5 kV) / 5 s",
+        "relay_sn": "1,12 × napięcie bazowe SN = 112 V → 16,80 kV / 3 s",
         "measure": "SN",
         "trips": "nN Q1",
     },
@@ -1645,8 +1648,8 @@ _BUK1_COORDINATION: list[dict[str, Any]] = [
         "lp": 4,
         "code": "Ust II>",
         "name": "przed wzrostem napięcia",
-        "inverter": "1,15 Un = 920 V (17,25 kV) / 0,05 s",
-        "relay_sn": "1,15 U_bSN = 115 V → 17,25 kV / 0,3 s",
+        "inverter": "1,15 × napięcie znamionowe = 920 V (17,25 kV) / 0,05 s",
+        "relay_sn": "1,15 × napięcie bazowe SN = 115 V → 17,25 kV / 0,3 s",
         "measure": "SN",
         "trips": "SN Q0 pole 1",
     },
@@ -1654,8 +1657,8 @@ _BUK1_COORDINATION: list[dict[str, Any]] = [
         "lp": 5,
         "code": "Ust I<",
         "name": "przed obniżeniem napięcia",
-        "inverter": "0,8 Un = 640 V (12,00 kV) / 0,05 s",
-        "relay_sn": "0,8 U_bnN = 80 V → 12,00 kV / 5 s",
+        "inverter": "0,8 × napięcie znamionowe = 640 V (12,00 kV) / 0,05 s",
+        "relay_sn": "0,8 × napięcie bazowe nN = 80 V → 12,00 kV / 5 s",
         "measure": "nN",
         "trips": "nN Q1",
     },
@@ -1739,7 +1742,7 @@ def build_g4_pvtr() -> dict[str, Any]:
     przekaźnik SN: I>/I>>/Ust II>/G0>/3U0/I0>; granica ZKSN na kablu zasilającym) +
     POLE 2 TRANSFORMATOROWE (SŁ2+U: rozłącznik GTR5 ◇ + uziemnik ◯ → ITK 224 →
     3×YHAKXS DO TRANSFORMATORA, który wisi pod polem; bez przekaźnika).
-    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I>=720A / I>>=4000A) → szyna 3×P40×10 →
+    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I> = 720 A / I>> = 4000 A) → szyna 3×P40×10 →
     3 POLA FALOWNIKÓW (~333 kW; 560×595Wp/falownik; BTVC 315A/800V) + pole RPW-PV.
     Koordynacja trójpoziomowa (dok. 1.18) — w module zabezpieczenia, nie na płótnie.
 
@@ -1824,7 +1827,9 @@ def build_g4_pvtr() -> dict[str, Any]:
         "nn_kv": _PV1MW_NN_KV,
         "transformer": "1000 kVA · 15,75/0,8 kV · POLIM-D18N",
         "nn_grid": "IT",
-        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I>=720 A (0,9 In) · I>>=4000 A (4 In)",
+        # Etykieta ekranu (schemat SVG, `TekstSvgZWzorami`): człony nastaw I>/I>> to oznaczenia
+        # stopni zabezpieczenia, krotność prądu znamionowego jako wzór `$…$`.
+        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I> = 720 A ($0{,}9\\,I_n$) · I>> = 4000 A ($4\\,I_n$)",
         "pv_modules": f"JA SOLAR JAM72D40-595/MB · 595 Wp · {inv_count}×{modules_per_inv} szt = {p_dc_kwp:.1f} kWp DC",
         "inverters": f"{inv_count} × ~{kwp_per_inv:.0f} kW (BTVC 315 A/800 V na pole)",
         "dc_ac_ratio": round(p_dc_kwp / 1000.0, 3),
@@ -1856,7 +1861,7 @@ def build_g4_pvtr() -> dict[str, Any]:
         "neutral_point": "kompensowana",  # {izolowana | kompensowana | rezystor} — OSD SN
         "ik_1f_ka": 0.12,  # I″k 1f-z SN wg uziemienia neutralnego OSD (sieć skompensowana)
         "imd_it_nn": True,  # IMD na układzie IT nN — sygnalizacja 1. doziemienia (bez wyłączenia)
-        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD sygnalizuje; SN: I″k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD sygnalizuje; SN: prąd zwarcia doziemnego z uziemienia neutralnego OSD",
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2084,7 +2089,7 @@ def build_g5_bess() -> dict[str, Any]:
         "neutral_point": "kompensowana",
         "ik_1f_ka": 0.12,
         "imd_it_nn": True,
-        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN: I″k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN: prąd zwarcia doziemnego z uziemienia neutralnego OSD",
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2373,7 +2378,7 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         "neutral_point": "kompensowana",
         "ik_1f_ka": 0.12,  # SN 15 kV (sieć skompensowana OSD) — stacja końcowa
         "imd_it_nn": True,  # nN IT: IMD sygnalizuje 1. doziemienie (bez wyłączenia)
-        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN 15 kV: I″k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez prądu — IMD; SN 15 kV: prąd zwarcia doziemnego z uziemienia neutralnego OSD",
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2557,15 +2562,15 @@ def build_g5_wind_t4() -> dict[str, Any]:
     src["grid_earthing"] = {
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN",
         "neutral_point": "kompensowana",
-        # I″k1f-z for the compensated 15 kV collector: the residual current after Petersen
+        # prąd zwarcia doziemnego for the compensated 15 kV collector: the residual current after Petersen
         # compensation ∝ Un (capacitive earth-fault current Ic of the collector cables),
         # so 0.06 kA = 0.12·(15/30) — re-levelled from the 30 kV model and DISTINCT from
         # G1 (PV, 0.12 kA): not a copy. Real Ic ⇒ network-specific; this is the archetype.
         "ik_1f_ka": 0.06,
         "imd_it_nn": False,
         "note_pl": (
-            "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), "
-            "prąd resztkowy ∝ Un; LV turbiny za trafem Dyn — uziemienie lokalne"
+            "SN kolektor 15 kV: prąd zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), "
+            "prąd resztkowy proporcjonalny do napięcia znamionowego; LV turbiny za trafem Dyn — uziemienie lokalne"
         ),
     }
     src["metering"] = _metering(
@@ -2796,7 +2801,7 @@ def build_g8_biogaz() -> dict[str, Any]:
         technology="Biogazownia — agregaty synchroniczne (kogeneracja)",
         machine_type="SYNCHRONOUS",
         nc_class="C",
-        control_mode="U/Q · cosφ",
+        control_mode="U/Q · $\\cos\\varphi$",
         p_zainst_kw=p_farm_kw,
         pn_ac_kw=p_farm_kw,
         p_przylacz_kw=p_farm_kw,
@@ -2811,7 +2816,7 @@ def build_g8_biogaz() -> dict[str, Any]:
         "cos_phi_r": _BIOGAZ_COSPHI,
         # Generator star-point earthing (15 kV) — the basis for stator-ground 64/59N and the
         # single-phase earth-fault current. NGR (rezystor) limits I0 of the machine.
-        "neutral_earthing": "rezystor NGR (ogranicza I0 stojana)",
+        "neutral_earthing": "rezystor NGR (ogranicza prąd zerowy stojana)",
     }
     src["metering"] = _metering(
         source_ref="norma:IEC_61869-2_CT;norma:IEC_61869-3_VT",
@@ -2824,7 +2829,7 @@ def build_g8_biogaz() -> dict[str, Any]:
         "ik_1f_ka": 0.06,
         "imd_it_nn": False,
         "note_pl": (
-            "SN 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), prąd resztkowy ∝ Un; "
+            "SN 15 kV: prąd zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), prąd resztkowy proporcjonalny do napięcia znamionowego; "
             "agregaty synchroniczne na szynie SN — punkt gwiazdowy generatora wg karty"
         ),
     }
@@ -2937,8 +2942,8 @@ def build_g7_wind_async() -> dict[str, Any]:
         "ik_1f_ka": 0.06,
         "imd_it_nn": False,
         "note_pl": (
-            "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), prąd "
-            "resztkowy ∝ Un; LV turbiny za trafem Dyn — uziemienie lokalne"
+            "SN kolektor 15 kV: prąd zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), prąd "
+            "resztkowy proporcjonalny do napięcia znamionowego; LV turbiny za trafem Dyn — uziemienie lokalne"
         ),
     }
     # Audit #5 — MACHINE protection (split from the NC RfG interface, like G6). An induction
@@ -3063,8 +3068,8 @@ def build_g6_wind_dfig() -> dict[str, Any]:
         "ik_1f_ka": 0.06,
         "imd_it_nn": False,  # brak stacyjnej szyny IT nN w farmie wiatrowej (jak Typ 4)
         "note_pl": (
-            "SN kolektor 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana), "
-            "prąd resztkowy ∝ Un; zacisk DFIG za trafem Dyn — uziemienie lokalne"
+            "SN kolektor 15 kV: prąd zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), "
+            "prąd resztkowy proporcjonalny do napięcia znamionowego; zacisk DFIG za trafem Dyn — uziemienie lokalne"
         ),
     }
     src["metering"] = _metering(
@@ -3164,7 +3169,7 @@ def build_g9_gpo() -> dict[str, Any]:
         technology="GPO wielopolowe — PV (IBG) + agregat synchr. + wiatr async",
         machine_type="MIXED",
         nc_class="C",
-        control_mode="U/Q · cosφ · P(f)",
+        control_mode="U/Q · $\\cos\\varphi$ · P(f)",
         p_zainst_kw=p_export_kw,
         pn_ac_kw=p_export_kw,
         p_przylacz_kw=p_export_kw,
@@ -3181,7 +3186,7 @@ def build_g9_gpo() -> dict[str, Any]:
         "ik_1f_ka": 0.06,
         "imd_it_nn": False,
         "note_pl": (
-            "SN 15 kV: I″k1f-z z uziemienia neutralnego OSD (kompensowana); pkt neutralny "
+            "SN 15 kV: prąd zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana); pkt neutralny "
             "agregatu synchr. przez rezystor NGR (64/59N)"
         ),
     }
@@ -3365,11 +3370,35 @@ def _zapisz_artefakt(nazwa: str) -> str:
     tresc = render_companions()[nazwa]
     if os.path.exists(path):
         with open(path, encoding="utf-8") as fh:
-            if kanonizuj_artefakt(fh.read()) == kanonizuj_artefakt(tresc):
-                return path
+            na_dysku = fh.read()
+        if kanonizuj_artefakt(na_dysku) == kanonizuj_artefakt(tresc):
+            return path
+        tresc = zakotwicz_linie(na_dysku, tresc)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(tresc)
     return path
+
+
+def zakotwicz_linie(na_dysku: str, tresc: str) -> str:
+    """Kotwica w szumie PER LINIA (karta ZU, 2026-11-04): gdy artefakt zmienia się realnie
+    (np. tekst uwagi śladu), linie, które różnią się od zapisanych wyłącznie szumem ostatniej
+    cyfry (`kanonizuj_artefakt`), zostają zapisem z dysku. Bez tego każda zmiana tekstu
+    wnosiła do repozytorium szum tej maszyny w niezwiązanych liniach (pomiar:
+    `shortCircuit.ts` R/X 0.500002 → 0.500003 w czterech podstawieniach przy zmianie
+    wyłącznie tytułów kroków). Dopasowanie linii: `difflib.SequenceMatcher` na liniach
+    skanonizowanych — kanonicznie wynik jest równy świeżej treści (test świeżości)."""
+    stare = na_dysku.splitlines(keepends=True)
+    nowe = tresc.splitlines(keepends=True)
+    dopasowanie = difflib.SequenceMatcher(
+        None,
+        [kanonizuj_artefakt(linia) for linia in stare],
+        [kanonizuj_artefakt(linia) for linia in nowe],
+        autojunk=False,
+    )
+    wynik: list[str] = []
+    for rodzaj, a0, a1, b0, b1 in dopasowanie.get_opcodes():
+        wynik.extend(stare[a0:a1] if rodzaj == "equal" else nowe[b0:b1])
+    return "".join(wynik)
 
 
 def write_companions() -> str:

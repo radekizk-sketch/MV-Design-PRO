@@ -33,6 +33,7 @@ import { ListaRekordowWymagan, NaglowekModuluNcRfg, OpisDokumentuWarstwy } from 
 import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
 import type {
   BrakiCertyfikatu,
+  JednostkiKrokuSladu,
   WejscieModuluNcRfg,
   WidokCertyfikatu,
   ZadanieCertyfikatu,
@@ -66,6 +67,10 @@ import {
 } from './strings';
 
 import './macierz.css';
+
+/** Katalog nie dotarł — ślad pokazuje zapis rdzenia (stan awaryjny). */
+const BRAK_WZOROW_LATEX: Readonly<Record<string, string>> = Object.freeze({});
+const BRAK_JEDNOSTEK_SLADU: Readonly<Record<string, JednostkiKrokuSladu>> = Object.freeze({});
 
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
 function zapiszBlob(blob: Blob, nazwa: string): void {
@@ -663,6 +668,8 @@ export function MacierzNcRfg({
               definicja={definicjaSzczegolu}
               nazwaModulu={nazwaModuluSzczegolu}
               slad={wynik?.white_box_trace ?? []}
+              wzoryLatex={katalog?.wzory_sladu_latex ?? BRAK_WZOROW_LATEX}
+              jednostkiSladu={katalog?.jednostki_sladu ?? BRAK_JEDNOSTEK_SLADU}
               szczegolyAudytowe={szczegolyAudytowe}
             />
             {opisWybrany ? (

@@ -713,6 +713,10 @@ def test_slad_doziemienia_po_polsku_i_z_latex_do_ekranu(
         assert latex and not re.search(r"\d\.\d", latex) and "{,}" in latex, latex
         liczby_prozy = re.findall(r"\d+,\d+", krok["substitution"])
         assert [x.replace(",", "{,}") for x in liczby_prozy] == re.findall(r"\d+\{,\}\d+", latex)
+        # Proza podstawienia słowami, bez symbolu i bez samego wzoru (decyzja architekta
+        # 2026-11-04) — wzór niesie wyłącznie `substitution_latex`.
+        assert not re.search(r"\b(?:U0|U_[bc]|I_[CN]|v) = ", krok["substitution"]), krok
+        assert re.search(r"[a-ząćęłńóśźż]{4,}", krok["substitution"]), krok
     linie = _sc_row_bilans_linie(cztery_sposoby[tryb][2])
     for krok in d["slad"]:
         assert f"Ślad doziemienia — {krok['title']}: {krok['substitution']}" in linie

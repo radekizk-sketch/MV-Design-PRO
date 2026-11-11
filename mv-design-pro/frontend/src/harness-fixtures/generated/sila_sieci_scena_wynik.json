@@ -1,11 +1,11 @@
 {
-  "analysis_id": "262a4a23d9385a2e56c43b6d23909da85f5e9d152afb59d3fb106b558ab02bd0",
+  "analysis_id": "a4f32179f891d017d225e4392b49c7369db074565ee9f0a31afecb099dfd631a",
   "context": {
     "project_name": "Scena analiz OZE",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "b60854b340ef5b888b7ac91930c999637da22fb92330238a01a93aa940276c2b",
+    "snapshot_hash": "6254024ce3a386f4684af72b6aa9f007a2069b65f7edad14044a28dd81dc702c",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "weak_threshold": 3.0,
@@ -55,7 +55,7 @@
       {
         "symbol": "WSCR",
         "formula_latex": "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
-        "substitution_pl": "licznik Σ(S_sc·S_n) = 8.1691 MVA²; (Σ S_n)² = 0.0462 MVA²",
+        "substitution_pl": "licznik: suma iloczynów mocy zwarciowej i mocy znamionowej = 8.1691 MVA²; kwadrat sumy mocy znamionowych = 0.0462 MVA²",
         "result_pl": "WSCR = 176.7254 (–), n = 1"
       }
     ]

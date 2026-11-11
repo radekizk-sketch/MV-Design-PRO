@@ -279,7 +279,7 @@ OPISY_OGRANICZEN_RAPORTOWYCH_PL: dict[str, str] = {
         "Obliczenie rozpływu nie osiągnęło zbieżności — wynik nie nadaje się do raportu."
     ),
     OGRANICZENIE_POZA_ZAKRESEM_IEC60909: (
-        "Zwarcie przez impedancję przejścia Z_f jest poza zakresem normy IEC 60909, która "
+        "Zwarcie przez impedancję przejścia jest poza zakresem normy IEC 60909, która "
         "definiuje prąd zwarciowy dla zwarcia metalicznego — wynik nie jest podstawą doboru "
         "wytrzymałości zwarciowej ani pakietu dowodowego aparatury."
     ),
@@ -1058,8 +1058,8 @@ def _validate_protection_sc_reference(
     sc_run_id_raw = normalized_options.get("sc_run_id")
     if not sc_run_id_raw:
         raise OdmowaDanychError(
-            "Analiza zabezpieczeń wymaga options.sc_run_id (identyfikator "
-            "zakończonego biegu zwarciowego, którego prąd Ik'' interpretuje ocena)"
+            "Analiza zabezpieczeń wymaga `options.sc_run_id` (identyfikator "
+            "zakończonego biegu zwarciowego, którego początkowy prąd zwarciowy interpretuje ocena)"
         )
     # Partia integracji 10: identyfikator biegu źródłowego w polu `dane` odmowy, nigdy
     # w treści (projektant wybiera bieg z listy, nie zna jego identyfikatora).
@@ -1248,7 +1248,7 @@ def ocen_model_biegu(
             blokady.append(
                 BlokadaModeluBiegu(
                     kod=KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ,
-                    komunikat="Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM",
+                    komunikat="Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej w ENM",
                     elementy=tuple(
                         sorted({e for problem in problemy_z0 for e in problem.element_refs})
                     ),
@@ -1329,7 +1329,7 @@ def create_run(
         # staje się biegiem, który upadnie dopiero w kolejce wykonawcy.
         if analysis_type != "short_circuit_sn":
             raise OdmowaNazwana(
-                "Impedancja przejścia Z_f dotyczy wyłącznie biegu zwarciowego — ten rodzaj "
+                "Impedancja przejścia dotyczy wyłącznie biegu zwarciowego — ten rodzaj "
                 "biegu jej nie czyta.",
                 kod=KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM,
                 dane={"analysis_type": analysis_type},

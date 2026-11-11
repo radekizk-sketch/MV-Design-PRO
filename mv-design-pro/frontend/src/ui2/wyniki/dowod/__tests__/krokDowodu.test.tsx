@@ -6,6 +6,7 @@ import { mapujKroki } from '../dowodModel';
 import { DOWOD_STRINGS } from '../strings';
 import { subskrybuj } from '../../../events';
 import { traceStepsFixture } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 function model() {
   return mapujKroki(traceStepsFixture());
@@ -70,7 +71,7 @@ describe('KrokDowodu — kanon pięciu pól', () => {
   it('etykieta znanego klucza po polsku', () => {
     render(<KrokDowodu krok={model()[1]} szczegolyAudytowe={false} />);
     const wynik = screen.getByTestId('mvd-dowod-wynik');
-    expect(within(wynik).getByText('Prąd zwarciowy początkowy Ik"')).toBeInTheDocument();
+    expect(within(wynik).getByText(poTekscieZWzorami("Prąd zwarciowy początkowy $I_{k}''$"))).toBeInTheDocument();
   });
 });
 

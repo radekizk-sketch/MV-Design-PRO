@@ -83,7 +83,7 @@ export function walidujFormularz(data: GeneratorSnFormData): BladPola[] {
       bledy.push({ field: 'catalog_ref', message: 'Wybierz typ generatora z katalogu albo podaj tabliczkę ręcznie.' });
     }
   } else if (!dodatnia(data.rated_mva)) {
-    bledy.push({ field: 'rated_mva', message: 'Podaj dodatnią moc pozorną znamionową Sn.' });
+    bledy.push({ field: 'rated_mva', message: 'Podaj dodatnią moc pozorną znamionową $S_{n}$.' });
   }
   if (!dodatnia(data.p_mw)) {
     bledy.push({ field: 'p_mw', message: 'Podaj dodatnią moc czynną P generatora (nastawa studium).' });
@@ -96,10 +96,10 @@ export function walidujFormularz(data: GeneratorSnFormData): BladPola[] {
     if (data.tryb_tabliczki === 'reczna' && (qMin === null || qMax === null)) {
       bledy.push({
         field: 'q_min_mvar',
-        message: 'Regulacja napięcia wymaga granic mocy biernej Q min i Q max (z formularza albo z tabliczki).',
+        message: 'Regulacja napięcia wymaga granic mocy biernej $Q_{\\min}$ i $Q_{\\max}$ (z formularza albo z tabliczki).',
       });
     } else if (qMin !== null && qMax !== null && qMin >= qMax) {
-      bledy.push({ field: 'q_min_mvar', message: 'Q min musi być mniejsze od Q max.' });
+      bledy.push({ field: 'q_min_mvar', message: '$Q_{\\min}$ musi być mniejsze od $Q_{\\max}$.' });
     }
   }
   return bledy;

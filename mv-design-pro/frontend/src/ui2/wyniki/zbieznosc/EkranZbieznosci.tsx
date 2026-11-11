@@ -47,6 +47,7 @@ import {
 } from './zbieznoscModel';
 import { ZBIEZNOSC_STRINGS as T } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 function StanZerowy({
   tytul,
@@ -63,8 +64,8 @@ function StanZerowy({
 }) {
   return (
     <div className="mvd-zbieznosc-stan" data-testid={testid} data-tone="idle">
-      <h4>{tytul}</h4>
-      <p>{opis}</p>
+      <h4><TekstZWzorami tekst={tytul} /></h4>
+      <p><TekstZWzorami tekst={opis} /></p>
       {akcja && onAkcja && (
         <button
           type="button"
@@ -214,7 +215,7 @@ export function EkranZbieznosci() {
             <dl className="mvd-zbieznosc-siatka" data-testid="mvd-zbieznosc-bilans">
               {naBilansPrzebiegu(wynikAktualny).map((p) => (
                 <div className="mvd-zbieznosc-pozycja" key={p.etykieta}>
-                  <dt>{p.etykieta}</dt>
+                  <dt><TekstZWzorami tekst={p.etykieta} /></dt>
                   <dd className="mvd-num">
                     {p.wartosc} <span className="mvd-zbieznosc-jedn">{p.jednostka}</span>
                   </dd>

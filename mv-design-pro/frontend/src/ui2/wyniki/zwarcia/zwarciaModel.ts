@@ -822,7 +822,8 @@ export function naWierszeZrodelSieciowych(
         wartosc: wpis.z_q_abs_ohm !== undefined ? fmtOhm(wpis.z_q_abs_ohm) : ZWARCIA_STRINGS.kreska,
         sortKey: wpis.z_q_abs_ohm ?? Number.NEGATIVE_INFINITY,
       },
-      wzor: { wartosc: wpis.formula },
+      // Wzór przez KaTeX (segment `$...$` renderuje `TekstZWzorami` komórki tabeli wzorca).
+      wzor: { wartosc: `$${wpis.formula_latex}$` },
       [KLUCZ_ZRODLA_SIECIOWE]: { wartosc: `${wpis.ref_id}::${wpis.scenariusz}` },
     };
   });

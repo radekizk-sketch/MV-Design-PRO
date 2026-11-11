@@ -32,6 +32,7 @@ def white_box_to_dict(step: WhiteBoxStep) -> dict[str, Any]:
         "substitution_pl": step.substitution_pl,
         "result_pl": step.result_pl,
         "unit_check_pl": step.unit_check_pl,
+        "unit_check_latex": step.unit_check_latex,
     }
 
 

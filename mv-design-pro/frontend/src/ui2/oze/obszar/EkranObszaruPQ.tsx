@@ -83,8 +83,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-obszar-stan mvd-obszar-stan--blad' : 'mvd-obszar-stan'}
       data-testid={testid}
     >
-      <p className="mvd-obszar-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-obszar-stan-desc">{opis}</p>}
+      <p className="mvd-obszar-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-obszar-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -326,7 +326,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
           </div>
 
           <div className="mvd-obszar-param">
-            <label htmlFor="mvd-obszar-limity-qmin">{OBSZAR_STRINGS.limityQMin}</label>
+            <label htmlFor="mvd-obszar-limity-qmin"><TekstZWzorami tekst={OBSZAR_STRINGS.limityQMin} /></label>
             <div className="mvd-obszar-param-pole">
               <input
                 id="mvd-obszar-limity-qmin"
@@ -341,7 +341,7 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
           </div>
 
           <div className="mvd-obszar-param">
-            <label htmlFor="mvd-obszar-limity-qmax">{OBSZAR_STRINGS.limityQMax}</label>
+            <label htmlFor="mvd-obszar-limity-qmax"><TekstZWzorami tekst={OBSZAR_STRINGS.limityQMax} /></label>
             <div className="mvd-obszar-param-pole">
               <input
                 id="mvd-obszar-limity-qmax"

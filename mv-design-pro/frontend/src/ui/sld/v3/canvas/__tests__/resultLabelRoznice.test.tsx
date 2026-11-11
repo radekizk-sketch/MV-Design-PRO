@@ -212,6 +212,26 @@ describe('Rejestr szablonów — rodzina różnic', () => {
       expect(resultLabelLineQuantity(podpis), `podpis bez wielkości: ${podpis}`).not.toBeNull();
     }
   });
+
+  it('podpis → jedna wielkość: ten sam podpis w dwóch szablonach nie niesie dwóch wielkości', () => {
+    // Tabela filtra jest budowana z par (podpis, wielkość) rejestru — gdyby dwa szablony
+    // dały temu samemu podpisowi różne wielkości, ostatni wpis cicho wygrałby w tabeli
+    // i jedna z linii filtrowałaby się pod cudzą wielkością.
+    const wielkosciPodpisu = new Map<string, Set<string>>();
+    for (const rodzina of Object.values(RESULT_LABEL_TEMPLATES)) {
+      for (const specs of Object.values(rodzina)) {
+        for (const spec of specs ?? []) {
+          const zbior = wielkosciPodpisu.get(spec.prefix) ?? new Set<string>();
+          zbior.add(spec.quantity);
+          wielkosciPodpisu.set(spec.prefix, zbior);
+        }
+      }
+    }
+    for (const [podpis, wielkosci] of wielkosciPodpisu) {
+      expect([...wielkosci], `podpis ${podpis}`).toHaveLength(1);
+      expect(resultLabelLineQuantity(podpis)).toBe([...wielkosci][0]);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -225,8 +245,8 @@ describe('Etykiety różnic — treść z backendu', () => {
       { run_id: 'sc-run-b', analysis_type: 'DELTA_SC', elements: nakladkaFixture().elements },
       singleHop,
     );
-    expect(wpisy[busOwnerRef].lines[0]).toEqual({ prefix: 'Δ Ik″', text: '+2,00 kA' });
-    expect(wpisy[busOwnerRef].lines[1]).toEqual({ prefix: 'Δ Ik″ %', text: '+25,0 %' });
+    expect(wpisy[busOwnerRef].lines[0]).toEqual({ prefix: "Δ $I_{k}''$", text: '+2,00 kA' });
+    expect(wpisy[busOwnerRef].lines[1]).toEqual({ prefix: "Δ $I_{k}''$ %", text: '+25,0 %' });
     expect(wpisy[busOwnerRef].severity).toBe('WARNING');
   });
 
@@ -248,11 +268,11 @@ describe('Etykiety różnic — treść z backendu', () => {
       { run_id: 'sc-run-b', analysis_type: 'DELTA_SC', elements: zWartosciaB.elements },
       singleHop,
     );
-    expect(wpisy[busOwnerRef].lines[0]).toEqual({ prefix: 'Δ Ik″', text: '+2,00 kA' });
+    expect(wpisy[busOwnerRef].lines[0]).toEqual({ prefix: "Δ $I_{k}''$", text: '+2,00 kA' });
     // `formatCurrent` (ten sam formatter co Ik″ pojedynczego przebiegu):
     // 1 miejsce po przecinku dla kA.
-    expect(wpisy[busOwnerRef].lines[1]).toEqual({ prefix: 'Ik″ (B)', text: '10,0 kA' });
-    expect(wpisy[busOwnerRef].lines[2]).toEqual({ prefix: 'Δ Ik″ %', text: '+25,0 %' });
+    expect(wpisy[busOwnerRef].lines[1]).toEqual({ prefix: "$I_{k}''$ (B)", text: '10,0 kA' });
+    expect(wpisy[busOwnerRef].lines[2]).toEqual({ prefix: "Δ $I_{k}''$ %", text: '+25,0 %' });
   });
 
   it('spadek zachowuje znak ujemny (kierunek zmiany jest informacją)', () => {

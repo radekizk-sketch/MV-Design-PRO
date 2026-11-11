@@ -146,7 +146,7 @@ describe('KD-11 §1 — klasyfikacja etykiet pochodzi z DANYCH SCENY', () => {
     }
     // …a parametry NIE (dowód rozłączności, nie tylko obecności).
     expect(role.get('Yd11 · 25 MVA')).toBe('dane');
-    expect(role.get('uk 11% · Pk 120 kW')).toBe('dane');
+    expect(role.get('$u_{k}$ 11% · $P_{k}$ 120 kW')).toBe('dane');
   });
 });
 

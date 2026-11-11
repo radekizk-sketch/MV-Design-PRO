@@ -9,6 +9,7 @@
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import type { SlupekZdolnosci } from './zdolnoscModel';
 import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 interface WykresZdolnosciChartProps {
   slupki: SlupekZdolnosci[];
@@ -26,7 +27,7 @@ function DymekZdolnosci({ active, payload }: TooltipProps) {
   const p = payload[0].payload;
   return (
     <div className="mvd-zdol-wykres-dymek" data-testid="mvd-zdol-wykres-dymek">
-      <span>{p.etykieta}</span>
+      <span><TekstZWzorami tekst={p.etykieta} /></span>
       {': '}
       <span className="mvd-num">{fmtMW(p.moc)}</span> {ZDOLNOSC_STRINGS.jednMW}
     </div>

@@ -38,6 +38,7 @@ from enm.load_zip_model import (
 )
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.slownik_komunikatow import NAZWY_POL_KONTRAKTU_PL
 from enm.store import reset_enm_store, set_enm
 from enm.topology_ops import create_device
 from network_model.catalog.types import MATERIALIZATION_CONTRACTS
@@ -104,18 +105,24 @@ def test_kazdy_pokazany_wspolczynnik_zip_jest_czytany_przez_solver() -> None:
 
 
 def test_etykiety_wspolczynnikow_zip_sa_po_polsku_i_nazywaja_wielkosc() -> None:
+    """Etykieta pola tabliczki (``ui_fields``) trafia do komunikatów operacji przez
+    ``etykieta_pola_katalogu_pl`` — tekst API bez KaTeX-a, więc nazywa wielkość SŁOWAMI
+    (decyzja architekta 2026-10-30, punkt 3); symbol (``$a_{P}$``) niesie etykieta kreatora.
+    Predykaty parami: te same słowa co słownik nazw pól komunikatów."""
     etykiety = {
         nazwa: etykieta
         for nazwa, etykieta, _jednostka in MATERIALIZATION_CONTRACTS["OBCIAZENIE"].ui_fields
     }
-    assert etykiety["a_p"] == "Udział stałoimpedancyjny P (a_P)"
-    assert etykiety["b_p"] == "Udział stałoprądowy P (b_P)"
-    assert etykiety["c_p"] == "Udział stałomocowy P (c_P)"
-    assert etykiety["a_q"] == "Udział stałoimpedancyjny Q (a_Q)"
-    assert etykiety["b_q"] == "Udział stałoprądowy Q (b_Q)"
-    assert etykiety["c_q"] == "Udział stałomocowy Q (c_Q)"
-    assert etykiety["k_pf"] == "Wrażliwość częstotliwościowa P (k_pf)"
-    assert etykiety["k_qf"] == "Wrażliwość częstotliwościowa Q (k_qf)"
+    assert etykiety["a_p"] == "Udział stałoimpedancyjny mocy czynnej"
+    assert etykiety["b_p"] == "Udział stałoprądowy mocy czynnej"
+    assert etykiety["c_p"] == "Udział stałomocowy mocy czynnej"
+    assert etykiety["a_q"] == "Udział stałoimpedancyjny mocy biernej"
+    assert etykiety["b_q"] == "Udział stałoprądowy mocy biernej"
+    assert etykiety["c_q"] == "Udział stałomocowy mocy biernej"
+    assert etykiety["k_pf"] == "Wrażliwość częstotliwościowa mocy czynnej"
+    assert etykiety["k_qf"] == "Wrażliwość częstotliwościowa mocy biernej"
+    for klucz in KLUCZE_ZIP_ODBIORU:
+        assert etykiety[klucz] == NAZWY_POL_KONTRAKTU_PL[klucz], klucz
 
 
 def test_domyslne_kontraktu_sa_domyslnymi_solvera() -> None:

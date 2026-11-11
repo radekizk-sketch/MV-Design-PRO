@@ -322,8 +322,9 @@ export interface SwzOverlayEntry {
   readonly ownerRef: string;
   readonly status: SwzVerdictStatus;
   readonly przyczynaPl: string;
-  /** Oznaczenie prądu na plakietce: „Ik₁min" (TN, pętla L-PE/L-PEN), „Id min" (TT, pętla
-   *  przez uziomy), „Id2 min" (IT, drugie zwarcie L-PE-L) — karta W5-E-TTIT. */
+  /** Oznaczenie prądu na plakietce jako wzór `$…$` (`TekstSvgZWzorami`): $I_{k1,\min}$ (TN,
+   *  pętla L-PE/L-PEN), $I_{d,\min}$ (TT, pętla przez uziomy), $I_{d2,\min}$ (IT, drugie
+   *  zwarcie L-PE-L) — karta W5-E-TTIT. */
   readonly oznaczeniePradu: string;
   readonly ik1MinA: number;
   readonly iaWymaganeA: number | null;
@@ -410,7 +411,7 @@ export function buildSwzOverlayFromResponses(
         ownerRef: r.breaker_ref,
         status: statusNakladkiZRekordu(r.swz.wymaganie.status_maszynowy),
         przyczynaPl: r.swz.wymaganie.wyjasnienie.zdanie_pl,
-        oznaczeniePradu: r.swz.uklad === 'IT' ? 'Id2 min' : 'Id min',
+        oznaczeniePradu: r.swz.uklad === 'IT' ? '$I_{d2,\\min}$' : '$I_{d,\\min}$',
         ik1MinA: r.swz.ik1_min_a,
         iaWymaganeA: null,
         tWymaganyS: r.swz.t_wymagany_s,
@@ -422,7 +423,7 @@ export function buildSwzOverlayFromResponses(
       ownerRef: r.breaker_ref,
       status: r.swz.status,
       przyczynaPl: r.swz.przyczyna_pl,
-      oznaczeniePradu: 'Ik₁min',
+      oznaczeniePradu: '$I_{k1,\\min}$',
       ik1MinA: r.swz.ik1_min_a,
       iaWymaganeA: r.swz.ia_wymagane_a,
       tWymaganyS: r.swz.t_wymagany_s,

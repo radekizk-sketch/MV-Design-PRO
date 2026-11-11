@@ -44,7 +44,7 @@ def test_cable_voltage_drop_api_rejects_invalid_cos_phi(app_client) -> None:
     )
 
     assert response.status_code == 422
-    assert "cos" in response.json()["detail"]
+    assert "Współczynnik mocy" in response.json()["detail"]
 
 
 def test_cable_rated_current_api_returns_solver_values(app_client) -> None:

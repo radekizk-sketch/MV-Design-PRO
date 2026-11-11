@@ -22,7 +22,7 @@ const REKORDY = rekordyOceny as unknown as {
 
 /** Nagłówek sekcji audytowej — 1:1 z `analysis/ssci_stability/models.py::SEKCJA_AUDYTOWA_SSCI_PL`. */
 export const SEKCJA_AUDYTOWA_SSCI =
-  'Metryki kryterium impedancyjnego z Z_grid(f) liczonego bez przekładni transformatora — materiał audytowy, nie jest wynikiem inżynierskim';
+  'Metryki kryterium impedancyjnego z impedancji sieci liczonej bez przekładni transformatora — materiał audytowy, nie jest wynikiem inżynierskim';
 
 /** Rekord `NIE_OCENIONO` przy komplecie tablic — z `ocena_ssci_niewykonana(INV1, CONV)`. */
 export function ocenaSsciFixture(): RekordOcenySsci {

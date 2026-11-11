@@ -161,7 +161,7 @@ class McbCurvePointResult:
 # IEC 60269-1, choć to DWIE RÓŻNE normy — zbieżność progu, nie zapożyczenie).
 def _czas_umowny_mcb_s(in_a: float) -> float:
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     return 3600.0 if in_a <= 63.0 else 7200.0
 
 
@@ -177,7 +177,7 @@ def compute_mcb_thermal_point(*, i_query_a: float, in_a: float) -> McbCurvePoint
         ValueError: ``i_query_a < 0`` albo ``in_a <= 0``.
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
         raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
 
@@ -190,7 +190,8 @@ def compute_mcb_thermal_point(*, i_query_a: float, in_a: float) -> McbCurvePoint
         gwarancja = GwarancjaNormy.BRAK_WYZWOLENIA_GWARANTOWANY
         wynik_t: float | None = None
         opis = (
-            f"I={i_query_a:g} A <= {PROG_CIEPLNY_NIE_WYZWALA_X_IN:g}×In={prog_dolny:g} A — "
+            f"Prąd {i_query_a:g} A nie większy od {PROG_CIEPLNY_NIE_WYZWALA_X_IN:g}-krotności "
+            f"prądu znamionowego ({prog_dolny:g} A) — "
             f"norma (IEC 60898-1) gwarantuje BRAK zadziałania elementu cieplnego w czasie "
             f"umownym {t_umowny:g} s."
         )
@@ -198,16 +199,17 @@ def compute_mcb_thermal_point(*, i_query_a: float, in_a: float) -> McbCurvePoint
         gwarancja = GwarancjaNormy.WYZWOLENIE_GWARANTOWANE
         wynik_t = t_umowny
         opis = (
-            f"I={i_query_a:g} A >= {PROG_CIEPLNY_WYZWALA_X_IN:g}×In={prog_gorny:g} A — "
+            f"Prąd {i_query_a:g} A nie mniejszy od {PROG_CIEPLNY_WYZWALA_X_IN:g}-krotności "
+            f"prądu znamionowego ({prog_gorny:g} A) — "
             f"norma (IEC 60898-1) gwarantuje zadziałanie elementu cieplnego w czasie "
-            f"umownym <= {t_umowny:g} s (dokładny czas w tym przedziale nie jest "
+            f"umownym nie dłuższym niż {t_umowny:g} s (dokładny czas w tym przedziale nie jest "
             f"zdefiniowany dwoma punktami kontrolnymi — tylko górna granica)."
         )
     else:
         gwarancja = GwarancjaNormy.NIEOKRESLONY
         wynik_t = None
         opis = (
-            f"I={i_query_a:g} A leży MIĘDZY progami kontrolnymi "
+            f"Prąd {i_query_a:g} A leży MIĘDZY progami kontrolnymi "
             f"({prog_dolny:g}÷{prog_gorny:g} A) — norma (IEC 60898-1) NIE gwarantuje ani "
             f"braku, ani wystąpienia zadziałania elementu cieplnego w tym przedziale "
             f"(zakaz interpolacji, §0.2 karty P0.7)."
@@ -260,7 +262,7 @@ def compute_mcb_magnetic_point(
             ``in_a <= 0`` (przez `PASMA_MAGNETYCZNE`/walidację lokalną).
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
         raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
     if curve_class not in PASMA_MAGNETYCZNE:
@@ -277,22 +279,24 @@ def compute_mcb_magnetic_point(
     if i_query_a >= prog_gorny:
         gwarancja = GwarancjaNormy.WYZWOLENIE_GWARANTOWANE
         opis = (
-            f"I={i_query_a:g} A >= {pasmo.max_x_in:g}×In={prog_gorny:g} A — "
+            f"Prąd {i_query_a:g} A nie mniejszy od {pasmo.max_x_in:g}-krotności prądu "
+            f"znamionowego ({prog_gorny:g} A) — "
             f"norma (IEC 60898-1, klasa {curve_class}) gwarantuje zadziałanie magnetyczne "
-            f"CHWILOWE (<0,1 s)."
+            f"CHWILOWE (krótsze niż 0,1 s)."
         )
     elif i_query_a < prog_dolny:
         gwarancja = GwarancjaNormy.BRAK_WYZWOLENIA_GWARANTOWANY
         opis = (
-            f"I={i_query_a:g} A < {pasmo.min_x_in:g}×In={prog_dolny:g} A — poniżej pasma "
-            f"wyzwolenia magnetycznego klasy {curve_class} ({pasmo.min_x_in:g}-"
-            f"{pasmo.max_x_in:g}×In) — element magnetyczny NIE zadziała (element cieplny "
-            f"może, patrz `compute_mcb_thermal_point`)."
+            f"Prąd {i_query_a:g} A mniejszy od {pasmo.min_x_in:g}-krotności prądu "
+            f"znamionowego ({prog_dolny:g} A) — poniżej pasma "
+            f"wyzwolenia magnetycznego klasy {curve_class} (od {pasmo.min_x_in:g}- do "
+            f"{pasmo.max_x_in:g}-krotności prądu znamionowego) — element magnetyczny NIE "
+            "zadziała (element cieplny może zadziałać — ocena punktu cieplnego)."
         )
     else:
         gwarancja = GwarancjaNormy.NIEOKRESLONY
         opis = (
-            f"I={i_query_a:g} A leży WEWNĄTRZ pasma magnetycznego klasy {curve_class} "
+            f"Prąd {i_query_a:g} A leży WEWNĄTRZ pasma magnetycznego klasy {curve_class} "
             f"({prog_dolny:g}÷{prog_gorny:g} A) — norma (IEC 60898-1) gwarantuje "
             f"zadziałanie WYŁĄCZNIE na górnej granicy; wewnątrz pasma może, ale nie musi "
             f"zadziałać (zakaz interpolacji, §0.2 karty P0.7)."
@@ -413,7 +417,9 @@ def compute_mccb_point(
             "step": "MCCB_ELECTRONIC",
             "standard": "IEC 60947-2",
             "result": "DANE_NIEKOMPLETNE",
-            "reason": "Brak nastawy długozwłocznej (Ir/tr) w katalogu — pasmo nieznane.",
+            "reason": (
+                "Brak nastawy długozwłocznej (prąd i czas zwłoki) w katalogu — pasmo nieznane."
+            ),
         }
         return MccbCurvePointResult(
             stopien="brak_danych",
@@ -426,27 +432,43 @@ def compute_mccb_point(
             t_wyzwolenia_s=None,
             zalozenie_pl=None,
             podstawa_pl=(
-                "Brak resolwowanej nastawy długozwłocznej (Ir/tr) — pasmo krzywej "
+                "Brak resolwowanej nastawy długozwłocznej (prąd i czas zwłoki) — pasmo krzywej "
                 "elektronicznej NIEZNANE (zero fabrykacji domyślnej wartości)."
             ),
             white_box_trace=trace_brak,
         )
     if ir_a <= 0:
-        raise OdmowaDanychError(f"ir_a musi być dodatnie, otrzymano {ir_a}.")
+        raise OdmowaDanychError(
+            f"Prąd nastawczy członu długozwłocznego musi być dodatni, otrzymano {ir_a} A."
+        )
     if tr_s <= 0:
-        raise OdmowaDanychError(f"tr_s musi być dodatnie, otrzymano {tr_s}.")
+        raise OdmowaDanychError(
+            f"Czas zwłoki członu długozwłocznego musi być dodatni, otrzymano {tr_s} s."
+        )
     if isd_a is not None and tsd_s is None:
-        raise OdmowaDanychError("isd_a podane bez odpowiadającej zwłoki tsd_s.")
+        raise OdmowaDanychError(
+            "Prąd nastawczy członu krótkozwłocznego podany bez odpowiadającego czasu zwłoki."
+        )
     if isd_a is not None and isd_a <= ir_a:
-        raise OdmowaDanychError(f"isd_a ({isd_a}) musi być > ir_a ({ir_a}).")
+        raise OdmowaDanychError(
+            f"Prąd nastawczy członu krótkozwłocznego ({isd_a} A) musi być większy od prądu "
+            f"nastawczego członu długozwłocznego ({ir_a} A)."
+        )
     if ii_a is not None and isd_a is not None and ii_a <= isd_a:
-        raise OdmowaDanychError(f"ii_a ({ii_a}) musi być > isd_a ({isd_a}).")
+        raise OdmowaDanychError(
+            f"Prąd nastawczy członu bezzwłocznego ({ii_a} A) musi być większy od prądu "
+            f"nastawczego członu krótkozwłocznego ({isd_a} A)."
+        )
     if ii_a is not None and isd_a is None and ii_a <= ir_a:
-        raise OdmowaDanychError(f"ii_a ({ii_a}) musi być > ir_a ({ir_a}).")
+        raise OdmowaDanychError(
+            f"Prąd nastawczy członu bezzwłocznego ({ii_a} A) musi być większy od prądu "
+            f"nastawczego członu długozwłocznego ({ir_a} A)."
+        )
 
     zalozenie_dlugo = (
-        "Stopień długozwłoczny modelowany jako definite-time przy tr_s (IEC 60947-2 nie "
-        "definiuje uniwersalnego kształtu I²t długozwłocznego niezależnie od producenta) — "
+        "Stopień długozwłoczny modelowany jako niezależny od prądu z nastawionym czasem "
+        "zwłoki (IEC 60947-2 nie definiuje uniwersalnego kształtu charakterystyki "
+        "długozwłocznej o stałej całce Joule'a niezależnie od producenta) — "
         "ZAŁOŻENIE nazwane wprost, nie fabrykacja kształtu krzywej."
     )
 
@@ -466,13 +488,17 @@ def compute_mccb_point(
     elif i_query_a >= ir_a:
         stopien = "dlugozwloczny"
         czas = tr_s
-        opis = f"I={i_query_a:g} A >= Ir={ir_a:g} A — wyzwolenie długozwłoczne w tr={tr_s:g} s."
+        opis = (
+            f"Prąd {i_query_a:g} A nie mniejszy od prądu nastawczego {ir_a:g} A — wyzwolenie "
+            f"długozwłoczne po {tr_s:g} s."
+        )
         zalozenie = zalozenie_dlugo
     else:
         stopien = "brak"
         czas = None
         opis = (
-            f"I={i_query_a:g} A < Ir={ir_a:g} A — poniżej progu długozwłocznego, brak wyzwolenia."
+            f"Prąd {i_query_a:g} A mniejszy od prądu nastawczego {ir_a:g} A — poniżej progu "
+            "długozwłocznego, brak wyzwolenia."
         )
         zalozenie = None
 
@@ -525,7 +551,8 @@ def compute_mccb_point(
 MCCB_I2_MULTIPLIER = 1.3
 MCCB_I2_SOURCE_PL = (
     "IEC 60947-2 — prąd umowny zadziałania (conventional tripping current) wyzwalacza "
-    "elektronicznego I2=1,3×Ir (czas umowny: <=630 A → 2h, >630 A → 4h) — zweryfikowane "
+    "elektronicznego równy 1,3-krotności prądu nastawczego (czas umowny: do 630 A — 2 h, "
+    "powyżej 630 A — 4 h) — zweryfikowane "
     "podwójnie, niezależnie: (1) ABB Emax2/Tmax XT Ekip — przewodnik doboru nastaw "
     "(stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide); "
     "(2) VIOX „MCCB Trip Unit Settings Guide” "
@@ -558,12 +585,14 @@ MCCB_I2_SOURCE_PL = (
 FUSE_GG_INF_MULTIPLIER = 1.25
 FUSE_GG_IF_MULTIPLIER = 1.6
 FUSE_GG_GATE_SOURCE_PL = (
-    "IEC 60269-1 (Inf=1,25×In, If=1,6×In dla In>16 A) — zweryfikowane podwójnie: "
+    "IEC 60269-1 (prąd niezadziałania 1,25-krotność, prąd zadziałania 1,6-krotność prądu "
+    "znamionowego dla prądu znamionowego powyżej 16 A) — zweryfikowane podwójnie: "
     "(1) zbiorcze źródła techniczne (Schneider Electric Electrical Installation Guide, "
     "electrical-installation.org/enwiki/Elementary_switching_devices; viox.com/"
     "iec-60269-low-voltage-fuse-selection-guide-gg-am-nh); "
     "(2) elektro.info.pl, „Bezpieczniki topikowe do zabezpieczeń instalacji niskiego "
-    "napięcia” (cytat wprost: Inf=1,25×In, If=1,6×In dla gG)."
+    "napięcia” (cytat wprost: prąd niezadziałania 1,25-krotność, prąd zadziałania "
+    "1,6-krotność prądu znamionowego dla gG)."
 )
 
 # Czas umowny wg zakresu In (In>16 A) — IEC 60269-1 Tabela 3 struktura
@@ -573,18 +602,21 @@ FUSE_GG_GATE_SOURCE_PL = (
 # (dane bez pełnego podwójnego potwierdzenia NIE są cicho podawane jako
 # w pełni zweryfikowane).
 FUSE_GG_TIME_BAND_SOURCE_PL = (
-    "IEC 60269-1 struktura czasu umownego wg zakresu In — źródło: zbiorcze wyszukiwanie "
+    "IEC 60269-1 struktura czasu umownego wg zakresu prądu znamionowego — źródło: zbiorcze "
+    "wyszukiwanie "
     "techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 "
     "guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — "
-    "1h(In<=63A)/2h(63<In<=160A)/3h(160<In<=400A)/4h(In>400A)."
+    "1 h do 63 A, 2 h od 63 A do 160 A, 3 h od 160 A do 400 A, 4 h powyżej 400 A prądu "
+    "znamionowego."
 )
 
 
 def _czas_umowny_fuse_gg_s(in_a: float) -> float:
     if in_a <= 16.0:
         raise OdmowaDanychError(
-            f"in_a={in_a} A <= 16 A — poza zweryfikowanym zakresem G-D2 tej karty "
-            "(mnożniki bramek dla In<=16 A różnią się: 1,5/1,9/2,1× wg IEC 60269-1, "
+            f"Prąd znamionowy {in_a} A nie większy od 16 A — poza zweryfikowanym zakresem G-D2 "
+            "tej karty (mnożniki bramek do 16 A różnią się: 1,5/1,9/2,1-krotność wg "
+            "IEC 60269-1, "
             "nie zaimplementowane bez podwójnej weryfikacji źródłowej)."
         )
     if in_a <= 63.0:
@@ -646,7 +678,7 @@ def compute_fuse_gg_gate(*, i_query_a: float, in_a: float) -> FuseGgGateResult:
             ``in_a <= 0`` albo ``i_query_a < 0``.
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     if i_query_a < 0:
         raise OdmowaDanychError(f"i_query_a nie może być ujemne, otrzymano {i_query_a}.")
 
@@ -657,22 +689,26 @@ def compute_fuse_gg_gate(*, i_query_a: float, in_a: float) -> FuseGgGateResult:
     if i_query_a <= inf_a:
         gwarancja = GwarancjaNormy.BRAK_WYZWOLENIA_GWARANTOWANY
         opis = (
-            f"I={i_query_a:g} A <= Inf={inf_a:g} A ({FUSE_GG_INF_MULTIPLIER:g}×In) — "
+            f"Prąd {i_query_a:g} A nie większy od prądu niezadziałania {inf_a:g} A "
+            f"({FUSE_GG_INF_MULTIPLIER:g}-krotność prądu znamionowego) — "
             f"norma (IEC 60269-1) gwarantuje BRAK stopienia wkładki w czasie umownym "
             f"{t_umowny:g} s."
         )
     elif i_query_a >= if_a:
         gwarancja = GwarancjaNormy.WYZWOLENIE_GWARANTOWANE
         opis = (
-            f"I={i_query_a:g} A >= If={if_a:g} A ({FUSE_GG_IF_MULTIPLIER:g}×In) — "
+            f"Prąd {i_query_a:g} A nie mniejszy od prądu zadziałania {if_a:g} A "
+            f"({FUSE_GG_IF_MULTIPLIER:g}-krotność prądu znamionowego) — "
             f"norma (IEC 60269-1) gwarantuje stopienie wkładki w czasie umownym "
-            f"<= {t_umowny:g} s (dokładny czas nieokreślony dwoma punktami kontrolnymi — "
+            f"nie dłuższym niż {t_umowny:g} s (dokładny czas nieokreślony dwoma punktami "
+            "kontrolnymi — "
             f"tylko górna granica)."
         )
     else:
         gwarancja = GwarancjaNormy.NIEOKRESLONY
         opis = (
-            f"I={i_query_a:g} A leży MIĘDZY bramkami Inf/If ({inf_a:g}÷{if_a:g} A) — "
+            f"Prąd {i_query_a:g} A leży MIĘDZY bramkami prądu niezadziałania i zadziałania "
+            f"({inf_a:g}÷{if_a:g} A) — "
             f"norma (IEC 60269-1) NIE gwarantuje ani braku, ani wystąpienia stopienia w "
             f"tym przedziale (zakaz interpolacji, §0.2 karty P0.7)."
         )
@@ -754,13 +790,15 @@ def compute_fuse_gg_gate(*, i_query_a: float, in_a: float) -> FuseGgGateResult:
 FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER: dict[float, float] = {}
 
 FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL = (
-    "Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, "
+    "Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz "
+    "karta D2, "
     "2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 "
     "podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/"
     "Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — "
-    "norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), "
+    "norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania "
+    "przy czasie umownym (1-4 h), "
     "poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta "
-    "(rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY "
+    "(rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY "
     "do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing "
     "times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową."
 )
@@ -790,7 +828,7 @@ def bramka_t_wymagany_gg_a(*, t_wymagany_s: float, in_a: float) -> float | None:
         ValueError: ``in_a <= 0``.
     """
     if in_a <= 0:
-        raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {in_a}.")
+        raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {in_a} A.")
     mnoznik = FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER.get(t_wymagany_s)
     if mnoznik is None:
         return None

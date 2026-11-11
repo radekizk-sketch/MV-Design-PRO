@@ -328,10 +328,10 @@ def _wiersze_zwarc(zwarcia: dict[str, Any]) -> list[tuple[str, str]]:
     wniosek nie podaje prądu na wartości roboczej jako liczby bez zastrzeżenia."""
     wiersze = [
         ("Węzeł", str(zwarcia["nazwa_wezla"])),
-        ("Początkowy prąd zwarciowy Ik'' [kA]", _fmt(zwarcia["ik_ss_ka"])),
-        ("Moc zwarciowa S_k'' [MVA]", _fmt(zwarcia["sk_mva"])),
-        ("Prąd udarowy ip [kA]", _fmt(zwarcia["ip_ka"])),
-        ("Prąd cieplny Ith [kA]", _fmt(zwarcia["ith_ka"])),
+        ("Początkowy prąd zwarciowy [kA]", _fmt(zwarcia["ik_ss_ka"])),
+        ("Moc zwarciowa [MVA]", _fmt(zwarcia["sk_mva"])),
+        ("Prąd udarowy [kA]", _fmt(zwarcia["ip_ka"])),
+        ("Prąd cieplny [kA]", _fmt(zwarcia["ith_ka"])),
         ("Rodzaj zwarcia", zwarcia["rodzaj_zwarcia"] or "—"),
     ]
     for dana in zwarcia.get("dane_przyjete") or []:

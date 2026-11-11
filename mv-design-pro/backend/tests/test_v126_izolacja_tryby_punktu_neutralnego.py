@@ -48,7 +48,7 @@ def _bieg(tryb: str, k: float | None, karta: bool) -> tuple[dict, dict[str, dict
         u_m_kv=U_M,
         network_neutral=tryb,
         earth_fault_factor=k,
-        earth_fault_factor_zrodlo_pl="solver doziemienia sieci" if k is not None else None,
+        earth_fault_factor_zrodlo_pl=("solver doziemienia sieci" if k is not None else None),
         arrester_mcov_kv=KARTA["mcov"] if karta else None,
         arrester_rated_kv=KARTA["u_r"] if karta else None,
         arrester_residual_10ka_kv=KARTA["u_res"] if karta else None,
@@ -131,7 +131,7 @@ def test_wiersz_izolacji_z_wyroczni(tryb: str, k: float | None, karta: bool) -> 
     # Dane przyjęte: k roboczy, dobór wstępny, czas TOV — każde jawne i ESTIMATED.
     nazwy = {d["nazwa_pl"] for d in w["dane_przyjete"]}
     assert ("Współczynnik zwarcia doziemnego k" in nazwy) is (k is None)
-    assert any("U_c" in n for n in nazwy) is (not karta)
+    assert any("Napięcie trwałej pracy ogranicznika" in n for n in nazwy) is (not karta)
     assert any("Czas trwania przepięcia" in n for n in nazwy) is (not dlugotrwale)
     assert all(d["jakosc"] == "ESTIMATED" for d in w["dane_przyjete"])
     # Założenia Z-1…Z-3 są danymi przyjętymi każdego kryterium — kompletność zawsze niepełna.
@@ -153,7 +153,8 @@ def test_karta_ogranicznika_w_sieci_izolowanej_nie_spelnia_kryterium_napiecia_pr
 
 def test_rezystor_to_siec_nieskutecznie_uziemiona_nie_bezposrednia() -> None:
     """Iniekcja: tryb rezystorowy przepuszczony przez kategorię uziemienia bezpośredniego
-    (dawne utożsamienie) — k i U_TOV wiersza zmieniają się, więc wyrocznia trybu czerwienieje."""
+    (dawne utożsamienie) — k i U_TOV wiersza zmieniają się, więc wyrocznia trybu czerwienieje.
+    """
     rezystor = _wiersz("rezystor", None, False)
     bezposrednie = _wiersz("bezposrednie", None, False)
     assert rezystor["earth_fault_factor"] == pytest.approx(math.sqrt(3.0), rel=1e-6)
@@ -169,7 +170,8 @@ def test_iniekcja_k_rezystora_jak_bezposrednie(monkeypatch: pytest.MonkeyPatch) 
 
 def test_stosunki_doboru_wstepnego_przypiete_do_katalogu() -> None:
     """Stosunki doboru wstępnego to skrajne wartości katalogu ograniczników SN programu
-    (zachowawczo): U_res/U_c — największy, TOV(10 s)/U_c — najmniejszy, U_r/U_c — największy."""
+    (zachowawczo): U_res/U_c — największy, TOV(10 s)/U_c — najmniejszy, U_r/U_c — największy.
+    """
     rekordy = [r["params"] for r in get_all_surge_arrester_types()]
     assert U_RES_DO_U_C_ROBOCZY == pytest.approx(
         max(p["u_residual_at_10ka_kv"] / p["mcov_kv"] for p in rekordy), abs=5e-3

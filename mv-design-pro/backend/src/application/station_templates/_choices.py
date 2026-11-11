@@ -69,27 +69,39 @@ TR_OPTIONS_MEDIUM_20KV = (  # 400-1250 kVA, sieć 20 kV — stacja abonencka war
 # równoważnika, więc transformatory NIE są elementami modelu (granica zasilania SN,
 # karta GPZ-MODEL; kontrakt `add_grid_source_sn::_granica_zasilania_gpz`).
 GPZ_SOURCE_OPTIONS_15 = (
-    CatalogChoice("src-gpz-15kv-200mva-rx010", "Zasilanie GPZ 15 kV Sk3 200 MVA", "ZRODLO_SN"),
+    CatalogChoice(
+        "src-gpz-15kv-200mva-rx010", "Zasilanie GPZ 15 kV, moc zwarciowa 200 MVA", "ZRODLO_SN"
+    ),
     CatalogChoice(
         "src-gpz-15kv-250mva-rx010",
-        "Zasilanie GPZ 15 kV Sk3 250 MVA",
+        "Zasilanie GPZ 15 kV, moc zwarciowa 250 MVA",
         "ZRODLO_SN",
         default=True,
     ),
-    CatalogChoice("src-gpz-15kv-350mva-rx010", "Zasilanie GPZ 15 kV Sk3 350 MVA", "ZRODLO_SN"),
-    CatalogChoice("src-gpz-15kv-500mva-rx010", "Zasilanie GPZ 15 kV Sk3 500 MVA", "ZRODLO_SN"),
+    CatalogChoice(
+        "src-gpz-15kv-350mva-rx010", "Zasilanie GPZ 15 kV, moc zwarciowa 350 MVA", "ZRODLO_SN"
+    ),
+    CatalogChoice(
+        "src-gpz-15kv-500mva-rx010", "Zasilanie GPZ 15 kV, moc zwarciowa 500 MVA", "ZRODLO_SN"
+    ),
 )
 
 GPZ_SOURCE_OPTIONS_20 = (
-    CatalogChoice("src-gpz-20kv-200mva-rx010", "Zasilanie GPZ 20 kV Sk3 200 MVA", "ZRODLO_SN"),
+    CatalogChoice(
+        "src-gpz-20kv-200mva-rx010", "Zasilanie GPZ 20 kV, moc zwarciowa 200 MVA", "ZRODLO_SN"
+    ),
     CatalogChoice(
         "src-gpz-20kv-250mva-rx010",
-        "Zasilanie GPZ 20 kV Sk3 250 MVA",
+        "Zasilanie GPZ 20 kV, moc zwarciowa 250 MVA",
         "ZRODLO_SN",
         default=True,
     ),
-    CatalogChoice("src-gpz-20kv-350mva-rx012", "Zasilanie GPZ 20 kV Sk3 350 MVA", "ZRODLO_SN"),
-    CatalogChoice("src-gpz-20kv-500mva-rx010", "Zasilanie GPZ 20 kV Sk3 500 MVA", "ZRODLO_SN"),
+    CatalogChoice(
+        "src-gpz-20kv-350mva-rx012", "Zasilanie GPZ 20 kV, moc zwarciowa 350 MVA", "ZRODLO_SN"
+    ),
+    CatalogChoice(
+        "src-gpz-20kv-500mva-rx010", "Zasilanie GPZ 20 kV, moc zwarciowa 500 MVA", "ZRODLO_SN"
+    ),
 )
 
 # =============================================================================

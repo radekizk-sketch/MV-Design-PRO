@@ -31,14 +31,14 @@ EQ_OHL_001 = EquationDefinition(
         _s(r"R'_{20,\text{DC}}", "Ω/km", "Rezystancja przewodu z tablicy wyrobu", "ohl_r20_dc"),
         _s("n", "—", "Liczba przewodów w wiązce fazy", "ohl_liczba_w_wiazce"),
     ),
-    unit_derivation="Ω/km / (—) = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} \,/\, 1 = \Omega/\mathrm{km}",
     notes="Rezystancja 50 Hz równa rezystancji prądu stałego — założenie inżynierskie.",
 )
 
 EQ_OHL_002 = EquationDefinition(
     equation_id="EQ_OHL_002",
     name_pl="Rezystancja fazy w temperaturze przewodu",
-    standard_ref="IEC 60909-0:2016, wzór R_L(θ_e)",
+    standard_ref="IEC 60909-0:2016, wzór rezystancji przewodu w temperaturze końcowej",
     latex=r"R'_{\theta} = R'_{20}\,[1 + \alpha(\theta - 20\ ^{\circ}\text{C})]",
     symbols=(
         _s(r"R'_{\theta}", "Ω/km", "Rezystancja w temperaturze przewodu", "ohl_r_theta"),
@@ -46,7 +46,7 @@ EQ_OHL_002 = EquationDefinition(
         _s(r"\alpha", "1/K", "Współczynnik temperaturowy rezystancji", "ohl_alfa"),
         _s(r"\theta", "°C", "Temperatura dopuszczalna długotrwale przewodu", "ohl_theta"),
     ),
-    unit_derivation="Ω/km · (1 + 1/K · °C) = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} \cdot \left(1 + \mathrm{K}^{-1} \cdot {}^{\circ}\mathrm{C}\right) = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_003 = EquationDefinition(
@@ -63,7 +63,7 @@ EQ_OHL_003 = EquationDefinition(
         _s("d", "mm", "Średnica drutu aluminiowego", "ohl_srednica_drutu_al"),
         _s(r"\varnothing_{\text{rdzenia}}", "mm", "Średnica rdzenia stalowego", "ohl_rdzen"),
     ),
-    unit_derivation="(mm^{N²})^{1/N²} = mm",
+    unit_derivation_latex=r"\left(\mathrm{mm}^{N^{2}}\right)^{1/N^{2}} = \mathrm{mm}",
     notes="Prąd w drutach aluminiowych — założenie inżynierskie zgodne z tablicą PN-EN 50182.",
 )
 
@@ -76,7 +76,7 @@ EQ_OHL_004 = EquationDefinition(
         _s("GMR", "mm", "Średni geometryczny promień przewodu", "ohl_gmr_przewodu"),
         _s(r"GMR_{\text{tabl}}", "mm", "GMR z tablicy wyrobu", "ohl_gmr_tablicowy"),
     ),
-    unit_derivation="mm = mm",
+    unit_derivation_latex=r"\mathrm{mm} = \mathrm{mm}",
 )
 
 EQ_OHL_005 = EquationDefinition(
@@ -94,7 +94,7 @@ EQ_OHL_005 = EquationDefinition(
         _s("GMR", "m", "GMR przewodu", "ohl_gmr_przewodu_m"),
         _s("r", "m", "Promień zewnętrzny przewodu", "ohl_promien_przewodu"),
     ),
-    unit_derivation="(m · m^{n−1})^{1/n} = m",
+    unit_derivation_latex=r"\left(\mathrm{m} \cdot \mathrm{m}^{n-1}\right)^{1/n} = \mathrm{m}",
 )
 
 EQ_OHL_006 = EquationDefinition(
@@ -108,7 +108,7 @@ EQ_OHL_006 = EquationDefinition(
         _s("d_{13}", "m", "Odległość faz L1–L3", "ohl_d13"),
         _s("d_{23}", "m", "Odległość faz L2–L3", "ohl_d23"),
     ),
-    unit_derivation="(m³)^{1/3} = m",
+    unit_derivation_latex=r"\left(\mathrm{m}^{3}\right)^{1/3} = \mathrm{m}",
 )
 
 EQ_OHL_007 = EquationDefinition(
@@ -122,7 +122,7 @@ EQ_OHL_007 = EquationDefinition(
         _s(r"\mu_0", "H/m", "Przenikalność magnetyczna próżni (CODATA 2018)", "ohl_mi0"),
         _s(r"\rho", "Ω·m", "Rezystywność gruntu", "ohl_rho"),
     ),
-    unit_derivation="1 / √(rad/s · H/m / Ω·m) = m",
+    unit_derivation_latex=r"\frac{1}{\sqrt{\mathrm{rad}/\mathrm{s} \cdot \mathrm{H}/\mathrm{m} \,/\, (\Omega \cdot \mathrm{m})}} = \mathrm{m}",
 )
 
 EQ_OHL_008 = EquationDefinition(
@@ -143,7 +143,7 @@ EQ_OHL_008 = EquationDefinition(
         _s("h_1", "m", "Średnia wysokość fazy L1", "ohl_h1"),
         _s("GMR_1", "m", "GMR fazy L1", "ohl_gmr_fazy"),
     ),
-    unit_derivation="Ω/m · 1000 = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{m} \cdot 1000 = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_009 = EquationDefinition(
@@ -156,7 +156,7 @@ EQ_OHL_009 = EquationDefinition(
         _s("Z_{ff,11}", "Ω/km", "Impedancja własna fazy przed redukcją", "ohl_z11"),
         _s("Z_{gg,11}", "Ω/km", "Impedancja własna przewodu odgromowego", "ohl_zgg11"),
     ),
-    unit_derivation="Ω/km − Ω/km · (Ω/km)⁻¹ · Ω/km = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} - \Omega/\mathrm{km} \cdot \left(\Omega/\mathrm{km}\right)^{-1} \cdot \Omega/\mathrm{km} = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_010 = EquationDefinition(
@@ -169,7 +169,7 @@ EQ_OHL_010 = EquationDefinition(
         _s("Z_s", "Ω/km", "Średnia impedancja własna", "ohl_zs"),
         _s("Z_m", "Ω/km", "Średnia impedancja wzajemna", "ohl_zm"),
     ),
-    unit_derivation="Ω/km − Ω/km = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} - \Omega/\mathrm{km} = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_011 = EquationDefinition(
@@ -182,7 +182,7 @@ EQ_OHL_011 = EquationDefinition(
         _s("Z_s", "Ω/km", "Średnia impedancja własna", "ohl_zs"),
         _s("Z_m", "Ω/km", "Średnia impedancja wzajemna", "ohl_zm"),
     ),
-    unit_derivation="Ω/km + 2·Ω/km = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} + 2 \cdot \Omega/\mathrm{km} = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_012 = EquationDefinition(
@@ -191,11 +191,16 @@ EQ_OHL_012 = EquationDefinition(
     standard_ref=_PODSTAWA_TRANSPOZYCJA,
     latex=r"Z'_{0,\text{bez}} = Z_{s,ff} + 2Z_{m,ff}",
     symbols=(
-        _s(r"Z'_{0,\text{bez}}", "Ω/km", "Z′0 bez przewodów odgromowych", "ohl_z0_bez"),
+        _s(
+            r"Z'_{0,\text{bez}}",
+            "Ω/km",
+            "Impedancja jednostkowa składowej zerowej bez przewodów odgromowych",
+            "ohl_z0_bez",
+        ),
         _s("Z_{s,ff}", "Ω/km", "Średnia impedancja własna faz", "ohl_zs_ff"),
         _s("Z_{m,ff}", "Ω/km", "Średnia impedancja wzajemna faz", "ohl_zm_ff"),
     ),
-    unit_derivation="Ω/km + 2·Ω/km = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} + 2 \cdot \Omega/\mathrm{km} = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_013 = EquationDefinition(
@@ -209,7 +214,7 @@ EQ_OHL_013 = EquationDefinition(
         _s("GMR_w", "m", "GMR fazy", "ohl_gmr_fazy"),
         _s(r"\frac{\omega\mu_0}{2\pi}", "Ω/km", "Stała indukcyjności przy f", "ohl_stala_x"),
     ),
-    unit_derivation="Ω/km · ln(m/m) = Ω/km",
+    unit_derivation_latex=r"\Omega/\mathrm{km} \cdot \ln(\mathrm{m}/\mathrm{m}) = \Omega/\mathrm{km}",
 )
 
 EQ_OHL_014 = EquationDefinition(
@@ -227,7 +232,7 @@ EQ_OHL_014 = EquationDefinition(
         _s("P_m", "m/F", "Średni współczynnik potencjałowy wzajemny", "ohl_pm"),
         _s(r"\omega", "rad/s", "Pulsacja", "ohl_omega"),
     ),
-    unit_derivation="(rad/s) / (m/F) = S/m → μS/km",
+    unit_derivation_latex=r"\frac{\mathrm{rad}/\mathrm{s}}{\mathrm{m}/\mathrm{F}} = \mathrm{S}/\mathrm{m} \rightarrow \mu\mathrm{S}/\mathrm{km}",
 )
 
 #: Równania dowodu parametrów linii (scalane do głównego rejestru dowodów).

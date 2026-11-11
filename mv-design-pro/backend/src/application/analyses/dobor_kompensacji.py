@@ -420,7 +420,7 @@ def build_compensation_sizing_view(
             "wynik rozpływu mocy nie jest dostępny."
         )
     if not (0.0 < cos_phi_min <= 1.0):
-        raise OdmowaDanychError("Wymagany cosφ musi być w przedziale (0, 1].")
+        raise OdmowaDanychError("Wymagany współczynnik mocy musi być w przedziale (0, 1].")
 
     snapshot = run.snapshot or {}
     buses = _bus_index(snapshot)
@@ -502,7 +502,8 @@ def build_compensation_sizing_view(
         else:
             zakres = "dzień i noc" if uwzglednij_noc else "dzień"
             powod = (
-                f"Żadna bateria z katalogu nie zapewnia wymaganego cosφ ≥ {cos_phi_min} "
+                f"Żadna bateria z katalogu nie zapewnia wymaganego współczynnika mocy "
+                f"≥ {cos_phi_min} "
                 f"w punkcie {bus_ref} ({zakres}); największy przegląd nie spełnia wymagania."
             )
 

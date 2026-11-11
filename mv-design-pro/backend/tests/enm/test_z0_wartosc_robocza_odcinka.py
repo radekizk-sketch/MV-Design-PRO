@@ -308,7 +308,7 @@ def test_bramy_gotowosci_i_obliczenie_czytaja_jeden_predykat(
 
     stan_kreatora = validate_wizard_state(enm.model_dump(mode="json"))
     braki_1f = stan_kreatora.readiness_matrix.short_circuit_1f.missing_requirements
-    assert any("Brak Z0 w gałęziach" in b for b in braki_1f) is not znana
+    assert any("Brak impedancji zerowej w gałęziach" in b for b in braki_1f) is not znana
     # Brak Z0 źródła nie odbiera zdolności zwarcia doziemnego (jak walidator ENM).
     assert not any("źródłach" in b for b in braki_1f)
     k7 = next(s for s in stan_kreatora.steps if s.step_id == "K7")

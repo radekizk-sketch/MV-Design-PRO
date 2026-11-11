@@ -187,7 +187,9 @@ def test_u_przeliczenie_kv_z_upu() -> None:
     assert wiersz["wartosc_model"] == 15.3
     # K10: asercja na semantykę kroku (przeliczenie U = u · U_n jawne w śladzie),
     # nie na nazwę pola kontraktu.
-    assert any("U = u · U_n" in krok for krok in wiersz["slad_pl"])
+    assert any(
+        "Napięcie modelu (napięcie względne razy znamionowe)" in krok for krok in wiersz["slad_pl"]
+    )
     assert wiersz["werdykt"] == "w tolerancji"
 
 
@@ -345,7 +347,7 @@ def test_slad_galezi_bez_zacisku_i_wezla_bez_wyniku_nazywa_element_z_modelu() ->
     )["wiersze"][0]
     assert bez_wyniku["slad_pl"] == [
         "Brak kompletu danych modelowych dla węzła 'Szyna bez nazwy' "
-        "(u_pu lub napięcie znamionowe)."
+        "(napięcie względne lub napięcie znamionowe)."
     ]
 
 

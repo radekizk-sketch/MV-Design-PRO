@@ -130,8 +130,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-akad-stan mvd-akad-stan--blad' : 'mvd-akad-stan'}
       data-testid={testid}
     >
-      <p className="mvd-akad-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-akad-stan-desc">{opis}</p>}
+      <p className="mvd-akad-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-akad-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -179,7 +179,7 @@ function Zwijana({
   return (
     <section className="mvd-akad-sekcja" data-testid={testid}>
       <div className="mvd-akad-sekcja-naglowek">
-        <h3 className="mvd-akad-sekcja-tytul">{tytul}</h3>
+        <h3 className="mvd-akad-sekcja-tytul"><TekstZWzorami tekst={tytul} /></h3>
         {!pusta && (
           <span className="mvd-akad-licznik mvd-num" data-testid={`${testid}-licznik`}>
             {licznik}
@@ -203,7 +203,7 @@ function Zwijana({
         </p>
       ) : (
         <>
-          {opis && <p className="mvd-akad-opis">{opis}</p>}
+          {opis && <p className="mvd-akad-opis"><TekstZWzorami tekst={opis} /></p>}
           {otwarte && children}
         </>
       )}
@@ -236,6 +236,28 @@ function fmtGranica(wartosc: number | string): string {
 function WzorLubTekst({ latex, tekst }: { latex: string | undefined; tekst: string | null }) {
   if (latex !== undefined) return <MathBlock latex={latex} />;
   return <>{tekst ?? S.kreska}</>;
+}
+
+/**
+ * Weryfikacja jednostek kroku: gdy `unit_check` solvera jest algebrą jednostek, rejestr
+ * (`JEDNOSTKI_KROKOW_V126`) daje zdanie słowami (`unit_check_pl`) i algebrę jednostek
+ * w LaTeX (`unit_check_latex`, KaTeX inline); w przeciwnym razie tekst solvera jest zdaniem.
+ */
+function WeryfikacjaJednostek({
+  opis,
+  latex,
+  tekst,
+}: {
+  opis: string | undefined;
+  latex: string | undefined;
+  tekst: string | null;
+}) {
+  if (opis === undefined || latex === undefined) return <>{tekst ?? S.kreska}</>;
+  return (
+    <span data-testid="akademickie-jednostki-kroku">
+      {opis} <MathInline latex={latex} />
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -402,8 +424,8 @@ function KartaAnalizy({
 function Podsekcja({ tytul, opis, testid, children }: { tytul: string; opis?: string; testid: string; children: React.ReactNode }) {
   return (
     <div className="mvd-akad-podsekcja" data-testid={testid}>
-      <h4 className="mvd-akad-podsekcja-tytul">{tytul}</h4>
-      {opis && <p className="mvd-akad-opis">{opis}</p>}
+      <h4 className="mvd-akad-podsekcja-tytul"><TekstZWzorami tekst={tytul} /></h4>
+      {opis && <p className="mvd-akad-opis"><TekstZWzorami tekst={opis} /></p>}
       {children}
     </div>
   );
@@ -1501,7 +1523,13 @@ function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
                   <WzorLubTekst latex={krok.substitution_latex} tekst={krok.substitution} />
                 </td>
                 <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
-                <td>{krok.unit_check}</td>
+                <td>
+                  <WeryfikacjaJednostek
+                    opis={krok.unit_check_pl}
+                    latex={krok.unit_check_latex}
+                    tekst={krok.unit_check}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1548,7 +1576,13 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
                   <WzorLubTekst latex={krok.substitution_latex} tekst={krok.substitution} />
                 </td>
                 <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
-                <td>{krok.unit_check ?? S.kreska}</td>
+                <td>
+                  <WeryfikacjaJednostek
+                    opis={krok.unit_check_pl}
+                    latex={krok.unit_check_latex}
+                    tekst={krok.unit_check}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>

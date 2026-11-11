@@ -210,10 +210,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "derivation DATA is preserved in the companions (model.shortCircuit /",
     ): "b: kontynuacja wielolinijkowego komentarza JSX ({/* ... */}) — poza zasięgiem reguł pomijania, które widzą pojedynczą linię",
     (
-        "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        "descriptionPl: 'IEC 60909, Ik″/ip/Ith z śladem Y-bus + Z-thevenin.',",
-    ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
-    (
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
         "pradKA: c.ikss_partial_a / 1000,",
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",

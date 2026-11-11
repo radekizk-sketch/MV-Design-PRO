@@ -565,6 +565,13 @@ interface OdciskiLod {
  * znika naruszenie `DEVICE_TERMINAL_UNRESOLVED` („Magistrala 1" wskazywała skasowany odcinek)
  * i jego notatka STOP, zostaje notatka łamania arkusza. To dokładnie wkład danych karty
  * MENU-KANON opisany wyżej, nałożony na scenę GPZ-MODEL.
+ *
+ * AKTUALIZACJA ŚWIADOMA (karta UX-04/ZU, punkt 2 — symbole etykiet rysunku jako wzory `$…$`,
+ * `304ae743f`; pin poprawiony 2026-11-05 w następcy punktu 4) — z 54 wpisów zmienione 36.
+ * DOWÓD: sonda (ten test w trybie budżetów) podmieniająca tekst każdej etykiety sceny na jej
+ * odczyt (`tekstBezWzorow`, ta sama funkcja, którą mierzy `measureTextWidth`) odtwarza
+ * DOKŁADNIE poprzednią tablicę (54 z 54 na obu sieciach) — geometria, declutter i plany bez
+ * zmian; różni się wyłącznie zapis tekstów (`$U_{n}$=20 kV`, `$u_{k}$`, `$P_{k}$`, `$S_{k}''$`).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -582,29 +589,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '957d297d0fe9fcee6052eb9de9cf9c80',
-      declutter: '40b7251b852fc542752fe1ba1f29338e',
+      scena: '38df188c31ff76a5693545908b0a7872',
+      declutter: '18555ca274f499aef0c377482d48a911',
       plany: [
-        '06752775d45bbab5bd2330a0c33ea6b7',
-        '836e830b596dac4681f9e6855b8d5903',
-        'd14fde551e5c185fd96bf7f31f0a9569',
-        'a91c398d4eda4d56bf74eab60e87ca70',
-        '8aa76b130cababf582150067129767ec',
-        'e76685ef2a5da4093d1e774aa61fcce4',
-        'e76685ef2a5da4093d1e774aa61fcce4',
+        '0ccca8318fffba84c76da6b8010912d3',
+        'eae7bb549fb74514117757fb4697b5c9',
+        'a9897edfe74d6ecde95414b0c96e7dce',
+        '8c82dcfeb5b609a58f319bcfe9e629da',
+        'fc8d0883a4192d469d62e9eaed1b3d9b',
+        '3689aef73a8c79a386d0c79662c3cc6e',
+        '3689aef73a8c79a386d0c79662c3cc6e',
       ],
     },
     {
-      scena: '83203575489a3a901a5628b7c7e66235',
-      declutter: '3ac69d221753e008d7ac680e0531d8d4',
+      scena: 'ffa0c72398a0ea9a56f8a5b07e68632a',
+      declutter: '5756af94d0cdb59f920546a34b595cf9',
       plany: [
-        '67205bf8127c4c224ade425c47dd2246',
-        'bb6dfa40a0e49fcb070c10f0d0117059',
-        '793ee94663dae1ab0252c6bdd070b7eb',
-        '26d8e421568e2395a3ece2e59dd1ac2e',
-        '311a1b1aefbffa019832b301a7605eed',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
+        '3ed67cc1d2c97608afb6194ecc160e95',
+        'c3c0fc7e8246472e931d591d2c2515a0',
+        '2c077697ce0dee03149fe4c49f519b78',
+        '9bbc27a3d9b3e4eff0cdf84e7214a97c',
+        '57acf57b87503fdcacf2e48b45595c1f',
+        'b125da47bf4a50c6fb7d976ff4d5492e',
+        'b125da47bf4a50c6fb7d976ff4d5492e',
       ],
     },
   ],
@@ -623,29 +630,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '90661362a6f0ab5e8a1be3bb3ff396a9',
-      declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
+      scena: '6a085fa71fbefa66d233397122f82e41',
+      declutter: '3b365ba305cce706d2be20adc36b71cf',
       plany: [
-        'bb96bce423fc0946291bdd36d49ed8c2',
-        '7823922d2b8bfa2a847f1e655be156d0',
-        'ddbc1230a5bccb4fa4daa6b6427de3ca',
-        '7b072d4ef954c286798124c8c0fa6c77',
-        '66fb0c6845420ad9f48030a9ae8b0866',
-        '1af119c9668b67927bf66a4c995e7195',
-        '1af119c9668b67927bf66a4c995e7195',
+        '357c76f9e68860c802f10caf2e3ed9ff',
+        '89405ec3fbed6bcf490618400ff091ac',
+        '8c1ca4e44d0707828a072e84e02397a5',
+        'c30cf3042e1a6a95825b17f9c220dbb5',
+        '4c5891219fe7c701fa4bb569d1692e6e',
+        'a74db8058f57a47a95d998c45b5ba7f1',
+        'a74db8058f57a47a95d998c45b5ba7f1',
       ],
     },
     {
-      scena: '60589317c4b2576b7bea5a668ec3ed59',
-      declutter: 'fd2ac4acf96701c6273059192dddd93f',
+      scena: '6aa11f9f1c97b1f2739f8e6737b22c29',
+      declutter: 'b610d678817cc7ff9e5fde3af045aa38',
       plany: [
-        '28965374c394c62b1d414eddfdd5e98a',
-        '831a2768e8325c241b3574cb8e460e52',
-        '6beb6ca8596df41241a64a39286e58ef',
-        'ad8cd0a9b733288867caf0ec67712d1b',
-        'dd7706bb913891b95bf649e9e0b5a4e2',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
+        '85b6b440b7c93ef562eb7c2369689943',
+        '218b5bde0afa586a8d5e9cfc997cd457',
+        '6108617c0e634e11539901b13d630176',
+        '501c8d28976b0791db91d2cfd9c19a19',
+        '7c171afe328840e83e68b3267a5fb9e0',
+        '638535a1b3e3c3868003925afe4aa200',
+        '638535a1b3e3c3868003925afe4aa200',
       ],
     },
   ],

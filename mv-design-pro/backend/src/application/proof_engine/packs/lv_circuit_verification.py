@@ -182,7 +182,7 @@ class UrzadzenieOchronneNn:
                 f"Nieznany rodzaj urządzenia '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
             )
         if self.in_a <= 0:
-            raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
+            raise OdmowaDanychError(f"Prąd znamionowy musi być dodatni, otrzymano {self.in_a} A.")
         if self.kind == KIND_MCB and not self.klasa_mcb:
             raise OdmowaDanychError("Urządzenie MCB wymaga klasa_mcb (B/C/D).")
 
@@ -300,9 +300,32 @@ def _sym(symbol: str, unit: str, desc: str, key: str) -> SymbolDefinition:
     return SymbolDefinition(symbol=symbol, unit=unit, description_pl=desc, mapping_key=key)
 
 
-def _uc(expected: str, computed: str, derivation: str = "", passed: bool = True) -> UnitCheckResult:
+def _tekst_latex(tekst: str) -> str:
+    """Zdanie do polecenia `\\text{…}` wzoru: znaki specjalne LaTeX-a zapisane ucieczką
+    (`NIE_DOTYCZY` w `\\text{}` przerywał kompilację, `{`/`}` zamykały polecenie)."""
+    zamiany = {
+        "\\": r"\textbackslash{}",
+        "{": r"\{",
+        "}": r"\}",
+        "_": r"\_",
+        "%": r"\%",
+        "#": r"\#",
+        "&": r"\&",
+        "$": r"\$",
+        "^": r"\textasciicircum{}",
+        "~": r"\textasciitilde{}",
+    }
+    return "".join(zamiany.get(znak, znak) for znak in tekst)
+
+
+def _uc(
+    expected: str, computed: str, derivation_latex: str = "", passed: bool = True
+) -> UnitCheckResult:
     return UnitCheckResult(
-        passed=passed, expected_unit=expected, computed_unit=computed, derivation=derivation
+        passed=passed,
+        expected_unit=expected,
+        computed_unit=computed,
+        derivation_latex=derivation_latex,
     )
 
 
@@ -364,14 +387,14 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     # --- zdanie kombinacji ---
     if urzadzenie.kind != KIND_FUSE_SWITCH:
         zdanie_kombinacja = (
-            f"NIE_DOTYCZY — urządzenie {urzadzenie.kind} nie jest kombinacją "
+            f"Nie dotyczy — urządzenie {urzadzenie.kind} nie jest kombinacją "
             "rozłącznik+wkładka, nie ma prądu warunkowego kombinacji do oceny."
         )
         kombinacja_status = STATUS_NIE_DOTYCZY
         kombinacja_wartosc: float | None = None
     elif urzadzenie.conditional_sc_current_ka is None:
         zdanie_kombinacja = (
-            "NIEROZSTRZYGALNE — obwód bez wkładki zainstalowanej (albo katalog nie "
+            "Nierozstrzygalne — obwód bez wkładki zainstalowanej (albo katalog nie "
             "niesie prądu warunkowego kombinacji conditional_sc_current_ka) — brak "
             "podstawy do oceny zdolności wyłączania kombinacji (zero fabrykacji)."
         )
@@ -379,8 +402,9 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         kombinacja_wartosc = None
     elif ik_max_ka is None:
         zdanie_kombinacja = (
-            f"NIEROZSTRZYGALNE — prąd warunkowy kombinacji Icond="
-            f"{urzadzenie.conditional_sc_current_ka:g} kA jest znany, ale brak Ik″max "
+            "Nierozstrzygalne — prąd warunkowy kombinacji "
+            f"{urzadzenie.conditional_sc_current_ka:g} kA jest znany, ale brak największego "
+            "początkowego prądu zwarciowego "
             "w punkcie zabudowy (bieg zwarciowy nie dostarczony)."
         )
         kombinacja_status = STATUS_NIEROZSTRZYGALNE
@@ -390,16 +414,17 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         kombinacja_status = STATUS_SPELNIA if kombinacja_spelnia_bool else STATUS_NIE_SPELNIA
         kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
         zdanie_kombinacja = (
-            f"Kombinacja rozłącznik+wkładka: prąd warunkowy Icond="
+            "Kombinacja rozłącznik+wkładka: prąd warunkowy "
             f"{urzadzenie.conditional_sc_current_ka:g} kA "
-            f"{'>=' if kombinacja_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
+            f"{'nie mniejszy od' if kombinacja_spelnia_bool else 'mniejszy od'} największego "
+            f"początkowego prądu zwarciowego {ik_max_ka:g} kA w punkcie "
             f"zabudowy — {kombinacja_status} (IEC 60947, prąd warunkowy kombinacji)."
         )
 
     # --- zdanie gołego aparatu ---
     if urzadzenie.kind == KIND_FUSE_SWITCH:
         zdanie_goly = (
-            "NIE_DOTYCZY — rozłącznik bezpiecznikowy sam w sobie NIE MA własnej "
+            "Nie dotyczy — rozłącznik bezpiecznikowy sam w sobie NIE MA własnej "
             "zdolności wyłączania zwarć (zapadka strukturalna katalogu, wzorzec "
             "UM-ICU-KATALOG); jedyna wielkość dla tego aparatu to prąd warunkowy "
             "KOMBINACJI powyżej."
@@ -408,7 +433,7 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         goly_wartosc: float | None = None
     elif urzadzenie.wlasna_zdolnosc_ka is None:
         zdanie_goly = (
-            f"NIEROZSTRZYGALNE — katalog nie niesie własnej zdolności wyłączania "
+            f"Nierozstrzygalne — katalog nie niesie własnej zdolności wyłączania "
             f"({'Icn' if urzadzenie.kind == KIND_MCB else 'Icu'}) dla tego aparatu "
             f"{urzadzenie.kind} (zero fabrykacji)."
         )
@@ -417,8 +442,9 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
     elif ik_max_ka is None:
         etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
         zdanie_goly = (
-            f"NIEROZSTRZYGALNE — własna zdolność {etykieta}="
-            f"{urzadzenie.wlasna_zdolnosc_ka:g} kA jest znana, ale brak Ik″max w "
+            f"Nierozstrzygalne — własna zdolność {etykieta}="
+            f"{urzadzenie.wlasna_zdolnosc_ka:g} kA jest znana, ale brak największego "
+            "początkowego prądu zwarciowego w "
             "punkcie zabudowy (bieg zwarciowy nie dostarczony)."
         )
         goly_status = STATUS_NIEROZSTRZYGALNE
@@ -431,7 +457,8 @@ def ocen_zdolnosc_wylaczania_dwa_zdania(
         zdanie_goly = (
             f"Goły aparat ({urzadzenie.kind}): własna zdolność {etykieta}="
             f"{urzadzenie.wlasna_zdolnosc_ka:g} kA "
-            f"{'>=' if goly_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
+            f"{'nie mniejsza od' if goly_spelnia_bool else 'mniejsza od'} największego "
+            f"początkowego prądu zwarciowego {ik_max_ka:g} kA w punkcie "
             f"zabudowy — {goly_status}."
         )
 
@@ -484,7 +511,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
                 f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
             ),
             result=_pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-            unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+            unit_check=_uc("A", "A", r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}"),
             source_keys={
                 "trasa": ";".join(c.label for c in fl.components),
                 "network_type": fl.network_type.value,
@@ -503,7 +530,7 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
         "IEC 60364-4-41 Tab. 41.1 (G-D3)",
         [
             _sym("I_{k1,min}", "A", "Prąd zwarcia jednofazowego minimalny", "ik1_min_a"),
-            _sym("I_a", "A", "Prąd zapewniający zadziałanie w czasie t_wym", "ia_wymagane_a"),
+            _sym("I_a", "A", "Prąd zapewniający zadziałanie w wymaganym czasie", "ia_wymagane_a"),
             _sym("t_{wym}", "s", "Czas wymagany wyłączenia (Tab. 41.1)", "t_wymagany_s"),
         ],
     )
@@ -512,7 +539,8 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
             step_id=ProofStep.generate_step_id("LVCV", 10),
             step_number=10,
             title_pl=(
-                f"SWZ — samoczynne wyłączenie zasilania (pasmo U0={data.swz_pasmo_u0}, "
+                "SWZ — samoczynne wyłączenie zasilania (pasmo napięcia względem ziemi "
+                f"{data.swz_pasmo_u0}, "
                 f"obwód {data.swz_rodzaj_obwodu})"
             ),
             equation=eq10,
@@ -535,9 +563,13 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
                     "t_wymagany_s",
                 ),
             ),
-            substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
+            substitution_latex=rf"$$\text{{{_tekst_latex(data.swz_przyczyna_pl)}}}$$",
             result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
-            unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
+            unit_check=_uc(
+                "A",
+                "A",
+                r"\mathrm{A} \ge \mathrm{A} \quad \text{(przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)}",
+            ),
             source_keys={
                 "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
                 "pasmo_u0": data.swz_pasmo_u0,
@@ -573,7 +605,8 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
             "EQ_LVCV_008",
             r"I_d = \frac{c_{min} \cdot U_0}{|Z_s|},\quad Z_s = Z_{up} + Z_{TR} + Z_L + R_B + R_A",
             "Prąd zwarcia doziemnego w układzie TT",
-            "IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (c_min)",
+            "IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (minimalny "
+            "współczynnik napięciowy)",
             [
                 _sym("I_d", "A", "Prąd zwarcia doziemnego (L–PE przez uziomy)", "ik1_min_a"),
                 _sym("c_{min}", "—", "Współczynnik napięciowy minimalny", "c_min"),
@@ -601,7 +634,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     f"{{{fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_d", fl.ik_min_a, "A", "ik1_min_a"),
-                unit_check=_uc("A", "A", "(—) · V / Ω = A"),
+                unit_check=_uc("A", "A", r"1 \cdot \mathrm{V}/\Omega = \mathrm{A}"),
                 source_keys={
                     "trasa": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
@@ -632,7 +665,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
             or tt.u_ll_v is None
         ):
             raise OdmowaDanychError(
-                "Wynik pętli doziemnej IT bez prądu pierwszego zwarcia, pojemności C_e, "
+                "Wynik pętli doziemnej IT bez prądu pierwszego zwarcia, pojemności doziemnej, "
                 "częstotliwości albo napięcia międzyprzewodowego — pakiet nie cytuje zera."
             )
         i_d1 = tt.i_d_pierwsze_zwarcie_a
@@ -654,15 +687,21 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                     _pv("Z_s", fl.z_loop_magnitude_ohm, "Ω", "z_loop_magnitude_ohm"),
                 ),
                 substitution_latex=(
-                    f"$$I_d = 3 \\cdot 2\\pi \\cdot {f_hz:g} \\cdot {c_e:.6e} \\cdot "
-                    f"{fl.u_nom_v:.2f} = {i_d1:.4f}\\;\\mathrm{{A}}$$"
-                    "$$I_{d2,min} = \\frac{c_{min} \\cdot U_{LL}}{2 \\cdot |Z_s|} = "
+                    "$$\\begin{gathered}"
+                    f"I_d = 3 \\cdot 2\\pi \\cdot {f_hz:g} \\cdot {c_e:.6e} \\cdot "
+                    f"{fl.u_nom_v:.2f} = {i_d1:.4f}\\;\\mathrm{{A}} \\\\ "
+                    "I_{d2,min} = \\frac{c_{min} \\cdot U_{LL}}{2 \\cdot |Z_s|} = "
                     f"\\frac{{{fl.c_min:g} \\cdot {u_ll_v:.2f}}}"
                     f"{{2 \\cdot {fl.z_loop_magnitude_ohm:.6f}}} = {fl.ik_min_a:.2f}"
-                    "\\;\\mathrm{A}\\quad(\\text{EQ\\_LVCV\\_011})$$"
+                    "\\;\\mathrm{A}\\quad(\\text{EQ\\_LVCV\\_011})"
+                    "\\end{gathered}$$"
                 ),
                 result=_pv("I_d", i_d1, "A", "i_d_pierwsze_zwarcie_a"),
-                unit_check=_uc("A", "A", "(1/s) · F · V = A; (—) · V / Ω = A"),
+                unit_check=_uc(
+                    "A",
+                    "A",
+                    r"\mathrm{s}^{-1} \cdot \mathrm{F} \cdot \mathrm{V} = \mathrm{A}, \quad 1 \cdot \mathrm{V}/\Omega = \mathrm{A}",
+                ),
                 source_keys={
                     "trasa_drugiego_zwarcia": ";".join(c.label for c in fl.components),
                     "network_type": fl.network_type.value,
@@ -699,7 +738,10 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
         "EQ_LVCV_009",
         r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
         "Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
-        "IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+        (
+            "IEC 60364-4-41 §411.5.3 (TT: rezystancja uziomu razy znamionowy prąd różnicowy) / "
+            "§411.6.2 (IT: rezystancja uziomu razy prąd pierwszego doziemienia)"
+        ),
         [
             _sym("U_{dotyk}", "V", "Napięcie dotykowe na uziomie instalacji", "u_dotyk_v"),
             _sym("R_A", "Ω", "Rezystancja uziomu instalacji odbiorczej", "r_a_ohm"),
@@ -722,7 +764,8 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
             step_id=ProofStep.generate_step_id("LVCV", 10),
             step_number=10,
             title_pl=(
-                f"SWZ w układzie {uklad} — werdykt wyjaśnialny (pasmo U0={data.swz_pasmo_u0}, "
+                f"SWZ w układzie {uklad} — werdykt wyjaśnialny (pasmo napięcia względem ziemi "
+                f"{data.swz_pasmo_u0}, "
                 f"obwód {data.swz_rodzaj_obwodu})"
             ),
             equation=eq10,
@@ -738,12 +781,13 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                 ),
                 _pv("t_{wym}", _wartosc_lub_brak(data.swz_t_wymagany_s), "s", "t_wymagany_s"),
             ),
-            substitution_latex="".join(
-                "$$\\text{" + linia.replace("\\", "/").replace("{", "(").replace("}", ")") + "}$$"
-                for linia in linie
+            substitution_latex=(
+                "$$\\begin{gathered}"
+                + " \\\\ ".join(rf"\text{{{_tekst_latex(linia)}}}" for linia in linie)
+                + "\\end{gathered}$$"
             ),
             result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
-            unit_check=_uc("V", "V", "Ω · A = V"),
+            unit_check=_uc("V", "V", r"\Omega \cdot \mathrm{A} = \mathrm{V}"),
             source_keys={
                 "kontrakt": str(data.swz_tt_it.get("kontrakt", "")),
                 "wymaganie_id": (
@@ -810,7 +854,11 @@ class LVCircuitVerificationProofPack:
                     r"\;\mathrm{MVA}$$"
                 ),
                 result=_pv("S", s_mva, "MVA", "s_mva"),
-                unit_check=_uc("MVA", "MVA", "MW² + Mvar² = MVA² → MVA"),
+                unit_check=_uc(
+                    "MVA",
+                    "MVA",
+                    r"\mathrm{MW}^{2} + \mathrm{Mvar}^{2} = \mathrm{MVA}^{2} \rightarrow \mathrm{MVA}",
+                ),
             )
         )
 
@@ -834,7 +882,7 @@ class LVCircuitVerificationProofPack:
             ProofStep(
                 step_id=ProofStep.generate_step_id("LVCV", 2),
                 step_number=2,
-                title_pl="Prąd obliczeniowy obwodu Ib",
+                title_pl="Prąd obliczeniowy obwodu",
                 equation=eq2,
                 input_values=(
                     _pv("S", s_mva, "MVA", "s_mva"),
@@ -845,7 +893,11 @@ class LVCircuitVerificationProofPack:
                     f"= {ib_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_b", ib_a, "A", "ib_a"),
-                unit_check=_uc("A", "A", "MVA / kV = kA (MVA = kV·kA) → A"),
+                unit_check=_uc(
+                    "A",
+                    "A",
+                    r"\mathrm{MVA}/\mathrm{kV} = \mathrm{kA} \quad (\mathrm{MVA} = \mathrm{kV} \cdot \mathrm{kA}) \rightarrow \mathrm{A}",
+                ),
             )
         )
 
@@ -857,7 +909,7 @@ class LVCircuitVerificationProofPack:
         eq3 = _eq(
             "EQ_LVCV_001",
             r"I_z' = I_z \cdot f_{\theta} \cdot f_{\rho} \cdot f_{N}",
-            "Obciążalność dopuszczalna po korektach (Iz′)",
+            "Obciążalność dopuszczalna po korektach",
             "PN-HD 60364-5-52 (zestaw korekcyjny G-D1)",
             [
                 _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
@@ -885,7 +937,7 @@ class LVCircuitVerificationProofPack:
                     f"{iz_prime_a:.2f}\\;\\mathrm{{A}}$$"
                 ),
                 result=_pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
-                unit_check=_uc("A", "A", "A · (—)·(—)·(—) = A"),
+                unit_check=_uc("A", "A", r"\mathrm{A} \cdot 1 \cdot 1 \cdot 1 = \mathrm{A}"),
                 source_keys={"srodowisko": w.srodowisko, "podstawa_iloczynu": w.zalozenie_pl()},
             )
         )
@@ -922,7 +974,7 @@ class LVCircuitVerificationProofPack:
                     f"\\Rightarrow \\text{{{'spełnia' if dobor_spelnia else 'nie spełnia'}}}$$"
                 ),
                 result=_pv("I_n", in_a, "A", "in_a"),
-                unit_check=_uc("A", "A", "A ≤ A ≤ A"),
+                unit_check=_uc("A", "A", r"\mathrm{A} \le \mathrm{A} \le \mathrm{A}"),
                 source_keys={"werdykt": "spełnia" if dobor_spelnia else "nie spełnia"},
             )
         )
@@ -935,15 +987,21 @@ class LVCircuitVerificationProofPack:
         i2_zrodlo: str
         if data.urzadzenie.kind == KIND_MCB:
             i2_a = PROG_CIEPLNY_WYZWALA_X_IN * in_a
-            i2_zrodlo = f"{PROG_CIEPLNY_WYZWALA_X_IN:g}×In (MCB, IEC 60898-1)"
+            i2_zrodlo = (
+                f"prąd zadziałania {PROG_CIEPLNY_WYZWALA_X_IN:g}-krotność prądu znamionowego "
+                "wyłącznika (MCB, IEC 60898-1)"
+            )
         elif data.urzadzenie.kind == KIND_FUSE_SWITCH:
             i2_a = FUSE_GG_IF_MULTIPLIER * in_a
-            i2_zrodlo = f"If={FUSE_GG_IF_MULTIPLIER:g}×In wkładki (IEC 60269-1)"
+            i2_zrodlo = (
+                f"prąd zadziałania {FUSE_GG_IF_MULTIPLIER:g}-krotność prądu znamionowego "
+                "wkładki (IEC 60269-1)"
+            )
         else:
             i2_a = None
             i2_zrodlo = (
                 "MCCB z wyzwalaczem elektronicznym — brak normatywnego pojedynczego "
-                "mnożnika I2 niezależnego od nastaw producenta (zero fabrykacji)"
+                "mnożnika prądu zadziałania niezależnego od nastaw producenta (zero fabrykacji)"
             )
         i2_spelnia = None if i2_a is None else i2_a <= limit_a
         eq5 = _eq(
@@ -954,14 +1012,16 @@ class LVCircuitVerificationProofPack:
             [
                 _sym("I_2", "A", "Prąd gwarantowanego zadziałania", "i2_a"),
                 _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
-                _sym("1{,}45 \\cdot I_z'", "A", "Granica dopuszczalna I2", "limit_a"),
+                _sym(
+                    "1{,}45 \\cdot I_z'", "A", "Granica dopuszczalna prądu zadziałania", "limit_a"
+                ),
             ],
         )
         steps.append(
             ProofStep(
                 step_id=ProofStep.generate_step_id("LVCV", 5),
                 step_number=5,
-                title_pl=f"Warunek zadziałania I2 ({i2_zrodlo})",
+                title_pl=f"Warunek prądu zadziałania zabezpieczenia ({i2_zrodlo})",
                 equation=eq5,
                 input_values=(
                     _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
@@ -979,7 +1039,7 @@ class LVCircuitVerificationProofPack:
                     "A",
                     "i2_a",
                 ),
-                unit_check=_uc("A", "A", "A ≤ A"),
+                unit_check=_uc("A", "A", r"\mathrm{A} \le \mathrm{A}"),
                 source_keys={
                     "werdykt": (
                         "nierozstrzygalne"
@@ -999,7 +1059,8 @@ class LVCircuitVerificationProofPack:
         eq6 = _eq(
             "EQ_LVCV_004",
             r"I_{cond} \ge I_k''_{max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I_k''_{max}",
-            "Zdolność wyłączania wobec Ik″max — dwa zdania inżynierskie",
+            "Zdolność wyłączania wobec największego początkowego prądu zwarciowego — dwa zdania "
+            "inżynierskie",
             "IEC 60947 / IEC 60898-1 / IEC 60269-1",
             [
                 _sym(
@@ -1047,8 +1108,10 @@ class LVCircuitVerificationProofPack:
                     ),
                 ),
                 substitution_latex=(
-                    f"$$\\text{{kombinacja: }} {zdolnosc.zdanie_kombinacja_pl}$$\n"
-                    f"$$\\text{{goły aparat: }} {zdolnosc.zdanie_goly_aparat_pl}$$"
+                    "$$\\begin{gathered}"
+                    rf"\text{{kombinacja: {_tekst_latex(zdolnosc.zdanie_kombinacja_pl)}}} \\ "
+                    rf"\text{{goły aparat: {_tekst_latex(zdolnosc.zdanie_goly_aparat_pl)}}}"
+                    "\\end{gathered}$$"
                 ),
                 result=_pv(
                     "\\text{werdykt}",
@@ -1056,7 +1119,7 @@ class LVCircuitVerificationProofPack:
                     "—",
                     "zdolnosc_wylaczania_werdykt",
                 ),
-                unit_check=_uc("kA", "kA", "kA ≥ kA"),
+                unit_check=_uc("kA", "kA", r"\mathrm{kA} \ge \mathrm{kA}"),
                 source_keys={
                     "zdanie_kombinacja_pl": zdolnosc.zdanie_kombinacja_pl,
                     "zdanie_goly_aparat_pl": zdolnosc.zdanie_goly_aparat_pl,
@@ -1085,7 +1148,7 @@ class LVCircuitVerificationProofPack:
             ProofStep(
                 step_id=ProofStep.generate_step_id("LVCV", 7),
                 step_number=7,
-                title_pl="Wytrzymałość cieplna przewodu I²t ≤ k²S²",
+                title_pl="Wytrzymałość cieplna przewodu (energia zwarcia wobec wytrzymałości żyły)",
                 equation=eq7,
                 input_values=(
                     _pv(
@@ -1105,10 +1168,14 @@ class LVCircuitVerificationProofPack:
                     f"$${i2t:.1f}\\;\\mathrm{{A^2s}} \\le {i2t_dop:.1f}\\;\\mathrm{{A^2s}} "
                     f"\\Rightarrow \\text{{{th.status}}}$$"
                     if th.i2t_a2s is not None and th.i2t_admissible_a2s is not None
-                    else rf"$$\text{{{th.status}}}$$"
+                    else rf"$$\text{{{_tekst_latex(th.status)}}}$$"
                 ),
                 result=_pv("\\text{status}", th.status, "—", "thermal_status"),
-                unit_check=_uc("A²s", "A²s", "A²·s ≤ (A·√s/mm²)² · mm² = A²·s"),
+                unit_check=_uc(
+                    "A²s",
+                    "A²s",
+                    r"\mathrm{A}^{2}\,\mathrm{s} \le \left(\mathrm{A}\,\sqrt{\mathrm{s}}/\mathrm{mm}^{2}\right)^{2} \cdot \left(\mathrm{mm}^{2}\right)^{2} = \mathrm{A}^{2}\,\mathrm{s}",
+                ),
                 source_keys={
                     "decision_reason_pl": th.decision_reason_pl or "",
                     "readiness_codes": ",".join(th.readiness_codes),
@@ -1153,7 +1220,7 @@ class LVCircuitVerificationProofPack:
                     f"= {u_target_kv:.4f}\\;\\mathrm{{kV}}$$"
                 ),
                 result=_pv("U", u_target_kv, "kV", "u_kv"),
-                unit_check=_uc("kV", "kV", "kV − kV = kV"),
+                unit_check=_uc("kV", "kV", r"\mathrm{kV} - \mathrm{kV} = \mathrm{kV}"),
                 source_keys={
                     "delta_u_total_percent": (
                         f"{data.vdrop_delta_u_total_percent:.4f}"

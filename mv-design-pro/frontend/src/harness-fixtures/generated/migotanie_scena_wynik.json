@@ -5,7 +5,7 @@
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "b60854b340ef5b888b7ac91930c999637da22fb92330238a01a93aa940276c2b",
+    "snapshot_hash": "6254024ce3a386f4684af72b6aa9f007a2069b65f7edad14044a28dd81dc702c",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "config": {
@@ -31,8 +31,10 @@
             {
               "symbol": "P_st,i",
               "formula_latex": "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-              "substitution_pl": "P_st_i = 0.3 · 0.215 / 37.996 MVA",
-              "result_pl": "P_st_i = 0.001698"
+              "substitution_pl": "współczynnik migotania 0.3 razy moc znamionowa modułu 0.215 MVA przez moc zwarciową 37.996 MVA",
+              "substitution_latex": "P_{st,i} = 0.3 \\cdot \\dfrac{0.215\\ \\mathrm{MVA}}{37.996\\ \\mathrm{MVA}}",
+              "result_pl": "Wkład modułu do wskaźnika krótkotrwałego migotania: 0.001698",
+              "result_latex": "P_{st,i} = 0.001698"
             }
           ],
           "gen_name": "Farma PV"
@@ -45,30 +47,36 @@
       "plt_limit": 0.7,
       "verdict_pl": "w granicach planowania",
       "zalozenia_pl": [
-        "Emisja pojedynczego źródła: Pst_i = c · Sn / Sk'' (c — współczynnik emisji migotania z certyfikatu urządzenia; metodyka IEC 61400-21-1).",
-        "Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik m = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).",
+        "Emisja pojedynczego źródła: wskaźnik krótkotrwałego migotania równy współczynnikowi emisji migotania z certyfikatu urządzenia razy stosunek mocy znamionowej źródła do mocy zwarciowej węzła (metodyka IEC 61400-21-1).",
+        "Sumowanie emisji wielu źródeł w węźle: pierwiastek trzeciego stopnia z sumy sześcianów wskaźników źródeł (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).",
         "Plt = Pst — założenie konserwatywne dla ciągłej, ustalonej emisji źródeł OZE (równe wartości Pst w oknie 2 h dają Plt = Pst z definicji Plt).",
         "Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.",
-        "Szybka zmiana napięcia d = kmax · Sn / Sk'' · 100, kmax = 1 (założenie konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; IEC/TR 61000-3-7:2008, §5.5)."
+        "Szybka zmiana napięcia w procentach: współczynnik zmiany napięcia równy 1 razy stosunek mocy znamionowej do mocy zwarciowej węzła (założenie konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; IEC/TR 61000-3-7:2008, §5.5)."
       ],
       "white_box": [
         {
           "symbol": "P_st",
           "formula_latex": "P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3",
-          "substitution_pl": "P_st = (0.001698^3)^(1/3)",
-          "result_pl": "P_st = 0.001698"
+          "substitution_pl": "pierwiastek stopnia 3 z sumy potęg stopnia 3 wkładów modułów (0.001698)",
+          "substitution_latex": "P_{st} = \\left( 0.001698^{3} \\right)^{1/3}",
+          "result_pl": "Wskaźnik krótkotrwałego migotania: 0.001698",
+          "result_latex": "P_{st} = 0.001698"
         },
         {
           "symbol": "P_lt",
           "formula_latex": "P_{lt} = P_{st}",
-          "substitution_pl": "P_lt = P_st = 0.001698 (emisja ciągła, założenie konserwatywne)",
-          "result_pl": "P_lt = 0.001698"
+          "substitution_pl": "Wskaźnik długotrwałego migotania równy krótkotrwałemu: 0.001698 (emisja ciągła, założenie konserwatywne)",
+          "substitution_latex": "P_{lt} = P_{st} = 0.001698",
+          "result_pl": "Wskaźnik długotrwałego migotania: 0.001698",
+          "result_latex": "P_{lt} = 0.001698"
         },
         {
           "symbol": "d",
           "formula_latex": "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-          "substitution_pl": "d = 1 · 0.215 / 37.996 · 100 %",
-          "result_pl": "d = 0.565849 %"
+          "substitution_pl": "współczynnik 1 razy moc znamionowa modułów 0.215 MVA przez moc zwarciową 37.996 MVA, w procentach",
+          "substitution_latex": "d = 1 \\cdot \\dfrac{0.215\\ \\mathrm{MVA}}{37.996\\ \\mathrm{MVA}} \\cdot 100\\%",
+          "result_pl": "Szybka zmiana napięcia: 0.565849 %",
+          "result_latex": "d = 0.565849\\%"
         }
       ],
       "bus_name": "Pole PV nN"

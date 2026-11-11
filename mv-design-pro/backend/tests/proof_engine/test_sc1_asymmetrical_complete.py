@@ -446,7 +446,7 @@ class TestUnitVerification:
         for step in proof.steps:
             assert step.unit_check.passed, (
                 f"Unit check failed for {step.equation.equation_id} "
-                f"in {fault_type}: {step.unit_check.derivation}"
+                f"in {fault_type}: {step.unit_check.opis_pl}"
             )
 
     @pytest.mark.parametrize(

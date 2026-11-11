@@ -156,15 +156,24 @@ def validate_inverter_control(c: InverterControl) -> None:
         raise OdmowaDanychError(f"inverter lfsm_droop_pct must be >= 0, got {c.lfsm_droop_pct}")
     if c.mode is InverterMode.Q_U:
         if c.qu_deadband_low_pu > c.qu_deadband_high_pu:
-            raise OdmowaDanychError("Q(U) deadband_low must be <= deadband_high")
+            raise OdmowaDanychError(
+                "charakterystyka Q(U): dolna granica strefy martwej nie może przekraczać górnej"
+            )
         if c.qu_slope_pu_per_pu < 0.0:
-            raise OdmowaDanychError("Q(U) slope must be >= 0 (sign is applied by the curve)")
+            raise OdmowaDanychError(
+                "charakterystyka Q(U): nachylenie nie może być ujemne (znak nadaje krzywa)"
+            )
         if c.qu_q_min_pu > c.qu_q_max_pu:
-            raise OdmowaDanychError("Q(U) q_min must be <= q_max")
+            raise OdmowaDanychError(
+                "charakterystyka Q(U): minimalna moc bierna nie może przekraczać maksymalnej"
+            )
     if c.mode is InverterMode.COSPHI_P:
         xs = [x for x, _ in c.cosphi_p_points]
         if xs != sorted(xs):
-            raise OdmowaDanychError("COSPHI_P points must be ascending in p_frac")
+            raise OdmowaDanychError(
+                "punkty charakterystyki współczynnika mocy od mocy czynnej muszą rosnąć względem "
+                "udziału mocy czynnej"
+            )
 
 
 @dataclass(frozen=True)

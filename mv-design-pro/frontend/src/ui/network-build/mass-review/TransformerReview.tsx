@@ -13,6 +13,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useSelectionStore } from '../../selection';
 import { kontekstTransformatorowStacji, stationRefOfTransformer } from '../../shared/transformatoryStacji';
+import { MathInline } from '../../proof/MathRenderer';
 
 // =============================================================================
 // Component
@@ -107,8 +108,12 @@ export function TransformerReview({ className }: TransformerReviewProps) {
               <tr className="bg-gray-50 sticky top-0">
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500 w-6" />
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Nazwa</th>
-                <th className="px-3 py-1.5 text-right font-medium text-gray-500">Sn [kVA]</th>
-                <th className="px-3 py-1.5 text-right font-medium text-gray-500">uk [%]</th>
+                <th className="px-3 py-1.5 text-right font-medium text-gray-500">
+                  <MathInline latex="S_{n}" /> [kVA]
+                </th>
+                <th className="px-3 py-1.5 text-right font-medium text-gray-500">
+                  <MathInline latex="u_{k}" /> [%]
+                </th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Grupa</th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Stacja</th>
                 <th className="px-3 py-1.5 text-left font-medium text-gray-500">Katalog</th>

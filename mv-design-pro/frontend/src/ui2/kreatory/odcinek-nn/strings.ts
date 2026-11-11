@@ -24,17 +24,17 @@ export const ODCINEK_NN_STRINGS = {
   sekcjaParametryTytul: 'Parametry odcinka',
   dlugosc: 'Długość',
   nParallel: 'Liczba torów równoległych',
-  nParallelPomoc: 'Kable ułożone równolegle na tej samej trasie — n torów dzieli prąd obciążenia po równo (Iz′ całkowite = n × Iz′ jednego toru).',
+  nParallelPomoc: 'Kable ułożone równolegle na tej samej trasie — n torów dzieli prąd obciążenia po równo ($I\'_{z}$ całkowite = n × $I\'_{z}$ jednego toru).',
   ekranUziemienie: 'Uziemienie ekranu kabla',
   ekranUziemieniePomoc:
     'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + 'Katalogowe $R_{0}$/$X_{0}$ obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
     + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   sekcjaUlozenieTytul: 'Warunki ułożenia (korekta obciążalności)',
   ulozeniePomoc: 'Po co: koryguje obciążalność katalogową kabla do rzeczywistych warunków trasy '
     + '(PN-HD 60364-5-52); z czego: środowisko, izolacja, temperatura otoczenia, liczba obwodów '
-    + 'w wiązce/wykopie; co daje: Iz′ (obciążalność skorygowaną) liczoną przez backend przy każdym odczycie.',
+    + 'w wiązce/wykopie; co daje: $I\'_{z}$ (obciążalność skorygowaną) liczoną przez backend przy każdym odczycie.',
   ulozenieKatalogowe: 'Warunki katalogowe (bez korekty)',
   ulozenieWlasne: 'Opisz warunki trasy',
   srodowisko: 'Środowisko ułożenia',
@@ -46,16 +46,16 @@ export const ODCINEK_NN_STRINGS = {
   rezystywnoscGruntu: 'Rezystywność cieplna gruntu',
 
   sekcjaPodgladTytul: 'Podgląd spadku napięcia',
-  ibPodgladu: 'Prąd obliczeniowy Ib (do podglądu ΔU)',
+  ibPodgladu: 'Prąd obliczeniowy $I_{b}$ (do podglądu ΔU)',
   ibPodgladuPomoc: 'Wyłącznie do podglądu spadku napięcia w tym kreatorze — nie jest zapisywany w operacji '
-    + 'domenowej (Ib obwodu wyznacza się osobno przy doborze zabezpieczenia).',
+    + 'domenowej ($I_{b}$ obwodu wyznacza się osobno przy doborze zabezpieczenia).',
   podgladDeltaU: 'ΔU',
   podgladDeltaUpct: 'ΔU [%]',
-  podgladBrak: 'Podaj Ib i wybierz kabel, aby zobaczyć podgląd spadku napięcia.',
+  podgladBrak: 'Podaj $I_{b}$ i wybierz kabel, aby zobaczyć podgląd spadku napięcia.',
   podgladBlad: 'Podgląd spadku napięcia niedostępny — spróbuj ponownie.',
-  izPrimaBrak: 'Podgląd obciążalności skorygowanej (Iz′) warunkami ułożenia nie jest jeszcze dostępny '
+  izPrimaBrak: 'Podgląd obciążalności skorygowanej ($I\'_{z}$) warunkami ułożenia nie jest jeszcze dostępny '
     + 'z tego kreatora — brakuje dedykowanego endpointu podglądu dla nN (solver `wspolczynniki_nn` liczy '
-    + 'korektę przy każdym odczycie modelu). Iz′ policzy backend w ocenie obciążalności po zapisaniu odcinka.',
+    + 'korektę przy każdym odczycie modelu). $I\'_{z}$ policzy backend w ocenie obciążalności po zapisaniu odcinka.',
 
   paramSekcjaNormowa: 'Parametry z katalogu',
   paramPrzekroj: 'Przekrój',
@@ -87,8 +87,8 @@ export const ODCINEK_NN_STRINGS = {
   bladDodania: 'Nie udało się dodać odcinka nN.',
 
   teoriaTytul: 'Dobór przekroju kabla nN',
-  teoriaOpis: 'Kryteria doboru: obciążalność prądowa (Ib ≤ In ≤ Iz′) i dopuszczalny spadek napięcia — '
-    + 'oba weryfikowane osobno (Iz′ przy doborze zabezpieczenia, ΔU w tym podglądzie i w wynikach rozpływu).',
-  teoriaWymog: 'PN-HD 60364-5-52 (obciążalność), IEC 60364-4-43 (dobór zabezpieczenia z Iz′)',
+  teoriaOpis: 'Kryteria doboru: obciążalność prądowa ($I_{b}$ ≤ $I_{n}$ ≤ $I\'_{z}$) i dopuszczalny spadek napięcia — '
+    + 'oba weryfikowane osobno ($I\'_{z}$ przy doborze zabezpieczenia, ΔU w tym podglądzie i w wynikach rozpływu).',
+  teoriaWymog: 'PN-HD 60364-5-52 (obciążalność), IEC 60364-4-43 (dobór zabezpieczenia z $I\'_{z}$)',
   teoriaPodstawa: 'Norma',
 } as const;

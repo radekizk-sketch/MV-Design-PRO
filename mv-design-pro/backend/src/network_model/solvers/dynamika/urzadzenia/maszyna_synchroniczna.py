@@ -636,7 +636,7 @@ class MaszynaSynchroniczna:
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
                 f"Maszyna {self.ident!r}: punkt pracy wymaga wzbudzenia "
                 f"Efd = {wzbudzenie_pu} pu poza granicami regulatora "
-                f"[{wzbudzenie.efd_min_pu}, {wzbudzenie.efd_max_pu}] — rownowaga nie istnieje",
+                f"[{wzbudzenie.efd_min_pu}, {wzbudzenie.efd_max_pu}] — równowaga nie istnieje",
                 urzadzenie=self.ident,
                 efd_pu=wzbudzenie_pu,
                 efd_min_pu=wzbudzenie.efd_min_pu,
@@ -659,8 +659,8 @@ class MaszynaSynchroniczna:
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
                 f"Maszyna {self.ident!r}: punkt pracy wymaga mocy turbiny "
-                f"P_m = {moc_mechaniczna_pu} pu poza granicami regulatora "
-                f"[{turbina.p_min_pu}, {turbina.p_max_pu}] — rownowaga nie istnieje",
+                f"{moc_mechaniczna_pu} pu poza granicami regulatora "
+                f"[{turbina.p_min_pu}, {turbina.p_max_pu}] — równowaga nie istnieje",
                 urzadzenie=self.ident,
                 p_mechaniczna_pu=moc_mechaniczna_pu,
                 p_min_pu=turbina.p_min_pu,

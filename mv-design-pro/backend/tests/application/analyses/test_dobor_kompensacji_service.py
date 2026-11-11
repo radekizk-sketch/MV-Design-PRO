@@ -325,7 +325,7 @@ def test_no_candidate_meets_returns_null_with_reason() -> None:
     view = build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=0.999)
     assert view["dobor"] is None
     assert view["powod_braku"] is not None
-    assert "cosφ" in view["powod_braku"]
+    assert "współczynnika mocy" in view["powod_braku"]
     assert all(c["spelnia"] is False for c in view["candidates"])
 
 
@@ -450,7 +450,9 @@ def test_rejects_unfinished_run() -> None:
 def test_rejects_cos_phi_out_of_range() -> None:
     run = _golden_run()
     for cos_phi_min in (1.5, 0.0):
-        with pytest.raises(ValueError, match=r"^Wymagany cosφ musi być w przedziale \(0, 1\]\.$"):
+        with pytest.raises(
+            ValueError, match=r"^Wymagany współczynnik mocy musi być w przedziale \(0, 1\]\.$"
+        ):
             build_compensation_sizing_view(run, bus_ref="bus_sn_c", cos_phi_min=cos_phi_min)
 
 

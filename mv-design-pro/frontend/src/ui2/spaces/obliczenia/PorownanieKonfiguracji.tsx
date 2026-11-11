@@ -10,6 +10,7 @@ import { useState } from 'react';
 import type { StudyCase } from '../../../ui/study-cases/types';
 import { rozniceKonfiguracji } from './adapters/przypadkiAdapter';
 import { PRZYPADKI_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 interface PorownanieKonfiguracjiProps {
   przypadki: StudyCase[];
@@ -85,7 +86,7 @@ export function PorownanieKonfiguracji({ przypadki, ladowanie, blad }: Porownani
                 data-rozne={w.rozne}
               >
                 <td>
-                  {w.etykieta}
+                  <TekstZWzorami tekst={w.etykieta} />
                   {w.rozne && (
                     <span className="mvd-porownanie-znacznik">{T.znacznikRoznica}</span>
                   )}

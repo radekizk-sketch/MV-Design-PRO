@@ -23,6 +23,7 @@
 import { useEffect, useState } from 'react';
 
 import { MathInline } from '../../proof/MathRenderer';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import {
   komunikatyKodow,
@@ -53,6 +54,9 @@ export interface KryteriumDoboru {
   readonly werdykt: WerdyktKryterium;
   readonly wymagane: string | null;
   readonly dostepne: string | null;
+  /** Zapis LaTeX wartości wymaganej/dostępnej — tylko gdy wartość jest wzorem (addytywne). */
+  readonly wymagane_latex?: string;
+  readonly dostepne_latex?: string;
   readonly komentarz_pl: string | null;
   /** Karta W3-B — addytywne, puste dla kryteriów bez własnego jądra. */
   readonly kody_gotowosci: readonly string[];
@@ -247,7 +251,8 @@ function Gniazdo({
             </div>
             {(kryterium.wymagane !== null || kryterium.dostepne !== null) && (
               <p className="text-xs text-scada-muted" data-testid={`kryterium-rachunek-${kryterium.kod}`}>
-                wymagane: {kryterium.wymagane ?? '—'} · dostępne: {kryterium.dostepne ?? '—'}
+                wymagane: <WartoscRachunku proza={kryterium.wymagane} latex={kryterium.wymagane_latex} />
+                {' · '}dostępne: <WartoscRachunku proza={kryterium.dostepne} latex={kryterium.dostepne_latex} />
               </p>
             )}
             <p className="text-xs text-scada-muted">{kryterium.podstawa_pl}</p>
@@ -305,6 +310,21 @@ function Gniazdo({
       </ul>
     </article>
   );
+}
+
+/**
+ * Wartość rachunku kryterium: wzór z pola `*_latex` przez `MathInline`, gdy backend go podał
+ * (proza słowami zostaje opisem w `title`), inaczej proza; brak wartości — kreska.
+ */
+function WartoscRachunku({ proza, latex }: { proza: string | null; latex?: string }) {
+  if (latex !== undefined) {
+    return (
+      <span title={proza ?? undefined}>
+        <MathInline latex={latex} />
+      </span>
+    );
+  }
+  return <>{proza ?? '—'}</>;
 }
 
 export interface DoborPrzekladnikowSekcjaProps {
@@ -405,7 +425,8 @@ export function DoborPrzekladnikowSekcja({
         <p className="text-xs text-scada-muted" data-testid="dobor-wejscia">
           {/* Prądy zwarciowe pochodzą z przebiegu; ich BRAK jest tu widoczny wprost,
               żeby projektant wiedział, dlaczego część kryteriów nie ma werdyktu. */}
-          {[
+          <TekstZWzorami
+            tekst={[
             wejscia.napiecie_sieci_v !== null
               ? `napięcie sieci ${(wejscia.napiecie_sieci_v / 1000).toFixed(1)} kV`
               : 'napięcie sieci nieznane',
@@ -413,9 +434,10 @@ export function DoborPrzekladnikowSekcja({
               ? `prąd roboczy toru ${wejscia.prad_roboczy_a.toFixed(0)} A`
               : 'prąd roboczy toru nieznany',
             wejscia.ik_ka !== null
-              ? `Ik″ ${wejscia.ik_ka.toFixed(2)} kA z obliczeń zwarciowych`
+              ? `$I_{k}''$ ${wejscia.ik_ka.toFixed(2)} kA z obliczeń zwarciowych`
               : 'prądy zwarciowe: brak zakończonego przebiegu',
           ].join(' · ')}
+          />
         </p>
       </div>
 

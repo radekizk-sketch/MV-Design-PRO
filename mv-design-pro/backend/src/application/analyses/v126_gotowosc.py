@@ -997,7 +997,7 @@ def _warunki_punktu_neutralnego(
                 )
                 + (
                     " — w żadnej sieci SN pojemność doziemna nie jest kompletna (odcinki bez "
-                    "podstawy B′0 wymienione niżej)"
+                    "podstawy susceptancji zerowej wymienione niżej)"
                     if sieci and len(sieci_bez_c0) == len(sieci)
                     else ""
                 )
@@ -1027,7 +1027,7 @@ def _warunki_punktu_neutralnego(
                 opis_pl=(
                     f"Sieci SN bez wyznaczalnej pojemności doziemnej (bez linii, kabli i baterii "
                     f"w gwieździe uziemionej z susceptancją zerową albo z odcinkiem bez podstawy "
-                    f"B′0): {len(sieci_bez_c0)} z {len(sieci)} — projekt uziemienia tych sieci "
+                    f"susceptancji zerowej): {len(sieci_bez_c0)} z {len(sieci)} — projekt uziemienia tych sieci "
                     "niewykonany"
                 ),
                 spelniony=False,

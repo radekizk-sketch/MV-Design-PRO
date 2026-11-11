@@ -24,7 +24,7 @@ describe('TypePicker', () => {
       .mockResolvedValueOnce([
         {
           id: 'src-gpz-15kv-200mva-rx010',
-          name: 'Zasilanie GPZ 15 kV / Sk3 200 MVA / R/X 0.10',
+          name: 'Zasilanie GPZ 15 kV / moc zwarciowa 200 MVA / R/X 0.10',
           manufacturer: 'OSD',
           voltage_rating_kv: 15,
           sk3_mva: 200,
@@ -52,7 +52,7 @@ describe('TypePicker', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Zasilanie GPZ 15 kV / Sk3 200 MVA / R/X 0.10'),
+        screen.getByText('Zasilanie GPZ 15 kV / moc zwarciowa 200 MVA / R/X 0.10'),
       ).toBeInTheDocument();
     });
 

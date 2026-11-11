@@ -79,22 +79,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "{ p_pu: 1.0, cos_phi: 0.95 },",
     ): "domyslny punkt krzywej cosφ(P) falownika (parametr sterowania DER), nie kryterium oceny wyniku sieci",
     (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "if (sorted[0].uPu > 0.9) {",
-    ): "walidacja ksztaltu krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",
-    (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "issues.push(`Krzywa Q(U) musi zaczynać się przy U ≤ 0.9 p.u. Obecnie: ${sorted[0].uPu}.`);",
-    ): "tekst komunikatu o jw. wymaganym ksztalcie krzywej Q(U)",
-    (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "if (sorted[sorted.length - 1].uPu < 1.1) {",
-    ): "jw. — koniec krzywej Q(U)",
-    (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "issues.push(`Krzywa Q(U) musi kończyć się przy U ≥ 1.1 p.u. Obecnie: ${sorted[sorted.length - 1].uPu}.`);",
-    ): "tekst komunikatu o jw. (koniec krzywej Q(U))",
-    (
         "frontend/src/ui/network-build/forms/profiles/QofUProfileForm.tsx",
         "{ u_pu: 0.95, q_mvar: -0.5 },",
     ): "domyslny punkt krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",
@@ -140,12 +124,20 @@ ALLOWLIST: dict[tuple[str, str], str] = {
     ): "jw. — opis pasma nastawy w trybach regulacji mocy biernej",
     (
         "frontend/src/ui2/kreatory/kompensator/strings.ts",
-        "+ '(1,0; 1,0) = wartość katalogowa; przy napięciu 0,9 pu bateria oddaje tylko ~0,81 Qn, przy '",
+        "+ '(1,0; 1,0) = wartość katalogowa; przy napięciu 0,9 pu bateria oddaje tylko ~0,81 $Q_{n}$, przy '",
     ): "przykladowa wartosc w tekscie edukacyjnym o zaleznosci Q kompensatora od napiecia (nie prog klasyfikacji)",
     (
         "frontend/src/ui2/kreatory/kompensator/strings.ts",
-        "+ '1,05 pu ~1,10 Qn. Rzeczywistą moc bierną w punkcie pracy liczy rozpływ dla napięcia z sieci.',",
+        "+ '1,05 pu ~1,10 $Q_{n}$. Rzeczywistą moc bierną w punkcie pracy liczy rozpływ dla napięcia z sieci.',",
     ): "jw. — kontynuacja przykladu edukacyjnego",
+    (
+        "frontend/src/ui/sld/v2/station-rozdzielnia/companions/ozeArchetypes2a.ts",
+        '"inverter": "1,1 \\u00d7 napi\\u0119cie znamionowe = 880 V (16,5 kV) / 5 s",',
+    ): (
+        "nastawa zabezpieczenia nadnapieciowego falownika (1,1 napiecia znamionowego / 5 s) z danych "
+        "archetypu OZE w generowanym towarzyszu SLD — parametr zabezpieczenia DER, nie kryterium "
+        "oceny wyniku sieci"
+    ),
 }
 
 # Liczby progu (karta W3-J §0.5): 0.95, 1.05, 0.9(0), 1.1(0) — kropka LUB

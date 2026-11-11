@@ -18,6 +18,7 @@ import {
   activeCaseFixture,
   runFixture,
 } from './fixtures';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 // `useWszystkiePrzebiegiProjektu` (TODO-UI2 §1 p. 10) pobiera biegi WSZYSTKICH
 // przypadków przez `listRuns` per-przypadkowe — mock zwraca bieg K2 (aktywny
@@ -208,10 +209,10 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
       }),
     });
     render(<PulpitProjektu {...props()} />);
-    expect(screen.getByText(PULPIT_STRINGS.przylaczenieSkMaks)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(PULPIT_STRINGS.przylaczenieSkMaks))).toBeInTheDocument();
     expect(screen.getByTestId('pulpit-przylaczenie-sk')).toHaveTextContent('250');
     expect(screen.getByTestId('pulpit-przylaczenie-sk-min')).toHaveTextContent('150');
-    expect(screen.getByText(PULPIT_STRINGS.przylaczenieIkMaks)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(PULPIT_STRINGS.przylaczenieIkMaks))).toBeInTheDocument();
     expect(screen.getByTestId('pulpit-przylaczenie-ik-min')).toHaveTextContent('5,80');
   });
 

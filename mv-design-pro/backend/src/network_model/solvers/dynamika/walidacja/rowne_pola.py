@@ -183,8 +183,8 @@ def kat_krytyczny(
     ) / (p_max_po_pu - p_max_w_zwarciu_pu)
     if not -1.0 <= cos_krytyczny <= 1.0:
         raise UkladNieprzystajeDoWyroczni(
-            f"Kryterium rownych pol daje cos(delta_c) = {cos_krytyczny} poza [-1, 1]: "
-            "uklad jest stabilny dla dowolnego czasu zwarcia albo niestabilny od razu."
+            f"Kryterium równych pól daje cosinus kąta krytycznego {cos_krytyczny} poza "
+            "[-1, 1]: układ jest stabilny dla dowolnego czasu zwarcia albo niestabilny od razu."
         )
     return delta_0, math.acos(cos_krytyczny), delta_max
 

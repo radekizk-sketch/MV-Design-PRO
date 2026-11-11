@@ -13,7 +13,8 @@ import type {
 import { TRACE_VALUE_CODES, TRACE_VALUE_LABELS, TRACE_VALUE_UNITS } from '../results-inspector/types';
 import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { formatWStanie, useDostepnoscEksportuWywodu } from '../results/useDostepnoscEksportuWywodu';
-import { MathRenderer } from './MathRenderer';
+import { MathInline, MathRenderer } from './MathRenderer';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 interface ProofSelectedElement {
   id: string;
@@ -350,7 +351,7 @@ function TraceValuesTable({
             return (
             <tr key={key}>
               <th className="w-1/2 py-1 pr-2 text-left font-medium text-[color:var(--mvd-muted)]">
-                {traceLabel(key)}
+                <TekstZWzorami tekst={traceLabel(key)} />
               </th>
               <td className="py-1 text-right text-[color:var(--mvd-ink)]">
                 {latex ? (
@@ -448,9 +449,15 @@ function ShortCircuitRows({ rows }: { rows: ShortCircuitRow[] }) {
           <tr>
             <th className="px-2 py-1.5 text-left font-semibold">Punkt</th>
             <th className="px-2 py-1.5 text-left font-semibold">Typ</th>
-            <th className="px-2 py-1.5 text-right font-semibold">Ik''</th>
-            <th className="px-2 py-1.5 text-right font-semibold">ip</th>
-            <th className="px-2 py-1.5 text-right font-semibold">Ith</th>
+            <th className="px-2 py-1.5 text-right font-semibold">
+              <MathInline latex="I_{k}''" />
+            </th>
+            <th className="px-2 py-1.5 text-right font-semibold">
+              <MathInline latex="i_{p}" />
+            </th>
+            <th className="px-2 py-1.5 text-right font-semibold">
+              <MathInline latex="I_{th}" />
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[color:var(--mvd-line)] bg-[color:var(--mvd-panel)] text-[color:var(--mvd-ink)]">

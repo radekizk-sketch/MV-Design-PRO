@@ -37,6 +37,7 @@ import {
   propozycjaKompletna,
   zbudujZapytanieDoboru,
 } from './zrodloOzeDobor';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 /** Charakter mocy biernej falownika — opcje mapują 1:1 na pole backendu. */
 const OPCJE_CHARAKTER_Q: ReadonlyArray<{ id: ReactiveCharacter; etykieta: string }> = [
@@ -218,7 +219,7 @@ export function DoborToruSn({
         />
       </KreatorSiatka>
       {!charakterQMaZnaczenie(cosPhi) ? (
-        <KreatorInfo>{T.doborCharakterQBezZnaczenia}</KreatorInfo>
+        <KreatorInfo><TekstZWzorami tekst={T.doborCharakterQBezZnaczenia} /></KreatorInfo>
       ) : null}
       {warunkiKatalog ? (
         <KreatorSiatka kolumny={1}>

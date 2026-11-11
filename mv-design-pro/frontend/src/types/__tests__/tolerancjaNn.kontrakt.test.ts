@@ -4,7 +4,8 @@
  * (`backend/src/network_model/core/voltage_factor.py`: `TOLERANCJE_NAPIECIA_NN`,
  * `ETYKIETA_TOLERANCJI_NN`, `_TABELA_1_NN`) — karta WSPOLCZYNNIK-C-JEDEN-NOSNIK.
  *
- * Etykieta opcji opisuje wiersz nN tabeli 1 IEC 60909-0 (c_max; c_min). UI tych liczb
+ * Etykieta opcji opisuje wiersz nN tabeli 1 IEC 60909-0 słowami (współczynnik napięciowy
+ * maksymalny i minimalny — natywna opcja `<option>` nie składa wzoru). UI tych liczb
  * nie używa do obliczeń, ale gdyby rozjechały się z tabelą backendu, inżynier wybierałby
  * opcję opisaną fałszywie — dlatego rozjazd ma być czerwonym testem, nie cichą drugą listą.
  */
@@ -45,7 +46,7 @@ describe('tolerancja napięcia sieci nN — słownik frontu = backend', () => {
       expect(tabela).not.toBeNull();
       const [cMax, cMin] = [Number(tabela?.[1]), Number(tabela?.[2])];
       expect(ETYKIETA_PL_TOLERANCJI_NN[tolerancja]).toBe(
-        `${etykieta?.[1]} (c_max ${fmtPL(cMax)}; c_min ${fmtPL(cMin)})`,
+        `${etykieta?.[1]} (współczynnik napięciowy maksymalny ${fmtPL(cMax)}; minimalny ${fmtPL(cMin)})`,
       );
     },
   );

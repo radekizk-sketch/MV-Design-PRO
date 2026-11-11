@@ -394,7 +394,7 @@ class LineIDoublePrimeReferencePattern:
         trace_steps.append(
             build_trace_step(
                 step="check_window",
-                description_pl="Sprawdzenie okna nastaw [I_min, I_max]",
+                description_pl="Sprawdzenie okna nastaw (dolna i górna granica)",
                 inputs={
                     "i_min_a": setting_window.i_min_a,
                     "i_max_a": setting_window.i_max_a,
@@ -482,15 +482,16 @@ class LineIDoublePrimeReferencePattern:
         if not setting_window.window_valid:
             status: CheckStatus = "FAIL"
             desc = (
-                f"Selektywność wyznacza dolną granicę konfliktu: I_min = "
-                f"{instantaneous.i_min_selectivity_a:.1f} A (k_b={instantaneous.k_b}). "
+                f"Selektywność wyznacza dolną granicę konfliktu: "
+                f"{instantaneous.i_min_selectivity_a:.1f} A (współczynnik bezpieczeństwa "
+                f"{instantaneous.k_b}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
-                f"Selektywność spełniona: I_min = {instantaneous.i_min_selectivity_a:.1f} A "
-                f"(k_b={instantaneous.k_b})"
+                f"Selektywność spełniona: dolna granica {instantaneous.i_min_selectivity_a:.1f} A "
+                f"(współczynnik bezpieczeństwa {instantaneous.k_b})"
             )
 
         return build_check(
@@ -516,15 +517,16 @@ class LineIDoublePrimeReferencePattern:
         if limituje:
             status: CheckStatus = "FAIL"
             desc = (
-                f"Czułość wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_sensitivity_a:.1f} A (k_b={instantaneous.k_b}). "
+                f"Czułość wyznacza górną granicę konfliktu: "
+                f"{instantaneous.i_max_sensitivity_a:.1f} A (współczynnik bezpieczeństwa "
+                f"{instantaneous.k_b}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
-                f"Czułość spełniona: I_max = {instantaneous.i_max_sensitivity_a:.1f} A "
-                f"(k_b={instantaneous.k_b})"
+                f"Czułość spełniona: górna granica {instantaneous.i_max_sensitivity_a:.1f} A "
+                f"(współczynnik bezpieczeństwa {instantaneous.k_b})"
             )
 
         return build_check(
@@ -549,15 +551,17 @@ class LineIDoublePrimeReferencePattern:
         if limituje:
             status: CheckStatus = "FAIL"
             desc = (
-                f"Kryterium cieplne wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_thermal_a:.1f} A (k_bth={instantaneous.k_bth}). "
+                f"Kryterium cieplne wyznacza górną granicę konfliktu: "
+                f"{instantaneous.i_max_thermal_a:.1f} A (współczynnik bezpieczeństwa cieplny "
+                f"{instantaneous.k_bth}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
-                f"Kryterium cieplne spełnione: I_max = {instantaneous.i_max_thermal_a:.1f} A "
-                f"(k_bth={instantaneous.k_bth}, zadziałanie chwilowe 0,05 s)"
+                f"Kryterium cieplne spełnione: górna granica {instantaneous.i_max_thermal_a:.1f} A "
+                f"(współczynnik bezpieczeństwa cieplny {instantaneous.k_bth}, zadziałanie "
+                "chwilowe 0,05 s)"
             )
 
         return build_check(
@@ -575,8 +579,8 @@ class LineIDoublePrimeReferencePattern:
         if not setting_window.window_valid:
             status: CheckStatus = "FAIL"
             desc = setting_window.conflict_pl or (
-                f"Okno nastaw sprzeczne: I_min ({setting_window.i_min_a:.1f} A) > "
-                f"I_max ({setting_window.i_max_a:.1f} A)"
+                f"Okno nastaw sprzeczne: dolna granica {setting_window.i_min_a:.1f} A "
+                f"przekracza górną granicę {setting_window.i_max_a:.1f} A"
             )
         else:
             window_width = setting_window.i_max_a - setting_window.i_min_a

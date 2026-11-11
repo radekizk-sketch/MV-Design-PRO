@@ -238,6 +238,14 @@ def _zespolona_tex(z: complex) -> str:
     return rf"{_tex(z.real, '.4f')} {znak} j\,{_tex(abs(z.imag), '.4f')}"
 
 
+def _napiecia_pl(u0: float, u_b: float, u_c: float) -> str:
+    """Napięcia przy doziemieniu słowami — te same liczby co `_napiecia_latex`."""
+    return (
+        f"napięcie składowej zerowej {_pl(u0, '.2f')} V; napięcie fazy b {_pl(u_b, '.2f')} V; "
+        f"napięcie fazy c {_pl(u_c, '.2f')} V"
+    )
+
+
 def _napiecia_latex(u0: float, u_b: float, u_c: float) -> str:
     return (
         rf"U_0 = {_tex(u0, '.2f')}\ \mathrm{{V}};\quad U_b = {_tex(u_b, '.2f')}\ \mathrm{{V}};"
@@ -401,8 +409,9 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                         "z_f_ohm": _z(dane.z_f_ohm),
                         "ikss_iec_a": _r(prad),
                     },
-                    f"|Z_1 + Z_2 + Z_0 + 3Z_f| = |{_zespolona_pl(petla)}| Ω; "
-                    f"I″k1 = {_pl(prad, '.4f')} A (rdzeń IEC 60909)",
+                    f"moduł impedancji pętli (suma impedancji składowych i potrojonej impedancji "
+                    f"przejścia) |{_zespolona_pl(petla)}| Ω; prąd zwarcia jednofazowego "
+                    f"{_pl(prad, '.4f')} A (rdzeń IEC 60909)",
                     rf"\left|Z_1 + Z_2 + Z_0 + 3 Z_f\right| = \left|{_zespolona_tex(petla)}\right|"
                     rf"\ \Omega;\quad I''_{{k1}} = {_tex(prad, '.4f')}\ \mathrm{{A}}",
                     {"prad_a": _r(prad), "petla_ohm": _r(abs(petla))},
@@ -422,8 +431,9 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                 r"I_C = 3\,\omega C_0 U_f = \sqrt{3}\,U_n B_0",
                 {"u_n_kv": dane.napiecie_kv, "b0_s": dane.b0_s, "brak_b0_pl": dane.brak_b0_pl},
                 (
-                    f"I_C = √3·{format_liczba(dane.napiecie_kv)} kV·{format_liczba(dane.b0_s)} S "
-                    f"= {_pl(i_c, '.4f')} A"
+                    f"pierwiastek z trzech razy napięcie znamionowe {format_liczba(dane.napiecie_kv)} "
+                    f"kV razy susceptancja pojemnościowa zerowa {format_liczba(dane.b0_s)} S daje "
+                    f"prąd pojemnościowy {_pl(i_c, '.4f')} A"
                     if i_c is not None and dane.b0_s is not None
                     else f"susceptancja pojemnościowa zerowa sieci nieoznaczalna: {dane.brak_b0_pl}"
                 ),
@@ -459,7 +469,7 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                             for p in dane.punkty
                         ],
                     },
-                    f"I_N = {_zespolona_pl(i_n)} A",
+                    f"prąd obwodu punktów neutralnych {_zespolona_pl(i_n)} A",
                     rf"I_N = {_zespolona_tex(i_n)}\ \mathrm{{A}}",
                     {"i_w_a": _r(i_w), "i_l_a": _r(i_l)},
                 )
@@ -504,13 +514,17 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                         "i_w_a": _r(i_w),
                         "z_f_ohm": _z(dane.z_f_ohm),
                     },
-                    f"|{_zespolona_pl(i_metal)}| A"
+                    f"moduł prądu doziemienia metalicznego {_zespolona_pl(i_metal)} A"
                     + (
-                        f" przez Z_f → {_pl(prad, '.4f')} A"
+                        f", przez impedancję przejścia {_pl(prad, '.4f')} A"
                         if dane.z_f_ohm
-                        else f" = {_pl(prad, '.4f')} A"
+                        else f", prąd doziemienia {_pl(prad, '.4f')} A"
                     )
-                    + (f"; v = {_pl(rozstrojenie, '.4f')}" if rozstrojenie is not None else ""),
+                    + (
+                        f"; rozstrojenie kompensacji {_pl(rozstrojenie, '.4f')}"
+                        if rozstrojenie is not None
+                        else ""
+                    ),
                     rf"\left|{_zespolona_tex(i_metal)}\right|"
                     r"\ \mathrm{A}"
                     + (r"\ \xrightarrow{Z_f}\ " if dane.z_f_ohm else " = ")
@@ -533,7 +547,7 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                         r"U_0 = \frac{U_f}{|1 + Z_f Y|},\ U_b = U_f\left|a^2 - "
                         r"\frac{1}{1 + Z_f Y}\right|,\ U_c = U_f\left|a - \frac{1}{1 + Z_f Y}\right|",
                         {"u_f_v": u_f_v, "y_s": _z(y_s), "z_f_ohm": _z(dane.z_f_ohm)},
-                        f"U0 = {_pl(u0, '.2f')} V; U_b = {_pl(u_b, '.2f')} V; U_c = {_pl(u_c, '.2f')} V",
+                        _napiecia_pl(u0, u_b, u_c),
                         _napiecia_latex(u0, u_b, u_c),
                         {"u0_v": _r(u0), "u_faza_b_v": _r(u_b), "u_faza_c_v": _r(u_c)},
                     )
@@ -555,7 +569,7 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                     "z0_ohm": _z(z_skladowe[2]),
                     "z_f_ohm": _z(dane.z_f_ohm),
                 },
-                f"U0 = {_pl(u0, '.2f')} V; U_b = {_pl(u_b, '.2f')} V; U_c = {_pl(u_c, '.2f')} V",
+                _napiecia_pl(u0, u_b, u_c),
                 _napiecia_latex(u0, u_b, u_c),
                 {"u0_v": _r(u0), "u_faza_b_v": _r(u_b), "u_faza_c_v": _r(u_c)},
             )

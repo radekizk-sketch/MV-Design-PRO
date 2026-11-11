@@ -14,7 +14,7 @@
             }
           ],
           "default": null,
-          "description": "Ref_id elementu ENM, gdy dotyczy.",
+          "description": "Identyfikator `ref_id` elementu ENM, gdy dotyczy.",
           "title": "Element Ref"
         },
         "jednostka": {
@@ -24,7 +24,7 @@
           "type": "string"
         },
         "klucz": {
-          "description": "Klucz kanału (np. 'u_pu@b12', 'omega_pu@g1').",
+          "description": "Klucz kanału (np. `u_pu@b12`, `omega_pu@g1`).",
           "minLength": 1,
           "title": "Klucz",
           "type": "string"

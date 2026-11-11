@@ -17,6 +17,7 @@
  * nazywa stany, w których odpowiedzi nie ma.
  */
 
+import { MathInline } from '../../../proof/MathRenderer';
 import { useEffect, useState } from 'react';
 
 import {
@@ -128,7 +129,7 @@ export function WalidacjaWytrzymalosciAparaturySekcja({
   return (
     <div data-testid="device-withstand-validation" className="space-y-1">
       <div className="text-[10px] font-medium text-scada-muted">
-        Wytrzymałość zwarciowa aparatury (I_dyn, I_th) — IEC 60909
+        Wytrzymałość zwarciowa aparatury (<MathInline latex="I_{dyn}" />, <MathInline latex="I_{th}" />) — IEC 60909
       </div>
       {blad !== null && (
         <p

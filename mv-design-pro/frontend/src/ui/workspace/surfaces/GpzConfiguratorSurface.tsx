@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import { MathInline } from '../../proof/MathRenderer';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays-balance';
 type ShortCircuitInputMode = 'HV_110_ADVANCED' | 'SN_SIMPLIFIED';
@@ -203,7 +205,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     : 'border-scada-border text-scada-muted hover:text-scada-text')
                 }
               >
-                Tryb WN/SN: Sk3 na szynie 110 kV
+                Tryb WN/SN: <MathInline latex="S_{k}''" /> na szynie 110 kV
               </button>
               <button
                 type="button"
@@ -216,7 +218,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     : 'border-scada-border text-scada-muted hover:text-scada-text')
                 }
               >
-                Tryb uproszczony: tylko Sk3 po stronie SN
+                Tryb uproszczony: tylko <MathInline latex="S_{k}''" /> po stronie SN
               </button>
             </div>
 
@@ -230,7 +232,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               required
             />
             <NumberField
-              label="Moc zwarciowa S''k 110 kV"
+              label="Moc zwarciowa $S_{k}''$ 110 kV"
               unit="MVA"
               value={data.hvShortCircuitMva}
               onChange={(v) => setData((d) => ({ ...d, hvShortCircuitMva: v }))}
@@ -248,7 +250,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
             )}
             {data.shortCircuitInputMode === 'SN_SIMPLIFIED' && (
               <NumberField
-                label="Moc zwarciowa S''k po stronie SN"
+                label="Moc zwarciowa $S_{k}''$ po stronie SN"
                 unit="MVA"
                 value={data.snShortCircuitMva}
                 onChange={(v) => setData((d) => ({ ...d, snShortCircuitMva: v }))}
@@ -273,7 +275,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               options={TRAFO_110_CATALOG_OPTIONS}
             />
             <NumberField
-              label="Moc znamionowa Sn"
+              label="Moc znamionowa $S_{n}$"
               unit="MVA"
               value={data.transformerNominalMva}
               onChange={(v) => setData((d) => ({ ...d, transformerNominalMva: v }))}
@@ -372,7 +374,7 @@ function Field({ label, value, onChange, placeholder, required }: FieldProps) {
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
+        <TekstZWzorami tekst={label} />
         {required && <span className="text-red-400"> *</span>}
       </label>
       <input
@@ -399,7 +401,7 @@ function NumberField({ label, unit, value, onChange, placeholder, required }: Nu
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
+        <TekstZWzorami tekst={label} />
         {unit && <span className="text-scada-muted"> [{unit}]</span>}
         {required && <span className="text-red-400"> *</span>}
       </label>
@@ -434,7 +436,7 @@ function SelectField({ label, value, onChange, options, required }: SelectFieldP
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
+        <TekstZWzorami tekst={label} />
         {required && <span className="text-red-400"> *</span>}
       </label>
       <select

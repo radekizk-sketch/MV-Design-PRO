@@ -48,7 +48,7 @@ const PRZEGLAD_BEZ_ODSTEPSTW: PrzegladWiarygodnosci = {
   reguly: [
     {
       kod: 'KAT-W-003',
-      nazwa: 'Icw <= Icu aparatu SN',
+      nazwa: 'Prąd krótkotrwały wytrzymywany nie większy od prądu wyłączalnego granicznego aparatu SN',
       podstawa: 'IEC 62271-100 — Icw i Icu sa ODDZIELNYMI wielkosciami znamionowymi',
       uzasadnienie: 'Prad krotkotrwaly i zdolnosc wylaczania to rozne zdolnosci.',
     },
@@ -77,9 +77,9 @@ const PRZEGLAD_Z_ODSTEPSTWEM: PrzegladWiarygodnosci = {
       odstepstwa: [
         {
           kod: 'KAT-W-002',
-          regula: 'P0 < Pk transformatora',
+          regula: 'Straty jałowe mniejsze od strat obciążeniowych transformatora',
           pozycja_id: 'tr-podejrzany-630',
-          opis_wartosci: 'P0 = 30.0 kW, Pk = 20.0 kW',
+          opis_wartosci: 'straty jałowe 30.0 kW, straty obciążeniowe 20.0 kW',
         },
       ],
     },
@@ -88,7 +88,7 @@ const PRZEGLAD_Z_ODSTEPSTWEM: PrzegladWiarygodnosci = {
   reguly: [
     {
       kod: 'KAT-W-002',
-      nazwa: 'P0 < Pk transformatora',
+      nazwa: 'Straty jałowe mniejsze od strat obciążeniowych transformatora',
       podstawa: 'Relacja typowa dla transformatorow rozdzielczych',
       uzasadnienie: 'Odwrocenie pary zwykle oznacza zamienione kolumny przy imporcie.',
     },
@@ -131,7 +131,7 @@ describe('PozycjeDoPrzegladu', () => {
       'pozycje-do-przegladu-odstepstwo-tr-podejrzany-630',
     );
     expect(odstepstwo.textContent).toContain('KAT-W-002');
-    expect(odstepstwo.textContent).toContain('P0 = 30.0 kW, Pk = 20.0 kW');
+    expect(odstepstwo.textContent).toContain('straty jałowe 30.0 kW, straty obciążeniowe 20.0 kW');
   });
 
   it('uzasadnienie reguly pochodzi z backendu, nie z kopii we froncie', async () => {

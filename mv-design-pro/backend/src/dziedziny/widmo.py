@@ -154,7 +154,7 @@ def rzad_harmonicznej(f_hz: float, f1_hz: float) -> int | None:
         raise ValueError(
             naruszenie(
                 "widmo.czestotliwosc",
-                f"Częstotliwości muszą być dodatnie (f = {f_hz} Hz, f₁ = {f1_hz} Hz).",
+                f"Częstotliwości muszą być dodatnie (składowa {f_hz} Hz, podstawowa {f1_hz} Hz).",
             )
         )
     iloraz = f_hz / f1_hz
@@ -351,8 +351,8 @@ class ZakresCzestotliwosci(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "widmo.czestotliwosc",
-                    f"Zakres częstotliwości wymaga f_min < f_max ({self.f_min_hz} ≥ "
-                    f"{self.f_max_hz} Hz).",
+                    f"Zakres częstotliwości wymaga dolnej granicy mniejszej od górnej "
+                    f"({self.f_min_hz} ≥ {self.f_max_hz} Hz).",
                 )
             )
         return self
@@ -665,8 +665,8 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
             bledy.append(
                 naruszenie(
                     "widmo.faza",
-                    f"składowa {skladowa.f_hz} Hz jest interharmoniczną (f/f₁ niecałkowite przy "
-                    f"f₁ = {model.f1_hz} Hz) — {POWOD_FAZY_INTERHARMONICZNEJ}; faza musi być "
+                    f"składowa {skladowa.f_hz} Hz jest interharmoniczną (rząd niecałkowity przy "
+                    f"częstotliwości podstawowej {model.f1_hz} Hz) — {POWOD_FAZY_INTERHARMONICZNEJ}; faza musi być "
                     "nieznana z powodem",
                 )
             )
@@ -706,7 +706,7 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.pomiar",
-                "pomiar w dziedzinie supraharmonicznej wymaga pasma rozdzielczości rbw_hz",
+                "pomiar w dziedzinie supraharmonicznej wymaga pasma rozdzielczości (pole `rbw_hz`)",
             )
         )
 

@@ -306,21 +306,23 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
-                    f"[{cfg.value}]; kotwy: "
-                    + ", ".join(f"{k}={_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
-                    + f"; VarCf={_round(var_cf)}"
+                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
+                    f"napięcie {_round(voltage)} kV [{cfg.value}]; kotwy: "
+                    + ", ".join(f"{k} = {_round(v)} kA" for k, v in sorted(i_arc_anchors.items()))
+                    + f"; współczynnik zmienności VarCf {_round(var_cf)}"
                 ),
                 result_pl=(
-                    f"I_arc = {_round(i_arc)} kA, I_arc_min = {_round(i_arc_min)} kA "
+                    f"prąd łuku {_round(i_arc)} kA, prąd łuku minimalny {_round(i_arc_min)} kA "
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV]."
+                    "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik "
+                    "zmienności bezwymiarowy; interpolacja po napięciu w kV."
                 ),
                 table_ref=(
-                    f"I_arc[{cfg.value}, kotwy 600/2700/14300 V] (Tab.1) + "
-                    f"VarCf[{cfg.value}] (Tab.2) = open_source_IEEE_1584"
+                    f"prąd łuku dla konfiguracji {cfg.value}, kotwy 600/2700/14300 V (Tab. 1) "
+                    f"i współczynnik zmienności VarCf dla {cfg.value} (Tab. 2); "
+                    "źródło open_source_IEEE_1584"
                 ),
             )
         )
@@ -339,7 +341,10 @@ class ArcFlashBuilder:
                     f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
                 ),
                 result_pl=f"CF = {_round(cf)}",
-                unit_check_pl="CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+                unit_check_pl=(
+                    "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy "
+                    "w calach; mnożnik energii dla obudowy."
+                ),
                 table_ref=(
                     f"CF[{enc_type.value},{cfg.value}] (Tab.7) = open_source_IEEE_1584"
                     if cfg.is_boxed
@@ -372,9 +377,12 @@ class ArcFlashBuilder:
                     r"x_5 = k_{12}\lg D\;;\quad E=\mathrm{interp}_U(\cdot)\;[\mathrm{J/cm^2}]"
                 ),
                 substitution_pl=(
-                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, t={_round(arc_time_ms)} ms, "
-                    f"D={_round(working_distance)} mm, CF={_round(cf)}; kotwy: "
-                    + ", ".join(f"{k}={_round(v)} J/cm²" for k, v in sorted(e_anchors_jcm2.items()))
+                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
+                    f"czas łuku {_round(arc_time_ms)} ms, odległość robocza {_round(working_distance)} mm, "
+                    f"współczynnik obudowy {_round(cf)}; kotwy: "
+                    + ", ".join(
+                        f"{k} = {_round(v)} J/cm²" for k, v in sorted(e_anchors_jcm2.items())
+                    )
                 ),
                 result_pl=(
                     f"E = {_round(incident_energy_jcm2)} J/cm² = "
@@ -382,7 +390,8 @@ class ArcFlashBuilder:
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U."
+                    "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); "
+                    "przeliczenie na cal/cm² dzieleniem przez 4,184; interpolacja po napięciu."
                 ),
                 table_ref=f"E[{cfg.value}, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584",
             )
@@ -398,12 +407,15 @@ class ArcFlashBuilder:
                     r"\quad(\mathrm{interp}_U);\quad 5{,}0208\,\mathrm{J/cm^2}=1{,}2\,\mathrm{cal/cm^2}"
                 ),
                 substitution_pl=(
-                    f"E_próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
+                    f"energia progowa {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
                     f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
-                    f"U={_round(voltage)} kV, D={_round(working_distance)} mm"
+                    f"napięcie {_round(voltage)} kV, odległość robocza {_round(working_distance)} mm"
                 ),
                 result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
-                unit_check_pl="D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+                unit_check_pl=(
+                    "Granica łuku w mm: odległość, na której energia incydentu spada do "
+                    "1,2 cal/cm²."
+                ),
                 table_ref=(
                     f"E[{cfg.value}] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; "
                     "próg 1,2 cal/cm² publiczny"
@@ -422,7 +434,10 @@ class ArcFlashBuilder:
                     + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
-                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                unit_check_pl=(
+                    "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa "
+                    "NFPA 70E)."
+                ),
                 table_ref=(
                     f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
@@ -433,9 +448,9 @@ class ArcFlashBuilder:
 
         why = (
             f"Arc Flash (konfiguracja {cfg.value}, IEEE 1584-2018): prąd łuku "
-            f"I_arc ≈ {_round(i_arc, 2)} kA (I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia "
-            f"incydentu E ≈ {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
-            f"granica łuku AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. "
+            f"{_round(i_arc, 2)} kA (minimalny {_round(i_arc_min, 2)} kA), energia "
+            f"incydentu {_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, "
+            f"granica łuku {_round(afb, 1)} mm, kategoria ŚOI {ppe}. "
             f"{ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )
 
@@ -524,21 +539,23 @@ class ArcFlashBuilder:
                     r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
                 ),
                 substitution_pl=(
-                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
-                    f"[{cfg.value}, ścieżka LV — U<=600 V, BEZ interpolacji kotew]; "
-                    f"I_arc,600(Eq.1)={_round(i_arc_600)} kA; VarCf={_round(var_cf)}"
+                    f"prąd zwarcia bolted {_round(i_bf)} kA, odstęp elektrod {_round(gap)} mm, "
+                    f"napięcie {_round(voltage)} kV [{cfg.value}, ścieżka nN — napięcie do 600 V, "
+                    f"BEZ interpolacji kotew]; prąd łuku kotwy 600 V (Eq.1) {_round(i_arc_600)} kA; "
+                    f"współczynnik zmienności VarCf {_round(var_cf)}"
                 ),
                 result_pl=(
-                    f"I_arc = {_round(i_arc)} kA (Eq.25, skorygowany do U={_round(voltage)} kV), "
-                    f"I_arc_min = {_round(i_arc_min)} kA "
+                    f"prąd łuku {_round(i_arc)} kA (Eq.25, skorygowany do napięcia "
+                    f"{_round(voltage)} kV), prąd łuku minimalny {_round(i_arc_min)} kA "
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "I_bf,I_arc,I_arc,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku "
-                    "kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V)."
+                    "Prąd zwarcia bolted i prądy łuku w kA; odstęp elektrod w mm; napięcie w kV; "
+                    "Eq.25 koryguje prąd łuku kotwy 600 V do RZECZYWISTEGO napięcia układu "
+                    "(≤600 V)."
                 ),
                 table_ref=(
-                    f"I_arc,600[{cfg.value},V600] (Tab.1) = open_source_IEEE_1584; "
+                    f"prąd łuku kotwy 600 V [{cfg.value},V600] (Tab.1) = open_source_IEEE_1584; "
                     "Eq.25 publiczna postać zamknięta (bez tablicy)"
                 ),
             )
@@ -557,7 +574,10 @@ class ArcFlashBuilder:
                     f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
                 ),
                 result_pl=f"CF = {_round(cf)}",
-                unit_check_pl="CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+                unit_check_pl=(
+                    "współczynnik korekcyjny obudowy bezwymiarowy; równoważny wymiar obudowy "
+                    "w calach; mnożnik energii dla obudowy."
+                ),
                 table_ref=(
                     f"CF[{enc_type.value},{cfg.value}] (Tab.7) = open_source_IEEE_1584"
                     if cfg.is_boxed
@@ -587,10 +607,12 @@ class ArcFlashBuilder:
                     r"x_4 = k_{11}\lg I_{bf}+k_{13}\lg I_{arc}+\lg(1/CF)\;[\mathrm{J/cm^2}]"
                 ),
                 substitution_pl=(
-                    f"I_bf={_round(i_bf)} kA, I_arc,600={_round(i_arc_600)} kA (nieskorygowany, "
-                    f"człon x3), I_arc={_round(i_arc)} kA (Eq.25, człon x4), G={_round(gap)} mm, "
-                    f"t={_round(arc_time_ms)} ms, D={_round(working_distance)} mm, CF={_round(cf)} "
-                    f"[wiersz kotwy 600 V, U rzeczywiste={_round(voltage)} kV]"
+                    f"prąd zwarcia bolted {_round(i_bf)} kA, prąd łuku kotwy 600 V {_round(i_arc_600)} kA "
+                    f"(nieskorygowany, trzeci człon wykładnika), prąd łuku {_round(i_arc)} kA (Eq.25, "
+                    f"czwarty człon), odstęp elektrod {_round(gap)} mm, czas łuku "
+                    f"{_round(arc_time_ms)} ms, odległość robocza {_round(working_distance)} mm, "
+                    f"współczynnik obudowy {_round(cf)} "
+                    f"[wiersz kotwy 600 V, napięcie rzeczywiste {_round(voltage)} kV]"
                 ),
                 result_pl=(
                     f"E = {_round(incident_energy_jcm2)} J/cm² = "
@@ -598,8 +620,9 @@ class ArcFlashBuilder:
                     "(IEEE 1584-2018, współczynniki open-source)"
                 ),
                 unit_check_pl=(
-                    "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji "
-                    "po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego)."
+                    "energia incydentu w J/cm² (czas łuku w ms, odległość robocza w mm); "
+                    "przeliczenie na cal/cm² dzieleniem przez 4,184; bez interpolacji po napięciu "
+                    "(ścieżka nN liczy bezpośrednio dla napięcia rzeczywistego)."
                 ),
                 table_ref=f"E[{cfg.value},V600] (Tab.3) = open_source_IEEE_1584",
             )
@@ -614,12 +637,15 @@ class ArcFlashBuilder:
                     r"\quad(\text{wiersz 600 V});\quad 5{,}0208\,\mathrm{J/cm^2}=1{,}2\,\mathrm{cal/cm^2}"
                 ),
                 substitution_pl=(
-                    f"E_próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
+                    f"energia progowa {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
                     f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
-                    f"U={_round(voltage)} kV, D={_round(working_distance)} mm"
+                    f"napięcie {_round(voltage)} kV, odległość robocza {_round(working_distance)} mm"
                 ),
                 result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
-                unit_check_pl="D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+                unit_check_pl=(
+                    "Granica łuku w mm: odległość, na której energia incydentu spada do "
+                    "1,2 cal/cm²."
+                ),
                 table_ref=(
                     f"E[{cfg.value},V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; "
                     "próg 1,2 cal/cm² publiczny"
@@ -637,7 +663,10 @@ class ArcFlashBuilder:
                     + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
-                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                unit_check_pl=(
+                    "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa "
+                    "NFPA 70E)."
+                ),
                 table_ref=(
                     f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
@@ -647,12 +676,12 @@ class ArcFlashBuilder:
         )
 
         why = (
-            f"Arc Flash LV (konfiguracja {cfg.value}, IEEE 1584-2018, U<=600 V — Eq.25): "
-            f"prąd łuku I_arc,600 (Eq.1) ≈ {_round(i_arc_600, 2)} kA skorygowany do U="
-            f"{_round(voltage, 2)} kV ⇒ I_arc ≈ {_round(i_arc, 2)} kA "
-            f"(I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia incydentu E ≈ "
+            f"Arc Flash nN (konfiguracja {cfg.value}, IEEE 1584-2018, napięcie do 600 V — "
+            f"Eq.25): prąd łuku kotwy 600 V (Eq.1) {_round(i_arc_600, 2)} kA skorygowany do "
+            f"napięcia {_round(voltage, 2)} kV ⇒ prąd łuku {_round(i_arc, 2)} kA "
+            f"(minimalny {_round(i_arc_min, 2)} kA), energia incydentu "
             f"{_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, granica łuku "
-            f"AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. {ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
+            f"{_round(afb, 1)} mm, kategoria ŚOI {ppe}. {ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
         )
 
         return ArcFlashResult(
@@ -719,11 +748,15 @@ class ArcFlashBuilder:
                 symbol="E_Lee",
                 formula_latex=(r"E = 2{,}142\times10^{6}\cdot V\cdot I_{bf}\cdot t \big/ D^{2}"),
                 substitution_pl=(
-                    f"V={_round(voltage)} kV, I_bf={_round(i_bf)} kA, t={_round(arc_time)} s, "
-                    f"D={_round(working_distance)} mm [poza zakresem IEEE 1584-2018]"
+                    f"napięcie {_round(voltage)} kV, prąd zwarcia bolted {_round(i_bf)} kA, "
+                    f"czas łuku {_round(arc_time)} s, odległość robocza {_round(working_distance)} mm "
+                    "[poza zakresem IEEE 1584-2018]"
                 ),
                 result_pl=f"E = {_round(e_lee)} cal/cm² ({ARC_FLASH_RALPH_LEE_LABEL})",
-                unit_check_pl="V w kV, I_bf w kA, t w s, D w mm; E w cal/cm² (postać Lee).",
+                unit_check_pl=(
+                    "Napięcie w kV, prąd zwarcia bolted w kA, czas łuku w s, odległość w mm; "
+                    "energia incydentu w cal/cm² (postać Lee)."
+                ),
                 table_ref="metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)",
             )
         )
@@ -737,11 +770,13 @@ class ArcFlashBuilder:
                     r"D_{AFB} = \sqrt{2{,}142\times10^{6}\cdot V\cdot I_{bf}\cdot t \big/ 1{,}2}"
                 ),
                 substitution_pl=(
-                    f"V={_round(voltage)} kV, I_bf={_round(i_bf)} kA, t={_round(arc_time)} s; "
-                    f"E_próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm²"
+                    f"napięcie {_round(voltage)} kV, prąd zwarcia bolted {_round(i_bf)} kA, "
+                    f"czas łuku {_round(arc_time)} s; energia progowa {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm²"
                 ),
                 result_pl=f"AFB = {_round(afb_lee)} mm ({ARC_FLASH_RALPH_LEE_LABEL})",
-                unit_check_pl="D_AFB w mm; odległość, na której E = 1,2 cal/cm².",
+                unit_check_pl=(
+                    "Granica łuku w mm: odległość, na której energia incydentu wynosi 1,2 cal/cm²."
+                ),
                 table_ref="metoda Ralpha Lee — postać zamknięta (bez tablicy IEEE 1584)",
             )
         )
@@ -756,7 +791,10 @@ class ArcFlashBuilder:
                     + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
                 ),
                 result_pl=f"kategoria ŚOI = {ppe}",
-                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                unit_check_pl=(
+                    "energia incydentu w cal/cm² wyznacza kategorię (klasyfikacja jakościowa "
+                    "NFPA 70E)."
+                ),
                 table_ref=(
                     f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
                     if self._ppe_table.is_empty
@@ -771,11 +809,12 @@ class ArcFlashBuilder:
             else f"{ka_na_a(VALIDITY_IBF_MIN_KA_HV):.0f} A–{VALIDITY_IBF_MAX_KA_HV:.0f} kA (600 V<U<=15 kV)"
         )
         why = (
-            f"POZA zakresem ważności IEEE 1584-2018 (U={_round(voltage, 2)} kV, "
-            f"I_bf={_round(i_bf, 2)} kA; zakres: {kv_na_v(VALIDITY_VOLTAGE_MIN_KV):.0f} V–"
-            f"{VALIDITY_VOLTAGE_MAX_KV:.0f} kV, I_bf {ibf_range_pl} dla tej klasy napięcia). "
-            f"Zastosowano {ARC_FLASH_RALPH_LEE_LABEL}: "
-            f"E ≈ {_round(e_lee, 2)} cal/cm², AFB ≈ {_round(afb_lee, 1)} mm, ŚOI = {ppe}. "
+            f"POZA zakresem ważności IEEE 1584-2018 (napięcie {_round(voltage, 2)} kV, "
+            f"prąd zwarcia bolted {_round(i_bf, 2)} kA; zakres: "
+            f"{kv_na_v(VALIDITY_VOLTAGE_MIN_KV):.0f} V–{VALIDITY_VOLTAGE_MAX_KV:.0f} kV, "
+            f"prąd zwarcia bolted {ibf_range_pl} dla tej klasy napięcia). "
+            f"Zastosowano {ARC_FLASH_RALPH_LEE_LABEL}: energia incydentu "
+            f"{_round(e_lee, 2)} cal/cm², granica łuku {_round(afb_lee, 1)} mm, ŚOI {ppe}. "
             "To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku)."
         )
 
@@ -815,10 +854,10 @@ class ArcFlashBuilder:
         why = (
             "Dane niekompletne — brak: "
             + ", ".join(missing)
-            + ". Model Arc Flash wymaga prądu zwarcia bolted I_bf (z solvera "
-            "IEC 60909), napięcia U, czasu łuku t (z koordynacji zabezpieczeń — "
-            "to samo źródło co U_touch/uziemienie), odstępu elektrod G oraz "
-            "odległości roboczej D. Wejścia NIE są zmyślane."
+            + ". Model Arc Flash wymaga prądu zwarcia bolted (z solvera "
+            "IEC 60909), napięcia, czasu łuku (z koordynacji zabezpieczeń — "
+            "to samo źródło co napięcie dotykowe i uziemienie), odstępu elektrod oraz "
+            "odległości roboczej. Wejścia NIE są zmyślane."
         )
         return self._bare_result(
             item,

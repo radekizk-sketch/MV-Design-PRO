@@ -43,14 +43,14 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     zrodlo: 'nowa-powloka',
     obszaryLegacy: ['pulpit projektu (E-00)'],
     montaz: 'PulpitProjektu (E2.1) + nowy/otwórz projekt (E2.2)',
-    wygaszenie: 'zrealizowane w U1 (E2.x)',
+    wygaszenie: 'zrealizowane w $U_{1}$ (E2.x)',
   },
   model: {
     przestrzen: 'model',
     zrodlo: 'legacy',
     obszaryLegacy: ['MODEL_SIECI', 'KATALOGI_TECHNICZNE'],
     montaz: 'SldCanvasV3Workspace (kanwa budowy sieci v3; katalogi przez akcje kanwy)',
-    wygaszenie: 'U2: okna modelu sieci i przeglądarka katalogów w nowej powłoce (po E1.7c: kanwa + pasek przepływu pracy przez mosty)',
+    wygaszenie: '$U_{2}$: okna modelu sieci i przeglądarka katalogów w nowej powłoce (po E1.7c: kanwa + pasek przepływu pracy przez mosty)',
   },
   schemat: {
     przestrzen: 'schemat',
@@ -64,7 +64,7 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     zrodlo: 'nowa-powloka',
     obszaryLegacy: ['gotowość rozproszona w MODEL_SIECI (panel kontroli technicznej)'],
     montaz: 'PanelGotowosci (E6.1): braki wg celów, postęp per cel, akcje naprawcze',
-    wygaszenie: 'zrealizowane w U2 (most EngineeringReadinessPanel usunięty)',
+    wygaszenie: 'zrealizowane w $U_{2}$ (most EngineeringReadinessPanel usunięty)',
   },
   obliczenia: {
     przestrzen: 'obliczenia',
@@ -73,7 +73,7 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     montaz:
       'MenedzerPrzypadkow (E7.1) + PrzebiegiPanel (E7.2: historia z parametrami, odcisk odtwarzalności, na żywo z magistrali)',
     wygaszenie:
-      'zrealizowane w U2 w całości (most RunHistoryPanel usunięty); K8: trasy #case-config (E-07 bez renderu w routerze) i #variants (E-08, karta read-only) wygaszone — lądują w tej przestrzeni',
+      'zrealizowane w $U_{2}$ w całości (most RunHistoryPanel usunięty); K8: trasy #case-config (E-07 bez renderu w routerze) i #variants (E-08, karta read-only) wygaszone — lądują w tej przestrzeni',
   },
   wyniki: {
     przestrzen: 'wyniki',

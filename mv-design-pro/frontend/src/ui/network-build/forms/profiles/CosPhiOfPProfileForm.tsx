@@ -6,6 +6,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
+import { MathInline } from '../../../proof/MathRenderer';
 
 import { validateMonotonic, validateRange } from './profileSerializers';
 import type { CosPhiOfPPoint, CosPhiOfPProfile } from './profileTypes';
@@ -72,7 +73,9 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
         handleSubmit();
       }}
     >
-      <h3 className="text-sm font-semibold">Profil cos φ(P) — kompensacja mocy biernej</h3>
+      <h3 className="text-sm font-semibold">
+        Profil <MathInline latex="\cos\varphi(P)" /> — kompensacja mocy biernej
+      </h3>
 
       {catalogRef && (
         <p className="text-xs text-scada-muted" data-testid="cosphi-catalog-ref">
@@ -81,9 +84,9 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
       )}
 
       <ProfileCurveEditor
-        title="Charakterystyka cos φ(P) - przeciągnij punkty aby edytować"
+        title="Charakterystyka $\cos\varphi(P)$ — przeciągnij punkty, aby edytować"
         xLabel="P [pu]"
-        yLabel="cos φ"
+        yLabel="$\cos\varphi$"
         xRange={[0, 1]}
         yRange={[-1, 1]}
         points={points.map<CurvePoint>((p) => ({ x: p.p_pu, y: p.cos_phi }))}
@@ -97,7 +100,9 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
         <thead>
           <tr className="text-scada-muted">
             <th className="text-left">P [pu]</th>
-            <th className="text-left">cos φ</th>
+            <th className="text-left">
+              <MathInline latex="\cos\varphi" />
+            </th>
             <th />
           </tr>
         </thead>
@@ -105,7 +110,7 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
           {points.map((p, idx) => (
             <tr key={idx} data-testid={`cosphi-row-${idx}`}>
               <td>
-                <input title="cos φ"
+                <input title="Moc czynna P [pu]"
                   type="number"
                   step="0.01"
                   value={p.p_pu}
@@ -116,7 +121,7 @@ export function CosPhiOfPProfileForm({ initial, onSubmit, onCancel }: CosPhiOfPP
                 />
               </td>
               <td>
-                <input title="cos φ"
+                <input title="Współczynnik mocy"
                   type="number"
                   step="0.01"
                   value={p.cos_phi}

@@ -8,6 +8,7 @@
 
 import { PAD, RamkaWykresu, VBH, VBW, px, py } from '../rama';
 import { KOMPENSATOR_STRINGS as T } from './strings';
+import { TekstSvgZWzorami } from '../../../ui/proof/TekstSvgZWzorami';
 
 /** Q/Qn = (U/Un)² — parabola z zaznaczonym punktem znamionowym (1,0 pu; 1,0 pu). */
 export function WykresQU() {
@@ -31,7 +32,7 @@ export function WykresQU() {
       {/* punkt znamionowy */}
       <circle cx={px(nx(1))} cy={py(ny(1))} r={3} className="mvd-wykres-punkt" />
       <text x={px(nx(1)) + 6} y={py(ny(1)) - 6} className="mvd-wykres-znak">
-        {T.wykresQuPunkt}
+        <TekstSvgZWzorami tekst={T.wykresQuPunkt} />
       </text>
     </svg>
   );

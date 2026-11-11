@@ -79,7 +79,7 @@ class ActionEnvelope:
             action_type=str(data["action_type"]),
             payload=dict(data.get("payload", {})),
             created_at=str(data["created_at"]),
-            status=stan_akcji(data["status"]) if data.get("status") is not None else None,
+            status=(stan_akcji(data["status"]) if data.get("status") is not None else None),
             actor=data.get("actor"),
             schema_version=data.get("schema_version"),
         )
@@ -335,7 +335,7 @@ def _validate_payload_values(
             errors.append(
                 ActionIssue(
                     code="invalid_type",
-                    message="in_service must be a boolean.",
+                    message="Pole `in_service` musi być wartością logiczną.",
                     path="payload.in_service",
                 )
             )

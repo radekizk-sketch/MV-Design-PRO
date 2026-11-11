@@ -5,7 +5,7 @@ export const ODCINEK_NN_EDYCJA_STRINGS = {
   ulozenieCel:
     'Zmień warunki ułożenia istniejącego odcinka kabla nN — po co: obciążalność katalogowa dotyczy '
     + 'warunków odniesienia, a trasa ma własne; z czego: środowisko, izolacja, temperatura, liczba '
-    + 'obwodów; co daje: Iz′ odcinka liczone przez backend przy każdym odczycie modelu.',
+    + 'obwodów; co daje: $I\'_{z}$ odcinka liczone przez backend przy każdym odczycie modelu.',
   ulozenieOdznaka: 'Warunki ułożenia',
   ulozenieZapisz: 'Zapisz warunki ułożenia',
   ulozenieNiekompletne: 'Uzupełnij opis warunków trasy (dla gruntu także rezystywność cieplną).',

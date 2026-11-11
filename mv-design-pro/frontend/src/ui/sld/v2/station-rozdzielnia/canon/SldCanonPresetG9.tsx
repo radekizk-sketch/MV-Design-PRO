@@ -165,7 +165,7 @@ export function SldCanonPresetG9({ companion }: { companion: SldOzeArchetypeComp
           </g>
         );
       })}
-      {lbl((sx[0] + sx[sources.length - 1]) / 2, 542, 'GPO: maszyny w Z-bus (synchr. §6.3 podtrzymanie Ib≈Ik / async §6.7 zanik μ·q, trafo blokowy tłumi) + IBG sprowadzony (§6.7, F-1) — superpozycja na szynie SN', TXT_MUTED, 8.5, 600, 'middle')}
+      {lbl((sx[0] + sx[sources.length - 1]) / 2, 542, 'GPO: maszyny w Z-bus (synchr. §6.3 podtrzymanie $I_{b}$≈$I_{k}$ / async §6.7 zanik μ·q, trafo blokowy tłumi) + IBG sprowadzony (§6.7, F-1) — superpozycja na szynie SN', TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — SN busbar 15 kV (sieć + maszyny + IBG) ── */}
       <NodeReadout x={node} y={236} n={1} title={`szyna GPO · ${colKv} kV`}

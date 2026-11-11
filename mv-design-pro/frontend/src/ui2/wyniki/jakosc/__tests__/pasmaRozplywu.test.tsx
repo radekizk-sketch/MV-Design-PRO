@@ -13,6 +13,7 @@ vi.mock('../api', () => ({
 }));
 
 import { fetchPasmaRozplywu } from '../api';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const mockedPasma = vi.mocked(fetchPasmaRozplywu);
 
@@ -69,7 +70,7 @@ describe('SekcjaPasmRozplywu — sekcja Napięcia szyn', () => {
     render(<SekcjaPasmRozplywu {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     expect(screen.getByText(JAKOSC_STRINGS.pasmaNormaNapiecia)).toBeTruthy();
-    expect(screen.getByText('Un ± 10 %')).toBeTruthy();
+    expect(screen.getByText(poTekscieZWzorami("$U_{n}$ ± 10 %"))).toBeTruthy();
   });
 
   it('wybór wiersza szyny poza pasmem pokazuje why_pl w szczególe', async () => {

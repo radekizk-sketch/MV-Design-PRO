@@ -94,7 +94,7 @@ def _equation_from_dict(payload: dict[str, Any]) -> EquationDefinition:
         name_pl=str(payload.get("name_pl", "")),
         standard_ref=str(payload.get("standard_ref", "")),
         symbols=symbols,
-        unit_derivation=str(payload.get("unit_derivation", "")),
+        unit_derivation_latex=str(payload.get("unit_derivation_latex", "")),
         notes=payload.get("notes"),
     )
 
@@ -126,7 +126,7 @@ def _unit_check_from_dict(payload: dict[str, Any]) -> UnitCheckResult:
         expected_unit=str(payload.get("expected_unit", "")),
         computed_unit=str(payload.get("computed_unit", "")),
         input_units=dict(payload.get("input_units", {}) or {}),
-        derivation=str(payload.get("derivation", "")),
+        derivation_latex=str(payload.get("derivation_latex", "")),
     )
 
 

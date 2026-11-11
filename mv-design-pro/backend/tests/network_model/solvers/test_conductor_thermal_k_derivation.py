@@ -243,7 +243,7 @@ def test_dowod_pokazuje_wzor_normy_a_nie_odczyt_z_karty() -> None:
     assert "rho" in krok["formula_latex"]
     # Podstawienie niesie liczby, nie sam wzor — inaczej nie da sie sprawdzic rachunku.
     assert "228" in krok["substitution_latex"]
-    assert "WYPROWADZONE" in krok["notes"] or "wyprowadzone" in krok["notes"]
+    assert "WYPROWADZONY" in krok["notes"] or "wyprowadzony" in krok["notes"]
 
 
 def test_brak_przekroju_nie_daje_wyprowadzenia_bo_k_bez_S_nie_da_pradu() -> None:

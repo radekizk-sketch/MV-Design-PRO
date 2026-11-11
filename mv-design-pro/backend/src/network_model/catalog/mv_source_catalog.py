@@ -33,7 +33,7 @@ def _build_source_record(voltage_kv: float, sk3_mva: float, rx_ratio: float) -> 
     rx_tag = f"{int(round(rx_ratio * 100)):03d}"
     return {
         "id": f"src-gpz-{int(voltage_kv)}kv-{int(sk3_mva)}mva-rx{rx_tag}",
-        "name": f"Zasilanie GPZ {int(voltage_kv)} kV / Sk3 {int(sk3_mva)} MVA / R/X {rx_ratio:.2f}",
+        "name": f"Zasilanie GPZ {int(voltage_kv)} kV / moc zwarciowa {int(sk3_mva)} MVA / R/X {rx_ratio:.2f}",
         "params": {
             "voltage_rating_kv": voltage_kv,
             "sk3_mva": sk3_mva,
@@ -56,7 +56,7 @@ def _build_source_record(voltage_kv: float, sk3_mva: float, rx_ratio: float) -> 
 SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     {
         "id": "src-gpz-15kv-200mva-rx010",
-        "name": "Zasilanie GPZ 15 kV / Sk3 200 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 200 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 200.0,
@@ -76,7 +76,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-15kv-250mva-rx010",
-        "name": "Zasilanie GPZ 15 kV / Sk3 250 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 250 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 250.0,
@@ -96,7 +96,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-15kv-300mva-rx010",
-        "name": "Zasilanie GPZ 15 kV / Sk3 300 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 300 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 300.0,
@@ -116,7 +116,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-15kv-350mva-rx010",
-        "name": "Zasilanie GPZ 15 kV / Sk3 350 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 350 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 350.0,
@@ -136,7 +136,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-15kv-400mva-rx010",
-        "name": "Zasilanie GPZ 15 kV / Sk3 400 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 400 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 400.0,
@@ -156,7 +156,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-15kv-500mva-rx010",
-        "name": "Zasilanie GPZ 15 kV / Sk3 500 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 500 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 500.0,
@@ -176,7 +176,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-15kv-500mva-rx012",
-        "name": "Zasilanie GPZ 15 kV / Sk3 500 MVA / R/X 0.12",
+        "name": "Zasilanie GPZ 15 kV / moc zwarciowa 500 MVA / R/X 0.12",
         "params": {
             "voltage_rating_kv": 15.0,
             "sk3_mva": 500.0,
@@ -196,7 +196,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-200mva-rx010",
-        "name": "Zasilanie GPZ 20 kV / Sk3 200 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 200 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 200.0,
@@ -216,7 +216,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-250mva-rx010",
-        "name": "Zasilanie GPZ 20 kV / Sk3 250 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 250 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 250.0,
@@ -236,7 +236,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-300mva-rx010",
-        "name": "Zasilanie GPZ 20 kV / Sk3 300 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 300 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 300.0,
@@ -256,7 +256,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-350mva-rx012",
-        "name": "Zasilanie GPZ 20 kV / Sk3 350 MVA / R/X 0.12",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 350 MVA / R/X 0.12",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 350.0,
@@ -276,7 +276,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-400mva-rx012",
-        "name": "Zasilanie GPZ 20 kV / Sk3 400 MVA / R/X 0.12",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 400 MVA / R/X 0.12",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 400.0,
@@ -296,7 +296,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-500mva-rx010",
-        "name": "Zasilanie GPZ 20 kV / Sk3 500 MVA / R/X 0.10",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 500 MVA / R/X 0.10",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 500.0,
@@ -316,7 +316,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
     },
     {
         "id": "src-gpz-20kv-500mva-rx012",
-        "name": "Zasilanie GPZ 20 kV / Sk3 500 MVA / R/X 0.12",
+        "name": "Zasilanie GPZ 20 kV / moc zwarciowa 500 MVA / R/X 0.12",
         "params": {
             "voltage_rating_kv": 20.0,
             "sk3_mva": 500.0,

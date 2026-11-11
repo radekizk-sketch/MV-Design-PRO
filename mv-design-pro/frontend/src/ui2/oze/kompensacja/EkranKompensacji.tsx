@@ -81,8 +81,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-komp-stan mvd-komp-stan--blad' : 'mvd-komp-stan'}
       data-testid={testid}
     >
-      <p className="mvd-komp-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-komp-stan-desc">{opis}</p>}
+      <p className="mvd-komp-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-komp-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -95,12 +95,12 @@ function StanPanel({
 function NotaCosfi({ konwencja }: { konwencja: string }) {
   return (
     <section className="mvd-komp-nota" data-testid="mvd-komp-nota">
-      <span className="mvd-komp-nota-tytul">{T.notaCosfiTytul}</span>
+      <span className="mvd-komp-nota-tytul"><TekstZWzorami tekst={T.notaCosfiTytul} /></span>
       <p className="mvd-komp-nota-wiersz mvd-komp-nota-wiersz--punktu" data-testid="mvd-komp-nota-punktu">
         <TekstZWzorami tekst={T.notaCosfiPunktu} />
       </p>
       <p className="mvd-komp-nota-wiersz" data-testid="mvd-komp-nota-przekroju">
-        {T.notaCosfiPrzekroju}
+        <TekstZWzorami tekst={T.notaCosfiPrzekroju} />
       </p>
       <p className="mvd-komp-nota-konwencja" data-testid="mvd-komp-nota-konwencja">
         <strong>{T.notaKonwencjaTytul}: </strong>
@@ -168,7 +168,7 @@ function WynikKompensacji({
           </dd>
         </div>
         <div className="mvd-komp-zal-para">
-          <dt>{T.zalCosfiMin}</dt>
+          <dt><TekstZWzorami tekst={T.zalCosfiMin} /></dt>
           <dd className="mvd-num">{fmtCosfiKomp(dane.parameters.cos_phi_min)}</dd>
         </div>
         <div className="mvd-komp-zal-para">
@@ -196,28 +196,28 @@ function WynikKompensacji({
         <p className="mvd-komp-sekcja-tytul">{T.baselineTytul}</p>
         <dl className="mvd-komp-baseline-siatka">
           <div className="mvd-komp-baseline-para mvd-komp-baseline-para--decyzja">
-            <dt>{T.baselineCosfiPunktuDzien}</dt>
+            <dt><TekstZWzorami tekst={T.baselineCosfiPunktuDzien} /></dt>
             <dd className="mvd-num" data-testid="mvd-komp-baseline-punktu-dzien">
               {fmtCosfiKomp(dane.baseline.cosfi_punktu_dzien)}
             </dd>
           </div>
           {uwzglednijNoc && (
             <div className="mvd-komp-baseline-para mvd-komp-baseline-para--decyzja">
-              <dt>{T.baselineCosfiPunktuNoc}</dt>
+              <dt><TekstZWzorami tekst={T.baselineCosfiPunktuNoc} /></dt>
               <dd className="mvd-num" data-testid="mvd-komp-baseline-punktu-noc">
                 {fmtCosfiKomp(dane.baseline.cosfi_punktu_noc)}
               </dd>
             </div>
           )}
           <div className="mvd-komp-baseline-para">
-            <dt>{T.baselineCosfiPrzekrojuDzien}</dt>
+            <dt><TekstZWzorami tekst={T.baselineCosfiPrzekrojuDzien} /></dt>
             <dd className="mvd-num" data-testid="mvd-komp-baseline-przekroju-dzien">
               {fmtCosfiKomp(dane.baseline.cosfi_przekroju_dzien)}
             </dd>
           </div>
           {uwzglednijNoc && (
             <div className="mvd-komp-baseline-para">
-              <dt>{T.baselineCosfiPrzekrojuNoc}</dt>
+              <dt><TekstZWzorami tekst={T.baselineCosfiPrzekrojuNoc} /></dt>
               <dd className="mvd-num" data-testid="mvd-komp-baseline-przekroju-noc">
                 {fmtCosfiKomp(dane.baseline.cosfi_przekroju_noc)}
               </dd>
@@ -256,31 +256,31 @@ function WynikKompensacji({
               </dd>
             </div>
             <div className="mvd-komp-dobor-para">
-              <dt>{T.doborCosfiPunktuDzien}</dt>
+              <dt><TekstZWzorami tekst={T.doborCosfiPunktuDzien} /></dt>
               <dd className="mvd-num" data-testid="mvd-komp-dobor-punktu-dzien">
                 {fmtCosfiKomp(dane.dobor.cosfi_punktu_dzien)}
               </dd>
             </div>
             {uwzglednijNoc && (
               <div className="mvd-komp-dobor-para">
-                <dt>{T.doborCosfiPunktuNoc}</dt>
+                <dt><TekstZWzorami tekst={T.doborCosfiPunktuNoc} /></dt>
                 <dd className="mvd-num">{fmtCosfiKomp(dane.dobor.cosfi_punktu_noc)}</dd>
               </div>
             )}
             <div className="mvd-komp-dobor-para">
-              <dt>{T.doborCosfiPrzekrojuDzien}</dt>
+              <dt><TekstZWzorami tekst={T.doborCosfiPrzekrojuDzien} /></dt>
               <dd className="mvd-num" data-testid="mvd-komp-dobor-przekroju-dzien">
                 {fmtCosfiKomp(dane.dobor.cosfi_przekroju_dzien)}
               </dd>
             </div>
             {uwzglednijNoc && (
               <div className="mvd-komp-dobor-para">
-                <dt>{T.doborCosfiPrzekrojuNoc}</dt>
+                <dt><TekstZWzorami tekst={T.doborCosfiPrzekrojuNoc} /></dt>
                 <dd className="mvd-num">{fmtCosfiKomp(dane.dobor.cosfi_przekroju_noc)}</dd>
               </div>
             )}
           </dl>
-          <p className="mvd-komp-komentarz">{T.doborPodstawa}</p>
+          <p className="mvd-komp-komentarz"><TekstZWzorami tekst={T.doborPodstawa} /></p>
           <button
             type="button"
             className="mvd-komp-dobor-kreator"
@@ -468,7 +468,7 @@ export function EkranKompensacji({
             </div>
 
             <div className="mvd-komp-param">
-              <label htmlFor="mvd-komp-cosfi">{T.paramCosfiMin}</label>
+              <label htmlFor="mvd-komp-cosfi"><TekstZWzorami tekst={T.paramCosfiMin} /></label>
               <input
                 id="mvd-komp-cosfi"
                 type="number"
@@ -482,7 +482,7 @@ export function EkranKompensacji({
                 }}
                 data-testid="mvd-komp-cosfi"
               />
-              <p className="mvd-komp-param-opis">{T.paramCosfiMinOpis}</p>
+              <p className="mvd-komp-param-opis"><TekstZWzorami tekst={T.paramCosfiMinOpis} /></p>
             </div>
 
             <div className="mvd-komp-param-przelacznik">

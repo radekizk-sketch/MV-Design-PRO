@@ -29,11 +29,13 @@ import {
   type WpisRejestruGotowosci,
 } from './rejestrGotowosci';
 import { KRYTERIA_STRINGS as T, etykietaWerdyktu, fmtLiczba } from './strings';
+import { TekstZWzorami } from '../kreatory/rama/tekstZWzorami';
+import { MathInline } from '../../ui/proof/MathRenderer';
 
 function Wiersz({ etykieta, wartosc }: { etykieta: string; wartosc: string }): JSX.Element {
   return (
     <div className="mvd-kryteria__wiersz">
-      <span className="mvd-kryteria__etykieta">{etykieta}</span>
+      <span className="mvd-kryteria__etykieta"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-kryteria__wartosc">{wartosc}</span>
     </div>
   );
@@ -148,8 +150,9 @@ export function SekcjaStarzeniaKabla({
             </ul>
           ) : null}
           <p className="mvd-kryteria__wzor">
-            {T.wzorTytul}: {wynik.formula_ref}
+            {T.wzorTytul}: <MathInline latex={wynik.formula_latex} />
           </p>
+          <p className="mvd-kryteria__opis">{wynik.formula_ref}</p>
         </>
       ) : (
         <p className="mvd-kryteria__opis">{T.ladowanie}</p>
@@ -256,8 +259,9 @@ export function SekcjaStratTransformatora({
             </ul>
           ) : null}
           <p className="mvd-kryteria__wzor">
-            {T.wzorTytul}: {wynik.formula_ref}
+            {T.wzorTytul}: <MathInline latex={wynik.formula_latex} />
           </p>
+          <p className="mvd-kryteria__opis">{wynik.formula_ref}</p>
         </>
       ) : (
         <p className="mvd-kryteria__opis">{T.ladowanie}</p>

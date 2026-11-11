@@ -81,9 +81,10 @@ class TestLineInKnown:
         assert computed is not None
         assert computed.value == pytest.approx(1509.0)
         assert computed.unit == "A"
-        assert "3" in computed.computed_from
-        assert "In" in computed.computed_from
-        assert "503" in computed.computed_from
+        assert computed.computed_from == "3 razy prąd znamionowy (503 A)"
+        # Podstawienie jako wzór w polu LaTeX (proza słowami, wzór dla MathRenderer).
+        assert computed.computed_from_latex == r"3 \cdot I_{n} = 3 \cdot 503\ \mathrm{A}"
+        assert computed.to_dict()["computed_from_latex"] == computed.computed_from_latex
 
 
 # =============================================================================
@@ -113,7 +114,7 @@ class TestTransformerInCalculated:
         assert base.in_a is not None
         assert base.in_a == pytest.approx(expected_in, rel=0.01)
         assert base.source_in == BaseValueSourceIn.TRANSFORMER_SIDE
-        assert "Sn" in base.notes_pl or "sqrt" in base.notes_pl
+        assert "moc znamionowa 0.63 MVA" in base.notes_pl and "√3" in base.notes_pl
 
     def test_resolve_in_from_transformer_hv_side(self) -> None:
         """IN = Sn / (√3 × Un_HV) dla strony WN."""
@@ -266,9 +267,8 @@ class TestVoltageProtection:
         assert computed is not None
         assert computed.value == pytest.approx(12.0)
         assert computed.unit == "kV"
-        assert "0.8" in computed.computed_from
-        assert "Un" in computed.computed_from
-        assert "15" in computed.computed_from
+        assert computed.computed_from == "0.8 razy napięcie znamionowe (15 kV)"
+        assert computed.computed_from_latex == r"0.8 \cdot U_{n} = 0.8 \cdot 15\ \mathrm{kV}"
 
     def test_computed_1_15x_un_overvoltage(self) -> None:
         """U> (59) = 1.15×Un → computed = 1.15 × 15 = 17.25 kV."""
@@ -472,7 +472,7 @@ class TestPccProtection:
 
         assert base.un_kv == 110.0
         assert base.source_un == BaseValueSourceUn.BoundaryNode
-        assert "BoundaryNode" in base.notes_pl
+        assert "punkt przyłączenia" in base.notes_pl
 
     def test_resolve_connection_node_current(self) -> None:
         """In z BoundaryNode rated current."""
@@ -621,13 +621,15 @@ class TestSerialization:
         cv = ProtectionComputedValue(
             value=1509.0,
             unit="A",
-            computed_from="3 × In (503 A)",
+            computed_from="3 razy prąd znamionowy (503 A)",
         )
         d = cv.to_dict()
 
         assert d["value"] == 1509.0
         assert d["unit"] == "A"
-        assert d["computed_from"] == "3 × In (503 A)"
+        assert d["computed_from"] == "3 razy prąd znamionowy (503 A)"
+        # Pole wzoru addytywne: bez niego słownik bez klucza (exclude_none).
+        assert "computed_from_latex" not in d
 
     def test_context_to_dict(self) -> None:
         """ProtectedElementContext.to_dict()."""

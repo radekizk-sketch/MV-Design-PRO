@@ -223,7 +223,8 @@ describe('Świeżość wyniku (§13/§19/§36) — NIEAKTUALNY jest pokazywany, 
     expect(screen.getByTestId('lv-domain-result-freshness')).toHaveAttribute('data-result-status', 'FRESH');
     const plakietka = screen.getByTestId('lv-domain-badge-shortCircuit-RGnN-1');
     expect(plakietka).toHaveAttribute('data-outdated', 'false');
-    expect(plakietka.textContent).toContain('Ik″3 = 23,75 kA');
+    // Symbol rysowany `<tspan>`-ami z zapisu `$I_{k3}''$`: odczyt treści to „I k3 ″” (indeks, potem prim).
+    expect(plakietka.textContent).toContain('Ik3″ = 23,75 kA');
     expect(plakietka.querySelector('[data-testid="lv-domain-provenance"]')?.textContent).toContain('IEC 60909');
     expect(plakietka.querySelector('[data-testid="lv-domain-provenance"]')?.textContent).toContain('aktualny');
   });

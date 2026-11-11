@@ -142,16 +142,20 @@ def _resolve_setpoint(
 
     if command == "moc_bierna":
         if q_mvar is None:
-            raise OdmowaDanychError("Polecenie mocy biernej wymaga zadanej wartości q_mvar [Mvar].")
+            raise OdmowaDanychError(
+                "Polecenie mocy biernej wymaga zadanej wartości mocy biernej [Mvar]."
+            )
         return p_base_mw, float(q_mvar), {"q_mvar": _round6(q_mvar)}
 
     if command == "cosfi":
         if cos_phi is None or not (0.0 < cos_phi <= 1.0):
-            raise OdmowaDanychError("Polecenie cosφ wymaga cos_phi w przedziale (0, 1].")
+            raise OdmowaDanychError(
+                "Polecenie współczynnika mocy wymaga wartości w przedziale (0, 1]."
+            )
         if q_charakter not in {"nadwzbudny", "podwzbudny"}:
             raise OdmowaDanychError(
-                "Polecenie cosφ wymaga q_charakter: 'nadwzbudny' (generacja Q) "
-                "lub 'podwzbudny' (pobór Q)."
+                "Polecenie współczynnika mocy wymaga charakteru: 'nadwzbudny' (generacja "
+                "mocy biernej) lub 'podwzbudny' (pobór mocy biernej)."
             )
         tan_phi = tan_phi_z_cos_phi(cos_phi)
         sign = 1.0 if q_charakter == "nadwzbudny" else -1.0

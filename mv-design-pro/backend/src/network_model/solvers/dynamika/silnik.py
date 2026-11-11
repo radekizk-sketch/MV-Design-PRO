@@ -796,7 +796,11 @@ class SilnikDynamiki:
             for pozycja in sorted(do_uzupelnienia)
             if pozycja in odwiedzone and pozycja not in od_sem
         )
-        return start, od_sasiada, tuple(model.identy_wezlow[pozycja] for pozycja in sorted(od_sem))
+        return (
+            start,
+            od_sasiada,
+            tuple(model.identy_wezlow[pozycja] for pozycja in sorted(od_sem)),
+        )
 
     def _bramka_rownowagi(
         self,
@@ -888,7 +892,8 @@ class SilnikDynamiki:
             raise OdmowaDynamiki(
                 KOD_INICJALIZACJA_NIEZBIEZNA,
                 f"{przedmiot} nie jest równowagą układu: "
-                f"||f|| = {norma_f}, ||g|| = {norma_g}, eps_init = {nastawy.eps_init}",
+                f"norma residuum równań różniczkowych {norma_f}, algebraicznych {norma_g}, "
+                f"tolerancja inicjalizacji {nastawy.eps_init}",
                 residuum_f=norma_f,
                 residuum_g=norma_g,
                 eps_init=nastawy.eps_init,
@@ -987,7 +992,7 @@ class SilnikDynamiki:
         zmiane mocy urzadzenia oraz obie normy bramki na stanie `t = 0` (`residuum_f_po`,
         `residuum_g_po`). Nic nie dzieje sie w tle.
         """
-        model, odbiory, urzadzenia = kontekst.model, kontekst.odbiory, kontekst.urzadzenia
+        model, odbiory, urzadzenia = (kontekst.model, kontekst.odbiory, kontekst.urzadzenia)
         residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
         norma_przed = float(np.linalg.norm(residuum))
         granica = granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, napiecia)
@@ -1357,8 +1362,10 @@ class SilnikDynamiki:
                     obszary_zasilone_ponownie=obszary_zasilone,
                     przypisania=przypisania,
                     t_zlokalizowany_s=None if lokalizacja is None else lokalizacja.t_s,
-                    szerokosc_przedzialu_s=None if lokalizacja is None else lokalizacja.szerokosc_s,
-                    iteracje_lokalizacji=None if lokalizacja is None else lokalizacja.iteracje,
+                    szerokosc_przedzialu_s=(
+                        None if lokalizacja is None else lokalizacja.szerokosc_s
+                    ),
+                    iteracje_lokalizacji=(None if lokalizacja is None else lokalizacja.iteracje),
                     g_przed=None if lokalizacja is None else lokalizacja.g_przed,
                     g_po=None if lokalizacja is None else lokalizacja.g_po,
                 )
@@ -1671,7 +1678,8 @@ class SilnikDynamiki:
     def _nadzor(self) -> NadzorDozorow | None:
         """Nadzor dozorow biegu — `None`, gdy harmonogram nie niesie dozorow (sciezka bez
         zmian, bitowo). Dozory bez tolerancji lokalizacji to odmowa `nastawy_sprzeczne`;
-        akcje i wielkosci sa walidowane PRZED biegiem (`zdarzenia.szablony_akcji_dozorow`)."""
+        akcje i wielkosci sa walidowane PRZED biegiem (`zdarzenia.szablony_akcji_dozorow`).
+        """
         wejscie = self.wejscie
         dozory = wejscie.harmonogram.dozory
         if not dozory:
@@ -2179,19 +2187,31 @@ class SilnikDynamiki:
                 ident = klucz.split("@", 1)[1]
                 metryki.append(
                     Metryka(
-                        f"omega_max_pu@{ident}", _max_liczb(szereg), "pu", "max_t omega(t)", ident
+                        f"omega_max_pu@{ident}",
+                        _max_liczb(szereg),
+                        "pu",
+                        "maksimum prędkości kątowej w czasie",
+                        ident,
                     )
                 )
                 metryki.append(
                     Metryka(
-                        f"omega_min_pu@{ident}", _min_liczb(szereg), "pu", "min_t omega(t)", ident
+                        f"omega_min_pu@{ident}",
+                        _min_liczb(szereg),
+                        "pu",
+                        "minimum prędkości kątowej w czasie",
+                        ident,
                     )
                 )
             elif klucz.startswith("delta_rad@"):
                 ident = klucz.split("@", 1)[1]
                 metryki.append(
                     Metryka(
-                        f"delta_max_rad@{ident}", _max_liczb(szereg), "rad", "max_t delta(t)", ident
+                        f"delta_max_rad@{ident}",
+                        _max_liczb(szereg),
+                        "rad",
+                        "maksimum kąta wirnika w czasie",
+                        ident,
                     )
                 )
         return tuple(metryki)
@@ -2740,7 +2760,13 @@ def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[ZalozenieR
             zalozenia.append(
                 ZalozenieRdzenia(
                     "zwarcie_usuniete_samoczynnie",
-                    (zdarzenie.wezel if isinstance(zdarzenie, ZwarcieWezla) else zdarzenie.galaz,),
+                    (
+                        (
+                            zdarzenie.wezel
+                            if isinstance(zdarzenie, ZwarcieWezla)
+                            else zdarzenie.galaz
+                        ),
+                    ),
                     tuple(wielkosci),
                     ("wezel" if isinstance(zdarzenie, ZwarcieWezla) else "galaz",),
                 )

@@ -108,7 +108,7 @@ def test_compensation_sizing_cos_phi_out_of_range_returns_422(app_client) -> Non
     )
     assert resp.status_code == 422
     # Partia integracji 10: treść nazywa wielkość (cosφ), nie klucz parametru.
-    assert resp.json()["detail"] == "Wymagany cosφ musi być w przedziale (0, 1]."
+    assert resp.json()["detail"] == "Wymagany współczynnik mocy musi być w przedziale (0, 1]."
 
 
 def test_compensation_sizing_unknown_bus_returns_422(app_client) -> None:

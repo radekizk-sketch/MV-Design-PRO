@@ -69,13 +69,13 @@ export const PRZECIAZENIE: PozycjaNaruszenia = {
   powod_pl: 'Obciążenie 134,74 % przekracza limit 100,0 %.',
   slad_kryterium: [
     {
-      tekst: 'Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %',
+      tekst: 'Wzór: obciążenie = większy z ilorazów prądu zacisku przez jego prąd znamionowy · 100 %',
       latex:
         '\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%',
     },
     {
       tekst:
-        'Dane: |I_od| = 0,0808 kA, |I_do| = 0,0808 kA (wynik rozpływu), I_r,od = 0,0600 kA, I_r,do = 0,0600 kA (obciążalność gałęzi); decyduje zacisk początkowy',
+        'Dane: prąd zacisku początkowego 0,0808 kA, końcowego 0,0808 kA (wynik rozpływu), prąd znamionowy zacisku początkowego 0,0600 kA, końcowego 0,0600 kA (obciążalność gałęzi); decyduje zacisk początkowy',
       latex: null,
     },
     {

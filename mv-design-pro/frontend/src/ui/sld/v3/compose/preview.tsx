@@ -43,6 +43,7 @@ import type { OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
  *  (WN/SN, primary/reserve/ring-closure) — spec nie różnicuje grubości szyn
@@ -677,7 +678,7 @@ function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly stroke: 
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
       >
-        {label.text}
+        <TekstSvgZWzorami tekst={label.text} />
       </text>
     </g>
   );

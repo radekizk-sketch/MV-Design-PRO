@@ -35,6 +35,7 @@ import {
 } from './model';
 import { WRAZLIWOSC_STRINGS as T } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 // ---------------------------------------------------------------------------
 // Stan zasobu (brak przebiegu / ładowanie / błąd / gotowe)
@@ -67,8 +68,8 @@ function StanPanel({
       }
       data-testid={testid}
     >
-      <p className="mvd-wrazliwosc-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-wrazliwosc-stan-desc">{opis}</p>}
+      <p className="mvd-wrazliwosc-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-wrazliwosc-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );

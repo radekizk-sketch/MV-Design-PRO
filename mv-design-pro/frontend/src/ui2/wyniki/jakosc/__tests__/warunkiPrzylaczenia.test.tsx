@@ -13,6 +13,7 @@ import { SekcjaWarunkowPrzylaczenia } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { przebiegTestowy } from './fixtures';
 import type { OcenaWarunkow, WarunkiPrzylaczeniaResponse } from '../api';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 
 const fetchMock = vi.fn();
 
@@ -146,7 +147,7 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
 
     // Kryteria po polsku, nie klucze techniczne.
     expect(screen.getByText(JAKOSC_STRINGS.kryteriumMoc)).toBeTruthy();
-    expect(screen.getByText(JAKOSC_STRINGS.kryteriumCosPhi)).toBeTruthy();
+    expect(screen.getByText(poTekscieZWzorami(JAKOSC_STRINGS.kryteriumCosPhi))).toBeTruthy();
     // Werdykty: naruszone i spełnione obok siebie.
     expect(screen.getByText(JAKOSC_STRINGS.ocenaNaruszone)).toBeTruthy();
     expect(screen.getByText(JAKOSC_STRINGS.ocenaSpelnione)).toBeTruthy();
@@ -194,7 +195,7 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-warunki-bez-danych')).toBeTruthy());
     expect(screen.getByText(JAKOSC_STRINGS.warunkiBrakWarunkow)).toBeTruthy();
     // Komunikat wskazuje, GDZIE uzupełnić dane (jawny następny krok).
-    expect(screen.getByText(JAKOSC_STRINGS.warunkiBrakWarunkowOpis)).toBeTruthy();
+    expect(screen.getByText(poTekscieZWzorami(JAKOSC_STRINGS.warunkiBrakWarunkowOpis))).toBeTruthy();
     // Nie wolno pokazać tabeli werdyktu, gdy nic nie zostało ocenione.
     expect(screen.queryByTestId('mvd-jakosc-warunki')).toBeNull();
   });

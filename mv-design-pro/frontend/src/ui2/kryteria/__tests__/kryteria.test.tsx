@@ -62,7 +62,8 @@ function bilansCt(over: Partial<BilansCtOdpowiedz> = {}): BilansCtOdpowiedz {
     zapas_alf: 6.601674,
     wariant_alf: 'PELNY_IEC61869_2',
     readiness_codes: [],
-    formula_ref: 'S2obl = S_aparatow + I2n²·Rp',
+    formula_ref: 'obciążenie obwodu wtórnego: aparaty i przewody',
+    formula_latex: String.raw`S_{2,obl} = S_{aparatow} + I_{2n}^{2} \cdot R_{p}`,
     assumptions: ['Obwod wtorny DWUPRZEWODOWY'],
     white_box_trace: [],
     pozycja_katalogowa: 'CT 400/5 A kl. 5P20 15 VA',
@@ -88,7 +89,8 @@ function bilansVt(over: Partial<BilansVtOdpowiedz> = {}): BilansVtOdpowiedz {
     limit_delta_u_procent: 0.5,
     kategoria_uzwojenia: 'POMIAROWE',
     readiness_codes: [],
-    formula_ref: 'I2 = S2obl/U2n',
+    formula_ref: 'prąd wtórny z obciążenia i napięcia znamionowego',
+    formula_latex: String.raw`I_{2} = S_{2,obl}/U_{2n}`,
     assumptions: [],
     white_box_trace: [],
     pozycja_katalogowa: 'VT 15 kV / 100 V kl. 0.5',
@@ -122,6 +124,12 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
 
     await waitFor(() => expect(screen.getByText('12,345 VA')).toBeTruthy());
     expect(screen.getByText('0,999 %')).toBeTruthy();
+    // Wzory CT i VT idą przez MathRenderer (KaTeX), opisy wzorów — słowami.
+    const wzory = document.querySelectorAll('.mvd-kryteria__wzor');
+    expect(wzory).toHaveLength(2);
+    wzory.forEach((wzor) => expect(wzor.querySelector('.katex')).toBeTruthy());
+    expect(screen.getByText('obciążenie obwodu wtórnego: aparaty i przewody')).toBeTruthy();
+    expect(screen.getByText('prąd wtórny z obciążenia i napięcia znamionowego')).toBeTruthy();
     expect(klientCt).toHaveBeenCalledWith(
       expect.objectContaining({
         ct_catalog_ref: 'ct-1',
@@ -283,7 +291,8 @@ describe('Karta katalogu — starzenie kabla i straty transformatora', () => {
         temperatura_znamionowa_c: 90,
         typ_izolacji: 'XLPE',
         readiness_codes: [],
-        formula_ref: 'V = 2^((θ_pracy − θ_zn)/10)',
+        formula_ref: 'reguła Montsingera',
+        formula_latex: String.raw`V = 2^{(\theta_{pracy} - \theta_{zn})/10}`,
         assumptions: [],
         white_box_trace: [],
         pozycja_katalogowa: 'Kabel XLPE Cu 1×120 mm²',
@@ -299,6 +308,11 @@ describe('Karta katalogu — starzenie kabla i straty transformatora', () => {
       />,
     );
     await waitFor(() => expect(screen.getByText('7,777')).toBeTruthy());
+    // Wzór idzie przez MathRenderer (KaTeX), opis wzoru — słowami obok.
+    const wzor = document.querySelector('.mvd-kryteria__wzor');
+    expect(wzor?.querySelector('.katex')).toBeTruthy();
+    expect(wzor?.textContent).not.toContain('θ_pracy');
+    expect(screen.getByText('reguła Montsingera')).toBeTruthy();
     expect(klient).toHaveBeenCalledWith({
       cable_catalog_ref: 'kabel-1',
       temperatura_pracy_c: 100,
@@ -319,7 +333,8 @@ describe('Karta katalogu — starzenie kabla i straty transformatora', () => {
         moc_obciazenia_mva: 0.378,
         udzial_strat_jalowych: 0.22541,
         readiness_codes: [],
-        formula_ref: 'ΔP(β) = P0 + β²·Pk',
+        formula_ref: 'straty jałowe plus obciążeniowe',
+        formula_latex: String.raw`\Delta P(\beta) = P_{0} + \beta^{2} \cdot P_{k}`,
         assumptions: [],
         white_box_trace: [],
         pozycja_katalogowa: 'TR 630 kVA 15/0,4 kV Dyn11',
@@ -337,6 +352,8 @@ describe('Karta katalogu — starzenie kabla i straty transformatora', () => {
     );
     await waitFor(() => expect(screen.getByText('9,990 kW')).toBeTruthy());
     expect(screen.getByText('0,324')).toBeTruthy();
+    expect(document.querySelector('.mvd-kryteria__wzor .katex')).toBeTruthy();
+    expect(screen.getByText('straty jałowe plus obciążeniowe')).toBeTruthy();
   });
 });
 

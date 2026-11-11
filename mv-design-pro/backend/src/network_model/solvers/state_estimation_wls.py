@@ -101,9 +101,9 @@ class Measurement:
             raise ValueError("Measurement.sigma musi być > 0 (W = 1/sigma^2).")
         is_flow = self.meas_type in (MeasurementType.P_FLOW, MeasurementType.Q_FLOW)
         if is_flow and self.bus_j is None:
-            raise ValueError(f"Pomiar przepływu {self.meas_type} wymaga bus_j.")
+            raise ValueError(f"Pomiar przepływu {self.meas_type} wymaga węzła końcowego gałęzi.")
         if not is_flow and self.bus_j is not None:
-            raise ValueError(f"Pomiar {self.meas_type} nie może mieć bus_j.")
+            raise ValueError(f"Pomiar {self.meas_type} nie może mieć węzła końcowego gałęzi.")
 
 
 @dataclass(frozen=True)
@@ -638,9 +638,9 @@ def estimate_wls(
     # Walidacja indeksów pomiarów względem rozmiaru sieci.
     for mm in measurements.measurements:
         if not (0 <= mm.bus_i < n_buses):
-            raise ValueError(f"Pomiar odnosi się do nieistniejącego węzła bus_i={mm.bus_i}.")
+            raise ValueError(f"Pomiar odnosi się do nieistniejącego węzła początkowego {mm.bus_i}.")
         if mm.bus_j is not None and not (0 <= mm.bus_j < n_buses):
-            raise ValueError(f"Pomiar odnosi się do nieistniejącego węzła bus_j={mm.bus_j}.")
+            raise ValueError(f"Pomiar odnosi się do nieistniejącego węzła końcowego {mm.bus_j}.")
 
     # Obserwowalność (warunek konieczny): m ≥ n. Warunek dostateczny (rank H = n)
     # sprawdzany przez osobliwość G poniżej.

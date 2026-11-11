@@ -29,6 +29,7 @@ import {
   type WierszGotowosci,
 } from '../rama';
 import { PRZYPISANIE_KATALOGU_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -129,7 +130,7 @@ export function KreatorPrzypisaniaKatalogu() {
       ) : null}
 
       <KreatorSekcja tytul={T.elementTytul} testid="mvd-kreator-przypisanie-element">
-        <KreatorInfo>{T.elementPomoc}</KreatorInfo>
+        <KreatorInfo><TekstZWzorami tekst={T.elementPomoc} /></KreatorInfo>
         <KreatorSiatka kolumny={2}>
           <RzadWartosci etykieta={T.element} wartosc={elementRef || '—'} />
           <RzadWartosci etykieta={T.przestrzen} wartosc={catalogNamespace || T.przestrzenAuto} />

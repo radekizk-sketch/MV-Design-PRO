@@ -15,6 +15,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WalidacjaVtPolaSekcja, type KontekstUziemieniaStacji } from '../WalidacjaVtPolaSekcja';
+import { tekstZrodlowy } from '../../../../../test/tekstZWzorami';
 
 const TYPY_VT = [
   {
@@ -105,7 +106,8 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
 
     const wiersz = await screen.findByTestId('vt-validation-J01');
     expect(wiersz.getAttribute('data-vt-ok')).toBe('true');
-    expect(wiersz.textContent).toContain('F_v = 1.9');
+    // `MathInline latex="F_v"` — `data-latex` bez ograniczników `$…$`.
+    expect(tekstZrodlowy(wiersz)).toContain('F_v = 1.9');
     expect(zapytania.some((u) => u.endsWith('/_uziemienie-sn'))).toBe(true);
     expect(cialaReguly).toEqual([{ voltage_factor: 1.9, grounding_type: 'petersen_coil' }]);
   });
@@ -114,7 +116,8 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
     zamontujFetch(
       {
         ok: false,
-        message_pl: 'Siec skompensowana (Petersena) wymaga VT (faza-ziemia) z U_th >= 1.9.',
+        message_pl: 'Sieć skompensowana (Petersena) wymaga przekładnika napięciowego (faza-ziemia) '
+          + 'o współczynniku napięciowym co najmniej 1.9 wg IEC 61869-3.',
       },
       { J02: { typ: 'petersen_coil' } },
     );
@@ -127,7 +130,7 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
 
     const wiersz = await screen.findByTestId('vt-validation-J02');
     expect(wiersz.getAttribute('data-vt-ok')).toBe('false');
-    expect(wiersz.textContent).toContain('wymaga VT (faza-ziemia) z U_th >= 1.9');
+    expect(wiersz.textContent).toContain('o współczynniku napięciowym co najmniej 1.9');
   });
 
   it('pole bez ustalonego uziemienia w modelu: PRZYCZYNA backendu, reguła niewołana', async () => {

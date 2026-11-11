@@ -11,6 +11,7 @@ import { useAppStateStore } from '../../app-state/store';
 import { StudyCaseList } from '../../study-cases/StudyCaseList';
 import { useStudyCasesStore } from '../../study-cases/store';
 import type { StudyCase } from '../../study-cases/types';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 interface AnalysisRow {
   code: string;
@@ -150,7 +151,7 @@ export function AnContextPanel() {
                     isActive ? 'bg-scada-sn' : 'bg-scada-muted',
                   )}
                 />
-                <span className="flex-1">{row.label}</span>
+                <span className="flex-1"><TekstZWzorami tekst={row.label} /></span>
               </button>
             );
           })}

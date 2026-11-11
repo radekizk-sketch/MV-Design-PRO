@@ -23,7 +23,7 @@ export const JAKOSC_STRINGS = {
   // Stany uczciwe (brak przebiegu / ładowanie / błąd)
   brakPrzebieguZwarciowego: 'Brak zakończonego przebiegu zwarciowego',
   brakPrzebieguZwarciowegoOpis:
-    'Uruchom i zakończ obliczenie zwarciowe (SC), aby ocenić wiarygodność prądów Ik".',
+    'Uruchom i zakończ obliczenie zwarciowe (SC), aby ocenić wiarygodność prądów $I_{k}\'\'$.',
   brakPrzebieguRozplywu: 'Brak zakończonego przebiegu rozpływu mocy',
   brakPrzebieguRozplywuOpis:
     'Uruchom i zakończ obliczenie rozpływu mocy, aby wykonać walidację energetyczną.',
@@ -35,7 +35,7 @@ export const JAKOSC_STRINGS = {
   kolWezel: 'Węzeł',
   kolNapiecie: 'Napięcie',
   kolPasmo: 'Pasmo',
-  kolIkss: 'Prąd zwarciowy początkowy Ik"',
+  kolIkss: 'Prąd zwarciowy początkowy $I_{k}\'\'$',
   kolGranicaDolna: 'Granica dolna',
   kolGranicaGorna: 'Granica górna',
   kolStatusWiarygodnosci: 'Status wiarygodności',
@@ -56,7 +56,7 @@ export const JAKOSC_STRINGS = {
   kolWartoscWymagana: 'Wymagana',
   kolOcena: 'Ocena',
   kryteriumMoc: 'Moc czynna w punkcie przyłączenia',
-  kryteriumCosPhi: 'Współczynnik mocy cosφ w punkcie przyłączenia',
+  kryteriumCosPhi: 'Współczynnik mocy $\\cos\\varphi$ w punkcie przyłączenia',
   ocenaSpelnione: 'Spełnione',
   ocenaNaruszone: 'Naruszone',
   ocenaNiesprawdzone: 'Niesprawdzone — brak danych',
@@ -64,7 +64,7 @@ export const JAKOSC_STRINGS = {
   warunkiKierunekOddawanie: 'oddawanie do sieci',
   warunkiBrakWarunkow: 'Nie podano warunków przyłączenia',
   warunkiBrakWarunkowOpis:
-    'Uzupełnij moc przyłączeniową i wymagany cosφ w kaflu „Warunki przyłączenia" na pulpicie projektu — bez nich punkt przyłączenia pozostaje nieoceniony.',
+    'Uzupełnij moc przyłączeniową i wymagany $\\cos\\varphi$ w kaflu „Warunki przyłączenia" na pulpicie projektu — bez nich punkt przyłączenia pozostaje nieoceniony.',
   // Wytrzymałość zwarciowa przewodów (karta F-K1, znalezisko Z1 audytu FLOW)
   sekcjaCieplna: 'Wytrzymałość zwarciowa przewodów',
   kolPrzewod: 'Przewód',
@@ -75,7 +75,7 @@ export const JAKOSC_STRINGS = {
   kolPrzekrojWymagany: 'Wymagany min.',
   cieplnaBrakDanych: 'Brak danych cieplnych przewodów',
   cieplnaBrakDanychOpis:
-    'Żadna gałąź nie ma w katalogu wytrzymałości cieplnej żyły (Ith lub Jth dla 1 s) albo bieg nie dał rozbicia prądu na gałęzie. Uzupełnij pozycje katalogowe kabli, aby ocenić przekroje.',
+    'Żadna gałąź nie ma w katalogu wytrzymałości cieplnej żyły ($I_{th}$ lub Jth dla 1 s) albo bieg nie dał rozbicia prądu na gałęzie. Uzupełnij pozycje katalogowe kabli, aby ocenić przekroje.',
   cieplnaPodsumowanie: (ok: number, zle: number, brak: number) =>
     `Spełnione: ${ok} · Naruszone: ${zle} · Niesprawdzone: ${brak}`,
   // Karta F-K1 faza 5: czas wyłączenia per gałąź i jego pochodzenie.
@@ -115,7 +115,7 @@ export const JAKOSC_STRINGS = {
   polZrodloMaterialowe: 'Źródło danych materiałowych',
   ostrzezenieKWyprowadzone:
     'Wartość k nie pochodzi z karty producenta — katalog nie podaje dla tego typu '
-    + 'ani Ith(1 s), ani Jth(1 s). Do dokumentacji wymagana karta katalogowa kabla.',
+    + 'ani $I_{th}$(1 s), ani Jth(1 s). Do dokumentacji wymagana karta katalogowa kabla.',
   sekcjaNormy: 'Podstawa normowa',
   kolumnaParametr: 'Parametr',
   kolumnaWartosc: 'Wartość',
@@ -156,11 +156,11 @@ export const JAKOSC_STRINGS = {
 
   // Założenia — wiarygodność
   zalMetodaWiarygodnosc: 'Metoda oceny',
-  zalMetodaWiarygodnoscWartosc: 'Twarde granice fizyczne Ik" per poziom napięcia',
+  zalMetodaWiarygodnoscWartosc: 'Twarde granice fizyczne $I_{k}\'\'$ per poziom napięcia',
   zalPasma: 'Pasma napięciowe',
   zalPasmaWartosc: 'niskie / średnie / wysokie / najwyższe napięcie',
   zalPasmaUwaga:
-    'Granice wiarygodności Ik" zależą od poziomu napięcia węzła: niskie napięcie (nN, '
+    'Granice wiarygodności $I_{k}\'\'$ zależą od poziomu napięcia węzła: niskie napięcie (nN, '
     + `${OPIS_PASMA_NN}), średnie napięcie (SN, ${OPIS_PASMA_SN}), wysokie napięcie `
     + '(WN, od 110 kV do poniżej 220 kV), najwyższe napięcie (od 220 kV).',
 
@@ -179,7 +179,7 @@ export const JAKOSC_STRINGS = {
     'Uruchom i zakończ obliczenie zwarciowe (SC), aby ocenić migotanie źródeł '
     + 'falownikowych (Pst/Plt) i szybkie zmiany napięcia.',
   kolWezelMig: 'Węzeł',
-  kolSk: 'Moc zwarciowa Sk″',
+  kolSk: 'Moc zwarciowa $S_{k}\'\'$',
   kolPst: 'Migotanie krótkookresowe Pst',
   kolPlt: 'Migotanie długookresowe Plt',
   kolDpercent: 'Szybka zmiana napięcia d',
@@ -200,7 +200,7 @@ export const JAKOSC_STRINGS = {
   szczegolModuly: 'Moduły falownikowe w węźle',
   szczegolBrakModulow: 'Brak modułów falownikowych w węźle.',
   modulWspolczynnikC: 'Współczynnik emisji migotania c',
-  modulSn: 'Moc znamionowa Sn',
+  modulSn: 'Moc znamionowa $S_{n}$',
   modulPstI: 'Wkład Pst',
   modulPominiety: 'Pominięty w sumowaniu',
   modulWliczony: 'Wliczony do sumowania',
@@ -221,7 +221,7 @@ export const JAKOSC_STRINGS = {
   // Parametry projektowe (formularz — wejścia projektanta, nie ze zwarcia)
   parametryTytul: 'Parametry projektowe',
   parametryOpis:
-    'Ik″ i napięcie węzła pochodzą z przebiegu zwarciowego. Poniższe parametry to decyzje '
+    '$I_{k}\'\'$ i napięcie węzła pochodzą z przebiegu zwarciowego. Poniższe parametry to decyzje '
     + 'projektowe — bez nich wynik jest „dane niekompletne" (bez zmyślania wejść).',
   paramOdlegloscRobocza: 'Odległość robocza',
   paramOdstepElektrod: 'Odstęp elektrod',
@@ -245,7 +245,7 @@ export const JAKOSC_STRINGS = {
   arcFlashRaportBlad: 'Nie udało się pobrać raportu. Spróbuj ponownie.',
   // Kolumny wyników
   kolWezelAf: 'Punkt (szyna)',
-  kolIbf: 'Prąd zwarcia bolted Ik″',
+  kolIbf: 'Prąd zwarcia bolted $I_{k}\'\'$',
   kolEnergia: 'Energia incydentu E',
   kolGranica: 'Granica łuku AFB',
   kolPpe: 'Kategoria PPE',
@@ -314,13 +314,13 @@ export const JAKOSC_STRINGS = {
   pasmaSekcjaObciazen: 'Obciążenia gałęzi',
   pasmaSekcjaStrat: 'Straty sieciowe',
   kolSzynaPasma: 'Szyna',
-  kolNapiecieZnamionowe: 'Un',
+  kolNapiecieZnamionowe: '$U_{n}$',
   kolNapiecieRzeczywiste: 'U',
   kolOdchylenieProcent: 'Odchylenie',
   kolPasmoNapieciowe: 'Pasmo wiarygodności',
   kolGalazPasma: 'Gałąź',
   kolPradGalezi: 'Prąd I',
-  kolPradZnamionowy: 'In (katalog)',
+  kolPradZnamionowy: '$I_{n}$ (katalog)',
   kolObciazenieProcent: 'Obciążenie',
   pasmaStratyCzynne: 'Straty czynne',
   pasmaSumaOdbiorow: 'Suma mocy czynnej odbiorów',
@@ -332,7 +332,7 @@ export const JAKOSC_STRINGS = {
   pasmaRodzajGalezi: 'Rodzaj gałęzi objęty oceną',
   pasmaRodzajGaleziWartosc: 'linia / kabel',
   pasmaRodzajGaleziUwaga:
-    'Transformatory mają odrębną ocenę obciążenia (moc znamionowa Sn, nie prąd In) '
+    'Transformatory mają odrębną ocenę obciążenia (moc znamionowa $S_{n}$, nie prąd $I_{n}$) '
     + 'w sekcji „Walidacja energetyczna" — inna wielkość znamionowa, inne pasmo.',
   jednA: 'A',
   jednMw: 'MW',

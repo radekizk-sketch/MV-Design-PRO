@@ -76,6 +76,8 @@ import {
   wPasmieNn,
 } from '../../../ui2/model/pasmaNapieciowe';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
+import { MathInline } from '../../proof/MathRenderer';
 
 export interface AddDerWizardProps {
   readonly isOpen: boolean;
@@ -2003,8 +2005,12 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 <div className="grid min-w-[760px] grid-cols-[minmax(220px,1.7fr)_120px_90px_90px_110px_minmax(170px,1fr)] gap-2 border-b border-scada-border bg-scada-surface px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-scada-muted">
                   <span>Urządzenie</span>
                   <span>Producent</span>
-                  <span>Pmax</span>
-                  <span>Un</span>
+                  <span>
+                    <MathInline latex="P_{\max}" />
+                  </span>
+                  <span>
+                    <MathInline latex="U_{n}" />
+                  </span>
                   <span>NC RfG</span>
                   <span>Ocena doboru</span>
                 </div>
@@ -2089,13 +2095,13 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                    <CatalogMetric label="Pmax" value={formatKw(selectedDevice.nominal_power_kw)} />
-                    <CatalogMetric label="Un" value={formatKv(getDeviceNominalVoltageKv(selectedDevice))} />
-                    <CatalogMetric label="Sn" value={selectedDevice.s_n_kva ? formatKva(selectedDevice.s_n_kva) : '-'} />
-                    <CatalogMetric label="Q min/max" value={`${formatMvar(selectedDevice.qmin_mvar)} / ${formatMvar(selectedDevice.qmax_mvar)}`} />
-                    <CatalogMetric label="cos phi" value={`${selectedDevice.cosphi_min ?? '-'} / ${selectedDevice.cosphi_max ?? '-'}`} />
+                    <CatalogMetric label="$P_{max}$" value={formatKw(selectedDevice.nominal_power_kw)} />
+                    <CatalogMetric label="$U_n$" value={formatKv(getDeviceNominalVoltageKv(selectedDevice))} />
+                    <CatalogMetric label="$S_n$" value={selectedDevice.s_n_kva ? formatKva(selectedDevice.s_n_kva) : '-'} />
+                    <CatalogMetric label="$Q_{min}$ / $Q_{max}$" value={`${formatMvar(selectedDevice.qmin_mvar)} / ${formatMvar(selectedDevice.qmax_mvar)}`} />
+                    <CatalogMetric label="$\cos\varphi_{min}$ / $\cos\varphi_{max}$" value={`${selectedDevice.cosphi_min ?? '-'} / ${selectedDevice.cosphi_max ?? '-'}`} />
                     <CatalogMetric
-                      label="k_sc (udział zwarciowy)"
+                      label="$k_{sc}$ (udział zwarciowy)"
                       value={
                         typeof selectedDevice.k_sc === 'number' && Number.isFinite(selectedDevice.k_sc)
                           ? selectedDevice.k_sc.toFixed(2)
@@ -2237,7 +2243,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
               >
                 <div className="mb-1 text-[10px] font-bold uppercase tracking-widest">
-                  Krzywa LVRT (t–U/Un wg profilu operatora)
+                  Krzywa LVRT (<MathInline latex="U/U_{n}" /> w funkcji czasu wg profilu operatora)
                 </div>
                 {selectedNcRfgOperator ? (
                   <span className="text-scada-text">
@@ -2254,7 +2260,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
               >
                 <div className="mb-1 text-[10px] font-bold uppercase tracking-widest">
-                  Krzywa HVRT (t–U/Un wg profilu operatora)
+                  Krzywa HVRT (<MathInline latex="U/U_{n}" /> w funkcji czasu wg profilu operatora)
                 </div>
                 {selectedNcRfgOperator ? (
                   <span className="text-scada-text">
@@ -2355,7 +2361,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   label="Krzywa LVRT"
                   value={
                     selectedNcRfgOperator
-                      ? `${selectedNcRfgOperator.ride_through.lvrt.length} punktów t-U/Un`
+                      ? `${selectedNcRfgOperator.ride_through.lvrt.length} punktów t-U/$U_{n}$`
                       : ''
                   }
                 />
@@ -2363,7 +2369,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   label="Krzywa HVRT"
                   value={
                     selectedNcRfgOperator
-                      ? `${selectedNcRfgOperator.ride_through.hvrt.length} punktów t-U/Un`
+                      ? `${selectedNcRfgOperator.ride_through.hvrt.length} punktów t-U/$U_{n}$`
                       : ''
                   }
                 />
@@ -2493,7 +2499,9 @@ function Select({
 function CatalogMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded border border-scada-border bg-scada-bg px-2 py-1">
-      <div className="truncate text-[10px] uppercase tracking-wide text-scada-muted">{label}</div>
+      <div className="truncate text-[10px] uppercase tracking-wide text-scada-muted">
+        <TekstZWzorami tekst={label} />
+      </div>
       <div className="truncate text-[11px] font-medium text-scada-text">{value || '-'}</div>
     </div>
   );
@@ -2503,7 +2511,9 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <li className="flex justify-between gap-3">
       <span className="text-scada-muted">{label}:</span>
-      <span className="text-right font-medium text-scada-text">{value || '—'}</span>
+      <span className="text-right font-medium text-scada-text">
+        <TekstZWzorami tekst={value || '—'} />
+      </span>
     </li>
   );
 }

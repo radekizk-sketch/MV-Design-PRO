@@ -587,13 +587,18 @@ class OvercurrentCoordinationAnalyzer:
                 znaczniki.append(
                     FaultMarker(
                         id=f"{punkt}_ik_{etykieta}",
-                        label_pl=f"Ik'' {etykieta} {rodzaj} ({nazwa})",
+                        # Etykieta linii wykresu TCC (tekst SVG, bez składu KaTeX) — słowami.
+                        label_pl=f"prąd zwarciowy {_RODZAJ_BIEGU_PL[etykieta]} {rodzaj} ({nazwa})",
                         current_a=prad,
                         fault_type=rodzaj,
                         location=punkt,
                     )
                 )
         return znaczniki
+
+
+#: Bieg zwarciowy znacznika TCC słowami (etykieta znacznika jest tekstem wykresu).
+_RODZAJ_BIEGU_PL: dict[str, str] = {"max": "maksymalny", "min": "minimalny"}
 
 
 def _opis_stopnia(stopien: Any) -> str:

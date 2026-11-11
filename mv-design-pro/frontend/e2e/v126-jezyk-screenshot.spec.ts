@@ -8,7 +8,10 @@
  *   2. obiekty — propagacja niepewności (rodzaj liczący wprost z modelu, bez
  *      parametrów): tabela obiektów nazwanych jak na schemacie,
  *   3. slad — bezpieczeństwo uziemień z OTWARTYM śladem obliczeń (kolumna „Wynik"
- *      niesie liczbę z jednostką, nie zrzut słownika).
+ *      niesie liczbę z jednostką, nie zrzut słownika),
+ *   4. slad-jednostki — dobór uziemienia punktu neutralnego z OTWARTYM śladem: weryfikacja
+ *      jednostek słowami (`unit_check_pl`) z algebrą jednostek wzorem KaTeX
+ *      (`unit_check_latex`, rejestr `JEDNOSTKI_KROKOW_V126`), nie surowym „V/Ω=A".
  *
  * Scena harnessu karmiona jest fixturami liczonymi BACKENDEM (katalog kart, gotowość
  * bez i z parametrami sceny) oraz REALNYMI odpowiedziami solvera
@@ -35,6 +38,7 @@ const WIDOKI = [
   { nazwa: 'werdykt-kryterium', rodzaj: 'earthing_safety', otworzSlad: false },
   { nazwa: 'obiekty', rodzaj: 'uncertainty_sensitivity', otworzSlad: false },
   { nazwa: 'slad', rodzaj: 'earthing_safety', otworzSlad: true },
+  { nazwa: 'slad-jednostki', rodzaj: 'neutral_earthing_design', otworzSlad: true },
 ] as const;
 
 async function przygotuj(page: Page, rodzaj: string, motyw: string): Promise<void> {
@@ -65,6 +69,12 @@ test.describe('V126-JEZYK — zrzuty okna analiz specjalistycznych', () => {
         if (widok.otworzSlad) {
           await page.getByTestId('mvd-akad-slad-przelacz').click();
           await expect(page.getByTestId('mvd-akad-slad')).toContainText('Krok');
+        }
+        if (widok.rodzaj === 'neutral_earthing_design') {
+          const jednostki = page.getByTestId('akademickie-jednostki-kroku');
+          await expect(jednostki.first()).toContainText('Zgodność jednostek');
+          await expect(jednostki.locator('.katex').first()).toBeVisible();
+          await expect(page.getByTestId('mvd-akad-slad')).not.toContainText('V/Ω=A');
         }
 
         fs.mkdirSync(OUTPUT_DIR, { recursive: true });

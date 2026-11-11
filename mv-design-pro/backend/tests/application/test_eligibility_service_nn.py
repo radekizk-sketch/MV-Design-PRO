@@ -255,7 +255,7 @@ class TestFaultLoopNnEligibilityTtItTransformerData:
         )
         blocker = next(b for b in row.blockers if b.code == "ELIG_FLNN_MISSING_TRANSFORMER_R_B")
         assert row.status == EligibilityStatus.INELIGIBLE
-        assert "R_B" in blocker.message_pl
+        assert "rezystancją uziomu" in blocker.message_pl
         assert blocker.element_ref == "tr"
         assert blocker.fix_action is not None
         assert blocker.fix_action.modal_type == "TransformerModal"

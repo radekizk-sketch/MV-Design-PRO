@@ -11,6 +11,8 @@
 import { PAD, PLH, PanelTeorii, RamkaWykresu, TekstZWzorami, VBH, VBW, px, py } from '../rama';
 import { SUGEROWANE, type TrybRegulacji } from './zrodloOzeModel';
 import { NCRFG_TEORIA as TT, OZE_STRINGS as T } from './strings';
+import { tekstBezWzorow } from '../rama/tekstZWzorami';
+import { TekstSvgZWzorami } from '../../../ui/proof/TekstSvgZWzorami';
 
 // ------------------------------------------------------------------ Q(U)
 
@@ -44,7 +46,7 @@ export function WykresQU({
     pts.push(`${px(nx(u)).toFixed(1)},${py(ny(qOf(u))).toFixed(1)}`);
   }
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={TT.qu.tytul}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={tekstBezWzorow(TT.qu.tytul)}>
       {/* pasmo nieczułości */}
       <rect
         x={px(nx(dbLow))}
@@ -59,13 +61,13 @@ export function WykresQU({
       <RamkaWykresu osX={TT.osU} osY={TT.osQ} />
       <polyline points={pts.join(' ')} className={isExample ? 'mvd-wykres-krzywa-przyklad' : 'mvd-wykres-krzywa'} />
       <text x={PAD.l + 4} y={PAD.t + 12} className="mvd-wykres-znak">
-        {TT.qOddawanie}
+        <TekstSvgZWzorami tekst={TT.qOddawanie} />
       </text>
       <text x={PAD.l + 4} y={py(0) - 6} className="mvd-wykres-znak">
-        {TT.qPobor}
+        <TekstSvgZWzorami tekst={TT.qPobor} />
       </text>
       <text x={(px(nx(dbLow)) + px(nx(dbHigh))) / 2} y={PAD.t + 12} textAnchor="middle" className="mvd-wykres-pasmo-txt">
-        {TT.pasmoNieczulosci}
+        <TekstSvgZWzorami tekst={TT.pasmoNieczulosci} />
       </text>
     </svg>
   );
@@ -108,7 +110,7 @@ export function WykresPf({
   }
   const fProg = f0 + dbHz;
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={TT.pf.tytul}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={tekstBezWzorow(TT.pf.tytul)}>
       <rect
         x={px(nx(f0 - dbHz))}
         y={PAD.t}
@@ -140,7 +142,7 @@ export function WykresCosPhi({ cosPhi, isExample }: { cosPhi: number; isExample:
   const qAt1 = Math.max(-qClamp, Math.min(qClamp, tan(cosPhi))); // Q przy P=Pn
   const band = Math.min(qClamp, tan(0.95)); // ±0,3287 przy cosφ 0,95
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={TT.cosPhi.tytul}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={tekstBezWzorow(TT.cosPhi.tytul)}>
       {/* klin wymaganej zdolności ±0,95 */}
       <polygon
         points={`${px(nx(0))},${py(ny(0))} ${px(nx(1))},${py(ny(band))} ${px(nx(1))},${py(ny(-band))}`}
@@ -158,10 +160,10 @@ export function WykresCosPhi({ cosPhi, isExample }: { cosPhi: number; isExample:
       />
       <line x1={px(nx(0))} y1={py(ny(0))} x2={px(nx(1))} y2={py(ny(-qAt1))} className="mvd-wykres-krzywa-lustro" />
       <text x={PAD.l + 4} y={PAD.t + 12} className="mvd-wykres-znak">
-        {TT.qOddawanie}
+        <TekstSvgZWzorami tekst={TT.qOddawanie} />
       </text>
       <text x={PAD.l + 4} y={py(0) - 6} className="mvd-wykres-znak">
-        {TT.qPobor}
+        <TekstSvgZWzorami tekst={TT.qPobor} />
       </text>
     </svg>
   );

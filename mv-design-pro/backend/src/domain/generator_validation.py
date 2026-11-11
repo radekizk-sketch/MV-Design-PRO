@@ -105,7 +105,7 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): brak wariantu przyłączenia "
-                        f"(nn_side lub block_transformer)"
+                        f"(po stronie nN albo przez transformator blokowy)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
@@ -193,7 +193,8 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): nieznany wariant przyłączenia "
-                        f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
+                        f"'{connection_variant}' (dozwolone: po stronie nN albo przez transformator "
+                        "blokowy)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
@@ -328,8 +329,8 @@ class JawneWejsciaKontroliMocy:
             przyjete.append("Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).")
         if self.cos_phi is None:
             przyjete.append(
-                "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| "
-                "(dolna granica mocy pozornej)."
+                "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy "
+                "karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             )
         return {
             "cos_phi": self.cos_phi,
@@ -361,7 +362,8 @@ def blad_wejsc_kontroli_mocy(wejscia: JawneWejsciaKontroliMocy) -> OdmowaKontrol
     definicja dla operacji domenowych i podglądu doboru toru DER-SN (decyzja O-53)."""
     if wejscia.cos_phi is not None and not 0.0 < wejscia.cos_phi <= 1.0:
         return OdmowaKontroliMocy(
-            KOD_WEJSCIE_KONTROLI_MOCY, f"cosφ musi należeć do (0; 1] (podano {wejscia.cos_phi:g})."
+            KOD_WEJSCIE_KONTROLI_MOCY,
+            f"Współczynnik mocy musi należeć do (0; 1] (podano {wejscia.cos_phi:g}).",
         )
     k_j = wejscia.wspolczynnik_jednoczesnosci
     if k_j is not None and not 0.0 < k_j <= 1.0:
@@ -521,20 +523,24 @@ def sprawdz_moc_transformatora(
     if pozostale_zrodla:
         opis_wymagania = (
             f"Moc wymagana źródeł zasilanych przez ten sam transformator "
-            f"({mva_na_kva(obciazenie):.0f} kVA = Σ max(S_n,jedn·n; P/cosφ) · k_j po "
-            f"{len(wszystkie)} źródłach: to źródło {mva_na_kva(s_wymagana):.0f} kVA + "
-            f"pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA, k_j = {k_j:g})"
+            f"({mva_na_kva(obciazenie):.0f} kVA — suma po {len(wszystkie)} źródłach większej "
+            f"z mocy znamionowej jednostek i mocy pozornej punktu pracy, razy współczynnik "
+            f"jednoczesności: to źródło {mva_na_kva(s_wymagana):.0f} kVA + "
+            f"pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA, współczynnik "
+            f"jednoczesności {k_j:g})"
         )
     else:
         opis_wymagania = (
-            f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA = "
-            f"max(S_n,jedn·n; P/cosφ) · k_j, k_j = {k_j:g})"
+            f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA — większa "
+            f"z mocy znamionowej jednostek i mocy pozornej punktu pracy, razy współczynnik "
+            f"jednoczesności {k_j:g})"
         )
     return OdmowaKontroliMocy(
         KOD_MOC_TRANSFORMATORA,
         (
             f"{opis_wymagania} przekracza dopuszczalną moc transformatora "
-            f"({mva_na_kva(dopuszczalna):.0f} kVA = S_n,TR · k_obc, k_obc = {k_obc:g}). "
+            f"({mva_na_kva(dopuszczalna):.0f} kVA — moc znamionowa transformatora pomnożona "
+            f"przez przeciążalność {k_obc:g}). "
             "Wybierz mniejszy wariant źródła albo transformator o większej mocy."
         ),
     )

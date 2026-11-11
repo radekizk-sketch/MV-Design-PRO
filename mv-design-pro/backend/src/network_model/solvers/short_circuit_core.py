@@ -155,11 +155,13 @@ def compute_equivalent_impedance(
         ShortCircuitType.TWO_PHASE_GROUND,
     }:
         z0 = require_z0_bus(
-            f"Z0 bus matrix is required for {short_circuit_type.value} fault computation"
+            f"zwarcie {short_circuit_type.value} wymaga macierzy impedancji zerowej sieci"
         )
     z_equiv = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0)
     if abs(z_equiv) == 0:
-        raise ZeroDivisionError("Equivalent impedance is zero; cannot compute Ik''")
+        raise ZeroDivisionError(
+            "impedancja zastępcza równa zeru — początkowego prądu zwarciowego nie da się policzyć"
+        )
     if z_f is None:
         return ShortCircuitCoreResult(z_equiv=z_equiv, z1=z1, z2=z2, z0=z0)
     z_equiv_f = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f)
@@ -192,13 +194,16 @@ def impedancja_petli_zwarcia(
         ShortCircuitType.TWO_PHASE_GROUND,
     }:
         if z0 is None:
-            raise ValueError(f"Z0 is required for {short_circuit_type.value} fault computation")
+            raise ValueError(f"zwarcie {short_circuit_type.value} wymaga impedancji zerowej")
         z0_toru = z0 if z_f is None else z0 + 3.0 * z_f
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             return z1 + z2 + z0_toru
         denominator = z2 + z0_toru
         if abs(denominator) == 0:
-            raise ZeroDivisionError("Z2 + Z0 is zero; cannot compute Ik''")
+            raise ZeroDivisionError(
+                "suma impedancji przeciwnej i zerowej równa zeru — początkowego prądu zwarciowego nie "
+                "da się policzyć"
+            )
         return z1 + (z2 * z0_toru) / denominator
     raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
 
@@ -332,7 +337,7 @@ def skladowa_nieokresowa(*, ikss_a: float, rx_ratio: float, tb_s: float) -> Skla
     z którego policzono κ: X = 0 daje R/X = ∞ i zerową składową, R = 0 — brak zaniku.
     """
     if tb_s <= 0.0:
-        raise ValueError("tb_s must be > 0")
+        raise ValueError("czas wyłączenia musi być dodatni")
     wykladnik = OMEGA_50HZ * tb_s * rx_ratio
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01, sonda w docs/uiux/UX04_POLE_ZU_SKLADOWA_
     # ZEROWA.md): R/X < 0 — pętla zwarcia doziemnego pojemnościowa (pojemność doziemna B0

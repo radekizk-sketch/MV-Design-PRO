@@ -555,6 +555,9 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   const prefiks = (await edytor.getAttribute('data-testid'))!;
   await expect(page.getByTestId(`${prefiks}-braki`)).toBeVisible();
   await expect(page.getByTestId(`${prefiks}-przekladnia`)).toContainText('600/5 A');
+  // Zakres progu w pomocy pola słowami („krotności prądu znamionowego" ze wzorem symbolu),
+  // nie zapisem mnożnikowym „×In".
+  await expect(edytor).not.toContainText('×In');
   // `add_relay` bez nastaw tworzy stopnie rodziny z pustymi polami (nazwany brak) — stopień
   // I>> (50) wyłączony świadomie, I> (51) z nastawą. Pusty aktywny stopień byłby brakiem
   // blokującym ocenę urządzenia (jedna ścieżka oceny nie zgaduje nastaw).

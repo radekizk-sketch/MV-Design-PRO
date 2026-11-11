@@ -145,6 +145,8 @@ describe('etykieta przęsła z parą końców (spec §12.5, recenzja NO-GO pkt 1
     // S9-8: napięcie znamionowe kabla jest OZNACZONE („Un=…"), żeby nie dało
     // się go pomylić z napięciem pracy sieci — intencja asercji bez zmian.
     expect(spanTexts.some((t) => /· l = \d/.test(t))).toBe(true);
-    expect(spanTexts.some((t) => /· Un=\d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
+    // Karta UX-04/ZU pkt 2: oznaczenie napięcia znamionowego jest wzorem `$U_{n}$`
+    // (`formatRatedVoltageKv`), renderowanym na rysunku przez TekstSvgZWzorami.
+    expect(spanTexts.some((t) => /· \$U_\{n\}\$=\d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
   });
 });

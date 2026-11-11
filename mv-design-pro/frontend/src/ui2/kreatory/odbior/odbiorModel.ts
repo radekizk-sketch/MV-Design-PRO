@@ -164,7 +164,7 @@ export function walidujFormularz(data: OdbiorFormData): BladPola[] {
     errors.push({ field: 'active_power_kw', message: 'Moc czynna odbioru musi być dodatnia.' });
   }
   if (data.cos_phi <= 0 || data.cos_phi > 1) {
-    errors.push({ field: 'cos_phi', message: 'Współczynnik mocy cosφ musi być w zakresie (0, 1].' });
+    errors.push({ field: 'cos_phi', message: 'Współczynnik mocy $\\cos\\varphi$ musi być w zakresie (0, 1].' });
   }
   // Katalog-first pozostaje domyślne (karta D4): w trybie katalogowym pozycja
   // katalogowa jest wymagana. Tryb ręczny (ekspercki) zwalnia z tego wymogu —

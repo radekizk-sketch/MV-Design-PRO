@@ -259,7 +259,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         applicability=(
             "Rozpływ harmoniczny solvera niezwalidowanego (bez przekładni transformatora, sieć "
             "nadrzędna jako admitancja 1e6 S, 18 zaszytych rzędów, bez wyroczni) — ocena "
-            "kompatybilności niewykonana, liczby THD/TDD/K/U_h/skan Z wyłącznie w sekcji "
+            "kompatybilności niewykonana, współczynniki zniekształceń, napięcia harmoniczne i skan impedancji wyłącznie w sekcji "
             "audytowej."
         ),
     ),
@@ -275,9 +275,9 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=False,
         reference_test="uczciwosc/test_ssci_bez_werdyktu.py::test_widok_ssci_na_realnym_biegu_nie_niesie_werdyktu_stabilnosci",
         applicability=(
-            "Tablice impedancji SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f) i wzmocnienie "
-            "pętli mniejszej L(f) — Z_grid(f) liczone bez przekładni transformatora, więc "
-            "ocena kryterium Nyquista niewykonana; metryki L(f) wyłącznie jako materiał "
+            "Tablice impedancji SSCI (Sun 2011/Wen 2016): impedancje sieci i przekształtnika "
+            "oraz wzmocnienie pętli mniejszej — impedancja sieci liczona bez przekładni "
+            "transformatora, więc ocena kryterium Nyquista niewykonana; metryki pętli wyłącznie jako materiał "
             "audytowy, wskaźnik strefy ujemnej rezystancji przekształtnika jako informacja."
         ),
     ),

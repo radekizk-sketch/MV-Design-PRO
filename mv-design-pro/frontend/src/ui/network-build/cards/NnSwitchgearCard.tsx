@@ -301,14 +301,14 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
       fields: [
         {
           key: 'total_gen',
-          label: 'Generacja P_gen',
+          label: 'Generacja $P_{gen}$',
           value: totalGenMw * 1000,
           unit: 'kW',
           source: 'calculated',
         },
         {
           key: 'total_load',
-          label: 'Obciążenie P_load',
+          label: 'Obciążenie $P_{load}$',
           value: totalLoadMw * 1000,
           unit: 'kW',
           source: 'calculated',

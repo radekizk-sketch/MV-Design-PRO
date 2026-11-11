@@ -3070,7 +3070,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # TWIERDZENIE o odbiorze, nie brak danej).
     if reactive_power_kvar is None:
         return _error_response(
-            f"Odbiór nN: brak mocy biernej i brak cosφ, z którego dałoby się ją wyprowadzić — "
+            f"Odbiór nN: brak mocy biernej i brak współczynnika mocy, z którego dałoby się ją wyprowadzić — "
             f"uzupełnij pole {pole('cos_phi', 'add_nn_load')} albo "
             f"{pole('reactive_power_kvar', 'add_nn_load')}.",
             "load.q_missing",
@@ -7215,8 +7215,9 @@ def odmowa_napiecia_generatora(rated_kv: float, bus_voltage_kv: float) -> dict[s
         return None
     return _error_response(
         f"Napięcie znamionowe generatora ({rated_kv:g} kV) nie pasuje do szyny "
-        f"({bus_voltage_kv:g} kV): napięcie szyny wynosi {bus_voltage_kv / rated_kv:.3f}·U_rG, "
-        "a praca ciągła wymaga strefy A maszyny 0,95–1,05·U_rG (IEC 60034-1). Dobierz typ dla "
+        f"({bus_voltage_kv:g} kV): napięcie szyny wynosi {bus_voltage_kv / rated_kv:.3f} napięcia "
+        "znamionowego generatora, a praca ciągła wymaga strefy A maszyny 0,95–1,05 napięcia "
+        "znamionowego (IEC 60034-1). Dobierz typ dla "
         "właściwego napięcia.",
         "generator.voltage_mismatch",
     )
@@ -7776,7 +7777,7 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # brak cosφ, z którego dałoby się ją wyprowadzić, NIE fabrykuje 0 Mvar.
     if reactive_power_kvar is None:
         return _error_response(
-            "Odbiór: brak mocy biernej Q i brak cosφ, z którego dałoby się ją wyprowadzić — "
+            "Odbiór: brak mocy biernej i brak współczynnika mocy, z którego dałoby się ją wyprowadzić — "
             "podaj jedno z nich.",
             "load.q_missing",
         )
@@ -7881,7 +7882,7 @@ def _tabliczka_generatora_reczna(
             _error_response(
                 "Generator synchroniczny wymaga typu z katalogu "
                 f"{nazwa_kategorii_katalogu('GENERATOR_SN')} albo tabliczki znamionowej "
-                "podanej ręcznie (dodatnia moc pozorna S_n [MVA]).",
+                "podanej ręcznie (dodatnia moc znamionowa pozorna [MVA]).",
                 "generator.catalog_required",
             ),
         )
@@ -7995,7 +7996,8 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         if q_min_mvar is None or q_max_mvar is None or q_min_mvar >= q_max_mvar:
             return _error_response(
                 "Generator w trybie regulacji napięcia wymaga spójnych granic mocy "
-                "biernej (Q min < Q max) — z formularza albo z tabliczki katalogowej.",
+                "biernej (minimalna mniejsza od maksymalnej) — z formularza albo z tabliczki "
+                "katalogowej.",
                 "generator.q_limits_invalid",
             )
         gen_meta.update(
@@ -8088,10 +8090,10 @@ def odmowa_poziomu_izolacji(
         return None
     u_s = napiecie_wymagane_izolacji_kv(bus_voltage_kv)
     return _error_response(
-        f"{opis_pl}: napięcie najwyższe urządzenia U_m = {float(u_m_kv or 0.0):g} kV jest niższe "
-        f"od napięcia najwyższego sieci U_s = {float(u_s or 0.0):g} kV (szyna "
-        f"{float(bus_voltage_kv or 0.0):g} kV, IEC 60038) — wymagane U_m ≥ U_s "
-        "(IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
+        f"{opis_pl}: napięcie najwyższe urządzenia {float(u_m_kv or 0.0):g} kV jest niższe "
+        f"od napięcia najwyższego sieci {float(u_s or 0.0):g} kV (szyna "
+        f"{float(bus_voltage_kv or 0.0):g} kV, IEC 60038) — napięcie najwyższe urządzenia "
+        "nie może być niższe od napięcia najwyższego sieci (IEC 60071-1). Dobierz typ dla właściwego poziomu napięcia.",
         error_code,
     )
 
@@ -8717,7 +8719,7 @@ def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> d
         not isinstance(cos_phi, int | float) or cos_phi <= 0 or cos_phi > 1
     ):
         return _error_response(
-            "Wymagany cosφ musi być w przedziale (0, 1].",
+            "Wymagany współczynnik mocy musi być w przedziale (0, 1].",
             "connection_conditions.cos_phi_invalid",
         )
     tryb = podane.get("tryb_pracy")

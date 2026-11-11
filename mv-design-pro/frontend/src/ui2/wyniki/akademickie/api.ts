@@ -147,6 +147,12 @@ export interface KrokSladu {
   /** Karta V12.7 §0.1 — zapis LaTeX podstawienia Z LICZB KROKU, gdy rejestr
    *  go dostarcza; brak = `substitution` zostaje prozą (nie LaTeX). */
   readonly substitution_latex?: string;
+  /** Weryfikacja jednostek słowami, gdy `unit_check` solvera jest algebrą jednostek
+   *  (`application/analyses/v126_wzory.py::JEDNOSTKI_KROKOW_V126`); brak = tekst solvera
+   *  jest już zdaniem. */
+  readonly unit_check_pl?: string;
+  /** Algebra jednostek tej weryfikacji w LaTeX (KaTeX) — para z `unit_check_pl`. */
+  readonly unit_check_latex?: string;
 }
 
 /** Odpowiedź `GET …/trace` (`AcademicWhiteBoxTraceV1`). */
@@ -174,6 +180,10 @@ export interface KrokDowodu {
   readonly formula_latex?: string;
   /** Karta V12.7 §0.1 — patrz `KrokSladu.substitution_latex`. */
   readonly substitution_latex?: string;
+  /** Patrz `KrokSladu.unit_check_pl`. */
+  readonly unit_check_pl?: string;
+  /** Patrz `KrokSladu.unit_check_latex`. */
+  readonly unit_check_latex?: string;
 }
 
 /** Odpowiedź `GET …/proof` (`AcademicProofPackV1`). */

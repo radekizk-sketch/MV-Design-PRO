@@ -685,7 +685,7 @@ def _rodzaj_generatora(
     if len(rodzaje) != 1:
         ostrzezenia.append(
             f"Przekształtnik {name}: jednostki {', '.join(rodzaje) or 'brak'} — rodzaj źródła "
-            "nieokreślony (gen_type puste), uzupełnij przed obliczeniami."
+            "nieokreślony (pole `gen_type` puste), uzupełnij przed obliczeniami."
         )
         return None
     if rodzaje[0] == "PowerElectronicsWindUnit":

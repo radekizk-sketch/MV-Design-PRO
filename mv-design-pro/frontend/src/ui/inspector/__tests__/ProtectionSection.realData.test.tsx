@@ -45,7 +45,7 @@ function buildProtectionView(caseId: string): ProtectionViewResponse {
                 operator: 'GT',
                 multiplier: 1.2,
                 unit: 'pu',
-                display_pl: '1,2×In',
+                display_pl: '1,2-krotność prądu znamionowego',
               },
               time_delay_s: 0.5,
               curve_type: 'DT',

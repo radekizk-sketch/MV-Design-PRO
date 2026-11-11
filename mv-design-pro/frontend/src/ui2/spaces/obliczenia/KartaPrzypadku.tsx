@@ -69,7 +69,7 @@ function SekcjaKonfiguracji({
       <dl className="mvd-karta-pary">
         {pola.map((pole) => (
           <div key={pole} className="mvd-karta-para">
-            <dt>{CONFIG_FIELD_LABELS[pole]}</dt>
+            <dt><TekstZWzorami tekst={CONFIG_FIELD_LABELS[pole]} /></dt>
             <dd className="mvd-num">{formatWartoscKonfiguracji(pole, config[pole])}</dd>
           </div>
         ))}

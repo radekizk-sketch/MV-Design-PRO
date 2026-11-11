@@ -44,7 +44,7 @@ def test_grid_source_preview_api_rejects_incomplete_input(app_client) -> None:
     )
 
     assert response.status_code == 422
-    assert "sk3_mva" in response.json()["detail"]
+    assert "moc zwarciowa sieci zasilającej" in response.json()["detail"]
 
 
 # CV-4.3 K7: blok `min` podglądu (solver FROZEN wołany drugi raz z danymi MIN).

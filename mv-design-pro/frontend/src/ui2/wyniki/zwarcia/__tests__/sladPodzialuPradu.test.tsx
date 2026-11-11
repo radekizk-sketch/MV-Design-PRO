@@ -88,7 +88,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
     expect(trescSekcji).toContain('od węzła początkowego do węzła końcowego');
     expect(trescSekcji).not.toContain('from_to');
     // Uwagi kroku widoczne (pole `notes`).
-    expect(trescSekcji).toContain('KCL: suma modułów współczynników');
+    expect(trescSekcji).toContain('Prawo Kirchhoffa dla prądów: suma modułów współczynników');
     // Podstawienie (LaTeX) kroku bilansu.
     expect(trescSekcji).toContain('5611.28');
   });

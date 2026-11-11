@@ -63,16 +63,18 @@ class CableVoltageDropResult:
     # Kierunek mocy, dla ktorego policzono wynik — bez tego znak ΔU jest nieczytelny.
     flow_direction: str = "load"
     reactive_character: str = "inductive"
-    formula_ref: str = "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)"
+    formula_ref: str = r"\Delta U = \sqrt{3}\,I\,(s_P\,R\cos\varphi + s_Q\,X\sin\varphi)"
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-            "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
-            "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-            "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-            "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
-            "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-            "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe).",
+            "Układ 3-fazowy symetryczny; współczynnik linii √3.",
+            "Sinus kąta mocy z współczynnika mocy; znak składowej biernej z charakteru mocy "
+            "biernej.",
+            "Znak składowej czynnej: +1 dla odbioru, −1 dla generacji (moc czynna).",
+            "Znak składowej biernej: +1 dla poboru mocy biernej (indukcyjny), −1 dla jej "
+            "oddawania (pojemnościowy).",
+            "Spadek dodatni = spadek napięcia; spadek ujemny = WZROST (typowy przy generacji).",
+            "Rezystancja i reaktancja odcinka = wartość jednostkowa × długość.",
+            "Spadek procentowy = spadek / napięcie międzyfazowe linii · 100.",
         )
     )
 
@@ -97,12 +99,12 @@ class CableRatedCurrentResult:
 
     rated_current_a: float
     apparent_power_kva: float
-    formula_ref: str = "I = S_n / (√3·U);  S_n = P / cosφ"
+    formula_ref: str = r"I = \frac{S_n}{\sqrt{3}\,U},\quad S_n = \frac{P}{\cos\varphi}"
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-            "S_n = P / cosφ (moc pozorna z mocy czynnej).",
-            "I = S_n / (√3 · U_linii) (U_linii miedzyfazowe).",
+            "Układ 3-fazowy symetryczny; współczynnik linii √3.",
+            "Moc pozorna = moc czynna / współczynnik mocy.",
+            "Prąd = moc pozorna / (√3 · napięcie międzyfazowe linii).",
         )
     )
 
@@ -124,7 +126,7 @@ def compute_cable_voltage_drop(data: CableVoltageDropInput) -> CableVoltageDropR
     if data.x_ohm_per_km < 0:
         raise OdmowaDanychError("Reaktancja jednostkowa nie moze byc ujemna.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise OdmowaDanychError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
+        raise OdmowaDanychError("Współczynnik mocy musi leżeć w zakresie (0, 1].")
     validate_flow_flags(data.flow_direction, data.reactive_character)
 
     # Znaki skladowych sa NIEZALEZNE, bo kierunek mocy czynnej i biernej moze byc
@@ -162,7 +164,7 @@ def compute_cable_rated_current(data: CableRatedCurrentInput) -> CableRatedCurre
     if data.line_voltage_v <= 0:
         raise OdmowaDanychError("Napiecie linii musi byc dodatnie.")
     if not 0.0 < data.cos_phi <= 1.0:
-        raise OdmowaDanychError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
+        raise OdmowaDanychError("Współczynnik mocy musi leżeć w zakresie (0, 1].")
 
     apparent_va = data.active_power_kw * 1000.0 / data.cos_phi
     rated_current = apparent_va / (math.sqrt(3.0) * data.line_voltage_v)
@@ -185,7 +187,10 @@ class TrunkVoltageDropResult:
     delta_u_v: float
     delta_u_pct: float
     line_voltage_v: float
-    formula_ref: str = "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100"
+    formula_ref: str = (
+        r"\Delta U_{ciągu} = \sum_i \Delta U_i,\quad "
+        r"\Delta U_{ciągu}\% = \frac{\Delta U_{ciągu}}{U_{linii}}\cdot 100"
+    )
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Ciąg promieniowy zasilany z jednego końca; odcinki w kolejności od zasilania.",
@@ -193,7 +198,7 @@ class TrunkVoltageDropResult:
             "(prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu).",
             "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między "
             "napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
-            "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków.",
+            "Jedno napięcie międzyfazowe ciągu dla wszystkich odcinków.",
         )
     )
 

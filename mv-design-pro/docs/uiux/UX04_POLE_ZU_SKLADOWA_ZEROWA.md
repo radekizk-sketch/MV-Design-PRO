@@ -1316,13 +1316,13 @@ pilnuje `tests/test_v126_katalog_analiz.py::test_rejestr_zalozen_dokumentu_rowny
 
 | Paragraf | Kryterium | Treść | Próg | Praktyka |
 |---|---|---|---|---|
-| Z-1 | napięcia trwałej pracy ogranicznika | U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. | — | Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-2 | wytrzymałości ogranicznika na przepięcie dorywcze | Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od U_TOV; zakłada się wyłączenie doziemienia w czasie nie dłuższym niż 10 s (dłuższy czas wymaga krzywej TOV(t) producenta). | 10 s | Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-3 | marginesu ochrony izolacji | Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-1 | napięcia trwałej pracy ogranicznika | Napięcie trwałej pracy ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) wymagane jest przepięcie dorywcze sieci, przy doziemieniu wyłączanym — napięcie najwyższe urządzenia podzielone przez √3. | — | Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-2 | wytrzymałości ogranicznika na przepięcie dorywcze | Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od przepięcia dorywczego sieci; zakłada się wyłączenie doziemienia w czasie nie dłuższym niż 10 s (dłuższy czas wymaga krzywej przepięć dorywczych producenta w funkcji czasu). | 10 s | Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-3 | marginesu ochrony izolacji | Margines ochrony — nadwyżka poziomu izolacji (BIL) nad napięciem obniżonym ogranicznika, odniesiona do napięcia obniżonego — nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 1,5 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 6 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje. |
-| Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia E_k = I_th²·R·t_wył nie większa od energii znamionowej E_n = I_n²·R·t_n (kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia (kwadrat prądu doziemienia × rezystancja × czas wyłączenia) nie większa od energii znamionowej (kwadrat prądu znamionowego × rezystancja × czas znamionowy; kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-8 | dostępności metody detekcji doziemień | Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. | — | Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej. |
 | Z-9 | zapadu napięcia przy rozruchu | Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. | 15 % | Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora. |
 | Z-10 | czasu rozruchu | Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). | — | Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika. |
@@ -1339,6 +1339,29 @@ jest dowodem regulacyjnym.
 ## Przekazanie (stan bieżący, 2026-10-30)
 
 Sekcja aktualizowana przy każdym commicie. Niczego nie wypchnięto (gałąź wypycha architekt).
+
+**Wznowienie 2026-11-04 (nowy wykonawca).** Bieg `begm6qkqe` przepadł z restartem; bieg końcowy
+idzie od nowa na zacommitowanym SHA. Zrobione: (a) test śladu `szczegolWerdyktu` (20 testów sceny
+× pełny montaż karty i natywny klik) — pomiar: KaTeX wszystkich 14 wzorów 39 ms, test 2,2 s bez
+KaTeX, 3,6 s z KaTeX; przyczyna to brak pamięci renderu między instancjami `MathRenderer`
+(`useMemo` per instancja). Naprawa u źródła: współdzielona pamięć `renderLatexToHtml` (klucz:
+tryb + wzór, limit 2000 wpisów) → 2,8 s; limit testu 15 s z uzasadnieniem pomiarowym; test
+pamięci (iniekcja klucza bez trybu czerwieni). (b) „Nieświeże fikstury” — przyczyna ustalona:
+NIE regresja i NIE zmiana solvera. Kotwica w szumie była „wszystko albo nic”: gdy szkielet pliku
+się zmienia (tu: teksty `dane_przyjete` ENM → nowy `enm_hash`; tytuły kroków śladu
+w towarzyszach), cały plik szedł ze świeżej treści razem z szumem ostatniej cyfry TEJ maszyny
+(`p_from_mw` 0.180288 → 0.180287, R/X 0.500002 → 0.500003; ten sam kod bazowy 01c5def16 daje tu
+0.180287, a plik bazowy powstał na innej maszynie — test świeżości bazy przechodził przez
+kotwicę). Naprawa: kotwica per liść JSON (`tests/golden/zapis_fikstur.tresc_z_kotwica`, ścieżka
+liścia + `roznice_z_tolerancja`) i per linia TS (`station_archetype_substrate.zakotwicz_linie`,
+`difflib` na liniach kanonicznych); testy iloczynu cech (iniekcja czerwieni 3 z 16); fikstury
+przegenerowane od plików bazowych — wróciły cyfry bazy, różnica tylko w `enm_hash` i tekstach.
+Przy okazji: `sldNetwork53.ts` był nieświeży (`source_hash` po zmianie tekstów ENM) —
+przegenerowany `scripts/emit_sld_network_fixture.py`. (c) Punkt 4: `arc_flash/builder.py` 18 → 0
+i `reporting/arc_flash_report.py` 1 → 0 (symbole jako segmenty `$…$`, proza słowami); ekran
+jakości (ślad Arc Flash, migotania, walidacji, uzasadnienia) i tabela śladu SSCI renderują
+podstawienie, wynik i uzasadnienie przez `TekstZWzorami` (test KaTeX, iniekcja czerwieni).
+Pin: 644 w 162 plikach.
 
 **Parytet assemblera SC_1F_max — ZAMKNIĘTY.** Przyczyna ustalona pomiarem: commit b1e677ced
 zmienił ślad solvera doziemienia (`doziemienie_sn.py`), a poddrzewo
@@ -1418,3 +1441,284 @@ największe `proof_engine` 885, `solvers` 355, `analyses` 168, `catalog` 167), w
 strażnika; specy e2e `menu-schematu-nn`, `w5e-ttit-nn`, `kanon-menu-sld` podają dane
 transformatorów 110/SN przy równoważniku SN (ten sam defekt co naprawiony spec Z_f, karta GPZ-MODEL)
 — w zakresie równoległej karty czerwonych e2e pełnego biegu.
+
+**Decyzja architekta o zakresie klas (2026-10-30, kolejność 1 → 2 → 3 → 4) — w toku.**
+Punkt 1 (`ui/**`, pin 0) — ZAMKNIĘTY: strażnik `ui_math_guard` obejmuje `ui/**` i `ui2/**`, a teksty
+TS/TSX czyta z parsera kompilatora TypeScript (`scripts/teksty_ts.mjs`: literały, szablony bez
+interpolacji, literały zagnieżdżone w interpolacji, wielowierszowe, teksty JSX; specyfikatory
+modułów, typy literałowe i nazwy właściwości są kodem). Pomiar 0 = pin 0. Wykryte i naprawione
+przy okazji: KaTeX w trybie `html` oznacza znacznik `aria-hidden`, więc wzór był niewidoczny dla
+czytnika ekranu i dla nazwy dostępnej (`MathRenderer`: `role="math"` i `aria-label` z
+`latexNaTekst`, który rozwija ułamek i pierwiastek — `rozwinStrukture`); kontener `uppercase`
+zamieniał indeksy na wielkie litery (`normal-case` na wzorze); polecenie LaTeX z pojedynczym
+ukośnikiem w literale TS (`\Delta` ginie, `\varphi` staje się znakiem sterującym) — nowa reguła
+strażnika z iniekcją. Wspólne źródło odczytu i tekstu SVG: `ui/proof/latexTekst.ts`,
+`ui/proof/TekstSvgZWzorami.tsx`. Test kreatora źródła z profilem NC RfG dostał jawny budżet 20 s
+(przekraczał 5 s w równoległej puli przed zmianą i po niej; `delay: null` łamie przebieg).
+Punkt 2 (symbole spłaszczone do Unicode w `ui2` i `ui`) — kod zrobiony, weryfikacja vitest
+w kolejce blokady biegów ciężkich (commit oznaczony WIP). Literały `Ik″`, `Ith`, `Sk″`, `cosφ`,
+`Pmax`, `Un` zapisane jako wzory `$…$`; tekst HTML przez `TekstZWzorami` (KaTeX), tekst SVG przez
+`TekstSvgZWzorami` (`<tspan>` z tego samego źródła LaTeX, `latexNaSegmentySvg`), atrybuty
+i natywne `<option>` przez `tekstBezWzorow`. Inwentarz klasy (miejsca, w których tekst ze stałej
+trafia na ekran wprost): prymitywy kreatora `KreatorRama` (nadtytuł, tytuł, odznaka, licznik
+kroków, tytuł sekcji, błąd globalny, walidacja), `gotowosc.tsx` (wartość wiersza, tytuły
+podsumowania i gotowości, nadtytuł następnego kroku), `panelTeorii.tsx`, `pola.tsx` (jednostka,
+komunikat błędu, podpowiedź, opcje katalogu), komórka i jednostka `TabelaWynikow`, podstawienie
+`KrokDowodu`, teksty `KreatorOdbioruNn`, błąd API `FaultScenarioModal`, etykiety
+`inspectorAdapter` (`$R_{1}$`, `$B_{1}$`). `TekstZWzorami`/`TekstSvgZWzorami` przyjmują
+`null`/`undefined`/liczbę bez wywrotki (wcześniej `split` na `undefined` w `FieldRow` DER).
+Etykiety wyników SLD: przedrostki szablonów jako wzory (`PODPIS_IK` i in.), a zamknięta tabela
+filtra wielkości (`PREFIX_TO_QUANTITY`) budowana z par (przedrostek, wielkość) szablonów —
+jedno źródło prawdy; poprzednio tabela była kluczowana starymi przedrostkami i po zmianie
+filtr gubił etykiety (regresja wykryta testem, test „przedrostek → jedna wielkość”). Czujnik
+surowych wzorów (`src/test/czujnikSurowychWzorow.ts`) oblewa test, gdy DOM pokazuje `$…$`; haki
+czujników są asynchroniczne, żeby rzut nie przerywał sprzątania Testing Library (pomiar: 359
+czerwonych testów w 55 plikach było kaskadą jednego naruszenia na plik; test
+`czujnikiNiePrzerywajaSprzatania`). Strażnik `ui_math_guard` rozszerzony: wzorzec symbolu
+spłaszczonego (`Uzad`, kontekstowe `R1`/`X1`/`B1`/`Z2` po „-ancja”, `sin φ`), klucz `prefix`
+jako tekst UI, droga danych stałej ze wzorem do miejsca wyświetlenia (alias warunkowy `?:`/`??`,
+reeksport z `index`, jeden przeskok do komponentu wyświetlającego właściwość wprost). Samotest
+154 passed; iniekcje (usunięcie aliasu warunkowego, klucza `prefix`, wzorca „-ancja”, powrót
+`RzadWartosci` do stanu `main` w kopii realnych plików) czerwienią. Pomiar strażnika: 250 trafień,
+wyłącznie w generowanych towarzyszach archetypów stacji
+(`ui/sld/v2/station-rozdzielnia/companions/shortCircuit.ts`, `ozeArchetypes2a.ts`) — ich źródłem
+jest ślad FROZEN `short_circuit_iec60909.py`; usuwa je punkt 4 (zmiana tekstowa B-01
+i przegenerowanie generatorem), do tego czasu pin strażnika jest czerwony.
+Punkt 3 (nazwy pól w komunikatach operacji słowami) — zrobiony. Odpowiedź API niesie klucz pola
+(część maszynowa), komunikat nazywa pole słowami ze słownika `enm/slownik_komunikatow.py`
+(`NAZWY_POL_KONTRAKTU_PL`: `a_p` → „Udział stałoimpedancyjny mocy czynnej”, `ik3_min_ka` →
+„Minimalny prąd zwarciowy”, `q_min_mvar` → „Moc bierna minimalna (pobór, podwzbudzenie)”), a symbol
+niesie etykieta kreatora jako wzór (`$a_{P}$`, `$Q_{\min}$`). Drugie źródło nazw pól komunikatów —
+etykiety tabliczki `MaterializationContract.ui_fields` (`etykieta_pola_katalogu_pl`) — przepisane na
+słowa (100 etykiet; jednostka w osobnym polu). Komunikaty z symbolem w treści przepisane słowami
+(`dobor_kompensacji`, `canonical_operations`, `generator_validation`, `domain_operations(_v2)`,
+`topology_ops`, `uziemienie`, `validator`, `family_validation`, `assembler`); słownik kodów
+gotowości przegenerowany generatorem (`generuj_slownik_kodow_gotowosci.py`, dokument był nieaktualny
+już przed zmianą). Parytet: `test_nazwy_pol_sa_slowami_frontu` porównuje słowa etykiety frontu bez
+segmentów `$…$`; `test_nazwy_pol_komunikatow_sa_slowami_bez_symboli`
+i `test_etykiety_pol_tabliczki_katalogu_sa_slowami_bez_symboli` przypinają brak symbolu z indeksem
+(iniekcje dawnych nazw czerwienią). Pojedyncza litera bez indeksu (`Moc czynna P`, `Stosunek R/X`)
+czyta się tak samo w tekście i we wzorze — poza kryterium. Przy okazji: strażnik `ui_math_guard`
+widzi granice zapisane ze spacją (`Q min`), indeks Unicode po kilku literach (`Ik₁min`), `Ia`, `Iq`,
+`Id`, `twym`, klucze `oznaczenie`/`warunek`, nazwę serii wykresu Recharts przy legendzie lub dymku
+bez składania (nowy wspólny formatter `ui2/shared/legendaZWzorami.tsx` we wszystkich sześciu
+wykresach z legendą) i zawężenie typu (`typeof tekst !== 'string'`) w komponencie składającym;
+wzór chemiczny gazu (`SF₆`) nie jest symbolem wielkości. Pomiar po zmianie: 250 = tylko
+towarzysze archetypów (punkt 4).
+Punkt 4 (proza backendu trafiająca do UI i raportu) — w toku, stan zmierzony.
+Strażnik `scripts/backend_proza_symboli_guard.py` (samotest 32 testy: rodzaj tekstu × zapis symbolu
+× reguła miejsca × ten sam tekst poza regułą × zapadka per plik) mierzy w `backend/src` stałe
+tekstowe i całe f-stringi ze słowem polskim i symbolem z indeksem albo spłaszczonym (`I″k`, `U_n`,
+`cos φ`, `R′0`, `Ik3`, `t_b`); tekst z ukośnikiem albo `$` jest LaTeX-em. Zapadka per plik w obie
+strony (`guard_references/backend_proza_symboli_pin.json`, plik spoza mapy ma pin 0,
+`--aktualizuj` odmawia podniesienia); wpięty w `p0-extended-guards.yml`. Iniekcja literału do
+czystego pliku (`wartosci_robocze.py`) — kod 1. Pomiar: 1031 trafień przed punktem 4 (skan
+roboczy), 790 przy pierwszym pinie, **663 w 164 plikach teraz**. Wyjątki — reguły strukturalne
+z uzasadnieniem, nie lista: docstringi, komunikaty `assert`/`AssertionError`, logger (dziennik
+serwera), identyfikatory i kody w tekście, numery kart (`P0.7`); `EquationDefinition.notes`
+w `equation_registry.py` (35 wpisów — pole idzie wyłącznie do `proof.json`, eksport LaTeX/PDF,
+inspektor i frontend go nie renderują); wzór `trace.add` rdzenia V12.6 (bliźniak LaTeX
+`v126_wzory.py`, test kompletności) i podstawienie tylko dla kluczy z budowniczym podstawienia;
+wzór śladu NC RfG (nowy rejestr `application/ncrfg_compliance/wzory_sladu.py`, 14 zapisów,
+test kompletności z AST rdzenia w obie strony, katalog testów wydaje `wzory_sladu_latex`, widok
+`SladTestu` renderuje `MathBlock`).
+Przepisane słowami (pliki do zera albo prawie): `wartosci_robocze.py`, `niezmienniki_katalogu.py`,
+`czas_wylaczenia.py`, `machine_sc_iec60909.py` (+ `partial_formula_latex`, `small_motor_rule_latex`),
+`equation_registry.py` (nazwy i opisy), `enm/mapping.py` (+ `formula_latex` śladu źródła
+sieciowego; kolumna „Wzór” tabeli źródeł zwarć renderuje KaTeX), `protection_lv_curves.py`,
+`swz/werdykt.py`, `swz/werdykt_tt_it.py`, `petla_zwarcia_tt_it.py`,
+`packs/lv_circuit_verification.py`, generator archetypów stacji (tryby regulacji jako LaTeX).
+**B-01 — wyłącznie teksty (do przyjęcia przez architekta).** Tabela zmian (AST z normalizacją
+stałych tekstowych względem 01c5def16 — identyczne; żadna zmieniona stała nie jest kluczem
+słownika, indeksem ani operandem porównania; odcisk `solver_hashes.json` odświeżony `--init`,
+sankcje w `solver_boundary_guard.py`):
+
+| Rdzeń | Zmienione stałe | Rodzaj |
+|---|---|---|
+| `short_circuit_iec60909.py` | 11 | uwagi i tytuły kroków śladu, podstawienia słowne, bilans Kirchhoffa |
+| `short_circuit_contributions.py` | 1 | przyczyna wkładu zerowego innej wyspy |
+| `state_estimation_wls.py` | 4 | komunikaty `ValueError` (węzeł początkowy/końcowy) |
+| `v126_academic.py` | 47 | komunikaty odmowy, opisy sanity, dane przyjęte, podstawienia słowne |
+| `ncrfg_ptpiree/engine.py` | 10 | jednostki p.u., opisy zdolności, stron i FRT (zapis wzoru bez zmian) |
+
+Parytet liczbowy: złote SC1 asymetryczne przegenerowane funkcją testu złotego — różnice wyłącznie
+w `name_pl`/`title_pl`/`description_pl`; fikstury przegenerowane generatorami
+(`fikstury_enm_sld`, `sld_substrate_fixtures`, rejestr maszyn, `generuj_odpowiedzi_v126`,
+`eksport_fixtur_projekcji_nn`, `eksport_fixtur_harnessu`, towarzysze archetypów) bez zmian
+liczb przypisanych tej karcie. Dwie różnice liczbowe w towarzyszach i w
+`sldSubstrate52s.powerflow.maintenance.json` (`0.500002 → 0.500003` w czterech podstawieniach R/X,
+`p_from_mw 0.180288 → 0.180287`) zbadane bisekcją na czystej kopii 01c5def16 bez zmian tej karty:
+to wyjście generatorów już na źródle bazowym (bez pycache, przy różnych `PYTHONHASHSEED`
+i liczbie wątków BLAS) — pliki w drzewie były nieświeże wobec źródła, nie skutek zmiany tekstów.
+Zostaje (pomiar `backend_proza_symboli_guard.py --lista`, 663 w 164 plikach, największe:
+`arc_flash/builder.py` 18, `enm/assembler.py` 17, `mv_converter_catalog.py` 15,
+`equipment_proof/generator.py` 14, `wytrzymalosc_aparatury_pol.py` 14, `nn_device_selection.py` 14,
+`api/proof_pack.py` 14, `v126_oceny.py` 13) — zapadka pilnuje, że nie rośnie, i wymusza
+obniżanie pinu przy każdej naprawie.
+
+**Punkt 4, partia 2 (2026-11-04).** Proza słowami w `enm/assembler.py`, `dynamika_modele.py`,
+`equipment_proof/generator.py` i `wielkosc_wylaczania.py`, `wytrzymalosc_aparatury_pol.py`,
+`api/proof_pack.py`, `nn_device_selection.py`, `v126_oceny.py`, `dobor_przekladnika.py`,
+`protection/base_values/resolver.py`, `der_selection_preview.py` (odsyłacze wzorów jako LaTeX),
+`dynamika/kontrakty.py` oraz katalogach `audit2`, `mv_auxiliary`, `mv_converter`, `mv_transformer`.
+Pin: **454 w 146 plikach** (z 644/162); `oczysc` wycina adresy URL (reguła 4). Klasa kotwicy
+w szumie domknięta we wszystkich generatorach: `zapis_fikstur.zakotwicz_liscie` (jedno źródło
+prawdy) używają `tresc_z_kotwica`, grupowe rozstrzygnięcie harnessu scen (`rozstrzygnij_grupe`,
+świeża grupa także per liść) i projekcja nN (`eksport_fixtur_projekcji_nn.zakotwicz_liscie`,
+tolerancja 1e-9 tej projekcji); tekst niosący skrót (`HEX_SKROTU`) nigdy nie jest kotwiczony,
+gdy skróty się różnią (inaczej stary skrót zostawał w treści metryki). Testy iloczynu: kotwica
+per liść × tekst ze skrótem (2), świeża grupa harnessu × skrót/brak pliku/rozjazd skrótów (3),
+projekcja nN 2 × 2 z szumem 1e-10 (szum 1e-12 maskowało zaokrąglenie do 12 cyfr) — iniekcje
+czerwienią 1/1, 3/3, 3/4. Fikstury harnessu przegenerowane: 0 różnic liczbowych. Piny z pomiarem
+liść po liściu: N-1 gn01/gn03 (różnią się tylko `snapshot_hash`/`input_hash` od tekstów
+`wartosci_robocze` kabli SN), 15 odcisków `czas_tb` (baza odtwarza stare piny; różnią się tylko
+uwagi śladu ×60 i tytuły ×30), odcisk katalogu kart widmowych łańcuchem: odcisk po karcie ZU,
+cofnięcie 809 tekstów parą z `teksty_katalogu_przed_karta_zu.json` daje dokładnie odcisk po
+zespole uziemiającym. Parytet assemblera: odmowy, ścieżki i liczby bazy `01c5def16` i drzewa
+identyczne bit w bit w 366 przypadkach; szkielet różni się wyłącznie 30 631 liśćmi tekstowymi
+i addytywnym kluczem `formula_latex` w `zrodla_sieciowe` (325 przypadków) — złoty plik
+przegenerowany. Wykryta luka detektora: `POLSKI_RE` nie widzi prozy polskiej bez znaków
+diakrytycznych i bez słów funkcyjnych z listy (pomiar szerszą listą: 108 nowych trafień), a
+symbol składany parametrem `{}` umyka skanowi — rozszerzenie strażnika osobnym commitem
+z pinem z pomiaru.
+
+**Punkt 4, partia 3 (2026-11-04): pin 0 w każdym pliku.** Detektor prozy strukturalny zamiast
+listy słów: tekst dla człowieka to znak diakrytyczny albo słowo z co najmniej czterech liter
+(wielka litera tylko na początku), więc trafia też proza polska bez diakrytyków i proza
+angielska komunikatów odmowy. Reguły strukturalne dopisane z uzasadnieniem w nagłówku strażnika:
+docstring atrybutu, kody błędów w przestrzeni nazw, klucze rejestru `wzory_sladu.py`, wartość
+pola `latex`/`*_latex`, znakowanie (`<…`), indeks w klamrach jako LaTeX oraz reguła 9 —
+`Field(description=...)` w `domain/result_contract_v1.py` (tekst zamrożonego schematu
+`resultset_v1_schema.json`; każdy inny tekst pliku liczony). Pomiar po rozszerzeniu: 68 tekstów
+w 34 plikach, napisane słowami do zera; pin `backend_proza_symboli_pin.json` = `{}`. Rdzenie
+B-01 tylko teksty (AST z normalizacją stałych tekstowych równe bazie `01c5def16`):
+`short_circuit_core.py` (5 komunikatów odmowy, nowa sankcja w `solver_boundary_guard`),
+`short_circuit_iec60909.py` (5), `ncrfg_ptpiree/engine.py` (2), `v126_academic.py` (1);
+`solver_diff_guard --init` odświeżył odciski. Klasa „symbol składany parametrem": etykiety
+składowej zerowej `R′0`/`X′0`/`B′0` w `wartosci_robocze.py` (wstawiane do nazw danych
+przyjętych i podpowiedzi „Zmień wartość") oraz nazwy kryteriów nN (`NAZWA_KRYTERIUM_I/II`)
+napisane słowami; zdanie założenia krzywej zaniku (`machine_sc_iec60909.py`) słowami.
+Parytet assemblera: odmowy, ścieżki i liczby identyczne z HEAD w 366 przypadkach, szkielet
+różni się w 169 przypadkach wyłącznie tekstem. Fikstury przegenerowane (harness, nN, SLD,
+archetypy, V12.6, oceny, OpenAPI, słownik gotowości, sieć pokazowa, DEMO-OZE-SC): 0 różnic
+liczbowych liść po liściu. Odcisk katalogu kart widmowych `6f6e9ae2… → ba710f9e…`, łańcuch:
+cofnięcie 888 liści parą z `teksty_katalogu_przed_karta_zu.json` (111 par) daje dokładnie
+odcisk po zespole uziemiającym.
+
+Zostaje zmierzone (sąsiednia klasa, nie proza): 44 teksty w 25 plikach to wzór albo podstawienie
+bez żadnego słowa (`Z_k = {} + {} = {}`, `U0 = {} V; U_b = {} V`, etykiety eksportu
+`Ik''={} kA`) — skan prozy ich nie liczy z definicji. Większość ma bliźniaczy zapis LaTeX
+(`substitution_latex`, `_napiecia_latex`), reszta to podstawienia kroków śladu bez pola LaTeX
+i komórki eksportu tekstowego; domknięcie wymaga decyzji kontraktu (pole `*_latex` podstawienia
+w rekordach kroków śladu analiz), lista z pomiaru w meldunku karty.
+
+**Punkt 4, domknięcie strażników CI (2026-11-04).** `guardy_z_ci.py` na drzewie po partii 3
+był czerwony w czterech miejscach, wszystkie naprawione u źródła. (1) `slad_proza_bez_latex_guard`:
+18 znaczników `$…$` w `substitution_pl`/`result_pl` kroków śladu Arc Flash
+(`analysis/arc_flash/builder.py`, z wcześniejszej partii WIP) — proza napisana słowami („prąd
+zwarcia bolted …, odstęp elektrod …, czas łuku …, odległość robocza …, współczynnik obudowy …"),
+wzór zostaje w `formula_latex`; ekran śladu Arc Flash i migotania pokazuje prozę wprost (składanie
+`$…$` w tych polach zdjęte — kontrakt kroku śladu go zabrania). (2) `ui_progi_napiecia_guard`:
+klucze listy dozwolonej kompensatora zaktualizowane do tekstu z `$Q_{n}$`, nowy wpis z
+uzasadnieniem dla nastawy zabezpieczenia nadnapięciowego falownika (1,1 napięcia znamionowego
+/ 5 s) w generowanym towarzyszu archetypów OZE — parametr zabezpieczenia DER, nie kryterium
+oceny wyniku. (3) `teksty_ts.mjs` czytał pliki dekoderem pobłażliwym (niepoprawne bajty → U+FFFD,
+plik spoza UTF-8 oceniany jako czysty; błąd zastany sprzed bazy, samotest
+`test_ui_math_nieczytelny_plik[skanuj_ts]` czerwony) — dekoder ścisły, plik nieczytelny kończy
+bieg błędem z nazwą pliku. (4) Pin skanu `solver_input_substitute_guard`: 604 → 605 plików,
+application 254 → 255 (+1 `ncrfg_compliance/wzory_sladu.py`), pomiar na `01c5def16` (`git archive`:
+604) i na drzewie karty. Odcisk implementacji pakietu `dynamika` w fiksturach harnessu był nieaktualny
+po przywróceniu formatu 100 kolumn (`silnik.py`; odcisk to skrót źródeł) — przegenerowany.
+`guardy_z_ci.py`: KOMPLET ZIELONY, samotesty strażników 4772 passed.
+
+**Punkt 4, bieg końcowy (2026-11-04).** Pełny backend `-m "not pandapower and not andes"` na
+`2deb4c83a`: 42 705 passed, 1 failed — klucz spisu literałów c
+(`test_wspolczynnik_c_inwentarz.py`) wskazywał postać łamaną przy 88 kolumnach, a po przywróceniu
+formatu 100 kolumn pasmo B′0/B′1 jest znów jednym wierszem; klucz poprawiony (`22755b4a2`, plik
+6 passed; to jedyna różnica tych dwóch SHA). vitest related wszystkich plików frontendu zmienionych od
+`01c5def16`: 6928 passed, 3 failed — testy legend wykresów P–Q i obszaru P–Q szukały surowego
+napisu `Producent $Q_{\max}$`, który legenda składa przez KaTeX od wcześniejszego kroku karty;
+negatywne asercje „nakładka wyłączona" przechodziły pusto. Przepisane na `poTekscieZWzorami`
+(`85865f69e`), iniekcja (legenda bez formattera) → 3 czerwone, po naprawie 75 passed. e2e zrzutowe
+na własnych portach (18551/15551) na `85865f69e`: doziemienie, czas wyłączenia, domena nN, dowody,
+zwarcia F2, kreatory w trybie eksperckim, pasma rozpływu i jakość — 67 passed, kod 0; 113 zrzutów
+w `frontend/test-results/zrzuty-dokumentacji/` (bez werdyktu wizualnego, B-02).
+
+**Punkt 4, wzór bez słów (decyzja architekta 2026-11-04).** Decyzja: addytywne, opcjonalne pole
+LaTeX obok pola prozy (konwencja `*_latex`, `exclude_none` — pole tylko, gdy jest wzór), proza
+słowami, komórka eksportu tekstowego — słowa i symbol w zapisie LaTeX. Strażnik
+`backend_proza_symboli_guard.py` liczy drugą część klasy (`jest_wzorem_bez_slow`: symbol, znak
+wzoru, spacja albo znak działania, brak słowa), symbol z kwadratem Unicode (`I²t`, `k²S²`, `β²`;
+jednostki `A²`, `mm²` odpadają) i regułę 10 (wartość zmiennej idącej do pola `*_latex` — argument,
+klucz słownika, przypisanie `krok["substitution_latex"] = …`, element krotki zwracanej). Pomiar:
+44 teksty przed decyzją, po rozszerzeniu detektora 35 + 8 (kwadrat Unicode), pin `{}` — każdy plik
+zero; samotest 86 testów (iloczyn: wzór bez słów × proza z symbolem rozłącznie, kwadrat ×
+jednostka, reguła 10 cztery drogi przepływu × para „ta sama wartość poza polem LaTeX liczona” ×
+inna funkcja, iniekcja w `main`).
+
+Nowe pola LaTeX (addytywne) i ich konsumenci: `formula_latex` pięciu kontroli wyposażenia
+(starzenie kabla, bilans CT i VT, straty transformatora — `api/equipment_checks.py`, ekrany
+`SekcjaKartyKatalogu`/`SekcjaBilansuCtVt` renderują `MathInline`, opis wzoru słowami pod nim),
+wytrzymałości cieplnej przewodu, podglądu kompensatora (`api/grid_source_preview.py`) i słownika
+CT oceny nadprądowej; `warunek_latex` kryteriów i `wzor_latex` zaleceń wytrzymałości cieplnej
+(`PanelDowoduCieplnego` — `ZapisWarunku`: wzór KaTeX, proza w `title`); `wymagane_latex`/
+`dostepne_latex` kryterium nasycenia przekładnika (`DoborPrzekladnikowSekcja` — `WartoscRachunku`);
+`substitution_latex`/`result_latex` kroków SSCI i migotania, `computed_from_latex` wartości
+wyliczonych nastaw, `requirement_latex` nastaw, `method_latex` kroków SWZ (MCB), pętli zwarciowej
+TN i napięcia dotykowego IT, `substitution_latex` kroków składowej zerowej transformatora.
+Słowa bez pola LaTeX (wzór już w bliźniaku albo miejsce bez KaTeX-a): podstawienia doziemienia
+(bliźniak `substitution_latex` istniał), etykieta znacznika TCC (SVG), `display_pl` nastaw,
+odstępstwa niezmienników katalogu, opis klasy tolerancji nN (także etykiety `<option>` frontu),
+komunikat wytrzymałości aparatury, rekordy werdyktu (`opis_pl`, `zakres_stosowalnosci_pl` —
+kontrakt werdyktu bez pola LaTeX, bez zmiany kontraktu). Eksport raportu: wielkości zwarcia
+„słowa $symbol$ = liczba jednostka”, trzy na linię (linia PDF 155 znaków).
+Rdzenie B-01 — wyłącznie teksty (AST z normalizacją stałych równy `01c5def16` dla wszystkich
+rdzeni zmienionych od bazy; odcisk `solver_hashes.json` `--init`): `short_circuit_iec60909.py`
+(podstawienie iniekcji jednostkowej słowami — bliźniak `substitution_latex` istniał),
+`ncrfg_ptpiree/engine.py` (punkt krytyczny deklaracji mocy), `v126_academic.py` (podstawienie
+nastaw regulatora przekształtnika i sprawdzenie jednostek prądu pojemnościowego).
+Testy: `tests/ci/test_wzor_w_polu_latex_obok_prozy.py` (miejsce × gałąź wyniku × para pól na
+rzeczywistym wyjściu), asercje pól w testach pętli TN/IT, SWZ, składowej zerowej, doziemienia,
+doboru CT (API), vitest kryteriów, doboru przekładników, wytrzymałości cieplnej. Iniekcje:
+front 6 czerwonych (wzór jako tekst w czterech komponentach), backend 4 czerwone (stary odsyłacz
+CT, brak `method_latex`).
+Zostaje zmierzone (sąsiednie klasy bez decyzji): algebra jednostek bez symbolu wielkości
+(`kV / Ω = kA`, sprawdzenia jednostek `equation_registry`/`unit_verifier`, ok. 200 tekstów) oraz
+zapis krotności `{x}×In` w starszej warstwie `ui/**` (ok. 138 linii: `TypeLibraryBrowser`,
+`TypePicker`, `settings-model`, `formatProtection`), którego `ui_math_guard` nie liczy.
+Bieg końcowy na `b2b6fb8bf` (pełny backend `-m "not pandapower and not andes"`, xdist 4,
+prywatny `--basetemp`): 42 698 passed, 26 failed w trzech plikach — wszystkie skutek nowej prozy
+i pól LaTeX, naprawione w następnym commicie z zachowaniem intencji: tożsamość pętli TN
+(`test_petla_tn_tozsamosc_w5e_ttit.py`, fikstura „przed” bez zmian, para dawny zapis / nowa
+proza / wzór metody jako jedyna różnica śladu), tożsamość nastaw W3-C2 (pole `*_latex` to tekst,
+nie liczba metodyki) i dobór przekładnika (asercje prozy słowami i pól `*_latex`); trzy pliki
+49 passed. `guardy_z_ci.py`: 108/108 strażników, lint i type-check zielone; samotesty 4801
+passed, 1 failed — pin pól kontraktów `solver_input_substitute_guard` 4503 → 4507 z pomiarem
+(`git archive cd4ea97cb`: 4503; +4 pola LaTeX, −0).
+
+**Punkt 4, następca: algebra jednostek i zapis krotności (2026-11-04).** Dwie sąsiednie klasy
+zmierzone wyżej zamknięte. (1) Algebra jednostek w prozie (`kV / Ω = kA`, `Mvar − Mvar = Mvar`,
+`s − s = s.`): strażnik `backend_proza_symboli_guard.py` dostał trzecią część klasy
+(`jest_algebra_jednostek` — człon z jednostką, działanie, relacja, człon z jednostką albo „1”;
+zapis LaTeX i adresy pominięte), rejestry wyjątków parami z rdzeniami B-01 (`JEDNOSTKI_KROKOW_V126`
+w `application/analyses/v126_wzory.py`, `_JEDNOSTKI` w `application/ncrfg_compliance/wzory_sladu.py`
+— tekst rdzenia jest kluczem, wpis daje zdanie słowami i wzór; tekst spoza rejestru czerwieni),
+pin `{}`. Pomiar na `c20ea5104`: 191 tekstów (rejestr równań dowodu 80, weryfikator jednostek 53,
+pakiet obwodu nN 13, linia napowietrzna 11, silnik NC RfG 7, generator dowodów 6, adekwatność Q 5,
+V12.6 5, P16 5, P14 4, pakiet nastaw 2); na drzewie karty 0. Zapis: pola `derivation_latex`/
+`unit_derivation_latex` kroku dowodu (`application/proof_engine/types.py`, zdanie w `opis_pl`),
+`unit_check_latex` kroków V12.6 i adekwatności mocy biernej, `jednostki_sladu` katalogu NC RfG
+(`{opis_pl, latex}` po tekście silnika), jednostka wartości w eksporcie LaTeX
+(`proof_engine/zapis_jednostek.py`: `\Omega`, `\mathrm{kA}`, `^{2}` — wcześniej `\text{Ω}` łamał
+`pdflatex`). Pola prozy kroków śladu bez zapisu LaTeX (kontrakt `slad_proza_bez_latex_guard`).
+Złote pliki asymetrii zwarć (`tests/golden/sc_asymmetrical/{1f_z,2f,2f_z}`) przeliczone: 0 zmian
+liczb i typów, po 4 zmiany tekstu `substitution_latex` (`\text{Ω}` → `\Omega`) i nazwy pól
+wyprowadzenia. (2) Zapis krotności `{x}×In` w UI: `ui_math_guard.py` liczy znak `×`/`·` także
+w pojedynczym tokenie kodu; pomiar na `c20ea5104` 5 miejsc (nie ok. 138 — reszta to przycisk
+zamknięcia `×` i komentarze): `nastawyModelu.ts` (jednostka zakresu), `settings-model.ts` ×2
+(`display_pl` krotności prądu i napięcia), `parametryDefinicje.ts` ×2 (nieczytany atrybut `symbol`
+usunięty z 54 definicji); na drzewie 0, pin 0, lista wyjątków pusta. Iniekcje: samotest strażnika
+prozy 15 czerwonych, samotest `ui_math_guard` 5 czerwonych, adekwatność Q 2, ślad V12.6 (vitest) 1,
+ślad NC RfG (vitest) 1, ślad pulpitu OZE (vitest) 2. Nowa scena harnessu: adekwatność mocy biernej
+pulpitu OZE (`pulpit_oze_scena_adekwatnosc_q.json`, `build_reactive_adequacy_view` na biegu PF
+modelu sceny `macierz`) — ekran bez zrzutu do tej pory.

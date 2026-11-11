@@ -718,7 +718,7 @@ export function KreatorMagistralaSn() {
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-magistrala-teoria"
           >
-            <p className="mvd-teoria-opis">{T.teoriaOpisKabelLinia}</p>
+            <p className="mvd-teoria-opis"><TekstZWzorami tekst={T.teoriaOpisKabelLinia} /></p>
             <StanSpadkuNapiecia />
           </PanelTeorii>
         </KreatorSekcja>

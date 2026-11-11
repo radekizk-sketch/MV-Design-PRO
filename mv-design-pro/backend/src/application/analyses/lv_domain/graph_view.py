@@ -332,7 +332,7 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
             "station_name": root.name,
             "reason_pl": (
                 f"Stacja nie ma żadnej szyny w paśmie nN ({OPIS_PASMA_NN}) ani w "
-                "bus_refs, ani na stronie nN zadeklarowanego transformatora "
+                "`bus_refs`, ani na stronie nN zadeklarowanego transformatora "
                 "— brak domeny nN do wyprowadzenia."
             ),
         }

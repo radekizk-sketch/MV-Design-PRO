@@ -60,6 +60,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
@@ -138,6 +139,37 @@ def przypnij_identyfikatory_zrzutu(enm: dict[str, Any]) -> None:
 _LICZBA_JSON = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
 
+#: Żeton tekstu JSON: łańcuch (z sekwencjami ucieczki) albo liczba POZA łańcuchem. Liczby
+#: w łańcuchach należą do żetonu łańcucha — kolejność żetonów = kolejność liści drzewa.
+_ZETON_JSON = re.compile(r'"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?')
+
+
+def _liscie(dane: Any, sciezka: tuple[Any, ...], klucz: str | None) -> Iterator[tuple[Any, ...]]:
+    """Liście drzewa JSON w kolejności tekstu: ``(ścieżka, klucz wielkości, wartość)``;
+    klucz słownika jest liściem bez ścieżki (``None``), bo w tekście też jest żetonem.
+    """
+    from tests.ci.tolerancja_fikstur import _klucz_wielkosci
+
+    if isinstance(dane, dict):
+        for k, v in dane.items():
+            yield (None, None, k)
+            yield from _liscie(v, (*sciezka, k), _klucz_wielkosci(dane, k))
+    elif isinstance(dane, list):
+        for i, v in enumerate(dane):
+            yield from _liscie(v, (*sciezka, i), klucz)
+    elif isinstance(dane, str) or (isinstance(dane, int | float) and not isinstance(dane, bool)):
+        yield (sciezka, klucz, dane)
+
+
+def _zetony_lisci(tekst: str, dane: Any) -> list[tuple[re.Match[str], tuple[Any, ...]]] | None:
+    """Pary (żeton tekstu, liść drzewa); ``None``, gdy liczności się nie zgadzają."""
+    zetony = list(_ZETON_JSON.finditer(tekst))
+    liscie = list(_liscie(dane, (), None))
+    if len(zetony) != len(liscie):
+        return None
+    return list(zip(zetony, liscie, strict=True))
+
+
 def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     """Treść, którą generator fikstury JSON zapisuje pod ``plik`` — KOTWICA W SZUMIE.
 
@@ -146,6 +178,9 @@ def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     (``tests.ci.tolerancja_fikstur.roznice_z_tolerancja`` — ten sam predykat co harness
     scen i projekcje nN). Szkielet tekstu bez liczb (klucze, kolejność, wcięcia, łańcuchy)
     musi być identyczny — zmiana formatu, nazwy albo struktury zawsze przechodzi do pliku.
+    Gdy szkielet się zmienił, plik dostaje świeży szkielet, a każdy liść liczbowy (i liczba
+    w tekście pola z ``POLA_TEKSTU_Z_LICZBAMI``) pod tą samą ścieżką, który różni się od
+    zapisanego tylko w tej tolerancji, zachowuje zapis z dysku (kotwica per liść).
     Brak pliku albo treść nie-JSON = świeża treść. Test świeżości porównuje plik z
     wynikiem tej funkcji, więc zapis i porównanie mają jedno źródło prawdy."""
     if not plik.exists():
@@ -153,8 +188,7 @@ def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     na_dysku = plik.read_text(encoding="utf-8")
     if na_dysku == tresc:
         return tresc
-    if _LICZBA_JSON.sub("#", na_dysku) != _LICZBA_JSON.sub("#", tresc):
-        return tresc
+    szkielet_rowny = _LICZBA_JSON.sub("#", na_dysku) == _LICZBA_JSON.sub("#", tresc)
     try:
         zapisane = json.loads(na_dysku)
         swieze = json.loads(tresc)
@@ -163,4 +197,61 @@ def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     # Import leniwy: moduł tolerancji żyje w ``tests/ci`` (współdzielony z harnessem).
     from tests.ci.tolerancja_fikstur import roznice_z_tolerancja
 
-    return na_dysku if not roznice_z_tolerancja(zapisane, swieze) else tresc
+    if szkielet_rowny and not roznice_z_tolerancja(zapisane, swieze):
+        return na_dysku
+    return zakotwicz_liscie(na_dysku, tresc)
+
+
+def zakotwicz_liscie(na_dysku: str, tresc: str) -> str:
+    """Świeża treść fikstury z KOTWICĄ PER LIŚĆ względem zapisu ``na_dysku``.
+
+    Wspólna dla wszystkich generatorów fikstur JSON (``tresc_z_kotwica`` tego modułu
+    i grupowe rozstrzygnięcie harnessu scen ``scripts/eksport_fixtur_harnessu``), żeby
+    kotwica w szumie miała jedno źródło prawdy. Nie-JSON = świeża treść."""
+    try:
+        zapisane = json.loads(na_dysku)
+        swieze = json.loads(tresc)
+    except ValueError:
+        return tresc
+    from tests.ci.tolerancja_fikstur import HEX_SKROTU, POLA_TEKSTU_Z_LICZBAMI, roznice_z_tolerancja
+
+    # KOTWICA PER LIŚĆ (karta ZU, 2026-11-04): szkielet się zmienił (np. tekst uwagi albo
+    # skrót modelu), więc plik idzie ze świeżej treści — ale liczba (i liczba w tekście pola
+    # z liczbami), która pod tą samą ścieżką różni się od zapisanej wyłącznie szumem
+    # międzymaszynowym, zostaje zapisem z dysku. Bez tego każda zmiana tekstu wnosiła do
+    # repozytorium szum ostatniej cyfry tej maszyny (pomiar: `p_from_mw` 0.180288 → 0.180287
+    # w `sldSubstrate52s.powerflow.maintenance.json` przy zmianie wyłącznie opisów ENM).
+    # Każda zapisana liczba jest w tolerancji świeżej wartości, a szkielet jest świeży.
+    pary_swieze = _zetony_lisci(tresc, swieze)
+    pary_zapisane = _zetony_lisci(na_dysku, zapisane)
+    if pary_swieze is None or pary_zapisane is None:
+        return tresc
+    zapisane_po_sciezce = {
+        lisc[0]: (zeton.group(0), lisc[2]) for zeton, lisc in pary_zapisane if lisc[0] is not None
+    }
+    czesci: list[str] = []
+    koniec = 0
+    for zeton, (sciezka, klucz, wartosc) in pary_swieze:
+        czesci.append(tresc[koniec : zeton.start()])
+        koniec = zeton.end()
+        stary = zapisane_po_sciezce.get(sciezka) if sciezka is not None else None
+        zakotwicz = (
+            stary is not None
+            and stary[1] != wartosc
+            and type(stary[1]) is type(wartosc)
+            and (
+                not isinstance(wartosc, str)
+                # Tekst z liczbami — kotwica wyłącznie, gdy skróty w tekście są te same:
+                # skrót (`proof_hash` w metryce raportu) jest równy skrótom biegu, więc
+                # zostawiony z dysku łamałby relację równości skrótów grupy (pomiar:
+                # `akademickie_scena_biegi`, metryki raportu wobec świeżego `proof_hash`).
+                or (
+                    klucz in POLA_TEKSTU_Z_LICZBAMI
+                    and HEX_SKROTU.findall(str(stary[1])) == HEX_SKROTU.findall(wartosc)
+                )
+            )
+            and not roznice_z_tolerancja(stary[1], wartosc, "$", klucz)
+        )
+        czesci.append(stary[0] if zakotwicz and stary is not None else zeton.group(0))
+    czesci.append(tresc[koniec:])
+    return "".join(czesci)

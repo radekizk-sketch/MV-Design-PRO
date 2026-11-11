@@ -24,6 +24,7 @@ import { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { featureFlags } from '../config/featureFlags';
+import { latexNaTekst } from './latexTekst';
 
 // =============================================================================
 // Types
@@ -104,6 +105,31 @@ export function extractLatexContent(latex: string): { content: string; isBlock: 
  * @returns MathRenderResult
  */
 export function renderLatexToHtml(latex: string, displayMode: boolean): MathRenderResult {
+  const klucz = `${displayMode ? 'B' : 'I'}${latex}`;
+  const zapamietany = PAMIEC_RENDERU.get(klucz);
+  if (zapamietany !== undefined) return zapamietany;
+  const wynik = renderujBezPamieci(latex, displayMode);
+  if (PAMIEC_RENDERU.size >= LIMIT_PAMIECI_RENDERU) {
+    // Wypiera najstarszy wpis (Map zachowuje kolejność wstawiania).
+    const najstarszy = PAMIEC_RENDERU.keys().next().value;
+    if (najstarszy !== undefined) PAMIEC_RENDERU.delete(najstarszy);
+  }
+  PAMIEC_RENDERU.set(klucz, wynik);
+  return wynik;
+}
+
+/**
+ * Pamięć renderu KaTeX współdzielona przez wszystkie instancje `MathRenderer`.
+ *
+ * Ten sam wzór (np. krok śladu powtarzany w wielu testach i modułach, symbol w nagłówku każdej
+ * tabeli) parsuje się raz; `useMemo` chroniło tylko w obrębie jednej zamontowanej instancji.
+ * Wynik `katex.renderToString` zależy wyłącznie od (latex, tryb), więc pamięć nie zmienia
+ * wyjścia (determinizm); limit wpisów ogranicza rozrost przy wzorach wpisywanych przez projektanta.
+ */
+const PAMIEC_RENDERU = new Map<string, MathRenderResult>();
+const LIMIT_PAMIECI_RENDERU = 2000;
+
+function renderujBezPamieci(latex: string, displayMode: boolean): MathRenderResult {
   // Zachowaj oryginalny string — NIEMODYFIKOWANY
   const originalLatex = latex;
 
@@ -191,7 +217,7 @@ export function MathRenderer({
   if (!result.success || !result.html) {
     return (
       <code
-        className={`math-fallback font-mono text-slate-800 whitespace-pre-wrap break-words ${className}`}
+        className={`math-fallback normal-case font-mono text-slate-800 whitespace-pre-wrap break-words ${className}`}
         data-testid="math-fallback"
         data-latex={latex}
         title={result.error ?? undefined}
@@ -202,13 +228,20 @@ export function MathRenderer({
   }
 
   // Sukces: renderuj HTML z KaTeX
+  // `normal-case`: symbol nie podlega `text-transform` kontenera (nagłówki i etykiety
+  // `uppercase` zamieniłyby `I_{th}` na `I_{TH}` — inny symbol).
   const containerClassName = result.isBlock
-    ? `math-block text-center my-2 ${className}`
-    : `math-inline ${className}`;
+    ? `math-block normal-case text-center my-2 ${className}`
+    : `math-inline normal-case ${className}`;
 
+  // KaTeX w trybie `html` oznacza swój znacznik `aria-hidden` — bez `role="math"` i odczytu
+  // `aria-label` wzór byłby niewidoczny dla czytnika ekranu i nazwy dostępnej (przycisk,
+  // komórka tabeli). Odczyt z tej samej funkcji co atrybuty `title` (`latexNaTekst`).
   return (
     <span
       className={containerClassName}
+      role="math"
+      aria-label={latexNaTekst(extractLatexContent(latex).content)}
       data-testid="math-rendered"
       data-latex={latex}
       dangerouslySetInnerHTML={{ __html: result.html }}

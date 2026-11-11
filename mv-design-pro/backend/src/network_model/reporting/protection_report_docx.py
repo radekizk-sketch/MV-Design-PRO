@@ -173,7 +173,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # SENSITIVITY CHECKS
     # ==========================================================================
-    doc.add_heading("Czułość — iloraz I_min / I_s", level=1)
+    doc.add_heading("Czułość — iloraz minimalnego prądu zwarciowego i nastawy", level=1)
 
     sensitivity_checks = result.get("sensitivity_checks", [])
     if sensitivity_checks:
@@ -208,7 +208,9 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # SELECTIVITY CHECKS
     # ==========================================================================
-    doc.add_heading("Selektywność czasowa — odstęp t_nad − t_pod", level=1)
+    doc.add_heading(
+        "Selektywność czasowa — odstęp czasu zabezpieczenia nadrzędnego i podrzędnego", level=1
+    )
 
     selectivity_checks = result.get("selectivity_checks", [])
     if selectivity_checks:
@@ -250,7 +252,7 @@ def export_protection_coordination_to_docx(
     # ==========================================================================
     # OVERLOAD CHECKS
     # ==========================================================================
-    doc.add_heading("Przeciążalność — iloraz I_s / I_rob", level=1)
+    doc.add_heading("Przeciążalność — iloraz nastawy i prądu roboczego", level=1)
 
     overload_checks = result.get("overload_checks", [])
     if overload_checks:

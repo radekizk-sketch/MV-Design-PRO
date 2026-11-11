@@ -273,7 +273,7 @@ def _sprawdz_jednostke(jednostka: str) -> str:
         if kanoniczna is None or not kanoniczna.group("baza").strip():
             raise ValueError(
                 f"Jednostka względna {jednostka!r} bez nazwanej bazy — dopuszczalny zapis: "
-                '"p.u. (<baza>)", np. "p.u. (U_n)", "p.u. (I_n modułu)".'
+                '"p.u. (<baza>)", np. "p.u. (napięcie znamionowe)", "p.u. (prąd znamionowy modułu)".'
             )
     return jednostka
 
@@ -494,7 +494,7 @@ class Niepewnosc(_Zamrozony):
             if self.wartosc is None or self.metoda_pl is None or self.powod_pl is not None:
                 raise ValueError(
                     "Niepewność oszacowana wymaga wartości z jednostką i metody oszacowania "
-                    "(bez powodu braku); brak oszacowania zapisz jako nie_dotyczy=True z powodem."
+                    "(bez powodu braku); brak oszacowania zapisz jako `nie_dotyczy=True` z powodem."
                 )
             if self.wartosc.wartosc < 0.0:
                 raise ValueError(

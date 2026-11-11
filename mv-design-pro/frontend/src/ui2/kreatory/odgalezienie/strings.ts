@@ -25,7 +25,7 @@ export const ODGALEZIENIE_STRINGS = {
   ekranUziemienie: 'Uziemienie ekranu kabla',
   ekranUziemieniePomoc:
     'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + 'Katalogowe $R_{0}$/$X_{0}$ obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
     + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
   dlugosc: 'Długość odgałęzienia',
   dlugoscPomoc: 'Długość pierwszego odcinka [km] — wpływa na spadek napięcia i straty.',

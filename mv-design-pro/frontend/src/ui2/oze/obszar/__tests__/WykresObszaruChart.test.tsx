@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react';
 import { WykresObszaruChart } from '../WykresObszaruChart';
 import { punktyObszaru } from '../obszarModel';
 import { OBSZAR_STRINGS } from '../strings';
+import { poTekscieZWzorami } from '../../../../test/tekstZWzorami';
 import { rekordyKonwerterowFixture, widokObszaruFixture } from './fixtures';
 
 function renderWykres(zNakladka: boolean) {
@@ -35,14 +36,14 @@ describe('WykresObszaruChart', () => {
 
   it('bez nakładki nie pokazuje serii producenta', () => {
     renderWykres(false);
-    expect(screen.queryByText(OBSZAR_STRINGS.legendaProdMax)).not.toBeInTheDocument();
-    expect(screen.queryByText(OBSZAR_STRINGS.legendaProdMin)).not.toBeInTheDocument();
+    expect(screen.queryByText(poTekscieZWzorami(OBSZAR_STRINGS.legendaProdMax))).not.toBeInTheDocument();
+    expect(screen.queryByText(poTekscieZWzorami(OBSZAR_STRINGS.legendaProdMin))).not.toBeInTheDocument();
   });
 
   it('z nakładką pokazuje serie krzywej producenta', () => {
     renderWykres(true);
-    expect(screen.getByText(OBSZAR_STRINGS.legendaProdMax)).toBeInTheDocument();
-    expect(screen.getByText(OBSZAR_STRINGS.legendaProdMin)).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(OBSZAR_STRINGS.legendaProdMax))).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami(OBSZAR_STRINGS.legendaProdMin))).toBeInTheDocument();
   });
 
   it('jest deterministyczny — ten sam markup dla tych samych danych', () => {

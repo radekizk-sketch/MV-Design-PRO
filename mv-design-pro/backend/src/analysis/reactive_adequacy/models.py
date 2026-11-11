@@ -71,13 +71,20 @@ class ReactiveAdequacyContext:
 
 @dataclass(frozen=True)
 class WhiteBoxStep:
-    """Pojedynczy krok wywodu White Box (Wzor→Dane→Podstawienie→Wynik→Jednostka)."""
+    """Pojedynczy krok wywodu White Box (Wzor→Dane→Podstawienie→Wynik→Jednostka).
+
+    ``unit_check_pl`` — weryfikacja jednostek ZDANIEM (pole prozy, bez zapisu LaTeX);
+    ``unit_check_latex`` — algebra jednostek tego kroku jako wzór (zapis goły LaTeX, bez
+    ograniczników) albo ``None``, gdy krok nie ma algebry jednostek (porównanie wielkości
+    tej samej jednostki opisane słowami).
+    """
 
     symbol: str
     formula_latex: str
     substitution_pl: str
     result_pl: str
     unit_check_pl: str
+    unit_check_latex: str | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -51,8 +51,8 @@ export const OLTC_BADANIA_STRINGS = {
   sweepTabelaPrzekladnia: 'Przekładnia t',
   sweepTabelaU: 'U szyny',
   sweepTabelaStraty: 'Straty',
-  sweepTabelaUmin: 'U min w sieci',
-  sweepTabelaUmax: 'U max w sieci',
+  sweepTabelaUmin: '$U_{\\min}$ w sieci',
+  sweepTabelaUmax: '$U_{\\max}$ w sieci',
 
   profilWykresTytul: 'Pozycja zaczepu i napięcie w ciągu doby',
   profilOsX: 'Krok',

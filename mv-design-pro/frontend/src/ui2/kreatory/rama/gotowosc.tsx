@@ -25,7 +25,7 @@ export function RzadWartosci({ etykieta, wartosc, ton, testid }: RzadWartosciPro
   return (
     <div className="mvd-rzad" data-testid={testid}>
       <span className="mvd-rzad-etykieta"><TekstZWzorami tekst={etykieta} /></span>
-      <span className="mvd-rzad-wartosc" data-ton={ton}>{wartosc}</span>
+      <span className="mvd-rzad-wartosc" data-ton={ton}><TekstZWzorami tekst={wartosc} /></span>
     </div>
   );
 }
@@ -51,7 +51,7 @@ export function KreatorPodsumowanie({
 }: KreatorPodsumowanieProps) {
   return (
     <section className="mvd-podsum" data-testid={testid}>
-      <div className="mvd-podsum-head">{tytul}</div>
+      <div className="mvd-podsum-head"><TekstZWzorami tekst={tytul} /></div>
       <div className="mvd-podsum-cialo">
         {status === 'loading' ? (
           <p className="mvd-podsum-komunikat">Trwa obliczanie podsumowania z danych wejściowych.</p>
@@ -82,13 +82,13 @@ const STAN_ETYKIETA: Record<WierszGotowosci['stan'], string> = {
 export function KreatorGotowosc({ tytul, wiersze, testid }: KreatorGotowoscProps) {
   return (
     <section className="mvd-gotowosc" data-testid={testid}>
-      <div className="mvd-gotowosc-head">{tytul}</div>
+      <div className="mvd-gotowosc-head"><TekstZWzorami tekst={tytul} /></div>
       {wiersze.map((w) => (
         <div className="mvd-gotowosc-wiersz" key={w.etykieta} data-testid={`${testid ?? 'mvd-gotowosc'}-${w.etykieta}`}>
           <span className="mvd-gotowosc-etykieta"><TekstZWzorami tekst={w.etykieta} /></span>
           <span className="mvd-gotowosc-stan" data-stan={w.stan}>
             <span className="mvd-gotowosc-kropka" aria-hidden="true" />
-            {w.wartosc || STAN_ETYKIETA[w.stan]}
+            <TekstZWzorami tekst={w.wartosc || STAN_ETYKIETA[w.stan]} />
           </span>
         </div>
       ))}
@@ -113,7 +113,7 @@ export function KreatorNastepnyKrok({
 }: KreatorNastepnyKrokProps) {
   return (
     <div className="mvd-kreator-nastepny" data-testid={testid}>
-      <span className="mvd-kreator-nastepny-eyebrow">{eyebrow}</span>
+      <span className="mvd-kreator-nastepny-eyebrow"><TekstZWzorami tekst={eyebrow} /></span>
       <p><TekstZWzorami tekst={opis} /></p>
       {children}
     </div>

@@ -15,6 +15,7 @@ import { clsx } from 'clsx';
 import type { StudyCaseComparison } from './types';
 import { CONFIG_FIELD_LABELS, RESULT_STATUS_LABELS } from './types';
 import { useStudyCasesStore, useSortedCases } from './store';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Component Props
@@ -202,7 +203,7 @@ function ComparisonResultView({ comparison }: ComparisonResultViewProps) {
               {comparison.config_differences.map((diff, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium text-gray-700">
-                    {getFieldLabel(diff.field)}
+                    <TekstZWzorami tekst={getFieldLabel(diff.field)} />
                   </td>
                   <td className="px-4 py-2 text-gray-600 bg-blue-50/30">
                     {formatValue(diff.value_a)}

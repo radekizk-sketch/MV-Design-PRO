@@ -15,7 +15,6 @@ import type { DefinicjaParametru } from './types';
 export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> = {
   // — Linie i kable — impedancje składowej zgodnej —
   r_ohm_per_km: {
-    symbol: 'R',
     symbolLatex: 'R',
     etykieta: 'Rezystancja jednostkowa',
     jednostka: 'Ω/km',
@@ -25,7 +24,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60909-0', // źródło: IEC 60909-0 — impedancje elementów sieci
   },
   x_ohm_per_km: {
-    symbol: 'X',
     symbolLatex: 'X',
     etykieta: 'Reaktancja jednostkowa',
     jednostka: 'Ω/km',
@@ -35,7 +33,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60909-0', // źródło: IEC 60909-0 — impedancje elementów sieci
   },
   b_us_per_km: {
-    symbol: 'B',
     symbolLatex: 'B',
     etykieta: 'Susceptancja jednostkowa',
     jednostka: 'μS/km',
@@ -45,7 +42,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60909-0', // źródło: IEC 60909-0 — admitancje poprzeczne
   },
   c_nf_per_km: {
-    symbol: 'C',
     symbolLatex: 'C',
     etykieta: 'Pojemność jednostkowa',
     jednostka: 'nF/km',
@@ -55,7 +51,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60287-1-1', // źródło: IEC 60287 — parametry cieplno-elektryczne kabli
   },
   r0_ohm_per_km: {
-    symbol: 'R₀',
     symbolLatex: 'R_0',
     etykieta: 'Rezystancja składowej zerowej',
     jednostka: 'Ω/km',
@@ -65,7 +60,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60909-0', // źródło: IEC 60909-0 — składowe symetryczne
   },
   x0_ohm_per_km: {
-    symbol: 'X₀',
     symbolLatex: 'X_0',
     etykieta: 'Reaktancja składowej zerowej',
     jednostka: 'Ω/km',
@@ -75,7 +69,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60909-0', // źródło: IEC 60909-0 — składowe symetryczne
   },
   rated_current_a: {
-    symbol: 'Iz',
     symbolLatex: 'I_z',
     etykieta: 'Obciążalność prądowa długotrwała',
     jednostka: 'A',
@@ -85,7 +78,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60287-1-1', // źródło: IEC 60287 — obciążalność prądowa kabli
   },
   cross_section_mm2: {
-    symbol: 'S',
     symbolLatex: 'S',
     etykieta: 'Przekrój żyły roboczej',
     jednostka: 'mm²',
@@ -95,7 +87,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60228', // źródło: IEC 60228 — znormalizowane przekroje żył
   },
   voltage_rating_kv: {
-    symbol: 'Un',
     symbolLatex: 'U_n',
     etykieta: 'Napięcie znamionowe',
     jednostka: 'kV',
@@ -105,7 +96,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60038', // źródło: IEC 60038 — znormalizowane napięcia
   },
   max_temperature_c: {
-    symbol: 'θmax',
     symbolLatex: '\\vartheta_{\\max}',
     etykieta: 'Dopuszczalna temperatura robocza żyły',
     jednostka: '°C',
@@ -115,7 +105,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60287-3-1', // źródło: IEC 60287 — dopuszczalne temperatury pracy
   },
   ith_1s_a: {
-    symbol: 'Ith(1s)',
     symbolLatex: 'I_{th(1\\,\\mathrm{s})}',
     etykieta: 'Prąd cieplny krótkotrwały (1 s)',
     jednostka: 'A',
@@ -125,7 +114,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60949', // źródło: IEC 60949 — dopuszczalny prąd zwarciowy przewodów
   },
   jth_1s_a_per_mm2: {
-    symbol: 'Jth(1s)',
     symbolLatex: 'J_{th(1\\,\\mathrm{s})}',
     etykieta: 'Gęstość prądu cieplnego (1 s)',
     jednostka: 'A/mm²',
@@ -137,7 +125,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Transformatory —
   rated_power_mva: {
-    symbol: 'Sn',
     symbolLatex: 'S_n',
     etykieta: 'Moc znamionowa',
     jednostka: 'MVA',
@@ -147,7 +134,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — dane znamionowe transformatorów
   },
   voltage_hv_kv: {
-    symbol: 'UnGN',
     symbolLatex: 'U_{n\\,\\mathrm{GN}}',
     etykieta: 'Napięcie znamionowe strony górnej',
     jednostka: 'kV',
@@ -157,7 +143,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — dane znamionowe uzwojeń
   },
   voltage_lv_kv: {
-    symbol: 'UnDN',
     symbolLatex: 'U_{n\\,\\mathrm{DN}}',
     etykieta: 'Napięcie znamionowe strony dolnej',
     jednostka: 'kV',
@@ -167,7 +152,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — dane znamionowe uzwojeń
   },
   uk_percent: {
-    symbol: 'uk',
     symbolLatex: 'u_k',
     etykieta: 'Napięcie zwarcia',
     jednostka: '%',
@@ -177,7 +161,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 (uk), IEC 60909-0 (impedancja transformatora)
   },
   pk_kw: {
-    symbol: 'Pk',
     symbolLatex: 'P_k',
     etykieta: 'Straty obciążeniowe (zwarcia)',
     jednostka: 'kW',
@@ -187,7 +170,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — straty obciążeniowe
   },
   i0_percent: {
-    symbol: 'i0',
     symbolLatex: 'i_0',
     etykieta: 'Prąd biegu jałowego',
     jednostka: '%',
@@ -197,7 +179,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — prąd jałowy
   },
   p0_kw: {
-    symbol: 'P0',
     symbolLatex: 'P_0',
     etykieta: 'Straty jałowe',
     jednostka: 'kW',
@@ -207,7 +188,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — straty jałowe
   },
   vector_group: {
-    symbol: 'grupa połączeń',
     symbolLatex: '\\text{grupa połączeń}',
     etykieta: 'Grupa połączeń',
     jednostka: '',
@@ -216,7 +196,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60076-1', // źródło: IEC 60076-1 — oznaczenia grup połączeń
   },
   tap_step_percent: {
-    symbol: 'Δu',
     symbolLatex: '\\Delta u',
     etykieta: 'Skok zaczepu przełącznika',
     jednostka: '%',
@@ -228,7 +207,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Aparaty łączeniowe —
   un_kv: {
-    symbol: 'Un',
     symbolLatex: 'U_n',
     etykieta: 'Napięcie znamionowe',
     jednostka: 'kV',
@@ -238,7 +216,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62271-1', // źródło: IEC 62271-1 — wspólne wymagania aparatury WN/SN
   },
   in_a: {
-    symbol: 'In',
     symbolLatex: 'I_n',
     etykieta: 'Prąd znamionowy ciągły',
     jednostka: 'A',
@@ -248,7 +225,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62271-1', // źródło: IEC 62271-1 — prąd znamionowy ciągły
   },
   ik_ka: {
-    symbol: 'Isc',
     symbolLatex: 'I_{sc}',
     etykieta: 'Znamionowy prąd wyłączalny zwarciowy',
     jednostka: 'kA',
@@ -258,7 +234,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62271-100', // źródło: IEC 62271-100 — wyłączniki prądu przemiennego WN
   },
   icw_ka: {
-    symbol: 'Icw',
     symbolLatex: 'I_{cw}',
     etykieta: 'Prąd krótkotrwały wytrzymywany',
     jednostka: 'kA',
@@ -270,7 +245,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Falowniki / źródła OZE —
   sn_mva: {
-    symbol: 'Sn',
     symbolLatex: 'S_n',
     etykieta: 'Moc pozorna znamionowa',
     jednostka: 'MVA',
@@ -280,7 +254,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62477-1', // źródło: IEC 62477-1 — układy energoelektroniczne przekształtnikowe
   },
   pmax_mw: {
-    symbol: 'Pmax',
     symbolLatex: 'P_{\\max}',
     etykieta: 'Moc czynna maksymalna',
     jednostka: 'MW',
@@ -290,7 +263,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62477-1', // źródło: IEC 62477-1 — parametry znamionowe przekształtnika
   },
   cosphi_min: {
-    symbol: 'cosφmin',
     symbolLatex: '\\cos\\varphi_{\\min}',
     etykieta: 'Współczynnik mocy — minimalny',
     jednostka: '',
@@ -300,7 +272,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62477-1', // źródło: IEC 62477-1 — zakres pracy mocy biernej
   },
   cosphi_max: {
-    symbol: 'cosφmax',
     symbolLatex: '\\cos\\varphi_{\\max}',
     etykieta: 'Współczynnik mocy — maksymalny',
     jednostka: '',
@@ -310,7 +281,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 62477-1', // źródło: IEC 62477-1 — zakres pracy mocy biernej
   },
   e_kwh: {
-    symbol: 'E',
     symbolLatex: 'E',
     etykieta: 'Pojemność energetyczna magazynu',
     jednostka: 'kWh',
@@ -322,7 +292,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Przekładniki prądowe (L-16) —
   ratio_primary_a: {
-    symbol: 'I1n',
     symbolLatex: 'I_{1n}',
     etykieta: 'Prąd znamionowy pierwotny',
     jednostka: 'A',
@@ -332,7 +301,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 — przekładniki prądowe
   },
   ratio_secondary_a: {
-    symbol: 'I2n',
     symbolLatex: 'I_{2n}',
     etykieta: 'Prąd znamionowy wtórny',
     jednostka: 'A',
@@ -342,7 +310,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 — szereg znormalizowany
   },
   accuracy_class: {
-    symbol: 'kl.',
     symbolLatex: '\\text{kl.}',
     etykieta: 'Klasa dokładności',
     jednostka: '',
@@ -353,7 +320,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 3.4 — klasy dokładności
   },
   accuracy_class_metering: {
-    symbol: 'kl. pom.',
     symbolLatex: '\\text{kl. pom.}',
     etykieta: 'Klasa dokładności uzwojenia pomiarowego',
     jednostka: '',
@@ -362,7 +328,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-3', // źródło: IEC 61869-3 — przekładniki napięciowe
   },
   burden_va: {
-    symbol: 'Sn',
     symbolLatex: 'S_n',
     etykieta: 'Moc znamionowa',
     jednostka: 'VA',
@@ -374,7 +339,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 3.4 — obciążenie znamionowe
   },
   ith_ka_1s: {
-    symbol: 'Ith',
     symbolLatex: 'I_{th}',
     etykieta: 'Prąd cieplny krótkotrwały (1 s)',
     jednostka: 'kA',
@@ -384,7 +348,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 — wytrzymałość zwarciowa
   },
   idyn_ka_peak: {
-    symbol: 'Idyn',
     symbolLatex: 'I_{dyn}',
     etykieta: 'Prąd dynamiczny (szczytowy)',
     jednostka: 'kA',
@@ -394,7 +357,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 — wytrzymałość dynamiczna
   },
   fs_safety_factor: {
-    symbol: 'Fs',
     symbolLatex: 'F_s',
     etykieta: 'Współczynnik bezpieczeństwa przyrządowego',
     jednostka: '',
@@ -406,7 +368,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 3.4 — rdzenie pomiarowe
   },
   rct_ohm: {
-    symbol: 'Rct',
     symbolLatex: 'R_{ct}',
     etykieta: 'Rezystancja uzwojenia wtórnego',
     jednostka: 'Ω',
@@ -420,7 +381,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Przekładniki napięciowe (L-16) —
   ratio_primary_v: {
-    symbol: 'U1n',
     symbolLatex: 'U_{1n}',
     etykieta: 'Napięcie znamionowe pierwotne',
     jednostka: 'V',
@@ -430,7 +390,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-3', // źródło: IEC 61869-3 — przekładniki napięciowe
   },
   ratio_secondary_v: {
-    symbol: 'U2n',
     symbolLatex: 'U_{2n}',
     etykieta: 'Napięcie znamionowe wtórne',
     jednostka: 'V',
@@ -440,7 +399,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-3', // źródło: IEC 61869-3 — szereg znormalizowany
   },
   rated_voltage_factor: {
-    symbol: 'Fv',
     symbolLatex: 'F_v',
     etykieta: 'Współczynnik napięciowy',
     jednostka: '',
@@ -452,7 +410,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61869-3', // źródło: IEC 61869-3 tab. 2 — współczynniki napięciowe
   },
   voltage_factor_duration_s: {
-    symbol: 't(Fv)',
     symbolLatex: 't(F_v)',
     etykieta: 'Czas obowiązywania współczynnika napięciowego',
     jednostka: 's',
@@ -464,7 +421,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Kable i aparaty nN (L-16) —
   u_n_kv: {
-    symbol: 'Un',
     symbolLatex: 'U_n',
     etykieta: 'Napięcie znamionowe',
     jednostka: 'kV',
@@ -474,7 +430,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60038', // źródło: IEC 60038 — napięcia znormalizowane
   },
   i_max_a: {
-    symbol: 'Iz',
     symbolLatex: 'I_z',
     etykieta: 'Obciążalność prądowa długotrwała',
     jednostka: 'A',
@@ -484,7 +439,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60364-5-52', // źródło: IEC 60364-5-52 — obciążalność instalacji nN
   },
   number_of_cores: {
-    symbol: 'n',
     symbolLatex: 'n',
     etykieta: 'Liczba żył',
     jednostka: '',
@@ -494,7 +448,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60502-1', // źródło: IEC 60502-1 — kable na napięcia do 1 kV
   },
   i_n_a: {
-    symbol: 'In',
     symbolLatex: 'I_n',
     etykieta: 'Prąd znamionowy',
     jednostka: 'A',
@@ -504,7 +457,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 60947-2', // źródło: IEC 60947-2 — wyłączniki nN
   },
   breaking_capacity_ka: {
-    symbol: 'Icu',
     symbolLatex: 'I_{cu}',
     etykieta: 'Zdolność wyłączania zwarciowa',
     jednostka: 'kA',
@@ -516,7 +468,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
 
   // — Wyłączniki różnicowoprądowe nN (karta W5-E-TTIT; rekord `LVRcdType.to_dict()`) —
   i_delta_n_a: {
-    symbol: 'IΔn',
     symbolLatex: 'I_{\\Delta n}',
     etykieta: 'Prąd różnicowy znamionowy zadziałania',
     jednostka: 'A',
@@ -527,7 +478,6 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 — RCCB, prąd różnicowy znamionowy
   },
   rcd_type: {
-    symbol: 'Typ',
     symbolLatex: '\\text{typ}',
     etykieta: 'Rodzaj prądu różnicowego',
     jednostka: '',
@@ -537,38 +487,34 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 kl. 4 — klasyfikacja wg zachowania przy składowej stałej
   },
   t_a_s: {
-    symbol: 'ta(IΔn)',
     symbolLatex: 't_a(I_{\\Delta n})',
-    etykieta: 'Maksymalny czas wyłączenia przy IΔn',
+    etykieta: 'Maksymalny czas wyłączenia przy $I_{\\Delta n}$',
     jednostka: 's',
     typ: 'liczba',
     miejscaDziesietne: 2,
-    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym IΔn.',
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym $I_{\\Delta n}$.',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
   },
   t_a_2idn_s: {
-    symbol: 'ta(2·IΔn)',
     symbolLatex: 't_a(2 \\cdot I_{\\Delta n})',
-    etykieta: 'Maksymalny czas wyłączenia przy 2·IΔn',
+    etykieta: 'Maksymalny czas wyłączenia przy $2 \\cdot I_{\\Delta n}$',
     jednostka: 's',
     typ: 'liczba',
     miejscaDziesietne: 2,
-    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym 2·IΔn.',
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym $2 \\cdot I_{\\Delta n}$.',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
   },
   t_a_5idn_s: {
-    symbol: 'ta(5·IΔn)',
     symbolLatex: 't_a(5 \\cdot I_{\\Delta n})',
-    etykieta: 'Maksymalny czas wyłączenia przy 5·IΔn',
+    etykieta: 'Maksymalny czas wyłączenia przy $5 \\cdot I_{\\Delta n}$',
     jednostka: 's',
     typ: 'liczba',
     miejscaDziesietne: 2,
-    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym 5·IΔn '
-      + '(dla IΔn ≤ 0,03 A — przy 0,25 A).',
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym $5 \\cdot I_{\\Delta n}$ '
+      + '(dla $I_{\\Delta n}$ ≤ 0,03 A — przy 0,25 A).',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
   },
   t_nieczuly_min_s: {
-    symbol: 'tnz',
     symbolLatex: 't_{nz}',
     etykieta: 'Minimalny czas niezadziałania',
     jednostka: 's',

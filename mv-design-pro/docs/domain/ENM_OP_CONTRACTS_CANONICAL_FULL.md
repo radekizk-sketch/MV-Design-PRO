@@ -187,7 +187,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
 | `delete_element` | Usunięcie elementu z modelu sieci | `element_ref` | — | nie | `enm/domain_operations.py::delete_element` |
 | `refresh_snapshot` | Odświeżenie koperty odpowiedzi bez modyfikacji modelu | — | — | nie | `enm/domain_operations.py::refresh_snapshot` |
-| `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy) | — | `moc_przylaczeniowa_mw`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
+| `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, współczynnik mocy, tryb pracy) | — | `moc_przylaczeniowa_mw`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
 | `update_element_parameters` | Aktualizacja parametrów elementu | `element_ref`, `parameters` | — | nie | `enm/domain_operations.py::update_element_parameters` |
 
 ### Topologia sieci nN (`nn_network`, 9)

@@ -587,12 +587,12 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"{opis_obiektu(trafo, 'Transformator')} nie ma napięcia zwarcia "
-                            "(uk ≤ 0 %)."
+                            "(wartość ≤ 0 %)."
                         ),
                         element_refs=[trafo.ref_id],
                         wizard_step_hint="K5",
                         suggested_fix=(
-                            f"Wprowadź napięcie zwarcia uk: {opis_obiektu(trafo, 'transformator')}."
+                            f"Wprowadź napięcie zwarcia: {opis_obiektu(trafo, 'transformator')}."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -729,12 +729,13 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')} nie ma parametrów "
-                            f"zwarciowych (brak Sk'', Ik'' lub R/X)."
+                            f"zwarciowych (brak mocy zwarciowej, prądu zwarciowego lub stosunku rezystancji "
+                            "do reaktancji)."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
                         suggested_fix=(
-                            f"Wprowadź moc zwarciową Sk'' lub impedancję R+jX: "
+                            f"Wprowadź moc zwarciową lub impedancję zastępczą: "
                             f"{opis_obiektu(source, 'źródło zasilania')}."
                         ),
                         fix_action=FixAction(
@@ -953,7 +954,8 @@ class ENMValidator:
                 and source.sk3_min_mva > source.sk3_mva
             ):
                 sprzeczne.append(
-                    f"Sk''min={source.sk3_min_mva:g} MVA > Sk''max={source.sk3_mva:g} MVA"
+                    f"minimalna moc zwarciowa {source.sk3_min_mva:g} MVA > maksymalna "
+                    f"{source.sk3_mva:g} MVA"
                 )
             if (
                 source.ik3_min_ka is not None
@@ -961,7 +963,10 @@ class ENMValidator:
                 and source.ik3_ka > 0
                 and source.ik3_min_ka > source.ik3_ka
             ):
-                sprzeczne.append(f"Ik''min={source.ik3_min_ka:g} kA > Ik''max={source.ik3_ka:g} kA")
+                sprzeczne.append(
+                    f"minimalny prąd zwarciowy {source.ik3_min_ka:g} kA > maksymalny "
+                    f"{source.ik3_ka:g} kA"
+                )
             if sprzeczne:
                 issues.append(
                     ValidationIssue(
@@ -975,7 +980,8 @@ class ENMValidator:
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
                         suggested_fix=(
-                            "Podaj Sk''min ≤ Sk''max (albo Ik''min ≤ Ik''max) z warunków "
+                            "Podaj minimalną moc zwarciową nie większą od maksymalnej (albo minimalny "
+                            "prąd zwarciowy nie większy od maksymalnego) z warunków "
                             "przyłączenia OSD dla tej samej szyny."
                         ),
                         fix_action=FixAction(
@@ -1254,7 +1260,7 @@ class ENMValidator:
                         wizard_step_hint="K6",
                         suggested_fix=(
                             "Przypisz typ przekształtnika z katalogu, żeby zwarcie liczyło się "
-                            "z udziałem zwarciowym k_sc z karty katalogowej."
+                            "z udziałem zwarciowym z karty katalogowej."
                         ),
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
@@ -1347,15 +1353,16 @@ class ENMValidator:
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')}: "
-                            f"Ik''={source.ik3_ka:.2f} kA nie zgadza się "
-                            f"z Sk''={source.sk3_mva:.0f} MVA przy U={bus.voltage_kv:g} kV "
-                            f"(oczekiwane Ik''=Sk''/(√3·U)={expected_ik_ka:.2f} kA). "
+                            f"prąd zwarciowy {source.ik3_ka:.2f} kA nie zgadza się "
+                            f"z mocą zwarciową {source.sk3_mva:.0f} MVA przy napięciu "
+                            f"{bus.voltage_kv:g} kV (prąd wynikający z mocy i napięcia: "
+                            f"{expected_ik_ka:.2f} kA). "
                             f"Dane zwarciowe i napięcie odniesienia muszą dotyczyć TEJ SAMEJ szyny."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
                         suggested_fix=(
-                            "Podaj Sk'' i Ik'' wyznaczone dla szyny, na której stoi źródło "
+                            "Podaj moc i prąd zwarciowy wyznaczone dla szyny, na której stoi źródło "
                             "(bez podwójnego liczenia impedancji transformatora)."
                         ),
                         fix_action=FixAction(
@@ -1425,16 +1432,17 @@ class ENMValidator:
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')}: "
-                            f"Ik''min={source.ik3_min_ka:.2f} kA nie "
-                            f"zgadza się z Sk''min={source.sk3_min_mva:.0f} MVA przy "
-                            f"U={bus.voltage_kv:g} kV (oczekiwane "
-                            f"Ik''min=Sk''min/(√3·U)={expected_ik_min_ka:.2f} kA). "
+                            f"minimalny prąd zwarciowy {source.ik3_min_ka:.2f} kA nie "
+                            f"zgadza się z minimalną mocą zwarciową {source.sk3_min_mva:.0f} "
+                            f"MVA przy napięciu {bus.voltage_kv:g} kV (prąd wynikający z mocy "
+                            f"i napięcia: {expected_ik_min_ka:.2f} kA). "
                             f"Dane scenariusza minimalnego muszą dotyczyć TEJ SAMEJ szyny."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
                         suggested_fix=(
-                            "Podaj Sk''min i Ik''min wyznaczone dla szyny, na której stoi źródło."
+                            "Podaj minimalną moc i minimalny prąd zwarciowy wyznaczone dla szyny, na "
+                            "której stoi źródło."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -1490,13 +1498,13 @@ class ENMValidator:
                             code="W001",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
-                                f"{opis_obiektu(branch, 'Gałąź')} nie ma składowej zerowej "
-                                "(Z₀), a wartości roboczej nie da się przyjąć "
+                                f"{opis_obiektu(branch, 'Gałąź')} nie ma składowej zerowej, "
+                                "a wartości roboczej nie da się przyjąć "
                                 f"({skladowa.brak_podstawy_pl}) — zwarcia 1F/2F-Z niedostępne."
                             ),
                             element_refs=[branch.ref_id],
                             wizard_step_hint="K7",
-                            suggested_fix="Wprowadź parametry składowej zerowej R₀/X₀ gałęzi.",
+                            suggested_fix="Wprowadź rezystancję i reaktancję zerową gałęzi.",
                             fix_action=FixAction(
                                 action_type="OPEN_MODAL",
                                 element_ref=branch.ref_id,
@@ -1525,14 +1533,14 @@ class ENMValidator:
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')} nie ma składowej "
-                            "zerowej (Z₀) — zwarcia doziemne w węzłach sieci składowej zerowej "
-                            "tego źródła nie są liczone (przyczyna: brak danych Z₀ sieci "
+                            "zerowej — zwarcia doziemne w węzłach sieci składowej zerowej "
+                            "tego źródła nie są liczone (przyczyna: brak danych składowej zerowej sieci "
                             "zasilającej). Sieć SN za transformatorem o grupie przerywającej "
                             "drogę prądu zerowego liczy się z zespołu uziemiającego sekcji."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
-                        suggested_fix="Wprowadź parametry R₀/X₀ lub Z₀/Z₁ źródła.",
+                        suggested_fix="Wprowadź impedancję zerową źródła (rezystancję i reaktancję zerową albo jej stosunek do zgodnej).",
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=source.ref_id,
@@ -2295,7 +2303,7 @@ class ENMValidator:
                         code="E043",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"{opis}: {niezgodnosc}. Udział stopni załączonych u = n_zał/n "
+                            f"{opis}: {niezgodnosc}. Udział stopni załączonych w liczbie stopni "
                             "wchodzi do mocy biernej baterii w rozpływie i do jej admitancji "
                             "zerowej, więc bez zgodnego stanu stopni nie da się go policzyć."
                         ),
@@ -2364,7 +2372,7 @@ class ENMValidator:
                                 f"” ({uklad.opis_zrodla_pl()}), a pole "
                                 f"{opis_obiektu(pole, 'pole')} nie ma przekładnika "
                                 "niezrównoważenia w połączeniu międzygwiazdowym. Kryterium: "
-                                "zabezpieczenie niezrównoważeniowe Ir> mierzy prąd między "
+                                "zabezpieczenie niezrównoważeniowe mierzy prąd między "
                                 f"punktami gwiazd ({PODSTAWA_POLA_BKR_PL}). Bez przekładnika "
                                 "uszkodzenie jednostki baterii nie jest wykrywane."
                             ),
@@ -2991,7 +2999,7 @@ class ENMValidator:
                             if cfg is not None
                             else []
                         ),
-                        *(["impedancję zerową (R0/X0 albo Z0/Z1)"] if ma_z0 else []),
+                        *(["impedancję zerową"] if ma_z0 else []),
                     ],
                     "i",
                 )
@@ -3047,13 +3055,13 @@ class ENMValidator:
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło zasilania')}: punkt neutralny "
                             "sieci zasilającej opisany jako izolowany, a podano skończoną "
-                            "impedancję zerową (R0/X0 albo Z0/Z1) — opis i liczby są sprzeczne "
+                            "impedancję zerową — opis i liczby są sprzeczne "
                             "(sieć izolowana nie ma bocznika zerowego)."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Usuń R0/X0 (Z0/Z1) źródła albo zmień typ punktu neutralnego."
+                            "Usuń impedancję zerową źródła albo zmień typ punktu neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
                     )
@@ -3067,13 +3075,13 @@ class ENMValidator:
                             f"{opis_obiektu(source, 'Źródło zasilania')}: punkt neutralny "
                             "sieci zasilającej opisany jako uziemiony "
                             f"({ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(cfg.type, 'uziemiony')}), "
-                            "a źródło nie ma impedancji zerowej (R0/X0 albo Z0/Z1) — zwarcie 1F "
+                            "a źródło nie ma impedancji zerowej — zwarcie 1F "
                             "liczyłoby sieć bez bocznika zerowego źródła, wbrew opisowi."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Podaj R0/X0 (Z0/Z1) sieci zasilającej z danych operatora albo "
+                            "Podaj impedancję zerową sieci zasilającej z danych operatora albo "
                             "usuń opis punktu neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "zero_sequence"),
@@ -3173,11 +3181,12 @@ class ENMValidator:
                         f"{opis_obiektu(branch, 'Kabel')}: zadeklarowany układ uziemienia ekranu "
                         f"„{ETYKIETA_PL_UZIEMIENIA_EKRANU.get(str(branch.screen_bonding), 'inny')}” "
                         + (
-                            "różni się od układu odniesienia katalogowych R0/X0 "
+                            "różni się od układu odniesienia katalogowej impedancji zerowej "
                             f"„{ETYKIETA_PL_UZIEMIENIA_EKRANU.get(str(odniesienie), 'inny')}”"
                             if odniesienie is not None
-                            else "bez układu odniesienia katalogowych R0/X0 (typ kabla nie "
-                            "deklaruje układu uziemienia ekranu, dla którego podano R0/X0)"
+                            else "bez układu odniesienia katalogowej impedancji zerowej (typ kabla "
+                            "nie deklaruje układu uziemienia ekranu, dla którego podano "
+                            "impedancję zerową)"
                         )
                         + " — składowa zerowa kabla nie jest przeliczana; wynik 1F/2FG "
                         "obowiązuje dla układu odniesienia."
@@ -3185,7 +3194,7 @@ class ENMValidator:
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K3",
                     suggested_fix=(
-                        "Dobierz typ kabla z R0/X0 dla tego układu ekranu albo zmień deklarację."
+                        "Dobierz typ kabla z impedancją zerową dla tego układu ekranu albo zmień deklarację."
                     ),
                     fix_action=_fix(branch.ref_id, "BranchModal", "screen_bonding"),
                 )

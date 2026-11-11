@@ -46,7 +46,13 @@ from network_model.solvers.equipment_checks.slad import (
 READINESS_TRANSFORMER_LOSS_DATA_MISSING = "transformer.loss_data_missing"
 READINESS_TRANSFORMER_LOADING_FACTOR_MISSING = "transformer.loading_factor_missing"
 
-_FORMULA_REF = "ΔP(β) = P0 + β²·Pk;  β_opt = √(P0/Pk)"
+_FORMULA_REF = (
+    "straty transformatora to straty jałowe plus straty obciążeniowe skalowane kwadratem "
+    "stopnia obciążenia; obciążenie optymalne przy równości obu składników"
+)
+_FORMULA_LATEX = (
+    r"\Delta P(\beta) = P_{0} + \beta^{2} \cdot P_{k};\quad " r"\beta_{opt} = \sqrt{P_{0}/P_{k}}"
+)
 
 
 @dataclass(frozen=True)
@@ -85,6 +91,7 @@ class TransformerLossesResult:
     udzial_strat_jalowych: float | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = ()
 
@@ -150,13 +157,14 @@ def compute_transformer_losses(data: TransformerLossesInput) -> TransformerLosse
             sn_mva=sn,
         ),
         assumptions=(
-            "Straty jalowe P0 nie zaleza od obciazenia (rdzen pod napieciem znamionowym).",
-            "Straty obciazeniowe rosna z kwadratem wspolczynnika obciazenia: β²·Pk.",
-            "P0 i Pk pochodza z pozycji katalogowej transformatora (pomiar wyrobu), "
-            "nie z wartosci typowej dla mocy.",
-            "β_opt minimalizuje straty WZGLEDNE (ΔP/S); w tym punkcie P0 = β²·Pk.",
-            "Rachunek pomija zaleznosc Pk od temperatury uzwojen (odniesienie do "
-            "temperatury pomiaru katalogowego).",
+            "Straty jałowe nie zależą od obciążenia (rdzeń pod napięciem znamionowym).",
+            "Straty obciążeniowe rosną z kwadratem współczynnika obciążenia.",
+            "Straty jałowe i obciążeniowe pochodzą z pozycji katalogowej transformatora "
+            "(pomiar wyrobu), nie z wartości typowej dla mocy.",
+            "Optymalny współczynnik obciążenia minimalizuje straty WZGLĘDNE (odniesione do mocy "
+            "przenoszonej); w tym punkcie straty obciążeniowe równają się jałowym.",
+            "Rachunek pomija zależność strat obciążeniowych od temperatury uzwojeń (odniesienie "
+            "do temperatury pomiaru katalogowego).",
         ),
     )
 
@@ -260,8 +268,8 @@ def _slad_strat(
                 "straty_opt_kw": wartosc(straty_opt_kw, "kW", "Straty w punkcie optymalnym"),
             },
             "notes": (
-                "W punkcie β_opt straty obciążeniowe zrównują się z jałowymi "
-                "(P0 = β_opt²·Pk) — to warunek minimum strat względnych ΔP/S."
+                "W punkcie optymalnego współczynnika obciążenia straty obciążeniowe zrównują się "
+                "z jałowymi — to warunek minimum strat odniesionych do mocy przenoszonej."
             ),
         }
     )

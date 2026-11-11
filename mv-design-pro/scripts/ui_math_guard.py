@@ -7,7 +7,7 @@ Zasada nadrzedna: matematyka widoczna dla projektanta renderuje sie KaTeX-em
 `Z_grid(f)` bez `\mathrm`, ` * ` miedzy symbolami). Ten guard skanuje TEKSTY
 UZYTKOWNIKA (literaly lancuchowe) w:
 
-  - frontend/src/ui2/**  (*.ts, *.tsx)
+  - frontend/src/ui/** i frontend/src/ui2/**  (*.ts, *.tsx)
   - backend/src/application/analyses/v126_katalog.py
   - backend/src/application/analyses/werdykt_projektowy.py
 
@@ -28,21 +28,27 @@ LaTeX-a albo jest w calosci owiniety `$...$`/`$$...$$`) NIE jest sprawdzany
 wzorcami `^-1`/`^2`/` * ` — `x^2` i `A \cdot B` sa tam poprawna skladnia.
 Wzorce `<=`/`>=`/`sqrt(` sa sprawdzane ZAWSZE (nigdy nie sa poprawnym LaTeX-em).
 
-PRECYZJA SKANU (dwie klasy false-positive usuniete u zrodla, nie wyjatkiem):
-  1. Template literal TS/TSX (`` `...` ``) moze zawierac interpolacje
-     `${wyrazenie}` — to KOD (np. `v * 100`, `item.u_n_kv, 1`), nie tekst dla
-     uzytkownika. Skanujemy WYLACZNIE czesc literalna, z wybalansowanym
-     usunieciem kazdego `${...}` (patrz `_usun_interpolacje`).
+PRECYZJA SKANU (klasy false-positive i false-negative usuniete u zrodla, nie wyjatkiem):
+  1. Teksty TS/TSX wyciaga parser kompilatora TypeScript (`teksty_ts.mjs`), nie wyrazenie
+     regularne na wierszach: literal szablonowy ma wylacznie czesci literalne (interpolacja
+     `${wyrazenie}` to KOD), a literal zagniezdzony w interpolacji, literal wielowierszowy
+     i tekst miedzy znacznikami JSX sa osobnymi wpisami (skan wierszy ich nie widzial).
+     Komentarz nie jest literalem. Specyfikator modulu, typ literalowy, nazwa wlasciwosci
+     i argument dostepu indeksowego sa kodem.
   2. Docstring Pythona (pierwsza instrukcja modulu/klasy/funkcji) to komentarz
      dla programisty, nie tekst UI. Wylaczony ze skanu przez pozycje ustalone
      `ast`-em (patrz `_linie_docstringow`), nie przez `WYJATKI_ZNANE`.
   3. Pola kontraktu, ktore z definicji nie sa proza (wzorzec golego indeksu i pozostale):
      wartosc pola `*_latex` oraz identyfikator `symbol` w parze z `symbol_latex` w tym
      samym wywolaniu/slowniku (`_literaly_symboli`, skan Pythona po drzewie `ast`).
-     W TS ten sam wyjatek ma wlasciwosc `*_latex:`/`*Latex:` (`KLUCZ_LATEX_TS_RE`).
+     W TS ten sam wyjatek ma wlasciwosc `*_latex:`/`*Latex:` i atrybut `latex=`
+     (`KLUCZ_LATEX_TS_RE`).
   4. Identyfikator kodu: klucz danych malymi literami (`bus_ref`) zawsze; stala TS
      (`'V_MAGNITUDE'`, kod metryki `'I_A'`) tylko poza modulem `strings.ts` i poza
      wlasciwoscia tekstowa (`etykieta:`, `jednostka:`, ...) — `_jest_identyfikatorem`.
+  5. Polecenie LaTeX z pojedynczym ukosnikiem w literale JS (`'$\\Delta$'` w zrodle
+     zapisane jako `'$\Delta$'`) — ukosnik ginie albo tworzy znak sterujacy; wykrywane
+     w segmentach `$...$` i w wartosci pola LaTeX (`POJEDYNCZY_UKOSNIK_RE`).
 
 ZAPADKA (pin z pomiaru, TYLKO W DOL — karta V12.7 §0.11): PIN ponizej jest
 SUFITEM zmierzonym na tym drzewie po naprawach karty V12.7 i po dwoch
@@ -59,14 +65,25 @@ katalogu do skanowania).
 from __future__ import annotations
 
 import ast
+import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-from guard_parsowanie import czytaj_tekst, sparsuj_tekst, uruchom  # noqa: E402
+from guard_parsowanie import (
+    BladZrodla,
+    czytaj_tekst,
+    sparsuj_tekst,
+    uruchom,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND_UI2 = ROOT / "frontend" / "src" / "ui2"
+#: Warstwa `ui/**` (decyzja architekta 2026-10-30: kryterium jest to, co widzi projektant,
+#: nie warstwa kodu) — ten sam skan i ten sam PIN co `ui2/**`.
+FRONTEND_UI = ROOT / "frontend" / "src" / "ui"
 BACKEND_PLIKI = (
     ROOT / "backend" / "src" / "application" / "analyses" / "v126_katalog.py",
     ROOT / "backend" / "src" / "application" / "analyses" / "werdykt_projektowy.py",
@@ -91,10 +108,6 @@ PIN = 0
 #: Pliki/katalogi wylaczone ze skanu ui2/** (testy same niosa fixture'y ASCII
 #: nie renderowane na ekranie — to samo wylaczenie co forbidden_ui_terms_guard).
 WYLACZONE_WZORCE = ("__tests__", ".test.", ".spec.", "/dist/", "/node_modules/")
-
-STRING_LITERAL_TS_RE = re.compile(
-    r"""(?P<quote>['"`])(?P<value>(?:\\.|(?!(?P=quote)).)*)(?P=quote)""",
-)
 
 #: Komenda LaTeX (`\cdot`, `\leq`, `\mathrm{...}`, `\frac{...}{...}`…) —
 #: obecnosc oznacza, ze literal jest juz zapisem LaTeX, nie proza z symbolami.
@@ -127,38 +140,82 @@ IDENTYFIKATOR_STALEJ = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+")
 #: Właściwość obiektu TS, której wartością jest tekst pokazywany projektantowi.
 KLUCZ_TEKSTU_UI_RE = re.compile(
     r"\b(?:etykieta|jednostka|naglowek|tytul|opis|nazwa|label|title|placeholder|tekst|"
-    r"komunikat|message|wiersz|kol|param|pomoc|podpowiedz)\w*\s*:\s*$",
+    r"komunikat|message|wiersz|kol|param|pomoc|podpowiedz|prefix|prefiks|oznaczenie|warunek)"
+    r"\w*\s*:\s*$",
     re.IGNORECASE,
 )
 #: Moduł tekstów UI — każdy literał w nim jest tekstem ekranu.
 NAZWA_MODULU_TEKSTOW_UI = "strings.ts"
 #: Wlasciwosc TS niosaca zapis LaTeX (`formula_latex:`, `symbolLatex:`) — odpowiednik pola
 #: `*_latex` skanu Pythona (`_literaly_symboli`): wartosc renderuje `MathInline`, nie jest proza.
-KLUCZ_LATEX_TS_RE = re.compile(r"\b\w*(?:_latex|Latex)\s*:\s*$")
+#: Klucz moze stac w cudzyslowie (`"formula_latex":` — dane wynikowe zapisane w TS jako JSON),
+#: a w JSX zapis LaTeX niesie atrybut `latex="..."` / `latex={`...`}` (`FormulaBlock`,
+#: `MathInline`) albo `*Latex=`.
+KLUCZ_LATEX_TS_RE = re.compile(r"""(?:\b\w*_latex|\b\w*Latex|\blatex)['"]?\s*(?::|=\{?)\s*$""")
+#: Literal bedacy lista klas CSS z wartoscia dowolna Tailwind (`bg-[radial-gradient(...)] w-4`):
+#: kazdy token rozdzielony spacja to klasa ASCII (litery, cyfry, `_ - : / . ! # %`), a co
+#: najmniej jeden niesie wartosc dowolna — `prefiks-[...]` albo wlasciwosc dowolna `[wl:wart]`
+#: — kod stylu, nie tekst UI. Jednostka w nawiasie prozy (`I_th [kA]`) nie ma prefiksu `-`
+#: ani dwukropka, a proza z polskimi znakami nie jest ASCII — nie sa lista klas.
+TOKEN_KLASY_CSS_RE = re.compile(r"[!\w:/.#%-]*(?:\[[^\s\]]*\][\w:/.%-]*)?", re.ASCII)
+WARTOSC_DOWOLNA_CSS_RE = re.compile(r"-\[[^\s\]]+\]|(?:^|:)\[[^\s\]:]+:[^\s\]]+\]")
 
 
-def _usun_interpolacje(wartosc: str) -> str:
-    """Usuwa segmenty `${...}` (kod JS/TS) z wnetrza template literal TS/TSX —
-    zostaje wylacznie tekst literalny widoczny dla uzytkownika. Balansuje
-    klamry, wiec `${foo({a: 1})}` znika w calosci, nie tylko do pierwszej `}`.
-    """
-    wynik: list[str] = []
-    i = 0
-    n = len(wartosc)
-    while i < n:
-        if wartosc[i] == "$" and i + 1 < n and wartosc[i + 1] == "{":
-            glebokosc = 1
-            i += 2
-            while i < n and glebokosc > 0:
-                if wartosc[i] == "{":
-                    glebokosc += 1
-                elif wartosc[i] == "}":
-                    glebokosc -= 1
-                i += 1
-            continue
-        wynik.append(wartosc[i])
-        i += 1
-    return "".join(wynik)
+def _jest_lista_klas_css(wartosc: str) -> bool:
+    tokeny = wartosc.split()
+    return (
+        bool(tokeny)
+        and any(WARTOSC_DOWOLNA_CSS_RE.search(token) for token in tokeny)
+        and all(TOKEN_KLASY_CSS_RE.fullmatch(token) for token in tokeny)
+    )
+
+
+#: Polecenie LaTeX zapisane w literale TS POJEDYNCZYM ukosnikiem (nieparzysta liczba `\`
+#: przed litera): w literale lancuchowym `'\Delta'` traci ukosnik (`Delta`), a `'\varphi'`,
+#: `'\frac'`, `'\times'`, `'\beta'`, `'\nu'`, `'\rho'` zamieniaja sie na znak sterujacy —
+#: KaTeX dostaje inny wzor, niz napisano. Poprawny zapis w zrodle to `\\Delta`. Ucieczki
+#: Unicode (`\u00b7`, `\u{…}`, `\x41`) nie sa poleceniem.
+POJEDYNCZY_UKOSNIK_RE = re.compile(r"(?<!\\)(?:\\\\)*\\(?![ux][0-9a-fA-F{])[a-zA-Z]")
+
+
+#: Ucieczka literalu JS poprzedzona NIEPARZYSTA liczba ukosnikow: Unicode (`\u0142`,
+#: `\u{1F600}`, `\x41`) i cudzyslow (`\'`, `\"`, `` \` ``). W surowym zapisie zrodla `\u0142`
+#: wyglada jak polecenie LaTeX (`\u…`), a jest znakiem (`ł`) — bez rozwiniecia tekst zapisany
+#: ucieczkami (dane JSON generatora fikstur) uchodzilby za LaTeX i wypadal ze skanu prozy;
+#: `'Ik\'\''` to w tekscie `Ik''`. Podwojny ukosnik (`\\cdot` — polecenie LaTeX) zostaje.
+UCIECZKA_JS_RE = re.compile(
+    r"(?<!\\)((?:\\\\)*)\\(?:u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,6})\}|x([0-9a-fA-F]{2})|(['\"`]))"
+)
+
+
+def _rozwin_ucieczki_js(wartosc: str) -> str:
+    def znak(dopasowanie: re.Match[str]) -> str:
+        if dopasowanie.group(5):
+            return dopasowanie.group(1) + dopasowanie.group(5)
+        kod = dopasowanie.group(2) or dopasowanie.group(3) or dopasowanie.group(4)
+        return dopasowanie.group(1) + chr(int(kod, 16))
+
+    return UCIECZKA_JS_RE.sub(znak, wartosc)
+
+
+def _sprawdz_ukosniki(zapisy_latex: list[str]) -> bool:
+    return any(POJEDYNCZY_UKOSNIK_RE.search(zapis) for zapis in zapisy_latex)
+
+
+POWOD_UKOSNIKA = (
+    "polecenie LaTeX z pojedynczym ukosnikiem w literale TS "
+    "(ginie albo staje sie znakiem sterujacym) — zapisz `\\\\polecenie`"
+)
+
+#: Napis atrybutu JSX (`latex="\\cos\\varphi"`) NIE jest literalem JS: ukosnik jest dosłowny,
+#: wiec podwojny ukosnik dociera do KaTeX-a jako `\\` (nowy wiersz) i litery polecenia jako
+#: zwykly tekst. Poprawny zapis w atrybucie JSX to pojedynczy ukosnik (`latex="\cos\varphi"`)
+#: albo wyrazenie `latex={'\\cos\\varphi'}`.
+PODWOJNY_UKOSNIK_RE = re.compile(r"\\\\[a-zA-Z]")
+POWOD_PODWOJNEGO_UKOSNIKA = (
+    "polecenie LaTeX z podwojnym ukosnikiem w napisie atrybutu JSX (ukosnik jest tam "
+    "doslowny — KaTeX dostaje `\\\\` i tekst) — zapisz `\\polecenie` albo wyrazenie {'...'}"
+)
 
 
 def _jest_juz_latex(wartosc: str) -> bool:
@@ -199,26 +256,315 @@ def _dopasowania(wartosc: str, *, stala_kodu_dozwolona: bool = False) -> list[st
     return trafienia
 
 
-def skanuj_ts(plik: Path) -> list[tuple[int, str, str]]:
+#: Symbol wielkosci SPLASZCZONY do znakow Unicode/ASCII w prozie frontu — projektant widzi
+#: `Ik″`, `Ith`, `cosφ`, `I₁` zamiast symbolu z indeksem. Zapis kanoniczny to wzor `$…$`
+#: (`$I''_{k}$`, `$I_{th}$`, `$\\cos\\varphi$`) skladany przez `MathInline` (HTML) albo
+#: `TekstSvgZWzorami` (SVG) z JEDNEGO zapisu LaTeX. Wzorzec (zamkniety, wielkosc liter istotna):
+#: (1) litera + indeks Unicode (`I₁`, `P₀`, `R₀`); (2) prim po symbolu (`Ik″`, `S″k`, `B′0`,
+#: `Ik''`, `Ik"max`); (3) symbol z indeksem sklejonym bez separatora z zamknietej listy
+#: wielkosci sieci (`Ik`, `Ip`, `Ib`, `Ith`, `Idyn`, `Icw`, `In`, `Un`, `uk`, `Sn`, `Sk3`, `Pmax`,
+#: `Pk`, `P0`, `Qmax`, `Z0`, `Zn`, `Rk`, `Xk`, `Zk`, `X1`, `R0`, `B0`, `ip`, `tk` …), `IΔn`;
+#: (4) `cos φ`/`cosφ`/`cos phi`/`tg φ`. Etykieta rewizji dokumentu (`rewizja R0`) nie jest rezystancja.
+#: Oznaczenia reguly (`R1`) i pasma (`B1`) nie sa na liscie — `R` i `B` tylko z indeksem 0;
+#: (5) ten sam znak z cyfra po nazwie wielkosci (`Rezystancja R1`, `Susceptancja B1`,
+#: `Impedancja Z2`) jest symbolem, nie oznaczeniem; `Uzad` i `sin φ` jak w (3)/(4);
+#: (6) granica zapisana ze spacja (`Q min`, `U max`, `P min`) i sklejona z indeksem Unicode
+#: po kilku literach (`Ik₁min`, `Ik₃`) jest tym samym symbolem z indeksem; `Ia`, `Iq`, `Id`,
+#: `twym` jak w (1). Wzor chemiczny gazu (`SF₆`, `CO₂`) nie jest symbolem wielkosci —
+#: indeks Unicode jest jego wlasciwym zapisem tekstowym.
+WZORZEC_SPLASZCZONY = re.compile(
+    r"""(?x)
+    (?<![\w\\])(?:
+        (?!SF₆|CO₂|N₂|H₂)[^\W\d_]{1,3}[₀-₉ₐ-ₜᵢ-ᵪ]+
+      | [A-Z][a-z]{0,2}\d?(?:″|′|'')\w*
+      | [A-Z]k"\w*
+      | I(?:k|p|b|th|dyn|cw|cu|cs|ma|n|r|e|q|d|a|max|min|sc|nom|k1|k2|k3|kmax|kmin|0|1|2)(?!\w)
+      | U(?:n|r|m|k|max|min|nom|c|zad|0|1|2)(?!\w)
+      | u(?:k|kr)(?![\w%])
+      | i(?:p|b|DC)(?!\w)
+      | t(?:k|b|wym|wył|wyl)(?!\w)
+      | P(?:k|0|max|min|n|zainst|gen|load)(?!\w)
+      | Q(?:max|min|n)(?!\w)
+      | [PQSIU]\ (?:min|max)(?!\w)
+      | S(?:n|k|k3|kmax|kmin|r)(?!\w)
+      | (?:[XZ][012]|[RXZ]k|Zn|(?<!rewizja\ )R0|B0)(?!\w)
+      | IΔ\w*
+      | (?<=ancj[aięe]\ )[RXBGZ][0-9](?!\w)
+      | cos\s?(?:φ|phi|fi)(?!\w) | sin\s?(?:φ|phi)(?!\w) | tg\s?φ | tan\s?φ
+    )"""
+)
+POWOD_SPLASZCZONEGO = (
+    "symbol splaszczony (np. 'Ik″', 'Ith', 'cosφ', 'I₁') poza wzorem $...$ "
+    "— zapis LaTeX przez MathInline/TekstSvgZWzorami"
+)
+
+
+#: Znak krotnosci przed symbolem (`×In`, `${x}×Un`, `5·IΔn`): literal z takim znakiem jest
+#: zapisem dla czlowieka takze jako jeden token poza kontekstem tekstu UI — identyfikator kodu
+#: znaku dzialania nie zawiera (pomiar 2026-11-04: `JEDNOSTKA_ZAKRESU_PL.KROTNOSC_IN = '×In'`
+#: trafial do pomocy pola progu edytora nastaw, a `display_pl` nastaw `${x}×In`/`${x}×Un`
+#: do inspektora zabezpieczen — oba omijaly skan jako „klucz kodu").
+ZNAK_KROTNOSCI_RE = re.compile(r"[×·]")
+
+
+def _splaszczone(wartosc: str, *, pojedynczy_token_jest_kodem: bool) -> bool:
+    """Czy proza (poza segmentami `$…$`) niesie symbol splaszczony. Literal z jednym tokenem
+    poza kontekstem tekstu UI (`"key": "Ib"`, kod funkcji `'I0>'` w mapie) jest kluczem kodu —
+    chyba ze niesie znak krotnosci (`×In`, `ZNAK_KROTNOSCI_RE`), wtedy jest zapisem dla czlowieka.
+    """
+    if (
+        pojedynczy_token_jest_kodem
+        and len(wartosc.split()) <= 1
+        and not ZNAK_KROTNOSCI_RE.search(wartosc)
+    ):
+        return False
+    proza = SEGMENT_WZORU_RE.sub(" ", wartosc)
+    return not _jest_juz_latex(proza) and bool(WZORZEC_SPLASZCZONY.search(proza))
+
+
+#: Skrypt wyciagajacy literaly i teksty JSX parserem kompilatora TypeScript.
+SKRYPT_TEKSTOW_TS = Path(__file__).resolve().parent / "teksty_ts.mjs"
+
+
+def wpisy_ts(pliki: list[Path]) -> dict[Path, list[dict[str, object]]]:
+    """Literaly lancuchowe/szablonowe i teksty JSX plikow TS/TSX (`teksty_ts.mjs`) — jeden
+    proces `node` na cala liste. Parser, nie wyrazenie regularne: literal szablonowy
+    zagniezdzony w interpolacji, literal wielowierszowy i tekst miedzy znacznikami JSX sa
+    osobnymi wezlami. Brak `node` albo blad parsera => `BladZrodla` (straznik nie zgaduje).
+    """
+    if not pliki:
+        return {}
+    node = shutil.which("node")
+    if node is None:
+        raise BladZrodla(f"{SKRYPT_TEKSTOW_TS}:0: brak `node` — teksty TS nie zostaly ocenione")
+    proces = subprocess.run(  # noqa: S603 — stala sciezka skryptu repozytorium
+        [node, str(SKRYPT_TEKSTOW_TS)],
+        input="\n".join(str(plik) for plik in pliki),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    if proces.returncode != 0:
+        raise BladZrodla(f"{SKRYPT_TEKSTOW_TS}:0: parser TS zakonczyl sie bledem: {proces.stderr}")
+    wynik: dict[Path, list[dict[str, object]]] = {}
+    for wpis in json.loads(proces.stdout):
+        wynik.setdefault(Path(str(wpis["plik"])), []).append(wpis)
+    return wynik
+
+
+def skanuj_ts(
+    plik: Path, wpisy: list[dict[str, object]] | None = None
+) -> list[tuple[int, str, str]]:
+    """Wzorce ASCII-matematyki na literalach pliku TS/TSX (wpisy `rodzaj == "literal"`).
+
+    Kontekst literalu (`przed` — tekst wiersza przed nim) rozstrzyga: wartosc wlasciwosci
+    LaTeX (`formula_latex:`, `latex=`) nie jest proza; klasa CSS nie jest tekstem; stala kodu
+    (`'V_MAGNITUDE'`) jest kodem tylko poza `strings.ts` i poza wlasciwoscia tekstowa.
+    Polecenie LaTeX z pojedynczym ukosnikiem jest sprawdzane w kazdym literale JS (nie
+    w napisie atrybutu JSX, gdzie ukosnik jest dosłowny)."""
+    if wpisy is None:
+        wpisy = wpisy_ts([plik]).get(plik, [])
     wyniki: list[tuple[int, str, str]] = []
-    tekst = czytaj_tekst(plik)
     modul_tekstow = plik.name == NAZWA_MODULU_TEKSTOW_UI
-    for numer, linia in enumerate(tekst.splitlines(), start=1):
-        oczyszczona = linia.strip()
-        if oczyszczona.startswith(("//", "*", "/*")):
+    for wpis in wpisy:
+        if wpis["rodzaj"] != "literal":
             continue
-        for dopasowanie in STRING_LITERAL_TS_RE.finditer(linia):
-            wartosc = dopasowanie.group("value")
-            if dopasowanie.group("quote") == "`":
-                wartosc = _usun_interpolacje(wartosc)
-            przed = linia[: dopasowanie.start()]
-            if KLUCZ_LATEX_TS_RE.search(przed):
-                # Wartosc pola LaTeX (`formula_latex:`, `symbolLatex:`) — zrodlo `MathInline`,
-                # z definicji nie proza; ta sama regula co `*_latex` w skanie Pythona.
+        numer = int(str(wpis["linia"]))
+        wiersz = str(wpis["wiersz"]).strip()[:140]
+        atrybut_jsx = bool(wpis["atrybut_jsx"])
+        # Napis atrybutu JSX nie zna ucieczek JS (`\\'` jest tam dwoma znakami).
+        surowa = str(wpis["wartosc"])
+        wartosc = surowa if atrybut_jsx else _rozwin_ucieczki_js(surowa)
+        przed = str(wpis["przed"])
+        klucz_latex = bool(KLUCZ_LATEX_TS_RE.search(przed))
+        zapisy_latex = [wartosc] if klucz_latex else SEGMENT_WZORU_RE.findall(wartosc)
+        if atrybut_jsx:
+            if any(PODWOJNY_UKOSNIK_RE.search(zapis) for zapis in zapisy_latex):
+                wyniki.append((numer, wiersz, POWOD_PODWOJNEGO_UKOSNIKA))
+        elif _sprawdz_ukosniki(zapisy_latex):
+            wyniki.append((numer, wiersz, POWOD_UKOSNIKA))
+        if klucz_latex:
+            # Wartosc pola LaTeX (`formula_latex:`, `symbolLatex:`) — zrodlo `MathInline`,
+            # z definicji nie proza; ta sama regula co `*_latex` w skanie Pythona.
+            continue
+        if _jest_lista_klas_css(wartosc):
+            continue
+        tekst_ui = modul_tekstow or bool(KLUCZ_TEKSTU_UI_RE.search(przed))
+        for powod in _dopasowania(wartosc, stala_kodu_dozwolona=not tekst_ui):
+            wyniki.append((numer, wiersz, powod))
+        if _splaszczone(wartosc, pojedynczy_token_jest_kodem=not tekst_ui):
+            wyniki.append((numer, wiersz, POWOD_SPLASZCZONEGO))
+    return wyniki
+
+
+def skanuj_jsx(teksty: list[tuple[int, str]]) -> list[tuple[int, str, str]]:
+    """Wzorce ASCII-matematyki na tekstach JSX pliku — zawsze tekst UI (bez wyjatku stalej
+    kodu). Segment `$...$` w tekscie JSX NIE jest wzorem: tekst JSX nie przechodzi przez
+    `TekstZWzorami`, wiec projektant zobaczylby dolary — symbol idzie przez `MathInline`.
+    """
+    wyniki: list[tuple[int, str, str]] = []
+    for numer, tekst in teksty:
+        powody = _dopasowania(tekst)
+        if _splaszczone(tekst, pojedynczy_token_jest_kodem=False):
+            powody.append(POWOD_SPLASZCZONEGO)
+        if SEGMENT_WZORU_RE.search(tekst):
+            powody.append("segment $...$ w tekscie JSX — wyswietli sie z dolarami (MathInline)")
+        for powod in powody:
+            wyniki.append((numer, tekst[:140], powod))
+    return wyniki
+
+
+def _teksty_jsx(wpisy: list[dict[str, object]]) -> list[tuple[int, str]]:
+    return [
+        (int(str(wpis["linia"])), str(wpis["tekst"])) for wpis in wpisy if wpis["rodzaj"] == "jsx"
+    ]
+
+
+POWOD_WZORU_BEZ_SKLADANIA = (
+    "stala tekstowa ze wzorem $...$ wstawiona do JSX bez skladania — tekst przez "
+    "`TekstZWzorami`, SVG `<text>` przez `TekstSvgZWzorami`, atrybut opisowy przez "
+    "`tekstBezWzorow`; inaczej projektant zobaczy dolary"
+)
+
+
+def sciezki_stalych_ze_wzorem(
+    wpisy: dict[Path, list[dict[str, object]]],
+) -> set[tuple[str, ...]]:
+    """Sciezki stalych tekstowych (`['ZWARCIA_STRINGS', 'tytul']`) niosacych segment `$...$`
+    — zebrane ze WSZYSTKICH skanowanych plikow (stala zyje w `strings.ts`, wyswietlenie
+    w komponencie)."""
+    wynik: set[tuple[str, ...]] = set()
+    for lista in wpisy.values():
+        for wpis in lista:
+            if wpis["rodzaj"] != "stala":
                 continue
-            tekst_ui = modul_tekstow or bool(KLUCZ_TEKSTU_UI_RE.search(przed))
-            for powod in _dopasowania(wartosc, stala_kodu_dozwolona=not tekst_ui):
-                wyniki.append((numer, oczyszczona[:140], powod))
+            wartosc = _rozwin_ucieczki_js(str(wpis["wartosc"]))
+            if SEGMENT_WZORU_RE.search(wartosc):
+                wynik.add(tuple(str(czesc) for czesc in wpis["sciezka"]))  # type: ignore[union-attr]
+    return wynik
+
+
+def _pasuje_sciezka(wyswietlana: tuple[str, ...], stala: tuple[str, ...]) -> bool:
+    """Sciezka wyswietlenia (`T.qu.tytul`, `NAZWY[k]` -> `*`) wskazuje stala ze wzorem."""
+    if len(wyswietlana) != len(stala):
+        return False
+    return all(a == b or a == "*" or b == "*" for a, b in zip(wyswietlana, stala, strict=True))
+
+
+def skanuj_wyswietlenia(
+    wpisy: list[dict[str, object]], stale_ze_wzorem: set[tuple[str, ...]]
+) -> list[tuple[int, str, str]]:
+    """Stala ze wzorem `$...$` wstawiona wprost jako dziecko elementu JSX (`{T.opis}`) albo do
+    atrybutu opisowego (`title={T.opis}`) — bez `TekstZWzorami`/`tekstBezWzorow` ekran pokaze
+    dolary. Wywolanie funkcji (`tekstBezWzorow(T.opis)`) i przekazanie do `tekst=` komponentu
+    skladajacego nie sa wyswietleniem wprost."""
+    wyniki: list[tuple[int, str, str]] = []
+    for wpis in wpisy:
+        if wpis["rodzaj"] != "wyswietlenie":
+            continue
+        sciezka = tuple(str(czesc) for czesc in wpis["sciezka"])  # type: ignore[union-attr]
+        if any(_pasuje_sciezka(sciezka, stala) for stala in stale_ze_wzorem):
+            wiersz = str(wpis["wiersz"]).strip()[:140]
+            wyniki.append(
+                (
+                    int(str(wpis["linia"])),
+                    wiersz,
+                    f"{POWOD_WZORU_BEZ_SKLADANIA} ({wpis['miejsce']})",
+                )
+            )
+    return wyniki
+
+
+#: Komponent (plik, nazwa eksportu) -> wlasciwosci wyswietlane wprost (`{tytul}`).
+KomponentySurowe = dict[tuple[str, str], frozenset[str]]
+
+
+def komponenty_wyswietlajace_wprost(
+    wpisy: dict[Path, list[dict[str, object]]],
+) -> KomponentySurowe:
+    """Komponenty funkcyjne, ktore wstawiaja wlasciwosc do JSX wprost (dziecko elementu albo
+    atrybut opisowy) — z reeksportami (`export { X } from './X'`, do 5 krokow), zeby uzycie
+    przez `index.ts` trafialo w definicje."""
+    komponenty: dict[tuple[str, str], frozenset[str]] = {}
+    reeksporty: dict[tuple[str, str], tuple[str, str]] = {}
+    for lista in wpisy.values():
+        for wpis in lista:
+            if wpis["rodzaj"] == "komponent":
+                klucz = (str(wpis["plik"]), str(wpis["nazwa"]))
+                komponenty[klucz] = frozenset(str(w) for w in wpis["wlasciwosci"])  # type: ignore[union-attr]
+            elif wpis["rodzaj"] == "reeksport" and wpis["modul"]:
+                reeksporty[(str(wpis["plik"]), str(wpis["nazwa"]))] = (
+                    str(wpis["modul"]),
+                    str(wpis["zrodlowa"]),
+                )
+    for klucz in list(reeksporty):
+        cel = klucz
+        for _krok in range(5):
+            if cel in komponenty:
+                komponenty[klucz] = komponenty[cel]
+                break
+            if cel not in reeksporty:
+                break
+            cel = reeksporty[cel]
+    return komponenty
+
+
+def skanuj_uzycia(
+    wpisy: list[dict[str, object]],
+    stale_ze_wzorem: set[tuple[str, ...]],
+    komponenty: KomponentySurowe,
+) -> list[tuple[int, str, str]]:
+    """Wzor `$...$` przekazany wlasciwoscia do komponentu, ktory te wlasciwosc wstawia do JSX
+    wprost (`<StanPanel komunikat={T.idle} />` + `<p>{komunikat}</p>`) — jeden krok drogi
+    danych, ktorego skan wyswietlen w pliku nie widzi. Naprawa w KOMPONENCIE (sklada
+    `TekstZWzorami`), bo kazde inne uzycie niesie te sama droge."""
+    wyniki: list[tuple[int, str, str]] = []
+    for wpis in wpisy:
+        if wpis["rodzaj"] != "uzycie" or not wpis["modul"]:
+            continue
+        surowe = komponenty.get((str(wpis["modul"]), str(wpis["komponent"])))
+        if not surowe or str(wpis["wlasciwosc"]) not in surowe:
+            continue
+        sciezki = [tuple(str(c) for c in s) for s in wpis["sciezki"]]  # type: ignore[union-attr]
+        wartosc = wpis["wartosc"]
+        ze_wzorem = any(
+            _pasuje_sciezka(sciezka, stala) for sciezka in sciezki for stala in stale_ze_wzorem
+        ) or (isinstance(wartosc, str) and bool(SEGMENT_WZORU_RE.search(wartosc)))
+        if ze_wzorem:
+            wyniki.append(
+                (
+                    int(str(wpis["linia"])),
+                    str(wpis["wiersz"]).strip()[:140],
+                    f"{POWOD_WZORU_BEZ_SKLADANIA} (wlasciwosc `{wpis['wlasciwosc']}` "
+                    f"komponentu `{wpis['komponent']}` wstawiana wprost)",
+                )
+            )
+    return wyniki
+
+
+def skanuj_plik_frontu(
+    plik: Path,
+    wpisy: list[dict[str, object]] | None = None,
+    stale_ze_wzorem: set[tuple[str, ...]] | None = None,
+    komponenty: KomponentySurowe | None = None,
+) -> list[tuple[int, str, str]]:
+    """Skan pliku frontu: literaly lancuchowe/szablonowe, teksty JSX, wyswietlenia stalych
+    ze wzorem i przekazania wzoru do komponentu wyswietlajacego wprost (zbiory stalych
+    i komponentow z calego skanu; bez nich — z tego pliku)."""
+    if wpisy is None:
+        wpisy = wpisy_ts([plik]).get(plik, [])
+    if stale_ze_wzorem is None:
+        stale_ze_wzorem = sciezki_stalych_ze_wzorem({plik: wpisy})
+    if komponenty is None:
+        komponenty = komponenty_wyswietlajace_wprost({plik: wpisy})
+    wyniki = (
+        skanuj_ts(plik, wpisy)
+        + skanuj_jsx(_teksty_jsx(wpisy))
+        + skanuj_wyswietlenia(wpisy, stale_ze_wzorem)
+        + skanuj_uzycia(wpisy, stale_ze_wzorem, komponenty)
+    )
+    wyniki.sort(key=lambda trafienie: trafienie[0])
     return wyniki
 
 
@@ -353,7 +699,7 @@ def wyjatki_osierocone(root: Path) -> list[str]:
                 "ktorego juz nie ma w repo — usun ten wpis"
             )
             continue
-        trafienia = skanuj_py(pelna) if pelna.suffix == ".py" else skanuj_ts(pelna)
+        trafienia = skanuj_py(pelna) if pelna.suffix == ".py" else skanuj_plik_frontu(pelna)
         if any(linia_numer == numer for linia_numer, _linia, _powod in trafienia):
             continue
         problemy.append(
@@ -368,9 +714,11 @@ def main() -> int:
     print("GUARD: ui_math_guard (karta V12.7 — matematyka wylacznie KaTeX)")
     print("=" * 70)
 
-    if not FRONTEND_UI2.is_dir():
-        print(f"BLAD: katalog nie istnieje: {FRONTEND_UI2}")
-        return 1
+    katalogi_frontu = (FRONTEND_UI, FRONTEND_UI2)
+    for katalog in katalogi_frontu:
+        if not katalog.is_dir():
+            print(f"BLAD: katalog nie istnieje: {katalog}")
+            return 1
     for plik in BACKEND_PLIKI:
         if not plik.is_file():
             print(f"BLAD: plik nie istnieje: {plik}")
@@ -379,11 +727,24 @@ def main() -> int:
     wszystkie: list[tuple[str, int, str, str]] = []
     wyjatki_trafione: list[tuple[str, int, str, str]] = []
 
-    for plik in sorted(FRONTEND_UI2.rglob("*.ts")) + sorted(FRONTEND_UI2.rglob("*.tsx")):
+    pliki_frontu = [
+        plik
+        for katalog in katalogi_frontu
+        for plik in sorted(katalog.rglob("*.ts")) + sorted(katalog.rglob("*.tsx"))
+    ]
+    pliki_frontu = [
+        plik
+        for plik in pliki_frontu
+        if not any(wzorzec in plik.relative_to(ROOT).as_posix() for wzorzec in WYLACZONE_WZORCE)
+    ]
+    wpisy = wpisy_ts(pliki_frontu)
+    stale_ze_wzorem = sciezki_stalych_ze_wzorem(wpisy)
+    komponenty = komponenty_wyswietlajace_wprost(wpisy)
+    for plik in pliki_frontu:
         wzgledna = plik.relative_to(ROOT).as_posix()
-        if any(wzorzec in wzgledna for wzorzec in WYLACZONE_WZORCE):
-            continue
-        for numer, linia, powod in skanuj_ts(plik):
+        for numer, linia, powod in skanuj_plik_frontu(
+            plik, wpisy.get(plik, []), stale_ze_wzorem, komponenty
+        ):
             cel = wyjatki_trafione if (wzgledna, numer) in WYJATKI_ZNANE else wszystkie
             cel.append((wzgledna, numer, linia, powod))
 

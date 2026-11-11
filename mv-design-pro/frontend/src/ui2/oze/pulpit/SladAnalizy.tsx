@@ -7,8 +7,10 @@
  * Kanon kroku: Wzór → Podstawienie → Wynik → (opcjonalnie) Weryfikacja
  * jednostek. `formula_latex` to czysty LaTeX z backendu (MathInline,
  * fail-safe fallback w MathRenderer); pola tekstowe (podstawienie, wynik,
- * jednostki) mogą nieść wzory inline w delimiterach `$...$` — renderuje je
- * `TekstZWzorami`. Identyfikator kroku `symbol` (np. `ΣQ_zrodla` z backendu) NIE jest
+ * jednostki) są PROZĄ bez zapisu LaTeX (kontrakt kroku śladu,
+ * `scripts/slad_proza_bez_latex_guard.py`); `TekstZWzorami` zostaje jako renderer prozy.
+ * Weryfikacja jednostek: zdanie słowami (`unit_check_pl`) + algebra jednostek wzorem
+ * KaTeX z `unit_check_latex` (karta ZU pkt 4) — nie tekst „Mvar − Mvar = Mvar". Identyfikator kroku `symbol` (np. `ΣQ_zrodla` z backendu) NIE jest
  * pokazywany przy wzorze — symbol wielkości niesie sam wzór KaTeX-em (`ui_math_guard`, karta
  * UX-04/ZU). Krok bez wzoru (formula_latex = '', wyłącznie kroki lokalne z nazwą prozą,
  * np. „konwencja znaku”) pokazuje tę nazwę. Zero ocen własnych, zero fizyki — dane z backendu.
@@ -19,7 +21,7 @@ import { TekstZWzorami } from '../../kreatory/rama';
 import type { KrokSladuQ, KrokSladuSily } from '../api';
 import { PULPIT_STRINGS } from './strings';
 
-type KrokSladu = KrokSladuSily | Partial<Pick<KrokSladuQ, 'unit_check_pl'>> & KrokSladuSily;
+type KrokSladu = KrokSladuSily | (Partial<Pick<KrokSladuQ, 'unit_check_pl' | 'unit_check_latex'>> & KrokSladuSily);
 
 export interface SladAnalizyProps {
   readonly kroki: readonly KrokSladu[];
@@ -59,7 +61,7 @@ export function SladAnalizy({ kroki }: SladAnalizyProps): JSX.Element {
               <MathInline latex={krok.formula_latex} />
             </Pole>
           ) : (
-            <span className="mvd-oze-panel-etyk">{krok.symbol}</span>
+            <span className="mvd-oze-panel-etyk"><TekstZWzorami tekst={krok.symbol} /></span>
           )}
           {krok.substitution_pl ? (
             <Pole etykieta={PULPIT_STRINGS.sladPodstawienie}>
@@ -72,6 +74,12 @@ export function SladAnalizy({ kroki }: SladAnalizyProps): JSX.Element {
           {'unit_check_pl' in krok && krok.unit_check_pl ? (
             <Pole etykieta={PULPIT_STRINGS.sladJednostki}>
               <TekstZWzorami tekst={krok.unit_check_pl} />
+              {'unit_check_latex' in krok && krok.unit_check_latex ? (
+                <>
+                  {' '}
+                  <MathInline latex={krok.unit_check_latex} />
+                </>
+              ) : null}
             </Pole>
           ) : null}
         </li>

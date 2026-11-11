@@ -2108,7 +2108,24 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
     # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
     # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
+    # Ta sama karta, punkt 4 — wzor w polu LaTeX obok prozy (decyzja architekta 2026-11-04):
+    # 4503 -> 4507 — POMIAR `contract_fields()` na `cd4ea97cb` (`git archive`: 4503, pin
+    # zgodny) i na drzewie karty (4507). Roznica zbiorow +4, -0: `computed_from_latex`
+    # (`ProtectionComputedValue`), `wymagane_latex` i `dostepne_latex` (`Kryterium` doboru
+    # przekladnika), `result_latex` (`WhiteBoxStep` SSCI; `substitution_latex` byl juz w zbiorze,
+    # `formula_latex` tez). Pola LaTeX to zapis wzoru obok prozy, nie dana wejsciowa solvera.
+    # PASS niezmieniony (zero podstawien).
+    # Karta ZU punkt 4 (nastepca: algebra jednostek do pol LaTeX, 2026-11-04): 4507 -> 4504 —
+    # POMIAR `contract_fields()` na `c20ea5104` (`git archive` drzewa `backend/src`: 4507, pin
+    # zgodny) i na drzewie karty (4504). Roznica zbiorow +5, -8. +5: `derivation_latex`
+    # i `unit_derivation_latex` (pola wyprowadzenia jednostki kroku dowodu — dawne
+    # `derivation`/`unit_derivation` niosly algebre jednostek tekstem), `unit_check_latex`
+    # (`WhiteBoxStep` adekwatnosci mocy biernej), `JEDNOSTKA_WYNIKU` i `_ALIASY` (tablice
+    # weryfikatora jednostek dowodu). -8: `derivation`, `unit_derivation`, `DERIVATION_RULES`
+    # (tekstowe reguly wyprowadzen weryfikatora) oraz pola `V`, `W`, `m`, `ohm`, `s` dawnego
+    # wymiaru jednostki `UnitDimension` weryfikatora. Zadne z nich nie jest dana wejsciowa
+    # solvera. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4504." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2431,7 +2448,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
         # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
         # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta ZU, punkt 4 (proza slowami, wzory KaTeX, 2026-11-04): 604 -> 605 (+1
+        # `application/ncrfg_compliance/wzory_sladu.py` — wzory LaTeX krokow sladu zgodnosci
+        # NC RfG). POMIAR guardem na `01c5def16` (`git archive`: 604) i na drzewie karty (605);
+        # dlug i wykluczenia BEZ ZMIAN.
+        # Nastepca tej karty (algebra jednostek do pol LaTeX, 2026-11-04): 605 -> 606 (+1
+        # `application/proof_engine/zapis_jednostek.py` — zapis jednostki wartosci dowodu
+        # w LaTeX dla eksportu). POMIAR guardem na `c20ea5104` (605) i na drzewie karty (606);
+        # dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2856,7 +2881,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-30): application 255 -> 254
         # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
-        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
+        # Karta ZU, punkt 4 (2026-11-04): application 254 -> 255 (+1
+        # `ncrfg_compliance/wzory_sladu.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Nastepca (2026-11-04): application 255 -> 256 (+1 `proof_engine/zapis_jednostek.py`);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

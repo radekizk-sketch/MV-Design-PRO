@@ -472,15 +472,15 @@ const DOZIEMIENIE_KOMPENSOWANE = {
   opis_uziemienia_pl: 'Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący.',
   dane_przyjete: [
     {
-      nazwa_pl: 'Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)',
+      nazwa_pl: 'Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)',
       wartosc: { wartosc: 1.5, jednostka: 'Ω' },
       powod_pl: 'założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN.',
       jakosc: 'ESTIMATED',
     },
     {
-      nazwa_pl: 'B′0 wartość robocza (Linia SN 1)',
+      nazwa_pl: 'Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)',
       wartosc: { wartosc: 0.0000012, jednostka: 'S/km' },
-      powod_pl: 'B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu.',
+      powod_pl: 'Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu.',
       jakosc: 'ESTIMATED',
     },
   ],
@@ -550,10 +550,14 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
     const dane = screen.getByTestId('mvd-skladowe-doziemienie-dane-przyjete');
     // Zapis liczb po polsku (ten sam co karta werdyktu): przecinek dziesiętny, także dla
     // małych wartości B′0 — dawniej ekran pokazywał surowy zapis JS „0.0000012 S/km".
-    expect(dane).toHaveTextContent('R0 (Zespół uziemiający sekcji 1): 1,5 Ω');
-    expect(dane).toHaveTextContent('B′0 wartość robocza (Linia SN 1): 0,0000012 S/km');
+    expect(dane).toHaveTextContent(
+      'Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1): 1,5 Ω',
+    );
+    expect(dane).toHaveTextContent(
+      'Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1): 0,0000012 S/km',
+    );
     expect(dane.textContent).not.toMatch(/\d\.\d/);
-    expect(within(dane).getByText(/R0/)).toHaveAttribute(
+    expect(within(dane).getByText(/Rezystancja zerowa transformatora uziemiającego/)).toHaveAttribute(
       'title',
       'założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN.',
     );

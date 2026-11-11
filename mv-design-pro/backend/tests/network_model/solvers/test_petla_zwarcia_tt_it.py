@@ -269,7 +269,7 @@ class TestPetlaIT:
     @pytest.mark.parametrize(
         ("kwargs", "fragment"),
         [
-            ({"b0_siemens_per_km": -1e-5, "length_km": 0.1}, "Susceptancja zerowa b_0"),
+            ({"b0_siemens_per_km": -1e-5, "length_km": 0.1}, "Susceptancja zerowa odcinka"),
             ({"b0_siemens_per_km": 1e-5, "length_km": 0.0}, "Długość odcinka sieci IT"),
             (
                 {"b0_siemens_per_km": 1e-5, "length_km": 0.1, "n_parallel": 0},
@@ -416,3 +416,17 @@ class TestJednoWejscie:
         wynik = compute_fault_loop(_wejscie(NetworkType.TT, _dane_tt()))
         with pytest.raises(Exception):
             wynik.tt_it.u_dotyk_v = 0.0  # type: ignore[misc]
+
+
+@pytest.mark.parametrize("r_a_ohm", [None, 10.0])
+def test_metoda_napiecia_dotykowego_slowami_wzor_w_method_latex(r_a_ohm) -> None:
+    """Obie gałęzie kroku napięcia dotykowego IT (z rezystancją uziomu i bez): metoda słowami,
+    wzór w `method_latex` (decyzja architekta 2026-11-04)."""
+    wynik = compute_fault_loop(_wejscie(NetworkType.IT, _dane_it(r_a_ohm=r_a_ohm)))
+    krok = next(
+        k for k in wynik.white_box_trace if k["step"] == "napiecie_dotykowe_pierwszego_zwarcia_it"
+    )
+    assert krok["method"] == (
+        "napięcie dotykowe jako iloczyn rezystancji uziomu instalacji i prądu pierwszego zwarcia"
+    )
+    assert krok["method_latex"] == r"U_{dotyk} = R_{A} \cdot I_{d}"

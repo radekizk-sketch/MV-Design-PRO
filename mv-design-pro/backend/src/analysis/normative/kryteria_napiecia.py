@@ -62,7 +62,7 @@ from typing import Final
 PODSTAWA_PN_EN_50160_PL = (
     "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach "
     "elektroenergetycznych) — zmiany napięcia zasilającego w warunkach "
-    "normalnej pracy: Un ± 10 %."
+    "normalnej pracy: napięcie znamionowe ± 10 %."
 )
 
 #: Podstawa kryterium ostrzezenia projektowego (5 %) — UCZCIWIE NIE PN-EN
@@ -71,7 +71,7 @@ PODSTAWA_PN_EN_50160_PL = (
 PODSTAWA_KRYTERIUM_OSTRZEZENIE_PL = (
     "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci "
     "nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie "
-    "PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to "
+    "PN-EN 50160 ± 10 % napięcia znamionowego. To NIE jest zapis PN-EN 50160 wprost — jest to "
     "kryterium projektowe planowania sieci SN, nazwane osobno od normy."
 )
 
@@ -118,12 +118,12 @@ KRYTERIUM_PRZEKROCZENIE_PODSTAWA_PL = PODSTAWA_PN_EN_50160_PL
 KRYTERIUM_SPADKU_CIAGU_SN_PROCENT: float = KRYTERIUM_OSTRZEZENIE_PROCENT
 #: Nazwa dokumentu podstawy (pole `dokument` podstawy rekordu oceny).
 KRYTERIUM_SPADKU_CIAGU_SN_DOKUMENT_PL = (
-    "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un "
+    "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego "
     "zastosowane do spadku napięcia wzdłuż ciągu SN"
 )
 KRYTERIUM_SPADKU_CIAGU_SN_PODSTAWA_PL = (
     "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 "
-    "± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, "
+    "± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, "
     "a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze "
     "podstaw"
 )

@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state';
+import { MathInline } from '../../ui/proof/MathRenderer';
 
 interface KomponentPetli {
   readonly label: string;
@@ -82,17 +83,23 @@ function WierszeTtIt({ tt }: { readonly tt: WynikTtIt }) {
     return (
       <>
         <div className="mvd-insp-petla-para">
-          <dt>Uziomy R_B (stacja) / R_A (instalacja)</dt>
+          <dt>
+            Uziomy <MathInline latex="R_B" /> (stacja) / <MathInline latex="R_A" /> (instalacja)
+          </dt>
           <dd className="mvd-num">
             {fmtLubBrak(tt.r_b_ohm, (x) => `${fmt(x, 2)} Ω`)} / {fmtLubBrak(tt.r_a_ohm, (x) => `${fmt(x, 2)} Ω`)}
           </dd>
         </div>
         <div className="mvd-insp-petla-para">
-          <dt>Prąd różnicowy RCD I_Δn</dt>
+          <dt>
+            Prąd różnicowy RCD <MathInline latex="I_{\Delta n}" />
+          </dt>
           <dd className="mvd-num">{fmtLubBrak(tt.i_delta_n_a, fmtPrad)}</dd>
         </div>
         <div className="mvd-insp-petla-para">
-          <dt>Napięcie dotykowe R_A·I_Δn</dt>
+          <dt>
+            Napięcie dotykowe <MathInline latex="R_A \cdot I_{\Delta n}" />
+          </dt>
           <dd className="mvd-num">{fmtLubBrak(tt.u_dotyk_v, (x) => `${fmt(x, 2)} V`)}</dd>
         </div>
       </>
@@ -101,19 +108,27 @@ function WierszeTtIt({ tt }: { readonly tt: WynikTtIt }) {
   return (
     <>
       <div className="mvd-insp-petla-para">
-        <dt>Pojemność doziemna sieci C_e</dt>
+        <dt>
+          Pojemność doziemna sieci <MathInline latex="C_e" />
+        </dt>
         <dd className="mvd-num">{fmtLubBrak(tt.c_e_f, (x) => `${fmt(x * 1e6, 3)} µF`)}</dd>
       </div>
       <div className="mvd-insp-petla-para">
-        <dt>Prąd pierwszego zwarcia doziemnego I_d</dt>
+        <dt>
+          Prąd pierwszego zwarcia doziemnego <MathInline latex="I_d" />
+        </dt>
         <dd className="mvd-num">{fmtLubBrak(tt.i_d_pierwsze_zwarcie_a, fmtPrad)}</dd>
       </div>
       <div className="mvd-insp-petla-para">
-        <dt>Napięcie dotykowe pierwszego zwarcia R_A·I_d</dt>
+        <dt>
+          Napięcie dotykowe pierwszego zwarcia <MathInline latex="R_A \cdot I_d" />
+        </dt>
         <dd className="mvd-num">{fmtLubBrak(tt.u_dotyk_pierwsze_zwarcie_v, (x) => `${fmt(x, 2)} V`)}</dd>
       </div>
       <div className="mvd-insp-petla-para">
-        <dt>Prąd drugiego zwarcia I_d2 (min / max)</dt>
+        <dt>
+          Prąd drugiego zwarcia <MathInline latex="I_{d2}" /> (min / max)
+        </dt>
         <dd className="mvd-num">
           {fmtLubBrak(tt.i_d2_min_a, fmtPrad)} / {fmtLubBrak(tt.i_d2_max_a, fmtPrad)}
         </dd>
@@ -180,11 +195,21 @@ export function SekcjaPetlaZwarcia({ stationRef }: { stationRef: string }) {
         <>
           <dl className="mvd-insp-petla-dl">
             <div className="mvd-insp-petla-para">
-              <dt>Impedancja pętli Z_s</dt>
+              <dt>
+                Impedancja pętli <MathInline latex="Z_s" />
+              </dt>
               <dd className="mvd-num">{fmt(d.fault_loop.z_loop_ohm.magnitude, 4)} Ω</dd>
             </div>
             <div className="mvd-insp-petla-para">
-              <dt>{d.fault_loop.tt_it ? `Prąd zwarcia doziemnego ${d.fault_loop.tt_it.rodzaj_pradu_pl} (min / max)` : 'Prąd zwarcia Ik (min / max)'}</dt>
+              <dt>
+                {d.fault_loop.tt_it ? (
+                  `Prąd zwarcia doziemnego ${d.fault_loop.tt_it.rodzaj_pradu_pl} (min / max)`
+                ) : (
+                  <>
+                    Prąd zwarcia <MathInline latex="I_k" /> (min / max)
+                  </>
+                )}
+              </dt>
               <dd className="mvd-num">
                 {fmtPrad(d.fault_loop.ik_min_a)} / {fmtPrad(d.fault_loop.ik_max_a)}
               </dd>

@@ -256,7 +256,7 @@ def test_mapa_klas_pokrywa_caly_literal_gen_type() -> None:
 
 
 def test_utraty_generatora_nazwane() -> None:
-    assert any("fw_pmsg/fw_dfig" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
+    assert any("`fw_pmsg`/`fw_dfig`" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
     assert not any("gen_type=None" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
     assert any("quantity" in u for u in GENERATOR_UTRATA_TORU_OBCEGO)
 

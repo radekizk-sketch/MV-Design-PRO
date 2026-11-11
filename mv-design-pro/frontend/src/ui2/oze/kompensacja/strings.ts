@@ -28,15 +28,15 @@ export const KOMPENSACJA_STRINGS = {
     'Co to jest: szyna, w której dobierana jest bateria kondensatorów. Skąd wartości: '
     + 'lista węzłów pochodzi z wersji modelu przebiegu rozpływu. Konsekwencja: kandydaci '
     + 'ograniczeni do baterii o napięciu znamionowym zgodnym z napięciem tej szyny.',
-  paramCosfiMin: 'Wymagany cosφ (minimalny)',
+  paramCosfiMin: 'Wymagany $\\cos\\varphi$ (minimalny)',
   paramCosfiMinOpis:
     'Co to jest: docelowy minimalny współczynnik mocy w punkcie kompensowanym. Zakres '
     + 'typowy: 0,90–1,00. Skąd domyślna: typowy wymóg umowy przyłączeniowej (0,95). '
-    + 'Konsekwencja: dobór wskazuje najmniejszą baterię, przy której cosφ punktu ≥ próg.',
+    + 'Konsekwencja: dobór wskazuje najmniejszą baterię, przy której $\\cos\\varphi$ punktu ≥ próg.',
   paramNoc: 'Uwzględnij scenariusz nocny',
   paramNocOpis:
     'Co to jest: dodatkowy przegląd z mocą czynną generatorów = 0 (moc bierna źródeł bez '
-    + 'zmian). Konsekwencja: dobór musi spełniać wymóg cosφ zarówno w dzień, jak i w nocy.',
+    + 'zmian). Konsekwencja: dobór musi spełniać wymóg $\\cos\\varphi$ zarówno w dzień, jak i w nocy.',
 
   // Przyciski biegu
   przyciskOblicz: 'Dobierz baterię',
@@ -51,32 +51,32 @@ export const KOMPENSACJA_STRINGS = {
   brakWezlowOpis:
     'Wersja modelu przebiegu nie zawiera żadnej szyny. Zbuduj model sieci, aby dobrać '
     + 'kompensację.',
-  idle: 'Wskaż węzeł punktu przyłączenia i wymagany cosφ, następnie uruchom dobór',
+  idle: 'Wskaż węzeł punktu przyłączenia i wymagany $\\cos\\varphi$, następnie uruchom dobór',
   idleOpis:
     'Jawny bieg przejrzy rekordy katalogu baterii rosnąco po mocy i wskaże najmniejszą '
-    + 'spełniającą wymóg cosφ w punkcie kompensowanym.',
+    + 'spełniającą wymóg $\\cos\\varphi$ w punkcie kompensowanym.',
   ladowanie: 'Dobór baterii kompensacji…',
   blad: 'Nie udało się dobrać baterii kompensacji',
 
   // Nota rozdziału dwóch cosφ (wymóg właściciela) + konwencja kanoniczna
-  notaCosfiTytul: 'Dwie odrębne wielkości cosφ',
+  notaCosfiTytul: 'Dwie odrębne wielkości $\\cos\\varphi$',
   notaCosfiPunktu:
-    'cosφ punktu kompensowanego — z lokalnego bilansu $Q_{\\text{netto}} = Q_{\\text{odb}} - Q_{\\text{bat}}$. '
+    '$\\cos\\varphi$ punktu kompensowanego — z lokalnego bilansu $Q_{\\text{netto}} = Q_{\\text{odb}} - Q_{\\text{bat}}$. '
     + 'To NA NIM opiera się dobór baterii (kolumna decyzyjna, werdykt „spełnia").',
   notaCosfiPrzekroju:
-    'cosφ przekroju sieciowego — cosφ przepływu mocy w przekroju sieci. Wielkość '
+    '$\\cos\\varphi$ przekroju sieciowego — $\\cos\\varphi$ przepływu mocy w przekroju sieci. Wielkość '
     + 'informacyjna; NIE jest miarą skompensowania odbioru i NIE steruje doborem.',
   notaKonwencjaTytul: 'Konwencja kanoniczna znaku',
 
   // Sekcja stanu wyjściowego (baseline)
   baselineTytul: 'Stan wyjściowy punktu (bez baterii)',
   baselineKomentarz:
-    'Bez baterii $Q_{\\text{bat}} = 0$, więc cosφ punktu i cosφ przekroju są równe; obie '
+    'Bez baterii $Q_{\\text{bat}} = 0$, więc $\\cos\\varphi$ punktu i $\\cos\\varphi$ przekroju są równe; obie '
     + 'wielkości pokazano jawnie, aby były rozróżnialne również w tabeli kandydatów.',
-  baselineCosfiPunktuDzien: 'cosφ punktu kompensowanego (dzień)',
-  baselineCosfiPunktuNoc: 'cosφ punktu kompensowanego (noc)',
-  baselineCosfiPrzekrojuDzien: 'cosφ przekroju sieciowego (dzień)',
-  baselineCosfiPrzekrojuNoc: 'cosφ przekroju sieciowego (noc)',
+  baselineCosfiPunktuDzien: '$\\cos\\varphi$ punktu kompensowanego (dzień)',
+  baselineCosfiPunktuNoc: '$\\cos\\varphi$ punktu kompensowanego (noc)',
+  baselineCosfiPrzekrojuDzien: '$\\cos\\varphi$ przekroju sieciowego (dzień)',
+  baselineCosfiPrzekrojuNoc: '$\\cos\\varphi$ przekroju sieciowego (noc)',
 
   // Tabela kandydatów
   tabelaTytul: 'Kandydaci z katalogu (rosnąco po mocy znamionowej)',
@@ -87,11 +87,11 @@ export const KOMPENSACJA_STRINGS = {
   kolQnettoDzien: 'Q netto punktu (dzień)',
   kolQnettoNoc: 'Q netto punktu (noc)',
   // Kolumny DECYZYJNE — cosφ punktu kompensowanego (podstawa doboru):
-  kolCosfiPunktuDzien: 'cosφ punktu kompensowanego (dzień)',
-  kolCosfiPunktuNoc: 'cosφ punktu kompensowanego (noc)',
+  kolCosfiPunktuDzien: '$\\cos\\varphi$ punktu kompensowanego (dzień)',
+  kolCosfiPunktuNoc: '$\\cos\\varphi$ punktu kompensowanego (noc)',
   // Kolumny INFORMACYJNE — cosφ przekroju sieciowego (nie steruje doborem):
-  kolCosfiPrzekrojuDzien: 'cosφ przekroju sieciowego (dzień)',
-  kolCosfiPrzekrojuNoc: 'cosφ przekroju sieciowego (noc)',
+  kolCosfiPrzekrojuDzien: '$\\cos\\varphi$ przekroju sieciowego (dzień)',
+  kolCosfiPrzekrojuNoc: '$\\cos\\varphi$ przekroju sieciowego (noc)',
   kolWerdykt: 'Werdykt doboru',
   werdyktSpelnia: 'spełnia',
   werdyktNieSpelnia: 'nie spełnia',
@@ -101,12 +101,12 @@ export const KOMPENSACJA_STRINGS = {
   doborNaglowekOk: 'Dobrana bateria z katalogu',
   doborMoc: 'Moc znamionowa',
   doborNapiecie: 'Napięcie znamionowe',
-  doborCosfiPunktuDzien: 'cosφ punktu kompensowanego po doborze (dzień)',
-  doborCosfiPunktuNoc: 'cosφ punktu kompensowanego po doborze (noc)',
-  doborCosfiPrzekrojuDzien: 'cosφ przekroju sieciowego po doborze (dzień)',
-  doborCosfiPrzekrojuNoc: 'cosφ przekroju sieciowego po doborze (noc)',
+  doborCosfiPunktuDzien: '$\\cos\\varphi$ punktu kompensowanego po doborze (dzień)',
+  doborCosfiPunktuNoc: '$\\cos\\varphi$ punktu kompensowanego po doborze (noc)',
+  doborCosfiPrzekrojuDzien: '$\\cos\\varphi$ przekroju sieciowego po doborze (dzień)',
+  doborCosfiPrzekrojuNoc: '$\\cos\\varphi$ przekroju sieciowego po doborze (noc)',
   doborPodstawa:
-    'Dobór sterowany wyłącznie wielkością cosφ punktu kompensowanego; cosφ przekroju '
+    'Dobór sterowany wyłącznie wielkością $\\cos\\varphi$ punktu kompensowanego; $\\cos\\varphi$ przekroju '
     + 'sieciowego pokazany obok jako wielkość informacyjna.',
   // K5-A (H-3 pkt 6): pętla werdykt → kreator modelu (add_shunt_compensator_sn).
   doborOtworzKreator: 'Dobierz kompensator na tej szynie',
@@ -118,7 +118,7 @@ export const KOMPENSACJA_STRINGS = {
   // Założenia
   zalWezel: 'Węzeł',
   zalNapiecie: 'Napięcie znamionowe szyny',
-  zalCosfiMin: 'Wymagany cosφ (minimalny)',
+  zalCosfiMin: 'Wymagany $\\cos\\varphi$ (minimalny)',
   zalScenariuszNoc: 'Scenariusz nocny',
   zalScenariuszNocTak: 'uwzględniony',
   zalScenariuszNocNie: 'pominięty',
@@ -133,8 +133,8 @@ export const KOMPENSACJA_STRINGS = {
   sladPokaz: 'Pokaż ślad doboru',
   sladUkryj: 'Ukryj ślad doboru',
   sladSymbolPQ: 'źródło P/Q',
-  sladSymbolCosfiPunktu: 'cosφ punktu',
-  sladSymbolCosfiPrzekroju: 'cosφ przekroju',
+  sladSymbolCosfiPunktu: '$\\cos\\varphi$ punktu',
+  sladSymbolCosfiPrzekroju: '$\\cos\\varphi$ przekroju',
   sladSymbolKonwencja: 'konwencja znaku',
   sladSymbolDecyzja: 'decyzja doboru',
   sladWzorPQ: 'P + \\mathrm{j}Q = \\sum_{g} \\left(P_{g} + \\mathrm{j}Q_{g}\\right)',

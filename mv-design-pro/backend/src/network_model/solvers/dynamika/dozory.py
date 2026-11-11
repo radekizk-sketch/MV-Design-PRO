@@ -200,7 +200,7 @@ class Dozor:
         if not math.isfinite(self.prog):
             raise _odmowa(self, f"próg {self.prog!r} nie jest liczba skończona")
         if self.kierunek not in ("w_dol", "w_gore"):
-            raise _odmowa(self, f"kierunek {self.kierunek!r} spoza {{w_dol, w_gore}}")
+            raise _odmowa(self, f"kierunek {self.kierunek!r} nie jest ani `w_dol`, ani `w_gore`")
         if not (math.isfinite(self.opoznienie_s) and self.opoznienie_s >= 0.0):
             raise _odmowa(self, f"opóźnienie {self.opoznienie_s!r} s nie jest liczba nieujemna")
         if self.kasowanie_przy_powrocie and self.opoznienie_s == 0.0:
@@ -221,7 +221,7 @@ class Dozor:
             if akcja.t_s != 0.0:
                 raise _odmowa(
                     self,
-                    f"akcja {type(akcja).__name__} ma t_s={akcja.t_s} — chwila akcji jest "
+                    f"akcja {type(akcja).__name__} ma chwilę {akcja.t_s} s — chwila akcji jest "
                     "WZGLEDNA (0 = chwila wykonania dozoru)",
                 )
 
@@ -489,7 +489,7 @@ class NadzorDozorow:
                     wartosc > 0.0,
                     Lokalizacja(
                         t_s=t_s,
-                        szerokosc_s=0.0 if znany_w_chwili else t_s - self.t_znany_s[indeks],
+                        szerokosc_s=(0.0 if znany_w_chwili else t_s - self.t_znany_s[indeks]),
                         iteracje=0,
                         g_przed=self.h[indeks] if znany_w_chwili else None,
                         g_po=wartosc,

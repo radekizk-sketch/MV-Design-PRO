@@ -375,4 +375,7 @@ def test_propozycja_tolerancji_nn_wplyw_liczbowo_z_tabeli_1() -> None:
     assert f"{abs(0.95 / 0.90 - 1.0) * 100.0:.1f}" == "5.6"
     assert "mniejszy o 4,5 %" in PROPOZYCJA_TOLERANCJI_NN.wplyw_pl
     assert "większy o 5,6 %" in PROPOZYCJA_TOLERANCJI_NN.wplyw_pl
-    assert "c_max 1,10, c_min 0,90" in PROPOZYCJA_TOLERANCJI_NN.odniesienie
+    assert (
+        "współczynnik napięciowy maksymalny 1,10, minimalny 0,90"
+        in PROPOZYCJA_TOLERANCJI_NN.odniesienie
+    )

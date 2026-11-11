@@ -129,3 +129,34 @@ def test_zapis_kotwiczy_szum_ostatniej_cyfry_a_przepisuje_realna_zmiane(
     plik.write_text(zmiana, encoding="utf-8")
     generator._zapisz_artefakt("shortCircuit.ts")
     assert plik.read_text(encoding="utf-8") == tresc
+
+
+def test_zapis_kotwiczy_szum_per_linia_przy_realnej_zmianie_innej_linii(
+    wyrenderowane: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kotwica PER LINIA (karta ZU): realna zmiana jednej linii (tekst) nie wnosi szumu
+    ostatniej cyfry innych linii. Iloczyn: {linia z szumem, linia z realną zmianą, linia
+    dodana} w jednym zapisie — szum zostaje z dysku, zmiana i nowa linia wchodzą ze świeżej
+    treści, a wynik kanonicznie równa się świeżej treści (test świeżości wyżej)."""
+    import tests.reference_networks.station_archetype_substrate as generator
+
+    monkeypatch.setattr(generator, "_companions_dir", lambda: str(tmp_path))
+    tresc = wyrenderowane["shortCircuit.ts"]
+    linie = tresc.splitlines(keepends=True)
+    szumowe = [i for i, linia in enumerate(linie) if "0.50000" in linia]
+    assert szumowe
+    na_dysku = list(linie)
+    for i in szumowe:
+        na_dysku[i] = linie[i].replace("0.500002", "0.500009").replace("0.500003", "0.500009")
+    # Realna zmiana: inny tekst nagłówka i jedna linia, której świeża treść nie ma.
+    na_dysku[1] = " * STARY NAGŁÓWEK\n"
+    na_dysku.insert(2, " * linia usunięta przez generator\n")
+    plik = tmp_path / "shortCircuit.ts"
+    plik.write_text("".join(na_dysku), encoding="utf-8")
+    generator._zapisz_artefakt("shortCircuit.ts")
+    zapisane = plik.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert generator.kanonizuj_artefakt("".join(zapisane)) == generator.kanonizuj_artefakt(tresc)
+    assert zapisane[1] == linie[1]
+    assert " * linia usunięta przez generator\n" not in zapisane
+    for i in szumowe:
+        assert zapisane[i] == na_dysku[i + 1]

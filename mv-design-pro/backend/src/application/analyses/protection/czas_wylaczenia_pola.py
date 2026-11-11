@@ -413,16 +413,17 @@ def czas_tb_z_pol_lokalnych(
     nazwa = _nazwa_pola(pole.bay)
     t_b = float(czas["t_clearing_s"])
     opis = (
-        f"t_b = {liczba_pl(t_b)} s — najkrótszy czas wyłączenia pól lokalnych punktu zwarcia "
+        f"Czas wyłączenia {liczba_pl(t_b)} s — najkrótszy czas wyłączenia pól lokalnych punktu zwarcia "
         f"(pole {nazwa}, z {len(pola)} pól z aparatem przy szynie): człon nastawczy "
         f"{liczba_pl(float(czas['czlon_nastawczy_s']))} s ({str(czas['powod_pl']).rstrip('.')}) "
         f"+ czas własny wyłącznika {liczba_pl(float(czas['czas_wlasny_wylacznika_s']))} s "
         f"({czas_wlasny['opis_zrodla_pl'].rstrip('.')}). Charakterystykę sprawdzono przy "
-        f"prądzie I_k'' punktu zwarcia {rodzaj_zwarcia_pl} {liczba_pl(round(prad_a, 1))} A."
+        f"początkowym prądzie zwarciowym punktu zwarcia {rodzaj_zwarcia_pl} {liczba_pl(round(prad_a, 1))} A."
     )
     if robocza:
         opis += (
-            " Czas własny wyłącznika jest wartością roboczą, więc t_b też — zmień t_b "
+            " Czas własny wyłącznika jest wartością roboczą, więc czas wyłączenia też — zmień "
+            "czas wyłączenia "
             "w scenariuszu zwarciowym albo nadaj czas własny wyłącznika, aby przeliczyć."
         )
     return CzasWylaczeniaTb(

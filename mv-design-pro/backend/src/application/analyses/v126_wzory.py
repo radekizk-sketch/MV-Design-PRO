@@ -38,6 +38,15 @@ w źródle solvera ma wpis, a rejestr nie ma wpisów martwych — niezależnie o
 (2) WSZYSTKIE PREZENTOWANE rodzaje V12.6 uruchomione na sieci złotej (parametry
 `scripts/eksport_fixtur_harnessu.py`) dają zbiór `step.key` z wpisem tutaj — brak
 wpisu jest czerwonym testem, nie cichym pominięciem.
+
+WERYFIKACJA JEDNOSTEK. Pięć tekstów `unit_check` solvera to algebra jednostek bez symbolu
+wielkości („V/Ω=A; √(A²+A²)=A."), której ekran nie może pokazać jako tekstu (kontrakt
+prezentacji inżynierskiej: wzór przez KaTeX, proza słowami). Rejestr
+`JEDNOSTKI_KROKOW_V126` — kluczem jest DOKŁADNY tekst solvera, nie `step.key`, bo jeden klucz
+(`petersen_residual_current`) niesie dwa różne teksty w dwóch gałęziach — daje zdanie słowami
+(`unit_check_pl`) i algebrę jednostek w LaTeX (`unit_check_latex`), dokładane do KOPII kroku
+tak samo jak `formula_latex`. Test kompletności (`test_v126_wzory.py`): każdy tekst
+`unit_check` solvera z algebrą (znak `=`) ma wpis, a rejestr nie ma wpisów martwych.
 """
 
 from __future__ import annotations
@@ -467,6 +476,58 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
 }
 
 
+@dataclass(frozen=True)
+class JednostkiKroku:
+    """Weryfikacja jednostek kroku: zdanie słowami + algebra jednostek w LaTeX."""
+
+    opis_pl: str
+    latex: str
+
+
+#: Dokładny tekst `unit_check` solvera (algebra jednostek) → zdanie + LaTeX.
+JEDNOSTKI_KROKOW_V126: dict[str, JednostkiKroku] = {
+    # _petersen_design — strojenie dławika do rezonansu.
+    "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].": JednostkiKroku(
+        "Zgodność jednostek: odwrotność iloczynu kwadratu pulsacji i pojemności daje "
+        "indukcyjność w henrach, odwrotność iloczynu pulsacji i pojemności daje reaktancję "
+        "w omach, a prąd dławika w amperach równa się prądowi pojemnościowemu sieci w amperach.",
+        r"\dfrac{1}{(\mathrm{rad}/\mathrm{s})^{2} \cdot \mathrm{F}} = \mathrm{H},\quad "
+        r"\dfrac{1}{(\mathrm{rad}/\mathrm{s}) \cdot \mathrm{F}} = \Omega,\quad "
+        r"I_{L}\,[\mathrm{A}] = I_{C}\,[\mathrm{A}]",
+    ),
+    # _petersen_design — prąd resztkowy i odstrojenie dławika modelu.
+    "√(A²+A²)=A; (A−A)/A — bezwymiarowe.": JednostkiKroku(
+        "Zgodność jednostek: pierwiastek z sumy kwadratów prądów daje prąd w amperach, "
+        "a odstrojenie (różnica prądów odniesiona do prądu) jest wielkością bezwymiarową.",
+        r"\sqrt{\mathrm{A}^{2} + \mathrm{A}^{2}} = \mathrm{A},\quad "
+        r"(\mathrm{A} - \mathrm{A})/\mathrm{A} = 1",
+    ),
+    # _ner_design — dobór rezystora punktu neutralnego.
+    "V/Ω=A; √(A²+A²)=A.": JednostkiKroku(
+        "Zgodność jednostek: napięcie podzielone przez rezystancję daje prąd w amperach, "
+        "a pierwiastek z sumy kwadratów prądów daje prąd w amperach.",
+        r"\mathrm{V}/\Omega = \mathrm{A},\quad \sqrt{\mathrm{A}^{2} + \mathrm{A}^{2}} = \mathrm{A}",
+    ),
+    # _ner_thermal — dopuszczalny czas doziemienia rezystora.
+    "V/Ω = A; A²·s = A²·s ⇒ s.": JednostkiKroku(
+        "Zgodność jednostek: napięcie podzielone przez rezystancję daje prąd w amperach, "
+        "a równość całek Joule'a (kwadrat prądu razy czas) wyznacza czas dopuszczalny "
+        "w sekundach.",
+        r"\mathrm{V}/\Omega = \mathrm{A},\quad "
+        r"\mathrm{A}^{2} \cdot \mathrm{s} = \mathrm{A}^{2} \cdot \mathrm{s} "
+        r"\;\Rightarrow\; \mathrm{s}",
+    ),
+    # _ner_thermal — wytrzymałość cieplna rezystora.
+    "A²·Ω·s = W·s = J; porównanie J z J.": JednostkiKroku(
+        "Zgodność jednostek: kwadrat prądu razy rezystancja razy czas daje energię "
+        "w dżulach; porównuje się energię wydzieloną w dżulach z energią znamionową "
+        "w dżulach.",
+        r"\mathrm{A}^{2} \cdot \Omega \cdot \mathrm{s} = \mathrm{W} \cdot \mathrm{s} "
+        r"= \mathrm{J}",
+    ),
+}
+
+
 def wzor_kroku(klucz: str) -> WzorKroku | None:
     """Wpis rejestru dla `step.key`, albo `None`, gdy klucz nieznany (solver
     nadał krok, którego ten rejestr jeszcze nie zna — czerwony test
@@ -492,6 +553,9 @@ def wzbogac_kroki_latex(
     TEGO biegu. Bez niej krok dowodu nie dostawał wzoru LaTeX i ekran pokazywał
     zapis ASCII solvera. Wpis rejestru z `wynik_pl` podmienia w KOPII kroku
     `result_pl` na zdanie złożone z danych kroku (kody decyzji → nazwy polskie).
+
+    Krok, którego `unit_check` jest algebrą jednostek z rejestru `JEDNOSTKI_KROKOW_V126`,
+    dostaje w KOPII `unit_check_pl` (zdanie słowami) i `unit_check_latex` (KaTeX).
     """
     wynik: list[JsonDict] = []
     for krok in kroki:
@@ -502,6 +566,10 @@ def wzbogac_kroki_latex(
         klucz = krok.get("key")
         if klucz is None and klucze_po_odnosniku is not None:
             klucz = klucze_po_odnosniku.get(str(krok.get("proof_ref", "")))
+        jednostki = JEDNOSTKI_KROKOW_V126.get(str(krok.get("unit_check") or ""))
+        if jednostki is not None:
+            wzbogacony["unit_check_pl"] = jednostki.opis_pl
+            wzbogacony["unit_check_latex"] = jednostki.latex
         wzor = REJESTR_WZOROW_V126.get(str(klucz or ""))
         if wzor is not None:
             wzbogacony["formula_latex"] = wzor.formula_latex

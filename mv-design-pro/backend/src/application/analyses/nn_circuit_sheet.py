@@ -123,6 +123,9 @@ from application.analyses.nn_device_selection import (
     KIND_FUSE_SWITCH,
     KIND_MCB,
     KIND_MCCB,
+    NAZWA_KRYTERIUM_I,
+    NAZWA_KRYTERIUM_II,
+    NAZWA_KRYTERIUM_SWZ,
     KandydatAparatuNn,
     oceniaj_kandydata,
     oceniaj_przeciazenie_kandydata,
@@ -226,12 +229,13 @@ def _ik_min_tt_it(widok: dict[str, Any], system: str, punkt_pl: str) -> dict[str
     """Sekcja `ik_min` z widoku SWZ TT/IT: prąd doziemny minimalny albo odmowa nazwana kodem.
 
     Pętla doziemna sieci nN liczonej z wartością roboczą tolerancji (znacznik wyniku pętli,
-    karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — I_d min stoi na danej przyjętej, jak Ik1_min TN."""
+    karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — I_d min stoi na danej przyjętej, jak Ik1_min TN.
+    """
     if widok.get("status") == "OK":
         petla = widok["fault_loop_min_scenario"]
         return _wartosc(
             petla["ik_min_a"],
-            f"pętla doziemna IEC 60364-4-41 układ {system} (I_d min, scenariusz MIN)",
+            f"pętla doziemna IEC 60364-4-41 układ {system} (minimalny prąd zwarcia doziemnego, scenariusz MIN)",
             dane_przyjete_petli_zserializowanej(petla, punkt_pl),
         )
     return {
@@ -577,7 +581,7 @@ def _i2t_dla_kabla(
 ) -> dict[str, Any]:
     if ith_ka is None:
         return _brak(
-            "Brak Ith (prąd zwarciowy ekwiwalentny cieplnie) — wymaga biegu zwarciowego "
+            "Brak prądu zwarciowego zastępczego cieplnego — wymaga biegu zwarciowego "
             "IEC 60909 (parametr żądania short_circuit_run_id)."
         )
     if fault_duration_s is None:
@@ -614,7 +618,10 @@ def _i2t_dla_kabla(
             "margines_procent": wynik.margin_percent,
             "prad_dopuszczalny_a": wynik.admissible_current_a,
         },
-        "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², check_conductor_thermal_withstand)",
+        (
+            "IEC 60949 / IEC 60364-4-43 §434 (energia zwarcia wobec wytrzymałości cieplnej żyły, "
+            "`check_conductor_thermal_withstand`)"
+        ),
         dane_przyjete,
     )
 
@@ -806,7 +813,7 @@ def _build_row(
     widok_tt_it: dict[str, Any] | None = None
     if ib_a is None:
         dobor_status = "brak danych"
-        dobor_reason: str | None = f"Ib nieustalone — {ib_odmowa_pl}"
+        dobor_reason: str | None = f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}"
     elif system is None:
         dobor_status = "brak danych"
         dobor_reason = (
@@ -822,7 +829,7 @@ def _build_row(
         widok_tt_it = build_swz_view(enm, station.ref_id, worst_bus_ref, root_branch_ref)
     elif iz_prime_a is None:
         dobor_status = "brak danych"
-        dobor_reason = "Iz′ niedostępne — dobór/kryteria wymagają obciążalności skorygowanej."
+        dobor_reason = "Obciążalność skorygowana niedostępna — dobór i kryteria jej wymagają."
     else:
         wynik_dobor = wybierz_aparat_dla_obwodu_nn(
             enm=enm,
@@ -928,12 +935,14 @@ def _build_row(
                 f"materialized_params gałęzi '{root_branch_ref}' (Catalog Binding)",
             )
             zapas_sekcja = (
-                _nierozstrzygalne(f"Ib nieustalone — {ib_odmowa_pl}")
+                _nierozstrzygalne(f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}")
                 if ib_a is None
                 else (
                     _wartosc((ir_a - ib_a) / ir_a * 100.0, "(Ir−Ib)/Ir", dane_ib)
                     if ir_a is not None and ir_a != 0
-                    else _nierozstrzygalne("Ir nierozwiązane (MCCB bez ir_range materializacji).")
+                    else _nierozstrzygalne(
+                        "Nastawa prądowa członu przeciążeniowego nierozwiązana (wyłącznik MCCB bez zakresu nastaw w materializacji)."
+                    )
                 )
             )
 
@@ -992,13 +1001,16 @@ def _build_row(
                     # TT/IT bez Ib albo Iz′: kryteria przeciążeniowe są NIEDOSTĘPNE (brak danych
                     # wejściowych), nie „nie dotyczy" — to inny stan niż dobór wg SWZ.
                     brak_wej = _brak(
-                        f"Ib nieustalone — {ib_odmowa_pl}"
+                        f"Prąd obliczeniowy obwodu nieustalony — {ib_odmowa_pl}"
                         if ib_a is None
-                        else "Iz′ niedostępne — kryteria przeciążeniowe wymagają obciążalności "
-                        "skorygowanej."
+                        else "Obciążalność skorygowana niedostępna — kryteria przeciążeniowe jej "
+                        "wymagają."
                     )
                 elif dobor_status == "brak danych":
-                    brak_wej = _brak(dobor_reason or "Ik1_min/U0 niedostępne dla tego obwodu.")
+                    brak_wej = _brak(
+                        dobor_reason
+                        or "Minimalny prąd zwarcia jednofazowego albo napięcie fazowe niedostępne dla tego obwodu."
+                    )
                 else:
                     brak_wej = {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
                 k2_i2_sekcja = brak_wej
@@ -1023,9 +1035,9 @@ def _build_row(
                     dane_przyjete_ik_max=dane_ik_max,
                     dane_przyjete_ik1_min=dane_ik1_min,
                 )
-                kr_i = next(k for k in ocena.kryteria if k.nazwa == "Ib<=In<=Iz′")
-                kr_ii = next(k for k in ocena.kryteria if k.nazwa == "I2<=1,45·Iz′")
-                kr_swz = next(k for k in ocena.kryteria if k.nazwa == "SWZ przy Ik_min")
+                kr_i = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_I)
+                kr_ii = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_II)
+                kr_swz = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_SWZ)
                 kryterium_i_sekcja = _wartosc(
                     {"status": kr_i.status.value, "wartosci": kr_i.wartosci},
                     kr_i.uzasadnienie_pl,
@@ -1155,7 +1167,7 @@ def _build_provenance(
     enm_hash = compute_enm_hash(enm)
     return {
         "load_flow_run_id": str(load_flow_run.id) if load_flow_run else None,
-        "short_circuit_run_id": str(short_circuit_run.id) if short_circuit_run else None,
+        "short_circuit_run_id": (str(short_circuit_run.id) if short_circuit_run else None),
         "fault_duration_s": fault_duration_s,
         "rewizja_modelu": enm_hash,
         "swiezosc": {

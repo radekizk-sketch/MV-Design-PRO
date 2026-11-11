@@ -47,7 +47,9 @@ const ODPOWIEDZ = {
         {
           kod: 'ct.wytrzymalosc_cieplna',
           nazwa_pl: 'Wytrzymałość cieplna zwarciowa',
-          podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
+          podstawa_pl:
+            'Prąd cieplny krótkotrwały (1 s) nie mniejszy od prądu zwarciowego pomnożonego przez '
+            + 'pierwiastek z czasu zwarcia — równoważność cieplna prądu zwarcia (IEC 61869-2).',
           werdykt: 'brak_danych',
           wymagane: null,
           dostepne: '20.0 kA / 1 s',
@@ -289,10 +291,12 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
             {
               kod: 'ct.alf',
               nazwa_pl: 'Nasycenie rdzenia (bilans mocy wtórnej)',
-              podstawa_pl: 'S2obl = S_aparatow + I2n²·Rp',
+              podstawa_pl: 'IEC 61869-2: obciążenie obwodu wtórnego to suma mocy aparatów',
               werdykt: 'spelnione',
-              wymagane: 'ALF_eff ≥ 9.0',
-              dostepne: 'ALF_eff 15.5 (UPROSZCZONY_BEZ_RCT; S2obl 6.4 VA / Sn 10.0 VA)',
+              wymagane: 'efektywny współczynnik graniczny dokładności nie mniejszy niż 9.0',
+              dostepne: 'efektywny współczynnik graniczny dokładności 15.5 (wariant UPROSZCZONY_BEZ_RCT)',
+              wymagane_latex: String.raw`ALF_{eff} \geq 9.0`,
+              dostepne_latex: String.raw`ALF_{eff} = 15.5`,
               komentarz_pl: null,
               kody_gotowosci: [],
               slad: [
@@ -316,6 +320,11 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
     });
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
 
+    // Rachunek kryterium: wzory z pól `*_latex` przez KaTeX, proza słowami w opisie.
+    const rachunek = await screen.findByTestId('kryterium-rachunek-ct.alf');
+    expect(rachunek.querySelectorAll('[data-testid="math-rendered"]')).toHaveLength(2);
+    expect(rachunek.textContent).not.toContain('ALF_eff');
+    expect(rachunek.querySelector('[title^="efektywny współczynnik"]')).not.toBeNull();
     const slad = await screen.findByTestId('kryterium-slad-ct.alf');
     expect(slad.textContent).toContain('Rezystancja przewodów obwodu wtórnego');
     expect(slad.textContent).toContain('Współczynnik 2 wynika z obwodu dwuprzewodowego.');

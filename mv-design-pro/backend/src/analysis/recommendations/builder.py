@@ -118,8 +118,8 @@ def _resolve_context(
 def _entries_from_sensitivity(view: SensitivityView) -> list[RecommendationEntry]:
     entries: list[RecommendationEntry] = []
     allowed = {
-        "load_p": "Dopuszczalna zmiana obciążenia P (k_S)",
-        "load_q": "Dopuszczalna zmiana obciążenia Q (k_I)",
+        "load_p": "Dopuszczalna zmiana obciążenia mocą czynną (współczynnik wrażliwości mocowej)",
+        "load_q": "Dopuszczalna zmiana obciążenia mocą bierną (współczynnik wrażliwości prądowej)",
         "voltage_limit": "Dopuszczalna zmiana napięcia (limity)",
         "protection_margin": "Nastawa zabezpieczenia (marginesy)",
         "protection_curve_margin": "Nastawa zabezpieczenia (krzywe I–t)",

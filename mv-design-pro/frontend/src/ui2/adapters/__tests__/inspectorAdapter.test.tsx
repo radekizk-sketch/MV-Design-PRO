@@ -171,12 +171,12 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
         'Moc znamionowa',
         'Napięcie GN',
         'Napięcie DN',
-        'Napięcie zwarcia uk',
-        'Straty zwarcia Pk',
+        'Napięcie zwarcia $u_{k}$',
+        'Straty zwarcia $P_{k}$',
         'Grupa połączeń',
       ]),
     );
-    expect(etykiety).not.toContain('Straty jałowe P0');
+    expect(etykiety).not.toContain('Straty jałowe $P_{0}$');
   });
 
   // Linia 110 kV z przewodem z katalogu: iloczyn {kompletność PELNY, NIEPELNY} × {B1/B0 w modelu,
@@ -222,9 +222,9 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     const wartosc = (etykieta: string) => wiersze.find((w) => w.etykieta === etykieta)?.wartosc;
     expect(wartosc('Kompletność dowodu parametrów')).toEqual({ wartosc: opis, jednostka: undefined });
     expect(wartosc('Parametry linii')?.wartosc).toBe('z geometrii słupa i przewodu z katalogu (Carson 1)');
-    expect(wartosc('Susceptancja B1')).toEqual({ wartosc: expect.closeTo(2.7858, 6), jednostka: 'µS/km' });
-    expect(wartosc('Susceptancja B0')).toEqual({ wartosc: expect.closeTo(1.6769, 6), jednostka: 'µS/km' });
-    expect(wartosc('Rezystancja R1 w temperaturze 80 °C')).toEqual({ wartosc: 0.14, jednostka: 'Ω/km' });
+    expect(wartosc('Susceptancja $B_{1}$')).toEqual({ wartosc: expect.closeTo(2.7858, 6), jednostka: 'µS/km' });
+    expect(wartosc('Susceptancja $B_{0}$')).toEqual({ wartosc: expect.closeTo(1.6769, 6), jednostka: 'µS/km' });
+    expect(wartosc('Rezystancja $R_{1}$ w temperaturze 80 °C')).toEqual({ wartosc: 0.14, jednostka: 'Ω/km' });
     expect(wartosc('Rezystywność gruntu (projekt)')).toEqual(
       kompletnosc === 'PELNY' ? { wartosc: 250, jednostka: 'Ω·m' } : undefined,
     );
@@ -249,7 +249,7 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
         ?.wiersze.map((w) => w.etykieta) ?? [];
     expect(etykiety).not.toContain('Parametry linii');
     expect(etykiety).not.toContain('Kompletność dowodu parametrów');
-    expect(etykiety).not.toContain('Susceptancja B1');
+    expect(etykiety).not.toContain('Susceptancja $B_{1}$');
   });
 
   it('źródło: model wymagany + parametry zwarciowe opcjonalne', () => {
@@ -261,7 +261,7 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
       (s) => s.id === 'katalogowe',
     );
     expect(katalogowe?.wiersze.map((w) => w.etykieta)).toEqual(
-      expect.arrayContaining(['Model źródła', 'Moc zwarciowa Sk″', 'Prąd zwarciowy Ik″']),
+      expect.arrayContaining(['Model źródła', "Moc zwarciowa $S_{k}''$", "Prąd zwarciowy $I_{k}''$"]),
     );
   });
 
@@ -323,8 +323,8 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
       'Grupa połączeń',
       'Napięcie znamionowe',
       'Moc znamionowa',
-      'Rezystancja zerowa R0',
-      'Reaktancja zerowa X0',
+      'Rezystancja zerowa $R_{0}$',
+      'Reaktancja zerowa $X_{0}$',
       'Dławik: prąd minimalny',
       'Dławik: prąd maksymalny',
       'Dławik: nastawa',

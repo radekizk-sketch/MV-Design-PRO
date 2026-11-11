@@ -59,6 +59,7 @@ import {
 } from './kompensatorModel';
 import { KOMPENSATOR_STRINGS as T } from './strings';
 import { WykresQU } from './WykresQU';
+import { TekstZWzorami } from '../rama/tekstZWzorami';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
@@ -385,7 +386,7 @@ export function KreatorKompensatoraSn() {
           >
             <figure className="mvd-wykres-fig">
               <WykresQU />
-              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+              <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={T.teoriaJakCzytac} /></figcaption>
             </figure>
           </PanelTeorii>
         </KreatorSekcja>

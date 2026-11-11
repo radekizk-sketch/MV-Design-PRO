@@ -113,7 +113,7 @@ function opisZakresu(
   jednostka: 'KROTNOSC_IN' | 'A_WTORNY' | null | undefined,
 ): string | null {
   if (!zakres || !jednostka) return null;
-  return `${liczba(zakres.prog[0])}–${liczba(zakres.prog[1])} ${JEDNOSTKA_ZAKRESU_PL[jednostka]}`;
+  return `od ${liczba(zakres.prog[0])} do ${liczba(zakres.prog[1])} ${JEDNOSTKA_ZAKRESU_PL[jednostka]}`;
 }
 
 export interface EdytorNastawZabezpieczeniaProps {

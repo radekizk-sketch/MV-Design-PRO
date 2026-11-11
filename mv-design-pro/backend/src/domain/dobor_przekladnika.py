@@ -106,6 +106,10 @@ class Kryterium:
     #: Wartosc WYMAGANA (z toru) i DOSTEPNA (z przekladnika) — jawny rachunek.
     wymagane: str | None = None
     dostepne: str | None = None
+    #: Zapis LaTeX wartości wymaganej i dostępnej — ADDYTYWNY, tylko gdy wartość jest
+    #: wzorem (`ALF_{eff} \geq 20`); pole prozy obok niesie te same liczby słowami.
+    wymagane_latex: str | None = None
+    dostepne_latex: str | None = None
     komentarz_pl: str | None = None
     #: Kody gotowosci jadra (karta W3-B) — ADDYTYWNE, puste dla kryteriow bez
     #: wlasnego solvera. Zrodlo: `CtBurdenResult.readiness_codes`.
@@ -116,7 +120,7 @@ class Kryterium:
     slad: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "kod": self.kod,
             "nazwa_pl": self.nazwa_pl,
             "podstawa_pl": self.podstawa_pl,
@@ -127,6 +131,11 @@ class Kryterium:
             "kody_gotowosci": list(self.kody_gotowosci),
             "slad": list(self.slad),
         }
+        if self.wymagane_latex is not None:
+            wynik["wymagane_latex"] = self.wymagane_latex
+        if self.dostepne_latex is not None:
+            wynik["dostepne_latex"] = self.dostepne_latex
+        return wynik
 
 
 @dataclass(frozen=True)
@@ -292,7 +301,9 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                 kod="ct.alf_katalogowy",
                 nazwa_pl="ALF katalogowy wobec prądu zwarciowego",
                 podstawa_pl=(
-                    "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego "
+                    "Warunek KONIECZNY: współczynnik graniczny dokładności nie mniejszy od "
+                    "krotności początkowego prądu zwarciowego względem prądu znamionowego "
+                    "pierwotnego, bez obciążenia wtórnego "
                     "(IEC 61869-2) — nie rozstrzyga nasycenia rdzenia."
                 ),
                 werdykt="brak_danych",
@@ -307,11 +318,16 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
                 kod="ct.alf_katalogowy",
                 nazwa_pl="ALF katalogowy wobec prądu zwarciowego",
                 podstawa_pl=(
-                    "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego "
+                    "Warunek KONIECZNY: współczynnik graniczny dokładności nie mniejszy od "
+                    "krotności początkowego prądu zwarciowego względem prądu znamionowego "
+                    "pierwotnego, bez obciążenia wtórnego "
                     "(IEC 61869-2) — nie rozstrzyga nasycenia rdzenia."
                 ),
                 werdykt="informacja",
-                wymagane=f"ALF ≥ {alf_wymagany:.1f} (Ik″ {tor.ik_ka:.2f} kA / In {in_a:.0f} A)",
+                wymagane=(
+                    f"ALF ≥ {alf_wymagany:.1f} (prąd zwarciowy {tor.ik_ka:.2f} kA / prąd "
+                    f"znamionowy pierwotny {in_a:.0f} A)"
+                ),
                 dostepne=f"ALF {alf:.0f}"
                 + (" (wyprowadzony z klasy)" if alf_ze_zrodla_klasy else ""),
                 komentarz_pl=(
@@ -348,12 +364,20 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
     else:
         werdykt_nasycenia = "brak_danych"
     if wynik_nasycenia.alf_efektywny is not None:
-        dostepne_nasycenia = (
-            f"ALF_eff {wynik_nasycenia.alf_efektywny:.1f} ({wynik_nasycenia.wariant_alf}; "
-            f"S2obl {wynik_nasycenia.moc_obliczeniowa_va:.1f} VA / Sn {obciazalnosc:.1f} VA)"
+        dostepne_nasycenia: str | None = (
+            "efektywny współczynnik graniczny dokładności "
+            f"{wynik_nasycenia.alf_efektywny:.1f} (wariant {wynik_nasycenia.wariant_alf}; "
+            f"obciążenie obwodu wtórnego {wynik_nasycenia.moc_obliczeniowa_va:.1f} VA, "
+            f"moc znamionowa {obciazalnosc:.1f} VA)"
+        )
+        dostepne_nasycenia_latex: str | None = (
+            rf"ALF_{{eff}} = {wynik_nasycenia.alf_efektywny:.1f};\ "
+            rf"S_{{2,obl}} = {wynik_nasycenia.moc_obliczeniowa_va:.1f}\ \mathrm{{VA}};\ "
+            rf"S_{{n}} = {obciazalnosc:.1f}\ \mathrm{{VA}}"
         )
     else:
         dostepne_nasycenia = None
+        dostepne_nasycenia_latex = None
     # Komentarz PL: gdy jadro zglosilo kody gotowosci (brak danej ALBO wariant
     # uproszczony), ich kanoniczna tresc jest KONKRETNA (nazywa BRAKUJACA dana) —
     # ma pierwszenstwo przed ogolnym zalozeniem formuly. `assumptions` jadra
@@ -371,8 +395,17 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             nazwa_pl="Nasycenie rdzenia (bilans mocy wtórnej)",
             podstawa_pl=wynik_nasycenia.formula_ref,
             werdykt=werdykt_nasycenia,
-            wymagane=(f"ALF_eff ≥ {alf_wymagany:.1f}" if alf_wymagany is not None else None),
+            wymagane=(
+                "efektywny współczynnik graniczny dokładności nie mniejszy niż "
+                f"{alf_wymagany:.1f}"
+                if alf_wymagany is not None
+                else None
+            ),
             dostepne=dostepne_nasycenia,
+            wymagane_latex=(
+                rf"ALF_{{eff}} \geq {alf_wymagany:.1f}" if alf_wymagany is not None else None
+            ),
+            dostepne_latex=dostepne_nasycenia_latex,
             komentarz_pl=komentarz_nasycenia,
             kody_gotowosci=wynik_nasycenia.readiness_codes,
             slad=wynik_nasycenia.white_box_trace,
@@ -385,7 +418,11 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             Kryterium(
                 kod="ct.wytrzymalosc_cieplna",
                 nazwa_pl="Wytrzymałość cieplna zwarciowa",
-                podstawa_pl="Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).",
+                podstawa_pl=(
+                    "Prąd cieplny krótkotrwały (1 s) nie mniejszy od prądu zwarciowego "
+                    "pomnożonego przez pierwiastek z czasu zwarcia — równoważność cieplna prądu "
+                    "zwarcia (IEC 61869-2)."
+                ),
                 werdykt="brak_danych",
                 dostepne=_liczba(ith, "kA / 1 s", 1),
                 komentarz_pl=(
@@ -401,11 +438,15 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             Kryterium(
                 kod="ct.wytrzymalosc_cieplna",
                 nazwa_pl="Wytrzymałość cieplna zwarciowa",
-                podstawa_pl="Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).",
+                podstawa_pl=(
+                    "Prąd cieplny krótkotrwały (1 s) nie mniejszy od prądu zwarciowego "
+                    "pomnożonego przez pierwiastek z czasu zwarcia — równoważność cieplna prądu "
+                    "zwarcia (IEC 61869-2)."
+                ),
                 werdykt="spelnione" if spelnione else "niespelnione",
                 wymagane=(
                     f"{wymagany_ith:.2f} kA / 1 s "
-                    f"(Ik″ {tor.ik_ka:.2f} kA, tk {tor.czas_zwarcia_s:.2f} s)"
+                    f"(prąd zwarciowy {tor.ik_ka:.2f} kA, czas zwarcia {tor.czas_zwarcia_s:.2f} s)"
                 ),
                 dostepne=_liczba(ith, "kA / 1 s", 1),
                 komentarz_pl=(
@@ -423,7 +464,10 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             Kryterium(
                 kod="ct.wytrzymalosc_dynamiczna",
                 nazwa_pl="Wytrzymałość dynamiczna",
-                podstawa_pl="Idyn ≥ ip — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2).",
+                podstawa_pl=(
+                    "Prąd dynamiczny nie mniejszy od prądu udarowego — siły elektrodynamiczne od "
+                    "prądu szczytowego (IEC 61869-2)."
+                ),
                 werdykt="brak_danych",
                 dostepne=_liczba(idyn, "kA", 1),
                 komentarz_pl="Brakuje prądu szczytowego z obliczeń albo prądu dynamicznego.",
@@ -435,7 +479,10 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             Kryterium(
                 kod="ct.wytrzymalosc_dynamiczna",
                 nazwa_pl="Wytrzymałość dynamiczna",
-                podstawa_pl="Idyn ≥ ip — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2).",
+                podstawa_pl=(
+                    "Prąd dynamiczny nie mniejszy od prądu udarowego — siły elektrodynamiczne od "
+                    "prądu szczytowego (IEC 61869-2)."
+                ),
                 werdykt="spelnione" if spelnione else "niespelnione",
                 wymagane=_liczba(tor.ip_ka, "kA", 2),
                 dostepne=_liczba(idyn, "kA", 1),
@@ -661,7 +708,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 nazwa_pl="Przekładnia wobec napięcia sieci",
                 podstawa_pl=(
                     "Napięcie pierwotne odpowiada napięciu sieci (układ międzyfazowy) "
-                    "albo napięciu fazowemu U_n/√3 (układ faza–ziemia)."
+                    "albo napięciu fazowemu — napięciu znamionowemu przez √3 (układ faza–ziemia)."
                 ),
                 werdykt="brak_danych",
                 wymagane=_liczba(tor.napiecie_sieci_v, "V", 0),
@@ -685,7 +732,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 nazwa_pl="Przekładnia wobec napięcia sieci",
                 podstawa_pl=(
                     "Napięcie pierwotne odpowiada napięciu sieci (układ międzyfazowy) "
-                    "albo napięciu fazowemu U_n/√3 (układ faza–ziemia)."
+                    "albo napięciu fazowemu — napięciu znamionowemu przez √3 (układ faza–ziemia)."
                 ),
                 werdykt="spelnione" if uklad is not None else "niespelnione",
                 wymagane=(
@@ -694,7 +741,8 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 ),
                 dostepne=_liczba(un_pierwotne, "V", 0),
                 komentarz_pl=(
-                    "Rozpoznany układ pracy: faza–ziemia (przekładnia U_n/√3)."
+                    "Rozpoznany układ pracy: faza–ziemia (przekładnia napięcia znamionowego "
+                    "przez √3)."
                     if uklad == "faza_ziemia"
                     else (
                         "Rozpoznany układ pracy: międzyfazowy."
@@ -804,7 +852,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 kod="vt.wspolczynnik_napieciowy",
                 nazwa_pl="Współczynnik napięciowy",
                 podstawa_pl=(
-                    "F_v opisuje krotność napięcia znamionowego wytrzymywaną z "
+                    "Współczynnik napięciowy opisuje krotność napięcia znamionowego wytrzymywaną z "
                     "zachowaniem dokładności; w sieci małoprądowej zwarcie doziemne "
                     "podnosi napięcie faz zdrowych do międzyfazowego (IEC 61869-3 tab. 2)."
                 ),
@@ -825,7 +873,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
                 kod="vt.wspolczynnik_napieciowy",
                 nazwa_pl="Współczynnik napięciowy",
                 podstawa_pl=(
-                    "F_v opisuje krotność napięcia znamionowego wytrzymywaną z "
+                    "Współczynnik napięciowy opisuje krotność napięcia znamionowego wytrzymywaną z "
                     "zachowaniem dokładności; w sieci małoprądowej zwarcie doziemne "
                     "podnosi napięcie faz zdrowych do międzyfazowego (IEC 61869-3 tab. 2)."
                 ),
@@ -988,7 +1036,7 @@ def _kryterium_toru_zerowego(
         )
 
     # Otwarty trojkat i pomiar obliczany wymagaja tego samego: pomiaru napiec fazowych.
-    wymagane = "układ faza–ziemia (przekładnia U_n/√3)"
+    wymagane = "układ faza–ziemia (przekładnia napięcia znamionowego przez √3)"
     if uklad is None:
         return Kryterium(
             kod="vt.tor_napiecia_zerowego",

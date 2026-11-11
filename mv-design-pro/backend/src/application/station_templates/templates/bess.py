@@ -115,12 +115,12 @@ BESS_TEMPLATES = (
     ),
     _bess(
         "tpl_bess_5mw_10mwh_fcr_n",
-        "BESS 5 MW / 10 MWh (FCR_N services)",
-        "Duży magazyn 5 MW/10 MWh do usług FCR_N (rezerwa pierwotna) — 5 kontenerów po "
+        "BESS 5 MW / 10 MWh (usługi rezerwy FCR-N)",
+        "Duży magazyn 5 MW/10 MWh do usług rezerwy pierwotnej FCR-N — 5 kontenerów po "
         "1 MW / 2 MWh.",
         bess_count=5,
         bess_p_mw_each=1.0,
-        use_case="FCR_N — automatyczna rezerwa pierwotna częstotliwości.",
+        use_case="FCR-N — automatyczna rezerwa pierwotna częstotliwości.",
     ),
     _bess(
         "tpl_bess_5mw_10mwh_afrr",

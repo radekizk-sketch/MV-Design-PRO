@@ -77,7 +77,15 @@ REZYSTYWNOSC_MIEDZI_20C = 0.017241
 WARIANT_ALF_PELNY = "PELNY_IEC61869_2"
 WARIANT_ALF_UPROSZCZONY = "UPROSZCZONY_BEZ_RCT"
 
-_FORMULA_REF = "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)"
+_FORMULA_REF = (
+    "IEC 61869-2: obciążenie obwodu wtórnego to suma mocy aparatów i strat w przewodach; "
+    "efektywny współczynnik graniczny dokładności skalowany stosunkiem mocy znamionowej "
+    "powiększonej o straty własne do obciążenia powiększonego o straty własne"
+)
+_FORMULA_LATEX = (
+    r"S_{2,obl} = S_{aparatow} + I_{2n}^{2} \cdot R_{p};\quad "
+    r"ALF_{eff} = ALF \cdot \frac{S_{n} + S_{w}}{S_{2,obl} + S_{w}}"
+)
 
 #: Oznaczenie klasy zabezpieczeniowej wg IEC 61869-2: liczba·P·ALF (np. „5P20”,
 #: „10P10”, „5PR10”). Klasy pomiarowe („0.5”, „0.2S”) NIE maja ALF — dla nich
@@ -163,6 +171,7 @@ class CtBurdenResult:
     wariant_alf: str | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = ()
 
@@ -177,20 +186,21 @@ def _zalozenia(*, rezystywnosc: float, wariant: str) -> tuple[str, ...]:
         "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
         f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
         "— zalozenie jawne, nie dane katalogu przekladnika.",
-        "Moc przewodow S_przewodow = I2n²·Rp liczona RAZ (nie jest osobnym skladnikiem "
-        "obok siebie samej).",
+        "Moc przewodów (kwadrat prądu znamionowego wtórnego razy rezystancja przewodów) "
+        "liczona RAZ (nie jest osobnym składnikiem obok siebie samej).",
         "Moc stykow wchodzi do bilansu wylacznie wtedy, gdy podano ja jawnie.",
     )
     if wariant == WARIANT_ALF_PELNY:
         return podstawa + (
-            "ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw) — wariant PELNY (IEC 61869-2 § 5.6), "
-            "Sw = I2n²·Rct z rezystancji uzwojenia wtornego.",
+            "Efektywny współczynnik graniczny dokładności w wariancie PEŁNYM (IEC 61869-2 § 5.6), "
+            "z mocą wewnętrzną uzwojenia z rezystancji uzwojenia wtórnego.",
         )
     return podstawa + (
-        "ALF_eff = ALF·Sn/S2obl — wariant UPROSZCZONY (Sw = 0), bo katalog nie niesie "
-        "rezystancji uzwojenia wtornego Rct.",
-        "Wariant uproszczony przy S2obl < Sn daje ALF_eff WIEKSZY niz pelny — wynik jest "
-        "optymistyczny i wymaga potwierdzenia rezystancja uzwojenia z karty producenta.",
+        "Efektywny współczynnik graniczny dokładności w wariancie UPROSZCZONYM (bez mocy "
+        "wewnętrznej uzwojenia), bo katalog nie niesie rezystancji uzwojenia wtórnego.",
+        "Wariant uproszczony przy obciążeniu mniejszym od mocy znamionowej daje efektywny "
+        "współczynnik WIĘKSZY niż pełny — wynik jest optymistyczny i wymaga potwierdzenia "
+        "rezystancją uzwojenia z karty producenta.",
     )
 
 
@@ -439,7 +449,8 @@ def _slad_ct(
             wzor = r"ALF_{eff} = ALF \cdot \frac{S_n}{S_{2obl}} \quad (S_w = 0)"
             uwaga = (
                 "Wariant UPROSZCZONY — katalog nie niesie rezystancji uzwojenia wtórnego. "
-                "Przy S2obl < Sn wynik jest WIĘKSZY niż w wariancie pełnym, czyli "
+                "Przy obciążeniu mniejszym od mocy znamionowej wynik jest WIĘKSZY niż w wariancie "
+                "pełnym, czyli "
                 "optymistyczny; potwierdź rezystancją uzwojenia z karty producenta."
             )
         kroki.append(

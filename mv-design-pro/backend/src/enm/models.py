@@ -1006,38 +1006,38 @@ class Generator(ENMElement):
         if variant == "LV_BEHIND_STATION_TRANSFORMER":
             if self.station_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'LV_BEHIND_STATION_TRANSFORMER' wymaga station_ref."
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN za transformatorem "
+                    f"stacji wymaga wskazania stacji SN/nN."
                 )
             if self.blocking_transformer_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'LV_BEHIND_STATION_TRANSFORMER' wymaga blocking_transformer_ref."
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN za transformatorem "
+                    f"stacji wymaga wskazania transformatora blokowego."
                 )
         elif variant == "DEDICATED_MV_CONNECTION":
             if self.station_ref is not None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'DEDICATED_MV_CONNECTION' nie może mieć station_ref "
+                    f"Generator '{self.ref_id}': dedykowane przyłącze SN nie może mieć "
+                    f"wskazania stacji "
                     f"(generator ma dedykowane przyłącze SN, nie idzie przez stację)."
                 )
         elif variant == "nn_side":
             if self.station_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"wymaga station_ref (wskazuje stację SN/nN)."
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN "
+                    f"wymaga wskazania stacji SN/nN."
                 )
             if self.blocking_transformer_ref is not None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"nie może mieć blocking_transformer_ref "
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN "
+                    f"nie może mieć transformatora blokowego "
                     f"(generator po stronie nN, transformator stacji wystarczy)."
                 )
         elif variant == "block_transformer":
             if self.blocking_transformer_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant="
-                    f"'block_transformer' wymaga blocking_transformer_ref."
+                    f"Generator '{self.ref_id}': przyłączenie przez transformator blokowy "
+                    f"wymaga wskazania transformatora blokowego."
                 )
         return self
 
@@ -1160,14 +1160,18 @@ class Measurement(ENMElement):
         `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
         przez `Field(gt=0)`."""
         if self.ct_cores is not None and self.measurement_type != "CT":
-            raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
+            raise ValueError(
+                f"Pomiar '{self.ref_id}': rdzenie przekładnika prądowego wymagają pomiaru typu CT."
+            )
         if self.vt_mounting is not None and self.measurement_type != "VT":
             raise ValueError(
-                f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
+                f"Pomiar '{self.ref_id}': sposób montażu przekładnika napięciowego wymaga pomiaru "
+                "typu VT."
             )
         if self.vt_uzwojenie is not None and self.measurement_type != "VT":
             raise ValueError(
-                f"Measurement '{self.ref_id}': vt_uzwojenie wymaga measurement_type='VT'."
+                f"Pomiar '{self.ref_id}': uzwojenie przekładnika napięciowego wymaga pomiaru "
+                "typu VT."
             )
         return self
 

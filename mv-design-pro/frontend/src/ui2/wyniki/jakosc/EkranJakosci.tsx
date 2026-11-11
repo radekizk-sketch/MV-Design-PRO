@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './jakosc.css';
-import { MathBlock } from '../../../ui/proof/MathRenderer';
+import { MathBlock, MathInline } from '../../../ui/proof/MathRenderer';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import {
   EkranAnalizy,
@@ -108,6 +108,7 @@ import {
   type IstotnoscStatusu,
 } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 // ---------------------------------------------------------------------------
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
@@ -178,7 +179,7 @@ export function Chip({
   return (
     <div className={`mvd-jakosc-chip mvd-jakosc-chip--${istotnosc}`} data-testid="mvd-jakosc-chip">
       <span className="mvd-jakosc-chip-liczba mvd-num">{wartosc}</span>
-      <span className="mvd-jakosc-chip-etykieta">{etykieta}</span>
+      <span className="mvd-jakosc-chip-etykieta"><TekstZWzorami tekst={etykieta} /></span>
     </div>
   );
 }
@@ -202,12 +203,12 @@ export function StanSekcji({
 }) {
   return (
     <section className="mvd-jakosc-sekcja" data-testid={testid}>
-      <h2 className="mvd-jakosc-sekcja-tytul">{tytul}</h2>
+      <h2 className="mvd-jakosc-sekcja-tytul"><TekstZWzorami tekst={tytul} /></h2>
       <div
         className={wariant === 'blad' ? 'mvd-jakosc-stan mvd-jakosc-stan--blad' : 'mvd-jakosc-stan'}
       >
-        <p className="mvd-jakosc-stan-title">{komunikat}</p>
-        {opis && <p className="mvd-jakosc-stan-desc">{opis}</p>}
+        <p className="mvd-jakosc-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+        {opis && <p className="mvd-jakosc-stan-desc"><TekstZWzorami tekst={opis} /></p>}
         <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
       </div>
     </section>
@@ -351,7 +352,7 @@ function SzczegolWiarygodnosci({
           </dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolIkss}</dt>
+          <dt><TekstZWzorami tekst={JAKOSC_STRINGS.kolIkss} /></dt>
           <dd className="mvd-num">
             {item.ikss_ka !== null ? `${fmtKA(item.ikss_ka)} ${JAKOSC_STRINGS.jednKA}` : JAKOSC_STRINGS.kreska}
           </dd>
@@ -365,7 +366,7 @@ function SzczegolWiarygodnosci({
           <dd>{blokada}</dd>
         </div>
       </dl>
-      <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <p className="mvd-jakosc-szczegol-why"><TekstZWzorami tekst={item.why_pl} /></p>
     </section>
   );
 }
@@ -550,7 +551,7 @@ function SzczegolWalidacji({
           </dd>
         </div>
       </dl>
-      <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <p className="mvd-jakosc-szczegol-why"><TekstZWzorami tekst={item.why_pl} /></p>
       {szczegolyAudytowe && (item.white_box?.length ?? 0) > 0 && (
         <div className="mvd-jakosc-slad-blok">
           <button
@@ -573,7 +574,7 @@ function SzczegolWalidacji({
                     {krok.latex ? (
                       <MathBlock latex={krok.latex} />
                     ) : (
-                      <code className="mvd-num">{krok.tekst}</code>
+                      <span className="mvd-num"><TekstZWzorami tekst={krok.tekst} /></span>
                     )}
                   </li>
                 ))}
@@ -591,6 +592,15 @@ function SzczegolWalidacji({
 // ---------------------------------------------------------------------------
 
 /** Ślad WHITE BOX (Wzór → Podstawienie → Wynik) — wzorzec `SladAnalizy`, inline. */
+/**
+ * Podstawienie albo wynik kroku śladu: wzór z pola `*_latex` przez KaTeX, a bez niego proza
+ * backendu słowami (kontrakt kroku śladu — proza bez znaczników LaTeX).
+ */
+function ZapisKroku({ proza, latex }: { proza: string; latex?: string }) {
+  if (latex) return <MathInline latex={latex} />;
+  return <code className="mvd-num">{proza}</code>;
+}
+
 function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
   if (kroki.length === 0) return null;
   return (
@@ -602,11 +612,11 @@ function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <ZapisKroku proza={krok.substitution_pl} latex={krok.substitution_latex} />
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <ZapisKroku proza={krok.result_pl} latex={krok.result_latex} />
         </li>
       ))}
     </ol>
@@ -655,7 +665,7 @@ function SzczegolMigotania({
       />
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolSk}</dt>
+          <dt><TekstZWzorami tekst={JAKOSC_STRINGS.kolSk} /></dt>
           <dd className="mvd-num">{wartoscMva(wezel.sk_mva)}</dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
@@ -692,7 +702,7 @@ function SzczegolMigotania({
               </div>
               <dl className="mvd-jakosc-szczegol-dane">
                 <div className="mvd-jakosc-szczegol-para">
-                  <dt>{JAKOSC_STRINGS.modulSn}</dt>
+                  <dt><TekstZWzorami tekst={JAKOSC_STRINGS.modulSn} /></dt>
                   <dd className="mvd-num">{wartoscMva(modul.sn_mva)}</dd>
                 </div>
                 <div className="mvd-jakosc-szczegol-para">
@@ -841,11 +851,11 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <ZapisKroku proza={krok.substitution_pl} latex={krok.substitution_latex} />
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <ZapisKroku proza={krok.result_pl} latex={krok.result_latex} />
         </li>
       ))}
     </ol>
@@ -900,7 +910,7 @@ function SzczegolArcFlash({
           <dd className="mvd-num">{wynik.ppe_category ?? JAKOSC_STRINGS.kreska}</dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolIbf}</dt>
+          <dt><TekstZWzorami tekst={JAKOSC_STRINGS.kolIbf} /></dt>
           <dd className="mvd-num">
             {wynik.i_bf_ka !== null
               ? `${fmtKA(wynik.i_bf_ka)} ${JAKOSC_STRINGS.jednKA}`
@@ -908,7 +918,7 @@ function SzczegolArcFlash({
           </dd>
         </div>
       </dl>
-      <p className="mvd-jakosc-szczegol-why">{wynik.why_pl}</p>
+      <p className="mvd-jakosc-szczegol-why"><TekstZWzorami tekst={wynik.why_pl} /></p>
       {wynik.missing_data.length > 0 && (
         <p className="mvd-jakosc-szczegol-brak" data-testid="mvd-jakosc-af-braki">
           {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data.join(', ')}
@@ -1090,7 +1100,7 @@ export function SekcjaArcFlash({
     <section data-testid="mvd-jakosc-arcflash">
       <h2 className="mvd-jakosc-sekcja-tytul">{JAKOSC_STRINGS.sekcjaArcFlash}</h2>
       <div className="mvd-jakosc-af-form" data-testid="mvd-jakosc-af-form">
-        <p className="mvd-jakosc-af-form-opis">{JAKOSC_STRINGS.parametryOpis}</p>
+        <p className="mvd-jakosc-af-form-opis"><TekstZWzorami tekst={JAKOSC_STRINGS.parametryOpis} /></p>
         <div className="mvd-jakosc-af-form-pola">
           <label className="mvd-jakosc-af-pole">
             <span>

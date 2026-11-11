@@ -212,7 +212,7 @@ export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
   include_inverter_contribution: 'Wkład inwerterów',
   operator_profile_id: 'Operator (OSD)',
   sc_input_mode: 'Parametry zwarciowe (tryb)',
-  sc_simplified_sk_mva: 'Moc zwarciowa S″k po stronie SN [MVA]',
+  sc_simplified_sk_mva: 'Moc zwarciowa $S_{k}\'\'$ po stronie SN [MVA]',
   sc_simplified_r_x_ratio: 'R/X po stronie SN',
 };
 

@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+import { poTekscieZWzorami } from '../../../test/tekstZWzorami';
 
 /**
  * CV-4.3 K7 (karta K7-FE): inspektor pokazuje dane scenariusza MIN (Sk3/Ik3/R-X)
@@ -98,9 +99,9 @@ describe('InspectorEngineeringView - dane scenariusza MIN źródła sieciowego (
   it('pokazuje Sk3/Ik3/R-X scenariusza MIN obok wartości MAX', () => {
     render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Moc zwarciowa Sk3')).toBeInTheDocument();
-    expect(screen.getByText('Moc zwarciowa Sk3 (MIN)')).toBeInTheDocument();
-    expect(screen.getByText('Prąd zwarciowy Ik3 (MIN)')).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami("Moc zwarciowa $S_{k3}''$"))).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami("Moc zwarciowa $S_{k3}''$ (MIN)"))).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami("Prąd zwarciowy $I_{k3}''$ (MIN)"))).toBeInTheDocument();
     expect(screen.getByText('Stosunek R/X (MIN)')).toBeInTheDocument();
     expect(screen.getByTestId('engineering-field-sk3_min_mva')).toHaveTextContent('150');
     expect(screen.getByTestId('engineering-field-ik3_min_ka')).toHaveTextContent('5,2');
@@ -117,7 +118,7 @@ describe('InspectorEngineeringView - dane scenariusza MIN źródła sieciowego (
 
     render(<InspectorEngineeringView />);
 
-    expect(screen.getByText('Moc zwarciowa Sk3 (MIN)')).toBeInTheDocument();
+    expect(screen.getByText(poTekscieZWzorami("Moc zwarciowa $S_{k3}''$ (MIN)"))).toBeInTheDocument();
     expect(screen.getByTestId('engineering-field-sk3_min_mva')).toHaveTextContent('nie podano');
     expect(screen.getByTestId('engineering-field-ik3_min_ka')).toHaveTextContent('nie podano');
     expect(screen.getByTestId('engineering-field-rx_ratio_min')).toHaveTextContent('nie podano');

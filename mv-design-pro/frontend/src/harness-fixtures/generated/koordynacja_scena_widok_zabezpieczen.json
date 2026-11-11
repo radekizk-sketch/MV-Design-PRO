@@ -7,7 +7,7 @@
       "element_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
         "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
@@ -16,7 +16,7 @@
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie odejścia S01",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -50,7 +50,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 5.0,
                   "minimum": 0.05,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -94,7 +94,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 40.0,
                   "minimum": 0.1,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -527,7 +527,7 @@
       "element_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
         "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
@@ -536,7 +536,7 @@
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -570,7 +570,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 5.0,
                   "minimum": 0.05,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -614,7 +614,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 40.0,
                   "minimum": 0.1,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",

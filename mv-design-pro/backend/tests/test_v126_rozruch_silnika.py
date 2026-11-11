@@ -132,7 +132,7 @@ def test_wiersz_rozruchu_z_wyroczni(tabliczka: str, szyna: str) -> None:
     # przyjęta wtedy i tylko wtedy, gdy wartość robocza); impedancja zastępcza z mostu nie
     # jest wartością roboczą solvera, więc nie ma dawnej danej „podziału mocy zwarciowej”.
     nazwy = [d["nazwa_pl"] for d in wiersz["dane_przyjete"]]
-    assert any("cos φ_n" in n for n in nazwy) is (tabliczka == "brak")
+    assert any("Znamionowy współczynnik mocy" in n for n in nazwy) is (tabliczka == "brak")
     assert any("Sprawność" in n for n in nazwy) is (tabliczka == "brak")
     assert not any("mocy zwarciowej" in n for n in nazwy)
     assert oceny["zapad"]["status_maszynowy"] == ("SPELNIA" if du <= 15.0 else "NIE_SPELNIA")

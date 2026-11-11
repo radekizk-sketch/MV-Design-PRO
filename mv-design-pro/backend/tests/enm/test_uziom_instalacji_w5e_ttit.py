@@ -35,7 +35,7 @@ def test_walidator_przyjmuje_dodatnie_liczby_i_brak(wartosc: object) -> None:
 @pytest.mark.parametrize("wartosc", [0, -3.0, float("nan"), float("inf"), "dużo", True, [1]])
 def test_walidator_odrzuca_niefizyczne(wartosc: object) -> None:
     r_a, blad = waliduj_r_a(wartosc)
-    assert r_a is None and blad is not None and "R_A" in blad
+    assert r_a is None and blad is not None and "rezystancja uziomu instalacji odbiorczej" in blad
 
 
 def test_model_odrzuca_r_a_nieprzekraczajace_zera() -> None:

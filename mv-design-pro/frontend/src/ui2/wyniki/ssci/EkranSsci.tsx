@@ -67,8 +67,8 @@ function StanPanel({
       className={wariant === 'blad' ? 'mvd-ssci-stan mvd-ssci-stan--blad' : 'mvd-ssci-stan'}
       data-testid={testid}
     >
-      <p className="mvd-ssci-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-ssci-stan-desc">{opis}</p>}
+      <p className="mvd-ssci-stan-title"><TekstZWzorami tekst={komunikat} /></p>
+      {opis && <p className="mvd-ssci-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -216,8 +216,20 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
                   <td>
                     <MathInline latex={k.formula_latex} />
                   </td>
-                  <td>{k.substitution_pl}</td>
-                  <td>{k.result_pl}</td>
+                  <td>
+                    {k.substitution_latex ? (
+                      <MathInline latex={k.substitution_latex} />
+                    ) : (
+                      <TekstZWzorami tekst={k.substitution_pl} />
+                    )}
+                  </td>
+                  <td>
+                    {k.result_latex ? (
+                      <MathInline latex={k.result_latex} />
+                    ) : (
+                      <TekstZWzorami tekst={k.result_pl} />
+                    )}
+                  </td>
                   <td>{k.unit_check_pl}</td>
                 </tr>
               ))}

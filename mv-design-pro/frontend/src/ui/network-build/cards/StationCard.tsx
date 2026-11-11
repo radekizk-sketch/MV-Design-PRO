@@ -216,7 +216,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       return {
         key: `tr_${tr.ref_id}`,
         label: tr.name,
-        value: `${tr.sn_mva * 1000} kVA / uk=${tr.uk_percent}%${bayInfo}`,
+        value: `${tr.sn_mva * 1000} kVA / $u_{k}$=${tr.uk_percent}%${bayInfo}`,
         source: tr.catalog_ref ? ('catalog' as const) : ('instance' as const),
       };
     });
@@ -238,8 +238,8 @@ export function StationCard({ elementId }: { elementId: string }) {
         label: 'Wyniki analizy',
         fields: [
           { key: 'u_bus_pu', label: 'Napięcie U szyny', value: null, unit: 'pu', source: 'calculated' },
-          { key: 'ik3', label: 'Prąd zwarciowy Ik3', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'ik1', label: 'Prąd zwarciowy Ik1', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'ik3', label: 'Prąd zwarciowy $I_{k3}\'\'$', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'ik1', label: 'Prąd zwarciowy $I_{k1}\'\'$', value: null, unit: 'kA', source: 'calculated' },
           { key: 'max_tr_loading', label: 'Maks. obciążenie trafo', value: null, unit: '%', source: 'calculated' },
           { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },
         ],

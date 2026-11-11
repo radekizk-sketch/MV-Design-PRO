@@ -56,7 +56,7 @@ export const ZRODLO_DYSP_STRINGS = {
   napiecie: 'Napięcie znamionowe',
   napieciePomoc: 'Napięcie znamionowe agregatu [kV].',
   cosfi: 'Współczynnik mocy',
-  cosfiPomoc: 'Znamionowy cos φ agregatu (0–1).',
+  cosfiPomoc: 'Znamionowy $\\cos\\varphi$ agregatu (0–1).',
   trybGenset: 'Tryb pracy',
   trybGensetOpcje: [
     { id: 'PRACA_CIAGLA', etykieta: 'Praca ciągła' },
@@ -128,7 +128,7 @@ export const ZRODLO_DYSP_STRINGS = {
     + 'Początkowy prąd zwarciowy zależy od reaktancji podprzejściowej $X_d\'\'$: '
     + '$I_k\'\' = \\dfrac{c\\,U_n}{\\sqrt{3}\\,\\left|Z_G\\right|}$, gdzie $Z_G = R_G + jX_d\'\'$. Prąd maleje w czasie '
     + '(podprzejściowy → przejściowy $X_d\'$ → ustalony $X_d$), bo pole wzbudzenia i reakcja twornika zmieniają '
-    + 'się. Moc pozorna wynika z mocy czynnej i cos φ: $S = \\dfrac{P}{\\cos\\varphi}$, a prąd znamionowy '
+    + 'się. Moc pozorna wynika z mocy czynnej i $\\cos\\varphi$: $S = \\dfrac{P}{\\cos\\varphi}$, a prąd znamionowy '
     + '$I_n = \\dfrac{S}{\\sqrt{3}\\,U_n}$. Reaktancje bierze się z katalogu — to one, nie moc, wyznaczają wkład '
     + 'zwarciowy, dlatego agregat modeluje się jako źródło za impedancją.',
   teoriaWymogGenset:

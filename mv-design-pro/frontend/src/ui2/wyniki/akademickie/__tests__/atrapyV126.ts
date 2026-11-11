@@ -19,6 +19,7 @@ import { vi, type Mock } from 'vitest';
 import gotowoscFixture from '../../../../harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
 import katalogFixture from '../../../../harness-fixtures/generated/katalog_analiz_v126.json';
 import type { GotowoscAnalizy, KartaKatalogu, OdpowiedzGotowosci } from '../api';
+import scenaBiegow from '../../../../harness-fixtures/generated/akademickie_scena_biegi.json';
 import odpowiedziSolvera from './odpowiedziSolvera.json';
 
 export const KATALOG: readonly KartaKatalogu[] = (katalogFixture as { items: KartaKatalogu[] }).items;
@@ -62,6 +63,11 @@ export interface OpcjeAtrapy {
   readonly wynik?: Record<string, unknown>;
   /** Wynik z fixtury REALNYCH odpowiedzi solvera dla rodzaju z adresu. */
   readonly wynikZFixtury?: boolean;
+  /**
+   * Ślad i dowód z fixtury REALNYCH odpowiedzi API (`akademickie_scena_biegi.json`, generator
+   * `scripts/eksport_fixtur_harnessu.py` przez widok API, który dokłada `*_latex`).
+   */
+  readonly sladZFixtury?: boolean;
   /** Liczba kroków śladu/dowodu — 25 sprawdza, że limit 8 powierzchni zastanej zniknął. */
   readonly krokowSladu?: number;
   /** Treść `detail` odmowy 422 uruchomienia. */
@@ -143,6 +149,12 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
       return odpowiedz({ id: RUN_ID, status: 'DONE', analysis_type: 'V126', error_message: null });
     }
     const rodzajWyniku = rodzajZAdresu(adres, '/results/v126/');
+    const biegFixtury = (scenaBiegow as { biegi: Record<string, { slad: unknown; dowod: unknown }> })
+      .biegi[rodzajWyniku];
+    if (opcje.sladZFixtury && biegFixtury !== undefined) {
+      if (adres.includes('/trace')) return odpowiedz(biegFixtury.slad);
+      if (adres.includes('/proof')) return odpowiedz(biegFixtury.dowod);
+    }
     if (adres.includes('/trace')) {
       return odpowiedz({
         run_id: RUN_ID,

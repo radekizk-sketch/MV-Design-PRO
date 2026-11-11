@@ -277,7 +277,7 @@ def test_invalid_fault_node_raises():
 def test_nonpositive_c_factor_raises(c_factor: float):
     graph = build_transformer_only_graph()
 
-    with pytest.raises(ValueError, match="c_factor must be > 0"):
+    with pytest.raises(ValueError, match="współczynnik napięciowy musi być dodatni"):
         ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id="B",
@@ -291,7 +291,7 @@ def test_nonpositive_c_factor_raises(c_factor: float):
 def test_nonpositive_tk_raises(tk_s: float):
     graph = build_transformer_only_graph()
 
-    with pytest.raises(ValueError, match="tk_s must be > 0"):
+    with pytest.raises(ValueError, match="czas trwania zwarcia musi być dodatni"):
         ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id="B",
@@ -673,7 +673,7 @@ def test_2ph_ground_depends_on_z0_and_requires_it():
 
     assert res_low.ikss_a > res_high.ikss_a
 
-    with pytest.raises(ValueError, match="Z0 bus matrix is required"):
+    with pytest.raises(ValueError, match="wymaga macierzy impedancji zerowej sieci"):
         ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
             graph=graph,
             fault_node_id="B",

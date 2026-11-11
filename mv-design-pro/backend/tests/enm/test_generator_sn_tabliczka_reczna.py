@@ -110,7 +110,7 @@ def test_brak_katalogu_i_brak_mocy_pozornej_odmawia(rated_mva: Any) -> None:
         payload["manual_params"] = {"rated_mva": rated_mva}
     wynik = execute_domain_operation(snapshot, "add_generator_sn", payload)
     assert wynik.get("error_code") == "generator.catalog_required"
-    assert "moc pozorna" in str(wynik.get("error"))
+    assert "moc znamionowa pozorna" in str(wynik.get("error"))
     assert not wynik.get("snapshot")
 
 

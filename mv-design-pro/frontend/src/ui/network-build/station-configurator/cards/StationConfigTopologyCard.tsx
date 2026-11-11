@@ -2,6 +2,7 @@
  * Karta 2 — Topologia i porty (PR-8a, brief 2 §8 karta 2).
  */
 
+import { MathInline } from '../../../proof/MathRenderer';
 import { PORT_KIND_LABELS_PL, type PortKind } from '../../../sld/v2/core/ports';
 
 export interface StationConfigPortRow {
@@ -68,7 +69,9 @@ export function StationConfigTopologyCard(
               <tr className="border-b border-scada-border text-scada-muted">
                 <th className="text-left">Port</th>
                 <th className="text-left">Typ</th>
-                <th className="text-right">U_n [kV]</th>
+                <th className="text-right">
+                  <MathInline latex="U_n" /> [kV]
+                </th>
                 <th className="text-left">Pole</th>
                 <th className="text-left">Stan portu</th>
               </tr>

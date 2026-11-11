@@ -22,6 +22,7 @@ import {
   PULPIT_STRINGS,
 } from './strings';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface SekcjaSilySieciProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
@@ -60,7 +61,7 @@ function WpisWezla({
         <span className="mvd-oze-num">{formatWskaznik(wpis.scr)}</span>
       </div>
       <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.silaSsc}</span>
+        <span><TekstZWzorami tekst={PULPIT_STRINGS.silaSsc} /></span>
         <span className="mvd-oze-num">{formatMva(wpis.s_sc_mva)}</span>
       </div>
       <div className="mvd-oze-metryka">
@@ -123,7 +124,7 @@ export function SekcjaSilySieci({
           <div className="mvd-oze-blokada" data-testid="mvd-oze-sila-brak-przebiegu">
             {PULPIT_STRINGS.silaBrakPrzebiegu}
           </div>
-          <p style={{ margin: '6px 0 0' }}>{PULPIT_STRINGS.silaBrakOpis}</p>
+          <p style={{ margin: '6px 0 0' }}><TekstZWzorami tekst={PULPIT_STRINGS.silaBrakOpis} /></p>
         </div>
       ) : stan.rodzaj === 'ladowanie' ? (
         <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-sila-ladowanie">

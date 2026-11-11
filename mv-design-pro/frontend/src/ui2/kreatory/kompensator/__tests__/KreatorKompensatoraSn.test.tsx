@@ -73,7 +73,8 @@ vi.mock('../../../../ui/network-build/forms/shuntCompensatorPreviewApi', () => (
       reactive_power_var: 1_200_000,
       susceptance_siemens: 0.00533,
       rated_current_a: 46.2,
-      formula_ref: 'B = Q/U²',
+      formula_ref: 'susceptancja z mocy biernej i napięcia',
+      formula_latex: String.raw`B = \frac{Q}{U^{2}}`,
     }),
 }));
 

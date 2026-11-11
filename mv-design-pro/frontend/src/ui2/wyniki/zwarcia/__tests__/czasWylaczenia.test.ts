@@ -36,7 +36,7 @@ const TB_PROPOZYCJA: CzasTbPunktu = {
   wartosc_robocza: true,
   jakosc: 'ESTIMATED',
   opis_pl: 't_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …): brak pól.',
-  zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)',
+  zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)',
 };
 const TB_POLE_ROBOCZE: CzasTbPunktu = {
   wartosc_s: 0.16,
@@ -113,7 +113,7 @@ describe('naBilansIEC — pozycja tb × pochodzenie tb punktu', () => {
 describe('naZalozeniaZwarc — czas wyłączenia tb biegu', () => {
   const NAZWA = (ref: string) => `Element ${ref}`;
   const OPIS_REGULY =
-    'Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól …';
+    'Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól …';
 
   it('tb scenariusza → wiersz z wartością w sekundach', () => {
     const z = naZalozeniaZwarc(

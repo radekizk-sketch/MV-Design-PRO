@@ -8,6 +8,7 @@
  * jeden arkusz stylów (rama/wykresy.css). Reuse zamiast równoległych definicji.
  */
 
+import { TekstSvgZWzorami } from '../../../ui/proof/TekstSvgZWzorami';
 import './wykresy.css';
 
 export const VBW = 440;
@@ -28,10 +29,10 @@ export function RamkaWykresu({ osX, osY }: { osX: string; osY: string }) {
       <line x1={PAD.l} y1={py(0)} x2={px(1)} y2={py(0)} className="mvd-wykres-os" />
       <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={py(0)} className="mvd-wykres-os" />
       <text x={px(1)} y={VBH - 8} textAnchor="end" className="mvd-wykres-etyk">
-        {osX}
+        <TekstSvgZWzorami tekst={osX} />
       </text>
       <text x={6} y={PAD.t + 4} className="mvd-wykres-etyk">
-        {osY}
+        <TekstSvgZWzorami tekst={osY} />
       </text>
     </>
   );

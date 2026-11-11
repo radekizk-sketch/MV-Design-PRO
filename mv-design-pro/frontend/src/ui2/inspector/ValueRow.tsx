@@ -11,6 +11,7 @@ import type { KeyboardEvent } from 'react';
 import type { WartoscZJednostka } from './inspectorModel';
 import { INSPECTOR_STRINGS, pochodzenieLabel } from './strings';
 import { FreshnessBadge } from './FreshnessBadge';
+import { TekstZWzorami } from '../kreatory/rama/tekstZWzorami';
 
 interface ValueRowProps {
   etykieta: string;
@@ -51,7 +52,7 @@ export function ValueRow({
 
   return (
     <div className="mvd-insp-kv-row">
-      <span className="mvd-insp-kv-label">{etykieta}</span>
+      <span className="mvd-insp-kv-label"><TekstZWzorami tekst={etykieta} /></span>
       <span className="mvd-insp-kv-value">
         {maDowod ? (
           <button

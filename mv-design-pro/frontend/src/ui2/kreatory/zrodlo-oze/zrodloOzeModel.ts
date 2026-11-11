@@ -80,7 +80,7 @@ export const WARIANT_OPCJE: ReadonlyArray<{ value: WariantPrzylaczenia; label: s
 ];
 
 export const REGULACJA_OPCJE: ReadonlyArray<{ value: TrybRegulacji; label: string }> = [
-  { value: 'STALY_COS_PHI', label: 'Stały współczynnik mocy cosφ' },
+  { value: 'STALY_COS_PHI', label: 'Stały współczynnik mocy $\\cos\\varphi$' },
   { value: 'Q_OD_U', label: 'Regulacja Q(U) — napięciowo-jałowa' },
   { value: 'P_OD_U', label: 'Regulacja P(U) — ograniczanie mocy od napięcia' },
   // Karta CV-4.1b (A3-04): węzeł PV w kanonicznym rozpływie — napięcie zadane
@@ -320,13 +320,13 @@ export function walidujFormularz(
   const qMin = data.q_min_mvar;
   const qMax = data.q_max_mvar;
   if (qMin !== null && qMax !== null && qMin > qMax) {
-    errors.push({ field: 'q_max_mvar', message: 'Zakres mocy biernej: Q min nie może przekraczać Q max.' });
+    errors.push({ field: 'q_max_mvar', message: 'Zakres mocy biernej: $Q_{\\min}$ nie może przekraczać $Q_{\\max}$.' });
   }
   // V12K-063 (kontrola po code-review): cosφ musi mieścić się w (0; 1] — poza tym zakresem
   // solver zaokrągla wartość (cosφ>1 → 1 = tryb pasywny), więc kontrolka byłaby phantomem.
   if (data.control_mode === 'STALY_COS_PHI' && data.cos_phi_target !== null) {
     if (data.cos_phi_target <= 0 || data.cos_phi_target > 1) {
-      errors.push({ field: 'cos_phi_target', message: 'Współczynnik mocy cosφ musi mieścić się w zakresie (0; 1].' });
+      errors.push({ field: 'cos_phi_target', message: 'Współczynnik mocy $\\cos\\varphi$ musi mieścić się w zakresie (0; 1].' });
     }
   }
   // V12K-064: napięciowe pasmo nieczułości Q(U) — dolna granica nie może przekraczać górnej
@@ -350,12 +350,12 @@ export function walidujFormularz(
     if (qMin === null || qMax === null) {
       errors.push({
         field: 'q_max_mvar',
-        message: 'Tryb regulacji napięcia wymaga obu granic mocy biernej (Q min i Q max).',
+        message: 'Tryb regulacji napięcia wymaga obu granic mocy biernej ($Q_{\\min}$ i $Q_{\\max}$).',
       });
     } else if (qMin >= qMax) {
       errors.push({
         field: 'q_max_mvar',
-        message: 'Tryb regulacji napięcia wymaga Q min ściśle mniejszego od Q max.',
+        message: 'Tryb regulacji napięcia wymaga $Q_{\\min}$ ściśle mniejszego od $Q_{\\max}$.',
       });
     }
   }
@@ -596,7 +596,7 @@ export function trybQWymagaWartosci(data: OzeFormData): boolean {
 
 /** Etykieta pozycji katalogu falownika. */
 export function etykietaKonwertera(item: ConverterType): string {
-  return `${item.name} · Un ${item.un_kv} kV · S ${item.sn_mva.toFixed(3)} MVA · Pmax ${item.pmax_mw.toFixed(3)} MW`;
+  return `${item.name} · $U_{n}$ ${item.un_kv} kV · S ${item.sn_mva.toFixed(3)} MVA · $P_{\\max}$ ${item.pmax_mw.toFixed(3)} MW`;
 }
 
 // ===========================================================================

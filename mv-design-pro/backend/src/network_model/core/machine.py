@@ -160,7 +160,7 @@ class SynchronousMachineSource:
         """Auditable derivation (WHITE BOX) — every factor pinned to a clause."""
         z = self.z_internal_ohm
         return {
-            "model": "IEC 60909-0:2016 §6.3 — maszyna synchroniczna (źródło za Z″)",
+            "model": "IEC 60909-0:2016 §6.3 — maszyna synchroniczna (źródło za impedancją podprzejściową)",
             "sr_mva": self.sr_mva,
             "ur_kv": self.ur_kv,
             "xd_subtransient_pu": self.xd_subtransient_pu,
@@ -295,9 +295,10 @@ class AsynchronousMachineSource:
         z = self.z_internal_ohm
         return {
             "model": (
-                "IEC 60909-0:2016 §6.7 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M"
+                "IEC 60909-0:2016 §6.7 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za "
+                "impedancją zwarciową"
                 if self.wind_type_3
-                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za Z_M)"
+                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za impedancją zwarciową silnika)"
             ),
             "wind_type_3": self.wind_type_3,
             "pr_mw": self.pr_mw,

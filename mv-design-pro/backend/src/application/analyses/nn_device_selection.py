@@ -114,6 +114,18 @@ class KryteriumStatus(StrEnum):
 KIND_MCB = "MCB"
 KIND_FUSE_SWITCH = "FUSE_SWITCH"
 KIND_MCCB = "MCCB"
+
+#: Nazwy kryteriów oceny kandydata — jedno źródło prawdy dla producenta
+#: (`oceniaj_kandydata`, `oceniaj_przeciazenie_kandydata`) i konsumentów, którzy
+#: wyszukują kryterium po nazwie (`nn_circuit_sheet`).
+NAZWA_KRYTERIUM_I = (
+    "Prąd obliczeniowy nie większy od prądu znamionowego zabezpieczenia, a ten nie większy "
+    "od obciążalności skorygowanej"
+)
+NAZWA_KRYTERIUM_II = (
+    "Prąd zadziałania zabezpieczenia nie większy od 1,45 obciążalności skorygowanej"
+)
+NAZWA_KRYTERIUM_SWZ = "Samoczynne wyłączenie zasilania przy minimalnym prądzie zwarcia"
 _KINDY_DOZWOLONE = (KIND_MCB, KIND_FUSE_SWITCH, KIND_MCCB)
 
 
@@ -177,7 +189,9 @@ class KandydatAparatuNn:
                 f"Nieznany rodzaj kandydata '{self.kind}' — dozwolone: {_KINDY_DOZWOLONE}."
             )
         if self.in_a <= 0:
-            raise OdmowaDanychError(f"in_a musi być dodatnie, otrzymano {self.in_a}.")
+            raise OdmowaDanychError(
+                f"Prąd znamionowy aparatu (`in_a`) musi być dodatni, otrzymano {self.in_a}."
+            )
         if self.kind == KIND_MCB and not self.klasa_mcb:
             raise OdmowaDanychError("Kandydat MCB wymaga klasa_mcb (B/C/D).")
         if (
@@ -295,15 +309,22 @@ def _kryterium_ib_in_iz(*, ib_a: float, iz_prime_a: float, in_a: float) -> Kryte
     spelnia = ib_a <= in_a <= iz_prime_a
     if spelnia:
         uzasadnienie = (
-            f"Ib={ib_a:g} A <= In={in_a:g} A <= Iz′={iz_prime_a:g} A — spełnia (IEC 60364-4-43 "
+            f"Prąd obliczeniowy obwodu {ib_a:g} A ≤ prąd znamionowy aparatu {in_a:g} A ≤ "
+            f"obciążalność skorygowana przewodu {iz_prime_a:g} A — spełnia (IEC 60364-4-43 "
             "§433.1)."
         )
     elif in_a < ib_a:
-        uzasadnienie = f"In={in_a:g} A < Ib={ib_a:g} A — aparat NIE POKRYWA obciążenia obwodu."
+        uzasadnienie = (
+            f"Prąd znamionowy aparatu {in_a:g} A mniejszy od prądu obliczeniowego obwodu "
+            f"{ib_a:g} A — aparat NIE POKRYWA obciążenia obwodu."
+        )
     else:
-        uzasadnienie = f"In={in_a:g} A > Iz′={iz_prime_a:g} A — aparat NIE CHRONI przewodu."
+        uzasadnienie = (
+            f"Prąd znamionowy aparatu {in_a:g} A większy od obciążalności skorygowanej przewodu "
+            f"{iz_prime_a:g} A — aparat NIE CHRONI przewodu."
+        )
     return KryteriumWynik(
-        nazwa="Ib<=In<=Iz′",
+        nazwa=NAZWA_KRYTERIUM_I,
         status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
         uzasadnienie_pl=uzasadnienie,
         wartosci={"ib_a": ib_a, "in_a": in_a, "iz_prime_a": iz_prime_a},
@@ -332,14 +353,19 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
         assert gate.gwarancja == GwarancjaNormy.WYZWOLENIE_GWARANTOWANE  # I2 z definicji progu
         spelnia = i2 <= limit
         uzasadnienie = (
-            f"I2={i2:g} A (={PROG_CIEPLNY_WYZWALA_X_IN:g}×In MCB, IEC 60898-1) "
-            f"{'<=' if spelnia else '>'} 1,45·Iz′={limit:g} A."
+            f"Prąd zadziałania {i2:g} A ({PROG_CIEPLNY_WYZWALA_X_IN:g} prądu znamionowego "
+            f"wyłącznika MCB, IEC 60898-1) {'nie przekracza' if spelnia else 'przekracza'} "
+            f"1,45 obciążalności skorygowanej, czyli {limit:g} A."
         )
         return KryteriumWynik(
-            nazwa="I2<=1,45·Iz′",
+            nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
             uzasadnienie_pl=uzasadnienie,
-            wartosci={"i2_a": i2, "limit_a": limit, "zrodlo": "IEC 60898-1 (1,45×In)"},
+            wartosci={
+                "i2_a": i2,
+                "limit_a": limit,
+                "zrodlo": "IEC 60898-1 (1,45 prądu znamionowego)",
+            },
         )
     if kandydat.kind == KIND_FUSE_SWITCH:
         i2 = FUSE_GG_IF_MULTIPLIER * kandydat.in_a
@@ -347,14 +373,19 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
         assert brama_wkladki.gwarancja == GwarancjaNormy.WYZWOLENIE_GWARANTOWANE
         spelnia = i2 <= limit
         uzasadnienie = (
-            f"I2={i2:g} A (=If={FUSE_GG_IF_MULTIPLIER:g}×In wkładki, IEC 60269-1) "
-            f"{'<=' if spelnia else '>'} 1,45·Iz′={limit:g} A."
+            f"Prąd zadziałania {i2:g} A (umowny prąd zadziałania wkładki "
+            f"{FUSE_GG_IF_MULTIPLIER:g} × prąd znamionowy, IEC 60269-1) "
+            f"{'≤' if spelnia else '>'} 1,45 × obciążalność skorygowana przewodu = {limit:g} A."
         )
         return KryteriumWynik(
-            nazwa="I2<=1,45·Iz′",
+            nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
             uzasadnienie_pl=uzasadnienie,
-            wartosci={"i2_a": i2, "limit_a": limit, "zrodlo": "IEC 60269-1 (If=1,6×In)"},
+            wartosci={
+                "i2_a": i2,
+                "limit_a": limit,
+                "zrodlo": "IEC 60269-1 (prąd zadziałania 1,6 prądu znamionowego)",
+            },
         )
     # KIND_MCCB — karta D1: I2 = MCCB_I2_MULTIPLIER×Ir (IEC 60947-2), gdy
     # nastawa długozwłoczna jest rozwiązana; w przeciwnym razie trzeci stan,
@@ -362,11 +393,12 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
     # `ir_range`/`tr_range` (nie zaszyty na stałe niezależnie od danych).
     if kandydat.ir_a is None or kandydat.tr_s is None:
         return KryteriumWynik(
-            nazwa="I2<=1,45·Iz′",
+            nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.NIEROZSTRZYGALNE,
             uzasadnienie_pl=(
                 "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
-                "długozwłocznej Ir/tr w katalogu — I2 nie do wyznaczenia bez fabrykacji "
+                "długozwłocznej (prąd i czas) w katalogu — prądu zadziałania nie da się wyznaczyć "
+                "bez fabrykacji "
                 "(ten rekord katalogu nie niesie `ir_range`/`tr_range`)."
             ),
             wartosci={"limit_a": limit},
@@ -386,18 +418,19 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
     assert punkt_mccb.stopien != "brak"
     spelnia = i2 <= limit
     uzasadnienie = (
-        f"I2={i2:g} A (={MCCB_I2_MULTIPLIER:g}×Ir={kandydat.ir_a:g} A, wyzwalacz "
-        f"elektroniczny, IEC 60947-2 — stopień klasyfikacji '{punkt_mccb.stopien}') "
-        f"{'<=' if spelnia else '>'} 1,45·Iz′={limit:g} A."
+        f"Prąd zadziałania {i2:g} A ({MCCB_I2_MULTIPLIER:g} × nastawa długozwłoczna "
+        f"{kandydat.ir_a:g} A, wyzwalacz elektroniczny, IEC 60947-2 — stopień klasyfikacji "
+        f"'{punkt_mccb.stopien}') {'≤' if spelnia else '>'} 1,45 × obciążalność skorygowana "
+        f"przewodu = {limit:g} A."
     )
     return KryteriumWynik(
-        nazwa="I2<=1,45·Iz′",
+        nazwa=NAZWA_KRYTERIUM_II,
         status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
         uzasadnienie_pl=uzasadnienie,
         wartosci={
             "i2_a": i2,
             "limit_a": limit,
-            "zrodlo": "IEC 60947-2 (1,3×Ir, wyzwalacz elektroniczny)",
+            "zrodlo": "IEC 60947-2 (1,3 prądu nastawy wyzwalacza elektronicznego)",
             "ir_a": kandydat.ir_a,
             "mccb_stopien": punkt_mccb.stopien,
         },
@@ -431,7 +464,8 @@ def _na_danych_przyjetych(
     return replace(
         wynik,
         uzasadnienie_pl=(
-            f"{wynik.uzasadnienie_pl} Ik″max liczony z daną przyjętą (wartość robocza): {nazwy} "
+            f"{wynik.uzasadnienie_pl} Maksymalny prąd zwarciowy liczony z daną przyjętą "
+            f"(wartość robocza): {nazwy} "
             "— ocena na danej przyjętej, nie potwierdzony dowód zgodności."
         ),
         dane_przyjete=dane_przyjete,
@@ -443,9 +477,12 @@ def _kryterium_zdolnosc_wylaczania_bez_danych(
 ) -> KryteriumWynik:
     if ik_max_ka is None:
         return KryteriumWynik(
-            nazwa="Zdolność wyłączania >= Ik″max",
+            nazwa="Zdolność wyłączania ≥ maksymalny prąd zwarciowy",
             status=KryteriumStatus.NIEROZSTRZYGALNE,
-            uzasadnienie_pl="Brak Ik″max w punkcie zabudowy (bieg zwarciowy nie dostarczony).",
+            uzasadnienie_pl=(
+                "Brak maksymalnego prądu zwarciowego w punkcie zabudowy (bieg zwarciowy nie "
+                "dostarczony)."
+            ),
             wartosci={"zdolnosc_wylaczania_ka": kandydat.zdolnosc_wylaczania_ka},
         )
     if kandydat.zdolnosc_wylaczania_ka is None:
@@ -455,7 +492,7 @@ def _kryterium_zdolnosc_wylaczania_bez_danych(
             KIND_MCCB: "i_cu_ka",
         }[kandydat.kind]
         return KryteriumWynik(
-            nazwa="Zdolność wyłączania >= Ik″max",
+            nazwa="Zdolność wyłączania ≥ maksymalny prąd zwarciowy",
             status=KryteriumStatus.NIEROZSTRZYGALNE,
             uzasadnienie_pl=(
                 f"Katalog nie niesie pola '{pole}' dla tego kandydata — zdolność wyłączania "
@@ -465,11 +502,11 @@ def _kryterium_zdolnosc_wylaczania_bez_danych(
         )
     spelnia = kandydat.zdolnosc_wylaczania_ka >= ik_max_ka
     uzasadnienie = (
-        f"Zdolność wyłączania={kandydat.zdolnosc_wylaczania_ka:g} kA "
-        f"{'>=' if spelnia else '<'} Ik″max={ik_max_ka:g} kA."
+        f"Zdolność wyłączania {kandydat.zdolnosc_wylaczania_ka:g} kA "
+        f"{'≥' if spelnia else '<'} maksymalny prąd zwarciowy {ik_max_ka:g} kA."
     )
     return KryteriumWynik(
-        nazwa="Zdolność wyłączania >= Ik″max",
+        nazwa="Zdolność wyłączania ≥ maksymalny prąd zwarciowy",
         status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
         uzasadnienie_pl=uzasadnienie,
         wartosci={
@@ -513,7 +550,7 @@ def _kryterium_swz(
     )
     wynik = ocen_swz(ik1_min_a=ik1_min_a, u0_v=u0_v, aparat=aparat, dane_przyjete=dane_przyjete)
     return KryteriumWynik(
-        nazwa="SWZ przy Ik_min",
+        nazwa=NAZWA_KRYTERIUM_SWZ,
         status=_SWZ_STATUS_MAP[wynik.status],
         uzasadnienie_pl=wynik.przyczyna_pl,
         wartosci=wynik.to_dict(),
@@ -595,7 +632,9 @@ def ocen_kandydatow_nn(
             ``ik1_min_a < 0``.
     """
     if ib_a < 0:
-        raise ValueError(f"ib_a nie może być ujemne, otrzymano {ib_a}.")
+        raise ValueError(
+            f"Prąd obliczeniowy obwodu (`ib_a`) nie może być ujemny, otrzymano {ib_a}."
+        )
     if iz_prime_a <= 0:
         raise ValueError(f"iz_prime_a musi być dodatnie, otrzymano {iz_prime_a}.")
     if ik1_min_a < 0:
@@ -783,7 +822,8 @@ def odmowa_doboru_nadpradowego_tt_it(system: str) -> tuple[str, str]:
 @dataclass(frozen=True)
 class Ik1MinObwodu:
     """Ik1_min [A] i U0 [V] obwodu albo nazwany brak; ``dane_przyjete`` — dane, na których
-    stoi Ik1_min (wartość robocza tolerancji sieci nN, karta TOLERANCJA-NN-WARTOSC-ROBOCZA)."""
+    stoi Ik1_min (wartość robocza tolerancji sieci nN, karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+    """
 
     ik1_min_a: float | None
     u0_v: float | None

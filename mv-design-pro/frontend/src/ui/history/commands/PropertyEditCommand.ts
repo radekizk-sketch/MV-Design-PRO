@@ -16,6 +16,7 @@
 
 import type { Command } from '../Command';
 import { generateCommandId } from '../Command';
+import { tekstBezWzorow } from '../../proof/latexTekst';
 
 /**
  * Property edit command interface.
@@ -56,7 +57,7 @@ export class PropertyEditCommand implements Command {
 
   constructor(params: PropertyEditCommandParams) {
     this.id = generateCommandId();
-    this.name_pl = `Edycja: ${params.elementName}.${params.fieldLabel}`;
+    this.name_pl = `Edycja: ${params.elementName}.${tekstBezWzorow(params.fieldLabel)}`;
     this.timestamp = Date.now();
     this.params = params;
   }
