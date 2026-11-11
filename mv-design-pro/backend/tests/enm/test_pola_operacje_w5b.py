@@ -635,6 +635,14 @@ def _do_dawnych_kluczy(snap: dict[str, Any]) -> dict[str, Any]:
         ):
             if rekord.get(klucz) not in (None, [], {}):
                 wpis[klucz] = rekord[klucz]
+        if "primary_devices" in wpis:
+            # Zapis dawny jest starszy niż stan obiektu aparatu (karta UX-04/POLE-LINIOWE-WZORZEC)
+            # — rekordy aparatów w dawnym wpisie go nie niosą (pola stacji bez szablonu mają
+            # tor z szablonu roli od rozszerzenia karty SZABLONY-POL, `enm.aparaty_pol_sn`).
+            wpis["primary_devices"] = [
+                {k: v for k, v in aparat.items() if k != "stan_obiektu"}
+                for aparat in wpis["primary_devices"]
+            ]
         if rekord.get("metadane_pochodzenia"):
             wpis.update({k: v for k, v in rekord["metadane_pochodzenia"].items() if v})
         if rekord.get("wybor_bloku"):

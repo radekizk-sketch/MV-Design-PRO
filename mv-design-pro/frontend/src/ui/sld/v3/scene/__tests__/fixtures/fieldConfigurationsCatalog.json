@@ -4242,6 +4242,361 @@
       "wykonanie_pola": null
     },
     {
+      "bay_role": "COUPLER",
+      "config_ref": "kanoniczny:bay_template_rmu_coupler",
+      "field_role": "SPRZEGLO",
+      "group": "sprzeglowe",
+      "main_path": true,
+      "name": "Pole sprzęgła (rozłącznikowe)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_rmu_coupler::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_rmu_coupler::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "protection_codes": [],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_rmu_coupler",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "FEEDER",
+      "config_ref": "kanoniczny:bay_template_rmu_line_branch",
+      "field_role": "FEEDER",
+      "group": "specjalne",
+      "main_path": true,
+      "name": "Pole odgałęźne (rozłącznikowe)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_rmu_line_branch::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_rmu_line_branch::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_rmu_line_branch::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_rmu_line_branch",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "IN",
+      "config_ref": "kanoniczny:bay_template_rmu_line_in",
+      "field_role": "LINIA_IN",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wejściowe (rozłącznikowe)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_rmu_line_in::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_rmu_line_in::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_rmu_line_in::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_rmu_line_in",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_rmu_line_out",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe (rozłącznikowe)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_rmu_line_out::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_rmu_line_out::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_rmu_line_out::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "kabel"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_rmu_line_out",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
+    },
+    {
+      "bay_role": "TR",
+      "config_ref": "kanoniczny:bay_template_rmu_transformer",
+      "field_role": "TRANSFORMATOROWE",
+      "group": "transformatorowe",
+      "main_path": true,
+      "name": "Pole transformatorowe (rozłącznik bezpiecznikowy)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_rmu_transformer::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w1"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_rmu_transformer::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w1"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "Q8",
+          "device_ref": "kanoniczny:bay_template_rmu_transformer::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "w2"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "TR",
+          "device_ref": "kanoniczny:bay_template_rmu_transformer::dev::3",
+          "is_controllable": false,
+          "kind": "TRANSFORMER_DEVICE",
+          "placement": "DOWNSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "w2"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "transformator"
+            }
+          ],
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:transformer_device"
+        }
+      ],
+      "protection_codes": [],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_rmu_transformer",
+      "tylko_gpz": false,
+      "wykonanie_lacznikow": null,
+      "wykonanie_pola": null
+    },
+    {
       "bay_role": "TR",
       "config_ref": "kanoniczny:bay_template_transformer",
       "field_role": "TRANSFORMATOROWE",

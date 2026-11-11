@@ -17,6 +17,10 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
   przypisania zabezpieczeń (koordynacja z karty V12K-220, dopisana w modelu, bo żadna
   operacja domenowa nie buduje pól GPZ z listą aparatów pierwotnych);
 * ``stacjaPolePomiarowe`` — stacja B z polem pomiarowym (przekładnik napięciowy);
+* ``stacjeKonstrukcjiPol`` (scena + ``public``) — cztery stacje sekcyjne D (pola IN, OUT,
+  sprzęgło, TR) po jednej na konstrukcję pola wg aparatu z katalogu: wyłącznik, rozłącznik,
+  rozłącznik bezpiecznikowy, odłącznik — tor pól z szablonu roli (`enm.aparaty_pol_sn`,
+  karta SZABLONY-POL);
 * ``s95GpzSwiezy`` — sam GPZ zaraz po ``add_grid_source_sn``;
 * ``s92Bieg`` + nakładki ``s92Zwarcie``/``s92Rozplyw`` — dwa odcinki + szablon stacji
   przelotowej 1250 kVA, biegi kanoniczne zwarcia i rozpływu
@@ -386,6 +390,48 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
     return b.migawka()
 
 
+#: Konstrukcje pól stacji wg rodzaju aparatu głównego z katalogu (`enm.aparaty_pol_sn`).
+KONSTRUKCJE_POL_STACJI: tuple[tuple[str, str], ...] = (
+    ("S-WYL", "sw-cb-abb-vd4-17kv-630a"),
+    ("S-ROZL", "sw-ls-ogolny-prozniowy-24kv-630a"),
+    ("S-BEZP", "sw-fuse-eti-vv-17kv-63a"),
+    ("S-ODL", "sw-ds-abb-ojs-17kv-630a"),
+)
+
+
+def _stacje_konstrukcji_pol(b: KlientBudowy) -> dict[str, Any]:
+    """Cztery stacje sekcyjne D na kolejnych odcinkach, każda z polami IN, OUT, sprzęgła i TR,
+    z innym aparatem pól: tor pól z szablonu roli wg konstrukcji (wyłącznikowa — szablon
+    kanoniczny z przekładnikiem prądowym i funkcjami EAZ; rozłącznikowa — pole RMU)."""
+    b.gpz_110kv(1)
+    for numer in range(len(KONSTRUKCJE_POL_STACJI)):
+        b.odcinek_magistrali(120 + 40 * numer, f"Magistrala {numer + 1}")
+    for numer, (nazwa, aparat) in enumerate(KONSTRUKCJE_POL_STACJI):
+        b.operacja(
+            "insert_station_on_segment_sn",
+            {
+                "segment_id": segmenty_korytarza(b.migawka())[2 * numer],
+                "field_apparatus_catalog_ref": aparat,
+                "insert_at": {"mode": "RATIO", "value": 0.5},
+                "station": {
+                    "station_type": "D",
+                    "station_name": nazwa,
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+                "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
+                "sn_fields": [
+                    {"field_role": "LINIA_IN"},
+                    {"field_role": "LINIA_OUT"},
+                    {"field_role": "SPRZEGLO"},
+                    {"field_role": "TRANSFORMATOROWE"},
+                ],
+                "transformer": {"create": True, "transformer_catalog_ref": TRANSFORMATOR_630},
+            },
+        )
+    return b.migawka()
+
+
 def _s95_gpz_swiezy(b: KlientBudowy) -> dict[str, Any]:
     b.gpz_110kv(1)
     return b.migawka()
@@ -739,6 +785,11 @@ _SIECI: tuple[tuple[tuple[str, ...], str, Callable[[KlientBudowy], dict[str, Any
         (f"{SCENA}/stacjaPolePomiarowe.enm.json",),
         "Stacja z polem pomiarowym",
         _stacja_pole_pomiarowe,
+    ),
+    (
+        (f"{SCENA}/stacjeKonstrukcjiPol.enm.json", f"{PUBLICZNE}/stacjeKonstrukcjiPol.enm.json"),
+        "Stacje — konstrukcje pól",
+        _stacje_konstrukcji_pol,
     ),
     (
         (f"{SCENA}/stacjaPomiar1000.enm.json",),

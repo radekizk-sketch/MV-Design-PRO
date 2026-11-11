@@ -1465,7 +1465,7 @@
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
-            "linked_ref": null,
+            "linked_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_device",
             "naped": null,
             "odgalezienie": null,
             "operating_state": null,
@@ -1812,7 +1812,7 @@
           "requires_catalog_binding"
         ],
         "to_bus_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal",
-        "type": "switch",
+        "type": "disconnector",
         "x_ohm": 0.0
       },
       {

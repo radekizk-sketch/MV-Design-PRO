@@ -1293,7 +1293,18 @@
             "render_variant": "qet_en60617",
             "section_side": null,
             "stan_obiektu": "PROJEKTOWANY",
-            "switch_state": null,
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
             "symbol_ref": "symbol:three_position_switch",
             "uzwojenia": [],
             "wykonanie": null,
@@ -1843,7 +1854,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "5398358bcbfb5d0788ab7b629bb5c5e67fe24e255a9f074ca57a6a4fd4478d5d",
+      "hash_sha256": "66747a06655a1154f62c8299aa047b95f6d7038794d355e65bd37e0f9da24583",
       "name": "GPZ z polem zespołu uziemiającego Z14",
       "revision": 1,
       "updated_at": "2026-09-25T00:00:00Z"

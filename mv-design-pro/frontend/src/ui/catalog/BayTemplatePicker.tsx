@@ -70,6 +70,7 @@ export interface BayDeviceTemplateWire {
   // przypina `backend/tests/ci/test_parytet_rodzajow_aparatu_pola.py`.
   readonly kind:
     | 'CB'
+    | 'LOAD_SWITCH'
     | 'DS_BUS'
     | 'DS_LINE'
     | 'DS_BRANCH'

@@ -78,13 +78,16 @@ def szablon_domyslny_pola_sn(
     `_resolve_bay_template_protection_codes` bierze funkcje EAZ). Rozdzielnia GPZ — szablon
     ENEA Zeszyt 1 roli: pole liniowe Z.10 (wykonanie łączników wg izolacji rodziny, §13),
     transformatorowe Z.7, łącznika szyn Z.12, baterii kondensatorów Z.16, pomiaru napięcia
-    Z.17. `None` — rola bez szablonu domyślnego: pole źródłowe OZE (aparaty z konfiguracji
-    pola źródłowego DER, `mv_source_field_primary_devices`) i pole zespołu uziemiającego
-    (zawsze z szablonem wariantu)."""
+    Z.17. Pole źródłowe OZE (stacja i GPZ) — szablon kanoniczny roli (`BAY_TEMPLATE_DER_PV`,
+    ten sam, z którego pole bierze funkcje EAZ); pole źródłowe z kreatora DER-SN ma aparaty
+    z jawnej konfiguracji (`mv_source_field_primary_devices`) i tu nie trafia. `None` — pole
+    zespołu uziemiającego (zawsze z szablonem wariantu, `enm.zespol_uziemiajacy`)."""
     from network_model.catalog import bay_templates as bt
 
-    if bay_role in ("OZE", "ZU"):
+    if bay_role == "ZU":
         return None
+    if bay_role == "OZE":
+        return bt.SZABLON_KANONICZNY_ROLI["OZE"].template_id
     if gpz:
         szablony_gpz = {
             "TR": bt.BAY_TEMPLATE_GPZ_TRANSFORMATOR_Z7,

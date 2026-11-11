@@ -246,6 +246,39 @@ def test_add_sn_bay_w_stacji(rola: str, konstrukcja: str) -> None:
 
 
 @pytest.mark.parametrize("konstrukcja", sorted(KONSTRUKCJE))
+def test_add_sn_bay_pole_zrodlowe_oze_w_stacji(konstrukcja: str) -> None:
+    """Pole źródłowe OZE bez konfiguracji DER: tor szablonu kanonicznego roli
+    (`BAY_TEMPLATE_DER_PV` — ten sam, z którego pole ma funkcje EAZ ochrony sieciowej
+    i częstotliwościowej). Funkcje EAZ zostają przy każdej konstrukcji: zabezpieczenie
+    sieciowe źródła jest wymaganiem przyłączenia (IRiESD), a nie cechą łącznika; aparat
+    główny jest wyrobem z katalogu (rozłącznik bezpiecznikowy — wkładka wskazuje gałąź, bo
+    szablon źródłowy nie ma rozłącznika)."""
+    enm = _wciecie("wylacznik", "B", ["IN", "OUT", "TR"])
+    enm, ref = _dodaj_pole(enm, "OZE", konstrukcja)
+    pole = next(b for b in enm["bays"] if b["ref_id"] == ref)
+    glowny = KONSTRUKCJE[konstrukcja][1]
+    if konstrukcja == "rozlacznik_bezpiecznikowy":
+        glowny = "FUSE"
+    assert [a["kind"] for a in pole["primary_devices"]] == [
+        "DS",
+        glowny,
+        "CT",
+        "VT",
+        "DS",
+        "ES",
+        "CABLE_HEAD",
+    ]
+    galezie = _galezie(enm)
+    (ref_galezi,) = (e for e in pole["equipment_refs"] if e in galezie)
+    assert [
+        (a["kind"], a["linked_ref"]) for a in pole["primary_devices"] if a.get("linked_ref")
+    ] == [(glowny, ref_galezi)]
+    # 67N warunkowa (potwierdzone źródło 3U₀) — pole nowe jej nie ma.
+    szablonu = SZABLON_KANONICZNY_ROLI["OZE"].funkcje_eaz
+    assert pole["protection_codes"] == [k for k in szablonu if k != "67N"]
+
+
+@pytest.mark.parametrize("konstrukcja", sorted(KONSTRUKCJE))
 def test_add_sn_bay_pole_sprzegla_w_stacji_sekcyjnej(konstrukcja: str) -> None:
     enm = _wciecie("wylacznik", "D", ["IN", "OUT", "TR"])
     stacja = _stacja_sn(enm)["ref_id"]

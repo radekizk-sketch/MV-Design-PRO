@@ -37,6 +37,7 @@ from domain.generator_validation import (
 from network_model.catalog.bay_templates import (
     SZABLON_WARIANTU_ZESPOLU,
     WARIANT_SZABLONU_ZESPOLU,
+    _main_apparatus_primary_kind,
 )
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
@@ -2362,8 +2363,13 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     # polu (reguła katalog-first). Brak pozycji katalogowej ⇒ decyduje deklaracja,
     # jak dotąd.
     rodzaj_z_katalogu = _rodzaj_aparatu_sn_z_katalogu(catalog_ref) if catalog_ref else None
+    # Deklaracja `apparatus_kind` liczy się wyłącznie jako RODZAJ ŁĄCZNIKA (wyłącznik,
+    # rozłącznik, odłącznik, rozłącznik bezpiecznikowy); funkcja pola podana jako rodzaj
+    # („MEASUREMENT") nie jest wyrobem — wtedy rodzaj z szablonu pola.
     rodzaj_glowny = rodzaj_z_katalogu or (
-        apparatus_kind if isinstance(apparatus_kind, str) and apparatus_kind.strip() else None
+        apparatus_kind
+        if isinstance(apparatus_kind, str) and _main_apparatus_primary_kind(apparatus_kind)
+        else None
     )
     branch_type = _sn_bay_branch_type(
         rodzaj_glowny or _rodzaj_galezi_z_szablonu_pola(payload, station, bay_role)
