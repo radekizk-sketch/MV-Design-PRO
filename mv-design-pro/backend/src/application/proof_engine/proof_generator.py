@@ -423,7 +423,9 @@ class SC1Input:
     # Składowe impedancji
     z1_ohm: complex
     z2_ohm: complex
-    z0_ohm: complex
+    #: None (karta PRZERWA-ZEROWA) — punkt bez wyniku zerowego: wyłącznie dowód 2F, którego
+    #: pętla Z_1 + Z_2 nie zawiera toru zerowego; kroki dowodu nie wypisują wtedy Z_0.
+    z0_ohm: complex | None
 
     # Operator a (Fortescue)
     a_operator: complex
@@ -1470,6 +1472,21 @@ class ProofGenerator:
         sign = "+" if imag >= 0 else "-"
         return f"{real:.4f} {sign} j{abs(imag):.4f}\\,\\text{{{unit}}}"
 
+    @staticmethod
+    def _z0_kroku_doziemnego(z0: complex | None, equation_id: str) -> complex:
+        """Z_0 kroku, którego wzór zawiera tor zerowy (1F-Z, 2F-Z).
+
+        Karta PRZERWA-ZEROWA: punkt bez wyniku zerowego nie ma dowodu doziemnego — pakiet
+        zastępuje go odmową nazwaną, a ``compute_sc1_asymmetrical_quantities`` odmawia
+        wcześniej. Krok nie podstawia więc nigdy liczby zastępczej za brak Z_0.
+        """
+        if z0 is None:
+            raise ValueError(
+                f"Krok {equation_id} wymaga impedancji składowej zerowej Z_0 — punkt bez wyniku "
+                "zerowego ma wyłącznie dowód zwarcia dwufazowego."
+            )
+        return z0
+
     @classmethod
     def _create_sc1_step_z_sequence(
         cls,
@@ -1477,25 +1494,33 @@ class ProofGenerator:
         step_number: int,
         z1: complex,
         z2: complex,
-        z0: complex,
+        z0: complex | None,
     ) -> ProofStep:
+        """Impedancje składowych w miejscu zwarcia.
+
+        ``z0=None`` — punkt bez wyniku zerowego (karta PRZERWA-ZEROWA): krok wypisuje Z_1
+        i Z_2; Z_0 nie istnieje, więc nie jest podstawiane (żadnej liczby z kotwicy).
+        Z kompletem składowych napis podstawienia jest bajt w bajt jak przed kartą.
+        """
         equation = EQ_SC1_001
-        input_values = (
-            ProofValue.create("Z_1", z1, "Ω", "z1_ohm"),
-            ProofValue.create("Z_2", z2, "Ω", "z2_ohm"),
-            ProofValue.create("Z_0", z0, "Ω", "z0_ohm"),
+        wartosci: dict[str, complex] = {"Z_1": z1, "Z_2": z2}
+        if z0 is not None:
+            wartosci["Z_0"] = z0
+        klucze = {"Z_1": "z1_ohm", "Z_2": "z2_ohm", "Z_0": "z0_ohm"}
+        input_values = tuple(
+            ProofValue.create(symbol, wartosc, "Ω", klucze[symbol])
+            for symbol, wartosc in wartosci.items()
         )
 
-        substitution = (
-            f"Z_1 = {cls._format_complex_latex(z1, 'Ω')}, \\quad "
-            f"Z_2 = {cls._format_complex_latex(z2, 'Ω')}, \\quad "
-            f"Z_0 = {cls._format_complex_latex(z0, 'Ω')}"
+        substitution = ", \\quad ".join(
+            f"{symbol} = {cls._format_complex_latex(wartosc, 'Ω')}"
+            for symbol, wartosc in wartosci.items()
         )
 
         result = ProofValue.create("Z_1", z1, "Ω", "z1_ohm")
         unit_check = UnitVerifier.verify_step(
             equation.equation_id,
-            [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω")],
+            [(symbol, "Ω") for symbol in wartosci],
             "Ω",
         )
 
@@ -1508,11 +1533,7 @@ class ProofGenerator:
             substitution_latex=substitution,
             result=result,
             unit_check=unit_check,
-            source_keys={
-                "Z_1": "z1_ohm",
-                "Z_2": "z2_ohm",
-                "Z_0": "z0_ohm",
-            },
+            source_keys={symbol: klucze[symbol] for symbol in wartosci},
         )
 
     @classmethod
@@ -1552,7 +1573,7 @@ class ProofGenerator:
         equation_id: str,
         z1: complex,
         z2: complex,
-        z0: complex,
+        z0: complex | None,
         z_equiv: complex,
     ) -> ProofStep:
         equation = EquationRegistry.get_equation(equation_id)
@@ -1561,6 +1582,7 @@ class ProofGenerator:
 
         input_values: tuple[ProofValue, ...]
         if equation_id == "EQ_SC1_003":
+            z0 = cls._z0_kroku_doziemnego(z0, equation_id)
             substitution = (
                 f"Z_k = {cls._format_complex_latex(z1, 'Ω')} + "
                 f"{cls._format_complex_latex(z2, 'Ω')} + "
@@ -1596,6 +1618,7 @@ class ProofGenerator:
                 "Z_2": "z2_ohm",
             }
         else:
+            z0 = cls._z0_kroku_doziemnego(z0, equation_id)
             denominator = z2 + z0
             substitution = (
                 f"Z_k = {cls._format_complex_latex(z1, 'Ω')} + "
@@ -1644,7 +1667,7 @@ class ProofGenerator:
         u_prefault_kv: float,
         z_equiv: complex,
         z2: complex,
-        z0: complex,
+        z0: complex | None,
         i1: complex,
         i2: complex,
         i0: complex,
@@ -1652,12 +1675,15 @@ class ProofGenerator:
     ) -> ProofStep:
         """Prądy składowe; `z_f` (karta OD-14) ⇒ EQ_SC1_016 z torem zerowym Z_0 + 3·Z_f."""
         equation = EQ_SC1_006 if z_f is None else EQ_SC1_016
+        # Karta PRZERWA-ZEROWA: punkt bez wyniku zerowego (z0=None) ma wyłącznie krok 2F,
+        # którego prądy składowe nie zależą od Z_0 — Z_0 nie jest wtedy wartością wejściową.
         input_values: tuple[ProofValue, ...] = (
             ProofValue.create("U_f", u_prefault_kv, "kV", "u_prefault_kv"),
             ProofValue.create("Z_k", z_equiv, "Ω", "z_equiv_ohm"),
             ProofValue.create("Z_2", z2, "Ω", "z2_ohm"),
-            ProofValue.create("Z_0", z0, "Ω", "z0_ohm"),
         )
+        if z0 is not None:
+            input_values = (*input_values, ProofValue.create("Z_0", z0, "Ω", "z0_ohm"))
         if z_f is not None:
             input_values = (*input_values, ProofValue.create("Z_f", z_f, "Ω", "z_f_ohm"))
 
@@ -1675,6 +1701,7 @@ class ProofGenerator:
                 r"I_0 = 0"
             )
         elif z_f is None:
+            z0 = cls._z0_kroku_doziemnego(z0, equation.equation_id)
             denominator = z2 + z0
             substitution = (
                 f"I_1 = {u_prefault_kv:.4f} / {cls._format_complex_latex(z_equiv, 'Ω')} = "
@@ -1688,7 +1715,7 @@ class ProofGenerator:
         else:
             # Tor zerowy z impedancją przejścia: Z_0 + 3·Z_f — wartość prezentacyjna
             # podstawienia (te same liczby, z których solver policzył I_2 i I_0).
-            tor_zerowy = z0 + 3 * z_f
+            tor_zerowy = cls._z0_kroku_doziemnego(z0, equation.equation_id) + 3 * z_f
             denominator = z2 + tor_zerowy
             substitution = (
                 f"I_1 = {u_prefault_kv:.4f} / {cls._format_complex_latex(z_equiv, 'Ω')} = "
@@ -1721,7 +1748,7 @@ class ProofGenerator:
                 "U_f": "u_prefault_kv",
                 "Z_k": "z_equiv_ohm",
                 "Z_2": "z2_ohm",
-                "Z_0": "z0_ohm",
+                **({"Z_0": "z0_ohm"} if z0 is not None else {}),
                 "I_1": "i1_ka",
                 "I_2": "i2_ka",
                 "I_0": "i0_ka",
@@ -1737,19 +1764,23 @@ class ProofGenerator:
         equation_id: str,
         z1: complex,
         z2: complex,
-        z0: complex,
+        z0: complex | None,
         z_f: complex,
         z_equiv: complex,
     ) -> ProofStep:
         """Impedancja pętli zwarcia niesymetrycznego przez Z_f (EQ_SC1_013/014/015, OD-14).
 
         Z_k pochodzi z `quantities` (solver); krok pokazuje podstawienie we wzór pętli.
+        ``z0=None`` (karta PRZERWA-ZEROWA) dopuszcza wyłącznie pętlę 2F (EQ_SC1_014).
         """
         equation = EquationRegistry.get_equation(equation_id)
         if equation is None:
             raise AssertionError(f"Brak definicji równania {equation_id}")
         f = cls._format_complex_latex
+        wartosci: dict[str, complex] = {"Z_1": z1, "Z_2": z2, "Z_f": z_f}
         if equation_id == "EQ_SC1_013":
+            z0 = cls._z0_kroku_doziemnego(z0, equation_id)
+            wartosci["Z_0"] = z0
             substitution = (
                 f"Z_k = {f(z1, 'Ω')} + {f(z2, 'Ω')} + {f(z0, 'Ω')} + 3 \\cdot ({f(z_f, 'Ω')}) "
                 f"= {f(z_equiv, 'Ω')}"
@@ -1759,6 +1790,8 @@ class ProofGenerator:
             substitution = f"Z_k = {f(z1, 'Ω')} + {f(z2, 'Ω')} + {f(z_f, 'Ω')} = {f(z_equiv, 'Ω')}"
             input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_f", "Ω")]
         elif equation_id == "EQ_SC1_015":
+            z0 = cls._z0_kroku_doziemnego(z0, equation_id)
+            wartosci["Z_0"] = z0
             tor_zerowy = z0 + 3 * z_f
             substitution = (
                 f"Z_0 + 3 Z_f = {f(tor_zerowy, 'Ω')}, \\quad "
@@ -1768,7 +1801,6 @@ class ProofGenerator:
             input_symbols = [("Z_1", "Ω"), ("Z_2", "Ω"), ("Z_0", "Ω"), ("Z_f", "Ω")]
         else:
             raise AssertionError(f"Równanie {equation_id} nie jest pętlą z impedancją przejścia")
-        wartosci = {"Z_1": z1, "Z_2": z2, "Z_0": z0, "Z_f": z_f}
         klucze = {"Z_1": "z1_ohm", "Z_2": "z2_ohm", "Z_0": "z0_ohm", "Z_f": "z_f_ohm"}
         input_values = tuple(
             ProofValue.create(symbol, wartosci[symbol], "Ω", klucze[symbol])

@@ -1552,7 +1552,37 @@ def zbuduj_siec_zerowa(
     scenario: Scenario = "MAX",
     stan_awsc: StanAwsc = "spoczynek",
 ) -> WynikSieciZerowej:
-    """Z0-bus (``build_zero_sequence_zbus``) razem z przyczynami braku wyniku zerowego."""
+    """Z0-bus sieci składowej zerowej z pól ENM RAZEM z nazwanymi przyczynami braku wyniku
+    zerowego per węzeł i śladem WHITE BOX tej samej macierzy Y0 (jedno złożenie) — JEDYNA
+    publiczna droga do macierzy Z0 (karta PRZERWA-ZEROWA).
+
+    Karta PRZERWA-ZEROWA (reguła KLASA NIE INSTANCJA): dawne ``build_zero_sequence_zbus``
+    i ``build_zero_sequence_zbus_with_trace`` oddawały samą macierz BEZ przyczyn, więc
+    wołający spoza biegu kanonicznego (pakiet dowodowy zwarć niesymetrycznych, kotwica SN domeny
+    nN, sondy testowe) czytał z wiersza kotwicy numerycznej Z0 ≈ 0 i liczył I″k1 węzła bez
+    drogi prądu zerowego jak w sieci uziemionej bezpośrednio (pomiar: szyna SN 15 kV
+    za Dyn11, Z_1 = 0,35 + j3,5 Ω → 4062,43 A = √3·c·U_n/|2·Z_1|). Obie skasowane: macierz
+    Z0 wychodzi wyłącznie razem z ``przyczyny`` — węzeł z przyczyną NIE jest liczony
+    zwarciem doziemnym na żadnej ścieżce (``WejscieZwarcia.brak_wyniku_zerowego``).
+
+    The returned matrix uses the same merged node order as
+    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
+    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers — WYŁĄCZNIE
+    dla węzłów spoza ``przyczyny``.
+
+    SM-3 (V12K-181): transformatory wchodzą do sieci składowej zerowej wg grupy
+    połączeń wektorowych (patrz ``zero_sequence_transformer``); TR bez ``vector_group``
+    → połączenie OTWARTE i przyczyna ``brak_danych`` węzłów jego składowej.
+
+    Audyt fizyki fala F (V12K): rangowanie JAWNE przez SVD (``matrix_rank``)
+    przed inwersją (``_odwroc_y0``). ``np.linalg.inv`` NIE gwarantuje ``LinAlgError`` dla
+    macierzy rangowo-niedomiarowej (podsieć „unosi się" bez odniesienia do ziemi): LU
+    z pivotingiem częściowym potrafi „odwrócić" taką macierz, dając ogromne, fizycznie
+    bezsensowne Z0 (rząd 1e15+ Ω) zamiast czytelnego błędu. Karta UX-04/POLE-ZU-SKLADOWA-
+    ZEROWA: składowe bez żadnego bocznika dostają kotwicę numeryczną i nazwaną przyczynę
+    braku wyniku — sprawdzenie rangi zostaje siatką bezpieczeństwa (blok osobliwy, którego
+    klasyfikacja nie objęła).
+    """
     siec = _assemble_zero_sequence_y0(enm, graph, scenario, stan_awsc=stan_awsc)
     return WynikSieciZerowej(
         z0_bus=_odwroc_y0(siec.size, siec.y0_bus),
@@ -1571,57 +1601,6 @@ KOMUNIKAT_SIEC_ZEROWA_OSOBLIWA = (
     "pojemności doziemnej B0 linii i kabli. Dla sieci izolowanej podaj susceptancję doziemną "
     "linii i kabli (B0), by uwzględnić prąd pojemnościowy doziemienia."
 )
-
-
-def build_zero_sequence_zbus(
-    enm: EnergyNetworkModel,
-    graph: NetworkGraph,
-    *,
-    scenario: Scenario = "MAX",
-    stan_awsc: StanAwsc = "spoczynek",
-) -> np.ndarray:
-    """Z0-bus sieci składowej zerowej — ``build_zero_sequence_zbus_with_trace`` bez śladu."""
-    return zbuduj_siec_zerowa(enm, graph, scenario=scenario, stan_awsc=stan_awsc).z0_bus
-
-
-def build_zero_sequence_zbus_with_trace(
-    enm: EnergyNetworkModel,
-    graph: NetworkGraph,
-    *,
-    scenario: Scenario = "MAX",
-    stan_awsc: StanAwsc = "spoczynek",
-) -> tuple[np.ndarray, list[dict]]:
-    """
-    Build the zero-sequence Z-bus from ENM fields without mutating the graph — together
-    with the WHITE BOX trace of the SAME Y0 matrix (one assembly, one source of truth,
-    ``zbuduj_siec_zerowa``): the per-element breakdown (lines/cables Z0 and B0, sources,
-    capacitor banks, transformers with the vector-group decision, earthing units with both
-    AWSC states) that the short-circuit run publishes for 1F/2F+G (``raw_result.siec_zerowa``).
-
-    The returned matrix uses the same merged node order as
-    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
-    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers.
-
-    SM-3 (V12K-181): transformatory wchodzą do sieci składowej zerowej wg grupy
-    połączeń wektorowych (patrz ``zero_sequence_transformer``). Sieci bez
-    transformatorów z grupą zachowują wynik sprzed karty (TR bez ``vector_group``
-    → połączenie OTWARTE, brak wkładu).
-
-    Audyt fizyki fala F (V12K): rangowanie JAWNE przez SVD (``matrix_rank``)
-    przed inwersją. ``np.linalg.inv`` NIE gwarantuje ``LinAlgError`` dla macierzy
-    rangowo-niedomiarowej (np. sieć izolowana bez żadnej pojemności doziemnej
-    B0 — podsieć „unosi się" bez odniesienia do ziemi): LU z pivotingiem
-    częściowym potrafi „odwrócić" taką macierz, dając ogromne, fizycznie
-    bezsensowne Z0 (rząd 1e15+ Ω) zamiast czytelnego błędu. To byłoby CICHĄ
-    fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
-    przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
-
-    Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: składowe bez żadnego bocznika dostają kotwicę
-    numeryczną i nazwaną przyczynę braku wyniku (``zbuduj_siec_zerowa``) — sprawdzenie rangi
-    zostaje siatką bezpieczeństwa (blok osobliwy, którego klasyfikacja nie objęła).
-    """
-    siec = zbuduj_siec_zerowa(enm, graph, scenario=scenario, stan_awsc=stan_awsc)
-    return siec.z0_bus, list(siec.slad)
 
 
 def _odwroc_y0(size: int, y0_bus: np.ndarray) -> np.ndarray:
@@ -1667,7 +1646,7 @@ def skladowe_sieci_zerowej(
 ) -> dict[str, int]:
     """Numer składowej spójnej SIECI SKŁADOWEJ ZEROWEJ każdego węzła grafu.
 
-    Z TEJ SAMEJ macierzy Y0 co ``build_zero_sequence_zbus`` (``_assemble_zero_sequence_y0``):
+    Z TEJ SAMEJ macierzy Y0 co ``zbuduj_siec_zerowa`` (``_assemble_zero_sequence_y0``):
     dwa węzły leżą w jednej składowej, gdy łączy je droga elementów szeregowych sieci zerowej
     (linia/kabel z Z0, transformator z drogą HV↔LV). Impedancja zerowa gałęzi wpływa na prąd
     zwarcia doziemnego w węźle wtedy i tylko wtedy, gdy gałąź i węzeł leżą w jednej składowej —
@@ -2109,7 +2088,7 @@ def _k_sc_notatka_zalozenia(wklad_zrodlo: str) -> str:
 def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:
     """Ślad WHITE BOX zarejestrowanych założeń k_sc (udziału zwarciowego falownika).
 
-    Karta FAB-H — ten sam wzorzec co ślad ``build_zero_sequence_zbus_with_trace`` powyżej: funkcja
+    Karta FAB-H — ten sam wzorzec co ślad ``zbuduj_siec_zerowa`` powyżej: funkcja
     publiczna, wywoływalna niezależnie od pełnego biegu SC, do wglądu/testów w ślad
     założeń bez konieczności uruchamiania solvera. Pusta lista, gdy każdy konwerter
     ma jawne ``k_sc`` w karcie katalogowej (albo gdy sieć nie ma konwerterów).

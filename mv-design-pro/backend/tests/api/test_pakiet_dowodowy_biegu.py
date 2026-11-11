@@ -54,10 +54,14 @@ def client() -> TestClient:
 
 
 def _seed_enm(case_id: str) -> None:
-    """Sieć SN: GPZ na szynie głównej, kabel, szyna odbiorcza (uziemienie punktu zerowego).
+    """Sieć SN: GPZ na szynie głównej, kabel, szyna odbiorcza.
 
-    Uziemienie transformatora zasilającego jest potrzebne, żeby sieć zerowa (Z0)
-    istniała — bez niej pakiet zwarć niesymetrycznych nie miałby podstawy.
+    Sieć SN bez zespołu uziemiającego i bez uzwojenia z punktem neutralnym — punkt neutralny
+    IZOLOWANY (źródło w paśmie SN nie niesie Z0, ``impedancja_zerowa_zrodla_dozwolona``;
+    ``z0_z1_ratio`` źródła mapowanie pomija). Karta PRZERWA-ZEROWA: zwarcia doziemne tej sieci
+    są poza zakresem IEC 60909 (``fault.zero_sequence_outside_iec60909``) — pakiet
+    niesymetryczny niesie dowód 2F i odmowy nazwane 1F-Z/2F-Z. Dawny docstring („uziemienie
+    transformatora zasilającego”) opisywał transformator, którego w tej sieci nie ma.
     """
     from enm.models import EnergyNetworkModel
     from enm.store import set_enm
@@ -313,17 +317,61 @@ def test_pakiet_sc3f_niesie_dowod_zrodlo_wykaz_i_odcisk(client: TestClient) -> N
     assert "proof_pack/signature.json" in wpisy
 
 
-def test_pakiet_zwarc_niesymetrycznych_niesie_trzy_rodzaje_zwarcia(client: TestClient) -> None:
-    """Pakiet niesymetryczny = komplet 1F-Z / 2F / 2F-Z, każdy z własnym dowodem.
+def test_pakiet_zwarc_niesymetrycznych_sieci_izolowanej_niesie_2f_i_odmowy(
+    client: TestClient,
+) -> None:
+    """Sieć SN izolowana (``_seed_enm``): pakiet niesymetryczny = dowód 2F + odmowy 1F-Z i 2F-Z.
 
-    Zamknięcie luki kontraktu: to wywołanie NIE podaje Z1/Z2/Z0 ani U_f ani
-    operatora Fortescue — całość liczy serwer ze snapshotu biegu.
+    Karta PRZERWA-ZEROWA. Do karty ten test przypinał TRZY dowody, a dowody 1F-Z/2F-Z tej
+    sieci liczyły się z Z0 kotwicy numerycznej (Y0 = 1e6 pu), gdy bieg tej samej sieci
+    odmawiał — fałszywa liczba na realnej ścieżce użytkownika (ekran dowodu → ZIP). Teraz
+    odmowa niesie rodzaj zwarcia, kod przyczyny, status i wyjaśnienie (kontrakt werdyktu).
+    Wywołanie NIE podaje Z1/Z2/Z0 ani U_f ani operatora Fortescue — liczy serwer.
     """
     klucz, case_id = _nowy_przypadek(client)
     _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "SC_1F")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
+
+    assert response.status_code == 200, response.text
+    wpisy = _wpisy_zip(response.content)
+    assert wpisy == {
+        "pakiet_dowodowy/SC1FZ.odmowa.json",
+        "pakiet_dowodowy/SC2F.zip",
+        "pakiet_dowodowy/SC2FZ.odmowa.json",
+    }
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zbiorczy:
+        with zipfile.ZipFile(io.BytesIO(zbiorczy.read("pakiet_dowodowy/SC2F.zip"))) as dowod:
+            assert "proof_pack/proof.json" in set(dowod.namelist())
+        for nazwa, rodzaj in (("SC1FZ", "ONE_PHASE_TO_GROUND"), ("SC2FZ", "TWO_PHASE_TO_GROUND")):
+            odmowa = json.loads(zbiorczy.read(f"pakiet_dowodowy/{nazwa}.odmowa.json"))
+            assert odmowa["rodzaj_zwarcia"] == rodzaj
+            assert odmowa["dowod"] is None
+            assert odmowa["przyczyna"] == "poza_zakresem_iec60909"
+            assert odmowa["kod"] == "fault.zero_sequence_outside_iec60909"
+            assert odmowa["status"] == "NIE_DOTYCZY"
+            assert "izolowanym" in odmowa["wyjasnienie"]["zdanie_pl"]
+
+
+def test_pakiet_zwarc_niesymetrycznych_sieci_uziemionej_niesie_trzy_rodzaje_zwarcia(
+    client: TestClient,
+) -> None:
+    """Sieć SN uziemiona przez rezystor (GPZ ścieżką projektanta, katalog): w punkcie SN
+    pakiet = komplet 1F-Z / 2F / 2F-Z, każdy z własnym dowodem, bez odmów."""
+    from enm.mapping import _ref_to_uuid
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    from tests.enm.test_skladowa_zerowa_zu import _siec, _szyny
+
+    klucz, case_id = _nowy_przypadek(client)
+    migawka = _siec("rezystor")
+    set_enm(klucz, EnergyNetworkModel.model_validate(migawka))
+    run_id = _wykonaj_bieg(client, case_id, "SC_1F")
+    punkt = _ref_to_uuid(_szyny(migawka)[0])
+
+    response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy", params={"punkt": punkt})
 
     assert response.status_code == 200, response.text
     wpisy = _wpisy_zip(response.content)

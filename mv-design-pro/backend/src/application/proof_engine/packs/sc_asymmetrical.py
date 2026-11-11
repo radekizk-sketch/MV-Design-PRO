@@ -23,10 +23,16 @@ INVARIANTS:
 - Deterministic (same input → identical output)
 - Anti-double-counting c (c appears ONLY in EQ_SC1_008)
 - LaTeX-only math (all formulas in block LaTeX)
+- Karta PRZERWA-ZEROWA: punkt z nazwaną przyczyną braku wyniku zerowego (brak drogi prądu
+  zerowego, sieć izolowana albo skompensowana, brak danych Z0 — ``enm.mapping.
+  zbuduj_siec_zerowa``) dostaje dowód 2F i ODMOWĘ NAZWANĄ 1F-Z i 2F-Z (``odmowy_doziemne``:
+  status, kod, wyjaśnienie) — nigdy dowodu z Z0 kotwicy numerycznej (Z0 ≈ 0 udawało
+  uziemienie bezpośrednie: szyna SN za Dyn11 bez uziemienia dawała I″k1 = 4062,43 A).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -71,10 +77,12 @@ class SCAsymmetricalPackInput:
     #: tabela 1 IEC 60909-0 dla pasma węzła i scenariusza albo nadpisanie z uzasadnieniem.
     c_zrodlo: str
 
-    # Impedancje składowe (wymagane dla wszystkich typów)
+    # Impedancje składowe: Z1, Z2 — wszystkie typy; Z0 — wyłącznie zwarcia doziemne. ``None``
+    # = punkt bez wyniku zerowego (``brak_wyniku_zerowego`` niesie przyczynę — para pól
+    # z jednego źródła: ``short_circuit_binding.zwarcie_niesymetryczne_ze_snapshotu``).
     z1_ohm: complex
     z2_ohm: complex
-    z0_ohm: complex
+    z0_ohm: complex | None
 
     # Operator Fortescue (domyślnie a = e^{j120°})
     a_operator: complex
@@ -87,6 +95,18 @@ class SCAsymmetricalPackInput:
     #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
     #: zwarcie metaliczne IEC 60909 (dowody bit w bit jak przed kartą).
     z_f_ohm: complex | None = None
+
+    #: Karta PRZERWA-ZEROWA: przyczyna braku wyniku zerowego punktu
+    #: (``BrakWynikuZerowego.to_dict``: przyczyna, kod, status, wyjaśnienie, elementy) —
+    #: obecna wtedy i tylko wtedy, gdy ``z0_ohm`` jest ``None``.
+    brak_wyniku_zerowego: Mapping[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if (self.z0_ohm is None) != (self.brak_wyniku_zerowego is not None):
+            raise ValueError(
+                "Pakiet zwarć niesymetrycznych: brak Z0 wymaga nazwanej przyczyny braku "
+                "wyniku zerowego, a przyczyna wyklucza Z0 (jedno źródło pary pól)."
+            )
 
 
 @dataclass(frozen=True)
@@ -101,18 +121,25 @@ class SCAsymmetricalPackResult:
     - all_passed: Czy wszystkie unit checks przeszły
     """
 
-    proof_1fz: ProofDocument
+    proof_1fz: ProofDocument | None
     proof_2f: ProofDocument
-    proof_2fz: ProofDocument
+    proof_2fz: ProofDocument | None
     all_passed: bool
+    #: Karta PRZERWA-ZEROWA: odmowa nazwana zwarć doziemnych punktu bez wyniku zerowego
+    #: (``SCAsymmetricalProofPack.odmowy_doziemne``) — wtedy ``proof_1fz``/``proof_2fz`` są
+    #: ``None``. Puste = punkt z drogą prądu zerowego, trzy dowody.
+    odmowy_doziemne: Mapping[str, Mapping[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "proof_1fz": self.proof_1fz.to_dict(),
+        wynik: dict[str, Any] = {
+            "proof_1fz": self.proof_1fz.to_dict() if self.proof_1fz is not None else None,
             "proof_2f": self.proof_2f.to_dict(),
-            "proof_2fz": self.proof_2fz.to_dict(),
+            "proof_2fz": self.proof_2fz.to_dict() if self.proof_2fz is not None else None,
             "all_passed": self.all_passed,
         }
+        if self.odmowy_doziemne:
+            wynik["odmowy_doziemne"] = {k: dict(v) for k, v in self.odmowy_doziemne.items()}
+        return wynik
 
 
 class SCAsymmetricalProofPack:
@@ -124,6 +151,38 @@ class SCAsymmetricalProofPack:
     """
 
     FAULT_TYPES = ("ONE_PHASE_TO_GROUND", "TWO_PHASE", "TWO_PHASE_TO_GROUND")
+    #: Typy zwarć z ziemią — wymagają Z0 (karta PRZERWA-ZEROWA).
+    FAULT_TYPES_DOZIEMNE = ("ONE_PHASE_TO_GROUND", "TWO_PHASE_TO_GROUND")
+    #: Nazwa wpisu pakietu zbiorczego per typ zwarcia (te same klucze co ``generate_zip``).
+    NAZWY_WPISOW = {
+        "ONE_PHASE_TO_GROUND": "SC1FZ",
+        "TWO_PHASE": "SC2F",
+        "TWO_PHASE_TO_GROUND": "SC2FZ",
+    }
+    #: Rodzaj zwarcia po polsku — zdanie odmowy nazwanej.
+    _RODZAJ_PL = {
+        "ONE_PHASE_TO_GROUND": "Zwarcie jednofazowe z ziemią (1F-Z)",
+        "TWO_PHASE_TO_GROUND": "Zwarcie dwufazowe z ziemią (2F-Z)",
+    }
+
+    @classmethod
+    def odmowy_doziemne(cls, data: SCAsymmetricalPackInput) -> dict[str, dict[str, Any]] | None:
+        """Odmowa nazwana dowodów 1F-Z i 2F-Z punktu bez wyniku zerowego (``None`` — punkt
+        z drogą prądu zerowego). Rekord wg kontraktu werdyktu wyjaśnialnego: rodzaj zwarcia,
+        status maszynowy ZWIĄZANY z wyjaśnieniem (zdanie, przyczyna, czego brakuje), kod
+        ``fault.zero_sequence_*`` i elementy modelu. Klucz = nazwa wpisu pakietu zbiorczego."""
+        if data.brak_wyniku_zerowego is None:
+            return None
+        brak = dict(data.brak_wyniku_zerowego)
+        return {
+            cls.NAZWY_WPISOW[typ]: {
+                "rodzaj_zwarcia": typ,
+                "rodzaj_zwarcia_pl": cls._RODZAJ_PL[typ],
+                "dowod": None,
+                **brak,
+            }
+            for typ in cls.FAULT_TYPES_DOZIEMNE
+        }
 
     @classmethod
     def generate(
@@ -146,6 +205,10 @@ class SCAsymmetricalProofPack:
 
         proofs: dict[str, ProofDocument] = {}
         for fault_type in cls.FAULT_TYPES:
+            if data.z0_ohm is None and fault_type in cls.FAULT_TYPES_DOZIEMNE:
+                # Punkt bez wyniku zerowego: dowód doziemny zastępuje odmowa nazwana
+                # (``odmowy_doziemne``), nie liczba z Z0 kotwicy numerycznej.
+                continue
             # Fizyka w warstwie solverów (NOT-A-SOLVER): komplet wielkości
             # zwarciowych liczy solver, generator dowodu tylko formatuje.
             quantities = compute_sc1_asymmetrical_quantities(
@@ -185,10 +248,11 @@ class SCAsymmetricalProofPack:
         all_passed = all(p.summary.unit_check_passed for p in proofs.values())
 
         return SCAsymmetricalPackResult(
-            proof_1fz=proofs["ONE_PHASE_TO_GROUND"],
+            proof_1fz=proofs.get("ONE_PHASE_TO_GROUND"),
             proof_2f=proofs["TWO_PHASE"],
-            proof_2fz=proofs["TWO_PHASE_TO_GROUND"],
+            proof_2fz=proofs.get("TWO_PHASE_TO_GROUND"),
             all_passed=all_passed,
+            odmowy_doziemne=cls.odmowy_doziemne(data),
         )
 
     @classmethod
@@ -205,7 +269,9 @@ class SCAsymmetricalProofPack:
         determinizmu w ``manifest.json``.
 
         Returns:
-            dict mapping fault_type → ZIP bytes
+            dict mapping fault_type → ZIP bytes. Punkt bez wyniku zerowego (karta
+            PRZERWA-ZEROWA) — wyłącznie ``SC2F``; odmowy 1F-Z i 2F-Z niesie
+            ``odmowy_doziemne`` (wpisy JSON pakietu zbiorczego, ``zbuduj_zip_zbiorczy``).
         """
         result = cls.generate(data, deterministic_artifact_id(context))
         builder = ProofPackBuilder(context)
@@ -213,11 +279,12 @@ class SCAsymmetricalProofPack:
         def _zbuduj(dokument: ProofDocument) -> bytes:
             return builder.build(dokument_deterministyczny(dokument, context, data.run_timestamp))
 
-        return {
-            "SC1FZ": _zbuduj(result.proof_1fz),
-            "SC2F": _zbuduj(result.proof_2f),
-            "SC2FZ": _zbuduj(result.proof_2fz),
+        dowody = {
+            "SC1FZ": result.proof_1fz,
+            "SC2F": result.proof_2f,
+            "SC2FZ": result.proof_2fz,
         }
+        return {nazwa: _zbuduj(dowod) for nazwa, dowod in dowody.items() if dowod is not None}
 
     @classmethod
     def wejscie_ze_snapshotu(
@@ -251,7 +318,7 @@ class SCAsymmetricalProofPack:
         FIZYKA NIE DZIEJE SIĘ TUTAJ (poprawione 2026-08-07). Mapowanie snapshotu,
         macierz zerowa i wejście w solver stoją w warstwie wiązania
         (``application/solvers/short_circuit_binding.py``) — patrz komentarz przy
-        ``wynik_zwarcia_1f_ze_snapshotu``. Pakiet dostaje gotowy FROZEN wynik i
+        ``zwarcie_niesymetryczne_ze_snapshotu``. Pakiet dostaje gotowy FROZEN wynik i
         tylko go opisuje, zgodnie z rolą Proof Engine (interpretacja, nie produkcja
         liczb). Wcześniejsza wersja liczyła to sama i zapalała
         ``no_direct_fault_params_guard``.
@@ -260,26 +327,33 @@ class SCAsymmetricalProofPack:
         sieci od niej nie zależą (wynik 1F liczony metalicznie daje te same Z1/Z2/Z0), więc
         Z_f idzie wprost do wielkości dowodu (``compute_sc1_asymmetrical_quantities``).
         """
-        from application.solvers.short_circuit_binding import wynik_zwarcia_1f_ze_snapshotu
+        from application.solvers.short_circuit_binding import (
+            zwarcie_niesymetryczne_ze_snapshotu,
+        )
         from network_model.solvers.short_circuit_asymmetrical_quantities import (
             OPERATOR_FORTESCUE_A,
             napiecie_fazowe_przedzwarciowe_kv,
         )
 
-        zwarcie = wynik_zwarcia_1f_ze_snapshotu(
+        zwarcie = zwarcie_niesymetryczne_ze_snapshotu(
             snapshot=snapshot,
             fault_node_id=fault_node_id,
             scenariusz=scenariusz,
             nadpisanie_c=nadpisanie_c,
             tk_s=tk_s,
-            # Pakiet bierze z wyniku 1F wyłącznie impedancje składowe Z1/Z2/Z0 sieci; prąd
+            # Pakiet bierze z wyniku wyłącznie impedancje składowe Z1/Z2/Z0 sieci; prąd
             # wyłączeniowy zwarć niesymetrycznych to I_b = I″k (IEC 60909-0 rozdz. 9), więc
             # t_b nie wpływa na żadną wielkość tego pakietu.
             tb_s=None,
             rozszerzenia_audit2=rozszerzenia_audit2,
         )
         result = zwarcie.wynik
-        if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:
+        brak = zwarcie.brak_wyniku_zerowego
+        if (
+            result.z1_ohm is None
+            or result.z2_ohm is None
+            or (brak is None and result.z0_ohm is None)
+        ):
             raise ValueError(
                 "Wynik zwarcia nie niesie impedancji składowych Z1/Z2/Z0 — "
                 "pakietu zwarć niesymetrycznych nie da się złożyć dla tego punktu"
@@ -299,14 +373,21 @@ class SCAsymmetricalProofPack:
             ),
             z1_ohm=result.z1_ohm,
             z2_ohm=result.z2_ohm,
-            z0_ohm=result.z0_ohm,
+            # Punkt bez wyniku zerowego: wynik 2F nie ma Z0 — dowody doziemne zastępuje odmowa
+            # nazwana z przyczyną (para pól z jednego źródła).
+            z0_ohm=result.z0_ohm if brak is None else None,
             a_operator=OPERATOR_FORTESCUE_A,
             tk_s=result.tk_s,
             z_f_ohm=z_f_ohm,
+            brak_wyniku_zerowego=brak.to_dict() if brak is not None else None,
         )
 
     @classmethod
-    def zbuduj_zip_zbiorczy(cls, packs: dict[str, bytes]) -> bytes:
+    def zbuduj_zip_zbiorczy(
+        cls,
+        packs: dict[str, bytes],
+        odmowy: Mapping[str, Mapping[str, Any]] | None = None,
+    ) -> bytes:
         """Jeden ZIP zbiorczy z trzech pakietów (1F-Z / 2F / 2F-Z), deterministyczny.
 
         Samo pakowanie stoi w warstwie pakietu (``proof_pack.zbuduj_zip_zbiorczy``)
@@ -314,7 +395,7 @@ class SCAsymmetricalProofPack:
         rozpływu (rozpływ / straty / spadek napięcia). Ta metoda zostaje jako
         nazwa czytelna w miejscu użycia (router zwarciowy, brama przebiegu).
         """
-        return zbuduj_zip_zbiorczy(packs)
+        return zbuduj_zip_zbiorczy(packs, odmowy=odmowy)
 
     @classmethod
     def validate_completeness(cls, result: SCAsymmetricalPackResult) -> list[str]:
@@ -333,11 +414,18 @@ class SCAsymmetricalProofPack:
         required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka"}
         missing: list[str] = []
 
-        for label, proof in [
-            ("1F-Z", result.proof_1fz),
-            ("2F", result.proof_2f),
-            ("2F-Z", result.proof_2fz),
+        odmowy = result.odmowy_doziemne or {}
+        for label, wpis, proof in [
+            ("1F-Z", "SC1FZ", result.proof_1fz),
+            ("2F", "SC2F", result.proof_2f),
+            ("2F-Z", "SC2FZ", result.proof_2fz),
         ]:
+            if proof is None:
+                # Karta PRZERWA-ZEROWA: dowód doziemny punktu bez wyniku zerowego jest
+                # kompletny jako odmowa nazwana — brak obu to luka pakietu.
+                if wpis not in odmowy:
+                    missing.append(f"{label}: dowód albo odmowa nazwana")
+                continue
             for key in required_keys:
                 if key not in proof.summary.key_results:
                     missing.append(f"{label}: {key}")

@@ -49,7 +49,7 @@ różnica rzędu kilkunastu % w pełni wyjaśniona powyżej).
 from __future__ import annotations
 
 from application.analyses.fault_loop.service import build_fault_loop_view_at_point
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph, ref_to_graph_id
+from enm.mapping import map_enm_to_network_graph, ref_to_graph_id, zbuduj_siec_zerowa
 from enm.models import (
     Bus,
     Cable,
@@ -137,8 +137,12 @@ def test_fault_loop_ik1_same_order_of_magnitude_as_iec60909_ik1() -> None:
 
     # --- Ścieżka B: IEC 60909 1F (składowe symetryczne, solver FROZEN) ---
     graph = map_enm_to_network_graph(enm)
-    z0_bus = build_zero_sequence_zbus(enm, graph)
+    siec_zerowa = zbuduj_siec_zerowa(enm, graph)
     node_b1 = ref_to_graph_id("b1")
+    # Karta PRZERWA-ZEROWA: porównanie ma sens wyłącznie dla węzła z drogą prądu zerowego
+    # (ten sam predykat co bieg kanoniczny) — inaczej I″k1 pochodziłby z kotwicy (Z0 ≈ 0).
+    assert node_b1 not in siec_zerowa.przyczyny, siec_zerowa.przyczyny.get(node_b1)
+    z0_bus = siec_zerowa.z0_bus
     result_60909 = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
         graph=graph,
         fault_node_id=node_b1,

@@ -18,9 +18,8 @@ import math
 import pytest
 from enm.assembler import zloz_wejscie_zwarcia
 from enm.mapping import (
-    build_zero_sequence_zbus,
-    build_zero_sequence_zbus_with_trace,
     map_enm_to_network_graph,
+    zbuduj_siec_zerowa,
 )
 from enm.models import (
     Bus,
@@ -228,6 +227,15 @@ class TestGroundingImpedanceNoFabrication:
 # ---------------------------------------------------------------------------
 
 
+def _z0_liczony(enm, graph, wezel):
+    """Z0-bus do zwarcia doziemnego w ``wezel`` — wyłącznie węzła bez przyczyny braku wyniku
+    zerowego (karta PRZERWA-ZEROWA: ten sam predykat co bieg kanoniczny; węzeł z przyczyną
+    ma w macierzy kotwicę numeryczną albo sieć spoza zakresu IEC 60909)."""
+    siec = zbuduj_siec_zerowa(enm, graph)
+    assert wezel not in siec.przyczyny, siec.przyczyny.get(wezel)
+    return siec.z0_bus
+
+
 def _build_network(source_z0=(0.16, 1.6), vector_group="Dyn11"):
     enm = EnergyNetworkModel(
         header=ENMHeader(name="SM3"),
@@ -258,7 +266,7 @@ class TestHandCalc1F:
     def test_z0_at_lv_equals_transformer_leakage(self):
         """Dyn: strona LV (yn) widzi TYLKO Z_T0 do ziemi (delta blokuje sieć HV)."""
         enm, graph, lv = _build_network()
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        z0_bus = _z0_liczony(enm, graph, lv)
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=graph,
             fault_node_id=lv,
@@ -272,7 +280,7 @@ class TestHandCalc1F:
     def test_ik1_matches_iec_formula(self):
         """I_k1'' = √3·c·U_n / |Z1 + Z2 + Z0| (IEC 60909, składowe symetryczne)."""
         enm, graph, lv = _build_network()
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        z0_bus = _z0_liczony(enm, graph, lv)
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=graph,
             fault_node_id=lv,
@@ -304,8 +312,8 @@ class TestHandCalc1F:
         NIE zmienia Z0 na szynie LV (kluczowy dowód roli grupy połączeń)."""
         enm_a, g_a, lv_a = _build_network(source_z0=(0.16, 1.6))
         enm_b, g_b, lv_b = _build_network(source_z0=(1.6, 16.0))
-        z0_a = build_zero_sequence_zbus(enm_a, g_a)
-        z0_b = build_zero_sequence_zbus(enm_b, g_b)
+        z0_a = _z0_liczony(enm_a, g_a, lv_a)
+        z0_b = _z0_liczony(enm_b, g_b, lv_b)
         r_a = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=g_a,
             fault_node_id=lv_a,
@@ -329,8 +337,8 @@ class TestHandCalc1F:
         Z0 źródła ZMIENIA Z0 na szynie LV (kontrast z Dyn)."""
         enm_a, g_a, lv_a = _build_network(source_z0=(0.16, 1.6), vector_group="YNyn0")
         enm_b, g_b, lv_b = _build_network(source_z0=(1.6, 16.0), vector_group="YNyn0")
-        z0_a = build_zero_sequence_zbus(enm_a, g_a)
-        z0_b = build_zero_sequence_zbus(enm_b, g_b)
+        z0_a = _z0_liczony(enm_a, g_a, lv_a)
+        z0_b = _z0_liczony(enm_b, g_b, lv_b)
         r_a = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
             graph=g_a,
             fault_node_id=lv_a,
@@ -355,7 +363,7 @@ class TestHandCalc1F:
 #     Sieć IZOLOWANA (bez uziemienia punktu neutralnego nigdzie) — jedyna
 #     droga powrotu prądu zerowego to pojemność doziemna kabla. Przed naprawą
 #     Y0 była tu macierzą OSOBLIWĄ (brak jakiegokolwiek bocznika do ziemi) —
-#     build_zero_sequence_zbus rzucał ValueError. Hand-calc: obwód 2-węzłowy
+#     budowniczy Z0-bus rzucał ValueError. Hand-calc: obwód 2-węzłowy
 #     (blv=A, b2=B) z JEDNĄ gałęzią niosącą Z0 szeregowe I B0 bocznikowe;
 #     transformator Dyn11+izolowany LV blokuje/nie wnosi Z0 (OPEN), źródło
 #     odcięte deltą HV — jedyne admitancje w podsieci {A,B} to y_s (szereg
@@ -436,7 +444,7 @@ class TestPustaSiecZ0:
     def test_pusta_siec_daje_macierz_zerowego_rozmiaru(self, scenariusz):
         enm = EnergyNetworkModel(header=ENMHeader(name="Pusta", revision=1))
         graph = map_enm_to_network_graph(enm)
-        z0 = build_zero_sequence_zbus(enm, graph, scenario=scenariusz)
+        z0 = zbuduj_siec_zerowa(enm, graph, scenario=scenariusz).z0_bus
         assert z0.shape == (0, 0)
         assert z0.dtype == complex
 
@@ -496,7 +504,6 @@ class TestLineShuntCapacitanceZ0:
     @pytest.mark.parametrize("b0", [3.0e-6, 0.0, None], ids=["b0", "b0_zero", "b0_brak"])
     @pytest.mark.parametrize("neutralny", sorted(_PUNKTY_NEUTRALNE))
     def test_b0_w_y0_wylacznie_przy_k_powyzej_progu(self, neutralny, b0):
-        from enm.mapping import zbuduj_siec_zerowa
         from network_model.solvers.short_circuit_core import build_zbus
 
         konfiguracja = _PUNKTY_NEUTRALNE[neutralny]
@@ -551,7 +558,6 @@ class TestLineShuntCapacitanceZ0:
         assert result.z0_ohm == pytest.approx(z0_b2_pu * z_base_ohm, rel=1e-9)
 
     def test_b0_ujemne_to_odmowa_nazwana(self):
-        from enm.mapping import zbuduj_siec_zerowa
 
         enm, graph, *_ = _build_isolated_cable_network(
             b0_siemens_per_km=-1.0e-6, lv_neutral=_PUNKTY_NEUTRALNE["rezystor"]
@@ -567,7 +573,6 @@ class TestLineShuntCapacitanceZ0:
         (doziemienie pojemnościowe — poza zakresem IEC 60909), jej brak (B′0 = 0 albo
         nieznane, bez wartości roboczej w nN) — brak drogi. W obu przypadkach B0 nie wchodzi
         do macierzy Y0 (sieć bez bocznika rezystancyjnego), a blok domyka kotwica."""
-        from enm.mapping import zbuduj_siec_zerowa
 
         enm = EnergyNetworkModel(
             header=ENMHeader(name="nN-IT"),
@@ -631,7 +636,6 @@ class TestLineShuntCapacitanceZ0:
         """Sieć SN izolowana bez pojemności w modelu: macierz domyka kotwica numeryczna, węzły
         niosą przyczynę „poza zakresem IEC 60909” (sposób pracy punktu neutralnego sieci SN) —
         nie wyjątek osobliwej macierzy."""
-        from enm.mapping import zbuduj_siec_zerowa
 
         enm, graph, b2, *_ = _build_isolated_cable_network(b0_siemens_per_km=None)
         siec = zbuduj_siec_zerowa(enm, graph)
@@ -650,7 +654,7 @@ class TestHandCalc2FZ:
     def test_2fz_uses_parallel_z2_z0(self):
         """2F-Z: Z_k = Z1 + (Z2·Z0)/(Z2+Z0) (IEC 60909). Z0 z modelu Dyn."""
         enm, graph, lv = _build_network()
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        z0_bus = _z0_liczony(enm, graph, lv)
         result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
             graph=graph,
             fault_node_id=lv,
@@ -675,14 +679,11 @@ class TestHandCalc2FZ:
 class TestZeroSequenceTrace:
     def test_trace_breaks_down_by_element(self):
         enm, graph, _ = _build_network()
-        trace = build_zero_sequence_zbus_with_trace(enm, graph)[1]
+        trace = list(zbuduj_siec_zerowa(enm, graph).slad)
         keys = [s["key"] for s in trace]
         assert any(k.startswith("z0_source[") for k in keys)
         assert any("tr_z0_conn[" in k for k in keys)
 
     def test_trace_deterministic(self):
         enm, graph, _ = _build_network()
-        assert (
-            build_zero_sequence_zbus_with_trace(enm, graph)[1]
-            == build_zero_sequence_zbus_with_trace(enm, graph)[1]
-        )
+        assert zbuduj_siec_zerowa(enm, graph).slad == zbuduj_siec_zerowa(enm, graph).slad

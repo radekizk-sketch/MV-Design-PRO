@@ -10,7 +10,7 @@ zakazane: Proof Engine czyta wyniki READ-ONLY (kanon ``CLAUDE.md``), a drugie
 uruchomienie solvera byłoby drugim źródłem prawdy o tym samym przebiegu.
 
 WZORZEC BLIŹNIACZY: ``application/solvers/short_circuit_binding.py``
-(``zwarcie_3f_ze_snapshotu``, ``wynik_zwarcia_1f_ze_snapshotu``) — tam warstwa
+(``zwarcie_3f_ze_snapshotu``, ``zwarcie_niesymetryczne_ze_snapshotu``) — tam warstwa
 wiązania woła solver i oddaje pakietowi gotowy FROZEN wynik. Tu wiązanie jest
 jeszcze węższe: bieg rozpływu ZAPISAŁ już ``PowerFlowResultV1.to_dict()``, więc
 wiązanie wyłącznie ODTWARZA ten obiekt. **Ten moduł nie liczy niczego** — nie ma

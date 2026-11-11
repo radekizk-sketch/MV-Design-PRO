@@ -1,9 +1,17 @@
 """
 Warstwa wiązania solvera IEC 60909 dla pakietów dowodowych zwarć.
 
-Funkcje ``wynik_zwarcia_1f_ze_snapshotu`` i ``zwarcie_3f_ze_snapshotu`` mapują migawkę
+Funkcje ``zwarcie_niesymetryczne_ze_snapshotu`` i ``zwarcie_3f_ze_snapshotu`` mapują migawkę
 ENM na graf i wołają zamrożony solver IEC 60909 dla pakietów dowodowych SC1/SC3F —
 pakiet dowodowy opisuje wynik, nie produkuje go.
+
+Karta PRZERWA-ZEROWA: węzeł z nazwaną przyczyną braku wyniku zerowego
+(``WejscieZwarcia.brak_wyniku_zerowego`` z ``enm.mapping.zbuduj_siec_zerowa`` — brak drogi
+prądu zerowego, sieć izolowana albo skompensowana, brak danych Z0) NIE wchodzi do rdzenia
+w zwarciu doziemnym na żadnej ścieżce tego modułu (``odmowa_bez_wyniku_zerowego``): jego Z0
+w macierzy to kotwica numeryczna (Z0 ≈ 0 — prąd jak w sieci uziemionej bezpośrednio) albo
+impedancja sieci spoza zakresu IEC 60909-0. Ten sam słownik czyta bieg kanoniczny
+(``canonical_analysis._wynik_solvera_punktu``) — jeden predykat dla wszystkich dróg.
 
 Karta RESULTSET-MARTWE-MAPPERY (2026-09-30, zgoda B-01 w decyzji O-59): typ
 ``ShortCircuitBindingResult`` skasowany razem z jedynymi konsumentami — martwymi
@@ -33,7 +41,7 @@ zwarcia), bo granica odmów B-01 obejmuje wyłącznie jedno wywołanie rdzenia.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 from enm.tolerancja_nn import dobierz_c_wezla
@@ -46,7 +54,7 @@ from network_model.core.czas_wylaczenia import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import DoborC, NadpisanieC, Scenario
-from network_model.odmowa_danych import odmowa_rdzenia_b01
+from network_model.odmowa_danych import OdmowaNazwana, odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     odmowa_wezla_zwarcia_spoza_grafu,
@@ -59,6 +67,7 @@ from network_model.solvers.short_circuit_iec60909 import (
 if TYPE_CHECKING:
     from application.analyses.protection.czas_wylaczenia_pola import PoleLokalne
     from enm.assembler import WejscieZwarcia
+    from enm.mapping import BrakWynikuZerowego
 
 #: Rodzaj zwarcia w dopełniaczu — zdanie opisu prądu, przy którym sprawdzono charakterystykę.
 _RODZAJ_ZWARCIA_PL: dict[ShortCircuitType, str] = {
@@ -67,6 +76,28 @@ _RODZAJ_ZWARCIA_PL: dict[ShortCircuitType, str] = {
     ShortCircuitType.TWO_PHASE: "dwufazowego",
     ShortCircuitType.TWO_PHASE_GROUND: "dwufazowego z ziemią",
 }
+
+
+def odmowa_bez_wyniku_zerowego(wejscie: WejscieZwarcia, node_id: str) -> None:
+    """Odmowa nazwana zwarcia doziemnego w węźle z przyczyną braku wyniku zerowego.
+
+    JEDEN predykat ze wszystkimi drogami do rdzenia (karta PRZERWA-ZEROWA, predykaty parami):
+    słownik ``WejscieZwarcia.brak_wyniku_zerowego`` (``enm.mapping.zbuduj_siec_zerowa``,
+    wypełniany wyłącznie dla zwarć z Z0). Bieg kanoniczny pomija taki węzeł przed rdzeniem
+    (wiersz bez liczby z przyczyną), pakiet dowodowy i każdy inny wołający rdzenia z tego
+    modułu dostaje tę odmowę — zamiast I″k1 z kotwicy numerycznej (Z0 ≈ 0, prąd sieci
+    uziemionej bezpośrednio) albo z impedancji sieci izolowanej/skompensowanej, która nie
+    jest zwarciem IEC 60909-0 (rozdz. 1). Zdanie przyczyny jest wyjaśnieniem dla
+    projektanta (kontrakt werdyktu), kod ``fault.zero_sequence_*`` — polem maszynowym.
+    """
+    brak = wejscie.brak_wyniku_zerowego.get(node_id)
+    if brak is None:
+        return
+    raise OdmowaNazwana(
+        brak.opis_pl,
+        kod=brak.kod,
+        dane={"przyczyna": brak.przyczyna, "status": brak.status, "elementy": brak.elementy},
+    )
 
 
 def pola_lokalne_biegu(wejscie: WejscieZwarcia) -> Mapping[str, tuple[PoleLokalne, ...]] | None:
@@ -125,6 +156,7 @@ def czas_tb_punktu(
             "do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem "
             "z katalogu"
         )
+    odmowa_bez_wyniku_zerowego(wejscie, node_id)
     argumenty_rdzenia: dict[str, Any] = {
         "short_circuit_type": wejscie.short_circuit_type,
         "graph": wejscie.solve_graph,
@@ -156,7 +188,9 @@ def wynik_zwarcia_punktu(
     z_f_ohm: complex | None,
 ) -> ShortCircuitResult:
     """Dyspozycja rodzaju zwarcia do FROZEN solvera IEC 60909 — JEDNA dla biegu, wkładów na
-    żądanie i pakietów dowodowych (bez granicy odmów — tę stawia wołający)."""
+    żądanie i pakietów dowodowych (bez granicy odmów — tę stawia wołający). Węzeł z przyczyną
+    braku wyniku zerowego — odmowa nazwana (``odmowa_bez_wyniku_zerowego``), nie rdzeń."""
+    odmowa_bez_wyniku_zerowego(wejscie, node_id)
     typ = wejscie.short_circuit_type
     if typ == ShortCircuitType.THREE_PHASE:
         return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
@@ -250,14 +284,21 @@ def _dobor_c_wezla(wejscie: WejscieZwarcia, fault_node_id: str) -> DoborC:
 
 
 @dataclass(frozen=True)
-class Zwarcie1FZeSnapshotu:
-    """FROZEN wynik zwarcia 1F z doborem c (wartość i podstawa) dla dowodu."""
+class ZwarcieNiesymetryczneZeSnapshotu:
+    """FROZEN wynik rdzenia z impedancjami składowymi punktu dla pakietu zwarć niesymetrycznych.
+
+    ``wynik`` — zwarcie 1F (Z1, Z2, Z0) węzła z drogą prądu zerowego przez małą impedancję;
+    dla węzła z przyczyną braku wyniku zerowego (``brak_wyniku_zerowego``) — zwarcie 2F
+    (Z1, Z2; Z0 brak), bo zwarcie dwufazowe bez ziemi nie zależy od sieci zerowej, a 1F-Z
+    i 2F-Z w takim węźle nie są zwarciami IEC 60909-0 (karta PRZERWA-ZEROWA). ``dobor_c`` —
+    wartość c i jej podstawa (White Box)."""
 
     wynik: ShortCircuitResult
     dobor_c: DoborC
+    brak_wyniku_zerowego: BrakWynikuZerowego | None = None
 
 
-def wynik_zwarcia_1f_ze_snapshotu(
+def zwarcie_niesymetryczne_ze_snapshotu(
     *,
     snapshot: dict[str, Any],
     fault_node_id: str,
@@ -267,12 +308,12 @@ def wynik_zwarcia_1f_ze_snapshotu(
     tb_s: float | None,
     rozszerzenia_audit2: dict[str, Any] | None = None,
     z_f_ohm: complex | None = None,
-) -> Zwarcie1FZeSnapshotu:
-    """FROZEN wynik zwarcia 1F ze snapshotu ENM — impedancje składowe Z1/Z2/Z0.
+) -> ZwarcieNiesymetryczneZeSnapshotu:
+    """FROZEN wynik zwarcia ze snapshotu ENM — impedancje składowe Z1/Z2/Z0 pakietu dowodowego.
 
     PO CO TA FUNKCJA (2026-08-07, naprawa czerwonej bramki po karcie PACK-DOWODY).
     Pakiet dowodowy zwarć niesymetrycznych potrzebuje Z1/Z2/Z0, a sieć zerową
-    liczy WYŁĄCZNIE wariant jednofazowy — przebieg 3F ich nie produkuje. Fizyka
+    liczy WYŁĄCZNIE wariant doziemny — przebieg 3F ich nie produkuje. Fizyka
     (mapowanie snapshotu, macierz zerowa, wejście w solver) stoi w warstwie wiązania,
     pakiet dostaje gotowy FROZEN wynik i tylko go opisuje (`no_direct_fault_params_guard`,
     „Proof Engine reads results READ-ONLY").
@@ -280,6 +321,12 @@ def wynik_zwarcia_1f_ze_snapshotu(
     Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: graf, Z0 i c z assemblera biegu
     (``_wejscie_pakietu``); ``tb_s`` — t_b scenariusza biegu (``None`` = t_b punktu
     rozstrzyga ``czas_tb_punktu``, jak w biegu — karta TB-WARTOSC-ROBOCZA).
+
+    Karta PRZERWA-ZEROWA: węzeł z przyczyną braku wyniku zerowego (ten sam słownik co bieg
+    kanoniczny) nie przechodzi przez rdzeń 1F — dawniej ta funkcja liczyła dla szyny SN za
+    Dyn11 bez uziemienia I″k1 = 4062,43 A z kotwicy numerycznej (Z0 ≈ 0). Wynik niesie
+    wtedy zwarcie 2F z TEGO SAMEGO wejścia (graf, c, t_k; t_b punktu rozstrzygnięte prądem
+    2F, jak w biegu 2F) i przyczynę — pakiet składa dowód 2F i odmowę nazwaną 1F-Z i 2F-Z.
     """
     wejscie = _wejscie_pakietu(
         snapshot=snapshot,
@@ -291,6 +338,38 @@ def wynik_zwarcia_1f_ze_snapshotu(
         rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
+    brak = wejscie.brak_wyniku_zerowego.get(fault_node_id)
+    if brak is not None:
+        # Zwarcie 2F nie czyta sieci zerowej: to samo wejście bez Z0 i bez przyczyn zerowych
+        # (przyczyny dotyczą wyłącznie zwarć doziemnych).
+        wejscie_2f = replace(
+            wejscie,
+            short_circuit_type=ShortCircuitType.TWO_PHASE,
+            z0_bus=None,
+            brak_wyniku_zerowego={},
+            siec_zerowa_trace=(),
+            sekcje_sn_wezlow={},
+        )
+        with nazwy_w_odmowach_rdzenia(wejscie_2f.solve_graph):
+            czas_tb_2f = czas_tb_punktu(
+                wejscie_2f,
+                fault_node_id,
+                c_factor=dobor_c.wartosc,
+                z_f_ohm=z_f_ohm,
+                granica_b01=True,
+            )
+        with nazwy_w_odmowach_rdzenia(wejscie_2f.solve_graph), odmowa_rdzenia_b01():
+            wynik_2f = wynik_zwarcia_punktu(
+                wejscie_2f,
+                fault_node_id,
+                c_factor=dobor_c.wartosc,
+                czas_tb=czas_tb_2f,
+                wklady=False,
+                z_f_ohm=z_f_ohm,
+            )
+        return ZwarcieNiesymetryczneZeSnapshotu(
+            wynik=wynik_2f, dobor_c=dobor_c, brak_wyniku_zerowego=brak
+        )
     # Solver IEC 60909 jest rdzeniem B-01: odmowę wejścia (węzeł zwarcia spoza grafu, gałąź
     # bez nazwy) podnosi rekordem strukturalnym (decyzja O-59) — pierwsza granica składa zdanie
     # z nazwami z grafu solvera (jak bieg kanoniczny), druga tłumaczy inne `ValueError` rdzenia
@@ -309,7 +388,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
             z0_bus=wejscie.z0_bus,
             z_f_ohm=z_f_ohm,
         )
-    return Zwarcie1FZeSnapshotu(wynik=wynik, dobor_c=dobor_c)
+    return ZwarcieNiesymetryczneZeSnapshotu(wynik=wynik, dobor_c=dobor_c)
 
 
 @dataclass(frozen=True)
@@ -340,7 +419,7 @@ def zwarcie_3f_ze_snapshotu(
 ) -> ZwarcieZeSnapshotu:
     """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F i wkładów.
 
-    Bliźniak `wynik_zwarcia_1f_ze_snapshotu` (dług PACK-SC3F-WIAZANIE): pakiet ma
+    Bliźniak `zwarcie_niesymetryczne_ze_snapshotu` (dług PACK-SC3F-WIAZANIE): pakiet ma
     OPISYWAĆ wynik, nie produkować go. Graf solvera i c z assemblera biegu
     (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); ``tb_s`` — t_b scenariusza biegu (``None`` = t_b
     punktu z ``czas_tb_punktu``: pola lokalne albo wartość robocza).
@@ -359,7 +438,7 @@ def zwarcie_3f_ze_snapshotu(
         rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
-    # rdzeń B-01 — jak w `wynik_zwarcia_1f_ze_snapshotu`
+    # rdzeń B-01 — jak w `zwarcie_niesymetryczne_ze_snapshotu`
     with nazwy_w_odmowach_rdzenia(wejscie.solve_graph):
         czas_tb = czas_tb_punktu(
             wejscie, fault_node_id, c_factor=dobor_c.wartosc, z_f_ohm=z_f_ohm, granica_b01=True

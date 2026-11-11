@@ -5,8 +5,8 @@ import math
 import pytest
 from enm.mapping import (
     build_inverter_k_sc_trace,
-    build_zero_sequence_zbus,
     map_enm_to_network_graph,
+    zbuduj_siec_zerowa,
 )
 from enm.models import (
     BranchRating,
@@ -201,7 +201,7 @@ class TestBasicMapping:
         )
         graph = map_enm_to_network_graph(enm)
 
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        z0_bus = zbuduj_siec_zerowa(enm, graph).z0_bus
 
         assert z0_bus.shape[0] > 0
 
@@ -354,10 +354,18 @@ class TestSolverRoundtrip:
         assert result.sk_mva > 0
 
     def test_zero_sequence_builder_uses_enm_z0_without_changing_3f_result(self):
+        """Budowniczy Z0 bierze Z0 źródła i linii z ENM i nie zmienia grafu (3F bez zmian).
+
+        Karta PRZERWA-ZEROWA: sieć była w paśmie SN (15 kV), gdzie Z0 źródła NIE wchodzi do Y0
+        (``impedancja_zerowa_zrodla_dozwolona`` — uziemienie sieci SN opisuje zespół albo
+        uzwojenie transformatora), więc szyna zwarcia nie miała drogi prądu zerowego,
+        a „I″k1 > 0” pochodził z kotwicy numerycznej (Z0 ≈ 0) — test przechodził na liczbie
+        bez podstawy, a nazwa obiecywała Z0 z ENM. Sieć 110 kV (Z0 źródła dozwolone) i Z0
+        przypięte wprost: Z0 = Z0,Q + Z0′·ℓ."""
         enm = _make_enm(
             buses=[
-                Bus(ref_id="bus_src", name="Szyna zasilajaca", voltage_kv=15),
-                Bus(ref_id="bus_fault", name="Szyna zwarcia", voltage_kv=15),
+                Bus(ref_id="bus_src", name="Szyna zasilajaca", voltage_kv=110),
+                Bus(ref_id="bus_fault", name="Szyna zwarcia", voltage_kv=110),
             ],
             sources=[
                 Source(
@@ -402,7 +410,11 @@ class TestSolverRoundtrip:
             czas_tb=czas_tb_roboczy(),
         )
 
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        siec_zerowa = zbuduj_siec_zerowa(enm, graph)
+        # Karta PRZERWA-ZEROWA: zwarcie doziemne liczone tylko w węźle bez przyczyny braku
+        # wyniku zerowego (ten sam predykat co bieg kanoniczny).
+        assert fault_node_id not in siec_zerowa.przyczyny, siec_zerowa.przyczyny.get(fault_node_id)
+        z0_bus = siec_zerowa.z0_bus
 
         result_3f_after = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
@@ -424,6 +436,7 @@ class TestSolverRoundtrip:
             czas_tb=czas_tb_roboczy(),
         )
         assert result_1f.ikss_a > 0
+        assert result_1f.z0_ohm == pytest.approx(complex(0.16, 1.6) + complex(0.75, 0.96) * 2.0)
         assert result_1f.short_circuit_type.value == "1F"
         assert "z0_ohm" in result_1f.white_box_trace[0]["inputs"]
 

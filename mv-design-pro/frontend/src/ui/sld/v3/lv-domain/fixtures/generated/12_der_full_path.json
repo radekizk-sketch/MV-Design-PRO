@@ -1011,7 +1011,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "e2727c2e6f9af13f2a3da3d1a3546ba54f0ad0f9aab9a36ecf0b4843a5e6e053",
+  "projection_hash": "5639d1d0bdbeb64e63e5c2824d960f2f32dccafbb50932d69d8d5291ed693af1",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -3270,11 +3270,8 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": null,
-      "z0_ohm": {
-        "r": 2.25e-06,
-        "x": 0.0
-      },
+      "z0_missing_reason_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+      "z0_ohm": null,
       "z1_ohm": {
         "r": 0.099895812,
         "x": 0.499274616

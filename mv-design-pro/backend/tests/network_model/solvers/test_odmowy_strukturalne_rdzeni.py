@@ -21,8 +21,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from application.solvers.short_circuit_binding import (
-    wynik_zwarcia_1f_ze_snapshotu,
     zwarcie_3f_ze_snapshotu,
+    zwarcie_niesymetryczne_ze_snapshotu,
 )
 from application.v126_artifacts import wynik_v126_dla_powierzchni
 from enm.canonical_analysis import _solve_power_flow_with_method
@@ -448,7 +448,7 @@ def test_zwarcie_galaz_bez_nazwy_poza_eksploatacja_nie_blokuje() -> None:
 # Karta SC-IB-ITH-ZRODLA: t_b jest jawnym wejściem wiązania (tu brak danej — odmowa węzła
 # poprzedza wszelkie wielkości zależne od t_b).
 WIAZANIA_ZWARCIA_ZE_SNAPSHOTU = {
-    "1F": lambda migawka, wezel, scenariusz: wynik_zwarcia_1f_ze_snapshotu(
+    "1F": lambda migawka, wezel, scenariusz: zwarcie_niesymetryczne_ze_snapshotu(
         snapshot=migawka,
         fault_node_id=wezel,
         scenariusz=scenariusz,

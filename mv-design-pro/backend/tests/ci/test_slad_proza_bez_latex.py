@@ -44,7 +44,7 @@ from enm.canonical_analysis import (
     pobierz_slad_rozplywu_biegu,
     reset_canonical_runs,
 )
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
 from enm.store import reset_enm_store, set_enm
 from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.conductor_thermal_withstand import (
@@ -100,9 +100,17 @@ _TYPY_ZWARC = ("3F", "2F", "1F", "2F+Z")
 def _slad_solvera(typ: str) -> list[dict[str, Any]]:
     enm = build_golden_enm()
     graf = map_enm_to_network_graph(enm)
+    # Karta PRZERWA-ZEROWA: rdzeń doziemny tylko dla węzła z drogą prądu zerowego (jeden
+    # predykat z biegiem — ``przyczyny`` sieci zerowej). Szyny SN sieci złotej mają punkt
+    # neutralny izolowany (``poza_zakresem_iec60909``) — dawniej ślad 1F/2F+Z opisywał tam Z0
+    # kotwicy numerycznej; zwarcie doziemne idzie na szynę nN za Dyn11 (yn uziemiony).
+    siec_zerowa = zbuduj_siec_zerowa(enm, graf)
+    napiecie = 0.4 if typ in ("1F", "2F+Z") else 15.0
     wezel = next(
-        node_id for node_id, node in sorted(graf.nodes.items()) if node.voltage_level == 15.0
+        node_id for node_id, node in sorted(graf.nodes.items()) if node.voltage_level == napiecie
     )
+    if typ in ("1F", "2F+Z"):
+        assert wezel not in siec_zerowa.przyczyny, siec_zerowa.przyczyny.get(wezel)
     wspolne: dict[str, Any] = {
         "graph": graf,
         "fault_node_id": wezel,
@@ -118,11 +126,11 @@ def _slad_solvera(typ: str) -> list[dict[str, Any]]:
         wynik = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(**wspolne)
     elif typ == "1F":
         wynik = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            **wspolne, z0_bus=build_zero_sequence_zbus(enm, graf)
+            **wspolne, z0_bus=siec_zerowa.z0_bus
         )
     else:
         wynik = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-            **wspolne, z0_bus=build_zero_sequence_zbus(enm, graf)
+            **wspolne, z0_bus=siec_zerowa.z0_bus
         )
     return [dict(krok) for krok in wynik.white_box_trace] + [
         dict(krok) for krok in (getattr(wynik, "branch_flow_trace", None) or [])

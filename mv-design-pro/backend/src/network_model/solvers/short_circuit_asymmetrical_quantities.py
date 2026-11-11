@@ -76,6 +76,16 @@ _RODZAJ_RDZENIA: dict[str, ShortCircuitType] = {
 #: zmuszało klienta (UI) do niesienia wielkości fizycznej — patrz karta PACK-DOWODY.
 OPERATOR_FORTESCUE_A = complex(-0.5, math.sqrt(3.0) / 2.0)
 
+#: Karta PRZERWA-ZEROWA: rodzaje zwarcia, których pętla zawiera tor składowej zerowej. Bez
+#: Z_0 (punkt bez drogi zerowej, poza zakresem IEC 60909 albo bez danych zerowych — przyczyna
+#: z sieci zerowej ``enm.mapping.zbuduj_siec_zerowa``) liczy się wyłącznie zwarcie 2F.
+_RODZAJE_Z_TOREM_ZEROWYM: frozenset[str] = frozenset({"SC1FZ", "SC2FZ"})
+
+_KOMUNIKAT_BRAK_Z0 = (
+    "Zwarcie doziemne wymaga impedancji składowej zerowej w miejscu zwarcia, a ten punkt jej "
+    "nie ma — wynik doziemny zastępuje odmowa z przyczyną sieci zerowej, nie liczba."
+)
+
 
 def napiecie_fazowe_przedzwarciowe_kv(*, u_n_kv: float, c_factor: float) -> float:
     """Napięcie fazowe przed zwarciem ``U_f = c · U_n / √3`` [kV].
@@ -129,8 +139,10 @@ def normalize_sc1_fault_type(fault_type: str) -> str:
     return _FAULT_TYPE_MAPPING[fault_type]
 
 
-def _tor_zerowy(z0: complex, z_f: complex | None) -> complex:
+def _tor_zerowy(z0: complex | None, z_f: complex | None) -> complex:
     """Impedancja toru składowej zerowej: Z_0, a przy impedancji przejścia Z_0 + 3·Z_f."""
+    if z0 is None:
+        raise OdmowaDanychError(_KOMUNIKAT_BRAK_Z0)
     return z0 if z_f is None else z0 + 3.0 * z_f
 
 
@@ -139,7 +151,7 @@ def _compute_equiv_impedance(
     fault_type: str,
     z1: complex,
     z2: complex,
-    z0: complex,
+    z0: complex | None,
     z_f: complex | None = None,
 ) -> complex:
     rodzaj = _RODZAJ_RDZENIA.get(fault_type)
@@ -159,7 +171,7 @@ def _compute_sequence_currents(
     u_prefault_kv: float,
     z_equiv: complex,
     z2: complex,
-    z0: complex,
+    z0: complex | None,
     z_f: complex | None = None,
 ) -> tuple[complex, complex, complex]:
     if z_equiv == 0:
@@ -234,12 +246,16 @@ def compute_sc1_asymmetrical_quantities(
     u_prefault_kv: float,
     z1_ohm: complex,
     z2_ohm: complex,
-    z0_ohm: complex,
+    z0_ohm: complex | None,
     a_operator: complex,
     tk_s: float,
     z_f_ohm: complex | None = None,
 ) -> SC1AsymmetricalQuantities:
     """Liczy komplet wielkości zwarciowych SC1 (1F-Z / 2F / 2F-Z).
+
+    ``z0_ohm=None`` (karta PRZERWA-ZEROWA) — punkt bez wyniku zerowego: 2F liczy się bez Z_0
+    (pętla Z_1 + Z_2 nie zawiera toru zerowego), 1F-Z i 2F-Z kończą się odmową
+    ``OdmowaDanychError`` zamiast liczby z kotwicy numerycznej.
 
     Jedyne miejsce fizyki toru dowodowego SC1 (NOT-A-SOLVER: proof engine
     dostaje ten wynik i wyłącznie formatuje kroki dowodu).
@@ -252,6 +268,8 @@ def compute_sc1_asymmetrical_quantities(
     (`compute_post_fault_quantities`) z R/X pętli tego typu zwarcia — jedno źródło I_th.
     """
     normalized = normalize_sc1_fault_type(fault_type)
+    if z0_ohm is None and normalized in _RODZAJE_Z_TOREM_ZEROWYM:
+        raise OdmowaDanychError(_KOMUNIKAT_BRAK_Z0)
     if z_f_ohm is not None:
         # Ta sama reguła danych i normalizacja Z_f = 0 → metaliczne co rdzeń IEC 60909.
         kod = kod_odmowy_impedancji(float(z_f_ohm.real), float(z_f_ohm.imag))
