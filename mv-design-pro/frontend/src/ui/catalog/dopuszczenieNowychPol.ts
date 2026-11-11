@@ -22,6 +22,7 @@
  */
 
 import type { TypeCategory } from './types';
+import { nazwaWartosciKodowej } from './wartosciKodoweKarty';
 
 /**
  * Kategorie pickera typów niosące pola dopuszczenia backendu (łączniki i aparaty SN). Pozostałe
@@ -79,18 +80,13 @@ export function notaPozycjiUkrytych(
   return powod ? `${liczba} Przykład: ${powod}` : liczba;
 }
 
-/** Nazwy mediów gaszenia łuku katalogu SN (wartości pola `medium` rekordów backendu). */
-const NAZWY_MEDIUM_PL: Readonly<Record<string, string>> = {
-  VACUUM: 'próżnia',
-  AIR: 'powietrze',
-  SF6: 'SF₆',
-  'C4-FN': 'C4-FN',
-  'C5-FK': 'C5-FK',
-};
-
-/** Medium pozycji na widoku pickera (wartość spoza słownika — bez zmian, nigdy ukryta). */
+/**
+ * Medium pozycji na widoku pickera — nazwa z JEDNEGO słownika wartości kodowych karty
+ * (`wartosciKodoweKarty.ts`, pole `medium`); kod spoza słownika daje jawne zdanie „wartość
+ * spoza słownika aplikacji”, nigdy kod na ekranie. Brak medium — brak etykiety.
+ */
 export function nazwaMediumPl(medium: string | null | undefined): string | null {
   const klucz = (medium ?? '').trim();
   if (!klucz) return null;
-  return NAZWY_MEDIUM_PL[klucz.toUpperCase()] ?? klucz;
+  return nazwaWartosciKodowej('medium', klucz.toUpperCase());
 }

@@ -50,11 +50,14 @@ const MIGAWKA = {
   ],
 } as unknown as EnergyNetworkModel;
 
-/** Rodziny w kształcie katalogu: modułowa oferowana, blokowa (RMU), bez karty katalogowej. */
+/** Rodziny w kształcie katalogu: modułowa oferowana, blokowa (RMU), bez karty katalogowej.
+ *  Dopuszczenie jest regułą BACKENDU (pola wyliczane rodziny `dopuszczona_do_budowania`,
+ *  `dopuszczona_do_nowych_pol` z powodami) — atrapa niesie je tak, jak odpowiedź katalogu;
+ *  front nie wyprowadza dopuszczenia ze statusu (`SwitchgearFamilyPicker.test.ts`). */
 const RODZINY = [
-  { switchgear_family_ref: 'ABB__UNIGEAR_ZS1', manufacturer_ref: 'ABB', family_name: 'UniGear ZS1', status: 'repo_verified', tor_konfiguracji: 'MODULARNY' },
-  { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', status: 'repo_verified', tor_konfiguracji: 'BLOK_RMU' },
-  { switchgear_family_ref: 'ABB__UNISEC', manufacturer_ref: 'ABB', family_name: 'UniSec', status: 'requires_catalog', tor_konfiguracji: 'MODULARNY' },
+  { switchgear_family_ref: 'ABB__UNIGEAR_ZS1', manufacturer_ref: 'ABB', family_name: 'UniGear ZS1', status: 'repo_verified', tor_konfiguracji: 'MODULARNY', dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: true, powod_blokady_nowych_pol_pl: null },
+  { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', status: 'repo_verified', tor_konfiguracji: 'BLOK_RMU', dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: true, powod_blokady_nowych_pol_pl: null },
+  { switchgear_family_ref: 'ABB__UNISEC', manufacturer_ref: 'ABB', family_name: 'UniSec', status: 'requires_catalog', tor_konfiguracji: 'MODULARNY', dopuszczona_do_budowania: false, powod_blokady_pl: 'Rodzina wymaga karty katalogowej producenta.', dopuszczona_do_nowych_pol: false, powod_blokady_nowych_pol_pl: 'Rodzina wymaga karty katalogowej producenta.' },
 ];
 
 function polePola(rola: Rola, aparaty: Bay['primary_devices'] = []): Bay {
@@ -330,7 +333,7 @@ describe('EdytorWyposazeniaPola — jakość danych przyjętych', () => {
  * przypisana zostaje widoczna. Selektor stanu wiersza istnieje wyłącznie w polu istniejącym.
  */
 describe('EdytorWyposazeniaPola — aparaty z gazem fluorowanym', () => {
-  const POWOD = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+  const POWOD = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF6).';
   beforeEach(() => {
     katalogApi.fetchMvApparatusTypes.mockResolvedValue([
       { id: 'wyl-sf6', name: 'Wyłącznik SF6', device_kind: 'WYLACZNIK', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: POWOD, u_n_kv: 24, i_n_a: 630 },

@@ -602,25 +602,30 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
   }
 
   /**
-   * Kanon rysunku (`compose/apparatusSequence.ts::czyGlowicaRezerwy`): pole wolne nie rysuje
-   * głowicy — kończy się symbolem `bayReserve`, choć rekord pola ma głowicę; pole zajęte
-   * rysuje głowicę. Punktem wyprowadzenia ciągu jest więc zakończenie pola wolnego
-   * (`jestPunktemWyprowadzeniaCiagu`) — predykaty parami: scena i bramka menu z jednego kanonu.
+   * Kanon rysunku (`compose/apparatusSequence.ts`, decyzja właściciela 2026-10-30 z karty pola
+   * liniowego GPZ): pole wolne rysuje WSZYSTKIE aparaty rekordu — także głowicę — i kończy się
+   * symbolem `bayReserve` („odejście kablowe poza modelem"); pole zajęte rysuje głowicę bez
+   * zakończenia. Intencja testu bez zmian: zakończenie istnieje wyłącznie na polu wolnym,
+   * a punkt wyprowadzenia ciągu (`jestPunktemWyprowadzeniaCiagu`) ma na scenie swój symbol.
+   * Dawna asercja „pole wolne bez głowicy” pochodziła z kanonu sprzed tej decyzji (scalenie
+   * karty jednego nośnika zespołu uziemiającego z gałęzią szablonów pól).
    */
-  it('kanon rysunku: pole wolne kończy się zakończeniem pola, pole zajęte — głowicą', () => {
+  it('kanon rysunku: pole wolne kończy się zakończeniem pola i rysuje głowicę z rekordu, pole zajęte — głowicą', () => {
     useSnapshotStore.setState({ snapshot: GLOWICE.snapshot, logicalViews: GLOWICE.logical_views });
     const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
     const uchwyt = (pole: string, symbol: string) =>
       container.querySelector(
         `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.ownerRef}="${CSS.escape(pole)}"][${HIT_ATTR.for}*="${symbol}"]`,
       );
-    expect(uchwyt(POLE_GPZ_WOLNE, 'cableHead')).toBeNull();
+    expect(uchwyt(POLE_GPZ_WOLNE, 'cableHead')).toBeTruthy();
     expect(uchwyt(POLE_GPZ_WOLNE, 'bayReserve')).toBeTruthy();
     expect(uchwyt(POLE_GPZ_ZAJETE, 'cableHead')).toBeTruthy();
+    expect(uchwyt(POLE_GPZ_ZAJETE, 'bayReserve')).toBeNull();
   });
 
   it.each([
     { nazwa: 'zakończenie wolnego pola z głowicą', pole: POLE_GPZ_WOLNE, symbol: 'bayReserve', aktywna: true },
+    { nazwa: 'głowica wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'cableHead', aktywna: true },
     { nazwa: 'głowica zajętego pola', pole: POLE_GPZ_ZAJETE, symbol: 'cableHead', aktywna: false },
     { nazwa: 'wyłącznik wolnego pola', pole: POLE_GPZ_WOLNE, symbol: 'breaker', aktywna: false },
   ])('$nazwa: prawy klik → pozycja menu → kreator z polem startu', async ({ pole, symbol, aktywna }) => {
@@ -649,7 +654,7 @@ describe('Aparat pola — natywny klik w symbol na kanwie v3 (głowica × zajęt
     cleanup();
     renderWithQueryClient(<InspectorEngineeringView />);
     // Symbol bez rekordu aparatu: karta pola z rekordami aparatów — wśród nich głowica kablowa,
-    // z której projektant wyprowadza ciąg (rysunek jej nie pokazuje, model ją ma).
+    // z której projektant wyprowadza ciąg.
     const karta = await screen.findByTestId('inspektor-karta');
     expect(karta.getAttribute('data-rodzaj-karty')).toBe('pole');
     expect(within(karta).getAllByText(/^Głowica kablowa/).length).toBeGreaterThan(0);

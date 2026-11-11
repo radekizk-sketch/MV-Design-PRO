@@ -95,7 +95,7 @@ export interface ProtectionTopologyDomainContext {
 
 const REASON_LABEL_PL: Readonly<Record<ProtectionTopologyGapReason, string>> = {
   missing_u0_source: 'brak potwierdzonego źródła 3U₀',
-  missing_core_balance_ct: 'brak przekładnika Ferrantiego (I0)',
+  missing_core_balance_ct: 'brak przekładnika Ferrantiego (kryterium prądu zerowego)',
   missing_transformer: 'brak transformatora',
   missing_i0: 'brak pomiaru prądu zerowego',
   missing_second_ct: 'brak drugiego CT strefy',

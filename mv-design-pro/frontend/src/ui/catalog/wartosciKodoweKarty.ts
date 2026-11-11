@@ -17,6 +17,7 @@
  * w tym trzy różne nazwy `ROZLACZNIK_BEZPIECZNIKOWY`, słownik `equipment_kind` z kluczami,
  * których serwer nie wysyła, i odczyty `?? kod` przepisujące kod na ekran.
  */
+import { NAZWA_PRZEZNACZENIA_RDZENIA_PL } from '../../types/przekladniki';
 import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 import { NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL } from './pradZwarciowyKatalogu';
 
@@ -167,11 +168,6 @@ export const POLA_KODOWE_KARTY: Readonly<Record<string, OpisPolaKodowego>> = {
     NC_RfG_typ_C: 'NC RfG — moduł typu C',
     NC_RfG_typ_D: 'NC RfG — moduł typu D',
   }),
-  grupa_polaczen: {
-    rodzaj: 'oznaczenie',
-    uzasadnienie:
-      'grupa połączeń transformatora uziemiającego wg PN-EN 60076-1 (ZNyn11) — oznaczenie normowe',
-  },
   i_th_pochodzenie: nazwy({ producent: 'dana producenta', referencyjny: 'wartość referencyjna' }),
   insulation_type: nazwy({
     XLPE: 'polietylen usieciowany (XLPE)',
@@ -180,9 +176,13 @@ export const POLA_KODOWE_KARTY: Readonly<Record<string, OpisPolaKodowego>> = {
     PAPER: 'papier przesycany (kable istniejące)',
   }),
   kind: nazwy(RODZAJ_POZYCJI_PL),
+  // Medium gaszenia łuku łącznika (`gazy_fluorowane.MEDIA_ZE_GAZEM_FLUOROWANYM` obejmuje też
+  // mieszaniny C4-FN i C5-FK) albo rodzaj odejścia punktu rozgałęzienia (kabel, linia).
   medium: nazwy({
     AIR: 'powietrze',
     SF6: 'gaz SF6',
+    'C4-FN': 'mieszanina gazowa z fluoronitrylem C4-FN',
+    'C5-FK': 'mieszanina gazowa z fluoroketonem C5-FK',
     VACUUM: 'próżnia',
     CABLE: 'sieć kablowa',
     LINE_OVERHEAD: 'linia napowietrzna',
@@ -196,7 +196,13 @@ export const POLA_KODOWE_KARTY: Readonly<Record<string, OpisPolaKodowego>> = {
     OVERHEAD_BRANCH_POLE: 'słup rozgałęźny linii napowietrznej',
   }),
   operator_name: nazwy({ OSD: 'operator systemu dystrybucyjnego (OSD)' }),
-  przeznaczenie: nazwy({ FAZOWY: 'przewód fazowy', ODGROMOWY: 'przewód odgromowy' }),
+  // Jeden klucz serializacji, dwie dziedziny: przeznaczenie przewodu linii WN i przeznaczenie
+  // rdzenia CT / uzwojenia VT (tabliczka IEC 61869, `przekladniki.NAZWY_PRZEZNACZENIA_PL`).
+  przeznaczenie: nazwy({
+    FAZOWY: 'przewód fazowy',
+    ODGROMOWY: 'przewód odgromowy',
+    ...NAZWA_PRZEZNACZENIA_RDZENIA_PL,
+  }),
   ptpiree_status: nazwy({
     POWIAZANY: 'powiązany z wykazem PTPiREE',
     NIEPOWIAZANY: 'bez powiązania z wykazem PTPiREE',

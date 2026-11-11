@@ -144,7 +144,12 @@ export function wskazanieAparatuPola(
   const galezie = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
   const urzadzenie = pole ? projectBayPrimaryDevices(pole, galezie, snapshot?.bays)?.find((d) => d.deviceRef === cel.aparatRef) : undefined;
   const symbolId = urzadzenie ? symbolIdForPrimaryDeviceKind(urzadzenie.kind) ?? undefined : undefined;
-  const wynik = resolveCanvasMenuSubject({ ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId }, index);
+  // To samo wejście co klik w symbol aparatu na kanwie (`SldCanvasV3Workspace` — meta symbolu
+  // z `deviceRef`): temat niesie urządzenie, więc karta i działania z wiersza ≡ z kanwy.
+  const wynik = resolveCanvasMenuSubject(
+    { ownerRef: cel.poleRef, elementKind: 'apparatus', symbolId, deviceRef: cel.aparatRef },
+    index,
+  );
   const typ = elementTypeForKind('apparatus');
   return {
     zaznaczenie: typ

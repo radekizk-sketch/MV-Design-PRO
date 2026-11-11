@@ -89,11 +89,15 @@ vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchSourceSystemTypes: () => fetchSourceSystemTypesMock(),
   fetchMvApparatusTypes: () => fetchMvApparatusTypesMock(),
+  // Dopuszczenie rodziny wylicza backend (`dopuszczona_do_budowania` / `dopuszczona_do_nowych_pol`
+  // z powodami blokady) — atrapa niesie te pola jak odpowiedź `GET /api/catalog/switchgear-families`;
+  // bez nich rodzina nie jest dopuszczona do nowego pola i znika z listy (predykat
+  // `czyRodzinaDoBudowania`). Izolacja bez gazów fluorowanych — rodzina dopuszczona do nowych pól.
   fetchSwitchgearFamilies: () =>
     Promise.resolve([
-      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
+      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'gaz_bez_f', gaz_fluorowany: false, dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: true, powod_blokady_nowych_pol_pl: null, construction_type: 'RMU', status: 'verified', source_refs: [] },
       // Rodzina blokowa (RMU) — pola z pojedynczego szablonu backend nie złoży; nie jest opcją.
-      { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', series_name: 'SafePlus', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'sf6', construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', status: 'repo_verified', source_refs: [] },
+      { switchgear_family_ref: 'ABB__SAFEPLUS', manufacturer_ref: 'ABB', family_name: 'SafePlus', series_name: 'SafePlus', network_voltages_kv: [], um_classes_kv: [12, 17.5, 24], insulation_type: 'gaz_bez_f', gaz_fluorowany: false, dopuszczona_do_budowania: true, powod_blokady_pl: null, dopuszczona_do_nowych_pol: true, powod_blokady_nowych_pol_pl: null, construction_type: 'RMU', tor_konfiguracji: 'BLOK_RMU', status: 'repo_verified', source_refs: [] },
     ]),
   // Katalog producentów (`GET /api/catalog/manufacturers`) — źródło NAZW producentów.
   fetchManufacturers: () =>
@@ -111,7 +115,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
   // katalogu co kreator zespołu (wspólne pola `PolaZespolu`).
   fetchEarthingTransformerTypes: () =>
     Promise.resolve([
-      { id: 'TU_ZNYN11_15KV_PW160', name: 'Transformator uziemiający ZNyn11 15 kV 160 kVA', u_n_kv: 15, s_n_kva: 160, grupa_polaczen: 'ZNyn11', r0_ohm: 1.5, x0_ohm: 6, s_pw_kva: 160, u_pw_kv: 0.4, wartosci_robocze: null },
+      { id: 'tu-sn-nn-15-04-100kva-znyn11', name: 'Transformator uziemiający ZNyn11 15/0,4 kV 100 kVA', rated_power_mva: 0.1, voltage_hv_kv: 15, voltage_lv_kv: 0.4, uk_percent: 4, pk_kw: 1.75, i0_percent: null, p0_kw: null, vector_group: 'ZNyn11', tap_min: 0, tap_max: 0, tap_step_percent: 0, r0_ohm: 0.637, x0_ohm: 3.185, wartosci_robocze: null },
     ]),
   fetchArcSuppressionCoilTypes: () =>
     Promise.resolve([
@@ -339,7 +343,7 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
   });
 
   it('aparat pól liniowych GPZ: pozycja z SF₆ ukryta i nie dobierana automatycznie, nota mówi dlaczego (klik natywny)', async () => {
-    const powod = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF₆).';
+    const powod = 'Aparat Wyłącznik SF6 wykorzystuje gaz fluorowany (SF6).';
     fetchMvApparatusTypesMock.mockResolvedValueOnce([
       { id: 'APP-SF6', name: 'Wyłącznik SF6', device_kind: 'WYLACZNIK', medium: 'SF6', dopuszczony_do_nowych_pol: false, powod_blokady_nowych_pol_pl: powod, u_n_kv: 24, i_n_a: 630 },
       APARAT_DOMYSLNY,
@@ -484,7 +488,7 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
       grounding: { type: 'directly_grounded' },
       zero_sequence: expect.objectContaining({ enabled: true, z0_z1_ratio: 3.2 }),
     });
-    expect(payload).not.toHaveProperty('zespoly_uziemiajace');
+    expect(payload).not.toHaveProperty('zespoly_sekcji');
   });
 
   /* Napięcie dolne typu 110/SN = napięcie szyn SN (reguła `source.lv_voltage_mismatch` operacji).
@@ -538,7 +542,7 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
      Iloczyn cech: granica {szyny SN, 110 kV} × zespół {żaden, sekcja 1, obie sekcje}
      × wariant {Z.15 rezystor, Z.13 dławik z AWSC} × transformator sekcji {jest, brak}.
      Opis punktu neutralnego i Z0 źródła istnieją wyłącznie dla sieci 110 kV; sieć SN
-     uziemia zespół uziemiający sekcji (wpisy `zespoly_uziemiajace`). */
+     uziemia zespół uziemiający sekcji (wpisy `zespoly_sekcji`). */
   async function krokRozdzielnia(user: ReturnType<typeof userEvent.setup>) {
     await user.click(
       screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-rozdzielnia"]') as HTMLElement,
@@ -570,16 +574,16 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     const [, , payload] = executeDomainOperationMock.mock.calls[0];
     expect(payload).not.toHaveProperty('grounding');
     expect(payload).not.toHaveProperty('zero_sequence');
-    expect(payload).not.toHaveProperty('zespoly_uziemiajace');
+    expect(payload).not.toHaveProperty('zespoly_sekcji');
   });
 
-  it('równoważnik na szynach SN: zespół Z.15 w sekcji 1 trafia do zespoly_uziemiajace bez wyłączenia od TR (klik natywny)', async () => {
+  it('równoważnik na szynach SN: zespół Z.15 w sekcji 1 trafia do zespoly_sekcji bez wyłączenia od TR (klik natywny)', async () => {
     const user = userEvent.setup();
     await renderujKreator();
     await krokRozdzielnia(user);
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-sekcja-1-zu'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zu-wariant-rezystor'));
-    await wybierzOpcje(user, 'mvd-kreator-zrodlo-zu-transformator', 'TU_ZNYN11_15KV_PW160');
+    await wybierzOpcje(user, 'mvd-kreator-zrodlo-zu-transformator', 'tu-sn-nn-15-04-100kva-znyn11');
     await wybierzOpcje(user, 'mvd-kreator-zrodlo-zu-rezystor', 'REZ_200A_15KV');
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zu-spz'));
     // Brak transformatorów 110/SN w modelu — deklaracji wyłączenia od TR nie ma czego wskazać.
@@ -589,12 +593,12 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const [, op, payload] = executeDomainOperationMock.mock.calls[0];
     expect(op).toBe('add_grid_source_sn');
-    expect(payload.zespoly_uziemiajace).toEqual([
+    expect(payload.zespoly_sekcji).toEqual([
       {
         sekcja: 1,
         catalog_binding: expect.objectContaining({
-          catalog_namespace: 'TRANSFORMATOR_UZIEMIAJACY',
-          catalog_item_id: 'TU_ZNYN11_15KV_PW160',
+          catalog_namespace: 'TRAFO_SN_NN',
+          catalog_item_id: 'tu-sn-nn-15-04-100kva-znyn11',
         }),
         uziemienie_bezposrednie: false,
         spz: true,
@@ -643,14 +647,14 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-sekcja-1-zu'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-sekcja-2-zu'));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zu-wariant-dlawik'));
-    await wybierzOpcje(user, 'mvd-kreator-zrodlo-zu-transformator', 'TU_ZNYN11_15KV_PW160');
+    await wybierzOpcje(user, 'mvd-kreator-zrodlo-zu-transformator', 'tu-sn-nn-15-04-100kva-znyn11');
     await wybierzOpcje(user, 'mvd-kreator-zrodlo-zu-dlawik', 'DL_40_400A_15KV_CIAGLY');
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zu-awsc'));
     expect(screen.getByTestId('mvd-kreator-zrodlo-zu-wylaczenie-tr')).toBeTruthy();
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const [, , payload] = executeDomainOperationMock.mock.calls[0];
-    const wpisy = payload.zespoly_uziemiajace as Array<Record<string, unknown>>;
+    const wpisy = payload.zespoly_sekcji as Array<Record<string, unknown>>;
     expect(wpisy.map((w) => w.sekcja)).toEqual([1, 2]);
     // Jeden transformator 110/SN zasila sekcję 1 — sekcja 2 nie ma czego wskazać.
     expect(wpisy[0].wylaczenie_od_transformatora_sekcji).toBe(true);

@@ -286,15 +286,25 @@ describe('GEOMETRIA-STACJI — aparat {z modelu, brak danych} (tożsamość ze z
       // Aparat z rekordu niesie źródło „dane" i pochodzenie z rekordu pola; aparat główny
       // (wskazujący gałąź pola) — typ katalogowy gałęzi i stan z gałęzi (wariant „otwarte"
       // otwiera wyłącznie sprzęgło, pola są w ruchu).
+      // Aparat główny rozpoznawany z REKORDU modelu (`BayPrimaryDevice.linked_ref`), nie z meta
+      // sceny: meta symbolu nie niesie `linked_ref` (dawne `s.meta.linkedRef` nie istniało
+      // w typie, więc ta gałąź nigdy się nie wykonywała — asercja bez skutku).
+      const wskazujaceGalaz = new Set<string>();
+      for (const pole of snapshot.bays ?? []) {
+        for (const d of pole.primary_devices ?? []) if (d.linked_ref) wskazujaceGalaz.add(d.device_ref);
+      }
+      let sprawdzoneGlowne = 0;
       for (const s of sc.symbols) {
         if (!pola.has(s.meta?.ownerRef ?? '') || !s.meta?.deviceRef) continue;
         expect(s.meta.apparatusSource).toBe('dane');
         expect(s.meta.apparatusOrigin).toBe('rekord_pola');
-        if (s.meta.linkedRef) {
+        if (wskazujaceGalaz.has(s.meta.deviceRef)) {
+          sprawdzoneGlowne += 1;
           expect(s.meta.apparatusTypeRef, s.meta.deviceRef).toBeTruthy();
           expect(s.state, s.meta.deviceRef).toBe('closed');
         }
       }
+      expect(sprawdzoneGlowne, 'fikstura niesie aparaty główne wskazujące gałąź pola').toBeGreaterThan(0);
     });
   }
 

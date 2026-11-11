@@ -10,13 +10,20 @@
 import { describe, expect, it } from 'vitest';
 
 import { tekstBezWzorow, wyrazyPozaWzorami } from '../../../../proof/latexTekst';
-import { zawinNazwe } from '../../lv-domain/visualGrammar';
+import { type MiaraTekstu, zawinNazwe } from '../../lv-domain/visualGrammar';
 import { measureTextWidth, shortenPreservingIdentity } from '../text';
 
 const WZOR_BEZ_SPACJI = "Prąd $I_{k}''$ 12,4 kA";
 const WZOR_ZE_SPACJA = 'Wyzwalacz $I_{\\Delta n}$ 30 mA typ A';
 const BEZ_WZORU = 'Wyzwalacz różnicowy 30 mA typ A';
 const TEKSTY = [WZOR_BEZ_SPACJI, WZOR_ZE_SPACJA, BEZ_WZORU] as const;
+
+/** Odmiana kroju etykiet (CSS font-weight) — pomiar posuwami tabeli `metrykiKroju.json`. */
+const PISMO = 400;
+
+/** Miara w znakach odczytu: szerokość = liczba znaków (pas `zawinNazwe` w tych samych
+ *  jednostkach), więc limit odczytu testu jest limitem znaków jak przed miarą kroju. */
+const ZNAKI: MiaraTekstu = (tekst) => Array.from(tekst).length;
 
 function wzoryNiePrzeciete(linia: string): void {
   expect((linia.match(/\$/g) ?? []).length % 2, linia).toBe(0);
@@ -46,11 +53,11 @@ describe('tekstBezWzorow i wyrazyPozaWzorami — jedno źródło odczytu', () =>
 
 describe('measureTextWidth — szerokość z odczytu wzoru', () => {
   it.each(TEKSTY)('%s: szerokość = szerokość odczytu', (tekst) => {
-    expect(measureTextWidth(tekst, 10)).toBe(measureTextWidth(tekstBezWzorow(tekst), 10));
+    expect(measureTextWidth(tekst, 10, PISMO)).toBe(measureTextWidth(tekstBezWzorow(tekst), 10, PISMO));
   });
 
   it('zapis LaTeX-a nie zawyża szerokości', () => {
-    expect(measureTextWidth(WZOR_ZE_SPACJA, 10)).toBeLessThan(
+    expect(measureTextWidth(WZOR_ZE_SPACJA, 10, PISMO)).toBeLessThan(
       Math.ceil(WZOR_ZE_SPACJA.length * 10 * 0.55),
     );
   });
@@ -58,11 +65,11 @@ describe('measureTextWidth — szerokość z odczytu wzoru', () => {
 
 describe('zawinNazwe — wzór niepodzielny, długość z odczytu', () => {
   it.each(TEKSTY)('%s: mieści się w jednym wierszu bez zmian', (tekst) => {
-    expect(zawinNazwe(tekst, 60, 3)).toEqual([tekst]);
+    expect(zawinNazwe(tekst, 60, 3, ZNAKI)).toEqual([tekst]);
   });
 
   it.each(TEKSTY)('%s: zawinięcie nie przecina wzoru i trzyma limit odczytu', (tekst) => {
-    const linie = zawinNazwe(tekst, 12, 6);
+    const linie = zawinNazwe(tekst, 12, 6, ZNAKI);
     expect(linie.length).toBeGreaterThan(1);
     for (const linia of linie) {
       wzoryNiePrzeciete(linia);
@@ -73,11 +80,11 @@ describe('zawinNazwe — wzór niepodzielny, długość z odczytu', () => {
 
   it('wzór mieści się w wierszu wg odczytu, choć zapis LaTeX-a jest dłuższy', () => {
     // „$I_{\Delta n}$" ma 14 znaków zapisu i 3 znaki odczytu („IΔn").
-    expect(zawinNazwe('$I_{\\Delta n}$ 30 mA', 10, 2)).toEqual(['$I_{\\Delta n}$ 30 mA']);
+    expect(zawinNazwe('$I_{\\Delta n}$ 30 mA', 10, 2, ZNAKI)).toEqual(['$I_{\\Delta n}$ 30 mA']);
   });
 
   it.each(TEKSTY)('%s: skrócenie ponad limit wierszy kończy się „…" bez zapisu LaTeX-a', (tekst) => {
-    const linie = zawinNazwe(tekst, 8, 1);
+    const linie = zawinNazwe(tekst, 8, 1, ZNAKI);
     expect(linie).toHaveLength(1);
     wzoryNiePrzeciete(linie[0]);
     expect(linie[0].endsWith('…')).toBe(true);
@@ -87,14 +94,14 @@ describe('zawinNazwe — wzór niepodzielny, długość z odczytu', () => {
 
 describe('shortenPreservingIdentity — skrót w odczycie, wzór nieprzecięty', () => {
   it.each(TEKSTY)('%s: mieści się — bez zmian', (tekst) => {
-    expect(shortenPreservingIdentity(tekst, 10, 1000)).toBe(tekst);
+    expect(shortenPreservingIdentity(tekst, 10, PISMO, 1000)).toBe(tekst);
   });
 
   it.each(TEKSTY)('%s: każda szerokość daje wynik w limicie bez przeciętego wzoru', (tekst) => {
     for (let szerokosc = 20; szerokosc <= 220; szerokosc += 10) {
-      const wynik = shortenPreservingIdentity(tekst, 10, szerokosc);
+      const wynik = shortenPreservingIdentity(tekst, 10, PISMO, szerokosc);
       wzoryNiePrzeciete(wynik);
-      if (wynik !== '') expect(measureTextWidth(wynik, 10), wynik).toBeLessThanOrEqual(szerokosc);
+      if (wynik !== '') expect(measureTextWidth(wynik, 10, PISMO), wynik).toBeLessThanOrEqual(szerokosc);
     }
   });
 });

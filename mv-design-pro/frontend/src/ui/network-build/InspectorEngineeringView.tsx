@@ -233,7 +233,7 @@ function buildBayCatalogSection(
         unit: 'kV',
         source: 'catalog',
       },
-      { key: 'um_classes', label: 'Klasy napięciowe Um', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
+      { key: 'um_classes', label: 'Najwyższe napięcia urządzenia', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
       { key: 'family_medium', label: 'Medium rozdzielnicy', value: opisMediumRodzinyPl(rodzina), source: 'catalog' },
       {
         key: 'family_buildable',

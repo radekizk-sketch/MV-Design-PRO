@@ -13,7 +13,11 @@ import { grupyDanychPrzyjetych } from '../EdytorWyposazeniaPola';
 const BEZ_KATALOGU = 'rodzaj aparatu bez katalogu SN — przyjęty z szablonu pola jako wartość robocza';
 const Z_SZABLONU = 'aparat z szablonu pola bez pozycji katalogowej — wartość robocza do zastąpienia wyborem z katalogu';
 
-function dana(nazwa_pl: string, powod_pl: string, jakosc = 'ESTIMATED'): DanaPrzyjetaWyposazenia {
+function dana(
+  nazwa_pl: string,
+  powod_pl: string,
+  jakosc: DanaPrzyjetaWyposazenia['jakosc'] = 'ESTIMATED',
+): DanaPrzyjetaWyposazenia {
   return { nazwa_pl, wartosc: null, powod_pl, jakosc };
 }
 
@@ -32,10 +36,10 @@ describe('grupyDanychPrzyjetych — jedna adnotacja na powód i jakość', () =>
   });
 
   it('ten sam powód × różna jakość: osobne grupy (jakość nie jest scalana)', () => {
-    const grupy = grupyDanychPrzyjetych([dana('Q1', BEZ_KATALOGU, 'ESTIMATED'), dana('Q0', BEZ_KATALOGU, 'DEFAULT')]);
+    const grupy = grupyDanychPrzyjetych([dana('Q1', BEZ_KATALOGU, 'ESTIMATED'), dana('Q0', BEZ_KATALOGU, 'SYSTEM_DEFAULT')]);
     expect(grupy.map((g) => [g.jakosc, g.nazwy])).toEqual([
       ['ESTIMATED', ['Q1']],
-      ['DEFAULT', ['Q0']],
+      ['SYSTEM_DEFAULT', ['Q0']],
     ]);
   });
 

@@ -1,7 +1,8 @@
 /**
  * Edytor stanu obiektu pola SN (karta pola, ekran E-11) — dostawca operacji `set_object_state`
- * dla pola i aparatów pola (`bay_ref`, `device_ref`); łącznik poza polem (`switch_ref`) ma akcję
- * na karcie łącznika (`network-build/cards/SwitchCard`).
+ * dla pola i aparatów pola (`bay_ref`, `device_ref`). Łącznik poza polem (`switch_ref`) nie ma
+ * dziś akcji w interfejsie: jego jedyna karta (`network-build/cards/SwitchCard`) nie miała
+ * konsumenta produkcyjnego i została skasowana; operację backendu przypinają testy backendu.
  *
  * Pole i każdy jego aparat mają stan obiektu: ISTNIEJACY (obiekt zastany w sieci) albo
  * PROJEKTOWANY (każda operacja tworząca nadaje go jawnie). Stan rozstrzyga zakaz gazów

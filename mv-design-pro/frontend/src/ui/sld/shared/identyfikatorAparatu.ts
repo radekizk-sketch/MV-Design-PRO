@@ -136,10 +136,11 @@ export function poleMaGlowiceKablowa(snapshot: EnergyNetworkModel | null, bayRef
  * kanwy, paska działań inspektora (`akcjeElementu.kontekstDostepnosciAkcji` →
  * `SldCommandService.getMenuActions`) i wykonawcy (`sldActionExecutor.buildSldOperationContext`).
  * Ciąg wychodzi z głowicy kablowej pola. Kanon rysunku pola wolnego/rezerwowego
- * (`v3/compose/apparatusSequence.ts::czyGlowicaRezerwy`) nie rysuje głowicy, lecz kończy pole
- * symbolem `bayReserve` — wtedy punktem wyprowadzenia jest to zakończenie, o ile rekord pola
- * ma głowicę kablową (głowica istnieje w modelu, rysunek jej nie pokazuje). Zakończenie pola
- * bez rekordu głowicy nie jest punktem (brak głowicy = brak odejścia kablowego). Zajętość pola
+ * (`v3/compose/apparatusSequence.ts`, decyzja właściciela 2026-10-30) rysuje wszystkie aparaty
+ * rekordu — także głowicę — i kończy pole symbolem `bayReserve` („odejście kablowe poza
+ * modelem"); punktem wyprowadzenia jest wtedy i głowica, i to zakończenie, o ile rekord pola
+ * ma głowicę kablową. Zakończenie pola bez rekordu głowicy nie jest punktem (brak głowicy =
+ * brak odejścia kablowego). Zajętość pola
  * (`zajetoscPol.poleLinioweWolne`) rozstrzyga wykonawca osobno, tym samym warunkiem dla głowicy
  * pola zajętego i zakończenia pola wolnego.
  */

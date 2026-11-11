@@ -11,6 +11,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  GRUPY_TRANSFORMATORA_UZIEMIAJACEGO,
   ROLE_UZIEMNIKA,
   TYPY_PUNKTU_NEUTRALNEGO,
   UKLADY_SIECI_NN,
@@ -71,5 +72,12 @@ describe('słowniki uziemienia frontu = kontrakt OpenAPI backendu (W5-A)', () =>
     expect(grupy).toContain('Dyn11');
     expect(grupy).toContain('YNd11');
     expect(grupy).toContain('Yzn5');
+  });
+
+  it('grupy transformatora uziemiającego = grupy słownika z uzwojeniem górnym „ZN” (ZU-JEDEN-NOSNIK)', () => {
+    const grupy = enumListy(snapshot.components.schemas.SlownikGrupPolaczen.properties.grupy) as string[];
+    // Litera uzwojenia górnego „Z”, a za nią „N” (punkt neutralny wyprowadzony) — ten sam
+    // rozbiór co `parsuj_grupe_polaczen` backendu dla pierwszego uzwojenia.
+    expect([...GRUPY_TRANSFORMATORA_UZIEMIAJACEGO]).toEqual(grupy.filter((g) => g.startsWith('ZN')));
   });
 });

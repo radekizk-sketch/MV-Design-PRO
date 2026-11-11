@@ -168,7 +168,7 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
 
         const wiersze = within(sekcja).getAllByTestId('inspektor-karta-wiersz-funkcje_eaz');
         const kody = bay.protection_codes ?? [];
-        expect(wiersze.map((w) => w.getAttribute('data-klucz-wiersza'))).toEqual(kody);
+        expect(wiersze.map((w) => w.getAttribute('data-klucz'))).toEqual(kody);
         wiersze.forEach((w, i) => {
           const wpis = FUNKCJE[kody[i]];
           expect(wpis, `kod ${kody[i]} w słowniku`).toBeDefined();

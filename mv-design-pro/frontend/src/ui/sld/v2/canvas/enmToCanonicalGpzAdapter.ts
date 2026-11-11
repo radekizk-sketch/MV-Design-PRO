@@ -25,7 +25,6 @@ import type {
   Source,
   Substation,
   Transformer,
-  ZespolUziemiajacy,
 } from '../../../../types/enm';
 import type {
   BayFieldRole,
@@ -61,6 +60,7 @@ import { buildOltcAnnotation } from './oltcGlyph';
 import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
 import { polaStacji } from '../../../shared/polaStacji';
 import {
+  jestTransformatoremUziemiajacym,
   poleZespoluTransformatora,
   transformatoryNalezaceDoStacji,
 } from '../../../shared/transformatoryStacji';
@@ -98,8 +98,6 @@ export function buildCanonicalGpzProps(
     // puste czyta `snapshot.sources` (źródło systemowe na szynie GPZ) —
     // addytywne, `buildScene.ts` przekazuje PEŁNY `EnergyNetworkModel`.
     | 'sources'
-    // Karta UX-04/POLE-ZU: aparat punktu neutralnego sieci SN — zespoły uziemiające stacji.
-    | 'zespoly_uziemiajace'
     // UX-04/POLE-BKR-MODEL: baterie kondensatorów na końcu toru pól (`bateriaWidokuPola`).
     | 'shunt_capacitors'
   >,
@@ -208,7 +206,8 @@ export function buildCanonicalGpzProps(
       substation,
       enm.buses ?? [],
       allTransformers,
-      enm.zespoly_uziemiajace ?? [],
+      enm.transformers ?? [],
+      enm.bays,
     ),
     couplers,
     hvSections: buildHvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx),
@@ -702,28 +701,33 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
 }
 
 /**
- * Aparat punktu neutralnego sieci SN stacji — ZAINSTALOWANY w modelu (V12K-219, karta
- * UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1).
+ * Aparat punktu neutralnego sieci SN stacji rysowany PRZY SEKCJI — ZAINSTALOWANY w modelu
+ * (V12K-219, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 1) i NIE narysowany gdzie indziej.
  *
- * Nośniki uziemienia sieci SN są dwa i tylko dwa: zespół uziemiający na szynie SN stacji
- * (`zespoly_uziemiajace`: uziemienie bezpośrednie, dławik gaszący, rezystor) i punkt neutralny
- * uzwojenia SN transformatora stacji (`Transformer.lv_neutral`). Schemat rysuje ZAINSTALOWANY
+ * Nośniki uziemienia sieci SN są dwa i tylko dwa: transformator uziemiający (grupa ZN, karta
+ * ZU-JEDEN-NOSNIK; wyposażenie `hv_neutral`: uziemienie bezpośrednie, dławik gaszący, rezystor)
+ * i punkt neutralny uzwojenia SN transformatora stacji (`Transformer.lv_neutral`). JEDEN nośnik
+ * = JEDEN symbol na schemacie: transformator uziemiający z polem ZU (`poleZespoluTransformatora`)
+ * rysuje stos pola ZU (`zespolWidokuPola`, kompozycja GPZ) razem z aparatami punktu neutralnego,
+ * więc przy sekcji go nie powtarzamy; przy sekcji stoi transformator uziemiający przyłączony
+ * wprost do szyny SN stacji (`hv_bus_ref`, bez pola ZU — operacja `add_zespol_uziemiajacy_sn`
+ * ze wskazaniem szyny) albo uzwojenie SN transformatora stacji. Schemat rysuje ZAINSTALOWANY
  * aparat — wariantu pracy sieci (stany odłączników, AWSC) ani Z_N nie wyprowadza; to robi
- * backend (`enm.uziemienie_sekcji`). Źródło 110 kV nie jest nośnikiem uziemienia sieci SN:
- * dawne odczytanie `Source.neutral_grounding` źródła GPZ rysowało opis sieci 110 kV jako
- * punkt neutralny sieci SN.
+ * backend (`enm.uziemienie_sekcji`). Źródło 110 kV nie jest nośnikiem uziemienia sieci SN.
  *
- * Kolejność: zespół pierwszej sekcji (porządek `gpz_sections`), potem zespół na innej szynie SN
- * stacji (po `ref_id`), potem uzwojenie SN transformatora stacji (po `ref_id`). Zespół bez
- * elementu w punkcie neutralnym niczego nie rysuje (brak modelu nazywa walidator). Brak aparatu
- * = `null` (zero domysłu — brak to nie „izolowana").
+ * Kolejność: transformator uziemiający bez pola ZU na szynie pierwszej sekcji (porządek
+ * `gpz_sections`), potem na innej szynie SN stacji (po `ref_id`), potem uzwojenie SN
+ * transformatora stacji (po `ref_id`). Transformator uziemiający bez elementu w punkcie
+ * neutralnym niczego nie rysuje (brak modelu nazywa walidator). Brak aparatu = `null` (zero
+ * domysłu — brak to nie „izolowana").
  */
 function deriveSnNeutralEarthing(
   enm: ModelSzyn,
   substation: Substation,
   buses: readonly Bus[],
   transformers: readonly Transformer[],
-  zespoly: readonly ZespolUziemiajacy[],
+  wszystkieTransformatory: readonly Transformer[],
+  bays: ModelSzyn['bays'],
 ): CanonicalGpzProps['snNeutralEarthing'] {
   // SZYNY-STACJI-LUSTRO: przynależność szyny do stacji z jednego lustra.
   const stationBusRefs = szynyStacji(enm, substation);
@@ -737,14 +741,23 @@ function deriveSnNeutralEarthing(
       .map((sekcja, indeks) => [sekcja.bus_ref, indeks] as const),
   );
   const pozycja = (busRef: string) => kolejnoscSekcji.get(busRef) ?? Number.MAX_SAFE_INTEGER;
-  const zespolyStacji = zespoly
-    .filter((z) => szynySn.has(z.bus_ref))
-    .sort((a, b) => pozycja(a.bus_ref) - pozycja(b.bus_ref) || a.ref_id.localeCompare(b.ref_id));
-  for (const zespol of zespolyStacji) {
-    if (zespol.uziemienie_bezposrednie) return { kind: 'direct' };
-    const rOhm = zespol.rezystor?.r_ohm ?? undefined;
-    if (zespol.dlawik) return { kind: 'coil', ...(zespol.rezystor ? { rOhm } : {}) };
-    if (zespol.rezystor) return { kind: 'resistor', rOhm };
+  // Transformator uziemiający z polem ZU ma symbol w stosie pola — przy sekcji tylko ten bez pola.
+  const zespolyStacji = wszystkieTransformatory
+    .filter((tr) => jestTransformatoremUziemiajacym(tr) && poleZespoluTransformatora(bays, tr) === null)
+    .map((tr) => ({ tr, szyna: tr.hv_bus_ref }))
+    .filter((z) => szynySn.has(z.szyna))
+    .sort(
+      (a, b) =>
+        pozycja(a.szyna) - pozycja(b.szyna) || (a.tr.ref_id < b.tr.ref_id ? -1 : a.tr.ref_id > b.tr.ref_id ? 1 : 0),
+    );
+  for (const { tr } of zespolyStacji) {
+    const nosnik = tr.hv_neutral;
+    if (!nosnik) continue;
+    if (nosnik.type === 'directly_grounded') return { kind: 'direct' };
+    const rezystor = nosnik.rezystor ?? null;
+    const rOhm = rezystor?.r_ohm ?? undefined;
+    if (nosnik.dlawik) return { kind: 'coil', ...(rezystor ? { rOhm } : {}) };
+    if (rezystor) return { kind: 'resistor', rOhm };
   }
   const uzwojenie = [...transformers]
     .filter((tr) => szynySn.has(tr.lv_bus_ref) && tr.lv_neutral)

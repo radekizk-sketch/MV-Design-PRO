@@ -47,9 +47,13 @@ interface WierszTablicy {
     readonly hv: 'sn' | 'nn' | 'obca';
     readonly lv: 'sn' | 'nn' | 'obca';
     readonly blokowy_der?: boolean;
-    readonly zespol_uziemiajacy_pole?: string;
+    /** Grupa połączeń transformatora (`ZNyn11` — transformator uziemiający). */
+    readonly grupa?: string;
+    /** Pole, którego wyposażenie (`equipment_refs`) wskazuje transformator. */
+    readonly pole_wyposazenia?: string;
   } | null;
-  readonly cecha_zespol_uziemiajacy?: 'zapis' | 'brak_zapisu';
+  readonly cecha_grupa?: 'zn' | 'inna';
+  readonly cecha_wskazanie?: 'pole_zu' | 'pole_innej_roli' | 'brak';
   readonly oczekiwane_znalezisko: boolean;
 }
 
@@ -87,7 +91,10 @@ function migawkaZWiersza(wiersz: WierszTablicy): EnergyNetworkModel {
     bay_role: rola,
     substation_ref: 'stn-1',
     bus_ref: 'bus-sn',
-    equipment_refs: [],
+    // Wyposażenie pola wskazujące transformator — jedyne powiązanie transformatora
+    // uziemiającego z polem ZU (karta ZU-JEDEN-NOSNIK; kształt identyczny z pytestem).
+    equipment_refs:
+      wiersz.transformator?.pole_wyposazenia === `pole-${String(index).padStart(3, '0')}` ? ['tr-1'] : [],
   }));
 
   const transformers: Record<string, unknown>[] = [];
@@ -114,20 +121,8 @@ function migawkaZWiersza(wiersz: WierszTablicy): EnergyNetworkModel {
       uk_percent: 6.0,
       pk_kw: 6.5,
     });
-    if (wiersz.transformator.zespol_uziemiajacy_pole) {
-      // Zapis pary przeniesienia punktu neutralnego — jedyne powiązanie transformatora
-      // uziemiającego z polem ZU (kształt identyczny z pytestem).
-      Object.assign(transformers[transformers.length - 1], {
-        vector_group: 'ZNyn11',
-        meta: {
-          zespol_uziemiajacy: {
-            bay_ref: wiersz.transformator.zespol_uziemiajacy_pole,
-            wariant: 'Z15',
-            zrodlo_ref: null,
-            dane_przyjete: [],
-          },
-        },
-      });
+    if (wiersz.transformator.grupa) {
+      transformers[transformers.length - 1].vector_group = wiersz.transformator.grupa;
     }
     if (stacja.deklaruje_transformator) transformerRefs.push('tr-1');
     if (wiersz.transformator.blokowy_der) {
@@ -208,16 +203,24 @@ describe('parytet marker (rysunek) ↔ ostrzeżenie (gotowość) — pole transf
     expect(cechy).toContain('brak|jest');
     expect(cechy).toContain('jest|brak');
     expect(cechy).toContain('brak|brak');
-    // Transformator uziemiający pola ZU: {zapis jest, brak} × {pole ZU jest, brak, inna rola}.
+    // Transformator uziemiający pola ZU (jeden predykat, karta ZU-JEDEN-NOSNIK): grupa
+    // {ZN, inna} × wskazanie wyposażeniem {pole ZU, pole innej roli, brak} — pełny iloczyn;
+    // wyłącznie ZN × pole ZU zdejmuje znalezisko.
     const zespol = new Set(
       wiersze
-        .filter((w) => w.cecha_zespol_uziemiajacy)
-        .map((w) => `${w.cecha_zespol_uziemiajacy}|${w.stacja.role_pol.includes('ZU')}|${w.transformator?.zespol_uziemiajacy_pole ?? '-'}|${w.oczekiwane_znalezisko}`),
+        .filter((w) => w.cecha_grupa && w.cecha_wskazanie)
+        .map((w) => `${w.cecha_grupa}|${w.cecha_wskazanie}|${w.oczekiwane_znalezisko}`),
     );
-    expect(zespol).toContain('zapis|true|pole-001|false');
-    expect(zespol).toContain('zapis|false|pole-009|true');
-    expect(zespol).toContain('zapis|false|pole-001|true');
-    expect(zespol).toContain('brak_zapisu|true|-|true');
+    expect(zespol).toEqual(
+      new Set([
+        'zn|pole_zu|false',
+        'zn|pole_innej_roli|true',
+        'zn|brak|true',
+        'inna|pole_zu|true',
+        'inna|pole_innej_roli|true',
+        'inna|brak|true',
+      ]),
+    );
     const werdykty = new Set(wiersze.map((w) => w.oczekiwane_znalezisko));
     expect(werdykty).toEqual(new Set([true, false]));
   });

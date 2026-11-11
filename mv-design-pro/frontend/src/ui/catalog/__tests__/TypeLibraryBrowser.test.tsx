@@ -409,9 +409,9 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   SHUNT_CAPACITOR: [],
   BRANCH_POLE: [],
   ZKSN: [],
-  // Katalogi aparatów zespołu uziemiającego SN — przeglądane w kreatorze zespołu
-  // uziemiającego i w przeglądarce katalogu budowy sieci, bez zakładki tutaj.
-  EARTHING_TRANSFORMER: [],
+  // Katalogi aparatów punktu neutralnego zespołu uziemiającego SN — przeglądane w kreatorze
+  // zespołu uziemiającego i w przeglądarce katalogu budowy sieci, bez zakładki tutaj
+  // (transformator uziemiający jest pozycją zakładki TRANSFORMER — przestrzeń TRAFO_SN_NN).
   ARC_SUPPRESSION_COIL: [],
   NEUTRAL_EARTHING_RESISTOR: [],
   // PTPIREE_CERTIFICATE ma WŁASNĄ ścieżkę pobierania (strona serwerowa,
@@ -539,7 +539,8 @@ describe('TypeLibraryBrowser', () => {
     });
 
     // Podsumowanie listy: pozycja z danymi niesie liczbę, pozycja bez danej — „brak danych”.
-    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik 25 kA' })).toBeInTheDocument();
+    // Medium łącznika w skrócie (zakaz gazów fluorowanych w nowych polach czyta się z listy).
+    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik 25 kA · medium próżnia' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: '123 kV · 3150 A · Ik brak danych' })).toBeInTheDocument();
 
     await user.click(screen.getByText('Wyłącznik 110 kV (typ minimalny topologii zasilania)'));

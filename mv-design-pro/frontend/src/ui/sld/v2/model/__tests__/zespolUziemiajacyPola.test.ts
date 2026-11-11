@@ -1,17 +1,17 @@
 /**
- * Pole zespołu uziemiającego (ZU) — rysunek z nośnika modelu i W041 po stronie rysunku
- * (karta POLA-GPZ-SZABLONY; ENEA Zeszyt 1 Z.13–Z.15 s.93–95).
+ * Pole zespołu uziemiającego (ZU) — rysunek z JEDYNEGO nośnika modelu i W041 po stronie rysunku
+ * (karty POLA-GPZ-SZABLONY, ZU-JEDEN-NOSNIK; ENEA Zeszyt 1 Z.13–Z.15 s.93–95).
  *
- * DLACZEGO. Transformator uziemiający ZNyn11 jest aparatem pola ZU (zapis pary
- * `Transformer.meta.zespol_uziemiajacy.bay_ref`), nie transformatorem rozdzielczym: rysunek
- * stawiał go jako wieżę transformatora, a przy sekcji glif „sieć izolowana” (źródło-dawca ma
- * `isolated` po przeniesieniu punktu neutralnego) — schemat przeczył modelowi. Jedna funkcja
- * (`poleZespoluTransformatora`) wyklucza go z wież i z transformatorów rozdzielczych (W041,
- * marker) i dokłada do stosu pola ZU.
+ * DLACZEGO. Transformator uziemiający ZNyn11 jest aparatem pola ZU (wskazany typowanym
+ * wyposażeniem pola `Bay.equipment_refs`), nie transformatorem rozdzielczym: rysunek stawiał go
+ * jako wieżę transformatora. Jedna funkcja (`poleZespoluTransformatora`) wyklucza go z wież
+ * i z transformatorów rozdzielczych (W041, marker) i dokłada do stosu pola ZU; wyposażenie
+ * punktu neutralnego (dławik z AWSC, rezystor) czyta typowany `Transformer.hv_neutral`. Jeden
+ * nośnik = jeden symbol: przy sekcji nie ma drugiego glifu punktu neutralnego.
  *
  * ILOCZYN CECH: wariant {Z13, Z14, Z15}
- *   × zapis pary wskazuje {pole ZU, pole innej roli}
- *   × dawca punktu neutralnego {źródło GPZ, brak}
+ *   × wyposażenie wskazuje transformator w polu {ZU, innej roli}
+ *   × zapis dawcy punktu neutralnego (`hv_neutral.dawca`) {jest, brak}
  *   × deklaracja stacji `transformer_refs` {bez transformatora uziemiającego, z nim}
  *   × ścieżka {funkcja widoku, kompozycja GPZ przez adapter (scena), glif}.
  */
@@ -19,7 +19,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import type { EnergyNetworkModel, Transformer } from '../../../../../types/enm';
+import type { BayModelRole, EnergyNetworkModel, Transformer } from '../../../../../types/enm';
 import fx from '../../../../../harness-fixtures/generated/pola_gpz_szablonow.json';
 import { buildCanonicalGpzProps } from '../../canvas/enmToCanonicalGpzAdapter';
 import { composeGpz, KLASA_ETYKIETY_APARATU_GPZ } from '../../../v3/compose/gpz';
@@ -39,26 +39,27 @@ const ZU = (BAZA.bays ?? []).find((b) => b.bay_role === 'ZU')!;
 const TR_ZU = (BAZA.transformers ?? []).find((t) => t.vector_group === 'ZNyn11')!;
 const GPZ = (BAZA.substations ?? []).find((s) => s.station_type === 'gpz')!;
 
+const DLAWIK = { catalog_ref: 'DL_40_400A_15KV_CIAGLY', i_nastawy_a: 100, stan_odlacznika: 'zamkniety' };
+const REZYSTOR = { catalog_ref: 'REZ_200A_15KV', r_ohm: 25, stan_odlacznika: 'zamkniety' };
 const NOSNIK = {
-  Z13: { type: 'petersen_coil', x_ohm: 150, r_ohm: null, awsc_prad_wymuszenia_a: 40 },
-  Z14: { type: 'petersen_coil', x_ohm: 150, r_ohm: 25, awsc_prad_wymuszenia_a: 40 },
-  Z15: { type: 'resistor_grounded', r_ohm: 25, x_ohm: null },
+  Z13: { type: 'petersen_coil', dlawik: { ...DLAWIK, awsc: { i_wymuszany_a: 40 } } },
+  Z14: { type: 'petersen_coil', dlawik: DLAWIK, rezystor: REZYSTOR },
+  Z15: { type: 'resistor_grounded', rezystor: REZYSTOR },
 } as const;
 
-/** Źródło po stronie SN na szynie pola ZU (fikstura GPZ 110 kV ma równoważnik po stronie WN, bez
- *  nośnika SN) — po przeniesieniu punktu neutralnego niesie `isolated`. */
+/** Źródło po stronie SN na szynie pola ZU — dawca opisu punktu neutralnego (zapis
+ *  `hv_neutral.dawca`; fizyka i rysunek go nie czytają). */
 const ZRODLO_SN = {
   ref_id: 'zrodlo-sn-testu',
   name: 'Źródło SN',
   bus_ref: ZU.bus_ref,
   model: 'short_circuit_power',
   sk3_mva: 250,
-  neutral_grounding: { type: 'isolated' },
 };
 
 function wariantMigawki(
   wariant: 'Z13' | 'Z14' | 'Z15',
-  opcje: { readonly rolaPola?: string; readonly bezDawcy?: boolean; readonly zadeklarowany?: boolean } = {},
+  opcje: { readonly rolaPola?: BayModelRole; readonly bezDawcy?: boolean; readonly zadeklarowany?: boolean } = {},
 ): EnergyNetworkModel {
   return {
     ...BAZA,
@@ -74,12 +75,12 @@ function wariantMigawki(
     bays: (BAZA.bays ?? []).map((b) => (b.ref_id === ZU.ref_id && opcje.rolaPola ? { ...b, bay_role: opcje.rolaPola } : b)),
     transformers: (BAZA.transformers ?? []).map((t): Transformer => {
       if (t.ref_id !== TR_ZU.ref_id) return t;
-      const meta = (t.meta ?? {}) as Record<string, unknown>;
-      const zapis = meta.zespol_uziemiajacy as Record<string, unknown>;
       return {
         ...t,
-        hv_neutral: { ...NOSNIK[wariant] } as Transformer['hv_neutral'],
-        meta: { ...meta, zespol_uziemiajacy: { ...zapis, wariant, zrodlo_ref: opcje.bezDawcy ? null : ZRODLO_SN.ref_id } },
+        hv_neutral: {
+          ...NOSNIK[wariant],
+          ...(opcje.bezDawcy ? {} : { dawca: { zrodlo_ref: ZRODLO_SN.ref_id, neutral_grounding: { type: 'isolated' } } }),
+        } as Transformer['hv_neutral'],
       };
     }),
   };
@@ -95,11 +96,12 @@ function kompozycja(enm: EnergyNetworkModel) {
 }
 
 describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
-  it('fikstura generatora niesie pole ZU i transformator ZNyn11 z zapisem pary (test nie jest pusty)', () => {
+  it('fikstura generatora niesie pole ZU, którego wyposażenie wskazuje transformator ZNyn11 z wyposażeniem punktu neutralnego (test nie jest pusty)', () => {
     expect(ZU).toBeDefined();
     expect(TR_ZU).toBeDefined();
-    const zapis = ((TR_ZU.meta ?? {}) as Record<string, { bay_ref?: string }>).zespol_uziemiajacy;
-    expect(zapis?.bay_ref).toBe(ZU.ref_id);
+    expect(ZU.equipment_refs ?? []).toContain(TR_ZU.ref_id);
+    expect(TR_ZU.hv_neutral?.dlawik).toBeTruthy();
+    expect(zespolUziemiajacyPola(ZU, BAZA)?.wariant).toBe('Z13');
   });
 
   for (const wariant of ['Z13', 'Z14', 'Z15'] as const) {
@@ -111,12 +113,14 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
       expect(widok?.dlawik).toBe(wariant !== 'Z15');
       expect(widok?.rezystor).toBe(wariant !== 'Z13');
       expect(widok?.awsc).toBe(wariant === 'Z13');
-      expect(widok?.rezystorWymuszajacy).toBe(wariant === 'Z14');
+      expect(widok?.awscA).toBe(wariant === 'Z13' ? 40 : null);
+      expect(widok?.iNastawyDlawikaA).toBe(wariant === 'Z15' ? null : 100);
+      expect(widok?.rOhm).toBe(wariant === 'Z13' ? null : 25);
       expect(widok?.napieciePotrzebWlasnychKv).toBe(0.4);
     });
 
     for (const [bezDawcy, zadeklarowany] of [[false, false], [true, false], [false, true], [true, true]] as const) {
-      it(`${wariant} × dawca ${bezDawcy ? 'brak' : 'źródło GPZ'} × deklaracja stacji ${zadeklarowany ? 'z transformatorem' : 'bez'}: transformator w stosie pola ZU, bez wieży, gałąź punktu neutralnego`, () => {
+      it(`${wariant} × zapis dawcy ${bezDawcy ? 'brak' : 'źródło SN'} × deklaracja stacji ${zadeklarowany ? 'z transformatorem' : 'bez'}: transformator w stosie pola ZU, bez wieży, gałąź punktu neutralnego`, () => {
         const enm = wariantMigawki(wariant, { bezDawcy, zadeklarowany });
         expect(selectStationDistributionTransformers(enm, stacjaGpz(enm)).map((t) => t.ref_id)).not.toContain(TR_ZU.ref_id);
         // Przynależność do stacji przez pole zespołu (`Bay.substation_ref`) — z deklaracją i bez.
@@ -143,24 +147,24 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
         // Przewód punktu neutralnego zaczyna się na zacisku `punktNeutralny` transformatora.
         const przewod = c.segments.find((s) => s.ownerRef === `${ZU.ref_id}#zespol-punkt-neutralny`);
         expect(przewod?.points[0]).toEqual({ x: tr[0].x + 32, y: tr[0].y + 16 });
-        // Glif „sieć izolowana” przy sekcji wyłącznie bez dawcy (źródło zachowało nośnik).
+        // Jeden nośnik = jeden symbol: przy sekcji brak drugiego glifu punktu neutralnego —
+        // niezależnie od zapisu dawcy (zapis pary przenieś/oddaj nie jest nośnikiem).
         const przySekcji = c.symbols.filter((s) => s.meta.testId === 'gpz-canonical-sn-neutral-earthing');
-        expect(przySekcji).toHaveLength(bezDawcy ? 1 : 0);
-        // Podpisy wartości z nośnika (zero domysłu).
+        expect(przySekcji).toHaveLength(0);
+        // Podpisy wartości z wyposażenia punktu neutralnego (zero domysłu): nastawa dławika,
+        // AWSC dławika (Z.13), R_N rezystora (Z.14, Z.15).
         const teksty = c.labels.fieldDesignations.map((l) => l.text);
-        if (wariant !== 'Z15') expect(teksty.some((t) => t.startsWith('X_N 150 Ω'))).toBe(true);
-        // Z.13: AWSC po stronie wtórnej dławika; Z.14: rezystor gałęzi równoległej jest
-        // rezystorem wymuszającym AWSC po stronie pierwotnej (§16 s.30); Z.15: sam R_N.
-        if (wariant === 'Z13') expect(teksty).toContain('X_N 150 Ω · AWSC 40 A');
-        if (wariant === 'Z14') expect(teksty).toEqual(expect.arrayContaining(['X_N 150 Ω', 'R_N 25 Ω · AWSC 40 A']));
-        if (wariant === 'Z15') expect(teksty).toContain('R_N 25 Ω');
+        if (wariant === 'Z13') expect(teksty).toContain('dławik 100 A · AWSC 40 A');
+        if (wariant === 'Z14') expect(teksty).toEqual(expect.arrayContaining(['dławik 100 A', '$R_{N}$ 25 Ω']));
+        if (wariant === 'Z15') expect(teksty).toContain('$R_{N}$ 25 Ω');
+        expect(teksty.some((t) => t.includes('AWSC'))).toBe(wariant === 'Z13');
         // Kolumna następnej gałęzi stoi za podpisem wartości poprzedniej (podpis nie nachodzi na
         // aparat sąsiedniej gałęzi).
         const kolumny = wPolu.filter((s) => s.symbolId === 'neutralEarthing').map((s) => s.x).sort((a, b) => a - b);
         if (kolumny.length === 2) {
           // Podpis dławika (na prawo od aparatu) kończy się przed lewą krawędzią aparatu rezystora.
           const szer = SYMBOL_DEFS.neutralEarthing.width;
-          expect(kolumny[0] + szer + measureLabelWidth('X_N 150 Ω', KLASA_ETYKIETY_APARATU_GPZ)).toBeLessThan(kolumny[1]);
+          expect(kolumny[0] + szer + measureLabelWidth('dławik 100 A', KLASA_ETYKIETY_APARATU_GPZ)).toBeLessThan(kolumny[1]);
         }
         // Kropki węzłów punktu neutralnego: ogranicznik i każde zejście poza ostatnim (narożnik).
         const scena = buildSceneV3(enm, 2);
@@ -174,7 +178,7 @@ describe('pole zespołu uziemiającego — rysunek z nośnika', () => {
     }
 
     for (const zadeklarowany of [false, true]) {
-    it(`${wariant} × zapis na pole innej roli × deklaracja stacji ${zadeklarowany ? 'z transformatorem' : 'bez'}: wykluczenie znika po obu stronach pary (rysunek i W041)`, () => {
+    it(`${wariant} × wskazanie w polu innej roli × deklaracja stacji ${zadeklarowany ? 'z transformatorem' : 'bez'}: wykluczenie znika po obu stronach pary (rysunek i W041)`, () => {
       const enm = wariantMigawki(wariant, { rolaPola: 'OUT', zadeklarowany });
       expect(zespolUziemiajacyPola({ ...ZU, bay_role: 'OUT' }, enm)).toBeNull();
       // Bez pola zespołu transformator podlega zwykłej regule stacji (deklaracja / szyny) —

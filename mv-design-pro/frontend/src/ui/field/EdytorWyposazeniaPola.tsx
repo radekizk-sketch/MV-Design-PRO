@@ -705,7 +705,7 @@ export function EdytorWyposazeniaPola({
             // jest wybierany za projektanta — zapis bez wskazania nie przypisuje 67N.
             <div data-testid="wyposazenie-pola-zrodlo-u0" className="mt-2">
               <label className="flex flex-wrap items-center gap-2">
-                <span>Źródło napięcia zerowego 3U₀ (zabezpieczenie 67N)</span>
+                <span>Źródło napięcia zerowego (zabezpieczenie 67N)</span>
                 <select
                   data-testid="wyposazenie-pola-zrodlo-u0-wybor"
                   className={pole}

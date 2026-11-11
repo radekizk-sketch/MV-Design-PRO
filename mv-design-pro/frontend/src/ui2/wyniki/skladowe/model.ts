@@ -14,9 +14,9 @@
  *   Kontrakt to_dict solvera NIE niesie z1/z2/z0 poza śladem (GAP — patrz raport P-3).
  * - Uziemienie punktu neutralnego: ZAMROŻONA wersja układu przebiegu
  *   (`GET /analysis-runs/{id}/snapshot` → EnergyNetworkModel): zespoły uziemiające sieci SN
- *   (`zespoly_uziemiajace`, karta UX-04/POLE-ZU-SKLADOWA-ZEROWA — jedyny nośnik uziemienia
- *   sieci SN obok uzwojenia transformatora), `Source.neutral_grounding` (wyłącznie sieć
- *   110 kV za granicą modelu) oraz `Transformer.hv_neutral`/`lv_neutral`. Ekran WYPISUJE
+ *   (transformator uziemiający ZNyn11 z wyposażeniem `hv_neutral` — jedyny nośnik zespołu,
+ *   karta ZU-JEDEN-NOSNIK; obok niego uzwojenie transformatora), `Source.neutral_grounding`
+ *   (wyłącznie sieć 110 kV za granicą modelu) oraz `Transformer.hv_neutral`/`lv_neutral`. Ekran WYPISUJE
  *   zainstalowane aparaty; wariantu pracy sieci (stany odłączników, AWSC) ani Z_N nie liczy
  *   — robi to backend (`enm.uziemienie_sekcji`, dane przyjęte wiersza i ślad White Box).
  *
@@ -27,7 +27,8 @@
  * własnej, osobnej kopii sprawdzenia kształtu.
  */
 
-import type { EnergyNetworkModel, GroundingConfig, ZespolUziemiajacy } from '../../../types/enm';
+import type { EnergyNetworkModel, GroundingConfig, Transformer } from '../../../types/enm';
+import { jestTransformatoremUziemiajacym, poleZespoluTransformatora } from '../../../ui/shared/transformatoryStacji';
 import { miejsceWKolekcji, nazwaObiektuPl, nazwaZRodzajemPl } from '../../../ui/shared/nazwaObiektu';
 import type {
   DoziemienieSieci,
@@ -300,30 +301,48 @@ function wpisUziemienia(
 }
 
 /**
- * Opis zespołu uziemiającego z ZAINSTALOWANYCH elementów punktu neutralnego (dane modelu,
- * bez wyprowadzania wariantu pracy): uziemienie bezpośrednie, dławik gaszący (z rezystorem
- * wymuszającym AWSC), rezystor uziemiający; zespół bez elementu — nazwany brak.
+ * Opis zespołu uziemiającego z ZAINSTALOWANYCH elementów punktu neutralnego transformatora
+ * uziemiającego (`hv_neutral`, dane modelu, bez wyprowadzania wariantu pracy): uziemienie
+ * bezpośrednie, dławik gaszący (z AWSC), rezystor uziemiający; transformator bez elementu —
+ * nazwany brak.
  */
-function opisZespolu(zespol: ZespolUziemiajacy): string {
+function opisZespolu(nosnik: GroundingConfig | null): string {
   const elementy: string[] = [];
-  if (zespol.uziemienie_bezposrednie) elementy.push(T.zespolBezposrednie);
-  if (zespol.dlawik) elementy.push(zespol.dlawik.awsc ? T.zespolDlawikAwsc : T.zespolDlawik);
-  if (zespol.rezystor) elementy.push(T.zespolRezystor);
+  if (nosnik?.type === 'directly_grounded') elementy.push(T.zespolBezposrednie);
+  if (nosnik?.dlawik) elementy.push(nosnik.dlawik.awsc ? T.zespolDlawikAwsc : T.zespolDlawik);
+  if (nosnik?.rezystor) elementy.push(T.zespolRezystor);
   return elementy.length > 0 ? elementy.join(' ‖ ') : T.zespolBezElementu;
 }
 
-function wpisZespolu(zespol: ZespolUziemiajacy): UziemienieWpis {
+function wpisZespolu(transformator: Transformer): UziemienieWpis {
+  const nosnik = transformator.hv_neutral ?? null;
   return {
-    element: nazwaZRodzajemPl(zespol.name, 'Zespół uziemiający'),
+    element: nazwaZRodzajemPl(transformator.name, 'Zespół uziemiający'),
     strona: T.uziemienieZespol,
-    opis: opisZespolu(zespol),
-    rOhm: zespol.rezystor?.r_ohm ?? null,
+    opis: opisZespolu(nosnik),
+    rOhm: nosnik?.rezystor?.r_ohm ?? null,
     xOhm: null,
   };
 }
 
-function zespolySieci(snapshot: EnergyNetworkModel): ZespolUziemiajacy[] {
-  return [...(snapshot.zespoly_uziemiajace ?? [])].sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+/** Zespoły uziemiające sieci SN — transformatory uziemiające modelu (jeden predykat z
+ *  `transformatoryStacji`, lustro backendu), w kolejności `ref_id`. */
+function zespolySieci(snapshot: EnergyNetworkModel): Transformer[] {
+  return snapshot.transformers
+    .filter((tr) => jestTransformatoremUziemiajacym(tr))
+    .sort((a, b) => porownajRefId(a.ref_id, b.ref_id));
+}
+
+/** Porządek kodowy identyfikatorów (bez reguł języka — deterministyczny niezależnie od lokalizacji). */
+function porownajRefId(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
+/** Szyna sekcji zespołu: szyna pola ZU wskazującego transformator, a bez pola — szyna strony
+ *  górnej transformatora. */
+function szynaZespolu(snapshot: EnergyNetworkModel, transformator: Transformer): string {
+  return poleZespoluTransformatora(snapshot.bays, transformator)?.bus_ref ?? transformator.hv_bus_ref;
 }
 
 /**
@@ -340,7 +359,7 @@ export function uziemieniePunktu(
   if (!snapshot || !elementId) return null;
   const szyna = snapshot.buses.find((bus) => bus.ref_id === elementId || bus.id === elementId);
   if (!szyna) return null;
-  const zespol = zespolySieci(snapshot).find((z) => z.bus_ref === szyna.ref_id);
+  const zespol = zespolySieci(snapshot).find((z) => szynaZespolu(snapshot, z) === szyna.ref_id);
   if (zespol) return wpisZespolu(zespol);
   const zrodlo = snapshot.sources.find((s) => s.bus_ref === szyna.ref_id && s.neutral_grounding);
   if (!zrodlo?.neutral_grounding) return null;
@@ -361,9 +380,13 @@ export function uziemieniaSieci(snapshot: EnergyNetworkModel | null): Uziemienie
       wpisy.push(wpisUziemienia(nazwaObiektuPl(zrodlo.name, 'zrodlo', miejsceWKolekcji(snapshot.sources, zrodlo)), T.uziemienieZrodlo, zrodlo.neutral_grounding));
     }
   }
-  for (const zespol of zespolySieci(snapshot)) wpisy.push(wpisZespolu(zespol));
+  const zespoly = zespolySieci(snapshot);
+  for (const zespol of zespoly) wpisy.push(wpisZespolu(zespol));
+  const transformatoryZespolow = new Set(zespoly);
   for (const trafo of snapshot.transformers) {
-    if (trafo.hv_neutral) {
+    // Punkt neutralny transformatora uziemiającego jest wpisem zespołu (wyżej) — bez drugiego
+    // wpisu tego samego punktu jako strony GN.
+    if (trafo.hv_neutral && !transformatoryZespolow.has(trafo)) {
       wpisy.push(wpisUziemienia(nazwaObiektuPl(trafo.name, 'transformator', miejsceWKolekcji(snapshot.transformers, trafo)), T.uziemienieStronaGN, trafo.hv_neutral));
     }
     if (trafo.lv_neutral) {

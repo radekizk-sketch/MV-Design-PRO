@@ -1710,12 +1710,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         // mówią o tym samym obiekcie (pomiar 2026-10-29: „Otwórz okno pola" z menu wyłącznika
         // zostawiało w inspektorze aparat `…::dev::1`). „Akcja stanu łącznika" rozstrzyga TEN
         // SAM klasyfikator, którym wykonawca wybiera ścieżkę akcji (`wykonawcaAkcjiMenu`).
+        // Ref zaznaczanego POLA to ref MODELU tematu (`modelRef`), nie ref operacji aparatu
+        // `${bayRef}#${SymbolId}` (`refOperacjiTematu`), który jedzie do wykonawcy — selekcja
+        // i inspektor nie znają identyfikatora aparatu.
         const zaznaczPole = contextSubject?.deviceRef !== undefined
           && elementId !== null
           && wykonawcaAkcjiMenu(actionId, kind) !== 'stan-lacznika';
-        const metaCelu: SldElementClickMeta | undefined = zaznaczPole
+        const metaCelu: SldElementClickMeta | undefined = zaznaczPole && contextSubject
           ? {
-              ownerRef: elementId,
+              ownerRef: contextSubject.modelRef,
               elementKind: cel.meta?.elementKind,
               klasa: cel.meta?.klasa,
             }

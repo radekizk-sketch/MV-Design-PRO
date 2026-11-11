@@ -1,24 +1,23 @@
 /**
  * Zespół uziemiający pola ZU (ENEA Operator „Stacje elektroenergetyczne 110 kV. Zeszyt 1”,
- * wersja 02.2023 – 2, §16 s.30, Z.13–Z.15 s.93–95) — dane rysunku pola z NOŚNIKA modelu.
+ * wersja 02.2023 – 2, §16 s.30, Z.13–Z.15 s.93–95) — dane rysunku pola z JEDYNEGO nośnika
+ * modelu: transformatora uziemiającego ZNyn11 (karta ZU-JEDEN-NOSNIK).
  *
- * Powiązanie transformatora uziemiającego z polem jest JEDNO i to samo co w backendzie: zapis
- * pary przeniesienia punktu neutralnego `Transformer.meta.zespol_uziemiajacy.bay_ref`
- * (`ui/shared/transformatoryStacji.ts::poleZespoluTransformatora`, lustro
- * `enm.pole_transformatorowe.pole_zespolu_transformatora`). Ta sama funkcja wyklucza
- * transformator z transformatorów rozdzielczych stacji (W041, marker braku pola TR) i dokłada
- * go do rysunku pola ZU — predykaty parami z jednego źródła.
+ * Powiązanie transformatora uziemiającego z polem jest JEDNO i to samo co w backendzie:
+ * transformator uziemiający wskazany w wyposażeniu pola roli `ZU` (`Bay.equipment_refs`;
+ * `ui/shared/transformatoryStacji.ts::poleZespoluTransformatora`, lustro
+ * `enm.zespol_uziemiajacy.pole_zespolu_transformatora`). Ta sama funkcja wyklucza transformator
+ * z transformatorów rozdzielczych stacji (W041, marker braku pola TR) i dokłada go do rysunku
+ * pola ZU — predykaty parami z jednego źródła.
  *
- * Sposób uziemienia z modelu: wariant rysunku z zapisu pary (`wariant`), typ i wartości z nośnika
- * `Transformer.hv_neutral` (`petersen_coil` — dławik, `resistor_grounded` — rezystor). Wariant
- * Z.14 to dławik i rezystor równolegle; Z.13 — dławik z AWSC. Brak danej = `null` (glif pisze
- * „nieokreślony”), nigdy domysł.
+ * Wyposażenie punktu neutralnego z typowanego `Transformer.hv_neutral`: dławik gaszący
+ * (`dlawik`, z AWSC `dlawik.awsc`) i rezystor (`rezystor`); wariant rysunku wynika z wyposażenia
+ * (lustro `enm.zespol_uziemiajacy.wariant_zespolu`: Z.13 — dławik, Z.14 — dławik i rezystor
+ * równolegle, Z.15 — rezystor), nie jest zapisem. Brak danej = `null` (glif pisze sam rodzaj
+ * aparatu), nigdy domysł ani wartość liczona we froncie.
  */
-import type { EnergyNetworkModel, Transformer } from '../../../../types/enm';
-import {
-  poleZespoluTransformatora,
-  zapisZespoluUziemiajacego,
-} from '../../../shared/transformatoryStacji';
+import type { EnergyNetworkModel, GroundingConfig, Transformer } from '../../../../types/enm';
+import { poleZespoluTransformatora } from '../../../shared/transformatoryStacji';
 
 export type WariantZespoluUziemiajacego = 'Z13' | 'Z14' | 'Z15';
 
@@ -31,19 +30,20 @@ export interface ZespolUziemiajacyPolaView {
   readonly snKva: number | null;
   readonly uhvKv: number | null;
   readonly ulvKv: number | null;
-  /** Wariant rysunku z zapisu pary; `null` — zapis go nie niesie. */
+  /** Wariant rysunku z wyposażenia punktu neutralnego (`wariantZespolu`); `null` — inny opis
+   *  (uziemienie bezpośrednie, brak wyposażenia, opis niespójny). */
   readonly wariant: WariantZespoluUziemiajacego | null;
-  /** Gałąź dławika (Z.13, Z.14 albo nośnik `petersen_coil`). */
+  /** Gałąź dławika gaszącego (`hv_neutral.dlawik`). */
   readonly dlawik: boolean;
-  /** Gałąź rezystora (Z.14, Z.15 albo nośnik `resistor_grounded`). */
+  /** Gałąź rezystora uziemiającego (`hv_neutral.rezystor`). */
   readonly rezystor: boolean;
-  /** AWSC po stronie wtórnej dławika (Z.13). */
+  /** AWSC dławika (`hv_neutral.dlawik.awsc`, Z.13). */
   readonly awsc: boolean;
-  /** Rezystor gałęzi równoległej jest rezystorem wymuszającym AWSC po stronie pierwotnej (Z.14,
-   *  Zeszyt 1 §16 s.30). */
-  readonly rezystorWymuszajacy: boolean;
+  /** Rezystancja rezystora [Ω] — wartość rekordu albo pozycji katalogu zmaterializowanej. */
   readonly rOhm: number | null;
-  readonly xOhm: number | null;
+  /** Nastawa dławika gaszącego [A] (`dlawik.i_nastawy_a`); brak = wartość robocza backendu. */
+  readonly iNastawyDlawikaA: number | null;
+  /** Prąd czynny wymuszany przez AWSC [A] (`dlawik.awsc.i_wymuszany_a`). */
   readonly awscA: number | null;
   /** Szyna potrzeb własnych (`Transformer.lv_bus_ref`) i jej napięcie. */
   readonly szynaPotrzebWlasnychRef: string | null;
@@ -54,8 +54,14 @@ function liczba(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function wariantZapisu(value: unknown): WariantZespoluUziemiajacego | null {
-  return value === 'Z13' || value === 'Z14' || value === 'Z15' ? value : null;
+/** Wariant rysunku z wyposażenia — lustro `enm.zespol_uziemiajacy.wariant_zespolu`. */
+export function wariantZespolu(cfg: GroundingConfig | null | undefined): WariantZespoluUziemiajacego | null {
+  if (!cfg) return null;
+  const dlawik = cfg.dlawik ?? null;
+  const rezystor = cfg.rezystor ?? null;
+  if (cfg.type === 'petersen_coil' && dlawik !== null) return rezystor !== null ? 'Z14' : 'Z13';
+  if (cfg.type === 'resistor_grounded' && rezystor !== null && dlawik === null) return 'Z15';
+  return null;
 }
 
 /** Zespół uziemiający pola ZU z modelu albo `null` (pole bez transformatora uziemiającego). */
@@ -68,11 +74,9 @@ export function zespolUziemiajacyPola(
     .filter((tr) => poleZespoluTransformatora(bays, tr)?.ref_id === bay.ref_id)
     .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0))[0];
   if (!transformator) return null;
-  const zapis = zapisZespoluUziemiajacego(transformator);
-  const wariant = wariantZapisu(zapis?.wariant);
   const nosnik = transformator.hv_neutral ?? null;
-  const dlawik = wariant === 'Z13' || wariant === 'Z14' || (wariant === null && nosnik?.type === 'petersen_coil');
-  const rezystor = wariant === 'Z14' || wariant === 'Z15' || (wariant === null && nosnik?.type === 'resistor_grounded');
+  const dlawik = nosnik?.dlawik ?? null;
+  const rezystor = nosnik?.rezystor ?? null;
   const szyna = (snapshot.buses ?? []).find((b) => b.ref_id === transformator.lv_bus_ref);
   return {
     transformatorRef: transformator.ref_id,
@@ -80,14 +84,13 @@ export function zespolUziemiajacyPola(
     snKva: liczba(transformator.sn_mva) !== null ? transformator.sn_mva * 1000 : null,
     uhvKv: liczba(transformator.uhv_kv),
     ulvKv: liczba(transformator.ulv_kv),
-    wariant,
-    dlawik,
-    rezystor,
-    awsc: wariant === 'Z13',
-    rezystorWymuszajacy: wariant === 'Z14',
-    rOhm: liczba(nosnik?.r_ohm),
-    xOhm: liczba(nosnik?.x_ohm),
-    awscA: liczba(nosnik?.awsc_prad_wymuszenia_a),
+    wariant: wariantZespolu(nosnik),
+    dlawik: dlawik !== null,
+    rezystor: rezystor !== null,
+    awsc: (dlawik?.awsc ?? null) !== null,
+    rOhm: liczba(rezystor?.r_ohm) ?? liczba(rezystor?.materialized_params?.r_ohm),
+    iNastawyDlawikaA: liczba(dlawik?.i_nastawy_a),
+    awscA: liczba(dlawik?.awsc?.i_wymuszany_a),
     szynaPotrzebWlasnychRef: transformator.lv_bus_ref ?? null,
     napieciePotrzebWlasnychKv: liczba(szyna?.voltage_kv),
   };

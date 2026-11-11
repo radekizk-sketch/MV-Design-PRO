@@ -10,45 +10,68 @@
  * (parytet przypięty plikiem `szynyStacjiParytet.json`, klucz `transformatory`).
  */
 import type { EnergyNetworkModel, Substation, Transformer } from '../../types/enm';
+import { grupaTransformatoraUziemiajacego } from '../../types/uziemienie';
+import { wPasmieSn } from '../../ui2/model/pasmaNapieciowe';
 import { szynyStacji } from './szynyStacji';
 
 /** Minimalny wycinek migawki czytany przez regułę (wyrocznie sceny niosą tylko część pól). */
 export type ModelTransformatorow = Pick<EnergyNetworkModel, 'transformers'>
   & Partial<Pick<EnergyNetworkModel, 'branches' | 'generators' | 'substations' | 'bays'>>;
 
-/** Klucz zapisu pary przeniesienia punktu neutralnego w `Transformer.meta` — backend
- *  `enm.zespol_uziemiajacy.ZAPIS_ZESPOLU`. */
-export const ZAPIS_ZESPOLU_UZIEMIAJACEGO = 'zespol_uziemiajacy';
 /** Rola pola zespołu uziemiającego — backend `ROLA_POLA_ZESPOLU_UZIEMIAJACEGO`. */
 export const ROLA_POLA_ZESPOLU_UZIEMIAJACEGO = 'ZU';
 
-/** Zapis pary zespołu uziemiającego na transformatorze (`null` — transformator nie jest
- *  transformatorem uziemiającym pola ZU). */
-export function zapisZespoluUziemiajacego(
-  transformer: { readonly meta?: unknown },
-): { readonly bay_ref?: string | null; readonly wariant?: string | null; readonly zrodlo_ref?: string | null } | null {
-  const meta = transformer.meta;
-  if (meta === null || typeof meta !== 'object') return null;
-  const zapis = (meta as Record<string, unknown>)[ZAPIS_ZESPOLU_UZIEMIAJACEGO];
-  return zapis !== null && typeof zapis === 'object' ? (zapis as Record<string, string | null>) : null;
+/** Wycinek transformatora czytany przez predykat transformatora uziemiającego. */
+export type TransformatorZespolu = {
+  readonly ref_id?: string;
+  readonly id?: string;
+  readonly vector_group?: string | null;
+  readonly uhv_kv?: number | null;
+};
+
+/**
+ * Czy transformator JEST transformatorem uziemiającym sieci SN (jedyny nośnik zespołu
+ * uziemiającego, karta ZU-JEDEN-NOSNIK) — lustro backendu
+ * `enm.punkt_neutralny_zespolu.jest_transformatorem_uziemiajacym`: uzwojenie GÓRNE w zygzak
+ * z wyprowadzonym punktem neutralnym (`grupaTransformatoraUziemiajacego`) na napięciu z pasma SN.
+ */
+export function jestTransformatoremUziemiajacym(transformer: TransformatorZespolu): boolean {
+  return grupaTransformatoraUziemiajacego(transformer.vector_group) && wPasmieSn(transformer.uhv_kv);
 }
 
 /**
  * Pole zespołu uziemiającego (rola `ZU`), do którego należy transformator — JEDNO źródło
  * odpowiedzi „transformator uziemiający ma swoje pole” we froncie (marker braku pola TR,
- * rysunek pola ZU w GPZ). Lustro backendu `enm.pole_transformatorowe.pole_zespolu_transformatora`
- * (parytet: wiersze `tr-uziemiajacy-*` tablicy `pole_transformatorowe_parytet_v1.json`):
- * zapis pary musi wskazywać ISTNIEJĄCE pole roli `ZU`; inaczej `null` (transformator bez pola).
+ * rysunek pola ZU w GPZ, stacja transformatora). Lustro backendu
+ * `enm.zespol_uziemiajacy.pole_zespolu_transformatora` (parytet: wiersze `tr-*` tablicy
+ * `pole_transformatorowe_parytet_v1.json`): transformator JEST transformatorem uziemiającym
+ * i wskazuje go typowane wyposażenie pola roli `ZU` (`Bay.equipment_refs`); pola w kolejności
+ * `ref_id` (transformator należy do jednego pola). Inaczej `null` — inny transformator
+ * w wyposażeniu pola ZU nie jest aparatem zespołu (działa dla niego zwykła reguła W041).
  */
-export function poleZespoluTransformatora<B extends { readonly ref_id?: string; readonly id?: string; readonly bay_role?: string | null }>(
-  bays: readonly B[] | null | undefined,
-  transformer: { readonly meta?: unknown },
-): B | null {
-  const bayRef = zapisZespoluUziemiajacego(transformer)?.bay_ref;
-  if (!nonEmptyRef(bayRef)) return null;
-  const pole = (bays ?? []).find((bay) => bay.ref_id === bayRef || bay.id === bayRef);
-  if (!pole) return null;
-  return (pole.bay_role ?? '').toUpperCase() === ROLA_POLA_ZESPOLU_UZIEMIAJACEGO ? pole : null;
+export function poleZespoluTransformatora<
+  B extends {
+    readonly ref_id?: string;
+    readonly id?: string;
+    readonly bay_role?: string | null;
+    readonly equipment_refs?: readonly string[] | null;
+  },
+>(bays: readonly B[] | null | undefined, transformer: TransformatorZespolu): B | null {
+  if (!jestTransformatoremUziemiajacym(transformer)) return null;
+  const refy = new Set([transformer.ref_id, transformer.id].filter(nonEmptyRef).map((r) => r.trim()));
+  if (refy.size === 0) return null;
+  const kandydaci = (bays ?? [])
+    .filter((bay) => (bay.bay_role ?? '').trim().toUpperCase() === ROLA_POLA_ZESPOLU_UZIEMIAJACEGO)
+    .sort((a, b) => {
+      const ra = a.ref_id ?? '';
+      const rb = b.ref_id ?? '';
+      return ra < rb ? -1 : ra > rb ? 1 : 0;
+    });
+  return (
+    kandydaci.find((bay) =>
+      (bay.equipment_refs ?? []).some((ref) => nonEmptyRef(ref) && refy.has(ref.trim())),
+    ) ?? null
+  );
 }
 
 /** Rola katalogowa transformatora blokowego toru DER po stronie SN — backend

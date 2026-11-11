@@ -113,18 +113,22 @@ const SNAPSHOT_ODPOWIEDZ = {
         model: 'short_circuit_power',
       },
     ],
-    zespoly_uziemiajace: [
+    // Zespół uziemiający = transformator uziemiający ZNyn11 (karta ZU-JEDEN-NOSNIK).
+    transformers: [
       {
         id: 'z1',
         ref_id: 'zu/gpz/1',
         name: 'Zespół uziemiający sekcji 1',
         tags: [],
         meta: {},
-        bus_ref: 'bus/gpz/sn',
-        dlawik: { i_min_a: 40, i_max_a: 400 },
+        hv_bus_ref: 'bus/gpz/sn',
+        lv_bus_ref: 'bus/gpz/zu/pw',
+        uhv_kv: 15,
+        ulv_kv: 0.4,
+        vector_group: 'ZNyn11',
+        hv_neutral: { type: 'petersen_coil', dlawik: { i_min_a: 40, i_max_a: 400 } },
       },
     ],
-    transformers: [],
   },
 };
 

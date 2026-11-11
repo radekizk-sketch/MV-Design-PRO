@@ -8,7 +8,9 @@
  * punktu neutralnego źródła, zespół uziemiający w sekcji 1 (Z.15: transformator ZNyn11
  * z rezystorem) z katalogu → zapis. Dowód przez API:
  *  - źródło NIE niesie `neutral_grounding` ani Z0 (opis tylko dla sieci 110 kV),
- *  - model ma pole ZU sekcji 1 i zespół uziemiający z rezystorem na zacisku tego pola,
+ *  - model ma pole ZU sekcji 1, a jego wyposażenie wskazuje transformator uziemiający ZNyn11
+ *    (jedyny nośnik zespołu, karta ZU-JEDEN-NOSNIK) z rezystorem w punkcie neutralnym, przyłączony
+ *    do zacisku tego pola,
  *  - walidator (`GET /enm/validate`) nie zgłasza E-W5-01 ani W-W5-02 dla źródła,
  *  - odczyt uziemienia stacji (`/_uziemienie-sn`) — sekcja 1 „rezystor”, sekcja 2 izolowana,
  *  - szyny GPZ nie niosą `grounding`, meta stacji nie niesie `grounding`/`zero_sequence`.
@@ -20,8 +22,13 @@ const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 
 type Snapshot = {
   buses?: Array<Record<string, unknown> & { ref_id: string }>;
-  bays?: Array<{ ref_id: string; bay_role?: string; bus_ref?: string; terminal_bus_ref?: string | null }>;
-  zespoly_uziemiajace?: Array<{ ref_id: string; bus_ref: string; bay_ref?: string | null; rezystor?: Record<string, unknown> | null; dlawik?: Record<string, unknown> | null }>;
+  bays?: Array<{
+    ref_id: string;
+    bay_role?: string;
+    bus_ref?: string;
+    terminal_bus_ref?: string | null;
+    equipment_refs?: string[] | null;
+  }>;
   sources?: Array<{
     ref_id: string;
     bus_ref: string;
@@ -33,7 +40,17 @@ type Snapshot = {
     materialized_params?: Record<string, unknown> | null;
   }>;
   substations?: Array<{ ref_id: string; station_type?: string; meta?: Record<string, unknown> | null }>;
-  transformers?: Array<{ ref_id: string; vector_group?: string | null }>;
+  transformers?: Array<{
+    ref_id: string;
+    vector_group?: string | null;
+    hv_bus_ref?: string;
+    catalog_ref?: string | null;
+    hv_neutral?: {
+      type: string;
+      rezystor?: Record<string, unknown> | null;
+      dlawik?: Record<string, unknown> | null;
+    } | null;
+  }>;
 };
 
 let entityCounter = 0;
@@ -148,8 +165,8 @@ test('ZU × GPZ-MODEL: kreator źródła — uziemienie sieci SN zespołem uziem
   await page.getByTestId('mvd-kreator-zrodlo-sekcja-1-zu').click();
   await page.getByTestId('mvd-kreator-zrodlo-zu-wariant-rezystor').click();
   const tu = page.getByTestId('mvd-kreator-zrodlo-zu-transformator');
-  await expect(tu.locator('option[value="TU_ZNYN11_15KV_PW160"]')).toHaveCount(1, { timeout: 20000 });
-  await tu.selectOption('TU_ZNYN11_15KV_PW160');
+  await expect(tu.locator('option[value="tu-sn-nn-15-04-100kva-znyn11"]')).toHaveCount(1, { timeout: 20000 });
+  await tu.selectOption('tu-sn-nn-15-04-100kva-znyn11');
   const rezystor = page.getByTestId('mvd-kreator-zrodlo-zu-rezystor');
   await expect(rezystor.locator('option[value="REZ_200A_15KV"]')).toHaveCount(1, { timeout: 20000 });
   await rezystor.selectOption('REZ_200A_15KV');
@@ -168,19 +185,23 @@ test('ZU × GPZ-MODEL: kreator źródła — uziemienie sieci SN zespołem uziem
   expect(zrodlo, 'źródło powstało w modelu').toBeTruthy();
   expect(zrodlo.neutral_grounding ?? null).toBeNull();
   expect(zrodlo.source_side ?? 'SN').toBe('SN');
-  expect(enm.transformers ?? []).toHaveLength(0);
+  // Transformatory 110/SN są w równoważniku (poza modelem) — w modelu jest wyłącznie
+  // transformator uziemiający zespołu.
+  expect((enm.transformers ?? []).map((t) => t.vector_group)).toEqual(['ZNyn11']);
   expect(zrodlo.r0_ohm ?? null).toBeNull();
   expect(zrodlo.x0_ohm ?? null).toBeNull();
   expect(zrodlo.z0_z1_ratio ?? null).toBeNull();
 
-  // Zespół uziemiający na zacisku pola ZU sekcji 1.
-  const zespoly = enm.zespoly_uziemiajace ?? [];
-  expect(zespoly).toHaveLength(1);
-  const pole = (enm.bays ?? []).find((b) => b.ref_id === zespoly[0].bay_ref);
+  // Zespół uziemiający = transformator uziemiający wskazany wyposażeniem pola ZU sekcji 1,
+  // przyłączony do zacisku tego pola; wyposażenie punktu neutralnego w `hv_neutral`.
+  const [tuModelu] = enm.transformers ?? [];
+  expect(tuModelu.catalog_ref).toBe('tu-sn-nn-15-04-100kva-znyn11');
+  const pole = (enm.bays ?? []).find((b) => (b.equipment_refs ?? []).includes(tuModelu.ref_id));
   expect(pole?.bay_role).toBe('ZU');
-  expect(zespoly[0].bus_ref).toBe(pole?.terminal_bus_ref);
-  expect(zespoly[0].rezystor).toBeTruthy();
-  expect(zespoly[0].dlawik ?? null).toBeNull();
+  expect(tuModelu.hv_bus_ref).toBe(pole?.terminal_bus_ref);
+  expect(tuModelu.hv_neutral?.type).toBe('resistor_grounded');
+  expect(tuModelu.hv_neutral?.rezystor).toBeTruthy();
+  expect(tuModelu.hv_neutral?.dlawik ?? null).toBeNull();
 
   // Walidator: źródło SN bez opisu punktu neutralnego i Z0 — ani blokady E-W5-01, ani W-W5-02.
   const walidacja = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm/validate`, { timeout: 30000 });

@@ -137,14 +137,13 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // w obliczeniach — edycja parametrów źródła (kasacja opisu punktu neutralnego i Z0).
   'source.sn_neutral_data_ignored': EDYCJA,
   // Zespół uziemiający SN (walidator E-ZU-*, W-ZU-*): każdy kod wskazuje element zespołu,
-  // a jego dane (szyna, dławik, rezystor, SPZ, wyłączenie od transformatorów, odbiór potrzeb
-  // własnych, pozycja katalogu) zmienia edycja parametrów elementu — ta sama operacja, która
+  // a jego dane (szyna, dławik, rezystor, SPZ, wyłączenie od transformatorów, pozycja
+  // katalogu) zmienia edycja parametrów elementu — ta sama operacja, która
   // zapisuje nastawę i dane producenta.
   'earthing.zespol_bus_invalid': EDYCJA,
   'earthing.zespol_neutral_undefined': EDYCJA,
   'earthing.zespol_spz_without_resistor': EDYCJA,
   'earthing.zespol_transformer_trip_missing': EDYCJA,
-  'earthing.zespol_auxiliary_load_missing': EDYCJA,
   'earthing.network_grounding_warning': EDYCJA,
   'earthing.zespol_direct_earthing': EDYCJA,
   'earthing.zespol_voltage_mismatch': EDYCJA,
@@ -154,7 +153,6 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // D1 (karta POLA-GPZ-SZABLONY): dwa uziemione nośniki punktu neutralnego w wyspie SN —
   // edycja nadmiarowego nośnika (źródło albo transformator uziemiający, `fix_action`).
   'earthing.multiple_grounded_neutrals_in_island': EDYCJA,
-  'earthing.electrode_data_missing': EDYCJA,
   // --- Magistrala i pierścień ---------------------------------------------------
   'trunk.terminal_missing': formularz('continue_trunk_segment_sn'),
   'trunk.segment_missing': formularz('continue_trunk_segment_sn'),

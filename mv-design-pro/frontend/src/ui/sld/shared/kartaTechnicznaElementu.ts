@@ -38,7 +38,11 @@ import { isSwitchBranch } from '../../../types/enm';
 import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
-import { nazwaSzablonuPoReferencjiPl, type CompleteMvBayTemplateSummary } from '../../catalog/BayTemplatePicker';
+import {
+  nazwaRodzinyRozdzielnicyPl,
+  nazwaSzablonuPoReferencjiPl,
+  type CompleteMvBayTemplateSummary,
+} from '../../catalog/BayTemplatePicker';
 import {
   formatDerDynamicProfileLabelPl,
   getDerDynamicProfile,
@@ -1072,7 +1076,16 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
   // Kolumna „Nr” tylko, gdy którekolwiek pole ma numer w modelu — kolumna pusta we wszystkich
   // wierszach nie zajmuje szerokości inspektora.
   const zNumerami = polaSn.some((b) => napis(b.bay_number) !== null);
-  const rodziny = [...new Set(polaSn.map((b) => napis(b.switchgear_family_ref)).filter((r): r is string => r !== null))];
+  // Rodziny rozdzielnicy pól stacji NAZWĄ z katalogu rodzin (ta sama funkcja co karta pola) —
+  // referencja rodziny nie trafia na ekran.
+  const rodziny = [
+    ...new Set(
+      polaSn
+        .map((b) => napis(b.switchgear_family_ref))
+        .filter((r): r is string => r !== null)
+        .map((r) => nazwaRodzinyRozdzielnicyPl(r, katalogi.rodzinyRozdzielnic)),
+    ),
+  ];
   const generatorySn = (model.generators ?? []).filter(
     (g) => g.station_ref === stacja.ref_id && g.connection_variant === 'block_transformer',
   );
@@ -1325,7 +1338,7 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
               wiersz(
                 'rodzina',
                 'Rodzina rozdzielnicy',
-                katalogi.rodzinyRozdzielnic.get(bay.switchgear_family_ref!) ?? 'rodzina rozdzielnicy spoza katalogu rodzin',
+                nazwaRodzinyRozdzielnicyPl(bay.switchgear_family_ref!, katalogi.rodzinyRozdzielnic),
               ),
             ]
           : []),

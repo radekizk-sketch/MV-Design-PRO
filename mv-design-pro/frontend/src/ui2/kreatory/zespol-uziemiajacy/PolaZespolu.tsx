@@ -1,9 +1,11 @@
 /**
  * Pola zespołu uziemiającego SN wspólne dla dwóch kreatorów (karta
  * UX-04/POLE-ZU-SKLADOWA-ZEROWA): kreatora „Zespół uziemiający SN" (operacja
- * `add_zespol_uziemiajacy_sn`) i kreatora GPZ (wpisy `add_grid_source_sn.zespoly_uziemiajace`
+ * `add_zespol_uziemiajacy_sn`) i kreatora GPZ (wpisy `add_grid_source_sn.zespoly_sekcji`
  * — ładunek tej samej operacji). Jeden formularz, jeden model (`zespolModel.ts`), te same
- * trzy przestrzenie katalogu — bez drugiej kopii pól w kreatorze GPZ.
+ * trzy przestrzenie katalogu (transformator SN/nN z grupą ZN, dławik gaszący, rezystor
+ * uziemiający) — bez drugiej kopii pól w kreatorze GPZ. Zespół jest transformatorem
+ * uziemiającym (karta ZU-JEDEN-NOSNIK): wybrana pozycja to rekord katalogu `TRAFO_SN_NN`.
  *
  * ZERO fizyki: pola pokazują wartości katalogu (z oznaczeniem wartości roboczych), nie liczą
  * impedancji; dopuszczalność ocenia próba `dry_run` operacji.
@@ -19,8 +21,8 @@ import {
 } from '../../../ui/catalog/api';
 import type {
   ArcSuppressionCoilCatalogType,
-  EarthingTransformerCatalogType,
   NeutralEarthingResistorCatalogType,
+  TransformerType,
 } from '../../../ui/catalog/types';
 import {
   KreatorInfo,
@@ -71,7 +73,7 @@ export type Katalog<T> = {
 };
 
 export interface KatalogiZespolu {
-  readonly tu: Katalog<EarthingTransformerCatalogType>;
+  readonly tu: Katalog<TransformerType>;
   readonly dl: Katalog<ArcSuppressionCoilCatalogType>;
   readonly rz: Katalog<NeutralEarthingResistorCatalogType>;
   readonly ladowanie: boolean;
@@ -97,7 +99,7 @@ function useKatalog<T>(pobierz: () => Promise<T[]>): Katalog<T> {
 
 /** Trzy przestrzenie katalogu zespołu: transformator uziemiający, dławik, rezystor. */
 export function useKatalogiZespolu(): KatalogiZespolu {
-  const tu = useKatalog<EarthingTransformerCatalogType>(fetchEarthingTransformerTypes);
+  const tu = useKatalog<TransformerType>(fetchEarthingTransformerTypes);
   const dl = useKatalog<ArcSuppressionCoilCatalogType>(fetchArcSuppressionCoilTypes);
   const rz = useKatalog<NeutralEarthingResistorCatalogType>(fetchNeutralEarthingResistorTypes);
   return { tu, dl, rz, ladowanie: tu.ladowanie || dl.ladowanie || rz.ladowanie };
@@ -154,7 +156,7 @@ export function PolaUkladuZespolu({ dane, zmien, katalogi, bledy, prefiks }: Pol
       />
       {tu ? (
         <KreatorSiatka kolumny={2}>
-          <RzadWartosci etykieta={T.paramUn} wartosc={fmtLiczba(tu.u_n_kv, 'kV', 0)} />
+          <RzadWartosci etykieta={T.paramUn} wartosc={fmtLiczba(tu.voltage_hv_kv, 'kV', 0)} />
           <RzadWartosci
             etykieta={T.paramZ0}
             wartosc={`${fmtLiczba(tu.r0_ohm, 'Ω', 2)} + j${fmtLiczba(tu.x0_ohm, 'Ω', 2)}${

@@ -323,8 +323,19 @@ export function nazwaSzablonuPolaPl(
   if (nazwa) return nazwa;
   const rodzaj = bayKindLabelPl(szablon.bay_kind);
   if (!szablon.switchgear_family_ref) return `${rodzaj} · szablon kanoniczny ogólny`;
-  const rodzina = nazwyRodzin.get(szablon.switchgear_family_ref);
-  return `${rodzaj} · ${rodzina ?? 'rodzina rozdzielnicy spoza katalogu rodzin'}`;
+  return `${rodzaj} · ${nazwaRodzinyRozdzielnicyPl(szablon.switchgear_family_ref, nazwyRodzin)}`;
+}
+
+/** Opis jawny rodziny rozdzielnicy, której referencji nie ma w katalogu rodzin. */
+export const RODZINA_SPOZA_KATALOGU_PL = 'rodzina rozdzielnicy spoza katalogu rodzin';
+
+/**
+ * Nazwa rodziny rozdzielnicy wskazanej referencją (`Bay.switchgear_family_ref`) — nazwa z katalogu
+ * rodzin albo opis jawny; referencja nigdy nie trafia na ekran. JEDNO źródło dla listy szablonów,
+ * karty pola i karty stacji.
+ */
+export function nazwaRodzinyRozdzielnicyPl(familyRef: string, nazwyRodzin: ReadonlyMap<string, string>): string {
+  return nazwyRodzin.get(familyRef) ?? RODZINA_SPOZA_KATALOGU_PL;
 }
 
 /** Opis jawny szablonu, którego referencji nie ma w katalogu szablonów pól. */

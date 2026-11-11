@@ -25,7 +25,7 @@ import {
 
 const KOMPLET: ZespolFormData = {
   ...DANE_DOMYSLNE,
-  catalog_ref: 'TU_ZNYN11_15KV_PW160',
+  catalog_ref: 'tu-sn-nn-15-04-100kva-znyn11',
   dlawik_catalog_ref: 'DL_40_400A_15KV_CIAGLY',
   rezystor_catalog_ref: 'REZ_200A_15KV',
   awsc: true,
@@ -63,8 +63,8 @@ describe('zbudujPayload — iloczyn wariant × miejsce × nazwa × nastawa', () 
             if (nazwa.trim()) expect(ladunek.name).toBe('ZU sekcji 1');
             else expect('name' in ladunek).toBe(false);
             expect(ladunek.catalog_binding).toMatchObject({
-              catalog_namespace: 'TRANSFORMATOR_UZIEMIAJACY',
-              catalog_item_id: 'TU_ZNYN11_15KV_PW160',
+              catalog_namespace: 'TRAFO_SN_NN',
+              catalog_item_id: 'tu-sn-nn-15-04-100kva-znyn11',
             });
             expect(ladunek.uziemienie_bezposrednie).toBe(wariant === 'bezposrednie');
             expect(ladunek.spz).toBe(true);

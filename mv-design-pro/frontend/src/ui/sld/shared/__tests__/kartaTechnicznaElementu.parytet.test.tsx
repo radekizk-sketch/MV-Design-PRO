@@ -59,6 +59,9 @@ const RODZAJE_REKORDU = {
   SURGE_ARRESTER: true,
   UNBALANCE_CT: true,
   PHASE_TO_PHASE_VT: true,
+  THREE_POSITION_SWITCH: true,
+  CORE_BALANCE_CT: true,
+  VOLTAGE_INDICATOR: true,
 } as const satisfies Record<BayPrimaryDeviceKind, true>;
 
 const KATALOGI: KatalogiKarty = {
@@ -546,7 +549,12 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
   // łącznik toru z własnym stanem, łącznik pola bez rekordu i bez stanu własnego → stan pola}.
   it('stan obiektu: pole, aparat pola, łącznik toru i łącznik pola dziedziczący stan pola', () => {
     expect(wiersze(karta('pole', 'pelne')).get('stan_obiektu')!.wartosc).toBe('projektowany');
-    expect(tabele(karta('pole', 'pelne')).get('tabela:aparaty')!.wiersze[0].komorki.stan_obiektu).toBe('projektowany');
+    // Tabela aparatów pola jest zwarta (decyzja architekta 2026-11-04: aparat i trzy liczby
+    // znamionowe) — stan obiektu aparatu stoi w karcie aparatu, którą otwiera klik w wiersz
+    // (`cel` wiersza), nie w kolumnie tabeli pola.
+    const wierszAparatu = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!.wiersze[0];
+    expect(wierszAparatu.komorki).not.toHaveProperty('stan_obiektu');
+    expect(wierszAparatu.cel).toMatchObject({ rodzaj: 'aparat' });
     expect(wiersze(karta('aparat', 'pelne')).get('stan_obiektu')!.wartosc).toBe('projektowany');
     expect(wiersze(karta('lacznik', 'pelne')).get('stan_obiektu')!.wartosc).toBe('istniejący');
     // Pole bez rekordów aparatów: łącznik z `equipment_refs` bez stanu własnego dziedziczy stan pola.
@@ -554,12 +562,14 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     const bay = snapshot.bays!.find((b) => b.ref_id === 'bay-in')!;
     bay.stan_obiektu = 'ISTNIEJACY';
     bay.primary_devices = [];
-    const k = buildKartaTechniczna(snapshot, WSKAZANIE.pole as DaneElementuKanwy, KATALOGI)!;
-    expect(tabele(k).get('tabela:aparaty')!.wiersze.find((r) => r.klucz === 'cb-in')!.komorki.stan_obiektu).toBe('istniejący');
+    // Karta łącznika (klik w wiersz tabeli pola albo w symbol) — dziedziczy stan pola.
+    const k = buildKartaTechniczna(snapshot, WSKAZANIE.aparat as DaneElementuKanwy, KATALOGI)!;
+    expect(wiersze(k).get('stan_obiektu')!.wartosc).toBe('istniejący');
     bay.stan_obiektu = null;
     const bez = buildKartaTechniczna(snapshot, WSKAZANIE.pole as DaneElementuKanwy, KATALOGI)!;
     expect(wiersze(bez).get('stan_obiektu')!.wartosc).toBeNull();
-    expect(tabele(bez).get('tabela:aparaty')!.wiersze.find((r) => r.klucz === 'cb-in')!.komorki.stan_obiektu).toBeNull();
+    const bezLacznik = buildKartaTechniczna(snapshot, WSKAZANIE.aparat as DaneElementuKanwy, KATALOGI)!;
+    expect(wiersze(bezLacznik).get('stan_obiektu')!.wartosc).toBeNull();
   });
 
   // Iloczyn rodzaju przekładnika {prądowy · napięciowy}: lista pola pokazuje oba z polską

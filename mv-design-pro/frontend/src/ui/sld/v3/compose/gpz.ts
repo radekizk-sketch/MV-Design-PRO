@@ -625,9 +625,10 @@ function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparat
     });
   }
   if (bay?.zespolUziemiajacy) {
-    // Karta POLA-GPZ-SZABLONY (Zeszyt 1 Z.13–Z.15 s.93–95): transformator uziemiający ZNyn11 na
-    // zacisku końca toru pola ZU — element modelu (zapis pary `zespol_uziemiajacy`), nie rekord
-    // aparatu; gałąź punktu neutralnego i strona potrzeb własnych — `ogonZespoluUziemiajacego`.
+    // Karta POLA-GPZ-SZABLONY, ZU-JEDEN-NOSNIK (Zeszyt 1 Z.13–Z.15 s.93–95): transformator
+    // uziemiający ZNyn11 na zacisku końca toru pola ZU — element modelu wskazany w wyposażeniu
+    // pola (`Bay.equipment_refs`), nie rekord aparatu; gałąź punktu neutralnego (wyposażenie
+    // `hv_neutral`) i strona potrzeb własnych — `ogonZespoluUziemiajacego`.
     stos.push({
       symbolId: 'transformer2W',
       parityKeys: [KLUCZ_TRANSFORMATORA_ZESPOLU],
@@ -654,18 +655,17 @@ function galezieZespolu(zespol: ZespolUziemiajacyPolaView): readonly ('dlawik' |
   return [...(zespol.dlawik ? (['dlawik'] as const) : []), ...(zespol.rezystor ? (['rezystor'] as const) : [])];
 }
 
-/** Podpis wartości aparatu gałęzi punktu neutralnego — wartość z nośnika modelu, bez niej
- *  sama nazwa (zero domysłu). */
+/** Podpis wartości aparatu gałęzi punktu neutralnego — wartość z wyposażenia punktu
+ *  neutralnego transformatora uziemiającego (`hv_neutral.dlawik` / `rezystor`), bez niej sama
+ *  nazwa (zero domysłu, zero przeliczeń we froncie). Dławik: nastawa [A] i AWSC z prądem
+ *  wymuszanym (Z.13); rezystor: rezystancja [Ω]. */
 function podpisGaleziZespolu(zespol: ZespolUziemiajacyPolaView, galaz: 'dlawik' | 'rezystor'): string {
-  const awsc = `AWSC${zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : ''}`;
   if (galaz === 'dlawik') {
-    const x = zespol.xOhm != null ? `X_N ${liczbaPl(zespol.xOhm)} Ω` : 'dławik';
-    return zespol.awsc ? `${x} · ${awsc}` : x;
+    const nastawa = zespol.iNastawyDlawikaA != null ? `dławik ${liczbaPl(zespol.iNastawyDlawikaA)} A` : 'dławik';
+    if (!zespol.awsc) return nastawa;
+    return `${nastawa} · AWSC${zespol.awscA != null ? ` ${liczbaPl(zespol.awscA)} A` : ''}`;
   }
-  const r = zespol.rOhm != null ? `R_N ${liczbaPl(zespol.rOhm)} Ω` : 'rezystor';
-  // Z.14: rezystor gałęzi równoległej JEST rezystorem wymuszającym AWSC po stronie pierwotnej
-  // (§16 s.30) — prąd wymuszenia z nośnika (`awsc_prad_wymuszenia_a`).
-  return zespol.rezystorWymuszajacy ? `${r} · ${awsc}` : r;
+  return zespol.rOhm != null ? `$R_{N}$ ${liczbaPl(zespol.rOhm)} Ω` : 'rezystor';
 }
 
 /** Kolumny gałęzi punktu neutralnego: przesunięcie osi kolumny od węzła punktu neutralnego.
