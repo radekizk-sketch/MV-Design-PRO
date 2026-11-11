@@ -434,7 +434,10 @@ def test_golden_sc1f_bez_skladowej_zerowej_jest_jawna_odmowa() -> None:
     doziemienie = wiersz["doziemienie_sieci"]
     assert doziemienie["tryb"] == "izolowany"
     assert doziemienie["prad_a"] is None and doziemienie["i_c_a"] is None
-    assert "C_SN" in doziemienie["brak_pl"]
+    # Zdanie dla projektanta nazywa odcinek nazwą, nie identyfikatorem (karta BKR:
+    # komunikat bez gołego identyfikatora); identyfikator niesie pole danych API.
+    assert "Kabel SN XLPE Al 3x120mm2" in doziemienie["brak_pl"]
+    assert "C_SN" not in doziemienie["brak_pl"]
 
 
 def test_golden_3f_wieksze_niz_2f() -> None:

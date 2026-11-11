@@ -337,7 +337,7 @@ def test_bus_with_load_model_and_control_but_no_source_power_is_refused() -> Non
     # split's own fuse (defect A1) — also explicit, never a silent loss.
     orphan = PQSpec(node_id="B", p_mw=1.0, q_mvar=1.5, inverter_control=control, zip_base_p_mw=3.0)
     for solve in solvers:
-        with pytest.raises(ValueError, match="bez `zip_coeffs`"):
+        with pytest.raises(ValueError, match="bez współczynników wielomianu"):
             solve(orphan)
 
 

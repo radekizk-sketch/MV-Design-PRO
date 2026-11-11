@@ -2146,7 +2146,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Roznica zbiorow +3, -0: `koniec` (`enm.zajetosc_pol.OdcinekBezPola` — koniec odcinka bez
     # pola), `punkt` i `nowe_elementy` (`_PrzylaczeniePrzezPole` w `enm/domain_operations.py` —
     # punkt przylaczenia i elementy pola utworzonego w operacji). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4504." in wyjscie, wyjscie
+    # Scalenie karty BKR do drzewa integracji (2026-11-11): 4505 -> 4501 — POMIAR zbiorow
+    # `contract_fields()` (`git archive`): baza scalenia `01f80af8d` 4395, strona integracji
+    # 4505, strona BKR 4391, drzewo scalone 4501 = (integracja ∪ dodane BKR) − skasowane BKR,
+    # roznica zbiorow zero w obie strony. Skasowane przez BKR (-9): `fix_code`,
+    # `fix_message_pl`, `generator_id`, `has_blocking_transformer`, `load_flow_ready`,
+    # `protection_ready`, `short_circuit_ready`, `sld_ready`, `snapshot_fingerprint`; dodane
+    # (+5): `goly_aparat_wniosek_pl`, `kombinacja_wniosek_pl`, `koniec`, `nowe_elementy`,
+    # `punkt`. Dawny pin 4504 z rozwiazania konfliktu nie byl pomiarem. PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4501." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2913,7 +2921,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Karta kanalow tekstu dla projektanta (2026-10-30): application 255 -> 254 (-1
         # `analyses/opis_przebiegu.py` przeniesiony do `domain/`); dlug i wykluczenia BEZ ZMIAN.
-        "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
+        # Scalenie karty BKR do drzewa integracji (2026-11-11): application 256 -> 255 (strona
+        # integracji 256, BKR kasuje `analyses/opis_przebiegu.py`; zbior plikow drzewa scalonego
+        # rowny (integracja ∪ dodane BKR) − skasowane BKR). Suma korzeni 606 = pin przeskanowanych
+        # (dawny pin 256 dawal 607). POMIAR guardem; dlug i wykluczenia BEZ ZMIAN.
+        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
