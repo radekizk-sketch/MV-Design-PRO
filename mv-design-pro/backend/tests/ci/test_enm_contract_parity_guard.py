@@ -191,15 +191,23 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     `RezystorUziemiajacy.stan_odlacznika`, `RezystorWymuszajacyAwsc.strona`) wchodzą do pomiaru
     gałęzi POLA-GPZ-SZABLONY (134 — tamta gałąź encji zespołu nie miała). Pomiar guardem:
     gałąź modelu A `ffbd81d15` = 132, gałąź POLA-GPZ-SZABLONY `44b3f173e` = 134, drzewo karty =
-    134 + 4 = 138."""
+    134 + 4 = 138.
+
+    Scalenie karty ZU-JEDEN-NOSNIK do drzewa integracji (2026-11-11): 135 - 2 = 133. Zbiory par
+    (encja, pole) liczone funkcjami guarda na stronie integracji (135), stronie karty (138)
+    i drzewie scalonym (133): drzewo scalone = strona integracji bez dwóch pól skasowanej encji
+    zespołu uziemiającego (grupa połączeń i źródło parametrów zespołu); pola
+    wyposażenia punktu neutralnego strona integracji już miała (gałąź szablonów pól scalona
+    wcześniej z kartą pola liniowego), a 10 pól starej struktury zabezpieczeń strony karty
+    skasowała karta delt."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 135, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 135 — "
+    assert int(dopasowanie.group(1)) == 133, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 133 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

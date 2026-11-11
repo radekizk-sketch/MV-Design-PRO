@@ -30,6 +30,7 @@ import pytest
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.uziemienie_sekcji import nosniki_sieci
 from enm.validator import ENMValidator
+from enm.zabezpieczenie import kody_funkcji_pola
 from enm.zespol_uziemiajacy import (
     TYP_UZIEMIENIA_WARIANTU,
     transformator_zespolu_pola,
@@ -115,7 +116,7 @@ def test_dodaj_usun_drugi(wariant: str, uziemienie: str, sekcja: str) -> None:
     assert tr["catalog_ref"] == "tu-sn-nn-15-04-100kva-znyn11"
     assert tr["ref_id"] in pole["equipment_refs"]
     assert pole["bay_template_ref"] == SZABLON_WARIANTU_ZESPOLU[wariant].template_id
-    assert pole["protection_codes"] == SZABLON_WARIANTU_ZESPOLU[wariant].funkcje_eaz
+    assert kody_funkcji_pola(po, pole["ref_id"]) == SZABLON_WARIANTU_ZESPOLU[wariant].funkcje_eaz
     assert [d["designation"] for d in pole["primary_devices"]] == ["Q1", "Q0", "T1", "F1"]
     zdarzenia = {(z["event_type"], z["element_id"]) for z in odp["domain_events"]}
     assert {("BUS_CREATED", szyna_nn["ref_id"]), ("TRANSFORMER_CREATED", tr["ref_id"])} <= zdarzenia

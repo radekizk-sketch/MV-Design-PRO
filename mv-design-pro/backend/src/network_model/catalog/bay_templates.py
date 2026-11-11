@@ -2025,18 +2025,8 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
 #: IRiESD II.4.5.4.7.1 pkt 3). Blokowanie zabezpieczenia szyn od I> i sterowanie zegarem nie
 #: mają kodu ANSI funkcji — są automatyką rozdzielni, nie funkcją zabezpieczeniową pola. Szablon
 #: kanoniczny pola BKR (z odłącznikiem pola) przeniesie ten zestaw do ``BayTemplate.funkcje_eaz``.
-#:
-#: Pole zespołu uziemiającego ``ZU`` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA; ENEA Operator,
-#: Stacje 110 kV, Zeszyt 1, Z.13 s.93 i Z.14 s.94) — zestaw to dokładnie te funkcje słownika
-#: `funkcje_eaz`, których podstawa cytuje rysunek pola ZU (Z.13): ziemnozwarciowe zwłoczne
-#: i bezzwłoczne z prądu zerowego (51N, 50N), automatyka wymuszania składowej czynnej (ZAWSC)
-#: oraz technologiczne transformatora uziemiającego (BT) i dławika gaszącego (BD). Scalenie do
-#: drzewa integracji 2026-11-11: rola weszła do modelu bez wpisu w tablicach funkcji ról, więc
-#: pole ZU budowane operacją dostawało pustą listę funkcji. Parytet zestawu z podstawami
-#: słownika przypina `test_funkcje_eaz_roli.py`.
 FUNKCJE_EAZ_ROLI_BEZ_SZABLONU: dict[str, tuple[str, ...]] = {
     "BKR": ("51", "50", "51N", "60N", "59", "50BF"),
-    "ZU": ("51N", "50N", "ZAWSC", "BT", "BD"),
 }
 
 

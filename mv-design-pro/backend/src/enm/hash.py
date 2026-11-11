@@ -256,7 +256,7 @@ _NOSNIKI_PUNKTU_NEUTRALNEGO: dict[str, tuple[str, ...]] = {
 }
 
 
-def _postac_punktu_neutralnego(cfg: Any) -> Any:
+def _postac_punktu_neutralnego(cfg: object) -> object:
     """Postać kanoniczna `GroundingConfig` pod odcisk: bez pól wyposażenia o wartości domyślnej
     (także w opisie zapisanym przez dawcę). Nowy słownik — migawka wołającego nietknięta."""
     if not isinstance(cfg, dict):

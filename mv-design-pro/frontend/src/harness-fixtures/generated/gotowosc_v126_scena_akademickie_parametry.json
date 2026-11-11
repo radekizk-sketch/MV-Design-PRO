@@ -1,10 +1,10 @@
 {
   "case_id": "case-demo",
-  "model_hash": "df1970500f2cf3694ad77f82b9fcd24b3530c86a28e596f14ad1398d4ac61056",
+  "model_hash": "523349886ad484921b9a7d48a9d6698385f0a08159bbe93f1969babe24722151",
   "przedmiot": {
-    "liczba_szyn": 8,
+    "liczba_szyn": 9,
     "liczba_galezi": 6,
-    "liczba_transformatorow": 3,
+    "liczba_transformatorow": 4,
     "liczba_zrodel_przeksztaltnikowych": 1,
     "liczba_generatorow": 2,
     "poziomy_napiec_kv": [
@@ -119,7 +119,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -128,7 +128,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -144,11 +145,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -222,7 +224,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -231,7 +233,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -247,11 +250,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -313,7 +317,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -322,7 +326,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -338,11 +343,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -352,7 +358,7 @@
         },
         {
           "nazwa_pl": "Prąd zwarcia doziemnego stacji — sieć SN 15 kV — Szyna SN",
-          "wartosc_pl": "$\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ = 294,1 A",
+          "wartosc_pl": "$\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ = 301 A",
           "elementy": [
             "bus_sn_main"
           ]
@@ -409,7 +415,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -418,7 +424,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -434,11 +441,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -508,7 +516,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -517,7 +525,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -533,11 +542,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -628,7 +638,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -637,7 +647,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -653,11 +664,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -712,7 +724,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -721,7 +733,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -737,11 +750,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
@@ -751,7 +765,7 @@
         },
         {
           "nazwa_pl": "Szyny z impedancją zastępczą sieci (macierz Z-bus IEC 60909)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -760,7 +774,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         }
       ],
@@ -836,7 +851,7 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "8",
+          "wartosc_pl": "9",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
@@ -845,7 +860,8 @@
             "bus_nn",
             "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
             "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
-            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_bus_nn"
           ]
         },
         {
@@ -861,11 +877,12 @@
         },
         {
           "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "4",
           "elementy": [
             "tr_hv_sn",
             "tr_sn_nn",
-            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer",
+            "zu/9c3544557d37f9976779c7fa8e3c1996/zu_transformer"
           ]
         },
         {
