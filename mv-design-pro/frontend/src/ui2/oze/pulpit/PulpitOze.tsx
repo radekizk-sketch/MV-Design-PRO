@@ -1,8 +1,10 @@
 /*
  * Pulpit instalacji OZE — kokpit specjalisty (karta P47; kontrakt V2 — karta AB-1a Pakiet D2
  * §6). Jeden ekran: lewa kolumna to lista modułów projektu (typ modułu z klasyfikacji
- * backendu, dowód certyfikatu, powód odrzucenia tabliczki albo jawny brak, plakietki rekordów
- * wymagań), prawa to karta wybranego modułu (sekcje 1–5).
+ * backendu, dowód certyfikatu, powód odrzucenia tabliczki albo jawny brak), prawa to karta
+ * wybranego modułu (sekcje 1–5). Standard warsztatu KD6 (karta PULPIT-OZE-KD6): lista modułów
+ * NIE powtarza plakietek rekordów wymagań — wymagania są jedną tabelą karty modułu; wersja
+ * procedury stoi raz, w nagłówku modułu (procedura obowiązująca moduł z wyniku oceny).
  *
  * ŹRÓDŁO OCENY (karta AB-1a Pakiet D2): pulpit opisuje INSTALACJĘ z modelu, więc czyta ocenę
  * zatwierdzonego modelu przypadku (`GET /api/ncrfg-tests/cases/{case_id}/compliance` — ta sama
@@ -22,14 +24,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
-import { EtykietaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec/PrzyciskAkcjiStanu';
 import { useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec/akcjeStanuZerowego';
 import { opisyModulow } from '../macierz';
 import { MACIERZ_STRINGS } from '../macierz/strings';
 import { pobierzZgodnoscPrzypadkuNcRfg } from '../ncrfg/api';
-import { OpisDokumentuWarstwy } from '../ncrfg/komponenty';
 import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
 import type { ZgodnoscPrzypadkuNcRfg } from '../ncrfg/typy';
 import { WyborOperatora } from '../ncrfg/WyborOperatora';
@@ -190,7 +190,9 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
       <header className="mvd-oze-head">
         <div className="mvd-oze-head-main">
           <h3 className="mvd-oze-title">{PULPIT_STRINGS.tytul}</h3>
-          <p className="mvd-oze-sub">{PULPIT_STRINGS.podtytul}</p>
+          <p className="mvd-oze-sub" data-testid="mvd-oze-pulpit-zrodlo-oceny">
+            {PULPIT_STRINGS.zrodloOceny}
+          </p>
         </div>
         <div className="mvd-oze-head-akcje">
           <div className="mvd-oze-pola">
@@ -203,15 +205,6 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
               etykieta={PULPIT_STRINGS.operator}
               testid="mvd-oze-pulpit-operator"
             />
-            {katalog ? (
-              <div className="mvd-oze-pole">
-                <span>{PULPIT_STRINGS.wersjaProcedury}</span>
-                <OpisDokumentuWarstwy
-                  dokument={katalog.procedure_version}
-                  testid="mvd-oze-pulpit-wersja-procedury"
-                />
-              </div>
-            ) : null}
           </div>
           <button
             type="button"
@@ -237,9 +230,6 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
         </div>
       </header>
 
-      <p className="mvd-oze-info mvd-oze-opis-biegu" data-testid="mvd-oze-pulpit-zrodlo-oceny">
-        {PULPIT_STRINGS.zrodloOceny}
-      </p>
       {!caseId && opisy.length > 0 ? (
         <p className="mvd-oze-info mvd-oze-opis-biegu" data-testid="mvd-oze-pulpit-brak-przypadku">
           {PULPIT_STRINGS.brakPrzypadku}
@@ -292,22 +282,6 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
                   {opisKlasyPozycji(poz, stanOceny)}
                 </span>
                 <DowodPozycji pozycja={poz} />
-                {poz.ocena && poz.ocena.wymagania.length > 0 ? (
-                  <span
-                    className="mvd-oze-pulpit-poz-plakietki"
-                    aria-label={PULPIT_STRINGS.listaWymagania}
-                    data-testid={`mvd-oze-pulpit-poz-wymagania-${poz.derRef}`}
-                  >
-                    {poz.ocena.wymagania.map((rekord, indeks) => (
-                      <span key={`${rekord.wymaganie_id}-${indeks}`} title={rekord.nazwa_pl}>
-                        <EtykietaWerdyktu
-                          etykieta={rekord.etykieta}
-                          status={rekord.status_maszynowy}
-                        />
-                      </span>
-                    ))}
-                  </span>
-                ) : null}
               </button>
             ))}
           </nav>

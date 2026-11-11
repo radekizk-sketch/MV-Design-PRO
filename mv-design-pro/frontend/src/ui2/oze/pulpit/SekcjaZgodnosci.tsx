@@ -58,7 +58,6 @@ export function SekcjaZgodnosci({ pozycja, stanOceny }: SekcjaZgodnosciProps): J
             odrzucony={pozycja.odrzucony}
             testid={`mvd-oze-pulpit-zgodnosc-naglowek-${pozycja.derRef}`}
           />
-          <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.zgodnoscWymagania}</span>
           <ListaRekordowWymagan
             rekordy={pozycja.ocena?.wymagania ?? []}
             testid={`mvd-oze-pulpit-wymagania-${pozycja.derRef}`}

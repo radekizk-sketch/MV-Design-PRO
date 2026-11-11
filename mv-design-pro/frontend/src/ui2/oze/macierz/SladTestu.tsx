@@ -94,7 +94,7 @@ export function SladTestu({ kroki, wzoryLatex, jednostkiSladu }: SladTestuProps)
           {krok.substitution ? (
             <Pole
               etykieta={MACIERZ_STRINGS.sladPodstawienie}
-              dzieci={<code className="mvd-oze-num">{krok.substitution}</code>}
+              dzieci={<span className="mvd-oze-slad-wartosc">{krok.substitution}</span>}
             />
           ) : null}
           <Pole etykieta={MACIERZ_STRINGS.sladWynik} dzieci={<Wartosci dane={krok.result} />} />

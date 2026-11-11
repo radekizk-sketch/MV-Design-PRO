@@ -101,8 +101,9 @@ type StylKarty = CSSProperties & Record<'--mvd-werdykt-kolor', string>;
 // Nazwy PL osi dowodu i słowników pomocniczych (NIE statusu werdyktu)
 // ---------------------------------------------------------------------------
 
-/** Lustro `backend/src/werdykt/wyjasnienie.py::NAZWA_METODY_PL` — te same słowa co dokument. */
-const NAZWA_METODY_PL: Readonly<Record<MetodaDowodu, string>> = {
+/** Lustro `backend/src/werdykt/wyjasnienie.py::NAZWA_METODY_PL` — te same słowa co dokument.
+ *  Eksportowana dla znacznika źródła dowodu w tabelach rekordów (jeden słownik metody). */
+export const NAZWA_METODY_PL: Readonly<Record<MetodaDowodu, string>> = {
   CERTYFIKAT: 'certyfikat urządzenia',
   RAPORT_Z_TESTU: 'raport z testu',
   SYMULACJA: 'symulacja',

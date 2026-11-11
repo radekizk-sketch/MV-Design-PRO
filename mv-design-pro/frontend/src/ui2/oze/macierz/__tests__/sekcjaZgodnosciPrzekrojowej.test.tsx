@@ -25,6 +25,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** Wiersze tabeli rekordów: stosowane — każdy rekord swoim wierszem; niestosowane — jeden wiersz zbiorczy. */
+function sprawdzTabeleRekordow(lista: HTMLElement, rekordy: readonly { stosowalnosc: { dotyczy: boolean } }[]): void {
+  const stosowane = rekordy.filter((r) => r.stosowalnosc.dotyczy).length;
+  expect(lista.querySelectorAll('tr[data-status]')).toHaveLength(stosowane);
+  expect(lista.querySelectorAll('[data-testid$="-nie-dotyczy"]')).toHaveLength(stosowane < rekordy.length ? 1 : 0);
+}
+
 describe('stany zerowe — bez zapytania, gdy brak podstawy', () => {
   it.each([
     ['brak przypadku', null, 'enea', 'mvd-oze-zgodnosc-przekrojowa-brak-przypadku'],
@@ -69,7 +76,7 @@ describe('dane — moduły modelu z dowodem albo jawnym brakiem i rekordami W', 
         modul.dowod_certyfikatu ? 'dowod' : 'brak',
       );
       const lista = screen.getByTestId(`mvd-oze-zgodnosc-przekrojowa-wymagania-${modul.der_ref}`);
-      expect(within(lista).getAllByRole('listitem')).toHaveLength(bieg.ocena_wymagan[indeks].wymagania.length);
+      sprawdzTabeleRekordow(lista, bieg.ocena_wymagan[indeks].wymagania);
     }
     expect(screen.queryByText(/zgodnych|niezgodnych/)).toBeNull();
   });

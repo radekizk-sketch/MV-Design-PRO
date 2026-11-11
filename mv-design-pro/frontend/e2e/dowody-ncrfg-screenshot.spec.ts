@@ -226,7 +226,7 @@ test.describe('dowody-ncrfg:screenshot', () => {
       await expect(braki).toBeVisible({ timeout: 15000 });
       await expect(braki).toContainText(CERT_BRAKI.komunikat);
       await expect(page.getByTestId('mvd-oze-cert-widok')).toHaveCount(0);
-      const rekordy = page.getByTestId('mvd-oze-cert-braki-lista-rekordy').locator('li.mvd-ncrfg-wymaganie');
+      const rekordy = page.getByTestId('mvd-oze-cert-braki-lista-rekordy').locator('tr.mvd-ncrfg-wiersz');
       await expect(rekordy).toHaveCount(CERT_BRAKI.braki.length);
       const { der_ref: derRef, der_name: derName, rekord } = CERT_BRAKI.braki[0];
       const modul = page.getByTestId(`mvd-oze-cert-braki-lista-modul-${derRef}`);
@@ -300,7 +300,7 @@ test.describe('dowody-ncrfg:screenshot', () => {
       await expect(braki).toContainText(WNIOSEK_BRAKI.komunikat);
       await expect(page.getByTestId('mvd-wniosek-wynik')).toHaveCount(0);
       await expect(
-        page.getByTestId('mvd-wniosek-braki-lista-rekordy').locator('li.mvd-ncrfg-wymaganie'),
+        page.getByTestId('mvd-wniosek-braki-lista-rekordy').locator('tr.mvd-ncrfg-wiersz'),
       ).toHaveCount(WNIOSEK_BRAKI.braki_ncrfg.length);
 
       await zrzut(page, errs, `dowody_ncrfg_wniosek_braki_${theme}`);
@@ -388,7 +388,9 @@ test.describe('dowody-ncrfg:screenshot', () => {
       await page.getByTestId(`mvd-oze-pulpit-poz-${MODUL_PV}`).click();
       const sekcja = page.getByTestId('mvd-oze-pulpit-adekwatnosc');
       await expect(sekcja.getByTestId('mvd-oze-adekw-wynik')).toBeVisible({ timeout: 15000 });
-      const otworz = sekcja.locator('[data-testid^="mvd-oze-adekw-slad-otworz-"]').first();
+      // Szczegóły źródła PV (krok obliczeń z algebrą jednostek) — przycisk „Szczegóły" wiersza
+      // tabeli źródeł (standard warsztatu KD6: jeden przycisk na źródło).
+      const otworz = sekcja.getByTestId(`mvd-oze-adekw-slad-otworz-${MODUL_PV}`);
       await otworz.click();
       const kroki = sekcja.getByTestId('mvd-oze-slad-kroki').first();
       await expect(kroki).toContainText('Zgodność jednostek: różnica mocy biernych w megawarach');

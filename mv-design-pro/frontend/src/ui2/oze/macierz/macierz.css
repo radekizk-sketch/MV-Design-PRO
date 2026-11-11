@@ -1,7 +1,7 @@
 /*
  * Style okna „Macierz wymogów NC RfG per moduł" (karta P39). Kolory WYŁĄCZNIE
- * przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: font
- * mono + tabular-nums (spójne z ui2/wyniki/wzorzec/wzorzec.css).
+ * przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: krój
+ * bazowy + tabular-nums (kontrakt prezentacji §10 pkt 7).
  */
 
 .mvd-oze {
@@ -22,7 +22,9 @@
 }
 
 .mvd-oze-num {
-  font-family: var(--mvd-font-mono);
+  /* Kontrakt prezentacji §10 pkt 7 (karta PULPIT-OZE-KD6): cyfry tabelaryczne w kroju
+     bazowym — monospace zostaje wyłącznie dla zapisu technicznego (`code`). */
+  font-family: inherit;
   font-variant-numeric: tabular-nums;
 }
 
@@ -360,7 +362,7 @@
 .mvd-oze-slad-pole { margin-top: 6px; }
 .mvd-oze-slad-pole:first-child { margin-top: 0; }
 .mvd-oze-slad-tresc { margin-top: 2px; }
-.mvd-oze-slad-tresc code { background: var(--mvd-panel-2); padding: 2px 6px; border-radius: 4px; }
+.mvd-oze-slad-wartosc { font-variant-numeric: tabular-nums; }
 
 /* ---- certyfikat zgodności (podgląd + braki, karta P39c) ---- */
 .mvd-oze-cert {

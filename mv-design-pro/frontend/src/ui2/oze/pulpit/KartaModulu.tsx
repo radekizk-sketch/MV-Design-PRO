@@ -52,35 +52,32 @@ export function KartaModulu({
         aria-label={PULPIT_STRINGS.sekcjaDane}
       >
         <h4>{PULPIT_STRINGS.sekcjaDane}</h4>
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.daneRodzaj}</span>
-          <span>{dane.rodzaj}</span>
+        {/* Standard warsztatu KD6: dane modułu z modelu w jednej linii (etykieta · wartość). */}
+        <div className="mvd-ncrfg-linia" data-testid="mvd-oze-pulpit-dane-linia">
+          <span>
+            <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.daneRodzaj}: </span>
+            {dane.rodzaj}
+          </span>
+          <span>
+            <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.daneMoc}: </span>
+            <span className="mvd-oze-num">{formatMoc(dane.mocKw)}</span>
+          </span>
+          <span>
+            <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.daneNapiecie}: </span>
+            <span className="mvd-oze-num">{formatNapiecie(dane.napiecieKv)}</span>
+          </span>
+          <span>
+            <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.daneStrona}: </span>
+            {ETYKIETY_STRONY[dane.stronaPrzylaczenia]}
+          </span>
         </div>
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.daneMoc}</span>
-          <span className="mvd-oze-num">{formatMoc(dane.mocKw)}</span>
-        </div>
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.daneNapiecie}</span>
-          <span className="mvd-oze-num">{formatNapiecie(dane.napiecieKv)}</span>
-        </div>
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.daneStrona}</span>
-          <span>{ETYKIETY_STRONY[dane.stronaPrzylaczenia]}</span>
-        </div>
-        <div className="mvd-oze-panel-blok" data-testid="mvd-oze-pulpit-odnosniki">
-          <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.daneOdnosniki}</span>
-          {dane.odnosniki.length === 0 ? (
-            <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
-              {PULPIT_STRINGS.daneBrakOdnosnikow}
-            </p>
-          ) : (
-            <ul className="mvd-oze-lista">
-              {dane.odnosniki.map((o) => (
-                <li key={o.etykieta}>{o.etykieta}</li>
-              ))}
-            </ul>
-          )}
+        <div className="mvd-ncrfg-linia" data-testid="mvd-oze-pulpit-odnosniki">
+          <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.daneOdnosniki}:</span>
+          <span>
+            {dane.odnosniki.length === 0
+              ? PULPIT_STRINGS.daneBrakOdnosnikow
+              : dane.odnosniki.map((o) => o.etykieta).join(' · ')}
+          </span>
           {/* Karta #145: identyfikatory pozycji katalogowych wyłącznie w „Informacjach
               audytowych" (tryb ekspercki, zwinięte) — pierwszy plan nazywa rodzaj odnośnika. */}
           <InformacjeAudytowe

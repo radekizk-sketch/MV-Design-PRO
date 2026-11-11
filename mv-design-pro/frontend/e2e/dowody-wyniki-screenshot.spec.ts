@@ -111,7 +111,7 @@ const MIGOTANIE_SCENA_WYNIK = JSON.parse(
   buses: {
     bus_ref: string;
     modules: { gen_ref: string }[];
-    white_box: { substitution_pl: string }[];
+    white_box: { substitution_pl: string; substitution_latex: string }[];
   }[];
 };
 const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_ref;
@@ -129,7 +129,8 @@ const SILA_SIECI_WSCR_PL = SILA_SIECI_SCENA_WYNIK.summary.wscr.toLocaleString('p
 const SILA_SIECI_LICZNIK_WSCR =
   SILA_SIECI_SCENA_WYNIK.summary.wscr_white_box[0].substitution_pl.split(';')[0];
 const SILA_SIECI_PODSTAWIENIE_SCR = SILA_SIECI_SCENA_WYNIK.entries[0].white_box[0].substitution_pl;
-const MIGOTANIE_PODSTAWIENIE_PST = MIGOTANIE_SCENA_WYNIK.buses[0].white_box[0].substitution_pl;
+const MIGOTANIE_PODSTAWIENIE_PST_LATEX: string =
+  MIGOTANIE_SCENA_WYNIK.buses[0].white_box[0].substitution_latex;
 const ARCFLASH_SCENA_WYNIK = JSON.parse(
   fs.readFileSync(
     path.resolve(_dirname, '../src/harness-fixtures/generated/arcflash_scena_wynik.json'),
@@ -358,7 +359,10 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await page.getByTestId('mvd-ssci-audyt-przelacz').click();
     await expect(page.getByTestId('mvd-ssci-metryki')).toBeVisible();
     await page.getByTestId('mvd-ssci-slad-otworz').click();
-    await expect(page.getByTestId('mvd-ssci-slad')).toContainText('max|L|');
+    // Karta ZU pkt 4: podstawienie śladu renderuje się wzorem KaTeX z `substitution_latex`
+    // (dawny tekst ASCII „max|L|" zniknął z ekranu — intencja: krok max|L| jest w śladzie).
+    const sladSsci = page.getByTestId('mvd-ssci-slad');
+    await expect(sladSsci.locator('[data-testid="math-rendered"][data-latex*="\\max"]').first()).toBeVisible();
     // Wzmocnienie pętli mniejszej CYTOWANE z werdyktu backendu (format śladu:
     // liczba z kropką dziesiętną, jak w podstawieniu solvera).
     await expect(page.getByTestId('mvd-ssci-slad')).toContainText(
@@ -393,7 +397,11 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     const wzor = slad.locator('[data-testid="math-rendered"]').first();
     await expect(wzor).toBeVisible();
     expect(await wzor.getAttribute('data-latex')).toContain('P_{st');
-    await expect(slad).toContainText(MIGOTANIE_PODSTAWIENIE_PST);
+    // Karta ZU pkt 4: podstawienie wzorem KaTeX z `substitution_latex`, proza tylko bez wzoru.
+    const wzorySladu = await slad
+      .locator('[data-testid="math-rendered"]')
+      .evaluateAll((el) => el.map((e) => e.getAttribute('data-latex')));
+    expect(wzorySladu).toContain(MIGOTANIE_PODSTAWIENIE_PST_LATEX);
   } else {
     // arcflash: parametry projektowe → „Przelicz" (POST) → wiersz szyny →
     // otwarty ślad IEEE 1584-2018 (I_arc, CF, E, AFB, ŚOI) w KaTeX.

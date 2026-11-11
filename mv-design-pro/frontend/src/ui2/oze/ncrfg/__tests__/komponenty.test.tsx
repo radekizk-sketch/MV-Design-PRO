@@ -4,7 +4,8 @@
  * - nagłówek modułu: klasyfikacja/technologia/źródło danych/dowód albo jawny brak/procedura
  *   z pól backendu (procedura to obiekt `DokumentWarstwy` — nigdy `[object Object]`);
  * - dowód certyfikatu: iloczyn (dowód × odrzucenie × brak) × (model × formularz);
- * - lista rekordów wymagań: plakietka = etykieta z rekordu, karta po natywnym kliknięciu;
+ * - tabela rekordów wymagań: stan = etykieta z rekordu, szczegóły po natywnym kliknięciu
+ *   (iloczyn stan × źródło dowodu × motyw — `tabelaWymagan.test.tsx`);
  * - sekcja modułu dokumentu i ekran braków 422.
  */
 
@@ -44,11 +45,25 @@ describe('NaglowekModuluNcRfg', () => {
     const naglowek = screen.getByTestId('n');
     expect(naglowek).not.toHaveTextContent('[object Object]');
     expect(screen.getByTestId('n-klasyfikacja')).toHaveAttribute('data-modul', modul.klasyfikacja.modul ?? '');
-    expect(screen.getByTestId('n-klasyfikacja')).toHaveTextContent(modul.klasyfikacja.powod_pl);
     expect(screen.getByTestId('n-procedura')).toHaveTextContent(modul.wersja_procedury.tytul);
     expect(screen.getByTestId('n-zrodlo')).toHaveTextContent('dane formularza');
     expect(screen.getByTestId('n-dowod')).toHaveAttribute('data-stan', 'brak');
     expect(screen.getByTestId('n-dowod')).toHaveTextContent('wyprowadza wyłącznie serwer');
+  });
+
+  it('standard KD6: powód klasyfikacji z progami i pełny zapis dowodu wyłącznie po rozwinięciu', async () => {
+    const pv = ZGODNOSC.bieg!.modules.find((m) => m.dowod_certyfikatu !== null)!;
+    const uzytkownik = userEvent.setup();
+    render(<NaglowekModuluNcRfg modul={pv} testid="n" />);
+    // Pierwszy plan: typ, moc, napięcie (liczby z pól backendu), bez akapitu powodu klasyfikacji.
+    expect(screen.getByTestId('n')).not.toHaveTextContent(pv.klasyfikacja.powod_pl);
+    expect(screen.getByTestId('n')).not.toHaveTextContent(pv.dowod_certyfikatu!.podstawa.dokument);
+    expect(screen.queryByTestId('n-szczegoly')).toBeNull();
+    const przelacz = screen.getByTestId('n-szczegoly-przelacz');
+    await uzytkownik.click(przelacz);
+    expect(przelacz).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('n-szczegoly-klasyfikacja')).toHaveTextContent(pv.klasyfikacja.powod_pl);
+    expect(screen.getByTestId('n-szczegoly-dowod')).toHaveTextContent(pv.dowod_certyfikatu!.podstawa.dokument);
   });
 
   it('zatwierdzony model: dowód certyfikatu z rekordu wykazu (numer dokumentu, WiPWC)', () => {
@@ -96,8 +111,8 @@ it('dowód certyfikatu: identyfikator rekordu wykazu wyłącznie w informacjach 
 });
 
 describe('ListaRekordowWymagan', () => {
-  it('plakietka niesie etykietę i status Z REKORDU; karta rozwija się natywnym kliknięciem', async () => {
-    const rekordy = BIEG.ocena_wymagan[1].wymagania;
+  it('stan niesie etykietę i status Z REKORDU; szczegóły rozwijają się natywnym kliknięciem', async () => {
+    const rekordy = BIEG.ocena_wymagan[1].wymagania.filter((r) => r.stosowalnosc.dotyczy);
     const uzytkownik = userEvent.setup();
     render(<ListaRekordowWymagan rekordy={rekordy} testid="w" />);
     const pierwszy = rekordy[0];
@@ -107,16 +122,21 @@ describe('ListaRekordowWymagan', () => {
     expect(plakietka).toHaveAttribute('data-status', pierwszy.status_maszynowy);
     expect(plakietka).toHaveAttribute('data-semantyka', pierwszy.etykieta.semantyka);
     expect(screen.queryByTestId(`w-${pierwszy.wymaganie_id}-karta`)).toBeNull();
+    // Zdanie wyjaśnienia nie stoi na pierwszym planie (standard KD6) — jest w szczegółach.
+    expect(screen.getByTestId('w')).not.toHaveTextContent(pierwszy.wyjasnienie.zdanie_pl);
     const przelacz = within(wiersz).getByTestId(`w-${pierwszy.wymaganie_id}-przelacz`);
     await uzytkownik.click(przelacz);
     expect(przelacz).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId(`w-${pierwszy.wymaganie_id}-karta`)).toBeInTheDocument();
+    expect(screen.getByTestId(`w-${pierwszy.wymaganie_id}-zdanie`)).toHaveTextContent(
+      pierwszy.wyjasnienie.zdanie_pl,
+    );
     await uzytkownik.click(przelacz);
     expect(screen.queryByTestId(`w-${pierwszy.wymaganie_id}-karta`)).toBeNull();
   });
 
   it('ten sam wymaganie_id z kilku modułów (lista braków) → jednoznaczne identyfikatory wierszy', () => {
-    const rekordy = BIEG.ocena_wymagan[1].wymagania;
+    const rekordy = BIEG.ocena_wymagan[1].wymagania.filter((r) => r.stosowalnosc.dotyczy);
     const pierwszy = rekordy[0];
     render(<ListaRekordowWymagan rekordy={[pierwszy, pierwszy, pierwszy]} testid="w" />);
     expect(screen.getAllByTestId(`w-${pierwszy.wymaganie_id}`)).toHaveLength(1);
@@ -139,6 +159,10 @@ describe('SekcjaModuluDokumentu (widok certyfikatu policzony backendem)', () => 
     for (const wiersz of sekcja.wiersze) expect(wiersze).toHaveTextContent(wiersz.etykieta_pl);
     expect(screen.getByTestId('s-dowod')).toHaveAttribute('data-stan', sekcja.dowod_certyfikatu ? 'dowod' : 'brak');
     const pierwszy = sekcja.wymagania[0];
+    // Wymaganie niestosowane do modułu stoi w zwiniętym wierszu zbiorczym „Nie dotyczy".
+    if (!pierwszy.rekord.stosowalnosc.dotyczy) {
+      await uzytkownik.click(screen.getByTestId('s-wymagania-nie-dotyczy-przelacz'));
+    }
     await uzytkownik.click(screen.getByTestId(`s-wymagania-${pierwszy.rekord.wymaganie_id}-przelacz`));
     await uzytkownik.click(screen.getByTestId(`s-wymagania-${pierwszy.rekord.wymaganie_id}-zapis-przelacz`));
     const blok = screen.getByTestId(`s-wymagania-${pierwszy.rekord.wymaganie_id}-zapis`);
@@ -157,7 +181,8 @@ describe('SekcjaModuluDokumentu (widok certyfikatu policzony backendem)', () => 
 });
 
 describe('BrakiDokumentu (422 certyfikatu policzone backendem)', () => {
-  it('komunikat, rekordy W pogrupowane po module ze zdaniami backendu, bez liczników', () => {
+  it('komunikat, rekordy W pogrupowane po module ze zdaniami backendu (w szczegółach), bez liczników', async () => {
+    const uzytkownik = userEvent.setup();
     render(
       <BrakiDokumentu
         komunikat={BRAKI.komunikat}
@@ -171,16 +196,22 @@ describe('BrakiDokumentu (422 certyfikatu policzone backendem)', () => {
     expect(BRAKI.braki.length).toBeGreaterThan(0);
     // Każdy brak należy do NAZWANEGO modułu (`der_ref`/`der_name` z odpowiedzi 422) — ten
     // sam wymóg dwóch modułów nie zlewa się w jeden wiersz bez wskazania, którego dotyczy.
-    BRAKI.braki.forEach((brak, indeks) => {
+    for (const [indeks, brak] of BRAKI.braki.entries()) {
       const modul = screen.getByTestId(`b-modul-${brak.der_ref}`);
       expect(modul).toHaveTextContent(brak.der_name ?? brak.der_ref);
       const lista = within(modul).getByTestId(`b-rekordy-${brak.der_ref}`);
-      expect(
-        within(lista).getAllByTestId(`b-rekordy-${brak.der_ref}-${brak.rekord.wymaganie_id}-etykieta`)[0],
-      ).toHaveTextContent(brak.rekord.etykieta.etykieta_pl);
-      expect(lista).toHaveTextContent(BRAKI.braki_pl[indeks].zdanie_pl);
+      const idWiersza = `b-rekordy-${brak.der_ref}-${brak.rekord.wymaganie_id}`;
+      expect(within(lista).getAllByTestId(`${idWiersza}-etykieta`)[0]).toHaveTextContent(
+        brak.rekord.etykieta.etykieta_pl,
+      );
+      // Zdanie braku (`braki_pl` tego samego indeksu) — w szczegółach wiersza, jednym kliknięciem.
+      await uzytkownik.click(within(lista).getAllByTestId(`${idWiersza}-przelacz`)[0]);
+      expect(within(lista).getAllByTestId(`${idWiersza}-zdanie`)[0]).toHaveTextContent(
+        BRAKI.braki_pl[indeks].zdanie_pl,
+      );
       expect(BRAKI.braki_pl[indeks].der_ref).toBe(brak.der_ref);
-    });
+    }
     expect(screen.queryByTestId('b-tekstowe')).toBeNull();
-  });
+    // Budżet: jedno natywne kliknięcie na każdy brak (kilkanaście rekordów) w jsdom.
+  }, 30000);
 });

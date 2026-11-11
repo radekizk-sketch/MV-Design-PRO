@@ -4,10 +4,15 @@
  * pasma napięciowego, werdykt PL i proweniencja — z zakończonego przebiegu
  * rozpływu mocy (`GET /api/oze-analysis/reactive-adequacy?run_id=`). Zero fizyki;
  * werdykty pochodzą wyłącznie z backendu. Brak przebiegu → jawna instrukcja.
+ *
+ * Standard warsztatu KD6 (karta PULPIT-OZE-KD6): werdykt, rezerwa systemowa, bilans i
+ * proweniencja w JEDNEJ linii; źródła jako zwarta tabela (jedno źródło = jeden wiersz,
+ * jednostka [Mvar] w nagłówkach); uzasadnienia backendu i kroki obliczeń ze wzorami — po
+ * rozwinięciu („Szczegóły" na źródło i na ocenę), w kroju bazowym.
  */
 
 import { TekstZWzorami } from '../../kreatory/rama';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
@@ -16,13 +21,12 @@ import { busRefModuluQ } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   BRAKI_DANYCH_Q,
-  formatMvar,
-  formatPu,
   klasaWerdyktuQ,
   PULPIT_STRINGS,
   WERDYKTY_ADEKWATNOSCI_Q,
 } from './strings';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { formatLiczba } from '../macierz/strings';
 
 export interface SekcjaAdekwatnosciQProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
@@ -31,79 +35,107 @@ export interface SekcjaAdekwatnosciQProps {
   readonly wyroznionyModul?: string | null;
 }
 
-function WpisZrodla({
+const LICZBA_KOLUMN_Q = 7;
+
+/** Liczba Mvar bez jednostki (jednostka w nagłówku kolumny) — formater pulpitu, 3 miejsca. */
+function mvar(wartosc: number | null): string {
+  return wartosc === null || !Number.isFinite(wartosc) ? '—' : formatLiczba(wartosc, 3);
+}
+
+/**
+ * Rezerwa Mvar z wyróżnieniem, gdy wymaga uwagi (§10 pkt 8): wartość ujemna (źródło poza
+ * zakresem regulacji) albo brak wartości przy kompletnych danych nie występuje — brak wartości
+ * wynika z braków danych nazwanych w stanie. Znak pochodzi z backendu, UI niczego nie liczy.
+ */
+function KomorkaRezerwy({ wartosc, testid }: { readonly wartosc: number | null; readonly testid: string }) {
+  return (
+    <td
+      className="mvd-ncrfg-num"
+      data-uwaga={wartosc !== null && wartosc < 0 ? 'ujemny' : undefined}
+      data-testid={testid}
+    >
+      {mvar(wartosc)}
+    </td>
+  );
+}
+
+/**
+ * Wiersz źródła w tabeli adekwatności Q: nazwa źródła i węzeł (z modelu), Q bieżące, zakres
+ * regulacji, rezerwy w górę i w dół [Mvar] oraz stan regulacji (przy granicy / w zakresie,
+ * braki danych). Uzasadnienie backendu, braki danych słowami i kroki obliczeń ze wzorami
+ * (KaTeX, krój bazowy) — jednym przyciskiem „Szczegóły" na źródło.
+ */
+function WierszZrodla({
   wpis,
   wyrozniony,
 }: {
   readonly wpis: WpisZrodlaQ;
   readonly wyrozniony: boolean;
 }): JSX.Element {
-  const [sladWidoczny, setSladWidoczny] = useState(false);
+  const [otwarty, setOtwarty] = useState(false);
+  const idSzczegolow = useId();
   // Karta #145: źródło i węzeł nazwane z modelu, nigdy referencją.
   const nazwaObiektu = useNazwaObiektu();
+  const brakDanych = wpis.missing_data.length > 0;
   return (
-    <li
-      className={`mvd-oze-slad-krok${wyrozniony ? ' mvd-oze-wyrozniony' : ''}`}
-      data-testid={`mvd-oze-adekw-zrodlo-${wpis.ref}`}
-      data-wyrozniony={wyrozniony ? 'true' : undefined}
-    >
-      <div className="mvd-oze-metryka">
-        <span>{nazwaObiektu(wpis.ref)}</span>
-        <span
-          className={`mvd-oze-komorka ${
-            wpis.is_saturated ? 'mvd-oze-werdykt-warn' : 'mvd-oze-werdykt-ok'
-          }`}
-          data-testid={`mvd-oze-adekw-nasycenie-${wpis.ref}`}
-        >
-          {wpis.is_saturated ? PULPIT_STRINGS.adekwPrzyGranicy : PULPIT_STRINGS.adekwNienasycone}
-        </span>
-      </div>
-      {wpis.bus_ref ? (
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.adekwWezel}</span>
-          <span>{nazwaObiektu(wpis.bus_ref)}</span>
-        </div>
-      ) : null}
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.adekwQAktualne}</span>
-        <span className="mvd-oze-num">{formatMvar(wpis.q_actual_mvar)}</span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.adekwQZakres}</span>
-        <span className="mvd-oze-num">
-          {formatMvar(wpis.q_min_mvar)} … {formatMvar(wpis.q_max_mvar)}
-        </span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.adekwRezerwaGora}</span>
-        <span className="mvd-oze-num">{formatMvar(wpis.headroom_up_mvar)}</span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.adekwRezerwaDol}</span>
-        <span className="mvd-oze-num">{formatMvar(wpis.headroom_down_mvar)}</span>
-      </div>
-      <p style={{ margin: '4px 0 0' }}>{wpis.why_pl}</p>
-      {wpis.missing_data.length > 0 ? (
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.adekwBrakDanych}</span>
-          <span><TekstZWzorami tekst={wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')} /></span>
-        </div>
-      ) : null}
-      {wpis.white_box.length > 0 ? (
-        <div style={{ marginTop: 6 }}>
+    <>
+      <tr
+        className={wyrozniony ? 'mvd-oze-wyrozniony' : undefined}
+        data-testid={`mvd-oze-adekw-zrodlo-${wpis.ref}`}
+        data-wyrozniony={wyrozniony ? 'true' : undefined}
+      >
+        <th scope="row" className="mvd-ncrfg-kol-nazwa">
+          <span className="mvd-ncrfg-wymaganie-nazwa">{nazwaObiektu(wpis.ref)}</span>
+          {wpis.bus_ref ? (
+            <span className="mvd-ncrfg-artykul">{nazwaObiektu(wpis.bus_ref)}</span>
+          ) : null}
+        </th>
+        <td className="mvd-ncrfg-num">{mvar(wpis.q_actual_mvar)}</td>
+        <td className="mvd-ncrfg-num">
+          {mvar(wpis.q_min_mvar)} … {mvar(wpis.q_max_mvar)}
+        </td>
+        <KomorkaRezerwy wartosc={wpis.headroom_up_mvar} testid={`mvd-oze-adekw-gora-${wpis.ref}`} />
+        <KomorkaRezerwy wartosc={wpis.headroom_down_mvar} testid={`mvd-oze-adekw-dol-${wpis.ref}`} />
+        <td>
+          <span
+            data-uwaga={wpis.is_saturated || brakDanych ? 'brak' : undefined}
+            data-testid={`mvd-oze-adekw-nasycenie-${wpis.ref}`}
+          >
+            {brakDanych
+              ? PULPIT_STRINGS.adekwBrakDanych
+              : wpis.is_saturated
+                ? PULPIT_STRINGS.adekwPrzyGranicy
+                : PULPIT_STRINGS.adekwNienasycone}
+          </span>
+        </td>
+        <td className="mvd-ncrfg-kol-akcja">
           <button
             type="button"
-            className="mvd-oze-slad-btn"
-            aria-expanded={sladWidoczny}
-            onClick={() => setSladWidoczny((s) => !s)}
+            className="mvd-ncrfg-przelacz"
+            aria-expanded={otwarty}
+            aria-controls={idSzczegolow}
+            onClick={() => setOtwarty((o) => !o)}
             data-testid={`mvd-oze-adekw-slad-otworz-${wpis.ref}`}
           >
-            {sladWidoczny ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
+            {otwarty ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
           </button>
-          {sladWidoczny ? <SladAnalizy kroki={wpis.white_box} /> : null}
-        </div>
+        </td>
+      </tr>
+      {otwarty ? (
+        <tr className="mvd-ncrfg-wiersz-szczegolow">
+          <td colSpan={LICZBA_KOLUMN_Q} id={idSzczegolow} data-testid={`mvd-oze-adekw-szczegoly-${wpis.ref}`}>
+            <p className="mvd-ncrfg-zdanie">{wpis.why_pl}</p>
+            {brakDanych ? (
+              <p className="mvd-ncrfg-zdanie">
+                <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.adekwBrakDanych}: </span>
+                <TekstZWzorami tekst={wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')} />
+              </p>
+            ) : null}
+            {wpis.white_box.length > 0 ? <SladAnalizy kroki={wpis.white_box} /> : null}
+          </td>
+        </tr>
       ) : null}
-    </li>
+    </>
   );
 }
 
@@ -115,6 +147,7 @@ export function SekcjaAdekwatnosciQ({
   const runId = useAktywnyRunId('rozplyw');
   const stan = useAnaliza(runId, pobierzAdekwatnoscQ);
   const nazwaObiektu = useNazwaObiektu();
+  const [uzasadnienie, setUzasadnienie] = useState(false);
 
   const wyroznionyWezel =
     stan.rodzaj === 'gotowe' && wyroznionyModul
@@ -145,105 +178,141 @@ export function SekcjaAdekwatnosciQ({
           {PULPIT_STRINGS.adekwBlad}: {stan.komunikat}
         </div>
       ) : (
-        <div data-testid="mvd-oze-adekw-wynik">
-          <div className="mvd-oze-podsum" data-testid="mvd-oze-adekw-podsum">
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.adekwWerdyktEt}</span>
-              <span
-                className={`mvd-oze-komorka ${klasaWerdyktuQ(
-                  stan.dane.is_adequate,
-                  stan.dane.verdict,
-                )}`}
-                data-testid="mvd-oze-adekw-werdykt"
-              >
-                {WERDYKTY_ADEKWATNOSCI_Q[stan.dane.verdict]}
+        <div data-testid="mvd-oze-adekw-wynik" className="mvd-ncrfg-wymagania">
+          {/* Jedna linia: werdykt (zdanie backendu w szczegółach), rezerwa systemowa, bilans
+              i proweniencja granic — standard warsztatu KD6. */}
+          <div className="mvd-ncrfg-linia" data-testid="mvd-oze-adekw-podsum">
+            <span
+              className={`mvd-oze-komorka ${klasaWerdyktuQ(stan.dane.is_adequate, stan.dane.verdict)}`}
+              data-testid="mvd-oze-adekw-werdykt"
+            >
+              {WERDYKTY_ADEKWATNOSCI_Q[stan.dane.verdict]}
+            </span>
+            <span>
+              <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.adekwRezerwaSystem}: </span>
+              <span className="mvd-ncrfg-num">
+                {mvar(stan.dane.summary.network_headroom_up_mvar)} /{' '}
+                {mvar(stan.dane.summary.network_headroom_down_mvar)} Mvar
               </span>
-            </div>
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.adekwRezerwaSystem}</span>
-              <span className="mvd-oze-podsum-wart mvd-oze-num">
-                {formatMvar(stan.dane.summary.network_headroom_up_mvar)} /{' '}
-                {formatMvar(stan.dane.summary.network_headroom_down_mvar)}
-              </span>
-            </div>
-          </div>
-
-          <p style={{ margin: '4px 0 0' }}>{stan.dane.why_pl}</p>
-
-          {stan.dane.provenance ? (
-            <div className="mvd-oze-metryka" data-testid="mvd-oze-adekw-proweniencja">
-              <span>{PULPIT_STRINGS.adekwProweniencja}</span>
-              <span className="mvd-oze-num">
+            </span>
+            <span data-testid="mvd-oze-adekw-bilans">
+              <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.adekwBilans}: </span>
+              <span className="mvd-ncrfg-num">{mvar(stan.dane.balance.net_source_q_mvar)} Mvar</span>
+            </span>
+            {stan.dane.provenance ? (
+              <span data-testid="mvd-oze-adekw-proweniencja">
+                <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.adekwProweniencja}: </span>
                 {stan.dane.provenance.worst_quality_label_pl}
               </span>
+            ) : null}
+            <button
+              type="button"
+              className="mvd-ncrfg-przelacz"
+              aria-expanded={uzasadnienie}
+              onClick={() => setUzasadnienie((u) => !u)}
+              data-testid="mvd-oze-adekw-uzasadnienie-przelacz"
+            >
+              {uzasadnienie ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
+            </button>
+          </div>
+          {uzasadnienie ? (
+            <div className="mvd-ncrfg-wiersz-szczegolow" data-testid="mvd-oze-adekw-uzasadnienie">
+              <p className="mvd-ncrfg-zdanie">{stan.dane.why_pl}</p>
+              {stan.dane.balance.white_box.length > 0 ? (
+                <SladAnalizy kroki={stan.dane.balance.white_box} />
+              ) : null}
             </div>
           ) : null}
 
-          <div className="mvd-oze-panel-blok">
-            <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.adekwZrodla}</span>
-            {wyroznionyModul && wyroznionyWezel ? (
-              <p
-                className="mvd-oze-wyroznienie-wezel"
-                data-testid="mvd-oze-adekw-wyroznienie-wezel"
-              >
-                {PULPIT_STRINGS.adekwWyroznionyWezel}: {wyroznionyWezel}
-              </p>
-            ) : null}
-            {wyroznionyModul && !wyroznionyWezel ? (
-              <p
-                className="mvd-oze-wyroznienie-brak"
-                data-testid="mvd-oze-adekw-wyroznienie-brak"
-              >
-                {PULPIT_STRINGS.adekwWyroznienieBrak}
-              </p>
-            ) : null}
-            {stan.dane.sources.length === 0 ? (
-              <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
-                {PULPIT_STRINGS.adekwBrakZrodel}
-              </p>
-            ) : (
-              <ul className="mvd-oze-analiza-lista" data-testid="mvd-oze-adekw-zrodla">
+          {wyroznionyModul && wyroznionyWezel ? (
+            <p className="mvd-oze-wyroznienie-wezel" data-testid="mvd-oze-adekw-wyroznienie-wezel">
+              {PULPIT_STRINGS.adekwWyroznionyWezel}: {nazwaObiektu(wyroznionyWezel)}
+            </p>
+          ) : null}
+          {wyroznionyModul && !wyroznionyWezel ? (
+            <p className="mvd-oze-wyroznienie-brak" data-testid="mvd-oze-adekw-wyroznienie-brak">
+              {PULPIT_STRINGS.adekwWyroznienieBrak}
+            </p>
+          ) : null}
+          {stan.dane.sources.length === 0 ? (
+            <p style={{ margin: 0 }} className="mvd-oze-panel-etyk">
+              {PULPIT_STRINGS.adekwBrakZrodel}
+            </p>
+          ) : (
+            <table className="mvd-ncrfg-tabela" aria-label={PULPIT_STRINGS.adekwZrodla}>
+              <thead>
+                <tr>
+                  <th scope="col">{PULPIT_STRINGS.adekwKolZrodlo}</th>
+                  <th scope="col">
+                    <TekstZWzorami tekst={PULPIT_STRINGS.adekwKolQ} />
+                  </th>
+                  <th scope="col">
+                    <TekstZWzorami tekst={PULPIT_STRINGS.adekwKolZakres} />
+                  </th>
+                  <th scope="col">{PULPIT_STRINGS.adekwKolGora}</th>
+                  <th scope="col">{PULPIT_STRINGS.adekwKolDol}</th>
+                  <th scope="col">{PULPIT_STRINGS.adekwKolStan}</th>
+                  <th scope="col">
+                    <span className="mvd-sr-only">{PULPIT_STRINGS.sladPokaz}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody data-testid="mvd-oze-adekw-zrodla">
                 {stan.dane.sources.map((wpis) => (
-                  <WpisZrodla
+                  <WierszZrodla
                     key={wpis.ref}
                     wpis={wpis}
                     wyrozniony={wyroznionyWezel !== null && wpis.bus_ref === wyroznionyWezel}
                   />
                 ))}
-              </ul>
-            )}
-          </div>
+              </tbody>
+            </table>
+          )}
 
-          <div className="mvd-oze-panel-blok" data-testid="mvd-oze-adekw-naruszenia-blok">
-            <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.adekwNaruszenia}</span>
-            {stan.dane.voltage_violations.length === 0 ? (
-              <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
-                {PULPIT_STRINGS.adekwBrakNaruszen}
-              </p>
-            ) : (
-              <ul className="mvd-oze-lista" data-testid="mvd-oze-adekw-naruszenia">
+          {stan.dane.voltage_violations.length === 0 ? (
+            <p
+              style={{ margin: 0 }}
+              className="mvd-oze-panel-etyk"
+              data-testid="mvd-oze-adekw-naruszenia-blok"
+            >
+              {PULPIT_STRINGS.adekwBrakNaruszen}
+            </p>
+          ) : (
+            <table
+              className="mvd-ncrfg-tabela"
+              aria-label={PULPIT_STRINGS.adekwNaruszenia}
+              data-testid="mvd-oze-adekw-naruszenia-blok"
+            >
+              <thead>
+                <tr>
+                  <th scope="col">{PULPIT_STRINGS.adekwNaruszenia}</th>
+                  <th scope="col">
+                    <TekstZWzorami tekst={PULPIT_STRINGS.adekwKolU} />
+                  </th>
+                  <th scope="col">{PULPIT_STRINGS.adekwKolUzasadnienie}</th>
+                </tr>
+              </thead>
+              <tbody data-testid="mvd-oze-adekw-naruszenia">
                 {stan.dane.voltage_violations.map((n) => (
-                  <li
+                  <tr
                     key={n.bus_ref}
                     className={wyroznionyWezel === n.bus_ref ? 'mvd-oze-wyrozniony' : undefined}
                     data-wyrozniony={wyroznionyWezel === n.bus_ref ? 'true' : undefined}
                     data-testid={`mvd-oze-adekw-naruszenie-${n.bus_ref}`}
                   >
-                    <div style={{ fontWeight: 600 }}>
-                      {nazwaObiektu(n.bus_ref)} · {n.kind_pl}
-                    </div>
-                    <div className="mvd-oze-metryka">
-                      <span>|V|</span>
-                      <span className="mvd-oze-num">{formatPu(n.v_pu)}</span>
-                    </div>
-                    <div className="mvd-oze-panel-etyk" style={{ marginTop: 2 }}>
-                      {n.why_pl}
-                    </div>
-                  </li>
+                    <th scope="row" className="mvd-ncrfg-kol-nazwa">
+                      <span className="mvd-ncrfg-wymaganie-nazwa">{nazwaObiektu(n.bus_ref)}</span>
+                      <span className="mvd-ncrfg-artykul">{n.kind_pl}</span>
+                    </th>
+                    <td className="mvd-ncrfg-num" data-uwaga="naruszenie">
+                      {formatLiczba(n.v_pu, 3)}
+                    </td>
+                    <td className="mvd-ncrfg-artykul">{n.why_pl}</td>
+                  </tr>
                 ))}
-              </ul>
-            )}
-          </div>
+              </tbody>
+            </table>
+          )}
 
           {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe

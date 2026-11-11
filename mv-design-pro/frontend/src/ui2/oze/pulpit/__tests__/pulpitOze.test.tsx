@@ -6,8 +6,9 @@
  * — ta sama trasa co certyfikat; dowód certyfikatu wyprowadza serwer z tabliczki modelu), przez
  * PRODUKCYJNY klient z atrapą wyłącznie na `fetch` (odpowiedź policzona backendem — fikstura
  * generowana). Pozycja modułu: typ modułu z klasyfikacji backendu, dowód certyfikatu (numer
- * dokumentu z wykazu), odrzucenie tabliczki albo jawny brak, plakietki rekordów wymagań; karta
- * modułu: nagłówek wyniku + rekordy W (plakietka + karta). Zero statusu modułu i liczników.
+ * dokumentu z wykazu), odrzucenie tabliczki albo jawny brak (bez plakietek rekordów — standard
+ * warsztatu KD6); karta modułu: nagłówek wyniku + tabela rekordów W (wiersz + szczegóły na
+ * żądanie). Zero statusu modułu i liczników.
  * Interakcje natywne (`userEvent`).
  */
 
@@ -74,9 +75,9 @@ afterEach(() => {
   useExecutionRunsStore.getState().reset();
 });
 
-/** Odczekaj wczytanie oceny modelu (plakietki rekordów PV są jej widocznym skutkiem). */
+/** Odczekaj wczytanie oceny modelu (dowód certyfikatu PV na liście jest jej widocznym skutkiem). */
 async function ocenaWczytana(): Promise<void> {
-  await screen.findByTestId(`mvd-oze-pulpit-poz-wymagania-${PV.id}`);
+  await screen.findByTestId(`mvd-oze-pulpit-poz-dowod-${PV.id}`);
 }
 
 describe('źródło oceny — zatwierdzony model przypadku', () => {
@@ -113,7 +114,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
     expect(screen.getByTestId('mvd-oze-pulpit-zrodlo-oceny')).toHaveTextContent(PULPIT_STRINGS.zrodloOceny);
   });
 
-  it('pozycja = typ z klasyfikacji, dowód certyfikatu z wykazu (numer dokumentu) albo jawny brak, plakietki W', async () => {
+  it('pozycja = typ z klasyfikacji, dowód certyfikatu z wykazu (numer dokumentu) albo jawny brak, bez plakietek W', async () => {
     trasy();
     render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
     await ocenaWczytana();
@@ -133,10 +134,11 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
         expect(dowod).toHaveAttribute('data-stan', 'brak');
         expect(dowod).toHaveTextContent(PULPIT_STRINGS.listaBrakDowodu);
       }
-      const plakietki = screen.getByTestId(`mvd-oze-pulpit-poz-wymagania-${modul.der_ref}`);
-      const rekordy = bieg.ocena_wymagan[indeks].wymagania;
-      expect(plakietki.querySelectorAll('[data-semantyka]')).toHaveLength(rekordy.length);
-      expect(plakietki.querySelector('[data-semantyka]')).toHaveTextContent(rekordy[0].etykieta.etykieta_pl);
+      // Standard warsztatu KD6: lista modułów nie powtarza plakietek rekordów wymagań — rekordy
+      // są jedną tabelą karty modułu (stan każdego wymagania raz, w kolumnie „Stan").
+      expect(bieg.ocena_wymagan[indeks].wymagania.length).toBeGreaterThan(0);
+      const pozycja = screen.getByTestId(`mvd-oze-pulpit-poz-${modul.der_ref}`);
+      expect(pozycja.querySelectorAll('[data-semantyka]')).toHaveLength(0);
     }
     expect(screen.queryByText(/zgodny|niezgodny|\d+ \/ \d+/)).toBeNull();
   });
@@ -198,7 +200,7 @@ describe('źródło oceny — zatwierdzony model przypadku', () => {
     trasy(() => odpowiedzJson(200, ocena));
     const uzytkownik = userEvent.setup();
     render(<PulpitOze szczegolyAudytowe={false} onNawiguj={noop} />);
-    await screen.findByTestId(`mvd-oze-pulpit-poz-wymagania-${BESS.id}`);
+    await screen.findByTestId(`mvd-oze-pulpit-poz-dowod-${BESS.id}`);
     expect(screen.getByTestId(`mvd-oze-pulpit-poz-klasa-${PV.id}`)).toHaveTextContent(powod);
     expect(screen.queryByTestId(`mvd-oze-pulpit-poz-dowod-${PV.id}`)).toBeNull();
     await uzytkownik.click(screen.getByTestId(`mvd-oze-pulpit-poz-${PV.id}`));
@@ -395,7 +397,7 @@ describe('stan odczytu oceny modelu — wczytywanie i błąd ≠ brak oceny', ()
     act(() => { useAppStateStore.setState({ activeCaseId: 'inny-przypadek' } as never); });
     await waitFor(() => expect(numer).toBe(2));
     await act(async () => { zwolnijStara(odpowiedzJson(200, zgodnoscFixture())); });
-    expect(screen.queryByTestId(`mvd-oze-pulpit-poz-wymagania-${PV.id}`)).toBeNull();
+    expect(screen.queryByTestId(`mvd-oze-pulpit-poz-dowod-${PV.id}`)).toBeNull();
     expect(screen.getByTestId(`mvd-oze-pulpit-poz-klasa-${PV.id}`)).toHaveTextContent(
       PULPIT_STRINGS.listaWczytywanie,
     );

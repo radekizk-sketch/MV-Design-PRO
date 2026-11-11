@@ -12,13 +12,25 @@
 
 import { useId, useState, type ReactNode } from 'react';
 
-import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
+import {
+  EtykietaWerdyktu,
+  KartaWerdyktu,
+  NAZWA_METODY_PL,
+  wielkoscPl,
+} from '../../wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import { useShellStore } from '../../shell/useShellStore';
-import type { PodstawaWymagania, StanZrodla, WynikWymagania } from '../../wyniki/wzorzec/werdykt';
+import type {
+  OcenaKryterium,
+  PodstawaWymagania,
+  Relacja,
+  StanZrodla,
+  WynikWymagania,
+} from '../../wyniki/wzorzec/werdykt';
 import {
   NCRFG_STRINGS as T,
   liczbaPl,
+  liczbaWymagan,
   nazwaTechnologii,
   opisZrodlaDanych,
 } from './strings';
@@ -178,6 +190,51 @@ export function DowodCertyfikatuOpis({
 // Nagłówek modułu wyniku biegu (macierz, zgodność przypadku, pulpit)
 // =============================================================================
 
+/**
+ * Dowód certyfikatu w JEDNEJ linii nad tabelą wymagań (standard warsztatu KD6: wspólne dane
+ * dowodu raz, w wierszach tylko odwołanie): producent i model, numer dokumentu, zakres typów,
+ * wersja WiPWC, data akceptacji i warunek ważności — pola rekordu wykazu. Pełny zapis
+ * z podstawą dowodu i identyfikatorem rekordu jest w szczegółach modułu (`DowodCertyfikatuOpis`).
+ */
+function DowodCertyfikatuZwiezly({
+  dowod,
+  odrzucony,
+  zrodloDanych,
+  testid,
+}: {
+  readonly dowod: DowodCertyfikatu | null;
+  readonly odrzucony: CertyfikatOdrzucony | null;
+  readonly zrodloDanych: ZrodloDanych;
+  readonly testid: string;
+}): JSX.Element {
+  if (dowod !== null) {
+    return (
+      <span className="mvd-ncrfg-linia-tresc" data-testid={testid} data-stan="dowod">
+        {`${dowod.producent} ${dowod.model} · `}
+        <span data-testid={`${testid}-numer`}>{`${T.certyfikatNumer} ${dowod.numer_dokumentu}`}</span>
+        {` · ${T.certyfikatTypy} ${
+          dowod.zakres_typow.length > 0 ? dowod.zakres_typow.join(', ') : T.dowodZakresPusty
+        } · `}
+        <span data-testid={`${testid}-wipwc`}>{`${T.dowodWipwc} ${dowod.wersja_wipwc}`}</span>
+        {` · ${T.certyfikatAkceptacja} ${dowod.data_akceptacji ?? T.dowodNiePodano}`}
+        {dowod.warunek_waznosci ? ` · ${T.certyfikatWaznosc}: ${dowod.warunek_waznosci}` : ''}
+      </span>
+    );
+  }
+  if (odrzucony !== null) {
+    return (
+      <span className="mvd-ncrfg-linia-tresc" data-testid={testid} data-stan="odrzucony" data-uwaga="tak">
+        {`${T.certyfikatOdrzucony}: ${odrzucony.powod_pl}`}
+      </span>
+    );
+  }
+  return (
+    <span className="mvd-ncrfg-linia-tresc" data-testid={testid} data-stan="brak" data-uwaga="tak">
+      {zrodloDanych === 'ZATWIERDZONY_MODEL' ? T.brakDowoduModel : T.brakDowoduZadanie}
+    </span>
+  );
+}
+
 function Pole({ etykieta, children }: { readonly etykieta: string; readonly children: ReactNode }) {
   return (
     <div className="mvd-ncrfg-pole">
@@ -188,8 +245,10 @@ function Pole({ etykieta, children }: { readonly etykieta: string; readonly chil
 }
 
 /**
- * Nagłówek modułu z wyniku biegu: klasyfikacja (z powodem, progami i podstawą), technologia,
- * źródło danych, dowód certyfikatu albo jawny brak i wersja procedury obowiązująca moduł.
+ * Nagłówek modułu z wyniku biegu — RAZ, nad tabelą wymagań (standard warsztatu KD6): typ modułu,
+ * moc, napięcie, technologia i źródło danych w jednej linii; operator z wersją procedury PTPiREE
+ * (ze stanem źródła); dowód certyfikatu urządzenia albo jawny brak. Powód klasyfikacji z progami
+ * i podstawą oraz pełny zapis rekordu wykazu — jednym przyciskiem „Szczegóły".
  */
 export function NaglowekModuluNcRfg({
   modul,
@@ -200,32 +259,74 @@ export function NaglowekModuluNcRfg({
   readonly odrzucony?: CertyfikatOdrzucony | null;
   readonly testid: string;
 }): JSX.Element {
+  const [otwarty, setOtwarty] = useState(false);
+  const idSzczegolow = useId();
+  const klasa = modul.klasyfikacja.modul;
   return (
-    <dl className="mvd-ncrfg-pola" data-testid={testid}>
-      <Pole etykieta={T.klasyfikacja}>
-        <OpisKlasyfikacji klasyfikacja={modul.klasyfikacja} testid={`${testid}-klasyfikacja`} />
-      </Pole>
-      <Pole etykieta={T.technologia}>{nazwaTechnologii(modul.technologia)}</Pole>
-      <Pole etykieta={T.zrodloDanych}>
-        <span data-testid={`${testid}-zrodlo`}>{opisZrodlaDanych(modul.zrodlo_danych)}</span>
-      </Pole>
-      <Pole etykieta={T.dowodCertyfikatu}>
-        <DowodCertyfikatuOpis
+    <div className="mvd-ncrfg-naglowek" data-testid={testid}>
+      <div className="mvd-ncrfg-linia">
+        <span
+          className="mvd-ncrfg-klasa"
+          data-testid={`${testid}-klasyfikacja`}
+          data-modul={klasa ?? ''}
+        >
+          {klasa !== null ? `${T.klasaModulu} ${klasa}` : T.klasaPonizejProgu}
+        </span>
+        <span className="mvd-ncrfg-num">{`${liczbaPl(modul.p_max_kw)} kW`}</span>
+        <span className="mvd-ncrfg-num">{`${liczbaPl(modul.voltage_kv)} kV`}</span>
+        <span>{nazwaTechnologii(modul.technologia)}</span>
+        <span className="mvd-ncrfg-linia-etyk">
+          {`${T.zrodloDanych}: `}
+          <span data-testid={`${testid}-zrodlo`}>{opisZrodlaDanych(modul.zrodlo_danych)}</span>
+        </span>
+      </div>
+      <div className="mvd-ncrfg-linia">
+        <span className="mvd-ncrfg-linia-etyk">{modul.operator_name_pl}</span>
+        <OpisDokumentuWarstwy dokument={modul.wersja_procedury} testid={`${testid}-procedura`} />
+      </div>
+      <div className="mvd-ncrfg-linia">
+        <span className="mvd-ncrfg-linia-etyk">{T.certyfikat}</span>
+        <DowodCertyfikatuZwiezly
           dowod={modul.dowod_certyfikatu}
           odrzucony={odrzucony}
           zrodloDanych={modul.zrodlo_danych}
           testid={`${testid}-dowod`}
         />
-      </Pole>
-      <Pole etykieta={T.wersjaProcedury}>
-        <OpisDokumentuWarstwy dokument={modul.wersja_procedury} testid={`${testid}-procedura`} />
-      </Pole>
-    </dl>
+        <button
+          type="button"
+          className="mvd-ncrfg-przelacz"
+          aria-expanded={otwarty}
+          aria-controls={idSzczegolow}
+          onClick={() => setOtwarty((o) => !o)}
+          data-testid={`${testid}-szczegoly-przelacz`}
+        >
+          {otwarty ? T.ukryjSzczegolyModulu : T.szczegolyModulu}
+        </button>
+      </div>
+      {otwarty ? (
+        <dl id={idSzczegolow} className="mvd-ncrfg-pola" data-testid={`${testid}-szczegoly`}>
+          <Pole etykieta={T.klasyfikacja}>
+            <OpisKlasyfikacji
+              klasyfikacja={modul.klasyfikacja}
+              testid={`${testid}-szczegoly-klasyfikacja`}
+            />
+          </Pole>
+          <Pole etykieta={T.dowodCertyfikatu}>
+            <DowodCertyfikatuOpis
+              dowod={modul.dowod_certyfikatu}
+              odrzucony={odrzucony}
+              zrodloDanych={modul.zrodlo_danych}
+              testid={`${testid}-szczegoly-dowod`}
+            />
+          </Pole>
+        </dl>
+      ) : null}
+    </div>
   );
 }
 
 // =============================================================================
-// Lista rekordów wymagań (plakietka + karta)
+// Tabela rekordów wymagań (jedno wymaganie = jeden wiersz, szczegóły na żądanie)
 // =============================================================================
 
 export function ZapisDokumentu({
@@ -275,57 +376,297 @@ export function ZapisDokumentu({
   );
 }
 
+/** Znak relacji przy wartości wymaganej (typografia tabeli; warunek pełny — KaTeX w szczegółach). */
+function znakRelacji(relacja: Relacja): string {
+  switch (relacja) {
+    case 'NIE_WIECEJ':
+      return '≤ ';
+    case 'NIE_MNIEJ':
+      return '≥ ';
+    default:
+      return '';
+  }
+}
+
+/** Komórka z treścią i opcjonalnym wyróżnieniem wartości wymagającej uwagi (§10 pkt 8). */
+interface Komorka {
+  readonly tekst: string;
+  readonly uwaga: 'ujemny' | 'brak' | null;
+}
+
+const KRESKA: Komorka = { tekst: T.kreska, uwaga: null };
+
+/**
+ * Wartość wymagana kryterium z LIMITU rekordu: liczba z jednostką i znakiem relacji, pasmo
+ * „od … do", obwiednia (punkty w szczegółach). Kryterium logiczne nie ma wartości liczbowej
+ * (kreska — warunek logiczny pokazuje karta). Kryterium liczbowe bez limitu = „brak limitu"
+ * z wyróżnieniem (brak podstawy wartości jest informacją wymagającą uwagi, nie pustym polem).
+ */
+function komorkaWymagana(ocena: OcenaKryterium): Komorka {
+  const { relacja } = ocena.kryterium;
+  if (relacja === 'LOGICZNE') return KRESKA;
+  const limit = ocena.limit;
+  if (limit !== null && limit.wartosc !== null) {
+    return { tekst: `${znakRelacji(relacja)}${wielkoscPl(limit.wartosc)}`, uwaga: null };
+  }
+  if (limit !== null && limit.pasmo !== null) {
+    return {
+      tekst: `${wielkoscPl(limit.pasmo[0])} … ${wielkoscPl(limit.pasmo[1])}`,
+      uwaga: null,
+    };
+  }
+  if (limit !== null && limit.obwiednia !== null) {
+    return {
+      tekst: limit.jednostka_obwiedni ? `${T.obwiednia} [${limit.jednostka_obwiedni}]` : T.obwiednia,
+      uwaga: null,
+    };
+  }
+  return { tekst: T.brakLimitu, uwaga: 'brak' };
+}
+
+/** Wartość wykazana z wyniku rekordu (kryterium logiczne: bez liczby — znacznik dowodu wystarcza). */
+function komorkaWykazana(ocena: OcenaKryterium): Komorka {
+  if (ocena.wynik === null || ocena.kryterium.relacja === 'LOGICZNE') return KRESKA;
+  return { tekst: wielkoscPl(ocena.wynik.wartosc), uwaga: null };
+}
+
+/**
+ * Zapas z MARGINESU rekordu (ze znakiem). Wynik bez oceny albo margines niedefiniowalny
+ * (kryterium logiczne) — kreska; wynik bez marginesu — „brak" z wyróżnieniem; zapas ujemny —
+ * wyróżnienie. Znak liczby pochodzi z backendu (margines), UI niczego nie liczy.
+ */
+function komorkaZapasu(ocena: OcenaKryterium): Komorka {
+  const margines = ocena.margines;
+  if (margines !== null && margines.wartosc !== null) {
+    return {
+      tekst: wielkoscPl(margines.wartosc, true),
+      uwaga: margines.wartosc.wartosc < 0 ? 'ujemny' : null,
+    };
+  }
+  if (ocena.wynik === null) return KRESKA;
+  if (margines !== null && margines.niedefiniowalny) return KRESKA;
+  return { tekst: T.brakZapasu, uwaga: 'brak' };
+}
+
+function KomorkaWartosci({ komorka, testid }: { readonly komorka: Komorka; readonly testid?: string }) {
+  return (
+    <span className="mvd-ncrfg-num" data-uwaga={komorka.uwaga ?? undefined} data-testid={testid}>
+      {komorka.tekst}
+    </span>
+  );
+}
+
+/** Podstawa wspólna WSZYSTKICH rekordów (dokument i wydanie) — pokazywana raz nad tabelą. */
+function podstawaWspolna(rekordy: readonly WynikWymagania[]): PodstawaWymagania | null {
+  const pierwsza = rekordy[0]?.podstawa ?? null;
+  if (pierwsza === null) return null;
+  const wspolna = rekordy.every(
+    (r) =>
+      r.podstawa.dokument === pierwsza.dokument &&
+      r.podstawa.wydanie === pierwsza.wydanie &&
+      r.podstawa.status === pierwsza.status,
+  );
+  return wspolna ? pierwsza : null;
+}
+
+/** Dokument podstawy w komórce wymagania, gdy podstawa nie jest wspólna dla tabeli. */
+function opisPodstawyWiersza(podstawa: PodstawaWymagania, wspolna: PodstawaWymagania | null): string {
+  const jednostka = podstawa.jednostka_redakcyjna ?? '';
+  if (wspolna !== null) return jednostka;
+  const dokument = podstawa.wydanie ?? podstawa.dokument;
+  return jednostka ? `${jednostka} · ${dokument}` : dokument;
+}
+
+/** Wiersz rekordu w tabeli: identyfikator jednoznaczny także dla powtórzonego `wymaganie_id`. */
+interface WierszTabeli {
+  readonly rekord: WynikWymagania;
+  readonly indeks: number;
+  readonly testid: string;
+}
+
+const LICZBA_KOLUMN = 6;
+
 function WierszWymagania({
-  rekord,
+  wiersz,
   zdanie,
   blok,
-  testid,
+  wspolna,
 }: {
-  readonly rekord: WynikWymagania;
+  readonly wiersz: WierszTabeli;
   readonly zdanie: string | null;
   readonly blok: readonly PozycjaBloku[] | null;
-  readonly testid: string;
+  readonly wspolna: PodstawaWymagania | null;
 }): JSX.Element {
+  const { rekord, testid } = wiersz;
   const [otwarty, setOtwarty] = useState(false);
-  const idKarty = useId();
+  const idSzczegolow = useId();
+  // Oceny składowe STOSOWALNE do wymagania — każda ma własny wiersz wartości, gdy jest ich
+  // więcej niż jedna (agregat nie zastępuje składników, kontrakt werdyktu §2.3).
+  const skladowe = rekord.oceny_skladowe.filter((o) => o.stosowalnosc.dotyczy);
+  const jedna = skladowe.length === 1 ? skladowe[0] : null;
+  const metoda = jedna?.wynik?.metoda ?? rekord.sposob_wykazania;
   return (
-    <li className="mvd-ncrfg-wymaganie" data-testid={testid} data-status={rekord.status_maszynowy}>
-      <div className="mvd-ncrfg-wymaganie-wiersz">
-        <EtykietaWerdyktu
-          etykieta={rekord.etykieta}
-          status={rekord.status_maszynowy}
-          testid={`${testid}-etykieta`}
-        />
-        <span className="mvd-ncrfg-wymaganie-nazwa">{rekord.nazwa_pl}</span>
-        <button
-          type="button"
-          className="mvd-ncrfg-przelacz"
-          aria-expanded={otwarty}
-          aria-controls={idKarty}
-          onClick={() => setOtwarty((o) => !o)}
-          data-testid={`${testid}-przelacz`}
-        >
-          {otwarty ? T.ukryjKarte : T.pokazKarte}
-        </button>
-      </div>
-      {zdanie ? <p className="mvd-ncrfg-opis mvd-ncrfg-zdanie">{zdanie}</p> : null}
+    <>
+      <tr className="mvd-ncrfg-wiersz" data-testid={testid} data-status={rekord.status_maszynowy}>
+        <th scope="row" className="mvd-ncrfg-kol-nazwa">
+          <span className="mvd-ncrfg-wymaganie-nazwa">{rekord.nazwa_pl}</span>
+          <span className="mvd-ncrfg-artykul">{opisPodstawyWiersza(rekord.podstawa, wspolna)}</span>
+        </th>
+        <td data-testid={`${testid}-wymagane`}>
+          {jedna !== null ? <KomorkaWartosci komorka={komorkaWymagana(jedna)} /> : null}
+          {skladowe.length === 0 ? <KomorkaWartosci komorka={KRESKA} /> : null}
+        </td>
+        <td data-testid={`${testid}-wykazane`}>
+          {jedna !== null ? <KomorkaWartosci komorka={komorkaWykazana(jedna)} /> : null}
+          <span className="mvd-ncrfg-znacznik" data-testid={`${testid}-metoda`} data-metoda={metoda}>
+            {NAZWA_METODY_PL[metoda]}
+          </span>
+        </td>
+        <td data-testid={`${testid}-zapas`}>
+          {jedna !== null ? <KomorkaWartosci komorka={komorkaZapasu(jedna)} /> : null}
+          {skladowe.length === 0 ? <KomorkaWartosci komorka={KRESKA} /> : null}
+        </td>
+        <td>
+          <EtykietaWerdyktu
+            etykieta={rekord.etykieta}
+            status={rekord.status_maszynowy}
+            testid={`${testid}-etykieta`}
+            zwarta
+          />
+        </td>
+        <td className="mvd-ncrfg-kol-akcja">
+          <button
+            type="button"
+            className="mvd-ncrfg-przelacz"
+            aria-expanded={otwarty}
+            aria-controls={idSzczegolow}
+            aria-label={`${T.kolSzczegoly}: ${rekord.nazwa_pl}`}
+            onClick={() => setOtwarty((o) => !o)}
+            data-testid={`${testid}-przelacz`}
+          >
+            {otwarty ? T.ukryjKarte : T.pokazKarte}
+          </button>
+        </td>
+      </tr>
+      {skladowe.length > 1
+        ? skladowe.map((ocena) => (
+            <tr
+              key={ocena.kryterium_id}
+              className="mvd-ncrfg-wiersz-skladowej"
+              data-testid={`${testid}-skladowa-${ocena.kryterium_id}`}
+            >
+              <th scope="row" className="mvd-ncrfg-kol-nazwa mvd-ncrfg-skladowa-nazwa">
+                {ocena.kryterium.opis_pl}
+              </th>
+              <td>
+                <KomorkaWartosci komorka={komorkaWymagana(ocena)} />
+              </td>
+              <td>
+                <KomorkaWartosci komorka={komorkaWykazana(ocena)} />{' '}
+                {ocena.wynik !== null ? (
+                  <span className="mvd-ncrfg-znacznik" data-metoda={ocena.wynik.metoda}>
+                    {NAZWA_METODY_PL[ocena.wynik.metoda]}
+                  </span>
+                ) : null}
+              </td>
+              <td>
+                <KomorkaWartosci komorka={komorkaZapasu(ocena)} />
+              </td>
+              <td colSpan={2} />
+            </tr>
+          ))
+        : null}
       {otwarty ? (
-        <div id={idKarty} className="mvd-ncrfg-karta" data-testid={`${testid}-karta`}>
-          <KartaWerdyktu rekord={rekord} />
-          {blok !== null ? <ZapisDokumentu blok={blok} testid={`${testid}-zapis`} /> : null}
-        </div>
+        <tr className="mvd-ncrfg-wiersz-szczegolow">
+          <td colSpan={LICZBA_KOLUMN} id={idSzczegolow} data-testid={`${testid}-karta`}>
+            {/* Zdanie spoza rekordu (np. zdanie braku dokumentu 422) — tylko gdy różni się od
+                wyjaśnienia rekordu; wyjaśnienie rekordu pokazuje karta (bez powtórzenia). */}
+            {zdanie && zdanie !== rekord.wyjasnienie.zdanie_pl ? (
+              <p className="mvd-ncrfg-zdanie" data-testid={`${testid}-zdanie`}>
+                {zdanie}
+              </p>
+            ) : null}
+            <KartaWerdyktu rekord={rekord} />
+            {blok !== null ? <ZapisDokumentu blok={blok} testid={`${testid}-zapis`} /> : null}
+          </td>
+        </tr>
       ) : null}
-    </li>
+    </>
   );
 }
 
 /**
- * Rekordy `WynikWymagania` w kolejności backendu: plakietka etykiety z rekordu, nazwa
- * wymagania i zdanie wyjaśnienia; pełna `KartaWerdyktu` po jednym kliknięciu (natywny
- * przycisk z `aria-expanded`). Opcjonalnie blok dokumentu formalnego (te same zdania co DOCX).
- * Ten sam `wymaganie_id` może wystąpić na liście kilka razy (kilka rekordów jednego wymagania)
- * — kolejne wystąpienia dostają sufiks numeru wystąpienia (`-2`, `-3`…), żeby identyfikatory
- * wierszy były jednoznaczne.
+ * Wymagania niestosowane do modułu — JEDEN wiersz zbiorczy („Nie dotyczy: 7 wymagań") z powodem
+ * podanym raz, gdy wszystkie rekordy grupy mają ten sam powód stosowalności; rozwinięcie pokazuje
+ * każdy rekord jego własnym wierszem z kartą na żądanie (licznik obok listy, nigdy zamiast niej —
+ * kontrakt werdyktu §9).
+ */
+function GrupaNieDotyczy({
+  wiersze,
+  zdania,
+  bloki,
+  wspolna,
+  testid,
+}: {
+  readonly wiersze: readonly WierszTabeli[];
+  readonly zdania: readonly string[] | null;
+  readonly bloki: readonly (readonly PozycjaBloku[])[] | null;
+  readonly wspolna: PodstawaWymagania | null;
+  readonly testid: string;
+}): JSX.Element {
+  const [otwarta, setOtwarta] = useState(false);
+  const powody = new Set(wiersze.map((w) => w.rekord.stosowalnosc.powod_pl));
+  const powodWspolny = powody.size === 1 ? wiersze[0].rekord.stosowalnosc.powod_pl : null;
+  return (
+    <>
+      <tr className="mvd-ncrfg-wiersz-grupy" data-testid={testid}>
+        <th scope="row" colSpan={LICZBA_KOLUMN - 1} className="mvd-ncrfg-kol-nazwa">
+          <span className="mvd-ncrfg-wymaganie-nazwa">
+            {`${T.nieDotyczyGrupa}: ${liczbaWymagan(wiersze.length)}`}
+          </span>
+          {powodWspolny ? (
+            <span className="mvd-ncrfg-artykul" data-testid={`${testid}-powod`}>
+              {powodWspolny}
+            </span>
+          ) : null}
+        </th>
+        <td className="mvd-ncrfg-kol-akcja">
+          <button
+            type="button"
+            className="mvd-ncrfg-przelacz"
+            aria-expanded={otwarta}
+            onClick={() => setOtwarta((o) => !o)}
+            data-testid={`${testid}-przelacz`}
+          >
+            {otwarta ? T.ukryjNieDotyczy : T.pokazNieDotyczy}
+          </button>
+        </td>
+      </tr>
+      {otwarta
+        ? wiersze.map((wiersz) => (
+            <WierszWymagania
+              key={`${wiersz.rekord.wymaganie_id}-${wiersz.indeks}`}
+              wiersz={wiersz}
+              zdanie={zdania?.[wiersz.indeks] ?? wiersz.rekord.wyjasnienie.zdanie_pl}
+              blok={bloki?.[wiersz.indeks] ?? null}
+              wspolna={wspolna}
+            />
+          ))
+        : null}
+    </>
+  );
+}
+
+/**
+ * Rekordy `WynikWymagania` w kolejności backendu jako TABELA (standard warsztatu KD6): jedno
+ * wymaganie = jeden wiersz — nazwa i jednostka redakcyjna, wartość wymagana (limit), wartość
+ * wykazana ze znacznikiem źródła dowodu, zapas (margines) i stan (etykieta rekordu). Podstawa
+ * wspólna dla wszystkich rekordów stoi raz nad tabelą. Zdanie wyjaśnienia, pełna `KartaWerdyktu`
+ * (kryterium KaTeX, podstawa ze stanem źródła, metoda, kompletność dowodu) i blok dokumentu
+ * formalnego — jednym przyciskiem „Szczegóły" w wierszu. Wymagania niestosowane do modułu
+ * (`stosowalnosc.dotyczy` — jedno źródło podziału) zwinięte w jeden wiersz zbiorczy.
+ * Ten sam `wymaganie_id` może wystąpić kilka razy — kolejne wystąpienia dostają sufiks numeru
+ * wystąpienia (`-2`, `-3`…), liczony na CAŁEJ liście (identyfikatory nie zależą od podziału).
  */
 export function ListaRekordowWymagan({
   rekordy,
@@ -346,23 +687,59 @@ export function ListaRekordowWymagan({
     );
   }
   const wystapienia = new Map<string, number>();
+  const wiersze: WierszTabeli[] = rekordy.map((rekord, indeks) => {
+    const numer = (wystapienia.get(rekord.wymaganie_id) ?? 0) + 1;
+    wystapienia.set(rekord.wymaganie_id, numer);
+    const idWiersza = numer === 1 ? rekord.wymaganie_id : `${rekord.wymaganie_id}-${numer}`;
+    return { rekord, indeks, testid: `${testid}-${idWiersza}` };
+  });
+  const stosowane = wiersze.filter((w) => w.rekord.stosowalnosc.dotyczy);
+  const niestosowane = wiersze.filter((w) => !w.rekord.stosowalnosc.dotyczy);
+  const wspolna = podstawaWspolna(rekordy);
   return (
-    <ul className="mvd-ncrfg-wymagania" data-testid={testid}>
-      {rekordy.map((rekord, indeks) => {
-        const numer = (wystapienia.get(rekord.wymaganie_id) ?? 0) + 1;
-        wystapienia.set(rekord.wymaganie_id, numer);
-        const idWiersza = numer === 1 ? rekord.wymaganie_id : `${rekord.wymaganie_id}-${numer}`;
-        return (
-          <WierszWymagania
-            key={`${rekord.wymaganie_id}-${indeks}`}
-            rekord={rekord}
-            zdanie={zdania?.[indeks] ?? rekord.wyjasnienie.zdanie_pl}
-            blok={bloki?.[indeks] ?? null}
-            testid={`${testid}-${idWiersza}`}
-          />
-        );
-      })}
-    </ul>
+    <div className="mvd-ncrfg-wymagania" data-testid={testid}>
+      {wspolna !== null ? (
+        <p className="mvd-ncrfg-wspolna" data-testid={`${testid}-podstawa`}>
+          <span className="mvd-ncrfg-linia-etyk">{`${T.podstawaWspolna}: `}</span>
+          {wspolna.dokument}
+          {` · ${T.stanZrodla}: ${nazwaStanuZrodla(wspolna.status)}`}
+        </p>
+      ) : null}
+      <table className="mvd-ncrfg-tabela">
+        <thead>
+          <tr>
+            <th scope="col">{T.kolWymaganie}</th>
+            <th scope="col">{T.kolWymagane}</th>
+            <th scope="col">{T.kolWykazane}</th>
+            <th scope="col">{T.kolZapas}</th>
+            <th scope="col">{T.kolStan}</th>
+            <th scope="col">
+              <span className="mvd-sr-only">{T.kolSzczegoly}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {stosowane.map((wiersz) => (
+            <WierszWymagania
+              key={`${wiersz.rekord.wymaganie_id}-${wiersz.indeks}`}
+              wiersz={wiersz}
+              zdanie={zdania?.[wiersz.indeks] ?? wiersz.rekord.wyjasnienie.zdanie_pl}
+              blok={bloki?.[wiersz.indeks] ?? null}
+              wspolna={wspolna}
+            />
+          ))}
+          {niestosowane.length > 0 ? (
+            <GrupaNieDotyczy
+              wiersze={niestosowane}
+              zdania={zdania}
+              bloki={bloki}
+              wspolna={wspolna}
+              testid={`${testid}-nie-dotyczy`}
+            />
+          ) : null}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -373,7 +750,8 @@ export function ListaRekordowWymagan({
 /**
  * Sekcja modułu dokumentu (`sekcja_modulu()`): wiersze, na których stoją rekordy (moduł,
  * klasyfikacja z podstawą, technologia, dowód certyfikatu albo powód odrzucenia — zdania
- * backendu), jawny dowód certyfikatu i rekordy wymagań z blokami dokumentu.
+ * backendu, te same co DOCX, więc zostają prozą dokumentu), dowód rekordu wykazu w jednej
+ * linii pól i tabela rekordów wymagań z blokami dokumentu w szczegółach wiersza.
  */
 export function SekcjaModuluDokumentu({
   sekcja,
@@ -395,12 +773,17 @@ export function SekcjaModuluDokumentu({
           </div>
         ))}
       </dl>
-      <DowodCertyfikatuOpis
-        dowod={sekcja.dowod_certyfikatu}
-        odrzucony={sekcja.certyfikat_odrzucony}
-        zrodloDanych={sekcja.zrodlo_danych}
-        testid={`${testid}-dowod`}
-      />
+      {/* Wiersze dokumentu niosą już zdanie o dowodzie (treść DOCX) — dowód rekordu wykazu
+          w jednej linii pól (bez powtórzenia akapitu; standard warsztatu KD6). */}
+      <div className="mvd-ncrfg-linia">
+        <span className="mvd-ncrfg-linia-etyk">{T.certyfikat}</span>
+        <DowodCertyfikatuZwiezly
+          dowod={sekcja.dowod_certyfikatu}
+          odrzucony={sekcja.certyfikat_odrzucony}
+          zrodloDanych={sekcja.zrodlo_danych}
+          testid={`${testid}-dowod`}
+        />
+      </div>
       <h6 className="mvd-ncrfg-podtytul">{T.wymagania}</h6>
       <ListaRekordowWymagan
         rekordy={sekcja.wymagania.map((w) => w.rekord)}

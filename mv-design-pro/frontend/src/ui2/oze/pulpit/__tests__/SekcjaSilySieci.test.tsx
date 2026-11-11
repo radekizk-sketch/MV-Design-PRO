@@ -6,6 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { SekcjaSilySieci } from '../SekcjaSilySieci';
@@ -61,13 +62,18 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
     render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     const wezel = await screen.findByTestId('mvd-oze-sila-wezel-bus-pcc-3');
     expect(wezel).toHaveTextContent('Szyna PCC farmy 3');
-    expect(wezel).toHaveTextContent(BRAKI_DANYCH_SILY.s_sc_mva);
-    expect(wezel).not.toHaveTextContent('bus-pcc-3');
-    expect(wezel).not.toHaveTextContent('s_sc_mva');
+    // Braki danych po polsku — w szczegółach węzła (standard KD6), jednym kliknięciem.
+    await userEvent.setup().click(screen.getByTestId('mvd-oze-sila-slad-otworz-bus-pcc-3'));
+    const szczegoly = screen.getByTestId('mvd-oze-sila-szczegoly-bus-pcc-3');
+    expect(szczegoly).toHaveTextContent(BRAKI_DANYCH_SILY.s_sc_mva);
+    for (const el of [wezel, szczegoly]) {
+      expect(el).not.toHaveTextContent('bus-pcc-3');
+      expect(el).not.toHaveTextContent('s_sc_mva');
+    }
     useSnapshotStore.setState({ snapshot: null } as never);
   });
 
-  it('rozwija ślad WHITE BOX węzła inline (wzór ASCII)', async () => {
+  it('rozwija ślad WHITE BOX węzła inline (szczegóły na żądanie)', async () => {
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
     render(<SekcjaSilySieci szczegolyAudytowe={false} />);
     await screen.findByTestId('mvd-oze-sila-wynik');
@@ -91,6 +97,9 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
   });
 
   it('wyróżniony moduł podświetla wiersz swojego węzła (i tylko jego)', async () => {
+    useSnapshotStore.setState({
+      snapshot: { buses: [{ ref_id: 'bus-pcc-2', id: 'b2', name: 'Szyna PCC farmy 2', voltage_kv: 15 }] },
+    } as never);
     pobierzSileSieci.mockResolvedValue(silaSieciFixture());
     render(<SekcjaSilySieci szczegolyAudytowe={false} wyroznionyModul="src-2" />);
     await screen.findByTestId('mvd-oze-sila-wynik');
@@ -101,7 +110,10 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
     expect(screen.getByTestId('mvd-oze-sila-wezel-bus-pcc-1')).not.toHaveAttribute(
       'data-wyrozniony',
     );
-    expect(screen.getByTestId('mvd-oze-sila-wyroznienie-wezel')).toHaveTextContent('bus-pcc-2');
+    // Karta #145: wyróżniony węzeł nazwany z modelu, nigdy referencją.
+    expect(screen.getByTestId('mvd-oze-sila-wyroznienie-wezel')).toHaveTextContent('Szyna PCC farmy 2');
+    expect(screen.getByTestId('mvd-oze-sila-wyroznienie-wezel')).not.toHaveTextContent('bus-pcc-2');
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
   it('moduł bez węzła w wynikach → uczciwa adnotacja, brak podświetlenia', async () => {

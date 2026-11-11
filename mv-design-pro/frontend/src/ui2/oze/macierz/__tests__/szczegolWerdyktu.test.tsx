@@ -134,7 +134,11 @@ describe('SzczegolWerdyktu', () => {
       const lista = screen.getByTestId('mvd-oze-slad-kroki');
       expect(lista.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(kroki.length);
       for (const krok of kroki) expect(wzory[krok.formula]).toBeDefined();
-      expect(lista.querySelectorAll('code').length).toBe(
+      // Podstawienie kroku — krój bazowy z cyframi tabelarycznymi (kontrakt prezentacji §10
+      // pkt 7), nie `code` monospace; `code` zostaje wyłącznie dla zapisu rdzenia w stanie
+      // awaryjnym (brak wzoru w katalogu), którego scena nie ma.
+      expect(lista.querySelectorAll('code').length).toBe(0);
+      expect(lista.querySelectorAll('.mvd-oze-slad-wartosc').length).toBe(
         kroki.filter((krok) => krok.substitution).length,
       );
       unmount();

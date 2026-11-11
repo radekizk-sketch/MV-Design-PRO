@@ -489,12 +489,17 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   const braki = page.getByTestId('mvd-oze-cert-braki');
   await expect(braki).toBeVisible({ timeout: 60000 });
   await expect(page.getByTestId('mvd-oze-cert-widok')).toHaveCount(0);
-  await expect(braki).toContainText(NUMER_DOKUMENTU);
+  // Tabela braków (standard warsztatu KD6): jedno wymaganie = jeden wiersz; zdanie braku
+  // z backendu (z dowodem certyfikatu rozpoznanym z tabliczki) — w szczegółach wiersza.
   const rekordyBrakow = page
     .getByTestId('mvd-oze-cert-braki-lista-rekordy')
-    .locator('li.mvd-ncrfg-wymaganie');
+    .locator('tr.mvd-ncrfg-wiersz');
   const liczbaBrakow = await rekordyBrakow.count();
   expect(liczbaBrakow).toBeGreaterThan(0);
+  const pierwszyBrak = rekordyBrakow.first();
+  const idPierwszego = (await pierwszyBrak.getAttribute('data-testid'))!;
+  await page.getByTestId(`${idPierwszego}-przelacz`).click();
+  await expect(page.getByTestId(`${idPierwszego}-zdanie`)).toContainText(NUMER_DOKUMENTU);
   // Bez widoku dokumentu nie ma czego pobrać — przyciski pobrań nie istnieją.
   await expect(page.getByTestId('mvd-oze-cert-pobierz-docx')).toHaveCount(0);
 

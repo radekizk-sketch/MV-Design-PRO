@@ -54,8 +54,33 @@ export const NCRFG_STRINGS = {
   // Wymagania
   wymagania: 'Wymagania profilu (rekordy oceny)',
   wymaganiaBrak: 'Profil nie niesie wymagań dla tego modułu.',
-  pokazKarte: 'Pokaż ocenę',
-  ukryjKarte: 'Ukryj ocenę',
+  pokazKarte: 'Szczegóły',
+  ukryjKarte: 'Zwiń',
+
+  // Nagłówek modułu w wersji zwartej (standard warsztatu KD6): wspólne dane dowodu raz
+  certyfikat: 'Certyfikat',
+  certyfikatNumer: 'nr',
+  certyfikatTypy: 'typy',
+  certyfikatAkceptacja: 'akceptacja',
+  certyfikatWaznosc: 'ważność',
+  szczegolyModulu: 'Szczegóły klasyfikacji i dowodu',
+  ukryjSzczegolyModulu: 'Zwiń szczegóły klasyfikacji i dowodu',
+
+  // Tabela wymagań (jedno wymaganie = jeden wiersz, szczegóły na żądanie)
+  podstawaWspolna: 'Podstawa wymagań',
+  kolWymaganie: 'Wymaganie',
+  kolWymagane: 'Wymagane',
+  kolWykazane: 'Wykazane',
+  kolZapas: 'Zapas',
+  kolStan: 'Stan',
+  kolSzczegoly: 'Szczegóły wymagania',
+  obwiednia: 'obwiednia',
+  brakLimitu: 'brak limitu',
+  brakZapasu: 'brak',
+  nieDotyczyGrupa: 'Nie dotyczy',
+  pokazNieDotyczy: 'Pokaż',
+  ukryjNieDotyczy: 'Zwiń',
+  wyjasnienie: 'Wyjaśnienie',
   zapisDokumentu: 'Zapis w dokumencie formalnym',
   pokazZapis: 'Pokaż zapis dokumentu',
   ukryjZapis: 'Ukryj zapis dokumentu',
@@ -138,4 +163,15 @@ export function opisZrodlaDanych(zrodlo: ZrodloDanych): string {
 /** Liczba w zapisie PL (przecinek dziesiętny, najwyżej 4 cyfry znaczące, bez grupowania). */
 export function liczbaPl(wartosc: number): string {
   return wartosc.toLocaleString('pl-PL', { maximumSignificantDigits: 4, useGrouping: false });
+}
+
+/** „1 wymaganie", „3 wymagania", „7 wymagań", „12 wymagań", „22 wymagania" (odmiana PL). */
+export function liczbaWymagan(n: number): string {
+  const jednosci = n % 10;
+  const dziesiatki = n % 100;
+  if (n === 1) return '1 wymaganie';
+  if (jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14)) {
+    return `${n} wymagania`;
+  }
+  return `${n} wymagań`;
 }

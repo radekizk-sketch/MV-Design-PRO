@@ -12,16 +12,11 @@ import type { BrakDanychQ, BrakDanychSily, WerdyktAdekwatnosciQ } from '../api';
 export const PULPIT_STRINGS = {
   // Nagłówek
   tytul: 'Pulpit instalacji OZE',
-  podtytul:
-    'Kokpit specjalisty OZE: dane modułu, zgodność przyłączeniowa NC RfG i praca magazynu ' +
-    'zebrane na jednym ekranie. Warstwa agreguje istniejące dane — nie liczy niczego sama.',
   operator: 'Operator sieci',
   wersjaProcedury: 'Wersja procedury',
   odcisk: 'Odcisk deterministyczny',
   zrodloOceny:
-    'Ocena zgodności NC RfG zatwierdzonego modelu przypadku — dane modułów i dowód certyfikatu ' +
-    'urządzeń wyprowadza serwer z modelu (ta sama ocena co certyfikat zgodności). Analizę ' +
-    '„co-jeśli" z danymi deklarowanymi prowadzi macierz wymogów.',
+    'Zgodność NC RfG zatwierdzonego modelu przypadku; analiza „co-jeśli" — macierz wymogów.',
   odswiez: 'Odśwież ocenę zgodności modelu',
   wTrakcie: 'Trwa ocena zgodności modelu…',
   brakPrzypadku: 'Brak aktywnego przypadku — ocena zgodności czyta zatwierdzony model przypadku.',
@@ -39,7 +34,6 @@ export const PULPIT_STRINGS = {
   listaDowod: 'certyfikat',
   listaOdrzucony: 'tabliczka certyfikatu odrzucona',
   listaBrakDowodu: 'brak dowodu certyfikatu w modelu',
-  listaWymagania: 'rekordy wymagań',
 
   // Stan pusty
   brakModulow: 'Brak modułów wytwórczych',
@@ -71,7 +65,6 @@ export const PULPIT_STRINGS = {
     'Odczyt oceny zgodności modelu nie powiódł się — stan zgodności modułu jest nieznany ' +
     '(to nie jest brak wymagań); odśwież ocenę.',
   zgodnoscPominiety: 'Serwer pominął moduł w ocenie modelu',
-  zgodnoscWymagania: 'Wymagania profilu operatora (rekordy oceny)',
 
   // Sekcja 3 — praca magazynu (BESS z katalogu konwerterów)
   sekcjaMagazyn: 'Praca magazynu',
@@ -115,7 +108,10 @@ export const PULPIT_STRINGS = {
   silaSsc: 'Moc zwarciowa $S_{k}\'\'$',
   silaSinst: 'Moc zainstalowana',
   silaNapiecie: 'Napięcie znamionowe',
-  silaWerdykt: 'Werdykt',
+  silaWerdykt: 'Ocena',
+  silaKolSsc: "$S_{k}''$ [MVA]",
+  silaKolSinst: 'Moc zainstalowana [MVA]',
+  silaKolNapiecie: 'Napięcie znamionowe [kV]',
   silaBrakDanych: 'Brakujące dane',
   silaBrakWezlow: 'Przebieg nie zawiera węzłów przyłączenia źródeł falownikowych.',
   silaWyroznionyWezel: 'Wyróżniony węzeł modułu',
@@ -138,6 +134,15 @@ export const PULPIT_STRINGS = {
   adekwRezerwaGora: 'Rezerwa w górę',
   adekwRezerwaDol: 'Rezerwa w dół',
   adekwNasycenie: 'Nasycenie',
+  adekwBilans: 'Bilans źródeł (netto)',
+  adekwKolZrodlo: 'Źródło / węzeł',
+  adekwKolQ: '$Q$ bieżące [Mvar]',
+  adekwKolZakres: '$Q_{\\min}$ … $Q_{\\max}$ [Mvar]',
+  adekwKolGora: 'Rezerwa w górę [Mvar]',
+  adekwKolDol: 'Rezerwa w dół [Mvar]',
+  adekwKolStan: 'Stan regulacji',
+  adekwKolU: '$|U|$ [p.u.]',
+  adekwKolUzasadnienie: 'Uzasadnienie',
   adekwPrzyGranicy: 'przy granicy',
   adekwNienasycone: 'w zakresie',
   adekwWezel: 'Węzeł',
@@ -148,9 +153,9 @@ export const PULPIT_STRINGS = {
   adekwWyroznionyWezel: 'Wyróżniony węzeł modułu',
   adekwWyroznienieBrak: 'Węzeł wybranego modułu nieodnaleziony w wynikach analizy.',
 
-  // Wspólny ślad WHITE BOX (wzory ASCII, bez KaTeX — spójnie ze śladem testu)
-  sladPokaz: 'Pokaż wywód',
-  sladUkryj: 'Ukryj wywód',
+  // Wspólny ślad WHITE BOX (wzory KaTeX z `formula_latex`, proza kroków w kroju bazowym)
+  sladPokaz: 'Szczegóły',
+  sladUkryj: 'Zwiń',
   sladWzor: 'Wzór',
   sladPodstawienie: 'Podstawienie',
   sladWynik: 'Wynik',

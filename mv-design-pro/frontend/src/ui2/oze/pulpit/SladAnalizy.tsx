@@ -37,9 +37,9 @@ function Pole({
   return (
     <div className="mvd-oze-slad-pole">
       <span className="mvd-oze-panel-etyk">{etykieta}</span>
-      <div className="mvd-oze-slad-tresc">
-        <code className="mvd-oze-num">{children}</code>
-      </div>
+      {/* Krój bazowy z cyframi tabelarycznymi (kontrakt prezentacji §10 pkt 7) — proza kroku
+          i wzór KaTeX nie są kodem; dawny `<code>` monospace zastąpiony. */}
+      <div className="mvd-oze-slad-tresc mvd-oze-slad-wartosc">{children}</div>
     </div>
   );
 }

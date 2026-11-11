@@ -4,9 +4,12 @@
  * zwarciowego (`GET /api/oze-analysis/grid-strength?run_id=`). Ślad WHITE BOX
  * rozwijany inline. Werdykty i wskaźniki pochodzą WYŁĄCZNIE z backendu — warstwa
  * tylko prezentuje (NOT-A-SOLVER). Brak przebiegu → jawna instrukcja.
+ *
+ * Standard warsztatu KD6 (karta PULPIT-OZE-KD6): WSCR i liczebności w jednej linii, węzły jako
+ * zwarta tabela (jednostki w nagłówkach), uzasadnienia i wywody po rozwinięciu.
  */
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { pobierzSileSieci, type WpisSilyWezla } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
@@ -15,13 +18,12 @@ import { busRefModuluSily } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   BRAKI_DANYCH_SILY,
-  formatKv,
-  formatMva,
   formatWskaznik,
   klasaWerdyktuSily,
   PULPIT_STRINGS,
 } from './strings';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { formatLiczba } from '../macierz/strings';
 import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface SekcjaSilySieciProps {
@@ -31,69 +33,79 @@ export interface SekcjaSilySieciProps {
   readonly wyroznionyModul?: string | null;
 }
 
-function WpisWezla({
+const LICZBA_KOLUMN_SILY = 7;
+
+/** Liczba bez jednostki (jednostka w nagłówku kolumny) — formater pulpitu. */
+function bezJednostki(wartosc: number | null, miejsca: number): string {
+  return wartosc === null || !Number.isFinite(wartosc) ? '—' : formatLiczba(wartosc, miejsca);
+}
+
+/**
+ * Wiersz węzła w tabeli siły sieci: węzeł (z modelu), SCR, S_k'', moc zainstalowana, napięcie
+ * znamionowe i ocena backendu. Uzasadnienie, braki danych i kroki obliczeń ze wzorami —
+ * jednym przyciskiem „Szczegóły" na węzeł (standard warsztatu KD6).
+ */
+function WierszWezla({
   wpis,
   wyrozniony,
 }: {
   readonly wpis: WpisSilyWezla;
   readonly wyrozniony: boolean;
 }): JSX.Element {
-  const [sladWidoczny, setSladWidoczny] = useState(false);
+  const [otwarty, setOtwarty] = useState(false);
+  const idSzczegolow = useId();
   // Karta #145: węzeł nazwany z modelu, nigdy referencją.
   const nazwaObiektu = useNazwaObiektu();
   return (
-    <li
-      className={`mvd-oze-slad-krok${wyrozniony ? ' mvd-oze-wyrozniony' : ''}`}
-      data-testid={`mvd-oze-sila-wezel-${wpis.bus_ref}`}
-      data-wyrozniony={wyrozniony ? 'true' : undefined}
-    >
-      <div className="mvd-oze-metryka">
-        <span>{nazwaObiektu(wpis.bus_ref)}</span>
-        <span
-          className={`mvd-oze-komorka ${klasaWerdyktuSily(wpis.verdict)}`}
-          data-testid={`mvd-oze-sila-werdykt-${wpis.bus_ref}`}
-        >
-          {wpis.verdict}
-        </span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.silaScr}</span>
-        <span className="mvd-oze-num">{formatWskaznik(wpis.scr)}</span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span><TekstZWzorami tekst={PULPIT_STRINGS.silaSsc} /></span>
-        <span className="mvd-oze-num">{formatMva(wpis.s_sc_mva)}</span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.silaSinst}</span>
-        <span className="mvd-oze-num">{formatMva(wpis.s_installed_mva)}</span>
-      </div>
-      <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.silaNapiecie}</span>
-        <span className="mvd-oze-num">{formatKv(wpis.nominal_kv)}</span>
-      </div>
-      <p style={{ margin: '4px 0 0' }}>{wpis.why_pl}</p>
-      {wpis.missing_data.length > 0 ? (
-        <div className="mvd-oze-metryka">
-          <span>{PULPIT_STRINGS.silaBrakDanych}</span>
-          <span>{wpis.missing_data.map((kod) => BRAKI_DANYCH_SILY[kod]).join('; ')}</span>
-        </div>
-      ) : null}
-      {wpis.white_box.length > 0 ? (
-        <div style={{ marginTop: 6 }}>
+    <>
+      <tr
+        className={wyrozniony ? 'mvd-oze-wyrozniony' : undefined}
+        data-testid={`mvd-oze-sila-wezel-${wpis.bus_ref}`}
+        data-wyrozniony={wyrozniony ? 'true' : undefined}
+      >
+        <th scope="row" className="mvd-ncrfg-kol-nazwa">
+          <span className="mvd-ncrfg-wymaganie-nazwa">{nazwaObiektu(wpis.bus_ref)}</span>
+        </th>
+        <td className="mvd-ncrfg-num">{formatWskaznik(wpis.scr)}</td>
+        <td className="mvd-ncrfg-num">{bezJednostki(wpis.s_sc_mva, 2)}</td>
+        <td className="mvd-ncrfg-num">{bezJednostki(wpis.s_installed_mva, 2)}</td>
+        <td className="mvd-ncrfg-num">{bezJednostki(wpis.nominal_kv, 2)}</td>
+        <td>
+          <span
+            className={`mvd-oze-komorka ${klasaWerdyktuSily(wpis.verdict)}`}
+            data-testid={`mvd-oze-sila-werdykt-${wpis.bus_ref}`}
+          >
+            {wpis.verdict}
+          </span>
+        </td>
+        <td className="mvd-ncrfg-kol-akcja">
           <button
             type="button"
-            className="mvd-oze-slad-btn"
-            aria-expanded={sladWidoczny}
-            onClick={() => setSladWidoczny((s) => !s)}
+            className="mvd-ncrfg-przelacz"
+            aria-expanded={otwarty}
+            aria-controls={idSzczegolow}
+            onClick={() => setOtwarty((o) => !o)}
             data-testid={`mvd-oze-sila-slad-otworz-${wpis.bus_ref}`}
           >
-            {sladWidoczny ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
+            {otwarty ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
           </button>
-          {sladWidoczny ? <SladAnalizy kroki={wpis.white_box} /> : null}
-        </div>
+        </td>
+      </tr>
+      {otwarty ? (
+        <tr className="mvd-ncrfg-wiersz-szczegolow">
+          <td colSpan={LICZBA_KOLUMN_SILY} id={idSzczegolow} data-testid={`mvd-oze-sila-szczegoly-${wpis.bus_ref}`}>
+            <p className="mvd-ncrfg-zdanie">{wpis.why_pl}</p>
+            {wpis.missing_data.length > 0 ? (
+              <p className="mvd-ncrfg-zdanie">
+                <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.silaBrakDanych}: </span>
+                {wpis.missing_data.map((kod) => BRAKI_DANYCH_SILY[kod]).join('; ')}
+              </p>
+            ) : null}
+            {wpis.white_box.length > 0 ? <SladAnalizy kroki={wpis.white_box} /> : null}
+          </td>
+        </tr>
       ) : null}
-    </li>
+    </>
   );
 }
 
@@ -105,6 +117,7 @@ export function SekcjaSilySieci({
   const runId = useAktywnyRunId('zwarcie');
   const stan = useAnaliza(runId, pobierzSileSieci);
   const [wscrSlad, setWscrSlad] = useState(false);
+  const nazwaObiektu = useNazwaObiektu();
 
   const wyroznionyWezel =
     stan.rodzaj === 'gotowe' && wyroznionyModul
@@ -135,93 +148,95 @@ export function SekcjaSilySieci({
           {PULPIT_STRINGS.silaBlad}: {stan.komunikat}
         </div>
       ) : (
-        <div data-testid="mvd-oze-sila-wynik">
-          <div className="mvd-oze-podsum" data-testid="mvd-oze-sila-podsum">
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaWscr}</span>
-              <span className="mvd-oze-podsum-wart mvd-oze-num" data-testid="mvd-oze-sila-wscr">
+        <div data-testid="mvd-oze-sila-wynik" className="mvd-ncrfg-wymagania">
+          {/* Jedna linia: WSCR systemowy z oceną i liczebności węzłów; uzasadnienie i wywód
+              WSCR — po rozwinięciu (standard warsztatu KD6). */}
+          <div className="mvd-ncrfg-linia" data-testid="mvd-oze-sila-podsum">
+            <span>
+              <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.silaWscr}: </span>
+              <span className="mvd-ncrfg-num" data-testid="mvd-oze-sila-wscr">
                 {formatWskaznik(stan.dane.summary.wscr)}
               </span>
-            </div>
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaWscrWerdykt}</span>
-              <span
-                className={`mvd-oze-komorka ${klasaWerdyktuSily(stan.dane.summary.wscr_verdict)}`}
-                data-testid="mvd-oze-sila-wscr-werdykt"
-              >
-                {stan.dane.summary.wscr_verdict}
-              </span>
-            </div>
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaBadane}</span>
-              <span className="mvd-oze-podsum-wart mvd-oze-num">
-                {stan.dane.summary.total_buses}
-              </span>
-            </div>
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaSlabe}</span>
-              <span className="mvd-oze-podsum-wart mvd-oze-num">
-                {stan.dane.summary.weak_bus_count}
-              </span>
-            </div>
-            <div className="mvd-oze-podsum-poz">
-              <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.silaNieobliczone}</span>
-              <span className="mvd-oze-podsum-wart mvd-oze-num">
-                {stan.dane.summary.not_computed_count}
-              </span>
-            </div>
+            </span>
+            <span
+              className={`mvd-oze-komorka ${klasaWerdyktuSily(stan.dane.summary.wscr_verdict)}`}
+              data-testid="mvd-oze-sila-wscr-werdykt"
+            >
+              {stan.dane.summary.wscr_verdict}
+            </span>
+            <span>
+              <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.silaBadane}: </span>
+              <span className="mvd-ncrfg-num">{stan.dane.summary.total_buses}</span>
+            </span>
+            <span>
+              <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.silaSlabe}: </span>
+              <span className="mvd-ncrfg-num">{stan.dane.summary.weak_bus_count}</span>
+            </span>
+            <span>
+              <span className="mvd-ncrfg-linia-etyk">{PULPIT_STRINGS.silaNieobliczone}: </span>
+              <span className="mvd-ncrfg-num">{stan.dane.summary.not_computed_count}</span>
+            </span>
+            <button
+              type="button"
+              className="mvd-ncrfg-przelacz"
+              aria-expanded={wscrSlad}
+              onClick={() => setWscrSlad((s) => !s)}
+              data-testid="mvd-oze-sila-wscr-slad-otworz"
+            >
+              {wscrSlad ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
+            </button>
           </div>
-
-          <p style={{ margin: '4px 0 0' }}>{stan.dane.summary.wscr_why_pl}</p>
-          {stan.dane.summary.wscr_white_box.length > 0 ? (
-            <div style={{ marginTop: 6 }}>
-              <button
-                type="button"
-                className="mvd-oze-slad-btn"
-                aria-expanded={wscrSlad}
-                onClick={() => setWscrSlad((s) => !s)}
-                data-testid="mvd-oze-sila-wscr-slad-otworz"
-              >
-                {wscrSlad ? PULPIT_STRINGS.sladUkryj : PULPIT_STRINGS.sladPokaz}
-              </button>
-              {wscrSlad ? <SladAnalizy kroki={stan.dane.summary.wscr_white_box} /> : null}
+          {wscrSlad ? (
+            <div className="mvd-ncrfg-wiersz-szczegolow" data-testid="mvd-oze-sila-wscr-uzasadnienie">
+              <p className="mvd-ncrfg-zdanie">{stan.dane.summary.wscr_why_pl}</p>
+              {stan.dane.summary.wscr_white_box.length > 0 ? (
+                <SladAnalizy kroki={stan.dane.summary.wscr_white_box} />
+              ) : null}
             </div>
           ) : null}
 
-          <div className="mvd-oze-panel-blok">
-            <span className="mvd-oze-panel-etyk">{PULPIT_STRINGS.silaWezly}</span>
-            {wyroznionyModul && wyroznionyWezel ? (
-              <p
-                className="mvd-oze-wyroznienie-wezel"
-                data-testid="mvd-oze-sila-wyroznienie-wezel"
-              >
-                {PULPIT_STRINGS.silaWyroznionyWezel}: {wyroznionyWezel}
-              </p>
-            ) : null}
-            {wyroznionyModul && !wyroznionyWezel ? (
-              <p
-                className="mvd-oze-wyroznienie-brak"
-                data-testid="mvd-oze-sila-wyroznienie-brak"
-              >
-                {PULPIT_STRINGS.silaWyroznienieBrak}
-              </p>
-            ) : null}
-            {stan.dane.entries.length === 0 ? (
-              <p style={{ margin: '4px 0 0' }} className="mvd-oze-panel-etyk">
-                {PULPIT_STRINGS.silaBrakWezlow}
-              </p>
-            ) : (
-              <ul className="mvd-oze-analiza-lista" data-testid="mvd-oze-sila-wezly">
+          {wyroznionyModul && wyroznionyWezel ? (
+            <p className="mvd-oze-wyroznienie-wezel" data-testid="mvd-oze-sila-wyroznienie-wezel">
+              {PULPIT_STRINGS.silaWyroznionyWezel}: {nazwaObiektu(wyroznionyWezel)}
+            </p>
+          ) : null}
+          {wyroznionyModul && !wyroznionyWezel ? (
+            <p className="mvd-oze-wyroznienie-brak" data-testid="mvd-oze-sila-wyroznienie-brak">
+              {PULPIT_STRINGS.silaWyroznienieBrak}
+            </p>
+          ) : null}
+          {stan.dane.entries.length === 0 ? (
+            <p style={{ margin: 0 }} className="mvd-oze-panel-etyk">
+              {PULPIT_STRINGS.silaBrakWezlow}
+            </p>
+          ) : (
+            <table className="mvd-ncrfg-tabela" aria-label={PULPIT_STRINGS.silaWezly}>
+              <thead>
+                <tr>
+                  <th scope="col">{PULPIT_STRINGS.silaWezly}</th>
+                  <th scope="col">{PULPIT_STRINGS.silaScr}</th>
+                  <th scope="col">
+                    <TekstZWzorami tekst={PULPIT_STRINGS.silaKolSsc} />
+                  </th>
+                  <th scope="col">{PULPIT_STRINGS.silaKolSinst}</th>
+                  <th scope="col">{PULPIT_STRINGS.silaKolNapiecie}</th>
+                  <th scope="col">{PULPIT_STRINGS.silaWerdykt}</th>
+                  <th scope="col">
+                    <span className="mvd-sr-only">{PULPIT_STRINGS.sladPokaz}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody data-testid="mvd-oze-sila-wezly">
                 {stan.dane.entries.map((wpis) => (
-                  <WpisWezla
+                  <WierszWezla
                     key={wpis.bus_ref}
                     wpis={wpis}
                     wyrozniony={wyroznionyWezel === wpis.bus_ref}
                   />
                 ))}
-              </ul>
-            )}
-          </div>
+              </tbody>
+            </table>
+          )}
 
           {/* Karta #145: identyfikator analizy wyłącznie w „Informacjach audytowych". */}
           <InformacjeAudytowe

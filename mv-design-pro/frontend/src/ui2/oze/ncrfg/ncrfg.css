@@ -5,7 +5,8 @@
  */
 
 .mvd-ncrfg-num {
-  font-family: var(--mvd-font-mono);
+  /* Kontrakt prezentacji §10 pkt 7: cyfry tabelaryczne w kroju bazowym. */
+  font-family: inherit;
   font-variant-numeric: tabular-nums;
 }
 
@@ -66,42 +67,119 @@
   }
 }
 
-/* ---- rekordy wymagań ---- */
-.mvd-ncrfg-wymagania {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ---- nagłówek modułu (zwarty, standard warsztatu KD6) ---- */
+.mvd-ncrfg-naglowek {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
-.mvd-ncrfg-wymaganie {
-  border: 1px solid var(--mvd-line);
-  border-radius: 6px;
-  background: var(--mvd-panel);
-  padding: 6px 8px;
+.mvd-ncrfg-linia {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.mvd-ncrfg-linia > * + * {
+  margin-left: 12px;
+}
+.mvd-ncrfg-linia-etyk {
+  color: var(--mvd-muted);
+}
+.mvd-ncrfg-linia-tresc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mvd-ncrfg-linia-tresc[data-uwaga] {
+  color: var(--mvd-warn);
+}
+.mvd-ncrfg-naglowek .mvd-ncrfg-pola {
+  margin-top: 4px;
+}
+
+/* ---- tabela rekordów wymagań (jedno wymaganie = jeden wiersz) ---- */
+.mvd-ncrfg-wymagania {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
-.mvd-ncrfg-wymaganie-wiersz {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
+.mvd-ncrfg-wspolna {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.mvd-ncrfg-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.mvd-ncrfg-tabela th,
+.mvd-ncrfg-tabela td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--mvd-line);
+  text-align: left;
+  vertical-align: baseline;
+}
+.mvd-ncrfg-tabela thead th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.mvd-ncrfg-kol-nazwa {
+  font-weight: 400;
 }
 .mvd-ncrfg-wymaganie-nazwa {
-  flex: 1;
-  min-width: 160px;
   font-weight: 600;
 }
-.mvd-ncrfg-zdanie {
-  color: var(--mvd-ink);
+.mvd-ncrfg-artykul {
+  display: block;
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
 }
-.mvd-ncrfg-karta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.mvd-ncrfg-skladowa-nazwa {
+  padding-left: 18px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-ncrfg-wiersz-skladowej td,
+.mvd-ncrfg-wiersz-skladowej th {
+  border-bottom-style: dotted;
+}
+.mvd-ncrfg-znacznik {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+* + .mvd-ncrfg-znacznik {
+  margin-left: 6px;
+}
+.mvd-ncrfg-kol-stan {
+  white-space: nowrap;
+}
+.mvd-ncrfg-tabela [data-uwaga="ujemny"],
+.mvd-ncrfg-tabela [data-uwaga="naruszenie"] {
+  color: var(--mvd-err);
+  font-weight: 600;
+}
+.mvd-ncrfg-tabela [data-uwaga="brak"] {
+  color: var(--mvd-warn);
+}
+.mvd-ncrfg-kol-akcja {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+.mvd-ncrfg-wiersz-szczegolow > td {
+  background: var(--mvd-panel-2);
+  padding: 6px 8px;
+}
+.mvd-ncrfg-wiersz-szczegolow > td > * + * {
+  margin-top: 6px;
+}
+.mvd-ncrfg-zdanie {
+  margin: 0;
+  color: var(--mvd-ink);
+  overflow-wrap: anywhere;
 }
 .mvd-ncrfg-przelacz {
   background: none;

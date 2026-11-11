@@ -7,10 +7,11 @@
 import { oczekujTekstuZWzorami } from '../../../../test/tekstZWzorami';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { SekcjaAdekwatnosciQ } from '../SekcjaAdekwatnosciQ';
-import { BRAKI_DANYCH_Q, WERDYKTY_ADEKWATNOSCI_Q } from '../strings';
+import { BRAKI_DANYCH_Q, PULPIT_STRINGS, WERDYKTY_ADEKWATNOSCI_Q } from '../strings';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { adekwatnoscQFixture, przebiegFixture } from './analizyFixtures';
 
@@ -83,11 +84,18 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
     render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     const zrodlo = await screen.findByTestId('mvd-oze-adekw-zrodlo-src-2');
     expect(zrodlo).toHaveTextContent('Falownik farmy 2');
-    // Braki po polsku z symbolami granic przez KaTeX (`$Q_{\\min}$`, nie ASCII `Q_min`).
-    oczekujTekstuZWzorami(zrodlo, BRAKI_DANYCH_Q.q_min_mvar);
-    oczekujTekstuZWzorami(zrodlo, BRAKI_DANYCH_Q.q_max_mvar);
-    expect(zrodlo).not.toHaveTextContent('src-2');
-    expect(zrodlo).not.toHaveTextContent('q_min_mvar');
+    // Wiersz źródła mówi „brakujące dane" w stanie regulacji; same braki po polsku z symbolami
+    // granic przez KaTeX (`$Q_{\\min}$`, nie ASCII `Q_min`) — w szczegółach (standard KD6).
+    expect(screen.getByTestId('mvd-oze-adekw-nasycenie-src-2')).toHaveTextContent(PULPIT_STRINGS.adekwBrakDanych);
+    expect(screen.getByTestId('mvd-oze-adekw-nasycenie-src-2')).toHaveAttribute('data-uwaga', 'brak');
+    await userEvent.setup().click(screen.getByTestId('mvd-oze-adekw-slad-otworz-src-2'));
+    const szczegoly = screen.getByTestId('mvd-oze-adekw-szczegoly-src-2');
+    oczekujTekstuZWzorami(szczegoly, BRAKI_DANYCH_Q.q_min_mvar);
+    oczekujTekstuZWzorami(szczegoly, BRAKI_DANYCH_Q.q_max_mvar);
+    for (const el of [zrodlo, szczegoly]) {
+      expect(el).not.toHaveTextContent('src-2');
+      expect(el).not.toHaveTextContent('q_min_mvar');
+    }
     expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toHaveTextContent('Szyna PCC farmy 2');
     useSnapshotStore.setState({ snapshot: null } as never);
   });
@@ -115,6 +123,9 @@ describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => 
   });
 
   it('wyróżniony moduł podświetla źródło i naruszenie swojego węzła', async () => {
+    useSnapshotStore.setState({
+      snapshot: { buses: [{ ref_id: 'bus-pcc-2', id: 'b2', name: 'Szyna PCC farmy 2', voltage_kv: 15 }] },
+    } as never);
     pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
     render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} wyroznionyModul="src-2" />);
     await screen.findByTestId('mvd-oze-adekw-wynik');
@@ -128,7 +139,10 @@ describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => 
       'data-wyrozniony',
       'true',
     );
-    expect(screen.getByTestId('mvd-oze-adekw-wyroznienie-wezel')).toHaveTextContent('bus-pcc-2');
+    // Karta #145: wyróżniony węzeł nazwany z modelu, nigdy referencją.
+    expect(screen.getByTestId('mvd-oze-adekw-wyroznienie-wezel')).toHaveTextContent('Szyna PCC farmy 2');
+    expect(screen.getByTestId('mvd-oze-adekw-wyroznienie-wezel')).not.toHaveTextContent('bus-pcc-2');
+    useSnapshotStore.setState({ snapshot: null } as never);
   });
 
   it('moduł bez węzła w wynikach → uczciwa adnotacja, brak podświetlenia', async () => {

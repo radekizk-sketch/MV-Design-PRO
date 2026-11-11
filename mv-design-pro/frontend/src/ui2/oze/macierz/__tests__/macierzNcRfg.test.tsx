@@ -133,6 +133,13 @@ async function przeprowadzBieg(uzytkownik: ReturnType<typeof userEvent.setup>): 
   await waitFor(() => expect(screen.getAllByTestId('mvd-oze-komorka-wynik').length).toBeGreaterThan(0));
 }
 
+/** Wiersze tabeli rekordów: stosowane — każdy rekord swoim wierszem; niestosowane — jeden wiersz zbiorczy. */
+function sprawdzTabeleRekordow(lista: HTMLElement, rekordy: readonly { stosowalnosc: { dotyczy: boolean } }[]): void {
+  const stosowane = rekordy.filter((r) => r.stosowalnosc.dotyczy).length;
+  expect(lista.querySelectorAll('tr[data-status]')).toHaveLength(stosowane);
+  expect(lista.querySelectorAll('[data-testid$="-nie-dotyczy"]')).toHaveLength(stosowane < rekordy.length ? 1 : 0);
+}
+
 describe('macierz przed biegiem — wiersze z katalogu, operator z modelu, procedura jako dokument', () => {
   it('wiersze = testy katalogu (podstawa, rodzaj twierdzenia), kolumny = moduły modelu', async () => {
     trasy();
@@ -272,9 +279,7 @@ describe('bieg „co-jeśli" — ciało żądania i komórki z rekordów', () =>
     await uzytkownik.click(screen.getByTestId(`mvd-oze-modul-${pv.der_ref}`));
     expect(screen.getByTestId(`mvd-oze-wynik-modulu-naglowek-${pv.der_ref}-dowod`)).toHaveAttribute('data-stan', 'brak');
     const wymagania = bieg.ocena_wymagan[1].wymagania;
-    expect(within(screen.getByTestId(`mvd-oze-wymagania-${pv.der_ref}`)).getAllByRole('listitem')).toHaveLength(
-      wymagania.length,
-    );
+    sprawdzTabeleRekordow(screen.getByTestId(`mvd-oze-wymagania-${pv.der_ref}`), wymagania);
   });
 
   it('filtr komórek po etykiecie z rekordu zawęża wiersze (nawigacja, bez liczników)', async () => {
