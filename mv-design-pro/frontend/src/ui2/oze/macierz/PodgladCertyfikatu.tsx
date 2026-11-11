@@ -53,6 +53,11 @@ export function PodgladCertyfikatu({
         </button>
       </div>
 
+      <p className="mvd-oze-info" data-testid="mvd-oze-cert-zastrzezenie">
+        Dokument wytworzony przez MV-DESIGN-PRO jest raportem technicznym z analizy.
+        Nie jest certyfikatem jednostki akredytowanej, protokołem próby zgodności
+        ani zgodą na użytkowanie wydaną przez operatora sieci.
+      </p>
       {ladowanie ? (
         <p data-testid="mvd-oze-cert-ladowanie">{MACIERZ_STRINGS.certyfikatLadowanie}</p>
       ) : null}

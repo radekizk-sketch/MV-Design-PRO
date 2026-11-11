@@ -41,6 +41,8 @@ from enm.deklaracje_modulu import (
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
+from enm.wydarzenia_regulacyjne import WydarzeniaRegulacyjne
+from enm.dowody_urzadzenia import DowodKonfiguracjiUrzadzenia
 from enm.nazwy_elementow import nazwa_elementu
 from enm.slownik_komunikatow import opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
@@ -126,6 +128,8 @@ class DerGeneratorCreateRequest(BaseModel):
     # (ten sam pisarz `add_converter_source` co kreator OZE). Brak = dana nieustalona.
     modul_istniejacy: ModulIstniejacy | None = None
     data_umowy_przylaczeniowej: DataUmowy | None = None
+    wydarzenia_regulacyjne: WydarzeniaRegulacyjne | None = None
+    dowod_konfiguracji_urzadzenia: DowodKonfiguracjiUrzadzenia | None = None
     nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
     deklaracje_modulu: DeklaracjeModulu | None = None
 

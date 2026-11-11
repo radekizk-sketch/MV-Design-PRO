@@ -54,6 +54,36 @@ function trasy(
 ) {
   return atrapaSieci([
     { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
+
+    {
+      metoda: 'GET',
+      sciezka: '/api/ncrfg-tests/audyt-zrodel',
+      odpowiedz: () => odpowiedzJson(200, {
+        operator_id: 'enea',
+        profil: 'fixture',
+        gotowosc_do_formalnego_potwierdzenia_zgodnosci: false,
+        blokery: [{ kod: 'WOS_2025_NIE_W_PROFILU', opis_pl: 'WOS 2025: brak zatwierdzonej podstawy.' }],
+        uwaga: 'Stan źródeł nie jest potwierdzeniem zgodności.',
+      }),
+    },
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/ocena-wydan$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea',
+        wyniki: [
+          { der_ref: 'pv-1', typ: 'B',
+            ocena: {
+              wos: { status: 'USTALONO', wydanie: '2025', powod_pl: 'data warunków',
+                     dane_brakujace: [] },
+              ptpiree: { status: 'USTALONO', wydanie: '3.0', powod_pl: 'data oświadczenia',
+                        dane_brakujace: [] },
+              nie_aktywowane_w_solverze: true,
+            },
+            blokery_aktywacji: ['WOS_WYDANIE_NIEZGODNE_Z_AKTYWNYM_PROFILEM'] },
+        ],
+      }),
+    },
     {
       metoda: 'GET',
       sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/wejscia$/,
@@ -62,6 +92,75 @@ function trasy(
           ? odpowiedzJson(404, { detail: 'Przypadek nie ma dokumentu ENM.' })
           : odpowiedzJson(200, wejsciaDlaOperatora(wejscia, w.zapytanie.get('operator_id') ?? '')),
     },
+
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/przeglad-certyfikatow$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea', data_oceny: '2026-11-10',
+        rejestr: {
+          stan: 'STARSZY_NIZ_OBSERWACJA',
+          data_sprawdzenia: '2026-11-10',
+          ostrzezenie_pl: 'Historyczny wykaz',
+        },
+        urzadzenia: [{
+          der_ref: 'pv-1', status: 'NIE_OCENIONO', kod: 'SNAPSHOT_NIEAKTUALNY',
+          powody_pl: ['Źródło wymaga potwierdzenia.'],
+          rekord_wykazu: null, wersja_wipwc: null, wersja_wos: null,
+          data_oceny: '2026-11-10', akceptacja_operatora: false,
+        }],
+        status_formalny: 'NIE_WYDANO_CERTYFIKATU_ANI_ZGODY_OPERATORA',
+      }),
+    },
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/dossier-przygotowawcze$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea',
+        wyniki: [{
+          der_ref: 'pv-1',
+          plan: {
+            typ_mwe: 'B', dokumenty: [{
+              kod: 'PGMD', tytul_pl: 'Dokument modułu wytwarzania energii',
+              etap: 'procedura B/C', wymagane_w_typowej_procedurze: true,
+              uwagi_pl: '', formularz_url: 'https://example.org',
+              stan: 'BRAK_DOWODU_OPERATORA',
+            }],
+            luki: ['Brak decyzji OSD'], formalnie_zaakceptowane: false,
+            powod_pl: 'Nie jest to pozwolenie operatora.',
+          },
+        }],
+        status: 'LISTA_KONTROLNA_BEZ_FORMALNEJ_AKCEPTACJI',
+      }),
+    },
+
+    {
+      metoda: 'GET',
+      sciezka: /^\/api\/ncrfg-tests\/cases\/[^/]+\/luki-dowodowe$/,
+      odpowiedz: () => odpowiedzJson(200, {
+        case_id: 'case-demo', operator_id: 'enea', data_oceny: '2026-11-10',
+        gotowosc_zgodnosci: false,
+        reason: 'Nie wykazano zgodności formalnej.',
+        wyniki: [{
+          der_ref: 'pv-1', typ: 'B', rodzina: 'PPM',
+          wos_wybrany: '2025', ptpiree_wybrana: '3.0',
+          stan: 'BRAK_PELNEGO_DOWODU',
+          braki: ['BRAK_ZWERYFIKOWANYCH_PARAMETROW_WOS2025'],
+          wymagania: [
+            { zdolnosc: 'LFSM_O', wipwc: 'CERT_REQUIRED',
+              cert_status_z_wykazu: 'NIE_OCENIONO',
+              test_wg_ptpiree_3: 'NONE',
+              status_wykazania: 'BRAK_ZWERYFIKOWANEGO_CERTYFIKATU' },
+            { zdolnosc: 'REACTIVE_CAPABILITY', wipwc: 'NOT_APPLICABLE',
+              cert_status_z_wykazu: 'NIE_OCENIONO',
+              test_wg_ptpiree_3: 'TEST',
+              status_wykazania: 'BRAK_PROTOKOLU_PROBY' },
+          ],
+          dokumenty: ['PGMD'],
+        }],
+      }),
+    },
+
     { metoda: 'POST', sciezka: '/api/ncrfg-tests/run', odpowiedz: () => odpowiedzJson(200, biegFixture()) },
     {
       metoda: 'GET',
@@ -518,5 +617,50 @@ describe('stan oceny FRT z okna falownika (zapis w store)', () => {
     expect(frt.querySelector('[data-semantyka]')).toBeNull();
     // Moduł bez zapisanego stanu nie dostaje wiersza FRT (zero atrapy).
     expect(screen.queryByTestId(`mvd-oze-frt-hvrt-${pv.id}`)).not.toBeInTheDocument();
+  });
+});
+
+
+describe('źródła WOS/PTPiREE — tylko odczyt bez fałszywego certyfikatu', () => {
+  it('pokazuje braki podstaw i nie utożsamia rozpoznanego WOS z aktywnym profilem', async () => {
+    trasy();
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const panel = await screen.findByTestId('mvd-oze-podstawy-regulacyjne');
+    await waitFor(() => expect(within(panel).getByTestId('mvd-oze-podstawy-stan'))
+      .toHaveTextContent('Podstawy niekompletne'));
+    expect(within(panel).getByText(/NC RfG/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Wymagane uzupełnienia źródeł/)).toBeInTheDocument();
+  });
+});
+
+
+describe('P1 — certyfikat urządzenia i dokumentacja bez fikcyjnego odbioru', () => {
+  it('odczytuje status wykazu i pozwala obejrzeć listę dokumentów', async () => {
+    trasy();
+    const uzytkownik = userEvent.setup();
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const panel = await screen.findByTestId('mvd-oze-dowody-przylaczeniowe');
+    await waitFor(() => expect(within(panel).getByTestId('mvd-oze-dowody-rejestr'))
+      .toHaveTextContent('STARSZY_NIZ_OBSERWACJA'));
+    expect(within(panel).getByText(/SNAPSHOT_NIEAKTUALNY/)).toBeInTheDocument();
+    await uzytkownik.click(within(panel).getByText('Wzory dokumentów do przygotowania'));
+    expect(within(panel).getByText(/PGMD/)).toBeInTheDocument();
+    expect(within(panel).getByText(/Nie jest to pozwolenie operatora/)).toBeInTheDocument();
+  });
+});
+
+
+describe('WiPWC × PTPiREE — normatywna macierz dowodów', () => {
+  it('odróżnia obowiązek certyfikatu od próby i pokazuje brak formalnego dowodu', async () => {
+    trasy();
+    const user = userEvent.setup();
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    const panel = await screen.findByTestId('mvd-oze-dowody-przylaczeniowe');
+    await waitFor(() => expect(within(panel).getByTestId('mvd-oze-dowody-rejestr')).toBeInTheDocument());
+    await user.click(within(panel).getByText('Wymogi i brakujące dowody WiPWC / PTPiREE'));
+    const matrix = within(panel).getByTestId('mvd-oze-macierz-obowiazkow');
+    expect(within(matrix).getByText('Brak zweryfikowanego certyfikatu')).toBeInTheDocument();
+    expect(within(matrix).getByText('Brak protokołu badania')).toBeInTheDocument();
+    expect(within(matrix).getByText('WOS: 2025, procedura: 3.0.')).toBeInTheDocument();
   });
 });
