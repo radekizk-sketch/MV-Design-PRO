@@ -222,3 +222,34 @@ export function formatStatusLabel(
     ? POLISH_STATUS_LABEL[status]
     : POLISH_STATUS_SHORT[status];
 }
+
+/* === Precyzja zapisu wg jednostki wielkości (KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7 §10 pkt 7) === */
+
+/**
+ * Liczba miejsc po przecinku wg jednostki wielkości z backendu: prądy, współczynniki i zapasy
+ * dwa miejsca, czasy trzy, rezystancje przejścia całkowite. Jedna tabela repo — ekran nie
+ * trzyma własnej precyzji. Jednostka nieznana → dwa miejsca (domyślna precyzja formattera).
+ */
+export const MIEJSCA_DZIESIETNE_JEDNOSTKI: Readonly<Record<string, number>> = {
+  A: 2,
+  '1': 2,
+  s: 3,
+  'Ω': 0,
+  '%': 1,
+  '°': 1,
+  mS: 3,
+  kW: 2,
+  V: 1,
+  kV: 2,
+};
+
+/**
+ * Liczba w komórce tabeli bez jednostki (jednostka idzie do nagłówka kolumny), precyzja
+ * z `MIEJSCA_DZIESIETNE_JEDNOSTKI`. Brak wartości → „—”.
+ */
+export function formatWgJednostki(
+  value: number | null | undefined,
+  jednostka: string,
+): string {
+  return formatPolishValue(value, { decimals: MIEJSCA_DZIESIETNE_JEDNOSTKI[jednostka] ?? 2 });
+}

@@ -33,16 +33,12 @@ function px(p: [number, number]): string {
   return `${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
 }
 
-function liczba(wartosc: number, miejsca = 2): string {
-  return formatPolishValue(wartosc, { decimals: miejsca });
-}
-
 function Wskaz({ wskaz, skala, testid }: { wskaz: WskazWykresu; skala: number; testid: string }) {
   const koniec = rzutSkali([wskaz.re_a, wskaz.im_a], skala);
   const wPolu = wskaz.rola === 'W_POLU';
   const kolor = wPolu ? 'var(--mvd-accent)' : 'var(--mvd-warn)';
-  const etykieta = `3I₀ ${T.wykresWskaz(wskaz.rola)}: ${liczba(wskaz.modul_a)} A ∠${liczba(wskaz.kat_deg, 1)}°`;
-  const rzut = `rzut ${liczba(wskaz.wielkosc_a)} A`;
+  const etykieta = `3I₀ ${T.wykresWskaz(wskaz.rola)}: ${formatPolishValue(wskaz.modul_a, { decimals: 2 })} A ∠${formatPolishValue(wskaz.kat_deg, { decimals: 1 })}°`;
+  const rzut = `rzut ${formatPolishValue(wskaz.wielkosc_a, { decimals: 2 })} A`;
   // Etykieta po stronie końca wskazu (wyłącznie układ tekstu na rysunku).
   const zPrawej = koniec[0] >= SRODEK_X;
   const tx = zPrawej ? Math.min(koniec[0] + 6, SZEROKOSC - 4) : Math.max(koniec[0] - 6, 4);
@@ -124,8 +120,8 @@ export function WykresWskazowy67N({ wykres, testid }: { wykres: WykresWskazowy67
   return (
     <figure className="mvd-eaz-wykres" data-testid={testid}>
       <figcaption>
-        {T.wykresTytul} · {T.wykresSektor(wykres.tryb_pl, liczba(wykres.polowa_sektora_deg, 0))} ·{' '}
-        U₀&gt; = {liczba(wykres.prog_u0_proc, 0)} %
+        {T.wykresTytul} · {T.wykresSektor(wykres.tryb_pl, formatPolishValue(wykres.polowa_sektora_deg, { decimals: 0 }))} ·{' '}
+        U₀&gt; = {formatPolishValue(wykres.prog_u0_proc, { decimals: 0 })} %
       </figcaption>
       <svg
         viewBox={`0 0 ${SZEROKOSC} ${WYSOKOSC}`}
@@ -174,7 +170,7 @@ export function WykresWskazowy67N({ wykres, testid }: { wykres: WykresWskazowy67
           strokeWidth={1.5}
         />
         <text x={osKoniec[0] + 4} y={osKoniec[1] - 6} className="mvd-eaz-wykres-tekst" fill="var(--mvd-ok)">
-          {T.wykresOs(liczba(wykres.os_deg, 0))}
+          {T.wykresOs(formatPolishValue(wykres.os_deg, { decimals: 0 }))}
         </text>
         {prog}
         <text
@@ -183,7 +179,7 @@ export function WykresWskazowy67N({ wykres, testid }: { wykres: WykresWskazowy67
           className="mvd-eaz-wykres-tekst"
           fill="var(--mvd-ink)"
         >
-          {T.wykresProg(liczba(wykres.prog_a))}
+          {T.wykresProg(formatPolishValue(wykres.prog_a, { decimals: 2 }))}
         </text>
         {wykres.wskazy.map((w) => (
           <Wskaz key={w.rola} wskaz={w} skala={s} testid={testid} />

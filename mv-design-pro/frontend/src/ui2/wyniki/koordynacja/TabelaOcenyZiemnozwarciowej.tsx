@@ -25,7 +25,7 @@ import { Fragment, useState } from 'react';
 
 import { MathInline, MathRenderer } from '../../../ui/proof/MathRenderer';
 import { KartaWerdyktu, ZnakWerdyktu } from '../wzorzec/KartaWerdyktu';
-import { liczbaEaz } from './liczbaEaz';
+import { formatWgJednostki } from '../../../ui/shared/formatPolishValue';
 import {
   rekordyWiersza,
   wierszeRodzin,
@@ -79,17 +79,17 @@ function PasekSieci({ siec, testid }: { siec: readonly SiecDoziemna[]; testid: s
           {siec.length > 1 ? <span className="mvd-eaz-pasek-etykieta">{T.ziemneSiecNr(s.numer)}</span> : null}
           <Pozycja etykieta={T.ziemnePunktNeutralny} wartosc={s.sposob_pl} />
           {s.prad_pojemnosciowy_a !== null ? (
-            <Pozycja symbol={T.ziemneIc} jednostka="A" wartosc={liczbaEaz(s.prad_pojemnosciowy_a, 'A')} />
+            <Pozycja symbol={T.ziemneIc} jednostka="A" wartosc={formatWgJednostki(s.prad_pojemnosciowy_a, 'A')} />
           ) : null}
           {s.rozstrojenie_proc !== null ? (
-            <Pozycja symbol={T.ziemneV} jednostka="%" wartosc={liczbaEaz(s.rozstrojenie_proc, '%')} />
+            <Pozycja symbol={T.ziemneV} jednostka="%" wartosc={formatWgJednostki(s.rozstrojenie_proc, '%')} />
           ) : null}
           {s.prad_resztkowy_a !== null ? (
-            <Pozycja symbol={T.ziemneIres} jednostka="A" wartosc={liczbaEaz(s.prad_resztkowy_a, 'A')} />
+            <Pozycja symbol={T.ziemneIres} jednostka="A" wartosc={formatWgJednostki(s.prad_resztkowy_a, 'A')} />
           ) : null}
-          {s.awsc_prad_a !== null ? <Pozycja symbol={T.ziemneAwsc} jednostka="A" wartosc={liczbaEaz(s.awsc_prad_a, 'A')} /> : null}
+          {s.awsc_prad_a !== null ? <Pozycja symbol={T.ziemneAwsc} jednostka="A" wartosc={formatWgJednostki(s.awsc_prad_a, 'A')} /> : null}
           {s.awsc_czas_s !== null ? (
-            <Pozycja symbol={T.ziemneAwscCzas} jednostka="s" wartosc={liczbaEaz(s.awsc_czas_s, 's')} />
+            <Pozycja symbol={T.ziemneAwscCzas} jednostka="s" wartosc={formatWgJednostki(s.awsc_czas_s, 's')} />
           ) : null}
         </span>
       ))}
@@ -100,16 +100,16 @@ function PasekSieci({ siec, testid }: { siec: readonly SiecDoziemna[]; testid: s
 function PasekPrzypadku({ przypadek, testid }: { przypadek: PrzypadekDoziemienia; testid: string }) {
   const u0 =
     przypadek.u0_min_proc !== null && przypadek.u0_max_proc !== null
-      ? `${liczbaEaz(przypadek.u0_min_proc, '%')}–${liczbaEaz(przypadek.u0_max_proc, '%')}`
+      ? `${formatWgJednostki(przypadek.u0_min_proc, '%')}–${formatWgJednostki(przypadek.u0_max_proc, '%')}`
       : '—';
   return (
     <div className="mvd-eaz-pasek" data-testid={`${testid}-przypadek`}>
       <span className="mvd-eaz-pasek-tytul">{T.ziemnePrzypadek}</span>
       <Pozycja etykieta={T.ziemneRodzaj} wartosc={T.ziemneRodzajPl(przypadek.rodzaj)} />
-      <Pozycja symbol={T.ziemneRf} jednostka="Ω" wartosc={liczbaEaz(przypadek.r_f_ohm, 'Ω')} />
-      <Pozycja symbol={T.ziemneC} wartosc={`${liczbaEaz(przypadek.c_min, '1')}–${liczbaEaz(przypadek.c_max, '1')}`} />
+      <Pozycja symbol={T.ziemneRf} jednostka="Ω" wartosc={formatWgJednostki(przypadek.r_f_ohm, 'Ω')} />
+      <Pozycja symbol={T.ziemneC} wartosc={`${formatWgJednostki(przypadek.c_min, '1')}–${formatWgJednostki(przypadek.c_max, '1')}`} />
       <Pozycja symbol={T.ziemneU0} jednostka="%" wartosc={u0} />
-      <Pozycja symbol={T.ziemneIdz} jednostka="A" wartosc={liczbaEaz(przypadek.prad_doziemny_max_a, 'A')} />
+      <Pozycja symbol={T.ziemneIdz} jednostka="A" wartosc={formatWgJednostki(przypadek.prad_doziemny_max_a, 'A')} />
       <Pozycja etykieta={T.ziemneAwscStany} wartosc={przypadek.stany_awsc.map(T.ziemneAwscStanPl).join(' / ')} />
       <Pozycja etykieta={T.ziemnePunkty} wartosc={String(przypadek.liczba_punktow)} />
     </div>
@@ -124,7 +124,7 @@ function Komorka({ komorka, testid }: { komorka: KomorkaRodziny | undefined; tes
       </td>
     );
   }
-  const tekst = komorka.wartosc !== null ? liczbaEaz(komorka.wartosc, komorka.jednostka) : (komorka.tekst ?? '—');
+  const tekst = komorka.wartosc !== null ? formatWgJednostki(komorka.wartosc, komorka.jednostka) : (komorka.tekst ?? '—');
   return (
     <td
       className="mvd-num mvd-eaz-liczba"
@@ -184,13 +184,13 @@ function Szczegoly({ wiersz, wynik, testid }: { wiersz: WierszRodziny; wynik: Wy
                             {rozstrzyga === w.klucz ? <span className="mvd-eaz-rozstrzyga">{T.ziemneRozstrzyga}</span> : null}
                           </td>
                           <td className="mvd-num mvd-eaz-liczba">
-                            {liczbaEaz(w.wartosc, w.jednostka)} {w.jednostka}
+                            {formatWgJednostki(w.wartosc, w.jednostka)} {w.jednostka}
                           </td>
                           <td className="mvd-num mvd-eaz-liczba">
-                            {liczbaEaz(w.nastawa, w.jednostka)} {w.jednostka}
+                            {formatWgJednostki(w.nastawa, w.jednostka)} {w.jednostka}
                           </td>
                           <td className="mvd-num mvd-eaz-liczba" data-spelnia={String(w.spelniony)}>
-                            {liczbaEaz(w.zapas, w.jednostka)} {w.jednostka}
+                            {formatWgJednostki(w.zapas, w.jednostka)} {w.jednostka}
                           </td>
                         </tr>
                       )),
@@ -217,7 +217,7 @@ function Szczegoly({ wiersz, wynik, testid }: { wiersz: WierszRodziny; wynik: Wy
                 {wymagania.map(([klucz, w]) => (
                   <li key={klucz} data-stan-zrodla={w.stan_zrodla} data-przyjete={String(w.przyjete)}>
                     <span className="mvd-num">
-                      {w.symbol} ≥ {liczbaEaz(w.wartosc, '1')}
+                      {w.symbol} ≥ {formatWgJednostki(w.wartosc, '1')}
                     </span>{' '}
                     — {w.zrodlo_pl} (<OpisWymagania przyjete={w.przyjete} stan={w.stan_zrodla} />).{' '}
                     <span className="mvd-eaz-przypis">{w.uzasadnienie_pl}</span>

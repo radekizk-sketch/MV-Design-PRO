@@ -797,7 +797,10 @@ def oblicz_siec_doziemna(
 
 
 def wielkosc_decydujaca(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float:
-    """Wielkość decydująca funkcji przy zwarciu (strona pierwotna, jednostka ``_JEDNOSTKA``)."""
+    """Wielkość mierzona porównywana z progiem I0> (strona pierwotna, jednostka ``_JEDNOSTKA``):
+    moduł 3I0, rzut 3I0 na oś charakterystyki (tryb rzutu) albo moduł 3I0 (tryb sektorowy 67N),
+    U0, admitancja, moc P0. Sama wielkość — bez warunków kierunku i rozruchu U0, które są
+    OSOBNYMI warunkami listy ``warunki_dzialania`` (jedno źródło predykatów)."""
     rodzaj = f.rodzaj
     # Kąt i admitancja są nieokreślone (``None``) wyłącznie przy zerowym sygnale pola: solver
     # zwraca ``None`` tylko przy |3I0| = 0 albo |U0| = 0, a w każdym takim polu |3I0| = 0 —
@@ -807,18 +810,12 @@ def wielkosc_decydujaca(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float
     if rodzaj == "PRAD":
         return abs(pole.prad_3i0_a)
     if rodzaj == "RZUT_PRADU":
-        if pole.kat_phi0_deg is None:
-            return 0.0
         odchylenie = odchylenie_kierunku_deg(f, pole)
-        assert odchylenie is not None
-        wartosc = (
-            abs(pole.prad_3i0_a)
-            if tryb_kryterium(f) == "SEKTOR"
-            else abs(pole.prad_3i0_a) * math.cos(math.radians(odchylenie))
-        )
-        # Poza sektorem działania przekaźnik nie działa: dodatnia wielkość poza sektorem nie jest
-        # wielkością działania (0), ujemny rzut zostaje (prąd w kierunku przeciwnym — nazwany).
-        return wartosc if abs(odchylenie) <= polowa_sektora_deg(f) else min(wartosc, 0.0)
+        if odchylenie is None:
+            return 0.0
+        if tryb_kryterium(f) == "SEKTOR":
+            return abs(pole.prad_3i0_a)
+        return abs(pole.prad_3i0_a) * math.cos(math.radians(odchylenie))
     if rodzaj == "U0":
         return pole.u0_proc
     if pole.admitancja_y0_s is None:
@@ -858,18 +855,37 @@ def odchylenie_kierunku_deg(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> f
     return (pole.kat_phi0_deg - os_charakterystyki_deg(f) + 180.0) % 360.0 - 180.0
 
 
+KluczWarunku = Literal["U0", "SEKTOR", "PROG"]
+RelacjaWarunku = Literal["NIE_MNIEJ", "NIE_WIECEJ"]
+
+#: Warunek listy → kryterium rekordu werdyktu przy zwarciu w strefie (warunek PROG to czułość).
+KRYTERIUM_WARUNKU: dict[str, str] = {"U0": "ROZRUCH_U0", "SEKTOR": "KIERUNEK", "PROG": "CZULOSC"}
+
+
 @dataclass(frozen=True)
 class Warunek67N:
-    """Jeden warunek algorytmu 67N przy jednym zwarciu: wartość, nastawa, zapas."""
+    """Jeden warunek działania funkcji przy jednym zwarciu: wartość, nastawa, zapas, relacja
+    i wykładnik skalowania wartości z rezystancją przejścia (m^n; 0 — warunek niezależny od
+    R_F, np. kąt). ``spelniony`` wynika z relacji — ta sama relacja trafia do rekordu werdyktu."""
 
-    klucz: Literal["U0", "SEKTOR", "PROG"]
+    klucz: KluczWarunku
     opis_pl: str
     warunek_latex: str
     wartosc: float
     nastawa: float
     jednostka: str
-    zapas: float
-    spelniony: bool
+    relacja: RelacjaWarunku
+    wykladnik_rf: int
+
+    @property
+    def zapas(self) -> float:
+        return (
+            self.wartosc - self.nastawa if self.relacja == "NIE_MNIEJ" else self.nastawa - self.wartosc
+        )
+
+    @property
+    def spelniony(self) -> bool:
+        return self.zapas >= 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -879,64 +895,83 @@ class Warunek67N:
             "wartosc": self.wartosc,
             "nastawa": self.nastawa,
             "jednostka": self.jednostka,
+            "relacja": self.relacja,
             "zapas": self.zapas,
             "spelniony": self.spelniony,
         }
 
 
-def warunki_67n(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> tuple[Warunek67N, ...]:
-    """Warunki algorytmu przekaźnika 67N liczone OSOBNO (korekta właściciela 3): rozruch
-    napięciowy U0 ≥ U0>, kierunek |φ0 − φ_os| ≤ połowa sektora, próg (rzut albo moduł 3I0
-    w sektorze) ≥ I0>. Zadziałanie = koniunkcja; warunek rozstrzygający — pierwszy niespełniony,
-    a gdy wszystkie spełnione, ten o najmniejszym zapasie względnym. Prąd zerowy: kierunek
-    nieokreślony — odchylenie 180° (warunek niespełniony)."""
-    prog_u0 = float(f.nastawy["prog_u0_proc"])
-    polowa = polowa_sektora_deg(f)
-    odchylenie = odchylenie_kierunku_deg(f, pole)
-    odch = 180.0 if odchylenie is None else abs(odchylenie)
-    wielkosc = wielkosc_decydujaca(f, pole)
+def warunki_dzialania(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> tuple[Warunek67N, ...]:
+    """JEDYNA lista warunków działania funkcji przy jednym zwarciu (korekta właściciela 3).
+    Werdykt (rekordy), rozruch ``rusza``, wykres wskazowy, wielkość działania i R_F,max czytają
+    tę listę — żaden z nich nie liczy predykatu sam.
+
+    Kolejność algorytmu przekaźnika: rozruch napięciowy U0 ≥ U0> (funkcje z rozruchem U0),
+    kierunek |φ0 − φ_os| ≤ Δφ (67N), próg wielkości mierzonej ≥ nastawa. Kierunek do linii /
+    do szyn i kąt charakterystyczny φ_ch wyznaczają oś φ_os (obrót o 180° dla „do szyn”); tryb
+    kryterium wybiera wielkość progu (rzut 3I0·cos(φ0 − φ_os) albo moduł |3I0| w sektorze;
+    sin φ i cos φ to rzut przy φ_ch = 90° i 0°). Czas jest skutkiem koniunkcji (zwłoka liczy się
+    od rozruchu — ``czas_funkcji``, reguła AWSC w ``dzialanie_w_punkcie``), nie osobnym
+    predykatem. Prąd zerowy: kierunek nieokreślony — odchylenie 180° (warunek niespełniony)."""
+    warunki: list[Warunek67N] = []
+    if f.rodzaj in _Z_ROZRUCHEM_U0:
+        warunki.append(
+            Warunek67N(
+                klucz="U0",
+                opis_pl="rozruch napięciowy U₀ ≥ U₀>",
+                warunek_latex=r"U_0 \ge U_{0>}",
+                wartosc=pole.u0_proc,
+                nastawa=float(f.nastawy["prog_u0_proc"]),
+                jednostka="%",
+                relacja="NIE_MNIEJ",
+                wykladnik_rf=1,
+            )
+        )
     rzut = tryb_kryterium(f) == "RZUT"
-    return (
-        Warunek67N(
-            klucz="U0",
-            opis_pl="rozruch napięciowy U₀ ≥ U₀>",
-            warunek_latex=r"U_0 \ge U_{0>}",
-            wartosc=pole.u0_proc,
-            nastawa=prog_u0,
-            jednostka="%",
-            zapas=pole.u0_proc - prog_u0,
-            spelniony=pole.u0_proc >= prog_u0,
-        ),
-        Warunek67N(
-            klucz="SEKTOR",
-            opis_pl="kierunek: prąd 3I₀ w sektorze działania",
-            warunek_latex=r"|\varphi_0 - \varphi_{os}| \le \Delta\varphi",
-            wartosc=odch,
-            nastawa=polowa,
-            jednostka="°",
-            zapas=polowa - odch,
-            spelniony=odch <= polowa,
-        ),
+    if f.rodzaj == "RZUT_PRADU":
+        odchylenie = odchylenie_kierunku_deg(f, pole)
+        warunki.append(
+            Warunek67N(
+                klucz="SEKTOR",
+                opis_pl="kierunek: prąd 3I₀ w sektorze działania",
+                warunek_latex=r"|\varphi_0 - \varphi_{os}| \le \Delta\varphi",
+                wartosc=180.0 if odchylenie is None else abs(odchylenie),
+                nastawa=polowa_sektora_deg(f),
+                jednostka="°",
+                relacja="NIE_WIECEJ",
+                wykladnik_rf=0,
+            )
+        )
+    warunki.append(
         Warunek67N(
             klucz="PROG",
             opis_pl=(
-                "rzut 3I₀ na oś charakterystyki ≥ I₀>" if rzut else "moduł 3I₀ w sektorze ≥ I₀>"
+                ("rzut 3I₀ na oś charakterystyki ≥ I₀>" if rzut else "moduł 3I₀ w sektorze ≥ I₀>")
+                if f.rodzaj == "RZUT_PRADU"
+                else f"{_OPIS_WIELKOSCI[f.rodzaj]} ≥ próg nastawy"
             ),
             warunek_latex=(
-                r"3I_0\cos(\varphi_0 - \varphi_{os}) \ge I_{0>}" if rzut else r"|3I_0| \ge I_{0>}"
+                (
+                    r"3I_0\cos(\varphi_0 - \varphi_{os}) \ge I_{0>}"
+                    if rzut
+                    else r"|3I_0| \ge I_{0>}"
+                )
+                if f.rodzaj == "RZUT_PRADU"
+                else rf"{_SYMBOL[f.rodzaj]} \ge {_SYMBOL[f.rodzaj]}_{{s}}"
             ),
-            wartosc=wielkosc,
+            wartosc=wielkosc_decydujaca(f, pole),
             nastawa=f.prog,
-            jednostka="A",
-            zapas=wielkosc - f.prog,
-            spelniony=wielkosc >= f.prog,
-        ),
+            jednostka=_JEDNOSTKA[f.rodzaj],
+            relacja="NIE_MNIEJ",
+            wykladnik_rf=_WYKLADNIK_RF[f.rodzaj],
+        )
     )
+    return tuple(warunki)
 
 
 def warunek_rozstrzygajacy(warunki: Sequence[Warunek67N]) -> Warunek67N:
-    """Pierwszy niespełniony warunek albo — gdy działa — warunek o najmniejszym zapasie
-    względnym (zapas / nastawa)."""
+    """Pierwszy niespełniony warunek (kolejność algorytmu) albo — gdy funkcja działa — warunek
+    o najmniejszym zapasie względnym (zapas / nastawa)."""
     for w in warunki:
         if not w.spelniony:
             return w
@@ -944,14 +979,21 @@ def warunek_rozstrzygajacy(warunki: Sequence[Warunek67N]) -> Warunek67N:
 
 
 def rusza(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> bool:
-    """Rozruch funkcji: wielkość decydująca ≥ próg (i U0 ≥ próg rozruchu, gdy funkcja go ma)."""
-    if f.rodzaj == "RZUT_PRADU":
-        return all(w.spelniony for w in warunki_67n(f, pole))
-    if wielkosc_decydujaca(f, pole) < f.prog:
-        return False
-    if f.rodzaj in _Z_ROZRUCHEM_U0:
-        return pole.u0_proc >= float(f.nastawy["prog_u0_proc"])
-    return True
+    """Rozruch funkcji = koniunkcja listy ``warunki_dzialania``."""
+    return all(w.spelniony for w in warunki_dzialania(f, pole))
+
+
+def wielkosc_dzialania(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> float:
+    """Koniunkcja warunków rzutowana na oś wielkości progu: wielkość mierzona, gdy pozostałe
+    warunki listy są spełnione, a gdy nie — co najwyżej zero (funkcja nie działa: dodatnia
+    wielkość nie jest wielkością działania, ujemny rzut zostaje — prąd w kierunku przeciwnym).
+    Przy progu dodatnim ``wielkosc_dzialania ≥ próg`` ⇔ ``rusza`` (przypięte testem). Wejście
+    selektywności i k_b (doziemienie poza polem)."""
+    warunki = warunki_dzialania(f, pole)
+    prog = next(w for w in warunki if w.klucz == "PROG")
+    if all(w.spelniony for w in warunki if w.klucz != "PROG"):
+        return prog.wartosc
+    return min(prog.wartosc, 0.0)
 
 
 def czas_funkcji(f: FunkcjaZiemnozwarciowa, pole: WielkosciPola) -> tuple[float | None, dict]:

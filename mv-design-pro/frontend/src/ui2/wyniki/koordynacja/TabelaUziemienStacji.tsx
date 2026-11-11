@@ -12,7 +12,7 @@ import { Fragment, useState } from 'react';
 
 import { MathInline, MathRenderer } from '../../../ui/proof/MathRenderer';
 import { KartaWerdyktu, ZnakWerdyktu } from '../wzorzec/KartaWerdyktu';
-import { liczbaEaz } from './liczbaEaz';
+import { formatWgJednostki } from '../../../ui/shared/formatPolishValue';
 import { rekordyWiersza, type WierszUziemienia, type WynikOcenyZiemnozwarciowej } from './ocenaZiemnozwarciowa';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
@@ -98,7 +98,7 @@ export function TabelaUziemienStacji({
                           data-testid={`${testid}-${k.klucz}`}
                           title={przypis ? przypisy[przypis] : undefined}
                         >
-                          {liczbaEaz(wartosc, k.miejsca)}
+                          {formatWgJednostki(wartosc, k.miejsca)}
                           {nr !== undefined ? <sup className="mvd-eaz-odsylacz">{nr}</sup> : null}
                         </td>
                       );

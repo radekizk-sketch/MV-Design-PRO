@@ -24,6 +24,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { WIARYGODNOSC_PL } from '../../../ui/protection-comparison/types';
 import { useBiegiKoordynacji } from '../../../ui/protection-coordination/biegiKoordynacji';
+import { formatPolishValue } from '../../../ui/shared/formatPolishValue';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import {
   useAktywnyBieg,
@@ -43,15 +44,6 @@ import { TabelaOcenyZiemnozwarciowej, type CelUzupelnienia } from './TabelaOceny
 
 type Wariant = 'max' | 'min';
 type Stan = 'wczytywanie' | 'bezczynny' | 'wToku' | 'blad';
-
-function liczba(wartosc: number | null, miejsca: number): string {
-  return wartosc === null
-    ? '—'
-    : wartosc.toLocaleString('pl-PL', {
-      maximumFractionDigits: miejsca,
-      minimumFractionDigits: miejsca,
-    });
-}
 
 function etykietaStopnia(ocena: OcenaUrzadzeniaWPunkcie): string {
   if (ocena.stopien_decydujacy === null) return T.ocenaNieZadziala;
@@ -224,9 +216,9 @@ export function SekcjaOcenyZabezpieczen({
                   >
                     <td>{o.nazwa_urzadzenia_pl}</td>
                     <td>{o.nazwa_punktu_pl}</td>
-                    <td className="mvd-mono">{liczba(o.i_fault_a, 1)}</td>
+                    <td className="mvd-num">{formatPolishValue(o.i_fault_a, { decimals: 1 })}</td>
                     <td>{etykietaStopnia(o)}</td>
-                    <td className="mvd-mono">{liczba(o.t_trip_s, 3)}</td>
+                    <td className="mvd-num">{formatPolishValue(o.t_trip_s, { decimals: 3 })}</td>
                     <td title={o.wiarygodnosc_powod_pl}>{WIARYGODNOSC_PL[o.wiarygodnosc]}</td>
                     <td>
                       <EtykietaWerdyktu etykieta={o.ocena.etykieta} status={o.ocena.status_maszynowy} />{' '}

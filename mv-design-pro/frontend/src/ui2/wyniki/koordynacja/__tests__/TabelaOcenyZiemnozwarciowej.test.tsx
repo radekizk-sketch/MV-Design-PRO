@@ -20,7 +20,7 @@ import userEvent from '@testing-library/user-event';
 
 import fikstura from './fixtures/oceny_ziemnozwarciowe.json';
 import { TabelaOcenyZiemnozwarciowej } from '../TabelaOcenyZiemnozwarciowej';
-import { liczbaEaz } from '../liczbaEaz';
+import { formatWgJednostki } from '../../../../ui/shared/formatPolishValue';
 import type { RodzinaEaz, WierszRodziny, WynikOcenyZiemnozwarciowej } from '../ocenaZiemnozwarciowa';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
 
@@ -151,7 +151,7 @@ describe('tabele rodzin — iloczyn rodzina × stan × motyw', () => {
             expect(screen.queryByTestId(`${TID}-braki-zbiorcze`)).toBeNull();
             expect(screen.queryByTestId(`${TID}-uzupelnij`)).toBeNull();
             const pierwsza = rodzina.kolumny[0].klucz;
-            expect(within(wiersz).getByTestId(`${TID}-${pierwsza}`)).toHaveTextContent(liczbaEaz(1.5, '1'));
+            expect(within(wiersz).getByTestId(`${TID}-${pierwsza}`)).toHaveTextContent(formatWgJednostki(1.5, '1'));
           }
 
           // Motyw: żadnego koloru zaszytego — wyłącznie tokeny `--mvd-*` (oba motywy z automatu).
@@ -176,7 +176,7 @@ describe.each(Object.keys(WARIANTY))('wynik backendu — %s', (nazwa) => {
     const siec = screen.getByTestId(`${TID}-siec`);
     const przypadek = screen.getByTestId(`${TID}-przypadek`);
     expect(siec).toHaveTextContent(wynik.siec![0].sposob_pl);
-    expect(siec).toHaveTextContent(liczbaEaz(wynik.siec![0].prad_pojemnosciowy_a, 'A'));
+    expect(siec).toHaveTextContent(formatWgJednostki(wynik.siec![0].prad_pojemnosciowy_a, 'A'));
     // U₀ i R_F należą do przypadku, nie do sieci (korekta właściciela 4).
     const symbol = (el: HTMLElement, latex: string) => el.querySelector(`[data-latex="${CSS.escape(latex)}"]`);
     expect(symbol(siec, T.ziemneU0)).toBeNull();
@@ -184,7 +184,7 @@ describe.each(Object.keys(WARIANTY))('wynik backendu — %s', (nazwa) => {
     expect(symbol(przypadek, T.ziemneU0)).not.toBeNull();
     expect(symbol(przypadek, T.ziemneRf)).not.toBeNull();
     if (wynik.siec![0].prad_resztkowy_a !== null) {
-      expect(siec).toHaveTextContent(liczbaEaz(wynik.siec![0].prad_resztkowy_a, 'A'));
+      expect(siec).toHaveTextContent(formatWgJednostki(wynik.siec![0].prad_resztkowy_a, 'A'));
     } else {
       expect(symbol(siec, T.ziemneIres)).toBeNull();
     }
@@ -201,7 +201,7 @@ describe.each(Object.keys(WARIANTY))('wynik backendu — %s', (nazwa) => {
       expect(tr.closest('[data-rodzina]')?.getAttribute('data-rodzina')).toBe(w.rodzina);
       for (const [klucz, k] of Object.entries(w.wartosci)) {
         const komorka = within(tr).getByTestId(`${TID}-${klucz}`);
-        expect(komorka).toHaveTextContent(k.wartosc !== null ? liczbaEaz(k.wartosc, k.jednostka) : (k.tekst ?? '—'));
+        expect(komorka).toHaveTextContent(k.wartosc !== null ? formatWgJednostki(k.wartosc, k.jednostka) : (k.tekst ?? '—'));
         expect(komorka.dataset.spelnia).toBe(k.spelnia === null ? undefined : String(k.spelnia));
       }
       expect(within(tr).getByTestId(`${TID}-stan`)).toHaveTextContent(w.etykieta.etykieta_pl);
@@ -240,7 +240,7 @@ describe.each(Object.keys(WARIANTY))('wynik backendu — %s', (nazwa) => {
     const wiersz = wynik.wiersze_uziemien![0];
     const tr = within(sekcja).getByTestId(`${TID}-uziemienia-wiersz`);
     expect(within(tr).getByTestId(`${TID}-uziemienia-napiecie_uziomowe_v`)).toHaveTextContent(
-      liczbaEaz(wiersz.napiecie_uziomowe_v, 'V'),
+      formatWgJednostki(wiersz.napiecie_uziomowe_v, 'V'),
     );
     expect(within(tr).getByTestId(`${TID}-uziemienia-napiecie_dotykowe_v`)).toHaveTextContent('—');
     const przypisy = within(sekcja).getByTestId(`${TID}-uziemienia-przypisy`);
@@ -301,7 +301,7 @@ describe('wykres wskazowy 67N — parytet rysunku z werdyktem backendu', () => {
       expect(cosKata >= cosGranicy - 1e-9).toBe(warunek('SEKTOR'));
       expect(x * w.os[0] + y * w.os[1] >= w.prog_a - 1e-9).toBe(warunek('PROG'));
       expect(el.dataset.dziala).toBe(String(dane.dziala));
-      expect(el).toHaveTextContent(liczbaEaz(dane.modul_a, 'A'));
+      expect(el).toHaveTextContent(formatWgJednostki(dane.modul_a, 'A'));
     }
   });
 });

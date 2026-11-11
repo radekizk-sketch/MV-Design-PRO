@@ -24,6 +24,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
+import { formatPolishValue } from '../../../ui/shared/formatPolishValue';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
@@ -72,7 +73,7 @@ function WierszWarunku({
     <tr>
       <th scope="row">{etykieta}</th>
       <td>
-        {wartosc.toFixed(1)} {jednostka}
+        {formatPolishValue(wartosc, { decimals: 1 })} {jednostka}
       </td>
       <td>—</td>
     </tr>
@@ -528,15 +529,15 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 <tbody>
                   <tr>
                     <th scope="row">{T.nastawyPradNastawy}</th>
-                    <td>{odpowiedz.wynik.delayed.i_setting_a.toFixed(1)} A</td>
+                    <td>{formatPolishValue(odpowiedz.wynik.delayed.i_setting_a, { decimals: 1 })} A</td>
                   </tr>
                   <tr>
                     <th scope="row">{T.nastawyCzasNastawy}</th>
-                    <td>{odpowiedz.wynik.delayed.t_setting_s.toFixed(2)} s</td>
+                    <td>{formatPolishValue(odpowiedz.wynik.delayed.t_setting_s, { decimals: 2 })} s</td>
                   </tr>
                   <tr>
                     <th scope="row">{T.nastawyCzulosc}</th>
-                    <td>{odpowiedz.wynik.delayed.sensitivity_ratio.toFixed(2)}</td>
+                    <td>{formatPolishValue(odpowiedz.wynik.delayed.sensitivity_ratio, { decimals: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
@@ -553,7 +554,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 <tbody>
                   <tr>
                     <th scope="row">Nastawa I&gt;&gt;</th>
-                    <td>{odpowiedz.wynik.instantaneous.i_setting_a.toFixed(1)} A</td>
+                    <td>{formatPolishValue(odpowiedz.wynik.instantaneous.i_setting_a, { decimals: 1 })} A</td>
                     <td>
                       <span data-tone={odpowiedz.wynik.instantaneous.range_valid ? 'ok' : 'warn'}>
                         {odpowiedz.wynik.instantaneous.range_valid ? T.nastawyZakresIstnieje : T.nastawyZakresBrak}
@@ -583,11 +584,11 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 <tbody>
                   <tr>
                     <th scope="row">{T.nastawyPradDopuszczalny}</th>
-                    <td>{odpowiedz.wynik.thermal.i_th_dop_a.toFixed(1)} A</td>
+                    <td>{formatPolishValue(odpowiedz.wynik.thermal.i_th_dop_a, { decimals: 1 })} A</td>
                   </tr>
                   <tr>
                     <th scope="row">{T.nastawyMargines}</th>
-                    <td>{odpowiedz.wynik.thermal.margin_percent.toFixed(1)} %</td>
+                    <td>{formatPolishValue(odpowiedz.wynik.thermal.margin_percent, { decimals: 1 })} %</td>
                   </tr>
                   <tr>
                     <th scope="row">Werdykt</th>
