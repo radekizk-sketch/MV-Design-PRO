@@ -7,8 +7,9 @@
 ## Zawartość
 
 1. [REJESTR_DOWODOW.md](./REJESTR_DOWODOW.md) — 44 oznaczonych rekordów z bezpośrednimi źródłami producentów, definicjami i ograniczeniami.
-2. [KARTY_SYSTEMOW.md](./KARTY_SYSTEMOW.md) — szczegółowe karty produktów, słownik funkcjonalny oraz niepotwierdzone twierdzenia.
-3. [MATERIALY_I_KONTEKST.md](./MATERIALY_I_KONTEKST.md) — dokumenty pomocnicze, odniesienia do kontekstu repo, źródła historyczne i indeks ilustracji.
+2. [REJESTR_DOWODOW.csv](./REJESTR_DOWODOW.csv) — te same 44 obserwacje w formacie tabelarycznym do analizy maszynowej.
+3. [KARTY_SYSTEMOW.md](./KARTY_SYSTEMOW.md) — szczegółowe karty produktów, słownik funkcjonalny oraz niepotwierdzone twierdzenia.
+4. [MATERIALY_I_KONTEKST.md](./MATERIALY_I_KONTEKST.md) — dokumenty pomocnicze, odniesienia do kontekstu repo, źródła historyczne i indeks ilustracji.
 
 ## Granice tego PR
 
