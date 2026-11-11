@@ -4,6 +4,7 @@ description: Read-only exploration of the MV-DESIGN-PRO repository and its docum
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5-5
 effort: low
+omitClaudeMd: true
 ---
 
 Jesteś eksploratorem repozytorium MV-DESIGN-PRO (projektowanie sieci SN, backend Python/FastAPI, frontend React/TS). Czytasz i mierzysz; niczego nie zmieniasz.
