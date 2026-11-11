@@ -52,6 +52,7 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETR_COS_PHI_MASZYNY,
     RODZINA_MASZYNA_SYNCHRONICZNA,
     blad_wartosci_maszyny,
+    tabliczka_przeksztaltnika,
 )
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
 from network_model.nazwy import nazwa_nadana
@@ -1880,6 +1881,9 @@ def _materialize_nn_source_params(
             # poziomie — domyślkę przypisuje WYŁĄCZNIE mapping.py, z jawnym
             # śladem WHITE BOX).
             "k_sc": result.solver_fields.get("k_sc"),
+            # cosφ_min pozycji — wyłącznie podstawa wartości roboczej granic mocy biernej
+            # (`_uzupelnij_tabliczke_przeksztaltnika`), nie pole tabliczki.
+            "cos_phi_min": result.solver_fields.get("cos_phi_min"),
             # Karta AB-H0 §0.8: pola karty (sekcje fundamental/harmonic/dynamic
             # i proweniencja pól) — WYŁĄCZNIE obecne w pozycji; jedna lista
             # (`POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE`) dla wszystkich przestrzeni.
@@ -4732,6 +4736,31 @@ def _materializuj_bateria_bess(
     }, None
 
 
+def _uzupelnij_tabliczke_przeksztaltnika(tabliczka: dict[str, Any], *, cos_phi_min: object) -> None:
+    """Falownik PV/BESS w przestrzeni falowników: moc znamionowa ``sn_mva`` i granice mocy
+    biernej ``qmin_mvar``/``qmax_mvar`` z karty przekształtnika, a bez nich wartość robocza
+    (zasada nr 4, jakość ESTIMATED w ``card_field_status``) — karta JEDEN-KLUCZ-KATALOGU,
+    decyzja architekta 1. Pola toru maszyny (stojan generatora) nie należą do falownika:
+    kontrakty ``ZRODLO_NN_PV``/``ZRODLO_NN_BESS`` ich nie niosą.
+    """
+    uzupelnienie = tabliczka_przeksztaltnika(
+        pmax_mw=_as_float(tabliczka.get("pmax_mw")),
+        sn_mva=_as_float(tabliczka.get("sn_mva")),
+        qmin_mvar=_as_float(tabliczka.get("qmin_mvar")),
+        qmax_mvar=_as_float(tabliczka.get("qmax_mvar")),
+        cos_phi_min=_as_float(cos_phi_min),
+    )
+    for nazwa_pola in ("sn_mva", "qmin_mvar", "qmax_mvar"):
+        wartosc = getattr(uzupelnienie, nazwa_pola)
+        if wartosc is not None:
+            tabliczka[nazwa_pola] = wartosc
+    if uzupelnienie.pola_robocze:
+        tabliczka["card_field_status"] = {
+            **(tabliczka.get("card_field_status") or {}),
+            **uzupelnienie.status_pol,
+        }
+
+
 def _build_converter_materialized_params(
     *,
     technology: str,
@@ -4798,6 +4827,7 @@ def _build_converter_materialized_params(
             # bajtowo identyczną.
             **pola_karty_obecne(z_katalogu),
         }
+        _uzupelnij_tabliczke_przeksztaltnika(tabliczka, cos_phi_min=z_katalogu.get("cos_phi_min"))
     elif technology == "BESS":
         z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
@@ -4832,6 +4862,7 @@ def _build_converter_materialized_params(
             # Karta AB-H0 §0.8 — jak w gałęzi PV.
             **pola_karty_obecne(z_katalogu),
         }
+        _uzupelnij_tabliczke_przeksztaltnika(tabliczka, cos_phi_min=None)
     else:
         z_katalogu = _materialize_nn_source_params(
             namespace=namespace,
@@ -9319,7 +9350,7 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
     ),
     # W5-C: wyposażenie pola SN — aparat rodzaju z katalogiem SN wskazuje pozycję
-    # przestrzeni tego rodzaju (`enm.wyposazenie_pola.PRZESTRZEN_KATALOGU_APARATU`),
+    # przestrzeni tego rodzaju (`enm.wiazanie_katalogowe.przestrzen_aparatu_pola`),
     # sprawdzaną bramą istnienia `_pozycja_katalogu`.
     PozycjaBramyKatalogowejV2(
         "set_bay_equipment",

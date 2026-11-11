@@ -4093,7 +4093,9 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
     którą projektant przyłącza źródło po stronie SN: szyna producenta 0,8 kV → transformator
     blokowy 15/0,8 kV → kabel SN → dedykowane pole SN na szynie SN stacji B. Tabliczkę
     falownika materializuje kontrakt projekcji katalogu (`MaterializationContract`) w
-    przestrzeni `CONVERTER` — jej kontrakt niesie pola karty analizy SSCI; zero liczb
+    przestrzeni falowników PV `ZRODLO_NN_PV` (falownik jest przekształtnikiem, nie maszyną —
+    karta JEDEN-KLUCZ-KATALOGU): projekcja karty przekształtnika niesie pola analizy SSCI
+    (pasma regulatorów, filtr), moc znamionową i granice mocy biernej karty; zero liczb
     wpisanych ręcznie.
 
     Dlaczego nie falownik nN sieci złotej (`gen_pv` na szynie 0,4 kV): karta z polami SSCI
@@ -4125,7 +4127,7 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
             # a brak zostawia `None` (gotowość SSCI i niezawodności: `generator.q_missing`).
             "q_min_mvar": 0.0,
             "catalog_binding": _wiazanie_katalogowe_sceny(
-                "CONVERTER", _KARTA_PRZEKSZTALTNIKA_SCENY_V126
+                "ZRODLO_NN_PV", _KARTA_PRZEKSZTALTNIKA_SCENY_V126
             ),
             "der_topology": {
                 "connection_level": "sn",

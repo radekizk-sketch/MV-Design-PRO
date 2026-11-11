@@ -25,8 +25,8 @@ from enm.domain_operations import execute_domain_operation
 from enm.katalog_projektu import katalog_biezacy
 from enm.models import EnergyNetworkModel
 from enm.pole_katalogowe import _rejestr_pol_katalogowych
+from enm.wiazanie_katalogowe import RODZAJE_APARATU_POLA_Z_KATALOGIEM, przestrzen_aparatu_pola
 from enm.wyposazenie_pola import (
-    PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
     stan_danych_wyposazenia,
@@ -84,7 +84,7 @@ def _ref_przestrzeni(przestrzen: str) -> str:
 def _poprawny_ref(rodzaj: str) -> str:
     if rodzaj in RODZAJE_KATALOGOWE_APARATU:
         return _ref_aparatu_sn(sorted(RODZAJE_KATALOGOWE_APARATU[rodzaj])[0])
-    return _ref_przestrzeni(PRZESTRZEN_KATALOGU_APARATU[rodzaj])
+    return _ref_przestrzeni(str(przestrzen_aparatu_pola(rodzaj)))
 
 
 #: Rola pola → wyposażenie z katalogu (realne zestawy aparatów tej funkcji pola).
@@ -378,7 +378,7 @@ def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("rodzaj", sorted(PRZESTRZEN_KATALOGU_APARATU))
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_APARATU_POLA_Z_KATALOGIEM))
 def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
     enm, pola, _ = siec
     umiejscowienie = "GROUND_BRANCH" if rodzaj in {"ES", "SURGE_ARRESTER"} else "MIDSTREAM"

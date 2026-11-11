@@ -181,6 +181,7 @@ from .wiazanie_katalogowe import (
     odmowa_przestrzeni,
     pozycja_wiazania,
     przestrzen_wiazania,
+    przestrzenie_odcinka_pochodnego,
     przestrzenie_odcinka_sn,
     przestrzenie_rodzaju,
     zamienniki_klucza_w_ladunku,
@@ -6517,7 +6518,9 @@ def _materialize_nn_source(
     # bez pozostawiania połowicznej stacji w migawce.
     materialization = _materialize_catalog_payload(
         catalog_ref=str(source_converter_ref),
-        catalog_binding=None,
+        # Wiązanie z ładunku: grupa spoza technologii źródła to odmowa
+        # `catalog.namespace_mismatch` (ta sama funkcja co brama API).
+        catalog_binding=nn_block.get("source_converter_catalog_binding"),
         default_namespace=catalog_namespace,
         default_version="2024.1",
     )
@@ -7815,7 +7818,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
             catalog_binding=None,
-            default_namespace=przestrzenie_odcinka_sn(seg_type),
+            default_namespace=przestrzenie_odcinka_pochodnego(segment),
             default_version=segment_catalog_version,
         )
         if isinstance(materialization, dict):
@@ -7825,7 +7828,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         _apply_catalog_metadata(
             left_data,
             binding_payload,
-            default_namespace=przestrzenie_odcinka_sn(seg_type),
+            default_namespace=przestrzenie_odcinka_pochodnego(segment),
         )
         _apply_materialized_branch_fields(
             left_data, materialized_params, czestotliwosc_studium_hz(enm)
@@ -7855,7 +7858,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
             catalog_binding=None,
-            default_namespace=przestrzenie_odcinka_sn(seg_type),
+            default_namespace=przestrzenie_odcinka_pochodnego(segment),
             default_version=segment_catalog_version,
         )
         if isinstance(materialization, dict):
@@ -7865,7 +7868,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         _apply_catalog_metadata(
             right_data,
             binding_payload,
-            default_namespace=przestrzenie_odcinka_sn(seg_type),
+            default_namespace=przestrzenie_odcinka_pochodnego(segment),
         )
         _apply_materialized_branch_fields(
             right_data, materialized_params, czestotliwosc_studium_hz(enm)

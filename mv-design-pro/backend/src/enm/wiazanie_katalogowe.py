@@ -152,7 +152,64 @@ PRZESTRZENIE_RODZAJU: Mapping[str, tuple[str, ...]] = {
     "galaz.fuse": ("APARAT_SN", "APARAT_NN", "WKLADKA_NN"),
     "pole.sn": ("APARAT_SN",),
     "pole.nn": ("APARAT_NN",),
+    # Aparat pierwotny pola SN (``set_bay_equipment``, ``BayPrimaryDevice.kind``) — przestrzeń
+    # z rodzaju aparatu; dawniej osobna tablica ``enm.wyposazenie_pola`` (druga mapa).
+    "aparat_pola.CB": ("APARAT_SN",),
+    "aparat_pola.LOAD_SWITCH": ("APARAT_SN",),
+    "aparat_pola.DS": ("APARAT_SN",),
+    "aparat_pola.ES": ("APARAT_SN",),
+    "aparat_pola.CT": ("CT",),
+    "aparat_pola.VT": ("VT",),
+    "aparat_pola.SURGE_ARRESTER": ("OGRANICZNIK_SN",),
+    # Aparaty pola baterii kondensatorów (`catalog.rodzaje_aparatury`): przekładnik
+    # niezrównoważenia jest przekładnikiem prądowym, przekładnik międzyfazowy — napięciowym.
+    "aparat_pola.UNBALANCE_CT": ("CT",),
+    "aparat_pola.PHASE_TO_PHASE_VT": ("VT",),
 }
+
+_PREFIKS_APARATU_POLA = "aparat_pola."
+
+#: Klucz wiązania ROLI (``<rola>_catalog_binding``) → przestrzenie katalogu tej roli. Rola
+#: wyznacza rodzaj elementu niezależnie od operacji, więc przestrzeń sprawdza JEDNA kontrola
+#: kształtu wiązań (:func:`bledy_wiazan_w_ladunku`) w dyspozytorze operacji i w bramie API.
+#: Dawniej handlery czytały pozycję wiązania roli bez przestrzeni (``pozycja_wiazania``), więc
+#: wiązanie deklarujące obcą grupę katalogu (np. aparat pola z grupy kabli) było przyjmowane
+#: po cichu (karta JEDEN-KLUCZ-KATALOGU, konflikt wersji łańcucha
+#: ``test_jeden_klucz_wiazania_iloczyn``). Klucz ogólny ``catalog_binding`` nie ma tu wpisu —
+#: jego przestrzeń wynika z operacji i sprawdza ją handler (``odczytaj_wiazanie``
+#: z ``przestrzen_rodzaju``). Źródło przekształtnikowe stacji: zbiór obu technologii; zgodność
+#: z technologią sprawdza materializacja handlera.
+PRZESTRZENIE_WIAZANIA_ROLI: Mapping[str, tuple[str, ...]] = {
+    "apparatus_catalog_binding": PRZESTRZENIE_RODZAJU["pole.sn"],
+    "field_apparatus_catalog_binding": PRZESTRZENIE_RODZAJU["pole.sn"],
+    "transformer_catalog_binding": ("TRAFO_SN_NN",),
+    "block_transformer_catalog_binding": ("TRAFO_SN_NN",),
+    "cable_catalog_binding": ("KABEL_SN",),
+    "battery_catalog_binding": ("BATERIA_BESS",),
+    "ct_catalog_binding": ("CT",),
+    "vt_catalog_binding": ("VT",),
+    "protection_catalog_binding": ("ZABEZPIECZENIE",),
+    "device_catalog_binding": ("ZABEZPIECZENIE",),
+    # Katalog przełączników zaczepów (``TapChangerItem.catalog_namespace``).
+    "transformer_tap_changer_catalog_binding": ("tap_changer",),
+    "source_converter_catalog_binding": ("ZRODLO_NN_PV", "ZRODLO_NN_BESS"),
+}
+
+#: Rodzaje aparatu pierwotnego pola SN z katalogiem SN, w kolejności mapy (komunikaty).
+RODZAJE_APARATU_POLA_Z_KATALOGIEM: tuple[str, ...] = tuple(
+    klucz.removeprefix(_PREFIKS_APARATU_POLA)
+    for klucz in PRZESTRZENIE_RODZAJU
+    if klucz.startswith(_PREFIKS_APARATU_POLA)
+)
+
+
+def przestrzen_aparatu_pola(rodzaj: object) -> str | None:
+    """Przestrzeń katalogu aparatu pierwotnego pola SN z rodzaju aparatu (``kind``) albo
+    ``None`` — rodzaj bez katalogu SN (bezpieczniki, głowice, aparat transformatora) albo
+    spoza kontraktu. Ta sama funkcja w operacji ``set_bay_equipment``, bramie API i
+    napięciu najwyższym aparatu."""
+    przestrzenie = PRZESTRZENIE_RODZAJU.get(f"{_PREFIKS_APARATU_POLA}{rodzaj}")
+    return przestrzenie[0] if przestrzenie else None
 
 
 def przestrzenie_rodzaju(rodzaj: str) -> tuple[str, ...]:
@@ -177,6 +234,24 @@ def przestrzenie_odcinka_sn(typ: object) -> tuple[str, ...]:
     return PRZESTRZENIE_RODZAJU[
         "odcinek_sn.cable" if typ == "cable" else "odcinek_sn.line_overhead"
     ]
+
+
+def przestrzenie_odcinka_pochodnego(odcinek_macierzysty: Mapping[str, Any]) -> tuple[str, ...]:
+    """Przestrzenie odcinka POCHODNEGO od odcinka macierzystego (połówki podziału przy
+    wcięciu stacji, odgałęzienie szablonu stacji z typem odcinka magistrali): zbiór
+    :func:`przestrzenie_odcinka_sn` typu odcinka macierzystego z JEGO przestrzenią na
+    pierwszym miejscu (przestrzeń domyślna wiązania bez ``catalog_namespace``).
+
+    Ta sama pozycja katalogu odcinka macierzystego leży w jego przestrzeni — przewód linii
+    110 kV (``PRZEWOD_LINII_WN``) podzielony albo powielony w odgałęzieniu nie może być
+    szukany w grupie linii SN (dawniej obie drogi brały pierwszą przestrzeń typu). Przestrzeń
+    spoza zbioru typu (rekord sprzed karty) nie jest honorowana — zostaje zbiór typu.
+    """
+    dozwolone = przestrzenie_odcinka_sn(odcinek_macierzysty.get("type"))
+    wlasna = odcinek_macierzysty.get("catalog_namespace")
+    if wlasna in dozwolone:
+        return (str(wlasna), *(p for p in dozwolone if p != wlasna))
+    return dozwolone
 
 
 def _jako_krotka(przestrzen_rodzaju: str | tuple[str, ...]) -> tuple[str, ...]:
@@ -386,7 +461,12 @@ def _bledy_wiazan_w_wezle(
             continue
         for klucz in sorted(pola):
             if _jest_kluczem_wiazania(klucz) and klucz in element:
-                odczyt = odczytaj_wiazanie(element, klucz, opis_pl=f"{prefiks}.{klucz}")
+                odczyt = odczytaj_wiazanie(
+                    element,
+                    klucz,
+                    opis_pl=f"{prefiks}.{klucz}",
+                    przestrzen_rodzaju=PRZESTRZENIE_WIAZANIA_ROLI.get(klucz),
+                )
                 if odczyt.kod_bledu is not None:
                     wynik.append((f"{prefiks}.{klucz}", odczyt))
         for klucz, pod in zagniezdzone.items():
@@ -418,7 +498,12 @@ def bledy_wiazan_w_ladunku(
     wynik: list[tuple[str, OdczytWiazania]] = []
     for klucz in sorted(klucze_kontraktu(nazwa)):
         if _jest_kluczem_wiazania(klucz) and klucz in ladunek:
-            odczyt = odczytaj_wiazanie(ladunek, klucz, opis_pl=klucz)
+            odczyt = odczytaj_wiazanie(
+                ladunek,
+                klucz,
+                opis_pl=klucz,
+                przestrzen_rodzaju=PRZESTRZENIE_WIAZANIA_ROLI.get(klucz),
+            )
             if odczyt.kod_bledu is not None:
                 wynik.append((klucz, odczyt))
     for klucz, ksztalt in KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}).items():

@@ -14,11 +14,12 @@ from enm.wiazanie_katalogowe import (
     komunikat_zamiennikow_pl,
     odczytaj_wiazanie,
     pozycja_wiazania,
+    przestrzen_aparatu_pola,
     przestrzenie_aparatu_nn,
     przestrzenie_odcinka_sn,
     zamienniki_klucza_w_ladunku,
 )
-from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
+from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL
 from enm.zrodlo_zwarcie import klucz_mocy_zwarciowej, strona_rownowaznika, tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
@@ -1146,7 +1147,7 @@ def _referencje_dodatkowe(
             if not isinstance(aparat, dict):
                 continue
             rodzaj = str(aparat.get("kind"))
-            przestrzen_aparatu = PRZESTRZEN_KATALOGU_APARATU.get(rodzaj)
+            przestrzen_aparatu = przestrzen_aparatu_pola(rodzaj)
             if przestrzen_aparatu is not None:
                 _dodaj(
                     f"Aparat {numer} ({NAZWY_RODZAJOW_APARATU_POLA_PL[rodzaj]})",
@@ -1439,7 +1440,12 @@ def _validate_station_nn_block_bindings(
 
     blad, _ = validate_and_materialize_catalog_binding(
         "add_converter_source",
-        {"catalog_binding": {"catalog_item_id": converter_ref}, "source_technology": technologia},
+        # Wiązanie w całości (z zadeklarowaną grupą) — przestrzeń technologii sprawdza ta sama
+        # brama co operacja atomowa; dawniej podładunek gubił grupę wiązania.
+        {
+            "catalog_binding": nn_block.get("source_converter_catalog_binding"),
+            "source_technology": technologia,
+        },
     )
     if blad is not None:
         return _blad_z_prefiksem(blad, "Źródło nN stacji")

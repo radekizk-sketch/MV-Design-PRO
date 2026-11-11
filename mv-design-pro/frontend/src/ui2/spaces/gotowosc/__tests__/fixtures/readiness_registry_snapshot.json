@@ -107,6 +107,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.binding_key_alias",
+      "fix_navigation": {
+        "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "catalog.binding_missing",
       "fix_navigation": {
         "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
@@ -1556,7 +1565,7 @@
       }
     }
   ],
-  "count": 182,
+  "count": 183,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

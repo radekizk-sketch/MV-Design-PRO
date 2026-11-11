@@ -47,6 +47,7 @@ from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.tor_pola import pola_do_domkniecia
+from enm.wiazanie_katalogowe import przestrzenie_odcinka_pochodnego
 from network_model.pochodne.pasma_napieciowe import (
     pasmo_napieciowe,
     to_samo_napiecie_znamionowe,
@@ -917,8 +918,11 @@ def _zabuduj_stacje_w_odgalezieniu(
             "segment": {
                 "rodzaj": "KABEL" if kablowy else "LINIA",
                 "dlugosc_m": dlugosc_m,
+                # Przestrzeń katalogu z odcinka macierzystego (jedno źródło:
+                # `przestrzenie_odcinka_pochodnego`) — przewód linii 110 kV powielony
+                # w odgałęzieniu nie jest szukany w grupie linii SN.
                 "catalog_binding": _catalog_binding(
-                    "KABEL_SN" if kablowy else "LINIA_SN", str(odcinek_catalog_ref)
+                    przestrzenie_odcinka_pochodnego(segment)[0], str(odcinek_catalog_ref)
                 ),
             },
         },

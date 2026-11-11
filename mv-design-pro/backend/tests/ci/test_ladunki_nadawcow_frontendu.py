@@ -121,9 +121,9 @@ _POSTACI_JS = {
 @pytest.mark.parametrize(
     ("ladunek", "oczekiwane"),
     [
-        ("{ voltage_kv: 15, catalog_ref: 'x' /* } */ }", []),
+        ("{ voltage_kv: 15, sk3_mva: 'x' /* } */ }", []),
         ("{ voltage_kv: 15, line_fields_count: 3 }", ["line_fields_count"]),
-        ("{ voltage_kv, 'catalog_ref': `a${b}`, }", []),
+        ("{ voltage_kv, 'sk3_mva': `a${b}`, }", []),
     ],
     ids=["w_kontrakcie", "obcy", "skrot_i_szablon"],
 )

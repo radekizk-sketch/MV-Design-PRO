@@ -1174,7 +1174,7 @@
         "bus_ref": "bp/0e64dd8e7532dbf30ffd1b204b4c5439/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "SLUP-ODG-12",
-        "catalog_version": null,
+        "catalog_version": "2024.1",
         "completeness_status": "KOMPLETNY",
         "id": "b1a2bbc4-289b-5813-8037-3a5db7cc2f49",
         "materialized_params": {
@@ -1287,7 +1287,7 @@
         "bus_ref": "bp/ec1f49aaa4c77eddddfc06bdab5de0d1/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "SLUP-ODG-12",
-        "catalog_version": null,
+        "catalog_version": "2024.1",
         "completeness_status": "KOMPLETNY",
         "id": "1a929976-b9d7-53d0-bdc8-56e7f85a6b68",
         "materialized_params": {
@@ -1400,7 +1400,7 @@
         "bus_ref": "bp/2edc887c98badd2a43a7319601ad741f/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "SLUP-ODG-12",
-        "catalog_version": null,
+        "catalog_version": "2024.1",
         "completeness_status": "KOMPLETNY",
         "id": "9c61c427-fd89-5ef1-97a1-13c86bc9fb15",
         "materialized_params": {
@@ -4349,7 +4349,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "edf6f57f7f5dce64a8b72ee2a880b0a40734a2d44a271a27a7acdf428502bc18",
+      "hash_sha256": "81f4ef151c1608c118527f80aa516c6c8313d9b0f0ac418f770f837f06f77782",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"

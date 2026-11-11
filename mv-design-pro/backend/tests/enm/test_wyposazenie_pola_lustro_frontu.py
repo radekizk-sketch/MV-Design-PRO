@@ -22,9 +22,9 @@ from pathlib import Path
 from enm.models import BayBaseModel, BayPrimaryDevice
 from enm.stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 from enm.topology import TYPY_LACZNIKOW_ENM
+from enm.wiazanie_katalogowe import RODZAJE_APARATU_POLA_Z_KATALOGIEM, przestrzen_aparatu_pola
 from enm.wyposazenie_pola import (
     NAZWY_RODZAJOW_APARATU_POLA_PL,
-    PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
     RODZAJE_Z_GALEZIA,
@@ -62,8 +62,12 @@ def _unia(nazwa: str, tresc: str) -> frozenset[str]:
 
 
 def test_przestrzen_katalogu_aparatu_jest_lustrem() -> None:
+    # Lustro frontu (`ui/field/wyposazeniePola.ts`) odbija JEDYNE źródło backendu —
+    # wpisy `aparat_pola.*` mapy `PRZESTRZENIE_RODZAJU`.
     front = _slownik_napisow("PRZESTRZEN_KATALOGU_APARATU")
-    oczekiwane: dict[str, str | None] = dict(PRZESTRZEN_KATALOGU_APARATU)
+    oczekiwane: dict[str, str | None] = {
+        rodzaj: przestrzen_aparatu_pola(rodzaj) for rodzaj in RODZAJE_APARATU_POLA_Z_KATALOGIEM
+    }
     oczekiwane.update({rodzaj: None for rodzaj in RODZAJE_BEZ_KATALOGU_SN})
     assert front == oczekiwane
 

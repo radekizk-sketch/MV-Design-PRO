@@ -811,6 +811,8 @@
         "ptpiree_source_url": "https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf",
         "ptpiree_status": "POWIAZANY",
         "ptpiree_wipwc_version": "1.2",
+        "qmax_mvar": 0.129,
+        "qmin_mvar": -0.129,
         "rated_power_ac_kw": 215.0,
         "sn_mva": 0.215,
         "un_kv": 0.8,
@@ -834,8 +836,8 @@
           "wspolczynnik_jednoczesnosci": null
         },
         "lfsm_deadband_hz": null,
-        "q_max_mvar": null,
-        "q_min_mvar": null,
+        "q_max_mvar": 0.129,
+        "q_min_mvar": -0.129,
         "qu_deadband_high_pu": null,
         "qu_deadband_low_pu": null,
         "qu_slope_pu_per_pu": null,
@@ -869,7 +871,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "b60854b340ef5b888b7ac91930c999637da22fb92330238a01a93aa940276c2b",
+    "hash_sha256": "c7527a3d56dc870ee1ad9dcf462069535274c1c0360238659e3fc3c602185f34",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

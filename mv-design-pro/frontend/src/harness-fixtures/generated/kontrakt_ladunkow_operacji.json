@@ -2,14 +2,13 @@
   "operacje": {
     "add_converter_source": {
       "pola": [
-        "battery_catalog_ref",
+        "battery_catalog_binding",
         "bess_mode",
-        "block_transformer_catalog_ref",
+        "block_transformer_catalog_binding",
         "block_transformer_lv_voltage_tolerance",
         "blocking_transformer_ref",
         "bus_nn_ref",
         "catalog_binding",
-        "catalog_ref",
         "connection_variant",
         "control_mode",
         "cos_phi",
@@ -47,12 +46,31 @@
         "u_set_pu"
       ],
       "zagniezdzone": {
+        "battery_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
+        "block_transformer_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
         "catalog_binding": {
           "pola": [
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -75,7 +93,6 @@
             "block_transformer": {
               "pola": [
                 "catalog_binding",
-                "catalog_ref",
                 "loadability_pu",
                 "lv_voltage_tolerance",
                 "primary_voltage_kv",
@@ -84,14 +101,24 @@
                 "uk_percent",
                 "vector_group"
               ],
-              "zagniezdzone": {}
+              "zagniezdzone": {
+                "catalog_binding": {
+                  "pola": [
+                    "catalog_item_id",
+                    "catalog_item_version",
+                    "catalog_namespace",
+                    "materialize",
+                    "snapshot_mapping_version"
+                  ],
+                  "zagniezdzone": {}
+                }
+              }
             },
             "mv_field_configuration": {
               "pola": [
                 "apparatus_catalog_binding",
                 "bay_template_ref",
                 "cable_catalog_binding",
-                "cable_catalog_ref",
                 "cable_head",
                 "cable_laying_conditions",
                 "cable_length_km",
@@ -110,7 +137,16 @@
                     "catalog_item_id",
                     "catalog_item_version",
                     "catalog_namespace",
-                    "catalog_ref",
+                    "materialize",
+                    "snapshot_mapping_version"
+                  ],
+                  "zagniezdzone": {}
+                },
+                "cable_catalog_binding": {
+                  "pola": [
+                    "catalog_item_id",
+                    "catalog_item_version",
+                    "catalog_namespace",
                     "materialize",
                     "snapshot_mapping_version"
                   ],
@@ -143,7 +179,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -160,9 +195,6 @@
         "breaker_ref",
         "burden_va",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "connection",
         "field_ref",
         "name",
@@ -177,7 +209,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -189,9 +220,6 @@
       "pola": [
         "bus_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "control_mode",
         "dry_run",
         "manual_params",
@@ -209,7 +237,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -260,7 +287,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -285,7 +311,6 @@
     "add_grid_source_sn": {
       "pola": [
         "catalog_binding",
-        "catalog_ref",
         "gpz_coupler_name",
         "gpz_line_field_apparatus",
         "gpz_line_field_name",
@@ -318,7 +343,6 @@
         "source_name",
         "switchgear_family_ref",
         "transformer_catalog_binding",
-        "transformer_catalog_ref",
         "transformer_control_mode",
         "transformer_controlled_bus_ref",
         "transformer_count",
@@ -330,7 +354,7 @@
         "transformer_regulated_winding",
         "transformer_regulation_type",
         "transformer_sn_mva",
-        "transformer_tap_changer_catalog_ref",
+        "transformer_tap_changer_catalog_binding",
         "transformer_tap_current_position",
         "transformer_tap_max_position",
         "transformer_tap_min_position",
@@ -352,7 +376,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -361,9 +384,7 @@
         "gpz_line_field_apparatus": {
           "pola": [
             "apparatus_kind",
-            "catalog_binding",
-            "catalog_item_id",
-            "catalog_ref"
+            "catalog_binding"
           ],
           "zagniezdzone": {
             "catalog_binding": {
@@ -371,7 +392,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -415,7 +435,16 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
+        "transformer_tap_changer_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -443,9 +472,6 @@
         "c_p",
         "c_q",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "connection_type",
         "cos_phi",
         "f0_hz",
@@ -465,7 +491,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -477,7 +502,6 @@
       "pola": [
         "cable_laying_conditions",
         "catalog_binding",
-        "catalog_ref",
         "from_bus_ref",
         "from_ref",
         "length_m",
@@ -504,7 +528,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -525,7 +548,6 @@
           "pola": [
             "cable_laying_conditions",
             "catalog_binding",
-            "catalog_ref",
             "from_bus_ref",
             "from_ref",
             "length_m",
@@ -551,7 +573,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -572,9 +593,6 @@
         "c_p",
         "c_q",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "connection_type",
         "cos_phi",
         "earth_electrode_r_ohm",
@@ -595,7 +613,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -607,9 +624,6 @@
       "pola": [
         "bus_nn_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "feeder_role",
         "field_name",
         "field_role",
@@ -623,7 +637,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -634,7 +647,6 @@
     "add_nn_rcd": {
       "pola": [
         "catalog_binding",
-        "catalog_ref",
         "load_ref",
         "name"
       ],
@@ -644,7 +656,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -655,7 +666,6 @@
     "add_nn_section_coupler": {
       "pola": [
         "catalog_binding",
-        "catalog_ref",
         "name",
         "station_ref"
       ],
@@ -665,7 +675,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -676,7 +685,6 @@
     "add_nn_switch_device": {
       "pola": [
         "catalog_binding",
-        "catalog_ref",
         "device_class",
         "from_bus_ref",
         "name",
@@ -688,7 +696,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -701,13 +708,9 @@
         "bay_ref",
         "breaker_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "ct_ref",
         "field_ref",
         "name",
-        "protection",
         "relay_type",
         "settings",
         "vt_ref"
@@ -718,17 +721,8 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
-          ],
-          "zagniezdzone": {}
-        },
-        "protection": {
-          "pola": [
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref"
           ],
           "zagniezdzone": {}
         }
@@ -739,9 +733,6 @@
         "bus_nn_ref",
         "bus_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "dry_run",
         "name",
         "status"
@@ -752,7 +743,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -768,9 +758,6 @@
         "bay_template_ref",
         "bus_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "complete_bay_template_ref",
         "dry_run",
         "earthing_role",
@@ -796,7 +783,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -809,9 +795,6 @@
         "bay_ref",
         "bus_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "dry_run",
         "field_ref",
         "station_ref"
@@ -822,7 +805,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -832,7 +814,6 @@
     },
     "add_transformer_sn_nn": {
       "pola": [
-        "catalog_binding",
         "hv_bus_ref",
         "hv_voltage_kv",
         "lv_bus_ref",
@@ -841,7 +822,7 @@
         "pk_kw",
         "sn_mva",
         "station_ref",
-        "transformer_catalog_ref",
+        "transformer_catalog_binding",
         "transformer_control_mode",
         "transformer_controlled_bus_ref",
         "transformer_deadband_kv",
@@ -851,7 +832,7 @@
         "transformer_ldc_x_ohm",
         "transformer_regulated_winding",
         "transformer_regulation_type",
-        "transformer_tap_changer_catalog_ref",
+        "transformer_tap_changer_catalog_binding",
         "transformer_tap_current_position",
         "transformer_tap_max_position",
         "transformer_tap_min_position",
@@ -864,12 +845,21 @@
         "vector_group"
       ],
       "zagniezdzone": {
-        "catalog_binding": {
+        "transformer_catalog_binding": {
           "pola": [
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
+        "transformer_tap_changer_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -900,7 +890,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -926,9 +915,6 @@
         "bay_ref",
         "burden_va",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "connection",
         "field_ref",
         "name",
@@ -944,7 +930,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -957,9 +942,6 @@
         "bay_ref",
         "bus_ref",
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_ref",
         "dlawik",
         "dry_run",
         "name",
@@ -976,7 +958,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -986,9 +967,6 @@
           "pola": [
             "awsc",
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "i_nastawy_a",
             "stan_odlacznika"
           ],
@@ -1007,7 +985,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1018,9 +995,6 @@
         "rezystor": {
           "pola": [
             "catalog_binding",
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_ref",
             "stan_odlacznika"
           ],
           "zagniezdzone": {
@@ -1029,7 +1003,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1045,7 +1018,7 @@
         "designation",
         "dry_run",
         "endpoint_bus_ref",
-        "field_apparatus_catalog_ref",
+        "field_apparatus_catalog_binding",
         "nn_block",
         "nn_earthing",
         "nn_voltage_kv",
@@ -1059,6 +1032,16 @@
         "transformer"
       ],
       "zagniezdzone": {
+        "field_apparatus_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
         "nn_block": {
           "pola": [
             "cos_phi",
@@ -1067,21 +1050,42 @@
             "outgoing_feeders_nn",
             "outgoing_feeders_nn_count",
             "simultaneity_factor",
-            "source_converter_catalog_ref",
+            "source_converter_catalog_binding",
             "source_converter_kind",
             "source_converter_name",
             "source_protection"
           ],
           "zagniezdzone": {
+            "source_converter_catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            },
             "source_protection": {
               "pola": [
                 "analysis_scope",
                 "breaker_role",
-                "device_catalog_ref",
+                "device_catalog_binding",
                 "device_label",
                 "protected_object"
               ],
-              "zagniezdzone": {}
+              "zagniezdzone": {
+                "device_catalog_binding": {
+                  "pola": [
+                    "catalog_item_id",
+                    "catalog_item_version",
+                    "catalog_namespace",
+                    "materialize",
+                    "snapshot_mapping_version"
+                  ],
+                  "zagniezdzone": {}
+                }
+              }
             }
           }
         },
@@ -1098,7 +1102,7 @@
         },
         "sn_fields": {
           "pola": [
-            "apparatus_catalog_ref",
+            "apparatus_catalog_binding",
             "bay_kind",
             "bay_template_ref",
             "catalog_bindings",
@@ -1115,7 +1119,18 @@
             "source_status",
             "switchgear_family_ref"
           ],
-          "zagniezdzone": {}
+          "zagniezdzone": {
+            "apparatus_catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            }
+          }
         },
         "station": {
           "pola": [
@@ -1169,11 +1184,9 @@
         },
         "transformer": {
           "pola": [
-            "catalog_binding",
-            "catalog_ref",
             "create",
             "n_parallel",
-            "transformer_catalog_ref",
+            "transformer_catalog_binding",
             "transformer_control_mode",
             "transformer_controlled_bus_ref",
             "transformer_deadband_kv",
@@ -1183,7 +1196,7 @@
             "transformer_ldc_x_ohm",
             "transformer_regulated_winding",
             "transformer_regulation_type",
-            "transformer_tap_changer_catalog_ref",
+            "transformer_tap_changer_catalog_binding",
             "transformer_tap_current_position",
             "transformer_tap_max_position",
             "transformer_tap_min_position",
@@ -1192,12 +1205,21 @@
             "transformer_voltage_setpoint_kv"
           ],
           "zagniezdzone": {
-            "catalog_binding": {
+            "transformer_catalog_binding": {
               "pola": [
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            },
+            "transformer_tap_changer_catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1210,10 +1232,6 @@
     "assign_catalog_to_element": {
       "pola": [
         "catalog_binding",
-        "catalog_item_id",
-        "catalog_item_version",
-        "catalog_namespace",
-        "catalog_ref",
         "element_ref"
       ],
       "zagniezdzone": {
@@ -1222,7 +1240,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -1238,7 +1255,6 @@
     },
     "connect_secondary_ring_sn": {
       "pola": [
-        "catalog_binding",
         "dlugosc_m",
         "from_bus_ref",
         "ring_name",
@@ -1246,21 +1262,9 @@
         "to_bus_ref"
       ],
       "zagniezdzone": {
-        "catalog_binding": {
-          "pola": [
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_namespace",
-            "catalog_ref",
-            "materialize",
-            "snapshot_mapping_version"
-          ],
-          "zagniezdzone": {}
-        },
         "segment": {
           "pola": [
             "catalog_binding",
-            "catalog_ref",
             "dlugosc_m",
             "rodzaj",
             "screen_bonding"
@@ -1271,7 +1275,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1283,7 +1286,6 @@
     },
     "continue_trunk_segment_sn": {
       "pola": [
-        "catalog_binding",
         "dlugosc_m",
         "field_ref",
         "from_terminal_id",
@@ -1292,23 +1294,11 @@
         "trunk_id"
       ],
       "zagniezdzone": {
-        "catalog_binding": {
-          "pola": [
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_namespace",
-            "catalog_ref",
-            "materialize",
-            "snapshot_mapping_version"
-          ],
-          "zagniezdzone": {}
-        },
         "segment": {
           "pola": [
             "b0_siemens_per_km",
             "bus_name",
             "catalog_binding",
-            "catalog_ref",
             "dlugosc_m",
             "name",
             "r0_ohm_per_km",
@@ -1323,7 +1313,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1372,9 +1361,6 @@
       "pola": [
         "branch_ports_count",
         "catalog_binding",
-        "catalog_namespace",
-        "catalog_ref",
-        "catalog_version",
         "insert_at",
         "materialized_params",
         "name",
@@ -1389,7 +1375,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -1407,7 +1392,6 @@
     "insert_section_switch_sn": {
       "pola": [
         "catalog_binding",
-        "catalog_ref",
         "close_ref",
         "insert_at",
         "normal_state",
@@ -1421,7 +1405,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -1438,11 +1421,10 @@
     },
     "insert_station_on_segment_sn": {
       "pola": [
-        "catalog_binding",
         "construction_type",
         "designation",
         "dry_run",
-        "field_apparatus_catalog_ref",
+        "field_apparatus_catalog_binding",
         "insert_at",
         "name",
         "name_pl",
@@ -1458,12 +1440,11 @@
         "transformer"
       ],
       "zagniezdzone": {
-        "catalog_binding": {
+        "field_apparatus_catalog_binding": {
           "pola": [
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -1484,21 +1465,42 @@
             "outgoing_feeders_nn",
             "outgoing_feeders_nn_count",
             "simultaneity_factor",
-            "source_converter_catalog_ref",
+            "source_converter_catalog_binding",
             "source_converter_kind",
             "source_converter_name",
             "source_protection"
           ],
           "zagniezdzone": {
+            "source_converter_catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            },
             "source_protection": {
               "pola": [
                 "analysis_scope",
                 "breaker_role",
-                "device_catalog_ref",
+                "device_catalog_binding",
                 "device_label",
                 "protected_object"
               ],
-              "zagniezdzone": {}
+              "zagniezdzone": {
+                "device_catalog_binding": {
+                  "pola": [
+                    "catalog_item_id",
+                    "catalog_item_version",
+                    "catalog_namespace",
+                    "materialize",
+                    "snapshot_mapping_version"
+                  ],
+                  "zagniezdzone": {}
+                }
+              }
             }
           }
         },
@@ -1515,7 +1517,7 @@
         },
         "sn_fields": {
           "pola": [
-            "apparatus_catalog_ref",
+            "apparatus_catalog_binding",
             "bay_kind",
             "bay_template_ref",
             "equipment",
@@ -1530,7 +1532,18 @@
             "source_status",
             "switchgear_family_ref"
           ],
-          "zagniezdzone": {}
+          "zagniezdzone": {
+            "apparatus_catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            }
+          }
         },
         "station": {
           "pola": [
@@ -1587,10 +1600,9 @@
         },
         "transformer": {
           "pola": [
-            "catalog_binding",
             "create",
             "n_parallel",
-            "transformer_catalog_ref",
+            "transformer_catalog_binding",
             "transformer_control_mode",
             "transformer_controlled_bus_ref",
             "transformer_deadband_kv",
@@ -1600,7 +1612,7 @@
             "transformer_ldc_x_ohm",
             "transformer_regulated_winding",
             "transformer_regulation_type",
-            "transformer_tap_changer_catalog_ref",
+            "transformer_tap_changer_catalog_binding",
             "transformer_tap_current_position",
             "transformer_tap_max_position",
             "transformer_tap_min_position",
@@ -1609,12 +1621,21 @@
             "transformer_voltage_setpoint_kv"
           ],
           "zagniezdzone": {
-            "catalog_binding": {
+            "transformer_catalog_binding": {
               "pola": [
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
+                "materialize",
+                "snapshot_mapping_version"
+              ],
+              "zagniezdzone": {}
+            },
+            "transformer_tap_changer_catalog_binding": {
+              "pola": [
+                "catalog_item_id",
+                "catalog_item_version",
+                "catalog_namespace",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1628,9 +1649,6 @@
       "pola": [
         "branch_ports_count",
         "catalog_binding",
-        "catalog_namespace",
-        "catalog_ref",
-        "catalog_version",
         "insert_at",
         "materialized_params",
         "name",
@@ -1645,7 +1663,6 @@
             "catalog_item_id",
             "catalog_item_version",
             "catalog_namespace",
-            "catalog_ref",
             "materialize",
             "snapshot_mapping_version"
           ],
@@ -1688,11 +1705,21 @@
       "pola": [
         "bay_ref",
         "bay_template_ref",
-        "catalog_ref",
+        "catalog_binding",
         "devices",
         "mode"
       ],
       "zagniezdzone": {
+        "catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
         "devices": {
           "pola": [
             "catalog_ref",
@@ -1717,7 +1744,7 @@
     "set_der_catalog_bindings": {
       "pola": [
         "bess_operation_mode_refs",
-        "ct_catalog_ref",
+        "ct_catalog_binding",
         "dynamic_model_ref",
         "generator_ref",
         "hvrt_curve_ref",
@@ -1725,11 +1752,42 @@
         "lvrt_curve_ref",
         "nc_rfg_profile_ref",
         "pf_curve_ref",
-        "protection_catalog_ref",
+        "protection_catalog_binding",
         "source_ref",
-        "vt_catalog_ref"
+        "vt_catalog_binding"
       ],
-      "zagniezdzone": {}
+      "zagniezdzone": {
+        "ct_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
+        "protection_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        },
+        "vt_catalog_binding": {
+          "pola": [
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "materialize",
+            "snapshot_mapping_version"
+          ],
+          "zagniezdzone": {}
+        }
+      }
     },
     "set_load_dynamic_binding": {
       "pola": [
@@ -1789,30 +1847,17 @@
     },
     "start_branch_segment_sn": {
       "pola": [
-        "catalog_binding",
         "dlugosc_m",
         "from_bus_ref",
         "from_ref",
         "segment"
       ],
       "zagniezdzone": {
-        "catalog_binding": {
-          "pola": [
-            "catalog_item_id",
-            "catalog_item_version",
-            "catalog_namespace",
-            "catalog_ref",
-            "materialize",
-            "snapshot_mapping_version"
-          ],
-          "zagniezdzone": {}
-        },
         "segment": {
           "pola": [
             "b0_siemens_per_km",
             "bus_name",
             "catalog_binding",
-            "catalog_ref",
             "dlugosc_m",
             "name",
             "r0_ohm_per_km",
@@ -1827,7 +1872,6 @@
                 "catalog_item_id",
                 "catalog_item_version",
                 "catalog_namespace",
-                "catalog_ref",
                 "materialize",
                 "snapshot_mapping_version"
               ],
@@ -1873,7 +1917,7 @@
     {
       "operacja": "add_converter_source",
       "ladunek": {
-        "battery_catalog_ref": 1
+        "battery_catalog_binding": 1
       },
       "obce": []
     },
@@ -1884,6 +1928,88 @@
       },
       "obce": [
         "klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "battery_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "battery_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "battery_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "battery_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "battery_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "battery_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "block_transformer_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "block_transformer_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "block_transformer_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "block_transformer_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "block_transformer_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "block_transformer_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -2012,6 +2138,52 @@
       "operacja": "add_converter_source",
       "ladunek": {
         "der_topology": {
+          "block_transformer": {
+            "catalog_binding": {
+              "catalog_item_id": 1
+            }
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "der_topology": {
+          "block_transformer": {
+            "catalog_binding": {
+              "klucz_obcy": 1
+            }
+          }
+        }
+      },
+      "obce": [
+        "der_topology.block_transformer.catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "der_topology": {
+          "block_transformer": {
+            "catalog_binding": [
+              {},
+              {
+                "klucz_obcy": 1
+              }
+            ]
+          }
+        }
+      },
+      "obce": [
+        "der_topology.block_transformer.catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "der_topology": {
           "mv_field_configuration": {
             "apparatus_catalog_binding": 1
           }
@@ -2092,6 +2264,52 @@
       },
       "obce": [
         "der_topology.mv_field_configuration.apparatus_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "der_topology": {
+          "mv_field_configuration": {
+            "cable_catalog_binding": {
+              "catalog_item_id": 1
+            }
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "der_topology": {
+          "mv_field_configuration": {
+            "cable_catalog_binding": {
+              "klucz_obcy": 1
+            }
+          }
+        }
+      },
+      "obce": [
+        "der_topology.mv_field_configuration.cable_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_converter_source",
+      "ladunek": {
+        "der_topology": {
+          "mv_field_configuration": {
+            "cable_catalog_binding": [
+              {},
+              {
+                "klucz_obcy": 1
+              }
+            ]
+          }
+        }
+      },
+      "obce": [
+        "der_topology.mv_field_configuration.cable_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -2794,6 +3012,47 @@
     {
       "operacja": "add_grid_source_sn",
       "ladunek": {
+        "transformer_tap_changer_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_grid_source_sn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_grid_source_sn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "transformer_tap_changer_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_grid_source_sn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "transformer_tap_changer_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_grid_source_sn",
+      "ladunek": {
         "zero_sequence": "napis_w_miejscu_obiektu"
       },
       "obce": []
@@ -3467,47 +3726,6 @@
       ]
     },
     {
-      "operacja": "add_relay",
-      "ladunek": {
-        "protection": "napis_w_miejscu_obiektu"
-      },
-      "obce": []
-    },
-    {
-      "operacja": "add_relay",
-      "ladunek": {
-        "protection": {
-          "catalog_item_id": 1
-        }
-      },
-      "obce": []
-    },
-    {
-      "operacja": "add_relay",
-      "ladunek": {
-        "protection": {
-          "klucz_obcy": 1
-        }
-      },
-      "obce": [
-        "protection.klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "add_relay",
-      "ladunek": {
-        "protection": [
-          {},
-          {
-            "klucz_obcy": 1
-          }
-        ]
-      },
-      "obce": [
-        "protection[1].klucz_obcy"
-      ]
-    },
-    {
       "operacja": "add_shunt_compensator_sn",
       "ladunek": {
         "bus_nn_ref": 1
@@ -3681,7 +3899,7 @@
     {
       "operacja": "add_transformer_sn_nn",
       "ladunek": {
-        "catalog_binding": 1
+        "hv_bus_ref": 1
       },
       "obce": []
     },
@@ -3697,14 +3915,14 @@
     {
       "operacja": "add_transformer_sn_nn",
       "ladunek": {
-        "catalog_binding": "napis_w_miejscu_obiektu"
+        "transformer_catalog_binding": "napis_w_miejscu_obiektu"
       },
       "obce": []
     },
     {
       "operacja": "add_transformer_sn_nn",
       "ladunek": {
-        "catalog_binding": {
+        "transformer_catalog_binding": {
           "catalog_item_id": 1
         }
       },
@@ -3713,18 +3931,18 @@
     {
       "operacja": "add_transformer_sn_nn",
       "ladunek": {
-        "catalog_binding": {
+        "transformer_catalog_binding": {
           "klucz_obcy": 1
         }
       },
       "obce": [
-        "catalog_binding.klucz_obcy"
+        "transformer_catalog_binding.klucz_obcy"
       ]
     },
     {
       "operacja": "add_transformer_sn_nn",
       "ladunek": {
-        "catalog_binding": [
+        "transformer_catalog_binding": [
           {},
           {
             "klucz_obcy": 1
@@ -3732,7 +3950,48 @@
         ]
       },
       "obce": [
-        "catalog_binding[1].klucz_obcy"
+        "transformer_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_transformer_sn_nn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_transformer_sn_nn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "add_transformer_sn_nn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "transformer_tap_changer_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "add_transformer_sn_nn",
+      "ladunek": {
+        "transformer_tap_changer_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "transformer_tap_changer_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -4208,6 +4467,47 @@
     {
       "operacja": "append_station_on_endpoint",
       "ladunek": {
+        "field_apparatus_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "field_apparatus_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "field_apparatus_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "field_apparatus_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "field_apparatus_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "field_apparatus_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
         "nn_block": "napis_w_miejscu_obiektu"
       },
       "obce": []
@@ -4250,6 +4550,46 @@
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "nn_block": {
+          "source_converter_catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_block": {
+          "source_converter_catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "nn_block.source_converter_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_block": {
+          "source_converter_catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "nn_block.source_converter_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_block": {
           "source_protection": {
             "analysis_scope": 1
           }
@@ -4284,6 +4624,52 @@
       },
       "obce": [
         "nn_block.source_protection[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_block": {
+          "source_protection": {
+            "device_catalog_binding": {
+              "catalog_item_id": 1
+            }
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_block": {
+          "source_protection": {
+            "device_catalog_binding": {
+              "klucz_obcy": 1
+            }
+          }
+        }
+      },
+      "obce": [
+        "nn_block.source_protection.device_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "nn_block": {
+          "source_protection": {
+            "device_catalog_binding": [
+              {},
+              {
+                "klucz_obcy": 1
+              }
+            ]
+          }
+        }
+      },
+      "obce": [
+        "nn_block.source_protection.device_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -4398,7 +4784,7 @@
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "sn_fields": {
-          "apparatus_catalog_ref": 1
+          "apparatus_catalog_binding": 1
         }
       },
       "obce": []
@@ -4426,6 +4812,46 @@
       },
       "obce": [
         "sn_fields[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "sn_fields": {
+          "apparatus_catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "sn_fields": {
+          "apparatus_catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "sn_fields.apparatus_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "sn_fields": {
+          "apparatus_catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "sn_fields.apparatus_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -4713,7 +5139,7 @@
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "transformer": {
-          "catalog_binding": 1
+          "create": 1
         }
       },
       "obce": []
@@ -4747,7 +5173,7 @@
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "transformer": {
-          "catalog_binding": {
+          "transformer_catalog_binding": {
             "catalog_item_id": 1
           }
         }
@@ -4758,20 +5184,20 @@
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "transformer": {
-          "catalog_binding": {
+          "transformer_catalog_binding": {
             "klucz_obcy": 1
           }
         }
       },
       "obce": [
-        "transformer.catalog_binding.klucz_obcy"
+        "transformer.transformer_catalog_binding.klucz_obcy"
       ]
     },
     {
       "operacja": "append_station_on_endpoint",
       "ladunek": {
         "transformer": {
-          "catalog_binding": [
+          "transformer_catalog_binding": [
             {},
             {
               "klucz_obcy": 1
@@ -4780,7 +5206,47 @@
         }
       },
       "obce": [
-        "transformer.catalog_binding[1].klucz_obcy"
+        "transformer.transformer_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "transformer": {
+          "transformer_tap_changer_catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "transformer": {
+          "transformer_tap_changer_catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "transformer.transformer_tap_changer_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "append_station_on_endpoint",
+      "ladunek": {
+        "transformer": {
+          "transformer_tap_changer_catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "transformer.transformer_tap_changer_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -4859,7 +5325,7 @@
     {
       "operacja": "connect_secondary_ring_sn",
       "ladunek": {
-        "catalog_binding": 1
+        "dlugosc_m": 1
       },
       "obce": []
     },
@@ -4870,47 +5336,6 @@
       },
       "obce": [
         "klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "connect_secondary_ring_sn",
-      "ladunek": {
-        "catalog_binding": "napis_w_miejscu_obiektu"
-      },
-      "obce": []
-    },
-    {
-      "operacja": "connect_secondary_ring_sn",
-      "ladunek": {
-        "catalog_binding": {
-          "catalog_item_id": 1
-        }
-      },
-      "obce": []
-    },
-    {
-      "operacja": "connect_secondary_ring_sn",
-      "ladunek": {
-        "catalog_binding": {
-          "klucz_obcy": 1
-        }
-      },
-      "obce": [
-        "catalog_binding.klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "connect_secondary_ring_sn",
-      "ladunek": {
-        "catalog_binding": [
-          {},
-          {
-            "klucz_obcy": 1
-          }
-        ]
-      },
-      "obce": [
-        "catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -4997,7 +5422,7 @@
     {
       "operacja": "continue_trunk_segment_sn",
       "ladunek": {
-        "catalog_binding": 1
+        "dlugosc_m": 1
       },
       "obce": []
     },
@@ -5008,47 +5433,6 @@
       },
       "obce": [
         "klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "continue_trunk_segment_sn",
-      "ladunek": {
-        "catalog_binding": "napis_w_miejscu_obiektu"
-      },
-      "obce": []
-    },
-    {
-      "operacja": "continue_trunk_segment_sn",
-      "ladunek": {
-        "catalog_binding": {
-          "catalog_item_id": 1
-        }
-      },
-      "obce": []
-    },
-    {
-      "operacja": "continue_trunk_segment_sn",
-      "ladunek": {
-        "catalog_binding": {
-          "klucz_obcy": 1
-        }
-      },
-      "obce": [
-        "catalog_binding.klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "continue_trunk_segment_sn",
-      "ladunek": {
-        "catalog_binding": [
-          {},
-          {
-            "klucz_obcy": 1
-          }
-        ]
-      },
-      "obce": [
-        "catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -5435,7 +5819,7 @@
     {
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
-        "catalog_binding": 1
+        "construction_type": 1
       },
       "obce": []
     },
@@ -5451,14 +5835,14 @@
     {
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
-        "catalog_binding": "napis_w_miejscu_obiektu"
+        "field_apparatus_catalog_binding": "napis_w_miejscu_obiektu"
       },
       "obce": []
     },
     {
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
-        "catalog_binding": {
+        "field_apparatus_catalog_binding": {
           "catalog_item_id": 1
         }
       },
@@ -5467,18 +5851,18 @@
     {
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
-        "catalog_binding": {
+        "field_apparatus_catalog_binding": {
           "klucz_obcy": 1
         }
       },
       "obce": [
-        "catalog_binding.klucz_obcy"
+        "field_apparatus_catalog_binding.klucz_obcy"
       ]
     },
     {
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
-        "catalog_binding": [
+        "field_apparatus_catalog_binding": [
           {},
           {
             "klucz_obcy": 1
@@ -5486,7 +5870,7 @@
         ]
       },
       "obce": [
-        "catalog_binding[1].klucz_obcy"
+        "field_apparatus_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -5575,6 +5959,46 @@
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "nn_block": {
+          "source_converter_catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_block": {
+          "source_converter_catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "nn_block.source_converter_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_block": {
+          "source_converter_catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "nn_block.source_converter_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_block": {
           "source_protection": {
             "analysis_scope": 1
           }
@@ -5609,6 +6033,52 @@
       },
       "obce": [
         "nn_block.source_protection[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_block": {
+          "source_protection": {
+            "device_catalog_binding": {
+              "catalog_item_id": 1
+            }
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_block": {
+          "source_protection": {
+            "device_catalog_binding": {
+              "klucz_obcy": 1
+            }
+          }
+        }
+      },
+      "obce": [
+        "nn_block.source_protection.device_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "nn_block": {
+          "source_protection": {
+            "device_catalog_binding": [
+              {},
+              {
+                "klucz_obcy": 1
+              }
+            ]
+          }
+        }
+      },
+      "obce": [
+        "nn_block.source_protection.device_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -5723,7 +6193,7 @@
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "sn_fields": {
-          "apparatus_catalog_ref": 1
+          "apparatus_catalog_binding": 1
         }
       },
       "obce": []
@@ -5751,6 +6221,46 @@
       },
       "obce": [
         "sn_fields[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "sn_fields": {
+          "apparatus_catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "sn_fields": {
+          "apparatus_catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "sn_fields.apparatus_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "sn_fields": {
+          "apparatus_catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "sn_fields.apparatus_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -6038,7 +6548,7 @@
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "transformer": {
-          "catalog_binding": 1
+          "create": 1
         }
       },
       "obce": []
@@ -6072,7 +6582,7 @@
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "transformer": {
-          "catalog_binding": {
+          "transformer_catalog_binding": {
             "catalog_item_id": 1
           }
         }
@@ -6083,20 +6593,20 @@
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "transformer": {
-          "catalog_binding": {
+          "transformer_catalog_binding": {
             "klucz_obcy": 1
           }
         }
       },
       "obce": [
-        "transformer.catalog_binding.klucz_obcy"
+        "transformer.transformer_catalog_binding.klucz_obcy"
       ]
     },
     {
       "operacja": "insert_station_on_segment_sn",
       "ladunek": {
         "transformer": {
-          "catalog_binding": [
+          "transformer_catalog_binding": [
             {},
             {
               "klucz_obcy": 1
@@ -6105,7 +6615,47 @@
         }
       },
       "obce": [
-        "transformer.catalog_binding[1].klucz_obcy"
+        "transformer.transformer_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "transformer": {
+          "transformer_tap_changer_catalog_binding": {
+            "catalog_item_id": 1
+          }
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "transformer": {
+          "transformer_tap_changer_catalog_binding": {
+            "klucz_obcy": 1
+          }
+        }
+      },
+      "obce": [
+        "transformer.transformer_tap_changer_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "insert_station_on_segment_sn",
+      "ladunek": {
+        "transformer": {
+          "transformer_tap_changer_catalog_binding": [
+            {},
+            {
+              "klucz_obcy": 1
+            }
+          ]
+        }
+      },
+      "obce": [
+        "transformer.transformer_tap_changer_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -6282,6 +6832,47 @@
     {
       "operacja": "set_bay_equipment",
       "ladunek": {
+        "catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_bay_equipment",
+      "ladunek": {
+        "catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_bay_equipment",
+      "ladunek": {
+        "catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_bay_equipment",
+      "ladunek": {
+        "catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_bay_equipment",
+      "ladunek": {
         "devices": "napis_w_miejscu_obiektu"
       },
       "obce": []
@@ -6350,6 +6941,129 @@
       },
       "obce": [
         "klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "ct_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "ct_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "ct_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "ct_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "ct_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "ct_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "protection_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "protection_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "protection_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "protection_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "protection_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "protection_catalog_binding[1].klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "vt_catalog_binding": "napis_w_miejscu_obiektu"
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "vt_catalog_binding": {
+          "catalog_item_id": 1
+        }
+      },
+      "obce": []
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "vt_catalog_binding": {
+          "klucz_obcy": 1
+        }
+      },
+      "obce": [
+        "vt_catalog_binding.klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "set_der_catalog_bindings",
+      "ladunek": {
+        "vt_catalog_binding": [
+          {},
+          {
+            "klucz_obcy": 1
+          }
+        ]
+      },
+      "obce": [
+        "vt_catalog_binding[1].klucz_obcy"
       ]
     },
     {
@@ -6492,7 +7206,7 @@
     {
       "operacja": "start_branch_segment_sn",
       "ladunek": {
-        "catalog_binding": 1
+        "dlugosc_m": 1
       },
       "obce": []
     },
@@ -6503,47 +7217,6 @@
       },
       "obce": [
         "klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "start_branch_segment_sn",
-      "ladunek": {
-        "catalog_binding": "napis_w_miejscu_obiektu"
-      },
-      "obce": []
-    },
-    {
-      "operacja": "start_branch_segment_sn",
-      "ladunek": {
-        "catalog_binding": {
-          "catalog_item_id": 1
-        }
-      },
-      "obce": []
-    },
-    {
-      "operacja": "start_branch_segment_sn",
-      "ladunek": {
-        "catalog_binding": {
-          "klucz_obcy": 1
-        }
-      },
-      "obce": [
-        "catalog_binding.klucz_obcy"
-      ]
-    },
-    {
-      "operacja": "start_branch_segment_sn",
-      "ladunek": {
-        "catalog_binding": [
-          {},
-          {
-            "klucz_obcy": 1
-          }
-        ]
-      },
-      "obce": [
-        "catalog_binding[1].klucz_obcy"
       ]
     },
     {

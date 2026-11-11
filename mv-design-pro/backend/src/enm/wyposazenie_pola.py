@@ -78,28 +78,14 @@ from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
 from .topology import TYPY_LACZNIKOW_ENM
-from .wiazanie_katalogowe import pozycja_wiazania
+from .wiazanie_katalogowe import (
+    RODZAJE_APARATU_POLA_Z_KATALOGIEM,
+    pozycja_wiazania,
+    przestrzen_aparatu_pola,
+)
 
 StanDanychAparatu = Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"]
 TrybWyposazenia = Literal["katalog", "szablon", "wyczysc", "wkladka"]
-
-#: Przestrzeń katalogu wkładek bezpiecznikowych SN (``HvFuseItem.catalog_namespace``).
-PRZESTRZEN_WKLADKI_SN = "hv_fuse"
-
-#: Rodzaj aparatu pierwotnego pola → przestrzeń katalogu SN. JEDYNA tablica tej reguły.
-PRZESTRZEN_KATALOGU_APARATU: dict[str, str] = {
-    "CB": "APARAT_SN",
-    "LOAD_SWITCH": "APARAT_SN",
-    "DS": "APARAT_SN",
-    "ES": "APARAT_SN",
-    "CT": "CT",
-    "VT": "VT",
-    "SURGE_ARRESTER": "OGRANICZNIK_SN",
-    # Aparaty pola baterii kondensatorów (`catalog.rodzaje_aparatury`): przekładnik
-    # niezrównoważenia jest przekładnikiem prądowym, przekładnik międzyfazowy — napięciowym.
-    "UNBALANCE_CT": "CT",
-    "PHASE_TO_PHASE_VT": "VT",
-}
 
 #: Rodzaj aparatu APARAT_SN (``MVApparatusType.device_kind``) dopuszczony dla rodzaju
 #: aparatu pierwotnego pola. Reklozer jest wyłącznikiem z automatyką SPZ; rozłącznik
@@ -113,7 +99,7 @@ RODZAJE_KATALOGOWE_APARATU: dict[str, frozenset[str]] = {
 
 #: Rodzaje aparatu pola SN bez katalogu SN w repozytorium — przyjmowane jako wartość robocza
 #: (``PROPOZYCJA``) bez ``catalog_ref``. Wyjątek: bezpieczniki (``FUSE``) przyjmują
-#: opcjonalną wkładkę z katalogu wkładek SN (``PRZESTRZEN_WKLADKI_SN``, ``odmowa_wkladki``).
+#: opcjonalną wkładkę z katalogu wkładek SN (``get_hv_fuse``, ``odmowa_wkladki``).
 RODZAJE_BEZ_KATALOGU_SN: frozenset[str] = frozenset({"FUSE", "CABLE_HEAD", "TRANSFORMER_DEVICE"})
 
 #: Rodzaje aparatu wskazujące gałąź łącznikową modelu (``linked_ref``) — ich stan
@@ -203,7 +189,7 @@ def napiecie_najwyzsze_aparatu_kv(rodzaj: object, catalog_ref: object) -> float 
     """
     if not isinstance(catalog_ref, str) or not catalog_ref.strip():
         return None
-    przestrzen = PRZESTRZEN_KATALOGU_APARATU.get(str(rodzaj))
+    przestrzen = przestrzen_aparatu_pola(rodzaj)
     katalog = katalog_biezacy()
     if przestrzen == "APARAT_SN":
         aparat = katalog.get_mv_apparatus_type(catalog_ref)
@@ -360,10 +346,10 @@ def _sprawdz_aparat(
             "bay_equipment.device_invalid",
         )
     rodzaj = wpis.get("kind")
-    if rodzaj not in PRZESTRZEN_KATALOGU_APARATU and rodzaj not in RODZAJE_BEZ_KATALOGU_SN:
+    if rodzaj not in RODZAJE_APARATU_POLA_Z_KATALOGIEM and rodzaj not in RODZAJE_BEZ_KATALOGU_SN:
         dopuszczalne = lista_pl(
             NAZWY_RODZAJOW_APARATU_POLA_PL[k]
-            for k in (*PRZESTRZEN_KATALOGU_APARATU, *sorted(RODZAJE_BEZ_KATALOGU_SN))
+            for k in (*RODZAJE_APARATU_POLA_Z_KATALOGIEM, *sorted(RODZAJE_BEZ_KATALOGU_SN))
         )
         return _error_response(
             f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ma rodzaj spoza "
@@ -392,7 +378,7 @@ def _sprawdz_aparat(
             )
 
     catalog_ref = wpis.get("catalog_ref")
-    przestrzen = PRZESTRZEN_KATALOGU_APARATU.get(str(rodzaj))
+    przestrzen = przestrzen_aparatu_pola(rodzaj)
     if przestrzen is None and rodzaj == "FUSE" and catalog_ref is not None:
         blad_wkladki = odmowa_wkladki(enm, rekord, catalog_ref, f"Aparat {numer} ({nazwa_rodzaju})")
         if blad_wkladki is not None:

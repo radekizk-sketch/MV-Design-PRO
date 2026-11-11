@@ -482,7 +482,11 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 #: zdolność bierną inaczej (`scripts/katalog_parytet_pol_guard.py::NIENOSZONE`), a ich
 #: przeniesienie zmieniłoby tabliczkę 66 generatorów PV i 56 BESS (decyzja poza tą listą).
 POLA_KARTY_PROJEKCJI: tuple[str, ...] = (
-    # fundamental
+    # fundamental — zdolność mocy biernej przekształtnika (karta JEDEN-KLUCZ-KATALOGU,
+    # decyzja architekta 1: falownik PV/BESS w przestrzeni falowników niesie granice Q
+    # z karty przekształtnika, nie z przestrzeni CONVERTER)
+    "qmin_mvar",
+    "qmax_mvar",
     "cosphi",
     "cosphi_p_points",
     "qu_deadband_low_pu",
@@ -4658,6 +4662,9 @@ class PVInverterType:
     # Karta AB-H0 §0.8: pola karty przekształtnika niesione przez projekcję
     # (`POLA_KARTY_PROJEKCJI`) — `None` = pozycja nie niesie danej; `to_dict` emituje je
     # WYŁĄCZNIE gdy obecne, więc projekcje bez tych danych są bajtowo identyczne.
+    # Granice mocy biernej karty przekształtnika [Mvar] (``POLA_KARTY_PROJEKCJI``).
+    qmin_mvar: float | None = None
+    qmax_mvar: float | None = None
     cosphi: float | None = None
     cosphi_p_points: tuple[tuple[float, float], ...] | None = None
     qu_deadband_low_pu: float | None = None
@@ -4831,6 +4838,9 @@ class BESSInverterType:
     # Karta AB-H0 §0.8: pola karty przekształtnika niesione przez projekcję
     # (`POLA_KARTY_PROJEKCJI`) — `None` = pozycja nie niesie danej; `to_dict` emituje je
     # WYŁĄCZNIE gdy obecne, więc projekcje bez tych danych są bajtowo identyczne.
+    # Granice mocy biernej karty przekształtnika [Mvar] (``POLA_KARTY_PROJEKCJI``).
+    qmin_mvar: float | None = None
+    qmax_mvar: float | None = None
     cosphi: float | None = None
     cosphi_p_points: tuple[tuple[float, float], ...] | None = None
     qu_deadband_low_pu: float | None = None
@@ -5484,6 +5494,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "p_max_kw",
             "control_mode",
             "k_sc",
+            # cosφ_min pozycji — podstawa wartości roboczej granic mocy biernej, gdy karta
+            # ich nie niesie (`wartosci_robocze.tabliczka_przeksztaltnika`).
+            "cos_phi_min",
             *POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
         ),
         ui_fields=(
@@ -5493,9 +5506,11 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("control_mode", "Tryb sterowania", ""),
             ("cos_phi_min", "cos φ min", ""),
             ("cos_phi_max", "cos φ max", ""),
+            ("qmin_mvar", "Qmin [Mvar]", "Mvar"),
+            ("qmax_mvar", "Qmax [Mvar]", "Mvar"),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
-        pola_opcjonalne=POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
+        pola_opcjonalne=("cos_phi_min", *POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE),
     ),
     CatalogNamespace.ZRODLO_NN_BESS.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_BESS.value,
@@ -5515,6 +5530,8 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("p_charge_kw", "Pład [kW]", "kW"),
             ("p_discharge_kw", "Prozł [kW]", "kW"),
             ("e_kwh", "E [kWh]", "kWh"),
+            ("qmin_mvar", "Qmin [Mvar]", "Mvar"),
+            ("qmax_mvar", "Qmax [Mvar]", "Mvar"),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
         pola_opcjonalne=POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,

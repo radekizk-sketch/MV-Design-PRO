@@ -34,8 +34,8 @@
       "uwagi_pl": null
     },
     "solver_version": "ncrfg-ptpiree-whitebox-2.0",
-    "input_hash": "161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
-    "deterministic_hash": "cd50fb3179523c47e738b3afe2c8dbd3774d2c3af981ef0062d66f94b956ebf9",
+    "input_hash": "cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
+    "deterministic_hash": "a6a49aec04c54f372af89c239fdc5033c7f601859c961776318b84bba7be2b94",
     "modules": [
       {
         "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
@@ -187,7 +187,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -319,7 +319,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -451,7 +451,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -577,7 +577,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -703,7 +703,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -829,7 +829,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -955,7 +955,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1081,7 +1081,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1115,10 +1115,14 @@
             "required_reason_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
             "verdict": "not_required",
             "summary_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
-            "metrics": {},
+            "metrics": {
+              "q_min_kvar": -180.0,
+              "q_max_kvar": 180.0
+            },
             "trace_refs": [
               "proof:ncrfg-ptpiree:T09:stosowalnosc:17",
-              "proof:ncrfg-ptpiree:T09:ocena_kryterium:18"
+              "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:18",
+              "proof:ncrfg-ptpiree:T09:ocena_kryterium:19"
             ],
             "ocena": {
               "kryterium_id": "q.zakres_mocy_biernej",
@@ -1129,8 +1133,8 @@
               },
               "kryterium": {
                 "opis_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie",
-                "warunek_latex": "Q_{\\min} \\le Q_{\\mathrm{wym},\\min} \\;\\wedge\\; Q_{\\max} \\ge Q_{\\mathrm{wym},\\max}",
-                "relacja": "NIE_MNIEJ",
+                "warunek_latex": "Q_{\\min} \\le Q_{\\mathrm{wym},\\min}",
+                "relacja": "NIE_WIECEJ",
                 "warunek_wstepny_pl": null,
                 "warunek_wstepny_podstawa": null
               },
@@ -1151,10 +1155,20 @@
                 "podstawa": null,
                 "warunek_wstepny_nieuruchomiony": false
               },
-              "wynik": null,
+              "wynik": {
+                "wielkosc_pl": "granica zakresu mocy biernej modułu, strona dolna (Q_min) (zadeklarowana)",
+                "symbol_latex": "Q_{\\min}",
+                "wartosc": {
+                  "wartosc": -0.12,
+                  "jednostka": "p.u. (P_n modułu)"
+                },
+                "punkt_krytyczny_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+                "chwila_s": null,
+                "metoda": "DEKLARACJA"
+              },
               "limit": {
                 "wartosc": {
-                  "wartosc": 0.33,
+                  "wartosc": -0.33,
                   "jednostka": "p.u. (P_n modułu)"
                 },
                 "pasmo": null,
@@ -1168,10 +1182,25 @@
                   "status": "NIEUSTALONE",
                   "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
                 },
-                "zakres_stosowalnosci_pl": "górna granica wymaganego zakresu mocy biernej",
+                "zakres_stosowalnosci_pl": "strona dolna (Q_min) wymaganego zakresu mocy biernej",
                 "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)"
               },
-              "margines": null,
+              "margines": {
+                "wartosc": {
+                  "wartosc": -0.21,
+                  "jednostka": "p.u. (P_n modułu)"
+                },
+                "definicja_latex": "m = x_{\\lim} - x",
+                "punkt_pl": "strona dolna (Q_min) zakresu — mniejszy zapas pokrycia",
+                "skala": {
+                  "wartosc": 0.33,
+                  "jednostka": "p.u. (P_n modułu)"
+                },
+                "skala_rodzaj": "LIMIT",
+                "wzgledny": -0.636363636364,
+                "niedefiniowalny": false,
+                "powod_pl": null
+              },
               "niepewnosc": {
                 "wartosc": null,
                 "metoda_pl": null,
@@ -1188,9 +1217,7 @@
               "wyjasnienie": {
                 "zdanie_pl": "Zdolność do generacji mocy biernej: pokrycie wymaganego zakresu mocy biernej — strona zakresu o mniejszym zapasie (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
                 "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
-                "czego_brakuje": [
-                  "zakres mocy biernej modułu (q_range_pct_pn_min, q_range_pct_pn_max)"
-                ],
+                "czego_brakuje": [],
                 "zastrzezenia": [
                   "Podstawa „PTPiREE — Procedura testowania modułów wytwarzania energii”, wydanie 3.0 (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (punkt programu ramowego testu nie jest wskazany w profilu — jednostka redakcyjna procedury nieustalona).",
                   "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
@@ -1207,7 +1234,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1230,6 +1257,12 @@
                   "wersja_silnika": null,
                   "krok": "proof:ncrfg-ptpiree:T09:stosowalnosc:17",
                   "opis_pl": "krok śladu testu T09 (stosowalnosc)"
+                },
+                {
+                  "run_id": null,
+                  "wersja_silnika": null,
+                  "krok": "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:18",
+                  "opis_pl": "krok śladu testu T09 (zakres_mocy_biernej)"
                 }
               ]
             }
@@ -1243,8 +1276,8 @@
             "summary_pl": "Potwierdzenie mocy maksymalnej PMAX: moc maksymalna zadeklarowana w programie (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T10:stosowalnosc:19",
-              "proof:ncrfg-ptpiree:T10:ocena_kryterium:20"
+              "proof:ncrfg-ptpiree:T10:stosowalnosc:20",
+              "proof:ncrfg-ptpiree:T10:ocena_kryterium:21"
             ],
             "ocena": {
               "kryterium_id": "pmax.deklaracja",
@@ -1331,7 +1364,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1352,7 +1385,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T10:stosowalnosc:19",
+                  "krok": "proof:ncrfg-ptpiree:T10:stosowalnosc:20",
                   "opis_pl": "krok śladu testu T10 (stosowalnosc)"
                 }
               ]
@@ -1367,8 +1400,8 @@
             "summary_pl": "Potwierdzenie mocy minimalnej PMIN: moc minimalna zadeklarowana i mniejsza od mocy maksymalnej (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T11:stosowalnosc:21",
-              "proof:ncrfg-ptpiree:T11:ocena_kryterium:22"
+              "proof:ncrfg-ptpiree:T11:stosowalnosc:22",
+              "proof:ncrfg-ptpiree:T11:ocena_kryterium:23"
             ],
             "ocena": {
               "kryterium_id": "pmin.deklaracja",
@@ -1438,7 +1471,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1459,7 +1492,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T11:stosowalnosc:21",
+                  "krok": "proof:ncrfg-ptpiree:T11:stosowalnosc:22",
                   "opis_pl": "krok śladu testu T11 (stosowalnosc)"
                 }
               ]
@@ -1474,8 +1507,8 @@
             "summary_pl": "Zaprzestanie generacji mocy czynnej: czas od polecenia do zaprzestania generacji (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T12:stosowalnosc:23",
-              "proof:ncrfg-ptpiree:T12:ocena_kryterium:24"
+              "proof:ncrfg-ptpiree:T12:stosowalnosc:24",
+              "proof:ncrfg-ptpiree:T12:ocena_kryterium:25"
             ],
             "ocena": {
               "kryterium_id": "zaprzestanie_generacji.czas",
@@ -1564,7 +1597,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1585,7 +1618,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T12:stosowalnosc:23",
+                  "krok": "proof:ncrfg-ptpiree:T12:stosowalnosc:24",
                   "opis_pl": "krok śladu testu T12 (stosowalnosc)"
                 }
               ]
@@ -1600,8 +1633,8 @@
             "summary_pl": "Zmniejszenie generacji mocy czynnej: czas przejścia do 20 % P_max przy zadeklarowanym tempie zmiany mocy (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T13:stosowalnosc:25",
-              "proof:ncrfg-ptpiree:T13:ocena_kryterium:26"
+              "proof:ncrfg-ptpiree:T13:stosowalnosc:26",
+              "proof:ncrfg-ptpiree:T13:ocena_kryterium:27"
             ],
             "ocena": {
               "kryterium_id": "zmniejszenie_generacji.czas",
@@ -1690,7 +1723,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1711,7 +1744,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T13:stosowalnosc:25",
+                  "krok": "proof:ncrfg-ptpiree:T13:stosowalnosc:26",
                   "opis_pl": "krok śladu testu T13 (stosowalnosc)"
                 }
               ]
@@ -1726,9 +1759,9 @@
             "summary_pl": "Pozostanie modułu w pracy podczas zapadu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T14:stosowalnosc:27",
-              "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:28",
-              "proof:ncrfg-ptpiree:T14:ocena_kryterium:29"
+              "proof:ncrfg-ptpiree:T14:stosowalnosc:28",
+              "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:29",
+              "proof:ncrfg-ptpiree:T14:ocena_kryterium:30"
             ],
             "ocena": {
               "kryterium_id": "frt.pozostanie_w_pracy_lvrt",
@@ -1806,7 +1839,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1827,13 +1860,13 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T14:stosowalnosc:27",
+                  "krok": "proof:ncrfg-ptpiree:T14:stosowalnosc:28",
                   "opis_pl": "krok śladu testu T14 (stosowalnosc)"
                 },
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:28",
+                  "krok": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:29",
                   "opis_pl": "krok śladu testu T14 (pozostanie_w_pracy_bez_biegu)"
                 }
               ]
@@ -1848,9 +1881,9 @@
             "summary_pl": "Pozostanie modułu w pracy podczas wzrostu napięcia (moduł nie odłączony przez własne zabezpieczenia ani ogranicznik) (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T15:stosowalnosc:30",
-              "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:31",
-              "proof:ncrfg-ptpiree:T15:ocena_kryterium:32"
+              "proof:ncrfg-ptpiree:T15:stosowalnosc:31",
+              "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:32",
+              "proof:ncrfg-ptpiree:T15:ocena_kryterium:33"
             ],
             "ocena": {
               "kryterium_id": "frt.pozostanie_w_pracy_hvrt",
@@ -1928,7 +1961,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -1949,13 +1982,13 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T15:stosowalnosc:30",
+                  "krok": "proof:ncrfg-ptpiree:T15:stosowalnosc:31",
                   "opis_pl": "krok śladu testu T15 (stosowalnosc)"
                 },
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:31",
+                  "krok": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:32",
                   "opis_pl": "krok śladu testu T15 (pozostanie_w_pracy_bez_biegu)"
                 }
               ]
@@ -1970,9 +2003,9 @@
             "summary_pl": "Odbudowa mocy czynnej po zakłóceniu: czas odbudowy mocy czynnej po zakłóceniu (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T16:stosowalnosc:33",
-              "proof:ncrfg-ptpiree:T16:odbudowa_p:34",
-              "proof:ncrfg-ptpiree:T16:ocena_kryterium:35"
+              "proof:ncrfg-ptpiree:T16:stosowalnosc:34",
+              "proof:ncrfg-ptpiree:T16:odbudowa_p:35",
+              "proof:ncrfg-ptpiree:T16:ocena_kryterium:36"
             ],
             "ocena": {
               "kryterium_id": "odbudowa_p.czas",
@@ -2061,7 +2094,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2082,13 +2115,13 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T16:stosowalnosc:33",
+                  "krok": "proof:ncrfg-ptpiree:T16:stosowalnosc:34",
                   "opis_pl": "krok śladu testu T16 (stosowalnosc)"
                 },
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T16:odbudowa_p:34",
+                  "krok": "proof:ncrfg-ptpiree:T16:odbudowa_p:35",
                   "opis_pl": "krok śladu testu T16 (odbudowa_p)"
                 }
               ]
@@ -2103,9 +2136,9 @@
             "summary_pl": "Prąd bierny podczas FRT: wzmocnienie prądu biernego ΔI_q / ΔU (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T17:stosowalnosc:36",
-              "proof:ncrfg-ptpiree:T17:prad_bierny_frt:37",
-              "proof:ncrfg-ptpiree:T17:ocena_kryterium:38"
+              "proof:ncrfg-ptpiree:T17:stosowalnosc:37",
+              "proof:ncrfg-ptpiree:T17:prad_bierny_frt:38",
+              "proof:ncrfg-ptpiree:T17:ocena_kryterium:39"
             ],
             "ocena": {
               "kryterium_id": "szybki_prad_bierny.wzmocnienie",
@@ -2194,7 +2227,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2215,13 +2248,13 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T17:stosowalnosc:36",
+                  "krok": "proof:ncrfg-ptpiree:T17:stosowalnosc:37",
                   "opis_pl": "krok śladu testu T17 (stosowalnosc)"
                 },
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:37",
+                  "krok": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:38",
                   "opis_pl": "krok śladu testu T17 (prad_bierny_frt)"
                 }
               ]
@@ -2236,8 +2269,8 @@
             "summary_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji: moduł realizuje zdolności dodatkowe wskazane w programie szczegółowym (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T18:stosowalnosc:39",
-              "proof:ncrfg-ptpiree:T18:ocena_kryterium:40"
+              "proof:ncrfg-ptpiree:T18:stosowalnosc:40",
+              "proof:ncrfg-ptpiree:T18:ocena_kryterium:41"
             ],
             "ocena": {
               "kryterium_id": "zdolnosci_dodatkowe.zachowanie",
@@ -2308,7 +2341,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2329,7 +2362,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T18:stosowalnosc:39",
+                  "krok": "proof:ncrfg-ptpiree:T18:stosowalnosc:40",
                   "opis_pl": "krok śladu testu T18 (stosowalnosc)"
                 }
               ]
@@ -2344,8 +2377,8 @@
             "summary_pl": "Rejestracja zakłóceń i komunikacja z operatorem: komunikacja z operatorem i rejestrator zakłóceń zadeklarowane (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T19:stosowalnosc:41",
-              "proof:ncrfg-ptpiree:T19:ocena_kryterium:42"
+              "proof:ncrfg-ptpiree:T19:stosowalnosc:42",
+              "proof:ncrfg-ptpiree:T19:ocena_kryterium:43"
             ],
             "ocena": {
               "kryterium_id": "obserwowalnosc.komunikacja_i_rejestrator",
@@ -2415,7 +2448,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2436,7 +2469,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T19:stosowalnosc:41",
+                  "krok": "proof:ncrfg-ptpiree:T19:stosowalnosc:42",
                   "opis_pl": "krok śladu testu T19 (stosowalnosc)"
                 }
               ]
@@ -2451,8 +2484,8 @@
             "summary_pl": "Jakość energii - współczynnik THDu źródła: współczynnik odkształcenia napięcia źródła (Magazyn energii 1,5 MW) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
             "metrics": {},
             "trace_refs": [
-              "proof:ncrfg-ptpiree:T20:stosowalnosc:43",
-              "proof:ncrfg-ptpiree:T20:ocena_kryterium:44"
+              "proof:ncrfg-ptpiree:T20:stosowalnosc:44",
+              "proof:ncrfg-ptpiree:T20:ocena_kryterium:45"
             ],
             "ocena": {
               "kryterium_id": "jakosc_energii.thd_u",
@@ -2541,7 +2574,7 @@
                   "stan": "ZWALIDOWANE",
                   "dane_przyjete": []
                 },
-                "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+                "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
                 "w_domenie_walidacji": null,
                 "domena_pl": null
               },
@@ -2562,7 +2595,7 @@
                 {
                   "run_id": null,
                   "wersja_silnika": null,
-                  "krok": "proof:ncrfg-ptpiree:T20:stosowalnosc:43",
+                  "krok": "proof:ncrfg-ptpiree:T20:stosowalnosc:44",
                   "opis_pl": "krok śladu testu T20 (stosowalnosc)"
                 }
               ]
@@ -2875,7 +2908,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e78de5cc85799f4087fbc8a78642be3f35afce5dec6abaf08a18a74af9e15840"
+          "odcisk_oceny": "9f94e1f231a66ea9f8dba76751ee36002f8227aeab9973b74f74f4d814ce9cf3"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:2"
@@ -2919,7 +2952,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "ad57405feef8e38344c93bc1a5d867bc2f50ab24aee44f2d1e121d4e2d73dddd"
+          "odcisk_oceny": "fdf55e61c9254ae34116841a2a8698f2def622b022abc4d9959f7b78da39e18b"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:4"
@@ -2963,7 +2996,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "0ec93a23f55f811dcfe01a8211bd92e1119695ef73603c836583636fd1d60906"
+          "odcisk_oceny": "581bf11687c96bc1f36e85a4c835f1b18b3253ec7af7b02ef62e0ecb2b7f2091"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:6"
@@ -3007,7 +3040,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "4978650a85bb59336efcd5171113c5118df8e245c28b80c59d57744ae1bc0343"
+          "odcisk_oceny": "0729903ecc12e5d1a335a43691bffc7d6017af898ac9adae50b1fe171b9bb193"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:8"
@@ -3054,7 +3087,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "8825117d74b111abb07bbf830aa011e9b1eb9e0d96ac97b349a01861ce29b40f"
+          "odcisk_oceny": "f543b828e634427eef45ecf0909471059170210fb9b567371d391c3edd88f520"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:10"
@@ -3098,7 +3131,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "fd0cca8bd3f72656932ce1cd5459fc7324f8e94fb3744918b3c40ba5c8bcdaa3"
+          "odcisk_oceny": "799d1b09a5743b6bb57bb6ccd5b1d01a6d4750fdc6dba63eb6a826469d30f006"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:12"
@@ -3142,7 +3175,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "1458216d1ed2be987010488092a86cfb053d686e81cdc4af08f65bb91a5d5b5a"
+          "odcisk_oceny": "4e5835c6007165f690044d384c92a2061654417ede9219e2993282522464e7cb"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:14"
@@ -3186,7 +3219,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "0f86be17701ee65e8adc6cc0f621d595ffa54a9efa57f5eb3d2074bad1abab0a"
+          "odcisk_oceny": "90d146b83b15a15adf9131fad1e5eadc6608a58ca3e60b4085573522205e6d28"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T08:ocena_kryterium:16"
@@ -3224,23 +3257,50 @@
       {
         "step": 18,
         "test_id": "T09",
+        "key": "zakres_mocy_biernej",
+        "formula": "zapas_dolny = Q_wym,min − Q_min; zapas_gorny = Q_max − Q_wym,max; orzeka strona o mniejszym zapasie",
+        "data": {
+          "zakres_modulu_pu": [
+            -0.12,
+            0.12
+          ],
+          "zakres_wymagany_pu": [
+            -0.33,
+            0.33
+          ],
+          "p_max_kw": 1500.0
+        },
+        "substitution": "min(−0,21, −0,21)",
+        "result": {
+          "zapas_dolny_pu": -0.21,
+          "zapas_gorny_pu": -0.21,
+          "strona_krytyczna": "dolna",
+          "q_min_kvar": -180.0,
+          "q_max_kvar": 180.0
+        },
+        "unit_check": "p.u. (P_n) − p.u. (P_n) = p.u. (P_n); kW · p.u. = kvar.",
+        "proof_ref": "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:18"
+      },
+      {
+        "step": 19,
+        "test_id": "T09",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
         "data": {
           "kryterium_id": "q.zakres_mocy_biernej",
-          "relacja": "NIE_MNIEJ"
+          "relacja": "NIE_WIECEJ"
         },
         "substitution": "status = NIE_DOTYCZY",
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "df08e0aee8a5713d99bd4f5b5224dfaf842dfe854fe6c79a1175278d82710486"
+          "odcisk_oceny": "8d337dcec9c10489e08ce08e3b3b7e51a0562434145ced6eab15de1b2e871f90"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:18"
+        "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:19"
       },
       {
-        "step": 19,
+        "step": 20,
         "test_id": "T10",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3264,10 +3324,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T10:stosowalnosc:19"
+        "proof_ref": "proof:ncrfg-ptpiree:T10:stosowalnosc:20"
       },
       {
-        "step": 20,
+        "step": 21,
         "test_id": "T10",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3279,13 +3339,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "401bd735a2cb6879118086ff078c5af24bdba636540f387f45023a2c9b802116"
+          "odcisk_oceny": "006f0127edb191cad3a89c0527b590da0e724a61d1f163869fb23ad825a32664"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T10:ocena_kryterium:20"
+        "proof_ref": "proof:ncrfg-ptpiree:T10:ocena_kryterium:21"
       },
       {
-        "step": 21,
+        "step": 22,
         "test_id": "T11",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3309,10 +3369,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T11:stosowalnosc:21"
+        "proof_ref": "proof:ncrfg-ptpiree:T11:stosowalnosc:22"
       },
       {
-        "step": 22,
+        "step": 23,
         "test_id": "T11",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3324,13 +3384,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "96227088806aa393c5f850a666914bf2540487be3b61511dd6f7c2488481187d"
+          "odcisk_oceny": "189d61ac4d55112b309f03ec2dde1c8cdc31b54c558266c4219fe3877f9aadb6"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T11:ocena_kryterium:22"
+        "proof_ref": "proof:ncrfg-ptpiree:T11:ocena_kryterium:23"
       },
       {
-        "step": 23,
+        "step": 24,
         "test_id": "T12",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3355,10 +3415,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T12:stosowalnosc:23"
+        "proof_ref": "proof:ncrfg-ptpiree:T12:stosowalnosc:24"
       },
       {
-        "step": 24,
+        "step": 25,
         "test_id": "T12",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3370,13 +3430,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "344573352a18768aab935f7f75aa6de85a9fa4343ae771dd71b18a464f5a63b1"
+          "odcisk_oceny": "1857d29344947dd135ed8378bc5ccfd99240e8ecb1f38ebb315e6bb66b293600"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T12:ocena_kryterium:24"
+        "proof_ref": "proof:ncrfg-ptpiree:T12:ocena_kryterium:25"
       },
       {
-        "step": 25,
+        "step": 26,
         "test_id": "T13",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3400,10 +3460,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T13:stosowalnosc:25"
+        "proof_ref": "proof:ncrfg-ptpiree:T13:stosowalnosc:26"
       },
       {
-        "step": 26,
+        "step": 27,
         "test_id": "T13",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3415,13 +3475,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "64d7263d8d693c986ff189387e4a20788dd0d6da486679b1228b320a1b34fca8"
+          "odcisk_oceny": "905d67096f0c43ebc0f9a9e3d3f991c1ae9d48569123e43944d4edc752c0b138"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T13:ocena_kryterium:26"
+        "proof_ref": "proof:ncrfg-ptpiree:T13:ocena_kryterium:27"
       },
       {
-        "step": 27,
+        "step": 28,
         "test_id": "T14",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3447,10 +3507,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T14:stosowalnosc:27"
+        "proof_ref": "proof:ncrfg-ptpiree:T14:stosowalnosc:28"
       },
       {
-        "step": 28,
+        "step": 29,
         "test_id": "T14",
         "key": "pozostanie_w_pracy_bez_biegu",
         "formula": "moduł przyłączony ∀t, gdy U(t) ≥ U_obwiedni(t)",
@@ -3483,10 +3543,10 @@
         "substitution": "brak przebiegu U(t) i stanu przyłączenia modułu z biegu dynamiki — podstawienie niewykonalne",
         "result": {},
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:28"
+        "proof_ref": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:29"
       },
       {
-        "step": 29,
+        "step": 30,
         "test_id": "T14",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3498,13 +3558,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "047ad3eca9ebb94a02e9da437c4dd42181412d70fef70c0a7b491a7173f169da"
+          "odcisk_oceny": "767cd33567ecb935ff6da7af57063b7296948c2436af6aeaa3f60a4deecbb213"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T14:ocena_kryterium:29"
+        "proof_ref": "proof:ncrfg-ptpiree:T14:ocena_kryterium:30"
       },
       {
-        "step": 30,
+        "step": 31,
         "test_id": "T15",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3530,10 +3590,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T15:stosowalnosc:30"
+        "proof_ref": "proof:ncrfg-ptpiree:T15:stosowalnosc:31"
       },
       {
-        "step": 31,
+        "step": 32,
         "test_id": "T15",
         "key": "pozostanie_w_pracy_bez_biegu",
         "formula": "moduł przyłączony ∀t, gdy U(t) ≤ U_obwiedni(t)",
@@ -3562,10 +3622,10 @@
         "substitution": "brak przebiegu U(t) i stanu przyłączenia modułu z biegu dynamiki — podstawienie niewykonalne",
         "result": {},
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:31"
+        "proof_ref": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:32"
       },
       {
-        "step": 32,
+        "step": 33,
         "test_id": "T15",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3577,13 +3637,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "69bda9f2b62f5a678947cbf93d3d0ada883268ee2040c15f9eac3b6b2310f4d2"
+          "odcisk_oceny": "b978391d7c72d256fd44109c00e901364aa8c6be25e0268d401af71506792c10"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T15:ocena_kryterium:32"
+        "proof_ref": "proof:ncrfg-ptpiree:T15:ocena_kryterium:33"
       },
       {
-        "step": 33,
+        "step": 34,
         "test_id": "T16",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3610,10 +3670,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T16:stosowalnosc:33"
+        "proof_ref": "proof:ncrfg-ptpiree:T16:stosowalnosc:34"
       },
       {
-        "step": 34,
+        "step": 35,
         "test_id": "T16",
         "key": "odbudowa_p",
         "formula": "t_odb ≤ t_odb,wym (wymaga przebiegu P(t) z biegu dynamiki)",
@@ -3625,10 +3685,10 @@
         "substitution": "brak przebiegu P(t) z biegu dynamiki — wartość zadeklarowana informacyjnie",
         "result": {},
         "unit_check": "s − s = s.",
-        "proof_ref": "proof:ncrfg-ptpiree:T16:odbudowa_p:34"
+        "proof_ref": "proof:ncrfg-ptpiree:T16:odbudowa_p:35"
       },
       {
-        "step": 35,
+        "step": 36,
         "test_id": "T16",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3640,13 +3700,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "78d1ee85c7481f6799a65b29d40cf07ec61ac48580aeb9f79f203168a5cff802"
+          "odcisk_oceny": "c2921a40bb94e27eb82eebd1e247f20c581d600f4cc19607e38a026bf1c40855"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T16:ocena_kryterium:35"
+        "proof_ref": "proof:ncrfg-ptpiree:T16:ocena_kryterium:36"
       },
       {
-        "step": 36,
+        "step": 37,
         "test_id": "T17",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3671,10 +3731,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T17:stosowalnosc:36"
+        "proof_ref": "proof:ncrfg-ptpiree:T17:stosowalnosc:37"
       },
       {
-        "step": 37,
+        "step": 38,
         "test_id": "T17",
         "key": "prad_bierny_frt",
         "formula": "K_FRT ≥ K_min (wymaga przebiegu I_q(t) z biegu dynamiki)",
@@ -3686,10 +3746,10 @@
         "substitution": "brak przebiegu I_q(t) z biegu dynamiki — wartość zadeklarowana informacyjnie",
         "result": {},
         "unit_check": "p.u. / p.u. = 1.",
-        "proof_ref": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:37"
+        "proof_ref": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:38"
       },
       {
-        "step": 38,
+        "step": 39,
         "test_id": "T17",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3701,13 +3761,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e489b63284dbf3542b5d56c76ef7a04b78fd1266f7c54f7e083012db0d6e866a"
+          "odcisk_oceny": "8ceac3f85430b3832c797fa121ae2c833a4353636b5c43a1604992178a2ddf7c"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T17:ocena_kryterium:38"
+        "proof_ref": "proof:ncrfg-ptpiree:T17:ocena_kryterium:39"
       },
       {
-        "step": 39,
+        "step": 40,
         "test_id": "T18",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3727,10 +3787,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T18:stosowalnosc:39"
+        "proof_ref": "proof:ncrfg-ptpiree:T18:stosowalnosc:40"
       },
       {
-        "step": 40,
+        "step": 41,
         "test_id": "T18",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3742,13 +3802,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "1221a5331ab81ab80c83acc06c36d1a58cb93a72e3d9e8d71b071ae64bfed285"
+          "odcisk_oceny": "a43f314853694514da567bc286efb671c50b713e74be5e8614c684a47db5659c"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T18:ocena_kryterium:40"
+        "proof_ref": "proof:ncrfg-ptpiree:T18:ocena_kryterium:41"
       },
       {
-        "step": 41,
+        "step": 42,
         "test_id": "T19",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3771,10 +3831,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T19:stosowalnosc:41"
+        "proof_ref": "proof:ncrfg-ptpiree:T19:stosowalnosc:42"
       },
       {
-        "step": 42,
+        "step": 43,
         "test_id": "T19",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3786,13 +3846,13 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "fa98b199f1054710f6ddce2f271d09401c0576b51b8aaaca589a5a6ecc302bd2"
+          "odcisk_oceny": "2b284a4c68822993be4888fae97227df89df577a837eeaa6a6905ebbd058a328"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T19:ocena_kryterium:42"
+        "proof_ref": "proof:ncrfg-ptpiree:T19:ocena_kryterium:43"
       },
       {
-        "step": 43,
+        "step": 44,
         "test_id": "T20",
         "key": "stosowalnosc",
         "formula": "wymagany = wymuszony ∨ (klasa ∧ technologia ∧ ¬istniejący ∧ (wykazuje wymaganie przez test ∨ zakres procedury ∨ brak certyfikatu obejmującego typ ∨ zdolność dodatkowa programu))",
@@ -3812,10 +3872,10 @@
           "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu"
         },
         "unit_check": "Wartości logiczne bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T20:stosowalnosc:43"
+        "proof_ref": "proof:ncrfg-ptpiree:T20:stosowalnosc:44"
       },
       {
-        "step": 44,
+        "step": 45,
         "test_id": "T20",
         "key": "ocena_kryterium",
         "formula": "status = reguła K kontraktu werdyktu (stosowalność → metoda → wynik → podstawa → niejednoznaczność → margines)",
@@ -3827,10 +3887,10 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "7eb1d2d3d915ec496aa5dabd07fd781c45886d729faed8b7dcf5bf11dae4bf4d"
+          "odcisk_oceny": "d7c3d87ee72e2af85b5a2d3dc1e830ffeda52773893a442e0420b2702ae9ae8b"
         },
         "unit_check": "Status maszynowy bez jednostek.",
-        "proof_ref": "proof:ncrfg-ptpiree:T20:ocena_kryterium:44"
+        "proof_ref": "proof:ncrfg-ptpiree:T20:ocena_kryterium:45"
       }
     ],
     "report_pl": "Raport testów zgodności NC RfG / PTPiREE (porównanie danych zadeklarowanych z profilem regulacyjnym)\nProcedura: PTPiREE — Procedura testowania modułów wytwarzania energii, wydanie 3.0\nSolver: ncrfg-ptpiree-whitebox-2.0\n\nModuł: Magazyn energii 1,5 MW\nOperator: Enea Operator; P_max: 1500 kW\nKlasyfikacja: moc 1500 kW w przedziale [200; 10000) kW (progi typów B i C wg WOS) przy napięciu przyłączenia 0,4 kV < 110 kV → typ B\nTechnologia: magazyn energii\nProfil wymagań: NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4) (skrót 10c1e757bd2dcb66)",
@@ -3912,7 +3972,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -3981,7 +4041,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4050,7 +4110,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4119,7 +4179,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4188,7 +4248,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4257,7 +4317,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4326,7 +4386,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4395,7 +4455,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4464,7 +4524,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4533,7 +4593,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4602,7 +4662,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4671,7 +4731,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4740,7 +4800,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4809,7 +4869,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4878,7 +4938,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -4947,7 +5007,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 161260816ce1972757cd3a29808cb6b773f056dd4b0187f75f40ebefff87c724",
+              "odniesienie": "bieg cbc66dafe0adaaaef73c8c865a09c945833fba21f87c998e050d2df8222acae7",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },

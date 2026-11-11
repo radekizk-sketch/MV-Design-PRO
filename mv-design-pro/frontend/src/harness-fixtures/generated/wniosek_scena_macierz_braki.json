@@ -450,7 +450,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1746,7 +1746,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1767,13 +1767,13 @@
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T14:stosowalnosc:79",
+                "krok": "proof:ncrfg-ptpiree:T14:stosowalnosc:80",
                 "opis_pl": "krok śladu testu T14 (stosowalnosc)"
               },
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:80",
+                "krok": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:81",
                 "opis_pl": "krok śladu testu T14 (pozostanie_w_pracy_bez_biegu)"
               }
             ]
@@ -1917,7 +1917,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -1993,7 +1993,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+          "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2014,13 +2014,13 @@
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T14:stosowalnosc:79",
+            "krok": "proof:ncrfg-ptpiree:T14:stosowalnosc:80",
             "opis_pl": "krok śladu testu T14 (stosowalnosc)"
           },
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:80",
+            "krok": "proof:ncrfg-ptpiree:T14:pozostanie_w_pracy_bez_biegu:81",
             "opis_pl": "krok śladu testu T14 (pozostanie_w_pracy_bez_biegu)"
           },
           {
@@ -2101,7 +2101,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+          "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2273,7 +2273,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -2294,13 +2294,13 @@
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T09:stosowalnosc:68",
+                "krok": "proof:ncrfg-ptpiree:T09:stosowalnosc:69",
                 "opis_pl": "krok śladu testu T09 (stosowalnosc)"
               },
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:69",
+                "krok": "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:70",
                 "opis_pl": "krok śladu testu T09 (zakres_mocy_biernej)"
               }
             ]
@@ -2347,7 +2347,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+          "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2368,13 +2368,13 @@
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T09:stosowalnosc:68",
+            "krok": "proof:ncrfg-ptpiree:T09:stosowalnosc:69",
             "opis_pl": "krok śladu testu T09 (stosowalnosc)"
           },
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:69",
+            "krok": "proof:ncrfg-ptpiree:T09:zakres_mocy_biernej:70",
             "opis_pl": "krok śladu testu T09 (zakres_mocy_biernej)"
           }
         ]
@@ -2513,7 +2513,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -2534,13 +2534,13 @@
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T17:stosowalnosc:88",
+                "krok": "proof:ncrfg-ptpiree:T17:stosowalnosc:89",
                 "opis_pl": "krok śladu testu T17 (stosowalnosc)"
               },
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:89",
+                "krok": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:90",
                 "opis_pl": "krok śladu testu T17 (prad_bierny_frt)"
               }
             ]
@@ -2595,7 +2595,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+          "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2616,13 +2616,13 @@
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T17:stosowalnosc:88",
+            "krok": "proof:ncrfg-ptpiree:T17:stosowalnosc:89",
             "opis_pl": "krok śladu testu T17 (stosowalnosc)"
           },
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:89",
+            "krok": "proof:ncrfg-ptpiree:T17:prad_bierny_frt:90",
             "opis_pl": "krok śladu testu T17 (prad_bierny_frt)"
           }
         ]
@@ -2761,7 +2761,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -2782,13 +2782,13 @@
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T16:stosowalnosc:85",
+                "krok": "proof:ncrfg-ptpiree:T16:stosowalnosc:86",
                 "opis_pl": "krok śladu testu T16 (stosowalnosc)"
               },
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T16:odbudowa_p:86",
+                "krok": "proof:ncrfg-ptpiree:T16:odbudowa_p:87",
                 "opis_pl": "krok śladu testu T16 (odbudowa_p)"
               }
             ]
@@ -2839,7 +2839,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+          "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -2860,13 +2860,13 @@
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T16:stosowalnosc:85",
+            "krok": "proof:ncrfg-ptpiree:T16:stosowalnosc:86",
             "opis_pl": "krok śladu testu T16 (stosowalnosc)"
           },
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T16:odbudowa_p:86",
+            "krok": "proof:ncrfg-ptpiree:T16:odbudowa_p:87",
             "opis_pl": "krok śladu testu T16 (odbudowa_p)"
           }
         ]
@@ -2995,7 +2995,7 @@
                 "stan": "ZWALIDOWANE",
                 "dane_przyjete": []
               },
-              "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+              "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
               "w_domenie_walidacji": null,
               "domena_pl": null
             },
@@ -3016,13 +3016,13 @@
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T15:stosowalnosc:82",
+                "krok": "proof:ncrfg-ptpiree:T15:stosowalnosc:83",
                 "opis_pl": "krok śladu testu T15 (stosowalnosc)"
               },
               {
                 "run_id": null,
                 "wersja_silnika": null,
-                "krok": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:83",
+                "krok": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:84",
                 "opis_pl": "krok śladu testu T15 (pozostanie_w_pracy_bez_biegu)"
               }
             ]
@@ -3077,7 +3077,7 @@
             "stan": "ZWALIDOWANE",
             "dane_przyjete": []
           },
-          "odniesienie": "bieg 1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
+          "odniesienie": "bieg 05fac72936d5e64f011eaef1b7a5cf6bb3995b67e75fdd548824f5188d210d2e",
           "w_domenie_walidacji": null,
           "domena_pl": null
         },
@@ -3098,13 +3098,13 @@
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T15:stosowalnosc:82",
+            "krok": "proof:ncrfg-ptpiree:T15:stosowalnosc:83",
             "opis_pl": "krok śladu testu T15 (stosowalnosc)"
           },
           {
             "run_id": null,
             "wersja_silnika": null,
-            "krok": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:83",
+            "krok": "proof:ncrfg-ptpiree:T15:pozostanie_w_pracy_bez_biegu:84",
             "opis_pl": "krok śladu testu T15 (pozostanie_w_pracy_bez_biegu)"
           }
         ]

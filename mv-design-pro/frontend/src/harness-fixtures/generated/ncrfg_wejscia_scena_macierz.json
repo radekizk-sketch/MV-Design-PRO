@@ -34,8 +34,8 @@
       "dead_band_hz": null,
       "ramp_rate_pct_per_min": null,
       "cos_phi_min": null,
-      "q_range_pct_pn_min": null,
-      "q_range_pct_pn_max": null,
+      "q_range_pct_pn_min": -0.12,
+      "q_range_pct_pn_max": 0.12,
       "reactive_current_gain": null,
       "p_recovery_time_s": null,
       "harmonic_thdu_percent": null,
@@ -100,7 +100,9 @@
       "der_name",
       "der_kind",
       "p_max_kw",
-      "voltage_kv"
+      "voltage_kv",
+      "q_range_pct_pn_min",
+      "q_range_pct_pn_max"
     ],
     "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter": [
       "der_ref",

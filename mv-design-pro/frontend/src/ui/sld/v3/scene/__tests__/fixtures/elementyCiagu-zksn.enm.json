@@ -1594,7 +1594,7 @@
         "bus_ref": "bp/fbbfde486f682d983d163da758767d53/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "ZKSN-2P-630A",
-        "catalog_version": null,
+        "catalog_version": "2024.1",
         "completeness_status": "KOMPLETNY",
         "id": "d4d62e8d-ceaf-5093-a524-9d9aec0dc5d9",
         "materialized_params": {
@@ -1703,7 +1703,7 @@
         "bus_ref": "bp/e51c97148656cdc731d80913c6c03825/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "ZKSN-2P-630A",
-        "catalog_version": null,
+        "catalog_version": "2024.1",
         "completeness_status": "KOMPLETNY",
         "id": "acaaaf66-aab0-514a-949b-14f9e13afea4",
         "materialized_params": {
@@ -1812,7 +1812,7 @@
         "bus_ref": "bp/2a586a953986d8db53c8e2fe70384feb/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "ZKSN-2P-630A",
-        "catalog_version": null,
+        "catalog_version": "2024.1",
         "completeness_status": "KOMPLETNY",
         "id": "786a2c87-c06f-57be-bd03-5c8a27f1283a",
         "materialized_params": {
@@ -5168,7 +5168,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "0af713e740e1adec8b24f996d369fa241ce2af5703a0cc9bd42e73efd21797c0",
+      "hash_sha256": "2b1b9758236ad37cb4af4276e870bb86a3d7a38c3c7cc5b23d71053d6ff51495",
       "name": "Elementy ciągu — zksn",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"

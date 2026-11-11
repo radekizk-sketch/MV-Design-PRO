@@ -51,6 +51,7 @@ from network_model.core.voltage_factor import (
     c_wiersza_nn,
 )
 from network_model.pochodne import (
+    moc_bierna_z_czynnej_i_cos_phi,
     moc_pozorna_z_czynnej_mva,
     moc_znamionowa_maszyny_asynchronicznej_mw,
 )
@@ -2605,3 +2606,91 @@ def element_niezawodnosci(rodzaj_galezi: str) -> ElementNiezawodnosci:
     if rodzaj_galezi == "cable":
         return "kabel_sn"
     return "aparat_sn"
+
+
+# =============================================================================
+# Tabliczka przekształtnika PV/BESS — moc znamionowa i zdolność mocy biernej
+# =============================================================================
+
+#: Współczynnik mocy roboczy przekształtnika PV/BESS, gdy pozycja nie niesie ani granic mocy
+#: biernej, ani własnego cosφ_min (zasada nr 4: propozycja, nie blokada).
+COS_PHI_ROBOCZY_PRZEKSZTALTNIKA: Final[float] = 0.9
+
+#: Podstawa wartości roboczej tabliczki przekształtnika — w wyjaśnieniu i w
+#: ``card_field_status`` pola (jakość ESTIMATED).
+ODNIESIENIE_TABLICZKI_PRZEKSZTALTNIKA: Final[str] = (
+    "założenie inżynierskie: zdolność mocy biernej przy mocy maksymalnej P_max ze "
+    "współczynnikiem mocy cosφ_min pozycji, a bez niego cosφ 0,9 (S_n = P_max/0,9 — konwencja "
+    "tabliczek przekształtników katalogu); wymaganie zdolności mocy biernej modułu parku energii "
+    "typu B ustala operator systemu (rozporządzenie (UE) 2016/631 art. 20 ust. 2 lit. a), typu "
+    "C i D — profil U-Q/P_max (art. 21 ust. 3 lit. b); granice z karty producenta zastępują "
+    "tę wartość"
+)
+
+
+@dataclass(frozen=True)
+class TabliczkaPrzeksztaltnika:
+    """Moc znamionowa i granice mocy biernej przekształtnika PV/BESS po uzupełnieniu.
+
+    ``pola_robocze`` — pola uzupełnione wartością roboczą (pozostałe pochodzą z pozycji
+    katalogu); ``status_pol`` — wpisy ``card_field_status`` tych pól (jakość ESTIMATED,
+    podstawa :data:`ODNIESIENIE_TABLICZKI_PRZEKSZTALTNIKA`)."""
+
+    sn_mva: float | None
+    qmin_mvar: float | None
+    qmax_mvar: float | None
+    pola_robocze: tuple[str, ...]
+
+    @property
+    def status_pol(self) -> dict[str, dict[str, Any]]:
+        return {
+            pole: {
+                "field_name": pole,
+                "quality": FieldQuality.ESTIMATED.value,
+                "source_ref": ODNIESIENIE_TABLICZKI_PRZEKSZTALTNIKA,
+                "note": "wartość robocza — pozycja katalogu nie niesie tej danej; zmień ją "
+                "w modelu, gdy znasz kartę producenta",
+            }
+            for pole in self.pola_robocze
+        }
+
+
+def tabliczka_przeksztaltnika(
+    *,
+    pmax_mw: float | None,
+    sn_mva: float | None,
+    qmin_mvar: float | None,
+    qmax_mvar: float | None,
+    cos_phi_min: float | None,
+) -> TabliczkaPrzeksztaltnika:
+    """Uzupełnij tabliczkę przekształtnika PV/BESS wartościami roboczymi (zasada nr 4).
+
+    Dane pozycji mają pierwszeństwo; brak S_n → S_n = P_max/cosφ, brak granicy mocy biernej
+    → |Q| = P_max·tgφ (symetrycznie: Q_min = −Q_max), gdzie cosφ = cosφ_min pozycji albo
+    :data:`COS_PHI_ROBOCZY_PRZEKSZTALTNIKA`. Bez mocy maksymalnej nie ma z czego proponować —
+    pola zostają ``None`` (brak danej nazwany dalej przez gotowość).
+    """
+    robocze: list[str] = []
+    cos_phi = (
+        float(cos_phi_min)
+        if cos_phi_min is not None and 0.0 < float(cos_phi_min) < 1.0
+        else COS_PHI_ROBOCZY_PRZEKSZTALTNIKA
+    )
+    moc = float(pmax_mw) if pmax_mw is not None and float(pmax_mw) > 0.0 else None
+    if sn_mva is None and moc is not None:
+        sn_mva = moc_pozorna_z_czynnej_mva(moc, cos_phi)
+        robocze.append("sn_mva")
+    if moc is not None and (qmin_mvar is None or qmax_mvar is None):
+        q = moc_bierna_z_czynnej_i_cos_phi(moc, cos_phi)
+        if qmax_mvar is None:
+            qmax_mvar = q
+            robocze.append("qmax_mvar")
+        if qmin_mvar is None:
+            qmin_mvar = -q
+            robocze.append("qmin_mvar")
+    return TabliczkaPrzeksztaltnika(
+        sn_mva=sn_mva,
+        qmin_mvar=qmin_mvar,
+        qmax_mvar=qmax_mvar,
+        pola_robocze=tuple(sorted(robocze)),
+    )
