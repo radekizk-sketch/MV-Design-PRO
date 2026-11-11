@@ -12638,7 +12638,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wejściowe 1",
+        "pole_pl": "Pole liniowe wejściowe 1 — Stacja S02",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -12706,7 +12706,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wyjściowe 2",
+        "pole_pl": "Pole liniowe wyjściowe 2 — Stacja S02",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -12774,7 +12774,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole transformatorowe 3",
+        "pole_pl": "Pole transformatorowe 3 — Stacja S02",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S02) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S02 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -12842,7 +12842,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wejściowe 1",
+        "pole_pl": "Pole liniowe wejściowe 1 — Stacja S04",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -12910,7 +12910,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wyjściowe 2",
+        "pole_pl": "Pole liniowe wyjściowe 2 — Stacja S04",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -12978,7 +12978,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole transformatorowe 3",
+        "pole_pl": "Pole transformatorowe 3 — Stacja S04",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S04) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S04 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -13046,7 +13046,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/c843b440108cbcd0ade67891d02c462a/sn_field/000/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wejściowe 1",
+        "pole_pl": "Pole liniowe wejściowe 1 — Stacja S03",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -13114,7 +13114,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/c843b440108cbcd0ade67891d02c462a/sn_field/001/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wyjściowe 2",
+        "pole_pl": "Pole liniowe wyjściowe 2 — Stacja S03",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -13182,7 +13182,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/c843b440108cbcd0ade67891d02c462a/sn_field/002/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole transformatorowe 3",
+        "pole_pl": "Pole transformatorowe 3 — Stacja S03",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S03) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S03 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -13250,7 +13250,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wejściowe 1",
+        "pole_pl": "Pole liniowe wejściowe 1 — Stacja S01",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wejściowe 1 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wejściowe 1 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -13318,7 +13318,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole liniowe wyjściowe 2",
+        "pole_pl": "Pole liniowe wyjściowe 2 — Stacja S01",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole liniowe wyjściowe 2 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole liniowe wyjściowe 2 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",
@@ -13386,7 +13386,7 @@
           "zabezpieczenia.ziemnozwarciowe.stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002/sterownik.51N"
         ],
         "oznaczenie_pl": "Io>",
-        "pole_pl": "Pole transformatorowe 3",
+        "pole_pl": "Pole transformatorowe 3 — Stacja S01",
         "przyczyna_pl": "Czułość, selektywność i czas działania funkcji Io> (51N) przy zwarciu doziemnym (Sterownik · Pole transformatorowe 3 — Stacja S01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie ma przypiętego wejścia 3I0 — wielkości mierzonej nie da się wyznaczyć. Przypnij przekładnik wejścia 3I0 sterownika w karcie pola (układ Holmgreena albo przekładnik Ferrantiego dla 3I0, otwarty trójkąt albo napięcia fazowe dla 3U0); Brakuje nastaw: próg rozruchowy 3I₀, strona przekładnika progu (wtórna albo pierwotna), charakterystyka czasowa — uzupełnij w karcie pola; Funkcja Io> (51N) zabezpieczenia Sterownik · Pole transformatorowe 3 — Stacja S01 nie działa na wyłącznik (macierz wyzwoleń) — strefy pola nie da się wyznaczyć. Przypisz funkcji Io> (51N) wyłącznik pola w macierzy wyzwoleń). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
         "rodzina": "ZEROWOPRADOWE",
         "stan": "NIE_OCENIONO",

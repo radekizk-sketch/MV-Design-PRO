@@ -88,6 +88,13 @@
   white-space: nowrap;
 }
 
+/* Nazwa pola (z nazwą stacji przy nazwie powtarzalnej) zawija się — liczby i stan zostają
+ * w kadrze zamiast wypychać tabelę w przewijanie poziome. */
+.mvd-eaz-tabela td:first-child {
+  white-space: normal;
+  min-width: 10em;
+}
+
 .mvd-eaz-tabela th {
   font-weight: 600;
   color: var(--mvd-muted);

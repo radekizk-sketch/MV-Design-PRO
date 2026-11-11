@@ -473,7 +473,10 @@ export function ProtectionCoordinationPage() {
                   />
                 )}
                 {activeTab === 'nadpradowe' && (
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  // Tabela rodzin (warstwa ui2) bierze kolory z tokenów motywu i nie ma własnej
+                  // powierzchni — kontener też z tokenów, inaczej w motywie ciemnym jasny tekst
+                  // leżał na białej karcie (kontrast poniżej czytelności, kadry karty EKRANY-EAZ).
+                  <div className="rounded-lg border border-[var(--mvd-line)] bg-[var(--mvd-panel)] p-4">
                     {/* Ten sam wzorzec wiersza rodziny co zwarcia doziemne (rejestr rodzin). */}
                     <TabelaOcenyZiemnozwarciowej
                       wynik={result.nadpradowe}
@@ -490,7 +493,7 @@ export function ProtectionCoordinationPage() {
                   </div>
                 )}
                 {activeTab === 'ziemne' && (
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="rounded-lg border border-[var(--mvd-line)] bg-[var(--mvd-panel)] p-4">
                     <TabelaOcenyZiemnozwarciowej
                       wynik={result.ziemnozwarciowe}
                       onUzupelnij={(cel) =>

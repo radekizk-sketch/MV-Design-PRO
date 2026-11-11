@@ -284,6 +284,7 @@ function Szczegoly({ wiersz, wynik, testid }: { wiersz: WierszRodziny; wynik: Wy
                 {wymagania.map(([klucz, w]) => (
                   <li
                     key={klucz}
+                    data-klucz={klucz}
                     data-stan-zrodla={w.stan_zrodla}
                     data-stan={w.stan}
                     data-przyjete={String(w.przyjete)}

@@ -609,20 +609,37 @@ def funkcje_ziemnozwarciowe(
                     przekladnia_3i0=przekladnia,
                     braki=tuple(braki),
                     grupa=numer_grupy_efektywnej(sterownik),
-                    pole_pl=_nazwa_pola(enm, sterownik),
+                    pole_pl=nazwa_pola_sterownika(enm, sterownik),
                 )
             )
     return wynik
 
 
-def _nazwa_pola(enm: EnergyNetworkModel, sterownik: ProtectionAssignment) -> str | None:
-    """Nazwa pola sterownika (z modelu) — identyfikacja wiersza tabeli oceny."""
+def nazwa_pola_sterownika(enm: EnergyNetworkModel, sterownik: ProtectionAssignment) -> str | None:
+    """Nazwa pola sterownika (z modelu) — identyfikacja wiersza tabel rodzin (ziemnozwarciowych
+    i nadprądowej 50/51).
+
+    Nazwa pola, która powtarza się w modelu (ta sama nazwa pola w kilku stacjach, np. „Pole
+    liniowe wejściowe 1” w S01…S04), dostaje nazwę swojej stacji albo rozdzielnicy odgałęźnej:
+    „Pole liniowe wejściowe 1 — Stacja S02”. Bez tego wiersze różnych pól byłyby nie do
+    odróżnienia na ekranie i w raporcie. Nazwa jednoznaczna przechodzi bez zmian."""
     if not sterownik.bay_ref:
         return None
-    for pole in enm.bays:
-        if pole.ref_id == sterownik.bay_ref:
-            return nazwa_elementu(pole, "bays")
-    return None
+    pole = next((b for b in enm.bays if b.ref_id == sterownik.bay_ref), None)
+    if pole is None:
+        return None
+    nazwa = nazwa_elementu(pole, "bays")
+    if sum(1 for b in enm.bays if nazwa_elementu(b, "bays") == nazwa) == 1:
+        return nazwa
+    if pole.substation_ref:
+        kolekcja, ref = "substations", pole.substation_ref
+        kontener = next((s for s in enm.substations if s.ref_id == ref), None)
+    else:
+        kolekcja, ref = "branch_points", pole.branch_point_ref or ""
+        kontener = next((p for p in enm.branch_points if p.ref_id == ref), None)
+    if kontener is None:
+        return nazwa
+    return f"{nazwa} — {nazwa_elementu(kontener, kolekcja)}"
 
 
 def _nazwa_aparatu(enm: EnergyNetworkModel, breaker_ref: str) -> str:

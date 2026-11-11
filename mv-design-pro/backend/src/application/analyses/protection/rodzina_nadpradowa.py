@@ -34,6 +34,7 @@ from application.analyses.protection.ocena_nadpradowa import (
 )
 from application.analyses.protection.ocena_ziemnozwarciowa import (
     RekordOcenyZiemnozwarciowej,
+    nazwa_pola_sterownika,
     stan_wiersza,
 )
 from application.analyses.protection.rodziny_eaz import (
@@ -227,6 +228,9 @@ def wiersze_nadpradowe(
         a.ref_id: {s.funkcja: s.funkcja_ref for s in stopnie_nadpradowe(a)}
         for a in model.protection_assignments
     }
+    # Identyfikacja wiersza jak w rodzinach ziemnozwarciowych: „Pole” = nazwa pola z modelu,
+    # nazwa sterownika w podpowiedzi; urządzenie bez pola — jego własna nazwa.
+    pola_modelu = {a.ref_id: nazwa_pola_sterownika(model, a) for a in model.protection_assignments}
     czulosc = {c.device_id: c for c in wynik.sensitivity_checks}
     przeciazalnosc = {c.device_id: c for c in wynik.overload_checks}
     odstepy: dict[str, list[Any]] = {}
@@ -400,7 +404,7 @@ def wiersze_nadpradowe(
                 "ansi": "51/50",
                 "oznaczenie_pl": "I>, I>>",
                 "etykieta_pl": "I> (51), I>> (50)",
-                "pole_pl": nazwa,
+                "pole_pl": pola_modelu.get(ref) or nazwa,
                 "sterownik_pl": nazwa,
                 "grupa": None,
                 "stan": stan,
