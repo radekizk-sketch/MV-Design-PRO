@@ -116,6 +116,7 @@ export function EkranSkladowych() {
 
   const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  const refPunktu = (klucz: string): string => rows.find((r) => r.target_id === klucz)?.element_id ?? klucz;
   const aktywnyPunkt = useMemo(() => {
     if (rows.length === 0) return null;
     if (wybranyPunkt && rows.some((r) => r.target_id === wybranyPunkt)) return wybranyPunkt;
@@ -203,9 +204,14 @@ export function EkranSkladowych() {
               nazwaElementuWiersza={(klucz) =>
                 rows.find((r) => r.target_id === klucz)?.target_name ?? undefined
               }
+              // Karta SLD-SKALA-I-NAWIGACJA (część W, predykaty parami): JEDEN ref
+              // punktu (`element_id ?? target_id`) dla zaznaczenia wiersza, dla
+              // widoczności akcji i dla samej akcji „Pokaż na schemacie".
+              elementIdWiersza={refPunktu}
+              refDecyzjiWiersza={refPunktu}
               onPoprawWModelu={(klucz) => {
+                const ref = refPunktu(klucz);
                 const wiersz = rows.find((r) => r.target_id === klucz);
-                const ref = wiersz?.element_id ?? klucz;
                 poprawWModelu(ref, 'Bus', wiersz?.target_name ?? ref, 'inspekcja-elementu');
               }}
               rodzajWiersza={() => 'inspekcja-elementu'}

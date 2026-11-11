@@ -26,7 +26,8 @@ import { selectSnFieldCount, useNetworkBuildStore } from '../network-build/netwo
 import { OPERATION_FORM_REGISTRY } from './operationFormRegistry';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
-import { navigateToNetworkBuild, navigateToProof, navigateToReport } from '../navigation/routes';
+import { navigateToProof, navigateToReport } from '../navigation/routes';
+import { przejdzDoPrzestrzeni } from '../../ui2/shell/przejsciaPrzestrzeni';
 import {
   useStationDerStore,
   selectAllDers,
@@ -44,7 +45,7 @@ import {
   useStationAudit2ConfigList,
 } from '../network-build/station-der';
 import { PakietDowodowProjektu } from './PakietDowodowRozszerzen';
-import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
+import { KanwaSchematu } from '../../ui2/legacy/KanwaSchematu';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { EkranFrt } from '../../ui2/oze/frt';
 import { EkranZabezpieczenAutomatyki } from '../../ui2/model/zabezpieczenia-automatyka';
@@ -54,6 +55,7 @@ import { EkranDynamiki } from '../../ui2/wyniki/dynamika';
 import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
 import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
 import { useShellStore } from '../../ui2/shell/useShellStore';
+import { zaznaczElementModelu } from '../../ui2/shell/zaznaczElementModelu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 import {
   exportReport,
@@ -1157,7 +1159,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     });
 
   const openConfigurationOverview = () => {
-    navigateToNetworkBuild();
+    przejdzDoPrzestrzeni('schemat');
     openRouteSurface('E-04', {
       titlePl: 'Przegląd techniczny układu',
       tabId: 'kontrola',
@@ -1904,7 +1906,6 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
-  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const blockerCount = readiness?.blockers?.length ?? 0;
   const warningCount = readiness?.warnings?.length ?? 0;
@@ -2038,13 +2039,14 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   };
 
   const handleFixActionClick = (action: FixAction) => {
-    if (action.element_ref) {
+    if (action.element_ref && !zaznaczElementModelu(action.element_ref, 'okno-akcji-naprawczej', { tryb: 'kadruj' })) {
+      // Ref spoza migawki (np. element jeszcze niezmaterializowany): zaznaczenie
+      // opisowe dla okna naprawy — bez wskazania kamery (na schemacie go nie ma).
       selectElement({
         id: action.element_ref,
         type: inferElementTypeForFixAction(snapshot, action.element_ref),
         name: resolveElementNameForFixAction(snapshot, action.element_ref),
       });
-      centerSldOnElement(action.element_ref);
     }
 
     const target = action.surface_descriptor ?? resolveFixActionSurface({
@@ -2954,7 +2956,7 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')),
       // renderujemy TEN SAM, jedyny render — F12-C (spec §10.1 ARCH-4):
       // ścieżka renderu v2 i punkt decyzji hosta USUNIĘTE, zgodnie z App.tsx.
-      return <SldCanvasV3Workspace />;
+      return <KanwaSchematu />;
     case 'E-00':
       // Etap 2 dostawy: Pulpit projektu (lista projektów + nowy projekt).
       return <ProjectDashboardSurface />;

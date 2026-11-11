@@ -6,7 +6,7 @@ import {
   isAnalysisRouteAlias,
   navigateToCaseConfig,
   navigateToCompare,
-  navigateToNetworkBuild,
+  navigateToSld,
   navigateToProof,
   navigateToResults,
   navigateToResultsPowerFlow,
@@ -94,7 +94,7 @@ describe('routes V12.5', () => {
     expect(location.hash).toBe('#case-config');
     expect(location.params.has('tab')).toBe(false);
 
-    navigateToNetworkBuild();
+    navigateToSld();
     location = getHashParts();
     expect(location.hash).toBe('#sld');
     expect(location.params.has('tab')).toBe(false);

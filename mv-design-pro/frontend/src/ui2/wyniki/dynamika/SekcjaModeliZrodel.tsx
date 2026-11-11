@@ -17,6 +17,7 @@
  * podstawa pochodzą z odpowiedzi gotowości — interfejs ich nie liczy ani nie zmienia.
  */
 
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import { useState } from 'react';
 
 import { formatGeneratorTypeLabelPl } from '../../../ui/shared/generatorTypeLabels';
@@ -33,7 +34,6 @@ export interface SekcjaModeliZrodelProps {
   readonly wskazanyRef: string | null;
   readonly zapisywanyRef: string | null;
   readonly onPowiaz: (generatorRef: string, profileId: string | null) => void;
-  readonly onPokazNaSchemacie: (generatorRef: string, nazwa: string) => void;
 }
 
 function stanPl(stan: ZrodloDynamiki['stan']): string {
@@ -95,14 +95,12 @@ function WierszOdbioru({
   wskazany,
   zapisywany,
   onPowiaz,
-  onPokazNaSchemacie,
 }: {
   odbior: OdbiorDynamiki;
   profile: readonly ProfilOdbioru[];
   wskazany: boolean;
   zapisywany: boolean;
   onPowiaz: SekcjaModeliZrodelProps['onPowiazOdbior'];
-  onPokazNaSchemacie: SekcjaModeliZrodelProps['onPokazNaSchemacie'];
 }) {
   const [wybor, setWybor] = useState<string>(odbior.wiazanie ?? '');
   const profil = profile.find((p) => p.profile_id === wybor) ?? null;
@@ -118,14 +116,10 @@ function WierszOdbioru({
       className={wskazany ? 'mvd-dynamika-wiersz-wskazany' : undefined}
     >
       <td>
-        <button
-          type="button"
-          className="mvd-dynamika-link"
-          onClick={() => onPokazNaSchemacie(odbior.ref_id, odbior.nazwa)}
-          title={T.pokazNaSchemacie}
-        >
+        <span className="mvd-dynamika-element">
           {odbior.nazwa}
-        </button>
+          <PrzyciskPokazNaSchemacie elementRef={odbior.ref_id} zrodlo="ekran-dynamiki" />
+        </span>
       </td>
       <td>
         <span className="mvd-dynamika-stan" data-stan={odbior.stan}>
@@ -207,13 +201,11 @@ function WierszZrodla({
   wskazany,
   zapisywany,
   onPowiaz,
-  onPokazNaSchemacie,
 }: {
   zrodlo: ZrodloDynamiki;
   wskazany: boolean;
   zapisywany: boolean;
   onPowiaz: SekcjaModeliZrodelProps['onPowiaz'];
-  onPokazNaSchemacie: SekcjaModeliZrodelProps['onPokazNaSchemacie'];
 }) {
   const [wybor, setWybor] = useState<string>(zrodlo.wiazanie ?? zrodlo.profil_typu ?? '');
   const wymagaAkcji = zrodlo.akcja_naprawcza !== null;
@@ -230,14 +222,10 @@ function WierszZrodla({
       className={wskazany ? 'mvd-dynamika-wiersz-wskazany' : undefined}
     >
       <td>
-        <button
-          type="button"
-          className="mvd-dynamika-link"
-          onClick={() => onPokazNaSchemacie(zrodlo.ref_id, zrodlo.nazwa)}
-          title={T.pokazNaSchemacie}
-        >
+        <span className="mvd-dynamika-element">
           {zrodlo.nazwa}
-        </button>
+          <PrzyciskPokazNaSchemacie elementRef={zrodlo.ref_id} zrodlo="ekran-dynamiki" />
+        </span>
       </td>
       <td>{formatGeneratorTypeLabelPl(zrodlo.gen_type)}</td>
       <td>
@@ -309,7 +297,6 @@ export function SekcjaModeliZrodel({
   wskazanyRef,
   zapisywanyRef,
   onPowiaz,
-  onPokazNaSchemacie,
 }: SekcjaModeliZrodelProps) {
   return (
     <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-zrodla" id="dynamic_model_ref">
@@ -336,7 +323,6 @@ export function SekcjaModeliZrodel({
                 wskazany={zrodlo.ref_id === wskazanyRef}
                 zapisywany={zrodlo.ref_id === zapisywanyRef}
                 onPowiaz={onPowiaz}
-                onPokazNaSchemacie={onPokazNaSchemacie}
               />
             ))}
           </tbody>
@@ -366,7 +352,6 @@ export function SekcjaModeliZrodel({
                 wskazany={odbior.ref_id === wskazanyRef}
                 zapisywany={odbior.ref_id === zapisywanyRef}
                 onPowiaz={onPowiazOdbior}
-                onPokazNaSchemacie={onPokazNaSchemacie}
               />
             ))}
           </tbody>

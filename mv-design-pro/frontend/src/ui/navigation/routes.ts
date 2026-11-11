@@ -259,10 +259,6 @@ export function navigateToResultsPowerFlow(context: RouteContextOptions = {}): v
   });
 }
 
-export function navigateToNetworkBuild(): void {
-  navigateTo(ROUTES.SLD);
-}
-
 export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
   navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
     params.delete('run');

@@ -27,6 +27,8 @@ import { PanelElementuKanwy } from '../../ui/network-build/inspektor-elementu/Pa
 import { usePanelNadOknem } from '../../ui/network-build/inspektor-elementu/panelNadOknem';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
+import { PrzyciskPokazNaSchemacie } from '../shared/PrzyciskPokazNaSchemacie';
+import { useKanwaSchematuWidoczna } from '../shell/widokKanwySchematu';
 
 export interface LegacyInspektorProps {
   /** Inspektor nowej powłoki (E1.3) — renderowany, gdy most nie ma zawartości. */
@@ -38,6 +40,7 @@ export function LegacyInspektor({ fallback }: LegacyInspektorProps) {
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
 
   const panelNadOknem = usePanelNadOknem();
+  const kanwaWidoczna = useKanwaSchematuWidoczna();
 
   if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
     if (!panelNadOknem) return <WorkspaceSurfaceRouter region="panel" />;
@@ -59,7 +62,20 @@ export function LegacyInspektor({ fallback }: LegacyInspektorProps) {
     );
   }
   if (selectedElement) {
-    return <InspectorEngineeringView />;
+    // Karta SLD-SKALA-I-NAWIGACJA (część W, pkt 3): element wybrany poza kanwą
+    // (drzewo topologii, powiązania, wiersz wyników) — wejście na schemat jest
+    // JAWNE, akcją „Pokaż na schemacie" nad kartą techniczną; na kanwie akcja
+    // byłaby pusta, więc jej nie ma.
+    return (
+      <>
+        {!kanwaWidoczna && (
+          <div className="mvd-inspektor-pokaz" data-testid="mvd-inspektor-pokaz-na-schemacie">
+            <PrzyciskPokazNaSchemacie elementRef={selectedElement.id} zrodlo="inspektor" />
+          </div>
+        )}
+        <InspectorEngineeringView />
+      </>
+    );
   }
   return <>{fallback}</>;
 }

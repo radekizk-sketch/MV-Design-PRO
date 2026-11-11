@@ -94,6 +94,9 @@ import {
 } from './obszary';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
+import { useEkranZrodlowy, useStanPowrotu } from '../../shell/powrotZeSchematu';
+
+const KLUCZ_POWROTU_WYNIKOW = 'wyniki-warsztat';
 import './wynikiWarsztat.css';
 
 export interface WynikiWarsztatProps {
@@ -188,7 +191,12 @@ export function WynikiWarsztat({
   // z poprzednią zakładką, którą efekt dopiero by nadpisał. Ręczny wybór
   // (klik/klawiatura/deep-link/2×klik) wygrywa i od tej chwili rodzaj przebiegu
   // zakładki nie rusza.
-  const [zakladkaWybrana, setZakladkaWybrana] = useState<ZakladkaId | null>(null);
+  // Karta SLD-SKALA-I-NAWIGACJA (część W): „Wróć do" ze schematu przywraca
+  // zakładkę, z której weszło się na schemat (bieg przywraca adres `?run=…`).
+  const stanPowrotu = useStanPowrotu(KLUCZ_POWROTU_WYNIKOW);
+  const [zakladkaWybrana, setZakladkaWybrana] = useState<ZakladkaId | null>(() =>
+    stanPowrotu !== null && jestZakladka(stanPowrotu) ? stanPowrotu : null,
+  );
   // Zakładka bieżąca jest kluczem ponowienia ładowania wyników (magazyn inspektora wyników
   // współdzieli zakładka „Dowód obliczeń" — patrz `useWpiecieWynikow`).
   const { aktywnyRodzaj, rejestrZsynchronizowany, biegOczekujacy } = useWpiecieWynikow(
@@ -197,6 +205,7 @@ export function WynikiWarsztat({
   const zakladkaStartowa: ZakladkaId =
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'ocena';
   const zakladka = zakladkaWybrana ?? zakladkaStartowa;
+  useEkranZrodlowy(`Wyniki — ${etykietaZakladki(zakladka)}`, KLUCZ_POWROTU_WYNIKOW, zakladka);
   const rodzinaZakladki = RODZINA_ZAKLADKI[zakladka] ?? null;
   const biegZakladki = useAktywnyBieg(rodzinaZakladki ?? 'rozplyw');
   const runIdEkranu = rodzinaZakladki ? biegZakladki?.id ?? null : null;

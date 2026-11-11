@@ -13,8 +13,8 @@
  */
 import { useCallback } from 'react';
 
-import { navigateToSld } from '../../../ui/navigation/routes';
-import { useSelectionStore } from '../../../ui/selection';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { pokazElementNaSchemacie, zaznaczElementModelu } from '../../shell/zaznaczElementModelu';
 import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
 import { wskazanieOperacji } from '../../../ui/topology/wskazanieOperacji';
 import type { DomainOpResponseV1 } from '../../../types/enm';
@@ -93,10 +93,41 @@ export interface SelekcjaFallback {
 }
 
 /**
+ * Zaznaczenie skutku zapisu — JEDNA droga (`zaznaczElementModelu`, karta
+ * SLD-SKALA-I-NAWIGACJA, część W). WYŁĄCZNIE ref kanoniczny w migawce odpowiedzi
+ * — selekcja niekanoniczna składa stos powierzchni i zamyka otwarty kreator
+ * (patrz `kanonicznyRefZOperacji`). Typ ze wskazania backendu dotyczy refu ze
+ * wskazania; dla kandydata zastępczego (element utworzony) typ nadaje kreator.
+ * K2: skutek uboczny zapisu — kamera KOTWICZY (skala projektanta nie rośnie);
+ * `selection_hint.zoom_to = false` — samo zaznaczenie.
+ */
+function zaznaczPoOperacji(
+  response: DomainOpResponseV1 | null,
+  fallback: SelekcjaFallback,
+  naSchemat: boolean,
+): void {
+  const ref = kanonicznyRefZOperacji(response);
+  const bezKamery = response?.selection_hint?.zoom_to === false;
+  // Kreator, który prowadzi na schemat: jawne wejście (wskazanie czeka na montaż
+  // kanwy, „Wróć do" — gdy kreator otwarto poza kanwą).
+  if (ref && naSchemat && !bezKamery && pokazElementNaSchemacie(ref, 'kreator', { tryb: 'kotwicz' })) return;
+  if (ref) {
+    const typZeWskazania =
+      ref === response?.selection_hint?.element_id ? response?.selection_hint?.element_type : null;
+    const typ = mapujTypElementu(typZeWskazania, fallback.type);
+    zaznaczElementModelu(ref, 'kreator', {
+      tryb: bezKamery ? 'bez-kamery' : 'kotwicz',
+      zastepczy: { id: ref, type: typ, name: fallback.name },
+    });
+  }
+  if (naSchemat) przejdzDoPrzestrzeni('schemat');
+}
+
+/**
  * Wariant BEZ nawigacji na schemat (karta P0.9, nN STUDIO) — identyczna reguła
  * selekcji (ref kanoniczny → zaznaczenie + wycentrowanie), ale kreator ZOSTAJE
  * w bieżącej przestrzeni (nN STUDIO buduje ciąg odcinków/aparatów krok po
- * kroku, jak builder `KreatorMagistralaSn`; `navigateToSld()` przełączałby
+ * kroku, jak builder `KreatorMagistralaSn`; przejście na schemat przełączałoby
  * użytkownika na przestrzeń „Schemat" po KAŻDYM zapisie, przerywając pracę).
  * Selekcja globalna nadal synchronizuje inspektor/drzewo/SLD — tylko widoczna
  * przestrzeń się nie zmienia.
@@ -105,60 +136,20 @@ export function useSelekcjaPoOperacjiBezNawigacji(): (
   response: DomainOpResponseV1 | null,
   fallback: SelekcjaFallback,
 ) => void {
-  const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
-
-  return useCallback(
-    (response: DomainOpResponseV1 | null, fallback: SelekcjaFallback) => {
-      const ref = kanonicznyRefZOperacji(response);
-      if (!ref) return;
-      const typZeWskazania =
-        ref === response?.selection_hint?.element_id
-          ? response?.selection_hint?.element_type
-          : null;
-      const typ = mapujTypElementu(typZeWskazania, fallback.type);
-      selectElement({ id: ref, type: typ, name: fallback.name });
-      if (response?.selection_hint?.zoom_to !== false) {
-        // K2: skutek uboczny zapisu — kamera KOTWICZY (skala projektanta nie rośnie).
-        centerSldOnElement(ref, 'kotwicz');
-      }
-    },
-    [centerSldOnElement, selectElement],
-  );
+  return useCallback((response: DomainOpResponseV1 | null, fallback: SelekcjaFallback) => {
+    zaznaczPoOperacji(response, fallback, false);
+  }, []);
 }
 
 /**
  * Hook wiążący kreator ze schematem po zapisie. Zwraca funkcję, którą kreator
- * wywołuje w miejsce samego `navigateToSld()` po sukcesie operacji domenowej.
+ * wywołuje po sukcesie operacji domenowej (zaznaczenie + przejście na schemat).
  */
 export function useSelekcjaPoOperacji(): (
   response: DomainOpResponseV1 | null,
   fallback: SelekcjaFallback,
 ) => void {
-  const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
-
-  return useCallback(
-    (response: DomainOpResponseV1 | null, fallback: SelekcjaFallback) => {
-      // WYŁĄCZNIE ref kanoniczny w migawce odpowiedzi — selekcja niekanoniczna
-      // składa stos powierzchni i zamyka otwarty kreator (patrz kanonicznyRefZOperacji).
-      const ref = kanonicznyRefZOperacji(response);
-      if (ref) {
-        // Typ ze wskazania backendu dotyczy refu ze wskazania; dla kandydata
-        // zastępczego (element utworzony) typ nadaje kreator (fallback).
-        const typZeWskazania =
-          ref === response?.selection_hint?.element_id
-            ? response?.selection_hint?.element_type
-            : null;
-        const typ = mapujTypElementu(typZeWskazania, fallback.type);
-        selectElement({ id: ref, type: typ, name: fallback.name });
-        if (response?.selection_hint?.zoom_to !== false) {
-          // K2: skutek uboczny zapisu — kamera KOTWICZY (skala projektanta nie rośnie).
-          centerSldOnElement(ref, 'kotwicz');
-        }
-      }
-      navigateToSld();
-    },
-    [centerSldOnElement, selectElement],
-  );
+  return useCallback((response: DomainOpResponseV1 | null, fallback: SelekcjaFallback) => {
+    zaznaczPoOperacji(response, fallback, true);
+  }, []);
 }

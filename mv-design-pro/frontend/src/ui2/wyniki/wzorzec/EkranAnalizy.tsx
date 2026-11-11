@@ -31,7 +31,6 @@ export function EkranAnalizy({
   onOtworzDowod,
   onEksport,
   onPrzelicz,
-  onPokazElement,
   szczegolyAudytowe,
   informacjeAudytowe = [],
   kluczWiersza,
@@ -41,6 +40,7 @@ export function EkranAnalizy({
   elementIdWiersza,
   nazwaElementuWiersza,
   onPoprawWModelu,
+  refDecyzjiWiersza,
   wierszDecyzyjny,
   rodzajWiersza,
 }: EkranAnalizyProps) {
@@ -94,7 +94,6 @@ export function EkranAnalizy({
         <PanelCoSieZmienilo
           caseId={caseId!}
           rewizjaDanych={rewizjaDanych!}
-          onPokazElement={onPokazElement}
         />
       )}
 
@@ -112,6 +111,7 @@ export function EkranAnalizy({
         elementIdWiersza={elementIdWiersza}
         nazwaElementuWiersza={nazwaElementuWiersza}
         onPoprawWModelu={onPoprawWModelu}
+        refDecyzjiWiersza={refDecyzjiWiersza}
         wierszDecyzyjny={wierszDecyzyjny}
         rodzajWiersza={rodzajWiersza}
       />

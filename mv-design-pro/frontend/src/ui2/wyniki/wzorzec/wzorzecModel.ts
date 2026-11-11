@@ -141,12 +141,6 @@ export interface EkranAnalizyProps {
   onEksport?: () => void;
   /** Akcja przeliczenia (pokazywana przy nieaktualnych wynikach). */
   onPrzelicz?: () => void;
-  /**
-   * Klik w element dotknięty zmianą, która unieważniła wynik (V12K-264) —
-   * ostatnie ogniwo drogi „werdykt → przyczyna → element modelu". Bez tej
-   * funkcji lista przyczyn pozostaje czytelna, ale nieklikalna.
-   */
-  onPokazElement?: (elementRef: string) => void;
   szczegolyAudytowe: boolean;
   /**
    * Metadane produkcyjne TEGO wyniku (odciski danych wejściowych i modelu, wersje,
@@ -169,8 +163,7 @@ export interface EkranAnalizyProps {
   /**
    * Typ elementu sieci DANEGO wiersza (karta UI2 p.6) — gdy podany,
    * natywny wybór wiersza (klik/Enter) DODATKOWO zapisuje zaznaczenie w
-   * JEDNYM store'ze zaznaczenia (`ui/selection`, `useGlobalSelectionSync().
-   * selectFromResults`) — ta sama prawda synchronizacji SLD ↔ inspektor ↔
+   * JEDNYM store'ze zaznaczenia (`ui/selection`, `zaznaczElementModelu`) — ta sama prawda synchronizacji SLD ↔ inspektor ↔
    * drzewo, którą używa reszta aplikacji; ZERO drugiego store'u zaznaczenia.
    * Zwraca `undefined`, gdy wiersz nie mapuje na pojedynczy element modelu
    * (agregat systemowy, typ niejednoznaczny w kontrakcie) — wtedy klik
@@ -182,7 +175,7 @@ export interface EkranAnalizyProps {
   /**
    * Identyfikator REALNEGO elementu modelu dla wiersza (karta UI2 p.6,
    * poprawka KLASA NIE INSTANCJA) — gdy podany, zasila PIERWSZY argument
-   * `selectFromResults(elementId, typ, nazwa)` ZAMIAST wartości kolumny-klucza
+   * zaznaczenia (`zaznaczElementModelu`) ZAMIAST wartości kolumny-klucza
    * wiersza (`kluczWiersza`). WYMAGANY tam, gdzie kolumna-klucz jest kluczem
    * WIERSZA TABELI (React key + podświetlenie), nie identyfikatorem elementu —
    * jedyny dziś taki przypadek: walidacja energetyczna (`KLUCZ_WIERSZA_WALIDACJI`),
@@ -197,7 +190,7 @@ export interface EkranAnalizyProps {
   /**
    * Nazwa CZYTELNA DLA CZŁOWIEKA elementu danego wiersza (karta UI2 p.6,
    * poprawka KLASA NIE INSTANCJA po przeglądzie 2026-08-01) — zasila TRZECI
-   * argument `selectFromResults(elementId, typ, nazwa)` RAZEM z `typElementuWiersza`.
+   * argument zaznaczenia (`zaznaczElementModelu`) RAZEM z `typElementuWiersza`.
    * WYMAGANA wszędzie, gdzie kolumna-klucz wiersza (`kluczWiersza`) jest
    * identyfikatorem TECHNICZNYM różnym od wyświetlanej nazwy (np. kontyngencje:
    * `element_ref` vs `element_name`; walidacja energetyczna: klucz złożony
@@ -216,6 +209,8 @@ export interface EkranAnalizyProps {
    * dzisiejszego zachowania ekranów nie-konsumujących).
    */
   onPoprawWModelu?: (klucz: string) => void;
+  /** Ref elementu akcji kolumny „Decyzja", gdy różny od `elementIdWiersza ?? klucz` (TabelaWynikow). */
+  refDecyzjiWiersza?: (klucz: string) => string | null | undefined;
   /**
    * Predykat decydujący, czy DANY wiersz z przekroczeniem jest „naprawialny
    * w modelu" (F-E6.2). Domyślnie (brak predykatu) przycisk pokazuje się na

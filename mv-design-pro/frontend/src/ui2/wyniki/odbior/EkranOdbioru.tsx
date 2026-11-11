@@ -282,6 +282,7 @@ function WynikZgodnosci({
           }
         }}
         wierszDecyzyjny={(klucz) => wierszeSelektora.get(klucz)?.wielkosc === 'U'}
+        refDecyzjiWiersza={(klucz) => wierszeSelektora.get(klucz)?.element_ref}
       />
 
       <div className="mvd-odbior-podsumowanie" data-testid="mvd-odbior-podsumowanie">

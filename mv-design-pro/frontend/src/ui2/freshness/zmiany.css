@@ -64,25 +64,16 @@
   list-style: none;
 }
 
+.mvd-zmiany-elementy > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Tekst ≥ 13 px (kontrakt UIUX przemysłowy §8). */
 .mvd-zmiany-element {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--mvd-accent, var(--mvd-ink));
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.mvd-zmiany-element[data-nieklikalny='true'] {
-  color: var(--mvd-muted);
-  cursor: default;
-}
-
-.mvd-zmiany-element:focus-visible {
-  outline: 2px solid var(--mvd-focus);
-  outline-offset: 1px;
+  color: var(--mvd-ink);
+  font-size: 13px;
 }
 
 .mvd-zmiany .mvd-mono {

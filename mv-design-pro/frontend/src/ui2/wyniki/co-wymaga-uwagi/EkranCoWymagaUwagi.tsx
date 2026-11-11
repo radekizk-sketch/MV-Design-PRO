@@ -22,6 +22,7 @@ import {
   useAkcjaOtworzDokumentacje,
   useAkcjaPorownajWarianty,
   useAkcjaUruchomObliczenie,
+  useCelDecyzjiOsiagalny,
   usePoprawWModelu,
 } from '../wzorzec';
 import { useShellStore } from '../../shell/useShellStore';
@@ -36,6 +37,7 @@ export function EkranCoWymagaUwagi() {
   // Jeden wniosek stanu zerowego z jednego źródła (`wniosekPustejListy`).
   const wniosek = wniosekPustejListy(rejestr);
   const poprawWModelu = usePoprawWModelu();
+  const celOsiagalny = useCelDecyzjiOsiagalny();
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   // K6 / H-5: stan zerowy „brak przebiegu" uruchamia bieg rozpływu — to on
   // zasila rejestr przekroczeń napięć i bilansów.
@@ -126,7 +128,7 @@ export function EkranCoWymagaUwagi() {
                     kontekstowe per rodzaj przekroczenia pozycji rejestru.
                     K6: pozycja bez elementu modelu dostaje adres okna
                     diagnostyki (zamiast przycisku prowadzącego donikąd). */}
-                {p.elementRef && p.elementTyp ? (
+                {p.elementRef && p.elementTyp && celOsiagalny(p.elementRef, p.rodzaj) ? (
                   <button
                     type="button"
                     className="mvd-cwu-popraw"

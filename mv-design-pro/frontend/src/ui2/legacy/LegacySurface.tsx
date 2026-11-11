@@ -16,7 +16,7 @@
 import type { ReactNode } from 'react';
 import './legacy.css';
 
-import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
+import { KanwaSchematu } from './KanwaSchematu';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import type { SpaceId } from '../shell/spaces';
 import { useShellStore } from '../shell/useShellStore';
@@ -44,7 +44,7 @@ function LegacySld() {
   // (wejście: wyszukiwarka poleceń), więc z przestrzeni „Schemat" nie dało się
   // jej włączyć. Dostawca bez zmian — istniejący prop `readOnly` kanwy.
   const podglad = useShellStore((s) => s.podgladSchematu);
-  return <SldCanvasV3Workspace readOnly={podglad} />;
+  return <KanwaSchematu readOnly={podglad} />;
 }
 
 /** Obliczenia: konfiguracja zakresu obliczeń + historia przebiegów (study-cases). */

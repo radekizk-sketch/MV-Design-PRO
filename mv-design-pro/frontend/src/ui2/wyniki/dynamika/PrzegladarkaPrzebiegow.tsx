@@ -9,6 +9,7 @@
  * Próbki pobierane na żądanie wyłącznie dla wybranych kanałów. Zero fizyki.
  */
 
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import { useEffect, useMemo, useState } from 'react';
 
 import { fetchPrzebiegiDynamiki } from './api';
@@ -51,7 +52,6 @@ export interface PrzegladarkaPrzebiegowProps {
   readonly wynik: WynikDynamiki;
   /** Element zaznaczony na schemacie (sprzężenie schemat → kanały). */
   readonly zaznaczonyRef: string | null;
-  readonly onPokazNaSchemacie: (ref: string) => void;
 }
 
 type StanProbek =
@@ -60,13 +60,7 @@ type StanProbek =
   | { readonly stan: 'blad'; readonly komunikat: string }
   | { readonly stan: 'gotowe'; readonly przebiegi: PrzebiegiDynamiki };
 
-function OsZdarzen({
-  wynik,
-  onPokazNaSchemacie,
-}: {
-  wynik: WynikDynamiki;
-  onPokazNaSchemacie: (ref: string) => void;
-}) {
+function OsZdarzen({ wynik }: { wynik: WynikDynamiki }) {
   const opis = wynik.opis_wyniku;
   const nazwa = (ref: string) => nazwaElementu(opis, ref, T.brakNazwy);
   return (
@@ -118,14 +112,10 @@ function OsZdarzen({
                 <td>{opisZdarzenia?.rodzaj_pl ?? WZORZEC_STRINGS.wartoscSpozaSlownika}</td>
                 <td>
                   {z.ref ? (
-                    <button
-                      type="button"
-                      className="mvd-dynamika-link"
-                      title={T.pokazNaSchemacie}
-                      onClick={() => onPokazNaSchemacie(z.ref as string)}
-                    >
+                    <span className="mvd-dynamika-element">
                       {nazwa(z.ref)}
-                    </button>
+                      <PrzyciskPokazNaSchemacie elementRef={z.ref} zrodlo="ekran-dynamiki" />
+                    </span>
                   ) : (
                     '—'
                   )}
@@ -141,13 +131,7 @@ function OsZdarzen({
   );
 }
 
-function Przekroczenia({
-  wynik,
-  onPokazNaSchemacie,
-}: {
-  wynik: WynikDynamiki;
-  onPokazNaSchemacie: (ref: string) => void;
-}) {
+function Przekroczenia({ wynik }: { wynik: WynikDynamiki }) {
   const opis = wynik.opis_wyniku;
   return (
     <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-przekroczenia">
@@ -187,14 +171,10 @@ function Przekroczenia({
                   </td>
                   <td>
                     {ref ? (
-                      <button
-                        type="button"
-                        className="mvd-dynamika-link"
-                        title={T.pokazNaSchemacie}
-                        onClick={() => onPokazNaSchemacie(ref)}
-                      >
+                      <span className="mvd-dynamika-element">
                         {nazwaElementu(opis, ref, T.brakNazwy)}
-                      </button>
+                        <PrzyciskPokazNaSchemacie elementRef={ref} zrodlo="ekran-dynamiki" />
+                      </span>
                     ) : (
                       '—'
                     )}
@@ -251,7 +231,6 @@ function Metryki({ wynik }: { wynik: WynikDynamiki }) {
 export function PrzegladarkaPrzebiegow({
   wynik,
   zaznaczonyRef,
-  onPokazNaSchemacie,
 }: PrzegladarkaPrzebiegowProps) {
   const opis = wynik.opis_wyniku;
   const grupy = useMemo(() => grupujKanaly(opis, TEKSTY_KANALOW), [opis]);
@@ -294,8 +273,8 @@ export function PrzegladarkaPrzebiegow({
 
   return (
     <div className="mvd-dynamika-przegladarka" data-testid="mvd-dynamika-przegladarka">
-      <OsZdarzen wynik={wynik} onPokazNaSchemacie={onPokazNaSchemacie} />
-      <Przekroczenia wynik={wynik} onPokazNaSchemacie={onPokazNaSchemacie} />
+      <OsZdarzen wynik={wynik} />
+      <Przekroczenia wynik={wynik} />
       <Metryki wynik={wynik} />
 
       <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-przebiegi">
@@ -372,17 +351,11 @@ export function PrzegladarkaPrzebiegow({
                           <span>{g.nazwa}</span>
                           <span className="mvd-dynamika-rodzaj">{g.rodzaj}</span>
                           {g.elementRef && (
-                            <button
-                              type="button"
-                              className="mvd-dynamika-link"
-                              data-testid={`mvd-dynamika-element-${g.grupa}-${g.elementRef}-schemat`}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                onPokazNaSchemacie(g.elementRef as string);
-                              }}
-                            >
-                              {T.pokazNaSchemacie}
-                            </button>
+                            <PrzyciskPokazNaSchemacie
+                              elementRef={g.elementRef}
+                              zrodlo="ekran-dynamiki"
+                              testId={`mvd-dynamika-element-${g.grupa}-${g.elementRef}-schemat`}
+                            />
                           )}
                         </summary>
                         {kanaly.map((k) => (

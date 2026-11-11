@@ -11,29 +11,32 @@
 
 import { useCallback } from 'react';
 
-import { navigateToNetworkBuild } from '../../../../ui/navigation/routes';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../../../ui/selection';
+import { pokazElementNaSchemacie } from '../../../shell/zaznaczElementModelu';
 
 /** Klucz sekcji wartości projektanta aparatu SN w kreatorze edycji parametrów. */
 export const SEKCJA_PARAMETROW_APARATU = 'overrides';
 
-export function useParametryAparatu(): (aparatRef: string, aparatNazwa: string) => void {
+export function useParametryAparatu(): (aparatRef: string) => void {
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
+
   const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
 
   return useCallback(
-    (aparatRef: string, aparatNazwa: string) => {
-      selectElement({ id: aparatRef, type: 'Switch', name: aparatNazwa });
-      centerSldOnElement(aparatRef);
-      navigateToNetworkBuild();
+    (aparatRef: string) => {
+      // Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA, część W);
+      // okno parametrów otwiera się nad kanwą, z „Wróć do" ekranu zwarć.
+      if (!pokazElementNaSchemacie(aparatRef, 'weryfikacja-aparatury')) {
+        // Aparat spoza migawki: zaznaczenie opisowe dla formularza parametrów.
+        selectElement({ id: aparatRef, type: 'Switch', name: aparatRef });
+      }
       openOperationForm('update_element_parameters', {
         element_ref: aparatRef,
         element_type: 'Switch',
         field: SEKCJA_PARAMETROW_APARATU,
       });
     },
-    [centerSldOnElement, openOperationForm, selectElement],
+    [openOperationForm, selectElement],
   );
 }

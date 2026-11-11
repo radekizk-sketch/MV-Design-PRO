@@ -75,8 +75,6 @@ export const OCENA_STRINGS = {
   zakresUklad: 'ocena całego układu',
 
   // Działania (powiązania z siecią)
-  pokazNaSchemacie: 'Pokaż na schemacie',
-  pokazNaSchemacieOpis: 'Zaznacz element na schemacie i przejdź do przestrzeni Schemat',
   dowodObliczen: 'Dowód obliczeń',
   dowodObliczenOpis: 'Otwórz wywód obliczeń tego przebiegu dla wskazanego elementu',
 

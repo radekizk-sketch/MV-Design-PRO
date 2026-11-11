@@ -1,44 +1,126 @@
 /*
- * JEDNA ścieżka zaznaczenia elementu modelu z chromu powłoki (karta K1 POWLOKA):
- * wyszukiwarka poleceń (obiekty modelu), zakładki „Problemy" i „Dziennik" panelu
- * dolnego oraz panel gotowości.
+ * JEDNA droga „pokaż element na schemacie" (karta SLD-SKALA-I-NAWIGACJA, część W —
+ * wejścia na schemat spoza kanwy; wcześniej K1 POWLOKA i K2 W5-UI-14).
  *
- * 1. Element jest rozwiązywany w migawce modelu (`resolveSelectedElementFromSnapshot`)
- *    i zaznaczany w store selekcji — schemat podświetla go i KADRUJE kanwę
- *    (`centerSldOnElement`, tryb „kadruj" — karta K2, akcja kamery `'kadruj'`).
- * 2. Na szynie zdarzeń idzie `selekcja` z PRAWDZIWYM źródłem (inspektor powłoki).
- * Ref nieobecny w migawce (np. element usunięty) nie trafia do store'u selekcji —
- * zostaje wyłącznie zdarzenie, a inspektor pokazuje uczciwy brak obiektu.
+ * Każde miejsce aplikacji, które pokazuje odwołanie do elementu sieci (wiersz
+ * wyników, pozycja gotowości, węzeł drzewa, link inspektora, krok dowodu, przegląd
+ * zbiorczy, wyszukiwarka, kreator po zapisie), przechodzi przez JEDNĄ z dwóch
+ * funkcji tego modułu. Drugiego mechanizmu nie ma: zdarzenie DOM
+ * `sld:center-on-element` (nikt go nie słuchał), gołe `centerSldOnElement` w
+ * komponentach i własne `navigateToSld()` są skasowane i pilnowane regułą G
+ * strażnika `scripts/nawigacja_jeden_kanon_guard.py`.
+ *
+ * - `zaznaczElementModelu` — PRZEGLĄDANIE (drzewo topologii, powiązania inspektora,
+ *   klik wiersza przeglądu, panel kontekstu schematu, kreator po zapisie):
+ *   zaznacza element w store selekcji, a gdy kanwa schematu jest NA EKRANIE —
+ *   przesuwa kadr do elementu BEZ zmiany skali (tryb „kotwicz"). Z innej
+ *   przestrzeni nic nie skacze: wejście na schemat jest jawną akcją.
+ * - `pokazElementNaSchemacie` — JAWNE WEJŚCIE („Pokaż na schemacie"): zaznaczenie
+ *   + wskazanie kamery (domyślnie „kadruj") + przejście do przestrzeni „Schemat",
+ *   gdy wołający jest poza kanwą, z zapisem POWROTU (`powrotZeSchematu.ts`) —
+ *   schemat pokazuje wtedy „Wróć do: <ekran>".
+ *
+ * Predykat obecności (`elementNaSchemacie`) jest JEDEN dla przycisku i dla akcji:
+ * ref nieobecny w migawce modelu nie ma przycisku (`PrzyciskPokazNaSchemacie`)
+ * i nie zmienia stanu (zostaje wyłącznie zdarzenie `selekcja` — inspektor pokazuje
+ * uczciwy brak obiektu). Reguła doboru skali przy wskazaniu należy do kamery
+ * schematu (konsument `sldWskazanie`); tutaj wybieramy wyłącznie tryb.
  */
 
 import { emituj } from '../events';
-import { useSelectionStore } from '../../ui/selection/store';
+import { useSelectionStore, type TrybWskazaniaSld } from '../../ui/selection/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { resolveSelectedElementFromSnapshot } from '../../ui/shared/selectionResolution';
+import type { SelectedElement } from '../../ui/types';
 import { przejdzDoPrzestrzeni } from './przejsciaPrzestrzeni';
+import { zapiszPowrot, type EkranPowrotu } from './powrotZeSchematu';
+import { kanwaSchematuWidoczna } from './widokKanwySchematu';
 
-/** Zaznacza element; zwraca `true`, gdy ref istnieje w migawce modelu. */
-export function zaznaczElementModelu(ref: string, zrodlo: string): boolean {
-  const element = resolveSelectedElementFromSnapshot(useSnapshotStore.getState().snapshot, ref);
+/** Etykieta akcji — JEDNA w całej aplikacji (karta, pkt 5). */
+export const ETYKIETA_POKAZ_NA_SCHEMACIE = 'Pokaż na schemacie';
+
+/**
+ * Element migawki modelu dla refu albo `null` (brak na schemacie). Bez migawki
+ * schemat nie ma czego pokazać — `null` (rozwiązywacz zwracałby wtedy wpis
+ * zastępczy z typem domyślnym, czyli fikcję elementu).
+ */
+export function elementNaSchemacie(ref: string | null | undefined): SelectedElement | null {
+  const snapshot = useSnapshotStore.getState().snapshot;
+  if (!snapshot || typeof ref !== 'string' || ref.trim() === '') return null;
+  return resolveSelectedElementFromSnapshot(snapshot, ref);
+}
+
+export interface OpcjeZaznaczenia {
+  /**
+   * Tryb wskazania kamery, gdy kanwa jest widoczna (domyślnie „kotwicz");
+   * „bez-kamery" — samo zaznaczenie (np. zapis z `selection_hint.zoom_to = false`).
+   */
+  readonly tryb?: TrybWskazaniaSld | 'bez-kamery';
+  /**
+   * Element opisowy na wypadek refu jeszcze nieobecnego w migawce sklepu (kreator
+   * tuż po zapisie: ref pochodzi z migawki ODPOWIEDZI operacji). Zaznaczenie
+   * idzie wtedy z tym opisem; kamera — tylko dla elementu z migawki sklepu.
+   */
+  readonly zastepczy?: SelectedElement;
+}
+
+/**
+ * Przeglądanie: zaznacza element; przy widocznej kanwie — wskazanie kamery.
+ * Zwraca `true`, gdy ref istnieje w migawce modelu.
+ */
+export function zaznaczElementModelu(ref: string, zrodlo: string, opcje: OpcjeZaznaczenia = {}): boolean {
+  const element = elementNaSchemacie(ref);
+  const selekcja = useSelectionStore.getState();
   if (element) {
-    const selekcja = useSelectionStore.getState();
     selekcja.selectElement(element);
-    selekcja.centerSldOnElement(element.id, 'kadruj');
+    const tryb = opcje.tryb ?? 'kotwicz';
+    if (tryb !== 'bez-kamery' && kanwaSchematuWidoczna()) selekcja.centerSldOnElement(element.id, tryb);
+  } else if (opcje.zastepczy) {
+    selekcja.selectElement(opcje.zastepczy);
   }
   emituj({ typ: 'selekcja', obiektId: ref, zrodlo });
   return element !== null;
 }
 
+export interface OpcjePokazania {
+  /** Tryb wskazania kamery (domyślnie „kadruj" — polecenie projektanta). */
+  readonly tryb?: TrybWskazaniaSld;
+  /**
+   * Ekran źródłowy nakładki (np. okno przeglądu zbiorczego otwarte nad kanwą):
+   * powrót zapisuje się także wtedy, gdy przestrzeń się nie zmienia. Ekrany
+   * przestrzeni rejestrują się same (`useEkranZrodlowy`), więc zwykły wołający
+   * tego pola nie podaje.
+   */
+  readonly powrot?: EkranPowrotu;
+}
+
 /**
- * K2 (W5-UI-14, rozstrzygnięcie §0.6): „pokaż problem na schemacie" — klik
- * problemu w gotowości albo w panelu dolnym ZAZNACZA element, PRZEŁĄCZA na
- * przestrzeń „Schemat" i kadruje element (wskazanie w trybie „kadruj" obsługuje
- * przestrzeń schematu po zamontowaniu — `sldWskazanie` w store selekcji).
- * Ref nieobecny w migawce nie przełącza przestrzeni: nie ma czego pokazać, więc
- * projektant zostaje tam, gdzie był (zdarzenie `selekcja` idzie jak zawsze).
+ * Jawne wejście na schemat. Zwraca `true`, gdy element jest na schemacie;
+ * ref nieobecny w migawce nie przełącza przestrzeni i nie zapisuje powrotu.
  */
-export function pokazElementNaSchemacie(ref: string, zrodlo: string): boolean {
-  const zaznaczony = zaznaczElementModelu(ref, zrodlo);
-  if (zaznaczony) przejdzDoPrzestrzeni('schemat');
-  return zaznaczony;
+export function pokazElementNaSchemacie(ref: string, zrodlo: string, opcje: OpcjePokazania = {}): boolean {
+  const element = elementNaSchemacie(ref);
+  if (!element) {
+    emituj({ typ: 'selekcja', obiektId: ref, zrodlo });
+    return false;
+  }
+  const naKanwie = kanwaSchematuWidoczna();
+  if (!naKanwie || opcje.powrot) zapiszPowrot(opcje.powrot ?? null);
+  const selekcja = useSelectionStore.getState();
+  selekcja.selectElement(element);
+  selekcja.centerSldOnElement(element.id, opcje.tryb ?? 'kadruj');
+  emituj({ typ: 'selekcja', obiektId: ref, zrodlo });
+  if (!naKanwie) przejdzDoPrzestrzeni('schemat');
+  return true;
+}
+
+/**
+ * Jawne wejście na schemat BEZ elementu (nakładka całej sieci, np. „Pokaż różnice
+ * na schemacie" porównania): przejście do przestrzeni „Schemat" z zapisem powrotu,
+ * gdy wołający jest poza kanwą. Ta sama droga co `pokazElementNaSchemacie`.
+ */
+export function wejdzNaSchemat(): void {
+  if (kanwaSchematuWidoczna()) return;
+  zapiszPowrot(null);
+  przejdzDoPrzestrzeni('schemat');
 }

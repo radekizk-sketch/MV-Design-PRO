@@ -14,9 +14,9 @@
 
 import { useCallback } from 'react';
 
-import { navigateToNetworkBuild } from '../../../ui/navigation/routes';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../../ui/selection';
+import { pokazElementNaSchemacie } from '../../shell/zaznaczElementModelu';
 import type { ElementType } from '../../../ui/types';
 
 /** Rodzaj elementu w modelu (`raw_result.zalozenia[].element_type`) → typ selekcji SLD. */
@@ -44,21 +44,22 @@ export function typSelekcjiZalozenia(elementType: string): ElementType | null {
 export function useZmienTolerancjeNn(): (cel: CelZmianyZalozenia) => void {
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const selectElement = useSelectionStore((s) => s.selectElement);
-  const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
 
   return useCallback(
     (cel: CelZmianyZalozenia) => {
       const typ = typSelekcjiZalozenia(cel.elementType);
       if (typ === null) return;
-      selectElement({ id: cel.elementRef, type: typ, name: cel.nazwa });
-      centerSldOnElement(cel.elementRef);
-      navigateToNetworkBuild();
+      // Jedna droga wejścia na schemat (karta SLD-SKALA-I-NAWIGACJA, część W);
+      // ref spoza migawki dostaje zaznaczenie opisowe dla formularza parametrów.
+      if (!pokazElementNaSchemacie(cel.elementRef, 'zalozenia-zwarcia-nn')) {
+        selectElement({ id: cel.elementRef, type: typ, name: cel.nazwa });
+      }
       openOperationForm('update_element_parameters', {
         element_ref: cel.elementRef,
         element_type: typ,
         field: cel.parametr,
       });
     },
-    [centerSldOnElement, openOperationForm, selectElement],
+    [openOperationForm, selectElement],
   );
 }

@@ -39,7 +39,6 @@ export const STRINGS = {
   gdzieUzytyPusto: 'Ten typ nie jest przypisany do żadnego elementu modelu.',
   gdzieUzytyLiczba: (n: number): string =>
     n === 1 ? 'Użyty w 1 elemencie modelu' : `Użyty w ${n} elementach modelu`,
-  gdzieUzytyPokaz: 'Pokaż element w modelu',
 
   immutableNota: 'Typy katalogowe są niezmienne — karta służy wyłącznie do odczytu.',
 } as const;

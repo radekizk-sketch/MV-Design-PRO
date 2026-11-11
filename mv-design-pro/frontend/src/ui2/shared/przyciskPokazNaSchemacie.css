@@ -1,0 +1,23 @@
+/* „Pokaż na schemacie" (karta SLD-SKALA-I-NAWIGACJA, część W): cel wskaźnika
+   ≥ 24 × 24 px (WCAG 2.2 kryterium 2.5.8), tekst ≥ 13 px, tokeny motywu (oba motywy). */
+.mvd-pokaz-na-schemacie {
+  min-height: 24px;
+  min-width: 24px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: var(--mvd-font-size-data, 13px);
+  color: var(--mvd-accent);
+  background: transparent;
+  border: 1px solid var(--mvd-line-strong);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mvd-pokaz-na-schemacie:hover {
+  background: var(--mvd-bg-hover);
+  border-color: var(--mvd-accent);
+}
+.mvd-pokaz-na-schemacie:focus-visible {
+  outline: 2px solid var(--mvd-accent);
+  outline-offset: 1px;
+}

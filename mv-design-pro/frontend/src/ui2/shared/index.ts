@@ -9,3 +9,5 @@ export type {
   StanSortowaniaTabeli,
 } from './edytowalnaTabelaModel';
 export { posortujWiersze, kluczSortKolumny, obliczOknoWirtualizacji } from './edytowalnaTabelaModel';
+export { PrzyciskPokazNaSchemacie } from './PrzyciskPokazNaSchemacie';
+export type { PrzyciskPokazNaSchemacieProps } from './PrzyciskPokazNaSchemacie';

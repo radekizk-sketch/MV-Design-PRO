@@ -17,12 +17,12 @@ import {
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToCatalog,
-  navigateToNetworkBuild,
   navigateToReport,
   navigateToVariants,
 } from '../../ui/navigation';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useShellStore } from '../shell/useShellStore';
+import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { REPORT_SURFACE_SCREEN_CODE } from '../../ui/workspace/types';
 import { useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
 
@@ -77,10 +77,10 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
   return useCallback((actionId: string) => {
     switch (actionId) {
       case 'sld':
-        navigateToNetworkBuild();
+        przejdzDoPrzestrzeni('schemat');
         break;
       case 'network-build':
-        navigateToNetworkBuild();
+        przejdzDoPrzestrzeni('schemat');
         break;
       case 'overlay':
         // D1: `setActiveArea('SCHEMAT_TOPOLOGIA')` bylo REDUNDANTNE — ta sama
@@ -88,7 +88,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         openSldOverlayFromCurrentContext();
         break;
       case 'power-distribution':
-        navigateToNetworkBuild();
+        przejdzDoPrzestrzeni('schemat');
         break;
       case 'case-manager':
         navigateToCaseConfig({ caseId: activeCaseId });

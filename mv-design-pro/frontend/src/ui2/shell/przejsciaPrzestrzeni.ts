@@ -20,7 +20,7 @@ import {
   getCurrentSearchParams,
   navigateToAnalysis,
   navigateToCaseConfig,
-  navigateToNetworkBuild,
+  navigateToSld,
 } from '../../ui/navigation';
 import { przestrzenDlaTrasy } from '../legacy/mostObszarow';
 import { runIdOgladanyTeraz } from '../wyniki/kontekst/kontekstWyniku';
@@ -47,7 +47,7 @@ export function mostTrasyPrzestrzeni(space: SpaceId): void {
   const stan = useAppStateStore.getState();
   switch (space) {
     case 'schemat':
-      navigateToNetworkBuild();
+      navigateToSld();
       return;
     case 'obliczenia':
       navigateToCaseConfig({ caseId: stan.activeCaseId });

@@ -53,6 +53,7 @@ import {
   PrzyciskAkcjiStanu,
   akcjaNaprawcza,
   useAkcjaPrzejdzDoPrzypadkow,
+  useCelDecyzjiOsiagalny,
   useNazwaObiektu,
   usePoprawWModelu,
 } from '../wzorzec';
@@ -182,8 +183,12 @@ function WierszElementu({
   onOtworzDowod?: (elementRef: string, runId: string) => void;
 }) {
   const poprawWModelu = usePoprawWModelu();
-  const naSchemacie = elementNaSchemacie(element, pozycja);
+  const celOsiagalny = useCelDecyzjiOsiagalny();
   const rodzajPrzekroczenia = rodzajPrzekroczeniaKryterium(pozycja);
+  const rodzajAkcji = element.wynik === 'NIE_SPELNIA' ? rodzajPrzekroczenia : 'inspekcja-elementu';
+  // Agregat bez elementu (kontrakt) ORAZ obecność elementu na schemacie (migawka) —
+  // ten sam predykat co sama akcja (karta SLD-SKALA-I-NAWIGACJA, część W).
+  const naSchemacie = elementNaSchemacie(element, pozycja) && celOsiagalny(element.element_id, rodzajAkcji);
   const akcjaSchematu =
     element.wynik === 'NIE_SPELNIA' ? akcjaNaprawcza(rodzajPrzekroczenia) : akcjaNaprawcza('inspekcja-elementu');
   const typ = typElementu(element.element_rodzaj ?? pozycja.element_rodzaj);
@@ -253,7 +258,7 @@ function WierszElementu({
                 element.element_id as string,
                 typ,
                 nazwa,
-                element.wynik === 'NIE_SPELNIA' ? rodzajPrzekroczenia : 'inspekcja-elementu',
+                rodzajAkcji,
               )
             }
           >

@@ -32,7 +32,6 @@ export interface KatalogPanelProps {
   /** Elementy modelu ze snapshotu (dla sekcji „Gdzie użyty"). */
   uzyciaSnapshot?: readonly ElementUzycia[];
   /** Nawigacja do elementu modelu z listy „Gdzie użyty". */
-  onPokazElement?: (ref: string) => void;
   /** Kategoria początkowa (domyślnie pierwsza). */
   poczatkowaKategoria?: KategoriaId;
 }
@@ -40,7 +39,6 @@ export interface KatalogPanelProps {
 export function KatalogPanel({
   zaladujTypy = pobierzTypy,
   uzyciaSnapshot = [],
-  onPokazElement,
   poczatkowaKategoria,
 }: KatalogPanelProps): JSX.Element {
   const [kategoria, setKategoria] = useState<KategoriaId>(
@@ -189,7 +187,6 @@ export function KatalogPanel({
             <GdzieUzyty
               typId={wybrany.id}
               uzycia={uzyciaSnapshot}
-              onPokazElement={onPokazElement}
             />
           </>
         ) : (

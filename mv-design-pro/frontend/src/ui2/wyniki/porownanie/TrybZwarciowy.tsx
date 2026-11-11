@@ -39,7 +39,7 @@ import {
 } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
 import { pobierzPorownanieZwarciowe } from './zwarciaPorownanieApi';
-import { navigateToSld } from '../../../ui/navigation/routes';
+import { wejdzNaSchemat } from '../../shell/zaznaczElementModelu';
 import { useSldDeltaOverlayStore } from '../../../ui/sld-overlay/sldDeltaOverlayStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
@@ -131,7 +131,7 @@ export function TrybZwarciowy({ szczegolyAudytowe }: TrybZwarciowyProps) {
     // Przejście na schemat TYLKO po udanym pobraniu — inaczej operator trafiłby
     // na pusty schemat bez wyjaśnienia; komunikat błędu zostaje przy akcji.
     if (useSldDeltaOverlayStore.getState().nakladka) {
-      navigateToSld();
+      wejdzNaSchemat();
     }
   }, [paraPorownana, wczytajRoznice]);
 

@@ -19,7 +19,8 @@ import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe 
 import { useOtworzKonfiguracjeStacji, useParametryAparatu, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { PasmoMinMax } from './PasmoMinMax';
-import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
+import { refPunktuZwarcia, useNakladkaZwarciaNaSchemacie } from './pokazNaSchemacie';
+import { PrzyciskPokazNaSchemacie } from '../../shared/PrzyciskPokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { SladPodzialuPradu } from './SladPodzialuPradu';
 import { SladSieciZerowej } from './SladSieciZerowej';
@@ -67,7 +68,7 @@ export function EkranZwarc({
   const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
   // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
   // (reużycie wzorca V12K-073 — wspólny store selekcji, produkcyjny store overlay).
-  const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
+  const nakladkaZwarcia = useNakladkaZwarciaNaSchemacie();
   // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
   const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
   // Zasada nr 4 (V12K-351): „Parametry aparatu” → kreator edycji parametrów aparatu.
@@ -170,14 +171,13 @@ export function EkranZwarc({
       />
 
       <div className="mvd-zwarcia-akcje" data-testid="mvd-zwarcia-akcje">
-        <button
-          type="button"
+        <PrzyciskPokazNaSchemacie
+          elementRef={refPunktuZwarcia(wierszAktywny)}
+          zrodlo="ekran-zwarc"
+          przed={() => nakladkaZwarcia(wierszAktywny, runId, rozplyw.flows)}
           className="mvd-zwarcia-wykres-btn"
-          data-testid="mvd-zwarcia-pokaz-sld"
-          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw.flows)}
-        >
-          {ZWARCIA_STRINGS.pokazNaSchemacie}
-        </button>
+          testId="mvd-zwarcia-pokaz-sld"
+        />
       </div>
 
       {/* Ślad Z_Q (CV-4.3 K6/K7) — właściwość CAŁEGO biegu (nie wybranego punktu):

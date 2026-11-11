@@ -1514,7 +1514,6 @@ export function SekcjaWytrzymaloscCieplna({
         pozycja={items.find((it) => it.branch_id === wybrany) ?? null}
         normy={dane.normy ?? []}
         szczegolyAudytowe={szczegolyAudytowe}
-        onPokazNaSchemacie={(branchId, nazwa) => poprawWModelu(branchId, 'LineBranch', nazwa)}
       />
     </section>
   );
@@ -1535,18 +1534,15 @@ function DowodCieplnyGalezi({
   pozycja,
   normy,
   szczegolyAudytowe,
-  onPokazNaSchemacie,
 }: {
   runId: string | null;
   branchId: string | null;
   pozycja: PozycjaCieplna | null;
   normy: readonly NormaCieplna[];
   szczegolyAudytowe: boolean;
-  onPokazNaSchemacie: (branchId: string, nazwa: string) => void;
 }) {
   const [dowod, setDowod] = useState<DowodCieplnyResponse | null>(null);
   const [stan, setStan] = useState<'pusty' | 'ladowanie' | 'gotowe' | 'blad'>('pusty');
-  const nazwaObiektu = useNazwaObiektu();
 
   useEffect(() => {
     if (!runId || !branchId) {
@@ -1597,9 +1593,6 @@ function DowodCieplnyGalezi({
       normy={normy}
       szczegolyAudytowe={szczegolyAudytowe}
       ladowanie={stan === 'ladowanie'}
-      onPokazNaSchemacie={() =>
-        onPokazNaSchemacie(pozycja.branch_id, nazwaObiektu(pozycja.branch_id, pozycja.branch_name))
-      }
     />
   );
 }
