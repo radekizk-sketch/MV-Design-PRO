@@ -604,7 +604,16 @@ const EXPECTED_STATION_COUNT = 53;
 // nowymi identyfikatorami (487 ziaren, odwzorowanie 1:1 po pozycji, 0 konfliktów) =
 // 21576/44352/44352 = fikstura nowa. Ta sama topologia, inna kolejność remisu
 // `id.localeCompare` (precedens SLD-SUBSTRAT wyżej).
-const VERTICAL_LENGTH_BASELINE = { 0: 21576, 1: 44352, 2: 44352 };
+// SLD-CZYTELNOSC-STACJI (2026-11-11, ocena właściciela widoku stacji 0/10): PODNIESIONY
+// 21576/44352/44352 → 22232/46168/46168 — ZAMIERZONA zmiana układu, pomiar kod bazy
+// `0a19e5c19` vs kod karty na tej samej fiksturze (L0 +656, L1/L2 +1816). Rozbicie (sonda
+// karty, składniki włączane po jednym, `buildScene.test.ts` F9.7): krok podpoziomów tras
+// `ROUTE_SUBLEVEL_STEP` 8 → 16 (`layout/clearances.ts` — równoległe trasy ≥ 8 px ekranu na
+// dolnym brzegu L1, skala 0,51) daje L1/L2 +1160, L0 ±0; strefa zejść
+// `DESCENT_STRIP_HEIGHT` 48 → 64 (= 2·krok + 4·GRID, `layout/bands.ts` — dawny zapas 32
+// między przejściem pod stacją a pasmem nazw) daje +656 jednolicie; zacisk nN ±0.
+// Świadome odstępstwo od „nie-rosnącej" (§15.1 „redukcja jest ograniczeniem MIĘKKIM").
+const VERTICAL_LENGTH_BASELINE = { 0: 22232, 1: 46168, 2: 46168 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -661,10 +670,14 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // port wyjścia jest o 72 px wyżej, a jog do pasa magistrali o tyle dłuższy. Suma pionów
   // spada (−2000). Zero fabrykacji ma pierwszeństwo przed krótszym jogiem (rejestr
   // GEOMETRIA-STACJI-BRAK-WYPOSAZENIA).
-  0: { footprint: 32, 'rezerwacja-kanalu': 21248, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  // SLD-CZYTELNOSC-STACJI (2026-11-11, zmierzone): „rezerwacja-kanalu" 21248/42048/42048 →
+  // 21904/43856/43856 (+656 / +1808 — korytarze podpoziomów i strefa zejść, atrybucja przy
+  // `VERTICAL_LENGTH_BASELINE`); „jog-trasy" L1/L2 160 → 168 (+8: drugi kanał punktu
+  // odgałęźnego `descentHead` schodzi o krok 16 zamiast 8). Pozostałe przyczyny bez zmian.
+  0: { footprint: 32, 'rezerwacja-kanalu': 21904, 'jog-trasy': 88, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
-  2: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  1: { footprint: 1936, 'rezerwacja-kanalu': 43856, 'jog-trasy': 168, 'slupek-terminalny': 208 },
+  2: { footprint: 1936, 'rezerwacja-kanalu': 43856, 'jog-trasy': 168, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -741,7 +754,14 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // GEOMETRIA-STACJI (2026-10-21, zmierzone): 55336/76512/80136 → 53520/68528/73160 — węższe
 // kolumny pól (stos z rekordów modelu bez dorysowanych aparatów konwencji), krótsze szyny
 // i przęsła; załamania bez zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 53520, 1: 68528, 2: 73160 };
+// SLD-CZYTELNOSC-STACJI (2026-11-11, zmierzone): 53520/68528/73160 → 52816/69024/73664.
+// L0 OBNIŻONY do pomiaru (52816 zmierzone już na bazie `0a19e5c19` — luz 704 odebrany, kod
+// karty ±0 na L0). L1/L2 +1144 wobec bazy (67880/72520), rozbicie liść po liściu (sonda
+// karty): zacisk nN `#lv-bus` +1272 (rdzeń jednego TR ± (pół portalu + GRID) = 48 zamiast
+// 16 — zacisk czyta się jako szyna, nie kreska), rząd DER `#der-row-bus` −128 (start rzędu
+// za dłuższym zaciskiem), odcinki magistrali `snTrunk` +40/−40 na L1 i +32/−32 na L2
+// (inne położenia kolumn po poszerzeniu stacji). Załamania bez zmian.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 52816, 1: 69024, 2: 73664 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**

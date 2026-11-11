@@ -38,6 +38,8 @@ import {
   LV_PORTAL_DROP_HEIGHT,
   LV_PORTAL_HEIGHT,
   LV_PORTAL_WIDTH,
+  LV_TERMINAL_MIN_HALF,
+  lvBusLabelAtTerminal,
   lvPortalExtraHeight,
   lvTerminalPortXs,
   nnSideBelowBusHeight,
@@ -209,9 +211,12 @@ describe('PORTAL nN — projekcja SN kończy tor na zacisku nN i JEDNYM portalu'
     expect(drop.points[1].y - drop.points[0].y).toBe(LV_PORTAL_DROP_HEIGHT);
     expect(drop.points[1]).toEqual({ x: portal.ports.top.x, y: portal.ports.top.y });
     expect(portal.x + LV_PORTAL_WIDTH / 2).toBe(lvDrop.points[0].x);
-    // Zacisk bez odbioru i bez DER = sam rdzeń (port ± GRID).
-    expect(Math.min(lvBus.points[0].x, lvBus.points[1].x)).toBe(lvDrop.points[0].x - GRID);
-    expect(Math.max(lvBus.points[0].x, lvBus.points[1].x)).toBe(lvDrop.points[0].x + GRID);
+    // Zacisk bez odbioru i bez DER = sam rdzeń. SLD-CZYTELNOSC-STACJI: rdzeń jednego TR
+    // to port ± (pół portalu + GRID) — szyna wystaje poza portal z obu stron (dawniej ± GRID,
+    // kreska węższa od portalu, który z niej zwisa).
+    expect(Math.min(lvBus.points[0].x, lvBus.points[1].x)).toBe(lvDrop.points[0].x - LV_TERMINAL_MIN_HALF);
+    expect(Math.max(lvBus.points[0].x, lvBus.points[1].x)).toBe(lvDrop.points[0].x + LV_TERMINAL_MIN_HALF);
+    expect(LV_TERMINAL_MIN_HALF).toBe(LV_PORTAL_WIDTH / 2 + GRID);
     expect(allCompositionSymbolsOnGrid(composition)).toBe(true);
     expect(noCompositionSymbolOverlaps(composition)).toBe(true);
     expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
@@ -269,10 +274,17 @@ describe('PORTAL nN — projekcja SN kończy tor na zacisku nN i JEDNYM portalu'
     assertNoNnInterior(composition);
   });
 
-  it('pasmo nazw NADAL opisuje stronę nN (szyna nN · napięcie + odbiór/granica modelu)', () => {
-    const zOdbiorem = composeStation(buildComposeInput(makeStation('st-e', ONE_TR, { aggregatedLvLoad: ODBIOR })));
+  it('strona nN opisana: szyna nN · napięcie DOKŁADNIE w jednym miejscu (przy zacisku albo w paśmie) + odbiór/granica modelu w paśmie', () => {
+    const stacja = makeStation('st-e', ONE_TR, { aggregatedLvLoad: ODBIOR });
+    const zOdbiorem = composeStation(buildComposeInput(stacja));
     const rows = zOdbiorem.labels.stationName.rows.map((r) => r.text);
-    expect(rows).toContain('Szyna nN · 0,4 kV');
+    // SLD-CZYTELNOSC-STACJI: podpis szyny nN stoi przy zacisku, gdy TR jest skrajnie prawą
+    // kolumną (`lvBusLabelAtTerminal`) — jeden predykat decyduje o obu miejscach.
+    const przyZacisku = zOdbiorem.labels.busbar.filter((l) => l.ownerRef === 'st-e#lv-bus-voltage');
+    const wPasmie = rows.filter((t) => t === 'Szyna nN · 0,4 kV');
+    expect(przyZacisku.length + wPasmie.length).toBe(1);
+    expect(przyZacisku.length).toBe(lvBusLabelAtTerminal(stacja) ? 1 : 0);
+    if (przyZacisku.length === 1) expect(przyZacisku[0].text).toBe('Szyna nN · 0,4 kV');
     expect(rows.some((t) => t.startsWith('Odbiór ΣP'))).toBe(true);
     const bezOdbioru = composeStation(buildComposeInput(makeStation('st-f', ONE_TR)));
     expect(bezOdbioru.labels.stationName.rows.map((r) => r.text)).toContain('granica modelu — bez odbiorów nN');
@@ -351,35 +363,36 @@ describe('PORTAL nN — spójność measure↔compose (iloczyn: źródła nN × 
     // Porty LV i `bx` (koniec bloku) leżą na siatce (origin symbolu TR na
     // siatce, port w osi; blok kolumn kończy się na siatce).
     const single = planLvTerminal([104], { hasLoad: false, hasNnDer: false, derRowFlushX: 144 });
-    // rdzeń 96..112; portal 88..120 (oś 104); bez odbioru/DER zacisk = rdzeń.
-    expect(single.busLeft).toBe(96);
-    expect(single.busRight).toBe(112);
+    // SLD-CZYTELNOSC-STACJI: rdzeń 80..128 (oś 104 ± 24 = pół portalu + GRID);
+    // portal 88..120 (oś 104); bez odbioru/DER zacisk = rdzeń.
+    expect(single.busLeft).toBe(80);
+    expect(single.busRight).toBe(128);
     expect(single.axisX).toBe(104);
     expect(single.portalCenterX).toBe(104);
     expect(single.loadDropX).toBeNull();
-    // trunk DER (gdyby był): za prawą krawędzią portalu 120 + GRID = 128.
-    expect(single.derTrunkX).toBe(128);
+    // trunk DER (gdyby był): za prawym końcem rdzenia 128 + GRID = 136.
+    expect(single.derTrunkX).toBe(136);
     expect(single.derRowStartX).toBe(144);
     const onlyLoad = planLvTerminal([104], { hasLoad: true, hasNnDer: false, derRowFlushX: 144 });
-    // strzałka 16 szer.: pion na 120 + 8 + 8 = 136 (gabaryt 128..144), zacisk do 136.
-    expect(onlyLoad.loadDropX).toBe(136);
-    expect(onlyLoad.busRight).toBe(136);
-    expect(onlyLoad.busLeft).toBe(96);
+    // strzałka 16 szer.: pion na 128 + 8 + 8 = 144 (gabaryt 136..152), zacisk do 144.
+    expect(onlyLoad.loadDropX).toBe(144);
+    expect(onlyLoad.busRight).toBe(144);
+    expect(onlyLoad.busLeft).toBe(80);
     const withLoadAndDer = planLvTerminal([104], { hasLoad: true, hasNnDer: true, derRowFlushX: 144 });
-    // trunk DER za strzałką: 144 + 8 = 152; rząd DER nie przed trunkiem.
-    expect(withLoadAndDer.loadDropX).toBe(136);
-    expect(withLoadAndDer.derTrunkX).toBe(152);
-    expect(withLoadAndDer.derRowStartX).toBe(152);
-    expect(withLoadAndDer.busRight).toBe(152);
+    // trunk DER za strzałką: 152 + 8 = 160; rząd DER nie przed trunkiem.
+    expect(withLoadAndDer.loadDropX).toBe(144);
+    expect(withLoadAndDer.derTrunkX).toBe(160);
+    expect(withLoadAndDer.derRowStartX).toBe(160);
+    expect(withLoadAndDer.busRight).toBe(160);
     const onlyDer = planLvTerminal([104], { hasLoad: false, hasNnDer: true, derRowFlushX: 200 });
-    expect(onlyDer.derTrunkX).toBe(128);
+    expect(onlyDer.derTrunkX).toBe(136);
     expect(onlyDer.derRowStartX).toBe(200);
-    expect(onlyDer.busRight).toBe(128);
+    expect(onlyDer.busRight).toBe(136);
     const multi = planLvTerminal([96, 160], { hasLoad: false, hasNnDer: true, derRowFlushX: 200 });
     expect(multi.busLeft).toBe(96);
     expect(multi.axisX).toBe(128);
     expect(multi.portalCenterX).toBe(128);
-    // rdzeń do 160 (za portalem 144): trunk 160 + 8 = 168.
+    // rdzeń 96..160 (porty dalej niż oś 128 ± 24): trunk 160 + 8 = 168.
     expect(multi.derTrunkX).toBe(168);
     expect(multi.busRight).toBe(168);
     for (const plan of [single, onlyLoad, withLoadAndDer, onlyDer, multi]) {

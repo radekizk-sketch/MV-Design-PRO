@@ -182,9 +182,12 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // kolejność remisu ciągów); kod karty na fiksturze bazy daje dokładnie 21240/44016/44016,
     // treść fikstury bazy z samymi nowymi identyfikatorami — 21576/44352/44352; atrybucja per
     // przyczyna przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21576);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(44352);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(44352);
+    // SLD-CZYTELNOSC-STACJI (2026-11-11): 21576/44352/44352 → 22232/46168/46168 — krok
+    // podpoziomów tras 8 → 16 (L1/L2 +1160) i strefa zejść 48 → 64 (+656 jednolicie);
+    // atrybucja przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22232);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(46168);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(46168);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

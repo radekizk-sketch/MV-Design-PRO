@@ -43,7 +43,9 @@ import {
 import {
   bayStackCenterX,
   implicitStationTransformers,
+  LV_BUS_LABEL_CLASS,
   LV_PORTAL_WIDTH,
+  lvBusLabelAtTerminal,
   lvTerminalPortXs,
   planLvTerminal,
   requiredStationWidth,
@@ -51,9 +53,12 @@ import {
   stationBlockHeight,
   stationBlockWidth,
   stationHasLvSide,
+  stationLvBusbarLabelText,
   stationSnColumnLayout,
   type StationMeasureInput,
 } from '../../layout/measure';
+import { BUSBAR_LABEL_PATH_CLEARANCE } from '../../layout/clearances';
+import { measureLabelWidth } from '../../core/text';
 import { composeStation, type ComposeStationInput, type StationComposition } from '../station';
 import type { StationTransformerUnit } from '../../../../network-build/stationTransformerSelection';
 
@@ -435,7 +440,20 @@ describe('TR2W-BEZ-POLA — stacja Z polem TR: ścieżka dzisiejsza nietknięta'
     });
     const portalOverhang = Math.max(0, plan.portalCenterX + LV_PORTAL_WIDTH / 2 - (GRID + stationBlockWidth(zTr)));
     expect(portalOverhang).toBe(0);
-    expect(requiredStationWidth(zTr) - requiredStationWidth(bezTr)).toBeLessThanOrEqual(snapUp(40));
+    // SLD-CZYTELNOSC-STACJI: kolumna TR jest skrajnie prawą kolumną, więc podpis szyny nN
+    // stoi PRZY zacisku (`lvBusLabelAtTerminal`), na prawo od `busRight`, i to on — nie
+    // adnotacja ani portal — dokłada szerokość ponad kolumnę TR. Wzrost = kolumna TR (40)
+    // + wysięg podpisu za blok, nic ponadto; podpis mieści się w rezerwacji kolumny.
+    expect(lvBusLabelAtTerminal(zTr)).toBe(true);
+    const tekstNn = stationLvBusbarLabelText(zTr.nnVoltageKv);
+    const prawyPodpisu = plan.busRight + BUSBAR_LABEL_PATH_CLEARANCE + measureLabelWidth(tekstNn, LV_BUS_LABEL_CLASS);
+    const wysiegPodpisu = Math.max(0, prawyPodpisu - (GRID + stationBlockWidth(zTr)));
+    expect(requiredStationWidth(zTr) - requiredStationWidth(bezTr)).toBeLessThanOrEqual(snapUp(40 + wysiegPodpisu));
+    const c = compose(zTr);
+    const podpis = c.labels.busbar.find((l) => l.ownerRef.endsWith('#lv-bus-voltage'));
+    expect(podpis?.text).toBe(tekstNn);
+    expect(c.labels.stationName.rows.some((r) => r.text === tekstNn)).toBe(false);
+    expect(prawyPodpisu).toBeLessThanOrEqual(GRID + requiredStationWidth(zTr));
   });
 });
 

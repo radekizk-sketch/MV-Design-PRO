@@ -76,6 +76,7 @@ import {
   LV_MODEL_BOUNDARY_TEXT,
   LV_PORTAL_DROP_HEIGHT,
   planLvTerminal,
+  nnSideSources,
   snSideSources,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
@@ -1618,7 +1619,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // aparatu — `StationDerSourceInput` (projekcja `SldSourceView`) NIE niesie
   // `primaryDevices`, więc §12.5 „zakaz domysłu" ⇒ odczep bez łącznika.
   const allDerSources = station.derSources ?? [];
-  const nnDerSources = allDerSources.filter((s) => s.connectionSide !== 'sn');
+  // SLD-CZYTELNOSC-STACJI (predykaty parami): ta sama funkcja strony nN co rezerwacja
+  // szerokości i miejsce podpisu szyny nN (`nnSideSources`, `layout/measure.ts`).
+  const nnDerSources = nnSideSources(allDerSources);
   // W2c (reguła 7): źródło SN z KOMPLETNYM torem (`chain`) rysowane jest jako
   // pełny tor POD polem źródłowym (`composeDerSnChain` wyżej), NIE jako
   // placeholder na szynie SN. Placeholder W2 (symbol WPROST na szynie SN)

@@ -107,7 +107,13 @@ describe('strona nN w paśmie nazw (spec §12.5, recenzja NO-GO pkt 6)', () => {
   it('każda stacja z polem TR niesie wiersz „Szyna nN · 0,4 kV" + ODBIÓR zagregowany z rekordów Load (fixtura z realnego backendu je niesie) + strzałkę odbioru na szynie nN', () => {
     const scene = buildSceneV3(enm, 2);
     const texts = scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.text);
-    const lvRows = texts.filter((t) => t.startsWith('Szyna nN'));
+    // SLD-CZYTELNOSC-STACJI: podpis szyny nN stoi przy zacisku `#lv-bus` (`#lv-bus-voltage`)
+    // albo — gdy na prawo od TR jest pole — w paśmie nazw; nigdy w obu (jeden predykat
+    // `lvBusLabelAtTerminal`). Intencja bez zmian: każda strona nN opisana napięciem z modelu.
+    const lvRows = [
+      ...texts.filter((t) => t.startsWith('Szyna nN')),
+      ...scene.labels.filter((l) => l.ownerRef.endsWith('#lv-bus-voltage')).map((l) => l.text),
+    ];
     const loadRows = texts.filter((t) => t.startsWith('Odbiór ΣP'));
     // Dwie stacje (S01/S02), obie z polem transformatorowym i rekordem Load.
     expect(lvRows.length).toBe(2);

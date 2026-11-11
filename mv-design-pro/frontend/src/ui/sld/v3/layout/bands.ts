@@ -36,6 +36,7 @@
 import { GRID, rectsOverlap, type V3Rect } from '../core/grid';
 import { snapUp } from './measure';
 import { normalizeSegmentText, SEGMENT_LABEL_ROW_HEIGHT } from './segments';
+import { ROUTE_SUBLEVEL_STEP } from './clearances';
 
 export type BandId = 'B1' | 'B2' | 'B3' | 'B4' | 'B5' | 'B6';
 
@@ -114,7 +115,15 @@ export const BUS_AXIS_BAND_HEIGHT = 4 * GRID;
 // F9.3/F6e -- kolizje z treścią pasma nazw); (c) zmniejszenie akcentu do
 // 16px -- łamie literę §14.4 („WYRAŹNIE większy węzeł" niż `junction`
 // bazowy 16×16 -- 16px byłby RÓWNY, nie większy).
-export const DESCENT_STRIP_HEIGHT = 6 * GRID;
+// SLD-CZYTELNOSC-STACJI (2026-11-11): strefa niesie DWA podpoziomy tras pod
+// `stripTopY` (korytarz pnia `+ROUTE_SUBLEVEL_STEP`, przejście pod stacją
+// `+2·ROUTE_SUBLEVEL_STEP`, `scene/buildScene.ts`) i zapas `4×GRID` do pasma nazw B5
+// (akcent punktu odgałęźnego 32 + margines GRID — rachunek wyżej). Przy kroku GRID
+// wzór daje dawne `6×GRID`; krok podpoziomów 16 (czytelność na dolnym brzegu L1)
+// wymaga 8×GRID — inaczej przejście pod stacją podchodzi o 16 bliżej pasma nazw
+// i powiększona nazwa stacji (podłoga celu kadru 13 px) trafia na tor (pomiar karty:
+// „Stacja L5-1”, skala 0,3 — spadek do pisma zapasowego 9 px).
+export const DESCENT_STRIP_HEIGHT = 2 * ROUTE_SUBLEVEL_STEP + 4 * GRID;
 
 /**
  * Wysokości zawartości JEDNEJ stacji/kolumny — wejście `computeBands` (spec

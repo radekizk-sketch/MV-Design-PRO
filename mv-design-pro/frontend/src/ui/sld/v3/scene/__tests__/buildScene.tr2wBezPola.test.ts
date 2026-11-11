@@ -285,12 +285,13 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // kod bazy `0a19e5c19` vs kod karty): symbole 11/11 identyczne na L1 i L2; różnią się
   // WYŁĄCZNIE (a) zacisk `#lv-bus` 16 → 48 (x 976–992 → 960–1008; zacisk ≥ portal + 2·GRID),
   // (b) podpis „Szyna nN · 0,4 kV" z wiersza pasma nazw (`#name-row-3`) PRZY prawym końcu
-  // zacisku (`#lv-bus-voltage`, x 1024, oś szyny), wiersz „granica modelu" wyżej o 14,
+  // zacisku (`#lv-bus-voltage`, x 1024, oś szyny), wiersz „granica modelu" o wiersz wyżej w paśmie (−14 względem pasma),
   // (c) przejście kabla pod stacją (`segment_L`/`segment_R` + koniec otwarty) głębiej o 8
-  // (`ROUTE_SUBLEVEL_STEP` 16). Ramka 1144×790 → 1144×776.
+  // (`ROUTE_SUBLEVEL_STEP` 16), (d) pasmo nazw niżej o 16 (`DESCENT_STRIP_HEIGHT` 48 → 64
+  // — dawny zapas 32 między przejściem a pasmem). Ramka 1144×790 → 1144×792.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: 'c4f279e5ec5f7dc1a76b89bb4fb9a58b',
-    2: '0e48c4f2202f38c71fe386aaa28a3e10',
+    1: '73cae21a4b9ac1a7a82c392792147132',
+    2: '5d2e273b87aac2137d8c9dbafa6a711e',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

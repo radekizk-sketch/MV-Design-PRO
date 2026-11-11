@@ -565,87 +565,97 @@ interface OdciskiLod {
  * znika naruszenie `DEVICE_TERMINAL_UNRESOLVED` („Magistrala 1" wskazywała skasowany odcinek)
  * i jego notatka STOP, zostaje notatka łamania arkusza. To dokładnie wkład danych karty
  * MENU-KANON opisany wyżej, nałożony na scenę GPZ-MODEL.
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-CZYTELNOSC-STACJI, 2026-11-11, ocena właściciela widoku stacji
+ * 0/10) — przeliczone WSZYSTKIE 54 odciski (generator: ta sama funkcja `odcisk` nad scenami
+ * i planami z kodu karty; kod bazy `0a19e5c19` odtwarza dawną tablicę 54/54). Wkłady:
+ *  · scena L0/L1/L2 i declutter obu sieci: strefa zejść `DESCENT_STRIP_HEIGHT` 48 → 64
+ *    (każdy wiersz arkusza wyższy o 16 — także L0), krok podpoziomów tras 8 → 16 (L1/L2),
+ *    zacisk nN 48 zamiast 16 z podpisem szyny nN przy zacisku (L1/L2);
+ *  · plany: wołane teraz z poziomem sceny, jak w kanwie (`planSceneLabels(…, lod)`); sam ten
+ *    wkład zmienia 2 z 7 skal na L1 i L2 każdej sieci (opisy danych na poziomach roboczych
+ *    powiększane do 9 px zamiast ukrywane progiem skali), L0 bez zmian.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '4e6dbcc8571e568de22a96dab483d012',
-      declutter: 'd07fba87b2f56a1eef4c600fe0709a17',
+      scena: '6dae5cf61269488091b3c0c4b64994ce',
+      declutter: 'b8ae09380ee7352f266d4adb5aaf5ee0',
       plany: [
-        '3073b65d61f123c6da6d042c95f705b4',
-        '6b10640883aa9a473b7279618649d1e1',
-        '172728286ead7bb23cd923432968a504',
-        '1d40ebb9aa22cf4b7d406cfd7a7dea89',
-        'f77dcd8f91618667280fff097f9fd7ee',
-        '11e9a49e4ea8cebb2745065ce73382a7',
-        '11e9a49e4ea8cebb2745065ce73382a7',
+        '8e49d39d68463b1efede1f4ff43377c1',
+        '9323742347da26296eb47a4d7e7279a6',
+        'b865f87b1a19152ee304537e994d2ba6',
+        'f4fe566b816187032ef9cf582bf26953',
+        '6679a2dfdba1b2bf5b32b4306850e19a',
+        '0afbd22e066247e7dbc300c5abac8bf6',
+        '0afbd22e066247e7dbc300c5abac8bf6',
       ],
     },
     {
-      scena: '957d297d0fe9fcee6052eb9de9cf9c80',
-      declutter: '40b7251b852fc542752fe1ba1f29338e',
+      scena: '5edecaf71b3438ef5b71bec59b1d6cbc',
+      declutter: 'c3304cc417c51558ebe2c80e44da3f33',
       plany: [
-        '06752775d45bbab5bd2330a0c33ea6b7',
-        '836e830b596dac4681f9e6855b8d5903',
-        'd14fde551e5c185fd96bf7f31f0a9569',
-        'a91c398d4eda4d56bf74eab60e87ca70',
-        '8aa76b130cababf582150067129767ec',
-        'e76685ef2a5da4093d1e774aa61fcce4',
-        'e76685ef2a5da4093d1e774aa61fcce4',
+        '2215fb8dffbc50b33996c37e5eb5bb90',
+        '853e2f258ecb2371aa41f30e08e210a2',
+        '62c790a9a558f40de46bed01264c2dad',
+        'c48e3c038538c5fe21c4c85f5807c25f',
+        '88ddaac661bc9663123d94f0af9b418a',
+        'caff233977efce575408b39ca17e1df4',
+        'caff233977efce575408b39ca17e1df4',
       ],
     },
     {
-      scena: '83203575489a3a901a5628b7c7e66235',
-      declutter: '3ac69d221753e008d7ac680e0531d8d4',
+      scena: 'da57d502dc10ddb471c323a8eefab512',
+      declutter: '182b804dbaa49c698296077af83d8b82',
       plany: [
-        '67205bf8127c4c224ade425c47dd2246',
-        'bb6dfa40a0e49fcb070c10f0d0117059',
-        '793ee94663dae1ab0252c6bdd070b7eb',
-        '26d8e421568e2395a3ece2e59dd1ac2e',
-        '311a1b1aefbffa019832b301a7605eed',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
+        'e29daefbd5c2a6bf9329be55c2aae882',
+        'b09bd6307a7bf2697a64406975d5845f',
+        'd234119cfebd3e9f42c86c3e4782749f',
+        '05f8ebe95b2df18e8960588c14f2930c',
+        'd5c8d9c137a6ef5ba0f791ac7cf5c781',
+        'f7e03ef0cc3af2f838be1b7f67bde410',
+        'f7e03ef0cc3af2f838be1b7f67bde410',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '8417ad34b7f98bff9a043d8fa5156142',
-      declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
+      scena: '2feffcd09cda9cbd4b865f8be383f278',
+      declutter: '3cc47de37210c62059270dc61c43d938',
       plany: [
-        'b8eea41ccf515f1acc228cd82b6436dd',
-        'bda4c229ea6367eb4a824f3a0511e4e6',
-        'eda8d972ac0062b74c5d1d3a1fb6b219',
-        '1c1f71a06b7b72d607069a888618b9af',
-        '799392b7e737ef4a3f90280596f220d8',
-        '5a8106565c8335db1702e7284d38d537',
-        '5a8106565c8335db1702e7284d38d537',
+        '7dec2adab4da1e927e34b50bd7e56f84',
+        'a0dd2a81713305c213a288459ffcdf6c',
+        'aa4b6be06bebae366a852c0253bbf0bb',
+        'da6287229e6b1092d26fe1535c69e593',
+        '61262f66e7bf2bed26f60a2c6867c01d',
+        '39c82e41d0dc0356e16113b549f1ddf3',
+        '39c82e41d0dc0356e16113b549f1ddf3',
       ],
     },
     {
-      scena: '90661362a6f0ab5e8a1be3bb3ff396a9',
-      declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
+      scena: '0db7bd80b70d3b31618e2380225c807e',
+      declutter: '2fa31e7720bce477b617ef1841f4533c',
       plany: [
-        'bb96bce423fc0946291bdd36d49ed8c2',
-        '7823922d2b8bfa2a847f1e655be156d0',
-        'ddbc1230a5bccb4fa4daa6b6427de3ca',
-        '7b072d4ef954c286798124c8c0fa6c77',
-        '66fb0c6845420ad9f48030a9ae8b0866',
-        '1af119c9668b67927bf66a4c995e7195',
-        '1af119c9668b67927bf66a4c995e7195',
+        'c4ab2f8ea6936c2bdcd9ad5826399e1a',
+        'b80bfce75ba3937ee218a37a5d36a2c6',
+        '8797510a312fa813b5b3570c1734ee13',
+        'b1391179616282d191b9e6f0a7e74a07',
+        '1d8dfb817553dc83cf18197674e1eb7f',
+        '44ea0b5541da329654968f92ea5e5d1c',
+        '44ea0b5541da329654968f92ea5e5d1c',
       ],
     },
     {
-      scena: '60589317c4b2576b7bea5a668ec3ed59',
-      declutter: 'fd2ac4acf96701c6273059192dddd93f',
+      scena: '5e41e4c8b9763e4b2afd3a382519bdb3',
+      declutter: 'cf2c3c9730a701a982c653d64e8622a3',
       plany: [
-        '28965374c394c62b1d414eddfdd5e98a',
-        '831a2768e8325c241b3574cb8e460e52',
-        '6beb6ca8596df41241a64a39286e58ef',
-        'ad8cd0a9b733288867caf0ec67712d1b',
-        'dd7706bb913891b95bf649e9e0b5a4e2',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
+        'f54cb5e98806373bcfa919a81f939cc3',
+        'a5ea767cc0f996df46cd2e3176932ee1',
+        'ee5be372a3b3b05019bd41721ef9cc84',
+        'b111535acf69f99cccea9883389edba1',
+        '614c7ac85a07ea944f076318a5eabc7c',
+        '202bfcec2f7844db0b850893c82fadcb',
+        '202bfcec2f7844db0b850893c82fadcb',
       ],
     },
   ],
@@ -677,7 +687,10 @@ describe('S9-9 — tożsamość bajtowa sceny, declutteru i planu etykiet', () =
     const policzone = LODY.map((lod) => {
       const scena = buildSceneV3(model, lod);
       const przeszkody = sceneObstacleRects(scena);
-      return SKALE.map((skala) => odcisk(planSceneLabels(scena.labels, przeszkody, skala, sheetSizeFor(scena))));
+      // SLD-CZYTELNOSC-STACJI: plan z poziomem sceny — tak woła go kanwa (`effectiveLod`).
+      return SKALE.map((skala) =>
+        odcisk(planSceneLabels(scena.labels, przeszkody, skala, sheetSizeFor(scena), undefined, lod)),
+      );
     });
     expect(policzone).toEqual(ODCISKI_BAZOWE[nazwa].map((o) => o.plany));
   });

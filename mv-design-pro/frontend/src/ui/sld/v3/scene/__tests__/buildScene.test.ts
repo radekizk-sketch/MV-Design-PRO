@@ -1250,23 +1250,22 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
     // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
     // `id.localeCompare`, nie trasowanie.
-    // SLD-CZYTELNOSC-STACJI (2026-11-11): 23168/46400/46400 → 22512/46904/46904 — ZAMIERZONA
-    // zmiana układu (ocena właściciela widoku stacji 0/10). DOWÓD 2×2 (sonda tej karty,
-    // kod bazy `0a19e5c19` vs kod karty, ta sama fikstura):
-    //  · SAM krok podpoziomów tras `ROUTE_SUBLEVEL_STEP` 8 → 16 (`layout/clearances.ts`;
-    //    równoległe trasy ≥ 8 px ekranu na dolnym brzegu L1, skala 0,51) przy zacisku nN
-    //    bazy: 23168/47560/47560 — L0 ±0, L1/L2 +1160 (korytarze pnia, przejścia pod
-    //    stacją i drugi kanał punktu odgałęźnego głębiej o 8).
-    //  · SAM zacisk nN (≥ portal + 2·GRID) z podpisem szyny nN PRZY zacisku zamiast wiersza
-    //    pasma nazw (`planLvTerminal`, `lvBusLabelAtTerminal`) przy kroku bazy:
-    //    22512/45744/45744 — −656 jednolicie (pasmo nazw niższe o wiersz t4, inna
-    //    rezerwacja szerokości bloku stacji przestawia pakowanie wierszy arkusza).
-    //  · Oba: 22512/46904/46904 (= −656 + 1160 na L1/L2). Reguła „nie-rosnąca" §15.1
-    //    świadomie nie spełniona na L1/L2 — czytelność odstępu tras ma pierwszeństwo
-    //    (§15.1 „redukcja jest ograniczeniem MIĘKKIM").
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22512);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46904);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46904);
+    // SLD-CZYTELNOSC-STACJI (2026-11-11): 23168/46400/46400 → 23824/48216/48216 — ZAMIERZONA
+    // zmiana układu (ocena właściciela widoku stacji 0/10). DOWÓD (sonda karty, kod bazy
+    // `0a19e5c19` vs kod karty, ta sama fikstura, składniki włączane po jednym):
+    //  · krok podpoziomów tras `ROUTE_SUBLEVEL_STEP` 8 → 16 (`layout/clearances.ts`;
+    //    równoległe trasy ≥ 8 px ekranu na dolnym brzegu L1, skala 0,51): L0 ±0, L1/L2 +1160
+    //    (korytarze pnia, przejścia pod stacją i drugi kanał punktu odgałęźnego głębiej o 8);
+    //  · strefa zejść `DESCENT_STRIP_HEIGHT` = 2·krok + 4·GRID (48 → 64, `layout/bands.ts`)
+    //    — zachowuje dawny zapas 32 między przejściem pod stacją a pasmem nazw: +656
+    //    jednolicie na L0/L1/L2 (każdy wiersz arkusza wyższy o 16);
+    //  · zacisk nN (≥ portal + 2·GRID) z podpisem szyny nN przy zacisku: ±0 (wiersz pasma
+    //    nazw zostaje rezerwą powiększenia, `stationNameBandHeight`).
+    // Reguła „nie-rosnąca" §15.1 świadomie nie spełniona — czytelność odstępu tras ma
+    // pierwszeństwo (§15.1 „redukcja jest ograniczeniem MIĘKKIM").
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23824);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(48216);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(48216);
   });
 });
 

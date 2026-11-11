@@ -908,12 +908,18 @@ function multiSectionColumnLayout(
  * toru; rezerwację szerokości dokłada `requiredStationWidth`). Gdy na prawo od
  * transformatora stoi pole (TR nie musi być ostatnią kolumną), jego zejście
  * kablowe przechodzi przez poziom zacisku — podpis zostaje wtedy w paśmie nazw.
+ * Tak samo przy źródłach po stronie nN: szyna rzędu DER (`#der-row-bus`) biegnie
+ * GRID pod zaciskiem od pionu trunku w prawo, więc podpis stałby 2 j.św. od toru
+ * (pomiar `busbar_label_clearance_probe`, 16 stacji sieci referencyjnej).
  *
  * JEDEN predykat dla kompozycji (etykieta przy zacisku albo wiersz pasma),
  * wysokości pasma nazw i rezerwacji szerokości (reguła KLASA §3).
  */
-export function lvBusLabelAtTerminal(station: StationColumnsInput): boolean {
+export function lvBusLabelAtTerminal(
+  station: StationColumnsInput & Pick<StationMeasureInput, 'derSources'>,
+): boolean {
   if (!stationHasLvSide(station)) return false;
+  if (nnSideSources(station.derSources ?? []).length > 0) return false;
   const portXs = lvTerminalPortXs(station);
   if (portXs.length === 0) return false;
   const osie = stationSnColumnLayout(station, 0).map((p) => p.centerX);
@@ -926,7 +932,8 @@ export const LV_BUS_LABEL_CLASS = 't4' as const;
 /** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
  *  `requiredStationWidth`, ta sama pula co nazwa/kod/kVA/typ). */
 function lvSideNameRowWidths(
-  station: StationColumnsInput & Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad' | 'hasTransformer'>,
+  station: StationColumnsInput
+    & Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad' | 'hasTransformer' | 'derSources'>,
 ): number[] {
   if (!stationHasLvSide(station)) return [];
   return [
@@ -1341,7 +1348,13 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
   if (station.stationTypeLabel) height += LABEL_LINE_HEIGHT_T4;
   // pkt 6 (recenzja NO-GO 2026-07-17): dwa wiersze strony nN (szyna nN +
   // odbiór/granica modelu) — TA SAMA kolejność co `composeStation` `rows`.
-  if (stationHasLvSide(station)) height += (lvBusLabelAtTerminal(station) ? 1 : 2) * LABEL_LINE_HEIGHT_T4;
+  // SLD-CZYTELNOSC-STACJI: gdy podpis szyny nN stoi przy zacisku
+  // (`lvBusLabelAtTerminal`), wiersz pasma zostaje jako REZERWA powiększenia:
+  // plan etykiet układa powiększone wiersze pasma w jego wysokości
+  // (`przestawPasma`, `canvas/labelLegibility.ts`). Pomiar karty: zdjęcie tego
+  // wiersza wepchnęło powiększoną nazwę „Stacja L5-1” (skala 0,3, podłoga celu
+  // 13 px) na tor nad pasmem — nazwa spadła do pisma zapasowego 9 px.
+  if (stationHasLvSide(station)) height += 2 * LABEL_LINE_HEIGHT_T4;
   return height;
 }
 
