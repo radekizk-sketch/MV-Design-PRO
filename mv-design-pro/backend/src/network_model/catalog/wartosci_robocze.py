@@ -40,8 +40,15 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Final, Literal, Protocol
+from typing import Any, Final, Literal, Protocol, cast, get_args
 
+from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
+    CZAS_TN_ROZDZIELCZY,
+    CZAS_TT_ROZDZIELCZY,
+    TABLICA_TN_ODBIORCZE,
+    TABLICA_TT_ODBIORCZE,
+    pasmo_dla_u0,
+)
 from network_model.catalog.przekladniki import zaczepy_przekladnika
 from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.core.bateria_kondensatorow import NAZWY_UKLADOW_POLACZEN_BATERII_PL
@@ -102,6 +109,10 @@ _ODNIESIENIE_PROFILU_CZASU = (
     "(np. ABB VD4 12 kV, karta 1VCP000267: łączny czas wyłączania 30–65 ms); IEC 62271-100 "
     "definiuje czas wyłączania, ale nie przypisuje mu wartości — deklaruje go producent"
 )
+#: Krótka nazwa profilu czasu własnego i jego podstawa — jedno zdanie o źródle czasu własnego
+#: w szczegółach pola (karta KD6-SZCZEGOLY pkt 4); pełne odniesienie niesie propozycja.
+NAZWA_PROFILU_CZASU_PL = "profil typowy wyłącznika próżniowego SN"
+PODSTAWA_PROFILU_CZASU_PL = "IEC 62271-100: czas wyłączania deklaruje producent"
 _ODNIESIENIE_T_TH = "IEC 62271-1:2017 p. 5.8 (wartość zalecana)"
 _ODNIESIENIE_I_DYN = "IEC 62271-1:2017 p. 5.7"
 _ODNIESIENIE_I_TH_Z_ICU = (
@@ -455,10 +466,10 @@ def _propozycja_i_dyn(i_th: WartoscRozstrzygnieta) -> tuple[PropozycjaWartosci |
             rodzaj_zrodla="NORMA",
             odniesienie=_ODNIESIENIE_I_DYN,
             uzasadnienie_pl=(
-                "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową "
-                f"— prąd szczytowy równy {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}-krotności prądu "
-                f"krótkotrwałego dla 50 Hz, z prądu "
-                f"krótkotrwałego {liczba_pl(i_th.wartosc)} kA {zrodlo_i_th}"
+                "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową: "
+                f"prąd szczytowy równy {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}-krotności prądu "
+                f"krótkotrwałego dla 50 Hz, z prądu krótkotrwałego {liczba_pl(i_th.wartosc)} kA "
+                f"{zrodlo_i_th}"
             ),
             wplyw_pl=(
                 "limit dynamiczny wynika z relacji normowej, nie z próby typu konkretnego "
@@ -684,9 +695,7 @@ def _liczba_c(wartosc: float) -> str:
 def opis_c_klasy_nn_pl(tolerancja: TolerancjaNapieciaNn) -> str:
     """c_max/c_min klasy tolerancji jednym zwrotem — liczby z JEDYNEJ tabeli (``voltage_factor``)."""
     c_max, c_min = c_wiersza_nn(tolerancja)
-    return (
-        f"współczynnik napięciowy maksymalny {_liczba_c(c_max)}, " f"minimalny {_liczba_c(c_min)}"
-    )
+    return f"współczynnik napięciowy maksymalny {_liczba_c(c_max)}, minimalny {_liczba_c(c_min)}"
 
 
 def _procent_pl(wartosc: float) -> str:
@@ -874,6 +883,48 @@ def dana_przyjeta_tolerancji_nn(
         nazwa_pl=f"tolerancja napięcia sieci nN ({miejsce_pl})",
         wartosc=Wielkosc(wartosc=_PROCENT_TOLERANCJI_NN[rozstrzygniecie.wartosc], jednostka="%"),
         powod_pl=rozstrzygniecie.opis_zrodla_pl(),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: sterownik zabezpieczeń — charakterystyki funkcji (zakresy nastaw), karta
+# OCHRONA-JEDNO-ZRODLO
+# ---------------------------------------------------------------------------
+#
+# Sterownik w modelu wskazuje DWIE rzeczy niezależnie: wyrób z kartą producenta (pozycja katalogu
+# urządzeń, ``ProtectionAssignment.catalog_ref``) i charakterystyki analityczne funkcji (profil
+# katalogu analitycznego z zakresami nastaw i krzywymi, ``ProtectionAssignment.charakterystyki_ref``).
+# Karta wyrobu często nie podaje zakresów nastaw w jednostce, którą da się porównać z nastawą —
+# wtedy ocena NIE staje: biegnie z profilem roboczym (zasada nr 4), a dana przyjęta mówi, że
+# zakresy nie są danymi producenta. Projektant zmienia profil w karcie pola i przelicza.
+
+#: Profil roboczy charakterystyk funkcji nadprądowych i ziemnozwarciowych (50/51/50N/51N) —
+#: profil referencyjny katalogu analitycznego bez marki (decyzja D-33): krzywe IEC 60255-151
+#: (SI, VI) i czas niezależny, zakresy w krotności prądu znamionowego wejścia In.
+PROFIL_CHARAKTERYSTYK_ROBOCZY: Final = "REF-OC-EF-300"
+_ODNIESIENIE_PROFILU_CHARAKTERYSTYK = (
+    "profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — "
+    "założenie inżynierskie, nie dane producenta"
+)
+
+
+def dana_przyjeta_charakterystyk(
+    *, sterownik_pl: str, profil_pl: str, powod_pl: str
+) -> DanaPrzyjeta:
+    """Profil roboczy charakterystyk funkcji jako dana przyjęta werdyktu (§3c pkt 4).
+
+    ``ESTIMATED`` — zakresy nastaw i krzywe pochodzą z profilu referencyjnego, nie z karty
+    wyrobu, więc stan danych ``UNVALIDATED_INPUT`` i kompletność ``NIEPELNY``. ``powod_pl`` —
+    dlaczego wyrób nie dał charakterystyk (brak pozycji, pozycja bez zakresów, zakresy bez
+    jednostki)."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"charakterystyki funkcji sterownika {sterownik_pl}",
+        wartosc=None,
+        powod_pl=_zdanie(
+            f"{powod_pl} — przyjęto profil {profil_pl} ({_ODNIESIENIE_PROFILU_CHARAKTERYSTYK}); "
+            "zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw"
+        ),
         jakosc=FieldQuality.ESTIMATED,
     )
 
@@ -2764,4 +2815,271 @@ def zaczep_rekordu_aparatu(aparat: Mapping[str, Any]) -> ZaczepRozstrzygniety | 
     return rozstrzygnij_zaczep_przekladnika(
         zaczepy_przekladnika(przekladnie),
         float(projektant) if projektant is not None else None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: obwód nN — czas wyłączenia zwarcia (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN,
+# pakiet 6a)
+# ---------------------------------------------------------------------------
+#
+# Wytrzymałość cieplna przewodu nN (I²t ≤ k²S²) potrzebuje czasu wyłączenia zwarcia przez aparat
+# obwodu. Pierwszeństwo: wartość projektanta na aparacie (``czas_wylaczenia_zwarcia_s`` gałęzi
+# łącznika albo bezpiecznika) > czas z charakterystyki czasowo-prądowej aparatu przy prądzie
+# zwarciowym obwodu (solver ``protection_lv_curves``) > PROPOZYCJA poniżej. Propozycją jest
+# NAJDŁUŻSZY czas wyłączenia dopuszczony przez PN-HD 60364-4-41 dla danego obwodu — wartość
+# zachowawcza dla I²t (dłuższy czas = większa całka Joule'a).
+#
+# Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDNA klasyfikacja dla I²t i dla werdyktu SWZ
+# (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN, pakiet 9; ``rozstrzygnij_rodzaj_obwodu_nn``):
+# wartość projektanta na aparacie obwodu (``rodzaj_obwodu_nn``) > reguła prądu znamionowego
+# aparatu. Obwody odbiorcze sięgają 63 A (§411.3.2.2: do 63 A z gniazdami, do 32 A dla
+# odbiorników na stałe), więc aparat ≤ 63 A daje WARTOŚĆ ROBOCZĄ „obwód odbiorczy” (ESTIMATED
+# — obecność gniazd i rola obwodu nie są daną modelu), aparat > 63 A — obwód rozdzielczy z normy
+# (obwodu odbiorczego powyżej 63 A norma nie zna), aparat bez prądu znamionowego — wartość
+# robocza „obwód rozdzielczy” (ESTIMATED). Dawniej I²t brał próg 32 A, a SWZ 63 A: pasmo
+# 32–63 A było naraz obwodem rozdzielczym i odbiorczym.
+#
+# Układ IT: przy drugim zwarciu obowiązują warunki TN (części przewodzące połączone) albo TT
+# (uziemione indywidualnie) — §411.6.4; propozycja bierze czasy TN (dłuższe, zachowawczo).
+# Układ nieznany: najdłuższy czas tablicy (5 s, obwód rozdzielczy TN).
+
+#: Najwyższy prąd znamionowy aparatu obwodu odbiorczego wg PN-HD 60364-4-41:2017 §411.3.2.2.
+PROG_PRADU_OBWODU_ODBIORCZEGO_A: Final[float] = 63.0
+
+_ZRODLO_CZASU_NN_PL = "PN-HD 60364-4-41"
+_PODSTAWA_RODZAJU_OBWODU_PL = "PN-HD 60364-4-41:2017 §411.3.2.2"
+
+RodzajObwoduNn = Literal["odbiorczy", "rozdzielczy"]
+ZrodloRodzajuObwodu = Literal["projektant", "norma", "wartosc_robocza"]
+
+
+@dataclass(frozen=True)
+class RodzajObwoduRozstrzygniety:
+    """Rodzaj obwodu nN + źródło + uzasadnienie (wspólne dla I²t i SWZ)."""
+
+    rodzaj: RodzajObwoduNn
+    zrodlo: ZrodloRodzajuObwodu
+    uzasadnienie_pl: str
+
+    def dana_przyjeta(self, *, miejsce_pl: str) -> DanaPrzyjeta | None:
+        """Dana przyjęta (``ESTIMATED``) wyłącznie dla wartości roboczej."""
+        if self.zrodlo != "wartosc_robocza":
+            return None
+        return DanaPrzyjeta(
+            nazwa_pl=f"rodzaj obwodu ({miejsce_pl})",
+            wartosc=None,
+            powod_pl=self.uzasadnienie_pl,
+            jakosc=FieldQuality.ESTIMATED,
+        )
+
+
+def rozstrzygnij_rodzaj_obwodu_nn(
+    *, rodzaj_projektanta: str | None, in_a: float | None
+) -> RodzajObwoduRozstrzygniety:
+    """Rodzaj obwodu nN — JEDNO rozstrzygnięcie dla I²t (czas wyłączenia) i werdyktu SWZ.
+
+    ``rodzaj_projektanta`` — ``rodzaj_obwodu_nn`` aparatu obwodu (``None`` — brak deklaracji),
+    ``in_a`` — prąd znamionowy aparatu obwodu.
+    """
+    if rodzaj_projektanta is not None:
+        if rodzaj_projektanta not in get_args(RodzajObwoduNn):
+            raise ValueError("Rodzaj obwodu nN musi być odbiorczy albo rozdzielczy.")
+        return RodzajObwoduRozstrzygniety(
+            cast(RodzajObwoduNn, rodzaj_projektanta),
+            "projektant",
+            f"obwód {rodzaj_projektanta} — wartość projektanta na aparacie obwodu",
+        )
+    if in_a is None:
+        return RodzajObwoduRozstrzygniety(
+            "rozdzielczy",
+            "wartosc_robocza",
+            "obwód rozdzielczy — wartość robocza: aparat obwodu bez prądu znamionowego; "
+            "zmień rodzaj obwodu na aparacie, gdy obwód jest odbiorczy",
+        )
+    if in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A:
+        return RodzajObwoduRozstrzygniety(
+            "odbiorczy",
+            "wartosc_robocza",
+            f"obwód odbiorczy — wartość robocza: aparat {in_a:g} A ≤ "
+            f"{PROG_PRADU_OBWODU_ODBIORCZEGO_A:g} A ({_PODSTAWA_RODZAJU_OBWODU_PL}); zmień rodzaj "
+            "obwodu na aparacie, gdy obwód jest rozdzielczy",
+        )
+    return RodzajObwoduRozstrzygniety(
+        "rozdzielczy",
+        "norma",
+        f"obwód rozdzielczy — aparat {in_a:g} A > {PROG_PRADU_OBWODU_ODBIORCZEGO_A:g} A "
+        f"({_PODSTAWA_RODZAJU_OBWODU_PL}: obwód odbiorczy do "
+        f"{PROG_PRADU_OBWODU_ODBIORCZEGO_A:g} A)",
+    )
+
+
+@dataclass(frozen=True)
+class CzasWylaczeniaRoboczyNn:
+    """Propozycja czasu wyłączenia zwarcia obwodu nN z normy (wartość robocza ``ESTIMATED``)."""
+
+    czas_s: float
+    rodzaj_obwodu: Literal["odbiorczy", "rozdzielczy"]
+    uklad_przyjety: Literal["TN", "TT"]
+    jednostka_redakcyjna: str
+    podstawa_tabeli_pl: str
+    uzasadnienie_pl: str
+
+
+def czas_wylaczenia_roboczy_nn(
+    *, uklad: str | None, rodzaj: RodzajObwoduRozstrzygniety, u0_v: float | None
+) -> CzasWylaczeniaRoboczyNn:
+    """Najdłuższy dopuszczalny czas wyłączenia obwodu nN wg PN-HD 60364-4-41 (propozycja).
+
+    ``uklad`` — układ sieci nN z transformatora zasilającego (``TN-S``/``TN-C-S``/``TN-C``/
+    ``TT``/``IT`` albo ``None``), ``rodzaj`` — rodzaj obwodu z ``rozstrzygnij_rodzaj_obwodu_nn``
+    (ta sama klasyfikacja co werdykt SWZ), ``u0_v`` — napięcie fazowe względem ziemi (``None``
+    przy obwodzie odbiorczym — pasmo nieznane, przyjmuje się czas obwodu rozdzielczego).
+    """
+    uklad_tt = uklad == "TT"
+    uklad_przyjety: Literal["TN", "TT"] = "TT" if uklad_tt else "TN"
+    if uklad is None:
+        opis_ukladu = "układ sieci nN niezadeklarowany — przyjęto najdłuższy czas tablicy (TN)"
+    elif uklad == "IT":
+        opis_ukladu = (
+            "układ IT — przy drugim zwarciu warunki TN albo TT (§411.6.4); przyjęto czasy TN "
+            "(dłuższe)"
+        )
+    else:
+        opis_ukladu = f"układ {uklad}"
+    if uklad is not None and rodzaj.rodzaj == "odbiorczy" and u0_v is not None and u0_v > 50.0:
+        pasmo = pasmo_dla_u0(u0_v)
+        wpis = (TABLICA_TT_ODBIORCZE if uklad_tt else TABLICA_TN_ODBIORCZE)[pasmo]
+        jednostka = "tablica 41.1"
+        rodzaj_czasu: RodzajObwoduNn = "odbiorczy"
+        opis_obwodu = (
+            f"{rodzaj.uzasadnienie_pl}, napięcie fazowe względem ziemi {u0_v:.0f} V "
+            f"(pasmo {pasmo.replace('<=', '≤')} V)"
+        )
+    else:
+        wpis = CZAS_TT_ROZDZIELCZY if uklad_tt else CZAS_TN_ROZDZIELCZY
+        jednostka = "§411.3.2.4" if uklad_tt else "§411.3.2.3"
+        rodzaj_czasu = "rozdzielczy"
+        if uklad is None:
+            opis_obwodu = rodzaj.uzasadnienie_pl
+        elif rodzaj.rodzaj == "odbiorczy":
+            # Obwód odbiorczy bez pasma napięcia względem ziemi: tablica 41.1 nie daje czasu,
+            # więc przyjmuje się czas obwodu rozdzielczego (dłuższy, zachowawczo dla I²t).
+            opis_obwodu = (
+                f"{rodzaj.uzasadnienie_pl}; pasmo napięcia względem ziemi nieznane — przyjęto "
+                "czas obwodu rozdzielczego"
+            )
+        else:
+            opis_obwodu = rodzaj.uzasadnienie_pl
+    return CzasWylaczeniaRoboczyNn(
+        czas_s=wpis.czas_s,
+        rodzaj_obwodu=rodzaj_czasu,
+        uklad_przyjety=uklad_przyjety,
+        jednostka_redakcyjna=f"{_ZRODLO_CZASU_NN_PL} {jednostka}",
+        podstawa_tabeli_pl=wpis.podstawa,
+        uzasadnienie_pl=(
+            f"Wartość robocza czasu wyłączenia zwarcia {wpis.czas_s:g} s — najdłuższy czas "
+            f"dopuszczony przez {_ZRODLO_CZASU_NN_PL} {jednostka} ({opis_ukladu}, {opis_obwodu}); "
+            "wartość zachowawcza dla całki Joule'a. Zmień ją na aparacie obwodu (czas wyłączenia "
+            "zwarcia), "
+            "gdy znasz charakterystykę aparatu."
+        ),
+    )
+
+
+def dana_przyjeta_czasu_wylaczenia_nn(
+    *, miejsce_pl: str, czas: CzasWylaczeniaRoboczyNn
+) -> DanaPrzyjeta:
+    """Wartość robocza czasu wyłączenia obwodu nN jako dana przyjęta werdyktu (``ESTIMATED``)."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"czas wyłączenia zwarcia ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=czas.czas_s, jednostka="s"),
+        powod_pl=czas.uzasadnienie_pl,
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: czas trwania zwarcia do oceny cieplnej SN (karta EDYTOR-DELT-SCENARIUSZA-
+# ZABEZPIECZEN, pakiet 8 — dyrektywa właściciela: kryterium cieplne bez stanu „nieustalony”)
+# ---------------------------------------------------------------------------
+#
+# Ocena cieplna aparatury pola SN, prąd cieplny pola I_th, dowód doboru aparatury, kryterium
+# cieplne przewodów SN i dobór kabla toru DER potrzebują czasu trwania zwarcia T_k. Czas NIE
+# jest nigdy pusty. JEDNO rozstrzygnięcie (``rozstrzygnij_czas_trwania_zwarcia``), w kolejności:
+#   1. wartość projektanta w modelu — ``czas_wylaczenia_zwarcia_s`` wyłącznika pola (ten sam
+#      atrybut aparatu co czas wyłączenia obwodu nN, pakiet 6a: jeden atrybut dla obu dziedzin);
+#   2. czas z nastaw zabezpieczenia i czasu własnego wyłącznika (człon nastawczy + czas własny);
+#   3. czas cieplny przypadku obliczeniowego, gdy przypadek go jawnie podaje (wyłącznie
+#      kryterium przewodów — parametr scenariusza zwarciowego jest daną projektanta);
+#   4. wartość robocza 1 s — znamionowy czas trwania zwarcia aparatury rozdzielczej
+#      (IEC 62271-1 / PN-EN 62271-1 §4.7), jakość ``ESTIMATED``, wpis w danych
+#      przyjętych — ocena na niej ma kompletność dowodu ``NIEPELNY``.
+
+CZAS_TRWANIA_ZWARCIA_ROBOCZY_S: Final[float] = 1.0
+PODSTAWA_CZASU_TRWANIA_ZWARCIA_PL: Final[str] = (
+    "znamionowy czas trwania zwarcia aparatury rozdzielczej wg IEC 62271-1 (PN-EN 62271-1) §4.7"
+)
+
+ZrodloCzasuZwarcia = Literal["projektant", "nastawy", "przypadek", "wartosc_robocza"]
+
+
+@dataclass(frozen=True)
+class CzasTrwaniaZwarcia:
+    """Czas trwania zwarcia [s] + źródło + podstawa jednym zdaniem (trójka rozstrzygnięcia)."""
+
+    wartosc_s: float
+    zrodlo: ZrodloCzasuZwarcia
+    podstawa_pl: str
+
+    @property
+    def robocza(self) -> bool:
+        return self.zrodlo == "wartosc_robocza"
+
+    def dana_przyjeta(self, *, miejsce_pl: str) -> DanaPrzyjeta | None:
+        """Dana przyjęta (``ESTIMATED``) dla wartości roboczej; ``None`` dla pozostałych źródeł."""
+        if not self.robocza:
+            return None
+        return DanaPrzyjeta(
+            nazwa_pl=f"czas trwania zwarcia ({miejsce_pl})",
+            wartosc=Wielkosc(wartosc=self.wartosc_s, jednostka="s"),
+            powod_pl=self.podstawa_pl,
+            jakosc=FieldQuality.ESTIMATED,
+        )
+
+
+def rozstrzygnij_czas_trwania_zwarcia(
+    *,
+    czas_projektanta_s: float | None,
+    opis_projektanta_pl: str,
+    czas_z_nastaw_s: float | None,
+    opis_nastaw_pl: str,
+    czas_przypadku_s: float | None = None,
+    opis_przypadku_pl: str = "",
+) -> CzasTrwaniaZwarcia:
+    """Czas trwania zwarcia do oceny cieplnej — JEDNO miejsce pierwszeństwa źródeł.
+
+    Projektant > nastawy zabezpieczenia > czas przypadku (jawny) > wartość robocza 1 s
+    (IEC 62271-1 §4.7). Wynik nigdy nie jest pusty; ``podstawa_pl`` nazywa źródło zdaniem,
+    a dla wartości roboczej — normę i sposób jej zmiany w modelu (powód braku czasu z nastaw
+    zostaje w rozbiciu z nastaw i w kodzie gotowości wołającego, nie w tym zdaniu).
+    """
+    if czas_projektanta_s is not None:
+        return CzasTrwaniaZwarcia(
+            float(czas_projektanta_s),
+            "projektant",
+            f"wartość nadana przez projektanta ({opis_projektanta_pl})",
+        )
+    if czas_z_nastaw_s is not None:
+        return CzasTrwaniaZwarcia(float(czas_z_nastaw_s), "nastawy", opis_nastaw_pl)
+    if czas_przypadku_s is not None:
+        return CzasTrwaniaZwarcia(float(czas_przypadku_s), "przypadek", opis_przypadku_pl)
+    return CzasTrwaniaZwarcia(
+        CZAS_TRWANIA_ZWARCIA_ROBOCZY_S,
+        "wartosc_robocza",
+        (
+            f"wartość robocza {liczba_pl(CZAS_TRWANIA_ZWARCIA_ROBOCZY_S)} s — "
+            f"{PODSTAWA_CZASU_TRWANIA_ZWARCIA_PL}. Zmień przyjęty czas zwarcia "
+            f"({opis_projektanta_pl}), gdy znasz czas wyłączenia."
+        ),
     )

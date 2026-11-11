@@ -122,11 +122,14 @@ export interface PrzekladnikPola {
   pole_ref: string | null;
 }
 
+/** Sterownik zabezpieczeń (IED) związany z elementem — jeden nośnik konfiguracji (ADR-022). */
 export interface ZabezpieczeniePola {
   ref_id: string;
   nazwa: string;
-  rodzaj: string;
-  wylacznik_ref: string;
+  /** Kody włączonych funkcji z rejestru funkcji (kolejność zapisu). */
+  kody_funkcji: string[];
+  /** Aparaty z macierzy wyzwoleń (posortowane); pusta — sterownik nic nie wyłącza. */
+  wylaczniki_refs: string[];
   aktywne: boolean;
 }
 
@@ -234,8 +237,8 @@ export const KLUCZE_KONTRAKTU = {
   ZabezpieczeniePola: kluczeTypu<ZabezpieczeniePola>()([
     'ref_id',
     'nazwa',
-    'rodzaj',
-    'wylacznik_ref',
+    'kody_funkcji',
+    'wylaczniki_refs',
     'aktywne',
   ]),
   SasiedztwoElementu: kluczeTypu<SasiedztwoElementu>()([

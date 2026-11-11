@@ -1,208 +1,1422 @@
 {
+  "etykiety_wartosci": {
+    "A_PIERWOTNY": "A po stronie pierwotnej przekładnika",
+    "A_WTORNY": "A po stronie wtórnej przekładnika",
+    "DO_LINII": "w stronę linii",
+    "DO_SZYN": "w stronę szyn",
+    "DT": "czas niezależny (DT)",
+    "IEC_EI": "IEC skrajnie odwrotna (EI)",
+    "IEC_LTI": "IEC odwrotna długoczasowa (LTI, 120)",
+    "IEC_SI": "IEC normalnie odwrotna (SI)",
+    "IEC_VI": "IEC bardzo odwrotna (VI)",
+    "IEEE_EI": "IEEE skrajnie odwrotna (EI)",
+    "IEEE_MI": "IEEE umiarkowanie odwrotna (MI)",
+    "IEEE_VI": "IEEE bardzo odwrotna (VI)"
+  },
   "funkcje": {
+    "21": {
+      "ansi": "21",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "Ω",
+          "klucz": "z1_ohm",
+          "nazwa_pl": "zasięg strefy pierwszej (strona pierwotna)",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": "s",
+          "klucz": "z1_zwloka_s",
+          "nazwa_pl": "zwłoka strefy pierwszej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "Ω",
+          "klucz": "z2_ohm",
+          "nazwa_pl": "zasięg strefy drugiej (strona pierwotna)",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "z2_zwloka_s",
+          "nazwa_pl": "zwłoka strefy drugiej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "Ω",
+          "klucz": "z3_ohm",
+          "nazwa_pl": "zasięg strefy trzeciej (strona pierwotna)",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "z3_zwloka_s",
+          "nazwa_pl": "zwłoka strefy trzeciej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "°",
+          "klucz": "kat_linii_deg",
+          "nazwa_pl": "kąt impedancji linii",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
+      "nazwa_pl": "odległościowe (impedancyjne, strefy pierwsza do trzeciej)",
+      "ocena": null,
+      "oznaczenie_pl": "Z<",
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [
+        "3I0"
+      ],
+      "wejscia_wymagane": [
+        "I",
+        "U"
+      ]
+    },
     "25": {
       "ansi": "25",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Un",
+          "klucz": "du_proc_un",
+          "nazwa_pl": "dopuszczalna różnica napięć",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "Hz",
+          "klucz": "df_hz",
+          "nazwa_pl": "dopuszczalna różnica częstotliwości",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "°",
+          "klucz": "dfi_deg",
+          "nazwa_pl": "dopuszczalna różnica kątów",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "kontrola synchronizmu przy załączaniu",
+      "ocena": null,
       "oznaczenie_pl": "synchrocheck",
-      "rodzaj": "BLOKADA"
+      "rodzaj": "BLOKADA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "26": {
       "ansi": "26",
+      "nastawy": [],
       "nazwa_pl": "temperaturowe transformatora",
+      "ocena": null,
       "oznaczenie_pl": "temperatura",
-      "rodzaj": "TECHNOLOGICZNE"
+      "rodzaj": "TECHNOLOGICZNE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "27": {
       "ansi": "27",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Un",
+          "klucz": "prog_proc_un",
+          "nazwa_pl": "próg napięciowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "podnapięciowe (przekładniki od strony linii)",
+      "ocena": null,
       "oznaczenie_pl": "U<",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "32": {
       "ansi": "32",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Sn",
+          "klucz": "prog_proc_sn",
+          "nazwa_pl": "próg mocy zwrotnej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "kierunkowe mocy czynnej (od skutków mocy zwrotnej)",
+      "ocena": null,
       "oznaczenie_pl": "P>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I",
+        "U"
+      ]
+    },
+    "46": {
+      "ansi": "46",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% In",
+          "klucz": "prog_i2_proc_in",
+          "nazwa_pl": "próg składowej przeciwnej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
+      "nazwa_pl": "od asymetrii prądów (składowa przeciwna)",
+      "ocena": null,
+      "oznaczenie_pl": "I2>",
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I"
+      ]
+    },
+    "49": {
+      "ansi": "49",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% In",
+          "klucz": "prad_dopuszczalny_proc_in",
+          "nazwa_pl": "prąd dopuszczalny długotrwale",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "min",
+          "klucz": "stala_czasowa_min",
+          "nazwa_pl": "stała czasowa nagrzewania",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "%",
+          "klucz": "prog_alarmu_proc",
+          "nazwa_pl": "próg alarmu cieplnego",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
+      "nazwa_pl": "przeciążeniowe cieplne (model cieplny)",
+      "ocena": null,
+      "oznaczenie_pl": "θ>",
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I"
+      ]
     },
     "50": {
       "ansi": "50",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg rozruchowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "krzywa",
+          "nazwa_pl": "charakterystyka czasowa",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DT",
+            "IEC_SI",
+            "IEC_VI",
+            "IEC_EI",
+            "IEC_LTI",
+            "IEEE_MI",
+            "IEEE_VI",
+            "IEEE_EI"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "tms",
+          "nazwa_pl": "mnożnik czasowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "nadprądowe zwarciowe (bezzwłoczne)",
+      "ocena": "NADPRADOWA_IEC_60255",
       "oznaczenie_pl": "I>>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I"
+      ]
     },
     "50BF": {
       "ansi": "50BF",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% In",
+          "klucz": "prog_pradu_proc_in",
+          "nazwa_pl": "próg kontroli prądu",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "lokalna rezerwa wyłącznikowa",
+      "ocena": null,
       "oznaczenie_pl": "LRW",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I"
+      ]
     },
     "50N": {
       "ansi": "50N",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg rozruchowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "krzywa",
+          "nazwa_pl": "charakterystyka czasowa",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DT",
+            "IEC_SI",
+            "IEC_VI",
+            "IEC_EI",
+            "IEC_LTI",
+            "IEEE_MI",
+            "IEEE_VI",
+            "IEEE_EI"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "tms",
+          "nazwa_pl": "mnożnik czasowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "ziemnozwarciowe bezzwłoczne (prąd zerowy)",
+      "ocena": null,
       "oznaczenie_pl": "Io>>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0"
+      ]
     },
     "51": {
       "ansi": "51",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg rozruchowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "krzywa",
+          "nazwa_pl": "charakterystyka czasowa",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DT",
+            "IEC_SI",
+            "IEC_VI",
+            "IEC_EI",
+            "IEC_LTI",
+            "IEEE_MI",
+            "IEEE_VI",
+            "IEEE_EI"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "tms",
+          "nazwa_pl": "mnożnik czasowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "nadprądowe zwłoczne",
+      "ocena": "NADPRADOWA_IEC_60255",
       "oznaczenie_pl": "I>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I"
+      ]
     },
     "51N": {
       "ansi": "51N",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg rozruchowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "krzywa",
+          "nazwa_pl": "charakterystyka czasowa",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DT",
+            "IEC_SI",
+            "IEC_VI",
+            "IEC_EI",
+            "IEC_LTI",
+            "IEEE_MI",
+            "IEEE_VI",
+            "IEEE_EI"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "tms",
+          "nazwa_pl": "mnożnik czasowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "ziemnozwarciowe zwłoczne (prąd zerowy)",
+      "ocena": null,
       "oznaczenie_pl": "Io>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0"
+      ]
     },
     "59": {
       "ansi": "59",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Un",
+          "klucz": "prog_proc_un",
+          "nazwa_pl": "próg napięciowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "nadnapięciowe (przekładniki od strony linii)",
+      "ocena": null,
       "oznaczenie_pl": "U>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "59N": {
       "ansi": "59N",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
+      "ocena": null,
       "oznaczenie_pl": "U0>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3U0"
+      ]
     },
     "60N": {
       "ansi": "60N",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg prądu niezrównoważenia",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "od niezrównoważenia baterii kondensatorów (prąd między punktami gwiazd)",
+      "ocena": null,
       "oznaczenie_pl": "Ir>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I"
+      ]
     },
     "63": {
       "ansi": "63",
+      "nastawy": [],
       "nazwa_pl": "gazowo-przepływowe transformatora",
+      "ocena": null,
       "oznaczenie_pl": "Buchholz",
-      "rodzaj": "TECHNOLOGICZNE"
+      "rodzaj": "TECHNOLOGICZNE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "63P": {
       "ansi": "63P",
+      "nastawy": [],
       "nazwa_pl": "od wzrostu ciśnienia w kadzi transformatora",
+      "ocena": null,
       "oznaczenie_pl": "ciśnienie",
-      "rodzaj": "TECHNOLOGICZNE"
+      "rodzaj": "TECHNOLOGICZNE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "67": {
       "ansi": "67",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg rozruchowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "krzywa",
+          "nazwa_pl": "charakterystyka czasowa",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DT",
+            "IEC_SI",
+            "IEC_VI",
+            "IEC_EI",
+            "IEC_LTI",
+            "IEEE_MI",
+            "IEEE_VI",
+            "IEEE_EI"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "tms",
+          "nazwa_pl": "mnożnik czasowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "kierunek",
+          "nazwa_pl": "kierunek działania",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DO_LINII",
+            "DO_SZYN"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": "°",
+          "klucz": "kat_charakterystyczny_deg",
+          "nazwa_pl": "kąt charakterystyczny",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn)",
+      "ocena": null,
       "oznaczenie_pl": "I> kierunkowe",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I",
+        "U"
+      ]
     },
     "67N": {
       "ansi": "67N",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "A",
+          "klucz": "prog",
+          "nazwa_pl": "próg rozruchowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "jednostka_progu",
+          "nazwa_pl": "strona przekładnika progu",
+          "typ": "WYBOR",
+          "wartosci": [
+            "A_WTORNY",
+            "A_PIERWOTNY"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "krzywa",
+          "nazwa_pl": "charakterystyka czasowa",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DT",
+            "IEC_SI",
+            "IEC_VI",
+            "IEC_EI",
+            "IEC_LTI",
+            "IEEE_MI",
+            "IEEE_VI",
+            "IEEE_EI"
+          ]
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "tms",
+          "nazwa_pl": "mnożnik czasowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": false,
+          "jednostka": null,
+          "klucz": "kierunek",
+          "nazwa_pl": "kierunek działania",
+          "typ": "WYBOR",
+          "wartosci": [
+            "DO_LINII",
+            "DO_SZYN"
+          ]
+        },
+        {
+          "dodatnia": false,
+          "jednostka": "°",
+          "klucz": "kat_charakterystyczny_deg",
+          "nazwa_pl": "kąt charakterystyczny",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "ziemnozwarciowe kierunkowe (wejścia prądu zerowego i napięcia zerowego)",
+      "ocena": null,
       "oznaczenie_pl": "Io> kierunkowe",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0",
+        "3U0"
+      ]
     },
     "78": {
       "ansi": "78",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "°",
+          "klucz": "prog_deg",
+          "nazwa_pl": "próg przesunięcia wektora",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "przesunięcie wektora napięcia (ochrona od pracy wyspowej)",
+      "ocena": "LOM",
       "oznaczenie_pl": "skok wektora",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "79": {
       "ansi": "79",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "1",
+          "klucz": "liczba_cykli",
+          "nazwa_pl": "liczba cykli",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "t_przerwy_1_s",
+          "nazwa_pl": "czas przerwy cyklu 1",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "t_przerwy_2_s",
+          "nazwa_pl": "czas przerwy cyklu 2",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "t_przerwy_3_s",
+          "nazwa_pl": "czas przerwy cyklu 3",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "t_przerwy_4_s",
+          "nazwa_pl": "czas przerwy cyklu 4",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "t_blokady_s",
+          "nazwa_pl": "czas blokady po załączeniu",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą)",
+      "ocena": null,
       "oznaczenie_pl": "SPZ",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": []
     },
     "81O": {
       "ansi": "81O",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "Hz",
+          "klucz": "prog_hz",
+          "nazwa_pl": "próg",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "nadczęstotliwościowe",
+      "ocena": "LOM",
       "oznaczenie_pl": "f>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "81R": {
       "ansi": "81R",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "Hz/s",
+          "klucz": "prog_hz_s",
+          "nazwa_pl": "próg szybkości zmian częstotliwości",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "szybkość zmian częstotliwości (ROCOF)",
+      "ocena": "LOM",
       "oznaczenie_pl": "df/dt",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "81U": {
       "ansi": "81U",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "Hz",
+          "klucz": "prog_hz",
+          "nazwa_pl": "próg",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "podczęstotliwościowe",
+      "ocena": "LOM",
       "oznaczenie_pl": "f<",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
+    },
+    "87L": {
+      "ansi": "87L",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% In",
+          "klucz": "prog_roznicowy_proc_in",
+          "nazwa_pl": "próg różnicowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "%",
+          "klucz": "stabilizacja_proc",
+          "nazwa_pl": "współczynnik stabilizacji",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
+      "nazwa_pl": "różnicowe linii (porównanie prądów obu końców łączem)",
+      "ocena": null,
+      "oznaczenie_pl": "różnicowe linii",
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I",
+        "I_STRONY_2"
+      ]
     },
     "87T": {
       "ansi": "87T",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% In",
+          "klucz": "prog_roznicowy_proc_in",
+          "nazwa_pl": "próg różnicowy",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "%",
+          "klucz": "stabilizacja_proc",
+          "nazwa_pl": "współczynnik stabilizacji",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "%",
+          "klucz": "blokada_2h_proc",
+          "nazwa_pl": "blokada drugą harmoniczną",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "różnicowe transformatora",
+      "ocena": null,
       "oznaczenie_pl": "różnicowe",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I",
+        "I_STRONY_2"
+      ]
     },
     "90": {
       "ansi": "90",
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Un",
+          "klucz": "napiecie_zadane_proc_un",
+          "nazwa_pl": "napięcie zadane",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "%",
+          "klucz": "strefa_nieczulosci_proc",
+          "nazwa_pl": "strefa nieczułości",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "automatyczna regulacja napięcia transformatora",
+      "ocena": null,
       "oznaczenie_pl": "ARN",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "BD": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "zabezpieczenia technologiczne dławika gaszącego (dwa stopnie)",
+      "ocena": null,
       "oznaczenie_pl": "BD I / BD II",
-      "rodzaj": "TECHNOLOGICZNE"
+      "rodzaj": "TECHNOLOGICZNE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "BT": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "zabezpieczenia technologiczne transformatora uziemiającego (dwa stopnie)",
+      "ocena": null,
       "oznaczenie_pl": "BT I / BT II",
-      "rodzaj": "TECHNOLOGICZNE"
+      "rodzaj": "TECHNOLOGICZNE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "Go>": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "mS",
+          "klucz": "prog_g0_ms",
+          "nazwa_pl": "próg konduktancji zerowej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg rozruchowy napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "ziemnozwarciowe konduktancyjne",
+      "ocena": null,
       "oznaczenie_pl": "Go>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0",
+        "3U0"
+      ]
     },
     "NZ": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Un",
+          "klucz": "prog_proc_un",
+          "nazwa_pl": "próg napięcia w linii",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "blokada załączenia przy napięciu w linii (napięcie zwrotne)",
+      "ocena": null,
       "oznaczenie_pl": "blokada NZ",
-      "rodzaj": "BLOKADA"
+      "rodzaj": "BLOKADA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U"
+      ]
     },
     "OWG": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR)",
+      "ocena": null,
       "oznaczenie_pl": "OWG",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "SCO": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "Hz",
+          "klucz": "prog_hz_sco1",
+          "nazwa_pl": "próg stopnia SCO1",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "Hz",
+          "klucz": "prog_hz_sco2",
+          "nazwa_pl": "próg stopnia SCO2",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
+      "ocena": null,
       "oznaczenie_pl": "SCO",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "SYGNAL"
+      ]
     },
     "SPZE": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "t_e_s",
+          "nazwa_pl": "czas tE",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
+      "ocena": null,
       "oznaczenie_pl": "SPZE",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": []
     },
     "SZR": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% Un",
+          "klucz": "prog_zaniku_proc_un",
+          "nazwa_pl": "próg zaniku napięcia",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "samoczynne załączenie rezerwy (przekaźnik w polu łącznika szyn)",
+      "ocena": null,
       "oznaczenie_pl": "SZR",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "U",
+        "SYGNAL"
+      ]
     },
     "Yo>": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "mS",
+          "klucz": "prog_y0_ms",
+          "nazwa_pl": "próg admitancji zerowej",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg rozruchowy napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "ziemnozwarciowe admitancyjne",
+      "ocena": null,
       "oznaczenie_pl": "Yo>",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3I0",
+        "3U0"
+      ]
     },
     "ZAWSC": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "% U0n",
+          "klucz": "prog_u0_proc",
+          "nazwa_pl": "próg napięcia zerowego",
+          "typ": "LICZBA",
+          "wartosci": []
+        },
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_s",
+          "nazwa_pl": "zwłoka",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "automatyka wymuszania składowej czynnej prądu ziemnozwarciowego",
+      "ocena": null,
       "oznaczenie_pl": "ZAWSC",
-      "rodzaj": "AUTOMATYKA"
+      "rodzaj": "AUTOMATYKA",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "3U0"
+      ]
     },
     "ZS": {
       "ansi": null,
+      "nastawy": [
+        {
+          "dodatnia": true,
+          "jednostka": "s",
+          "klucz": "zwloka_blokowania_s",
+          "nazwa_pl": "czas oczekiwania na sygnał blokowania",
+          "typ": "LICZBA",
+          "wartosci": []
+        }
+      ],
       "nazwa_pl": "współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS)",
+      "ocena": null,
       "oznaczenie_pl": "ZS",
-      "rodzaj": "ZABEZPIECZENIE"
+      "rodzaj": "ZABEZPIECZENIE",
+      "wejscia_opcjonalne": [],
+      "wejscia_wymagane": [
+        "I",
+        "SYGNAL"
+      ]
     }
   },
   "rodzaje": [
@@ -210,5 +1424,37 @@
     "AUTOMATYKA",
     "BLOKADA",
     "TECHNOLOGICZNE"
-  ]
+  ],
+  "wejscia": [
+    "I",
+    "U",
+    "3I0",
+    "3U0",
+    "I_STRONY_2",
+    "SYGNAL"
+  ],
+  "zestawy_rodzaju": {
+    "KIERUNKOWY_NADPRADOWY": [
+      "67",
+      "67N"
+    ],
+    "NADPRADOWY": [
+      "50",
+      "51"
+    ],
+    "NIESTANDARDOWY": [],
+    "ODLEGLOSCIOWY": [
+      "21"
+    ],
+    "ROZNICOWY_LINII": [
+      "87L"
+    ],
+    "ROZNICOWY_TRANSFORMATORA": [
+      "87T"
+    ],
+    "ZIEMNOZWARCIOWY": [
+      "50N",
+      "51N"
+    ]
+  }
 }

@@ -1343,3 +1343,14 @@ def test_naruszenie_na_modelu_niezwalidowanym_pozostaje_naruszeniem() -> None:
     )
     assert rekord.status_maszynowy == "NIE_SPELNIA"
     assert f.wymaganie([rekord], sposob="SYMULACJA").status_maszynowy == "NIE_SPELNIA"
+
+
+def test_definicje_marginesu_maja_jeden_symbol_inny_niz_wspolczynniki_iec_60909() -> None:
+    """Karta KD6: symbol marginesu ``\\Delta x`` we WSZYSTKICH relacjach; litera ``m`` (dawny
+    symbol) w szczegółach wytrzymałości aparatury oznacza współczynnik cieplny m IEC 60909
+    (I_th = I_k''·√(m+n)) — jedna litera, dwie wielkości w jednym widoku."""
+    from werdykt.decyzja import _DEFINICJE_MARGINESU, SYMBOL_MARGINESU_LATEX
+
+    lewe = {d.split("=", 1)[0].strip() for d in _DEFINICJE_MARGINESU.values()}
+    assert lewe == {SYMBOL_MARGINESU_LATEX}
+    assert SYMBOL_MARGINESU_LATEX not in {"m", "n", r"\kappa", "x"}

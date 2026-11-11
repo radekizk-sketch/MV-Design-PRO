@@ -1,40 +1,201 @@
 /*
- * Edytor nastaw zabezpieczenia nadprądowego — wyłącznie tokeny powłoki (--mvd-*), oba
+ * Edytor nastaw sterownika zabezpieczeń (standard warsztatu §10) — wyłącznie tokeny powłoki (--mvd-*), oba
  * motywy z automatu. Promienie 10px sekcja / 8px karta; odstępy 4 / 8 / 12 / 16.
  */
 
 .mvd-edytor-nastaw {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
   background: var(--mvd-panel);
   border: 1px solid var(--mvd-line);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: 8px;
+  padding: 8px 10px;
   color: var(--mvd-ink);
 }
 
+/* Nagłówek w jednej linii: sterownik · wyrób · przekładnik · przełącznik grup (§10 pkt 1). */
+.mvd-edytor-nastaw-naglowek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
 .mvd-edytor-nastaw-naglowek h4 {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 13px;
 }
 
 .mvd-edytor-nastaw-kontekst {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
-  margin: 0;
   font-size: 12px;
-}
-
-.mvd-edytor-nastaw-kontekst dt {
-  font: 600 10.5px/1.4 var(--mvd-font-mono);
-  letter-spacing: 0.08em;
   color: var(--mvd-muted);
 }
 
-.mvd-edytor-nastaw-kontekst dd {
+.mvd-edytor-nastaw-grupy {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.mvd-edytor-nastaw-grupy button {
+  min-width: 24px;
+  padding: 1px 6px;
+  border: 1px solid var(--mvd-line);
+  background: transparent;
+  color: var(--mvd-ink);
+  border-radius: 4px;
+  font: 600 12px/1.4 var(--mvd-font-mono);
+  cursor: pointer;
+}
+
+.mvd-edytor-nastaw-grupy button[aria-pressed='true'] {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+
+/* Grupa aktywna (czytana przez ocenę) — podkreślenie, nie kolor tła (§10 pkt 8). */
+.mvd-edytor-nastaw-grupy button[data-aktywna='true'] {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mvd-edytor-nastaw-grupy .mvd-edytor-nastaw-ustaw-aktywna {
+  font: 12px/1.4 inherit;
+  margin-left: 6px;
+}
+
+/* Funkcja = wiersz (§10 pkt 3). */
+.mvd-edytor-nastaw-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mvd-edytor-nastaw-tabela th {
+  text-align: left;
+  font: 600 10.5px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 2px 6px;
+}
+
+.mvd-edytor-nastaw-tabela td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 2px 6px;
+  vertical-align: middle;
+}
+
+.mvd-edytor-nastaw-tabela tr[data-wlaczona='false'] td {
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-kod {
+  font-family: var(--mvd-font-mono);
+  white-space: nowrap;
+}
+
+.mvd-edytor-nastaw-komorka {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
+
+.mvd-edytor-nastaw-pole {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.mvd-edytor-nastaw-pole input[type='number'] {
+  width: 64px;
+  padding: 1px 4px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  text-align: right;
+}
+
+.mvd-edytor-nastaw-wybor {
+  max-width: 180px;
+  padding: 1px 2px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font-size: 12px;
+}
+
+.mvd-edytor-nastaw-jednostka,
+.mvd-edytor-nastaw-prefiks,
+.mvd-edytor-nastaw-pusto {
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-stopka {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.mvd-edytor-nastaw-stan[data-stan='braki'] {
+  color: var(--mvd-warn);
+}
+
+.mvd-edytor-nastaw-szczegoly-przycisk {
+  margin-left: auto;
+  border: 1px solid var(--mvd-line);
+  background: transparent;
+  color: var(--mvd-ink);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mvd-edytor-nastaw-szczegoly {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--mvd-line);
+  padding-top: 6px;
+  font-size: 12px;
+}
+
+.mvd-edytor-nastaw-lista {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
   margin: 0;
+}
+
+.mvd-edytor-nastaw-lista > div {
+  display: contents;
+}
+
+.mvd-edytor-nastaw-lista dt {
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-lista dd {
+  margin: 0;
+}
+
+.mvd-edytor-nastaw-zalozenie {
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-nieoceniane {
+  margin: 0;
+  padding-left: 16px;
 }
 
 .mvd-edytor-nastaw-stopien {
@@ -61,31 +222,13 @@
 }
 
 .mvd-edytor-nastaw-braki {
-  border: 1px solid var(--mvd-warn);
-  background: var(--mvd-warn-bg);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12.5px;
-}
-
-.mvd-edytor-nastaw-braki p {
-  margin: 0 0 4px;
-  font-weight: 600;
-}
-
-.mvd-edytor-nastaw-braki ul {
   margin: 0;
   padding-left: 16px;
+  font-size: 12px;
 }
 
 .mvd-edytor-nastaw-braki em {
   color: var(--mvd-muted);
-}
-
-.mvd-edytor-nastaw-gotowe {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--mvd-ok);
 }
 
 .mvd-edytor-nastaw-blad {
@@ -95,13 +238,12 @@
 }
 
 .mvd-edytor-nastaw-zapisz {
-  align-self: flex-start;
   border: 1px solid var(--mvd-accent);
   background: var(--mvd-accent);
   color: var(--mvd-accent-ink);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -127,4 +269,27 @@
   color: var(--mvd-ink);
   font-size: 12px;
   cursor: pointer;
+}
+
+/* Skład funkcji sterownika (szczegóły na żądanie): wybór i przycisk w jednej linii. */
+.mvd-edytor-nastaw-sklad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Znaczniki przypadków obliczeniowych z inną grupą albo nadpisanymi nastawami (ADR-022). */
+.mvd-edytor-nastaw-w-przypadkach {
+  display: block;
+  font-size: 10.5px;
+  color: var(--mvd-warn);
+}
+.mvd-edytor-nastaw-przypadki {
+  margin: 6px 0;
+  font-size: 11.5px;
+}
+.mvd-edytor-nastaw-przypadki ul {
+  margin: 2px 0 0;
+  padding-left: 16px;
 }

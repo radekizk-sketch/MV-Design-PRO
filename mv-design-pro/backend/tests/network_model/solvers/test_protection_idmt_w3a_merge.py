@@ -39,7 +39,7 @@ IS_A = 100.0
 
 def _stopien(krzywa: str, tms: float) -> StopienNastaw:
     return StopienNastaw(
-        funkcja="overcurrent_51",
+        funkcja="51",
         krzywa=krzywa,
         wartosc_progu=IS_A,
         jednostka_progu="A_PIERWOTNY",

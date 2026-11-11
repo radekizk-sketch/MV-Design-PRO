@@ -24,6 +24,7 @@ from enum import StrEnum
 from typing import Any, TypeVar
 
 from domain.project_archive import (
+    SEKCJE_EMITOWANE_GDY_NIEPUSTE,
     ArchiveError,
     ArchiveFingerprints,
     ProjectArchive,
@@ -31,6 +32,7 @@ from domain.project_archive import (
     canonicalize,
     dict_to_archive,
     obiekt_json,
+    odciski_do_slownika,
     odciski_ze_slownika,
     odczytaj_wpisy_zip,
 )
@@ -59,6 +61,7 @@ SECTION_NAMES: tuple[str, ...] = (
     "interpretations",
     "issues",
     "enm",
+    "scenariusze",
 )
 
 _FINGERPRINT_FIELD_MAP: dict[str, str] = {
@@ -69,6 +72,7 @@ _FINGERPRINT_FIELD_MAP: dict[str, str] = {
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
     "enm": "enm_hash",
+    "scenariusze": "scenariusze_hash",
 }
 
 
@@ -228,16 +232,7 @@ def _compute_deterministic_signature(
             }
             for d in deltas
         ],
-        "fingerprints": {
-            "archive_hash": fingerprints.archive_hash,
-            "project_meta_hash": fingerprints.project_meta_hash,
-            "cases_hash": fingerprints.cases_hash,
-            "runs_hash": fingerprints.runs_hash,
-            "results_hash": fingerprints.results_hash,
-            "interpretations_hash": fingerprints.interpretations_hash,
-            "issues_hash": fingerprints.issues_hash,
-            "enm_hash": fingerprints.enm_hash,
-        },
+        "fingerprints": odciski_do_slownika(fingerprints),
     }
     canonical = canonicalize(sig_data)
     json_str = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
@@ -274,6 +269,10 @@ def compute_section_deltas(
         old_hash = _get_fingerprint_hash(old_fingerprints, section_name)
         new_hash = _get_fingerprint_hash(new_fp, section_name)
 
+        if section_name in SEKCJE_EMITOWANE_GDY_NIEPUSTE and not old_hash and not new_hash:
+            # Sekcja nieobecna w obu archiwach nie ma delty — paczka zmian projektu bez
+            # scenariuszy jest bajtowo ta sama co przed sekcją.
+            continue
         if old_hash == new_hash:
             deltas.append(
                 SectionDelta(
@@ -404,20 +403,15 @@ def apply_incremental_archive(
             if delta.data is not None:
                 base_dict[delta.section_name] = delta.data
         elif delta.status == SectionChangeStatus.REMOVED:
-            # Sekcje usunięte — wstawienie pustych danych
-            base_dict[delta.section_name] = _empty_section_data(delta.section_name)
+            # Sekcje usunięte — wstawienie pustych danych; sekcja emitowana tylko niepusta
+            # znika z treści (tak jak w archiwum projektu, który jej nie ma).
+            if delta.section_name in SEKCJE_EMITOWANE_GDY_NIEPUSTE:
+                base_dict.pop(delta.section_name, None)
+            else:
+                base_dict[delta.section_name] = _empty_section_data(delta.section_name)
 
     # Uaktualnij fingerprints w zrekonstruowanym słowniku
-    base_dict["fingerprints"] = {
-        "archive_hash": incremental.fingerprints.archive_hash,
-        "project_meta_hash": incremental.fingerprints.project_meta_hash,
-        "cases_hash": incremental.fingerprints.cases_hash,
-        "runs_hash": incremental.fingerprints.runs_hash,
-        "results_hash": incremental.fingerprints.results_hash,
-        "interpretations_hash": incremental.fingerprints.interpretations_hash,
-        "issues_hash": incremental.fingerprints.issues_hash,
-        "enm_hash": incremental.fingerprints.enm_hash,
-    }
+    base_dict["fingerprints"] = odciski_do_slownika(incremental.fingerprints)
 
     return dict_to_archive(base_dict)
 
@@ -476,16 +470,7 @@ def _incremental_to_dict(archive: IncrementalArchive) -> dict[str, Any]:
                 }
                 for d in archive.deltas
             ],
-            "fingerprints": {
-                "archive_hash": archive.fingerprints.archive_hash,
-                "project_meta_hash": archive.fingerprints.project_meta_hash,
-                "cases_hash": archive.fingerprints.cases_hash,
-                "runs_hash": archive.fingerprints.runs_hash,
-                "results_hash": archive.fingerprints.results_hash,
-                "interpretations_hash": (archive.fingerprints.interpretations_hash),
-                "issues_hash": archive.fingerprints.issues_hash,
-                "enm_hash": archive.fingerprints.enm_hash,
-            },
+            "fingerprints": odciski_do_slownika(archive.fingerprints),
             "deterministic_signature": archive.deterministic_signature,
         }
     )

@@ -191,7 +191,8 @@ def _uszkodzone_bazy(poprawna: bytes) -> dict[str, tuple[bytes, type[ArchiveErro
         ),
         "uszkodzony_zip": (b"PK\x03\x04 urwany plik", ArchiveError, "archiwum ZIP"),
         "niezgodna_wersja": (
-            _podmien_wpis(poprawna, "project.json", {**dane, "schema_version": "4.0.0"}),
+            # Wersja z przyszłości (major ponad bieżący 4.x — karta OCHRONA-JEDNO-ZRODLO).
+            _podmien_wpis(poprawna, "project.json", {**dane, "schema_version": "5.0.0"}),
             ArchiveVersionError,
             "Nieobsługiwana wersja schematu archiwum",
         ),

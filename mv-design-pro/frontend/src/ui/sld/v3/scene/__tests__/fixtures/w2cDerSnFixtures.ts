@@ -15,6 +15,7 @@
  * Frontend NIE woła backendu — fixtura jest niezależnym lustrem kontraktu.
  */
 
+import { sterownikTestowy } from '../../../../../../test/sterownik';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -221,13 +222,19 @@ export function injectDerSnChain(
     substation_ref: stationRef,
     bus_ref: snBusRef,
     equipment_refs: [`${ozeFieldRef}/cb`],
-    protection_ref: null,
     primary_devices: [...ozePrimaryDevices(ozeFieldRef, opts.withVt ?? true, opts.withSa ?? true)],
-    // Zestaw interfejsu pola źródłowego SN = szablon backendu (`bay_templates`
-    // `_FUNKCJE_EAZ_INTERFEJSU_OZE`): każda funkcja raz, kody słownika EAZ; dawny kod-agregat
-    // „anti-islanding" skasowany (decyzja architekta 2026-10-30, `funkcje_eaz`).
-    protection_codes: ['67', '67N', '27', '59', '81U', '81O', '81R'],
   }));
+  // Zestaw interfejsu pola źródłowego SN = szablon backendu (`bay_templates`
+  // `_FUNKCJE_EAZ_INTERFEJSU_OZE`): każda funkcja raz, kody słownika EAZ; dawny kod-agregat
+  // „anti-islanding" skasowany (decyzja architekta 2026-10-30, `funkcje_eaz`). Karta
+  // OCHRONA-JEDNO-ZRODLO: kody niesie sterownik pola, nie rekord pola.
+  (enm.protection_assignments ??= []).push(
+    sterownikTestowy({
+      bayRef: ozeFieldRef,
+      kody: ['67', '67N', '27', '59', '81U', '81O', '81R'],
+      wylacznik: `${ozeFieldRef}/cb`,
+    }),
+  );
 
   (enm.generators ??= []).push({
     id: sourceId,

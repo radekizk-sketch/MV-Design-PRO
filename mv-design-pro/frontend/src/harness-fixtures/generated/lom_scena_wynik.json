@@ -62,7 +62,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -229,7 +229,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -396,7 +396,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -589,14 +589,14 @@
               "czego_brakuje": [
                 "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-                "Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło."
+                "Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło."
               ],
-              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
               "zastrzezenia": [
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -697,7 +697,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -835,7 +835,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -973,7 +973,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -1137,14 +1137,14 @@
               "czego_brakuje": [
                 "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
                 "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-                "Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło."
+                "Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło."
               ],
-              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
               "zastrzezenia": [
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -1224,21 +1224,21 @@
             "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole PV SN): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło.",
+            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole PV SN): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole PV SN): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole PV SN): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
             "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+          "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
           "zastrzezenia": [
             "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji).",
             "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole PV SN („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)."
+          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole PV SN („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)."
         },
         "wymaganie_id": "lom.nn/3821c319753930c3ae26e6814b072bb7/source_field",
         "zakres_waznosci": {
@@ -1358,7 +1358,7 @@
             "zakres_stosowalnosci_pl": null
           },
           "margines": {
-            "definicja_latex": "m = x - x_{\\lim}",
+            "definicja_latex": "\\Delta x = x - x_{\\lim}",
             "niedefiniowalny": false,
             "powod_pl": null,
             "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -1496,7 +1496,7 @@
             "zakres_stosowalnosci_pl": null
           },
           "margines": {
-            "definicja_latex": "m = x_{\\lim} - x",
+            "definicja_latex": "\\Delta x = x_{\\lim} - x",
             "niedefiniowalny": false,
             "powod_pl": null,
             "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -1634,7 +1634,7 @@
             "zakres_stosowalnosci_pl": null
           },
           "margines": {
-            "definicja_latex": "m = x - x_{\\lim}",
+            "definicja_latex": "\\Delta x = x - x_{\\lim}",
             "niedefiniowalny": false,
             "powod_pl": null,
             "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole PV SN”",
@@ -1798,14 +1798,14 @@
             "czego_brakuje": [
               "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
               "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-              "Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło."
+              "Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło."
             ],
-            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
             "zastrzezenia": [
               "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+            "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
           },
           "wynik": null,
           "zakres_waznosci": {
@@ -1885,21 +1885,21 @@
           "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole PV SN): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
           "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
           "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło.",
+          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło.",
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole PV SN): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole PV SN): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole PV SN): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
-        "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+        "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)",
         "zastrzezenia": [
           "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
           "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji).",
           "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw)."
         ],
-        "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)."
+        "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole PV SN) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — żaden sterownik pola na drodze zasilania nie ma włączonej funkcji 79 z nastawą przerwy (albo droga zasilania jest nieustalona), więc porównanie z czasem LoM się nie odbyło)."
       },
       "wymaganie_id": "lom.siec",
       "zakres_waznosci": {

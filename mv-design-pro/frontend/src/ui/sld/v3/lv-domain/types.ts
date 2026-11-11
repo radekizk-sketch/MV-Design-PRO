@@ -254,11 +254,14 @@ export interface LvDomainMeasurement {
   readonly ct_arrangement: '3xCT' | 'ferranti' | null;
 }
 
+/** Sterownik zabezpieczeń domeny nN (ADR-022) — lustro `lv_domain.graph_view._protection_dict`. */
 export interface LvDomainProtectionAssignment {
   readonly ref_id: string;
   readonly name: string;
-  readonly breaker_ref: string;
-  readonly device_type: string;
+  /** Pole sterownika (`null` — sterownik aparatu nN bez pola). */
+  readonly bay_ref: string | null;
+  /** Aparaty wyzwalane (macierz wyzwoleń sterownika), posortowane. */
+  readonly wylaczniki_refs: readonly string[];
   readonly ct_ref: string | null;
   readonly vt_ref: string | null;
   readonly is_enabled: boolean;

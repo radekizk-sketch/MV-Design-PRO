@@ -80,6 +80,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   vt: 'przekładnik napięciowy',
   relay: 'zabezpieczenie',
   protection: 'zabezpieczenie',
+  sterownik: 'sterownik zabezpieczeń',
   sn: 'SN',
   nn: 'nN',
   gen: 'generator',

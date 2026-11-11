@@ -256,9 +256,9 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "tego warunku."
     ),
     "E064": (
-        "Kanon nie ma kodu dla ProtectionAssignment.breaker_ref wskazującego gałąź, "
-        "której nie ma w modelu — spójność referencji, nie brak danych projektowych "
-        "(jak W005/W006/W008 wyżej)."
+        "Kanon nie ma kodu dla sterownika zabezpieczeń wskazującego pole, wyłącznik "
+        "albo przekładnik, którego nie ma w modelu (albo drugiego sterownika pola) — "
+        "spójność referencji, nie brak danych projektowych (jak W005/W006/W008 wyżej)."
     ),
     "W060": (
         "Kanon nie ma kodu dla braku warunków ułożenia kabla nN "

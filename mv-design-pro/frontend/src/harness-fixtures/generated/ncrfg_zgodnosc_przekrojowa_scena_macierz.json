@@ -35,7 +35,7 @@
     },
     "solver_version": "ncrfg-ptpiree-whitebox-2.0",
     "input_hash": "1a9eceab406447f66ad04dcc7d717a4458702ebecdd4ebc627528887056d0d43",
-    "deterministic_hash": "27ee7f56aab3c3eb5ab70ef902a451eed40df4404b596cde6698fa0faeb18480",
+    "deterministic_hash": "42703c66cc1fe982f7607f2b9a790a3fe074c5a31652fe9fec7edf0aacf1d0af",
     "modules": [
       {
         "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
@@ -2734,7 +2734,7 @@
                   "wartosc": 1.0,
                   "jednostka": "pp"
                 },
-                "definicja_latex": "m = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
+                "definicja_latex": "\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 1.0,
@@ -2906,7 +2906,7 @@
                   "wartosc": 1.0,
                   "jednostka": "pp"
                 },
-                "definicja_latex": "m = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
+                "definicja_latex": "\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 1.0,
@@ -3078,7 +3078,7 @@
                   "wartosc": 1.0,
                   "jednostka": "pp"
                 },
-                "definicja_latex": "m = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
+                "definicja_latex": "\\Delta x = \\min\\left(x - x_{\\min},\\; x_{\\max} - x\\right)",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 1.0,
@@ -3241,7 +3241,7 @@
                   "wartosc": 5.0,
                   "jednostka": "%/min"
                 },
-                "definicja_latex": "m = x - x_{\\lim}",
+                "definicja_latex": "\\Delta x = x - x_{\\lim}",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 5.0,
@@ -3407,7 +3407,7 @@
                   "wartosc": 5.0,
                   "jednostka": "min"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": null,
                 "skala": {
                   "wartosc": 10.0,
@@ -3577,7 +3577,7 @@
                   "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (moc znamionowa modułu)"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
@@ -3743,7 +3743,7 @@
                   "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (moc znamionowa modułu)"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
@@ -4042,7 +4042,7 @@
                   "wartosc": 0.000749354005168,
                   "jednostka": "p.u. (moc znamionowa modułu)"
                 },
-                "definicja_latex": "m = x_{\\lim} - x",
+                "definicja_latex": "\\Delta x = x_{\\lim} - x",
                 "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
                 "skala": {
                   "wartosc": 0.33,
@@ -6895,7 +6895,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "34815ce7738e42f327d4949b6961802eebb1c185558f1066d35ee7f80a56598b"
+          "odcisk_oceny": "c9c2342fb3a8f478f0b5f8d2ca14554aee5d69d5db596ed34dd9fcdaf9458a3a"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T01:ocena_kryterium:47"
@@ -6963,7 +6963,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "de87a415af0710c77706b996a6c235adbc2d2d8e6f9ecdb1ea3d84264c36338c"
+          "odcisk_oceny": "e1303613d65a0d5a1387a11c2de1837e0d0116577bdd6922064ca13433f675fd"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T02:ocena_kryterium:50"
@@ -7031,7 +7031,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "e76a526b2d12849e0213fc7ffd4690c76e919f3bd1f04d4c9531e27c475637b9"
+          "odcisk_oceny": "4ec31f069e53189985214cb041908c2cea95db102a62bca933dfa9dc48498b9c"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T03:ocena_kryterium:53"
@@ -7092,7 +7092,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "11cd9c3e0a4eaa7f0a3d37ef0d71de3ab975ceebec2591258d9e0682cdb743bc"
+          "odcisk_oceny": "e337b8a29ae220c167bcbac44d44d9bf5f7a7d25cfd248c7314f30fa60d0a229"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T04:ocena_kryterium:56"
@@ -7160,7 +7160,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "a011361e6497105c0daefd4fed9625e25cdbeaf0f906795c50f55e0e2030a3ba"
+          "odcisk_oceny": "b9a9f1480dc05bb527c4585db1f895ff18c7f18de995cd4164f446c5d917cbf9"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T05:ocena_kryterium:59"
@@ -7231,7 +7231,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "2701ad1b0db50dda80c81af936e0707aa2358e86ae3c18d36dd6f778b3b45ecd"
+          "odcisk_oceny": "bab23e97511b8ecfb76e7f6ba84bd23727a1525b6ed1d6f566d251b933c710a6"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T06:ocena_kryterium:62"
@@ -7302,7 +7302,7 @@
         "result": {
           "status_maszynowy": "NIE_DOTYCZY",
           "kompletnosc_dowodu": "NIE_DOTYCZY",
-          "odcisk_oceny": "643b98bdb3cd654d40ab7152ed0ecb79590718f7134f3dcad319b03f844618cb"
+          "odcisk_oceny": "beae80877a63073962e8bfe7c22990c3b5fd89472b29bc13f661eecd3b06ed16"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T07:ocena_kryterium:65"
@@ -7421,7 +7421,7 @@
         "result": {
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
-          "odcisk_oceny": "089c1d69afefc523fa09901196a4a2b7467118c79f1c80fff9826160c1696330"
+          "odcisk_oceny": "0663c0379e83648017d79a94a0e54580bcdd67ea9eb54669e41bd216c275eeb7"
         },
         "unit_check": "Status maszynowy bez jednostek.",
         "proof_ref": "proof:ncrfg-ptpiree:T09:ocena_kryterium:70"
@@ -11090,7 +11090,7 @@
                     "wartosc": 0.05,
                     "jednostka": "p.u. (U_n)"
                   },
-                  "definicja_latex": "m = x_{\\lim}(t^{*}) - x(t^{*})",
+                  "definicja_latex": "\\Delta x = x_{\\lim}(t^{*}) - x(t^{*})",
                   "punkt_pl": "nastawa U< = 0,8 p.u. (U_n) z czasem 1,5 s (źródło nastaw: Karta nastaw zabezpieczeń instalacji PV)",
                   "skala": {
                     "wartosc": 0.85,
@@ -11590,7 +11590,7 @@
                     "wartosc": 0.000749354005168,
                     "jednostka": "p.u. (moc znamionowa modułu)"
                   },
-                  "definicja_latex": "m = x_{\\lim} - x",
+                  "definicja_latex": "\\Delta x = x_{\\lim} - x",
                   "punkt_pl": "strona dolna (moc bierna minimalna) zakresu — mniejszy zapas pokrycia",
                   "skala": {
                     "wartosc": 0.33,

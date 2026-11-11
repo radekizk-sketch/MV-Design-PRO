@@ -165,27 +165,25 @@ describe('inspektor — karta pola bez rekordu aparatury', () => {
   });
 });
 
-// Decyzja architekta pkt 3: jedno źródło zabezpieczenia pola. Pole z funkcjami wymaganymi przez
-// wzorzec i bez sterownika — jedno zdanie z akcją „dodaj zabezpieczenie”, która otwiera kreator
-// `add_relay` przypięty do pola (`bay_ref`). Ścieżka natywna: klik w symbol na kanwie.
+// Decyzja architekta pkt 3: jedno źródło zabezpieczenia pola — sterownik pola z `bay_ref`
+// (ADR-022). Pole bez sterownika — jedno zdanie braku z akcją „dodaj zabezpieczenie”, która
+// otwiera kreator `add_relay` przypięty do pola (`bay_ref`). Funkcji „wymaganych przez wzorzec”
+// w rekordzie pola już nie ma (zestaw szablonu jedzie przy budowie pola do sterownika), więc
+// zdanie nie wymienia funkcji. Ścieżka natywna: klik w symbol na kanwie.
 describe('inspektor — karta pola: zabezpieczenie z jednego źródła', () => {
-  it('pole z funkcjami wzorca bez sterownika: zdanie braku i „dodaj zabezpieczenie” → add_relay z bay_ref', () => {
+  it('pole bez sterownika: zdanie braku i „dodaj zabezpieczenie” → add_relay z bay_ref', () => {
     const pole = PRZYPADKI.find((p) => p.nazwa === 'pole')!;
-    // Pole klikanego symbolu dostaje w modelu funkcje wymagane przez wzorzec (dane modelu, nie
-    // stan sklepu); sterownika nie ma — `protection_ref` pusty, brak rekordów zabezpieczeń.
+    // Klikane pole traci sterownik w modelu (dane modelu, nie stan sklepu).
     const symbol = buildSceneV3(SIEC, pole.lod).symbols.find(pole.predykat)!;
     const siec: EnergyNetworkModel = {
       ...SIEC,
-      bays: (SIEC.bays ?? []).map((b) =>
-        b.ref_id === symbol.meta?.ownerRef ? { ...b, protection_codes: ['51', '50', '51N', '67N'], protection_ref: null } : b,
-      ),
-      protection_assignments: [],
+      protection_assignments: (SIEC.protection_assignments ?? []).filter((pa) => pa.bay_ref !== symbol.meta?.ownerRef),
     };
     kliknij(pole, siec);
     const wiersz = screen.getByTestId('inspektor-karta-pole-zabezpieczenie');
     expect(wiersz).toHaveAttribute('data-brak', 'true');
     expect(screen.getByTestId('inspektor-karta-wartosc-zabezpieczenie')).toHaveTextContent(
-      'Brak sterownika — wzorzec pola wymaga funkcji 51, 50, 51N, 67N',
+      'Brak sterownika zabezpieczeniowego w polu',
     );
     expect(screen.queryByTestId('inspektor-karta-pole-funkcje_zabezpieczen')).toBeNull();
     expect(screen.getByTestId('inspektor-karta').textContent ?? '').not.toMatch(/brak danych/u);

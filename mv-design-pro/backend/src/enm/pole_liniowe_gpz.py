@@ -11,7 +11,8 @@ nigdzie nazwana.
 JEDNO ŹRÓDŁO DANYCH:
 
 * wymagania funkcji wg klasy — `bay_templates.WYMAGANIA_EAZ_KLASY_POLA` (kod, wymóg, podstawa);
-* funkcje pola — `Bay.protection_codes` (deklaracja pola; zapisuje je resolver szablonu i klasy);
+* funkcje pola — funkcje sterownika pola (`enm.zabezpieczenie.kody_funkcji_pola`; zapisuje je resolver
+  szablonu i klasy);
 * sieć za polem — graf szyn w KONFIGURACJI NORMALNEJ (`topology._graf_konfiguracji_normalnej`:
   punkty normalnie otwarte otwarte), od końca gałęzi aparatu pola przeciwnego szynie sekcji, bez
   przechodzenia przez szyny sekcji GPZ (`topology.szyny_sekcji_gpz`);
@@ -71,6 +72,7 @@ from werdykt.kontrakt import Etykieta, StatusWerdyktu, WyjasnienieWerdyktu
 
 from .slownik_komunikatow import opis_elementu
 from .topology import _graf_konfiguracji_normalnej, szyny_sekcji_gpz
+from .zabezpieczenie import kody_funkcji_pola
 from .zgodnosc_szablonu_pola import czy_pole_gpz
 from .zrodlo_napiecia_zerowego import (
     AKCJA_NAPRAWCZA_ZRODLA_U0_PL,
@@ -447,7 +449,7 @@ def ocena_pola_liniowego(
     )
     z_sieci = klasa_z_sieci(moduly, odbiory)
     klasa = str(zadeklarowana) if zadeklarowana is not None else z_sieci
-    kody = [str(k) for k in pole.get("protection_codes") or []]
+    kody = kody_funkcji_pola(enm, pole.get("ref_id"))
     zrodlo_u0 = zrodlo_u0_pola(enm, pole)
     oceny = tuple(
         _ocena_funkcji(kod, wymog, podstawa, kod in kody, linia_napowietrzna, klasa, zrodlo_u0)
@@ -623,7 +625,7 @@ def _obwody_funkcji(
     aparaty: Mapping[str, Mapping[str, Any]],
     opis_szablonu: str,
 ) -> tuple[ObwodFunkcjiPola, ...]:
-    """Obwody funkcji zestawu pola (kolejność `Bay.protection_codes`) i funkcji wzorca, których
+    """Obwody funkcji zestawu pola (kolejność funkcji sterownika pola) i funkcji wzorca, których
     pole nie ma (``obecna = False`` — projektant widzi, czego brakuje względem rysunku)."""
     if obwody is None:
         return ()

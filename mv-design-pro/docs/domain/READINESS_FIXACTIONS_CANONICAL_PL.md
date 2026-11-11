@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **196** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **197** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -115,6 +115,7 @@ Wszystkie **196** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.transformer_voltage_mismatch` | CATALOGS | 2 | BLOCKER | Napięcia znamionowe uzwojeń typu transformatora różnią się od napięć szyn, do których transformator jest przyłączony — wybierz typ o napięciach szyn (operacja odrzucona, model bez zmian) | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.wartosc_projektanta_niedopuszczalna` | CATALOGS | 2 | BLOCKER | Wartość projektanta parametru urządzenia jest spoza dopuszczalnego zakresu albo dotyczy parametru, którego to urządzenie nie ma — popraw ją albo usuń w parametrach elementu i zapisz | panel: `inspector`, tab: `parametry`, focus: `overrides` |
 | `conductor.fault_current_missing` | CATALOGS | 2 | WARNING | Brak prądu cieplnego z biegu SC — uruchom analizę zwarciową, by sprawdzić wytrzymałość zwarciową przekroju | panel: `analizy`, tab: `zwarciowa` |
+| `conductor.thermal_data_inconsistent` | CATALOGS | 2 | WARNING | Dane cieplne przewodu są sprzeczne (Ith dla 1 s różni się od Jth·S przy podanym przekroju) — popraw pozycję katalogową albo dane odcinka | panel: `katalog`, tab: `kable`, focus: `ith_1s_a` |
 | `conductor.thermal_data_missing` | CATALOGS | 2 | WARNING | Brak wytrzymałości cieplnej przewodu w katalogu (prąd albo gęstość prądu jednosekundowego) — uzupełnij pozycję katalogową | panel: `katalog`, tab: `kable`, focus: `ith_1s_a` |
 | `ct.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej przekładnika prądowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `ct`, focus: `burden_va` |
 | `earthing.zespol_voltage_mismatch` | CATALOGS | 2 | WARNING | Napięcie znamionowe typu zespołu uziemiającego inne niż napięcie sieci | panel: `inspector`, tab: `parametry`, focus: `catalog_ref` |
@@ -260,20 +261,20 @@ Wszystkie **196** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 110 |
-| WARNING | 77 |
+| WARNING | 78 |
 | INFO | 9 |
-| **Razem** | **196** |
+| **Razem** | **197** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 20 |
 | TOPOLOGY | 7 |
-| CATALOGS | 57 |
+| CATALOGS | 58 |
 | STATIONS | 43 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |
-| **Razem** | **196** |
+| **Razem** | **197** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

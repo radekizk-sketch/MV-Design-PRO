@@ -269,6 +269,8 @@ describe('FaultScenarioModal — nośnik współczynnika c (edycja)', () => {
     await waitFor(() => expect(useFaultScenariosStore.getState().isModalOpen).toBe(false));
     const [zapis] = wywolaniaZapisu();
     expect(zapis.method).toBe('PUT');
+    // Zapis adresowany w obrębie przypadku scenariusza (wyszukiwanie w projekcie przypadku).
+    expect(zapis.url).toMatch(/\/study-cases\/case-1\/fault-scenarios\/[^/]+$/);
     expect(zapis.body.config).toEqual(config);
   });
 
@@ -375,6 +377,8 @@ describe('FaultScenarioModal — czas wyłączenia t_b', () => {
     await waitFor(() => expect(useFaultScenariosStore.getState().isModalOpen).toBe(false));
     const [zapis] = wywolaniaZapisu();
     expect(zapis.method).toBe('PUT');
+    // Zapis adresowany w obrębie przypadku scenariusza (wyszukiwanie w projekcie przypadku).
+    expect(zapis.url).toMatch(/\/study-cases\/case-1\/fault-scenarios\/[^/]+$/);
     expect(zapis.body.config).toEqual(config);
   });
 

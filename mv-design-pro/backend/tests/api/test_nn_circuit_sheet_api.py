@@ -251,3 +251,62 @@ def test_determinizm_dwa_odczyty_identyczne(app_client) -> None:
     )
     assert resp1.status_code == resp2.status_code == 200
     assert resp1.json() == resp2.json()
+
+
+def _zmien_dlugosc_kabla_w_modelu(client, case_id: str, length_km: float) -> None:
+    """Edycja modelu bieżącego (HEAD) PO biegu: kabel C1 dłuższy."""
+    from enm.store import get_enm
+
+    klucz = _klucz(client, case_id)
+    enm = get_enm(klucz)
+    galezie = [
+        g.model_copy(update={"length_km": length_km}) if g.ref_id == "c1" else g
+        for g in enm.branches
+    ]
+    set_enm(klucz, enm.model_copy(update={"branches": galezie}))
+
+
+def _dlugosc_wiersza(resp) -> float:
+    assert resp.status_code == 200, resp.text
+    [wiersz] = resp.json()["wiersze"]
+    return float(wiersz["dlugosc_m"]["wartosc"])
+
+
+def test_arkusz_z_biegiem_czyta_migawke_biegu_nie_model_biezacy(app_client) -> None:
+    """Ib z biegu i geometria obwodu z TEJ SAMEJ migawki: edycja modelu po biegu nie miesza
+    stanów (dawniej arkusz czytał HEAD, a prąd brał z biegu policzonego na innym modelu)."""
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    run = execute_run(
+        create_run(case_id=case_id, klucz_twin=_klucz(app_client, case_id), analysis_type="PF").id
+    )
+    _zmien_dlugosc_kabla_w_modelu(app_client, case_id, 0.12)
+    adres = f"/api/cases/{case_id}/enm/nn-circuit-sheet"
+    z_biegiem = app_client.get(
+        adres, params={"station_ref": "stn", "load_flow_run_id": str(run.id)}
+    )
+    bez_biegu = app_client.get(adres, params={"station_ref": "stn"})
+    assert _dlugosc_wiersza(z_biegiem) == 50.0
+    assert _dlugosc_wiersza(bez_biegu) == 120.0
+
+
+def test_arkusz_z_biegami_roznych_migawek_daje_422_z_przyczyna(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    klucz = _klucz(app_client, case_id)
+    pf_run = execute_run(create_run(case_id=case_id, klucz_twin=klucz, analysis_type="PF").id)
+    _zmien_dlugosc_kabla_w_modelu(app_client, case_id, 0.12)
+    sc_run = execute_run(
+        create_run(case_id=case_id, klucz_twin=klucz, analysis_type="short_circuit_sn").id
+    )
+    assert pf_run.snapshot_hash != sc_run.snapshot_hash
+    resp = app_client.get(
+        f"/api/cases/{case_id}/enm/nn-circuit-sheet",
+        params={
+            "station_ref": "stn",
+            "load_flow_run_id": str(pf_run.id),
+            "short_circuit_run_id": str(sc_run.id),
+        },
+    )
+    assert resp.status_code == 422
+    assert "różnych stanach sieci" in resp.text

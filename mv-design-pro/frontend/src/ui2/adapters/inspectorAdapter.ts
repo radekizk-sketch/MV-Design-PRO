@@ -70,8 +70,14 @@ import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
-import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../ui/shared/etykietyZabezpieczen';
 import { tekstZabezpieczeniaPola, zabezpieczeniePola } from '../../ui/shared/zabezpieczeniePola';
+import {
+  aparatySterownika,
+  kodyFunkcjiSterownika,
+  liczbaNastawGrupyEfektywnej,
+  nazwaUrzadzeniaSterownika,
+  numerGrupyEfektywnej,
+} from '../../ui/shared/sterownikZabezpieczen';
 import {
   etykietaPozycjiNormalnej,
   opisLacznikowPortow,
@@ -417,9 +423,8 @@ function wlasciwosciStacji(el: Substation, model: EnergyNetworkModel): WierszWla
 
 function wlasciwosciPola(el: Bay, model: EnergyNetworkModel): WierszWlasciwosci[] {
   // JEDNA funkcja odczytu zabezpieczenia pola (`ui/shared/zabezpieczeniePola`) — ta sama co karta
-  // pola K6: sterownik przypisany albo brak sterownika z funkcjami wymaganymi przez wzorzec.
+  // pola K6: sterownik pola z modelu (ADR-022) albo brak sterownika nazwany jednym zdaniem.
   const zabezpieczenie = zabezpieczeniePola(model, el);
-  const wymagane = zabezpieczenie.rodzaj === 'sterownik' ? zabezpieczenie.wymagane : [];
   return bezNulli([
     // Nazwa roli z kanonu słownictwa ról pól (karta #141), nigdy surowy kod roli.
     wr('Rola pola', fieldRoleLabelPl(el.bay_role)),
@@ -428,7 +433,6 @@ function wlasciwosciPola(el: Bay, model: EnergyNetworkModel): WierszWlasciwosci[
     w('Nazwa odpływu', el.feeder_short_name ?? null),
     w('Kierunek (stacja docelowa)', el.outgoing_destination_ref ?? null),
     w('Zabezpieczenie', tekstZabezpieczeniaPola(zabezpieczenie)),
-    w('Wymagane przez wzorzec pola', wymagane.length > 0 ? wymagane.join(', ') : null),
   ]);
 }
 
@@ -502,10 +506,12 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
 
 function wlasciwosciZabezpieczenia(el: ProtectionAssignment): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rodzaj zabezpieczenia', etykietaZeSlownika(ETYKIETA_RODZAJU_ZABEZPIECZENIA, el.device_type)),
-    wr('Wyłącznik', el.breaker_ref),
+    wr('Urządzenie', nazwaUrzadzeniaSterownika(el)),
+    w('Funkcje', kodyFunkcjiSterownika(el).join(', ') || null),
+    w('Aparaty wyzwalane', aparatySterownika(el).join(', ') || null),
+    wr('Aktywna grupa nastaw', numerGrupyEfektywnej(el)),
+    wr('Liczba nastaw w aktywnej grupie', liczbaNastawGrupyEfektywnej(el)),
     wr('Aktywne', el.is_enabled ? 'Tak' : 'Nie'),
-    wr('Liczba nastaw', el.settings.length),
   ]);
 }
 

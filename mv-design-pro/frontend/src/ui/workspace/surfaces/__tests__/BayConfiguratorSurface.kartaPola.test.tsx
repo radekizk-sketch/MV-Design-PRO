@@ -93,7 +93,6 @@ function item(templateRef: string | null, familyRef: string | null): FieldReadMo
         measurement_chain: null,
         secondary_units: [],
         secondary_architecture: { type: 'brak', measurement_provider: 'brak' },
-        protection_config: null,
         control_surface: {
           controllable_device_refs: [], open_requires_confirmation: true,
           close_requires_confirmation: true, kas_available: false,

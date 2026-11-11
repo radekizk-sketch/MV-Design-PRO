@@ -18,7 +18,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { Bay, EnergyNetworkModel } from '../../../../../types/enm';
+import type { Bay, EnergyNetworkModel, ProtectionAssignment } from '../../../../../types/enm';
+import { sterownikTestowy } from '../../../../../test/sterownik';
 import {
   FUNKCJE_WYMAGAJACE_ZRODLA_U0,
   OZNACZENIE_POLA_BEZ_NUMERU,
@@ -35,6 +36,8 @@ interface PrzypadekParytetu {
   readonly nazwa: string;
   readonly pole_ref: string;
   readonly bays: readonly Bay[];
+  /** Sterowniki pól — nośnik wejścia 3U₀ (otwarty trójkąt) i funkcji pola. */
+  readonly protection_assignments: readonly ProtectionAssignment[];
   readonly oczekiwane: {
     readonly potwierdzone: boolean;
     readonly vt_ref: string | null;
@@ -45,8 +48,15 @@ interface PrzypadekParytetu {
 
 const przypadki = fikstura.przypadki as unknown as readonly PrzypadekParytetu[];
 
-function migawka(bays: readonly Bay[]): Pick<EnergyNetworkModel, 'bays'> {
-  return { bays: [...bays] };
+function migawka(
+  bays: readonly Bay[],
+  sterowniki: readonly ProtectionAssignment[] = [],
+): Pick<EnergyNetworkModel, 'bays' | 'protection_assignments'> {
+  return { bays: [...bays], protection_assignments: [...sterowniki] };
+}
+
+function migawkaPrzypadku(p: PrzypadekParytetu, bays: readonly Bay[] = p.bays) {
+  return migawka(bays, p.protection_assignments);
 }
 
 function pole(przypadek: PrzypadekParytetu): Bay {
@@ -64,7 +74,7 @@ describe('źródło 3U₀ — parytet z backendem (fikstura z wyniku `zrodlo_u0_
   });
 
   it.each(przypadki.map((p) => [p.nazwa, p] as const))('%s — wynik lustra równy backendowi', (_n, przypadek) => {
-    const wynik = zrodloU0Pola(migawka(przypadek.bays), pole(przypadek));
+    const wynik = zrodloU0Pola(migawkaPrzypadku(przypadek), pole(przypadek));
     expect({
       potwierdzone: wynik.potwierdzone,
       vt_ref: wynik.vtRef,
@@ -76,8 +86,11 @@ describe('źródło 3U₀ — parytet z backendem (fikstura z wyniku `zrodlo_u0_
   it.each(przypadki.map((p) => [p.nazwa, p] as const))(
     '%s — kolejność pól modelu nie zmienia wyniku (determinizm)',
     (_n, przypadek) => {
-      const wprost = zrodloU0Pola(migawka(przypadek.bays), pole(przypadek));
-      const odwrocone = zrodloU0Pola(migawka([...przypadek.bays].reverse()), pole(przypadek));
+      const wprost = zrodloU0Pola(migawkaPrzypadku(przypadek), pole(przypadek));
+      const odwrocone = zrodloU0Pola(
+        migawka([...przypadek.bays].reverse(), [...przypadek.protection_assignments].reverse()),
+        pole(przypadek),
+      );
       expect(odwrocone).toEqual(wprost);
     },
   );
@@ -89,7 +102,7 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
   if (!potwierdzony || !bezPowiazania) throw new Error('brak przypadków bazowych fikstury');
 
   it('potwierdzone źródło ⇒ odniesienie z oznaczeniem przekładnika i pola pomiaru napięcia', () => {
-    const zrodlo = zrodloU0Pola(migawka(potwierdzony.bays), pole(potwierdzony));
+    const zrodlo = zrodloU0Pola(migawkaPrzypadku(potwierdzony), pole(potwierdzony));
     const polePomiaru = potwierdzony.bays.find((b) => b.ref_id === zrodlo.poleZrodlaRef);
     expect(polePomiaru?.funkcja_pomiaru).toBe('NAPIECIA_SZYN');
     expect(zrodlo.vtOznaczenie).toBe('T1');
@@ -105,7 +118,7 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
   for (const vtOznaczony of [true, false]) {
     for (const polePo of ['numer', 'nazwa', 'brak'] as const) {
       it(`odniesienie bez identyfikatorów — przekładnik ${vtOznaczony ? 'z oznaczeniem' : 'bez oznaczenia'} × pole: ${polePo}`, () => {
-        const wzorzec = zrodloU0Pola(migawka(potwierdzony.bays), pole(potwierdzony));
+        const wzorzec = zrodloU0Pola(migawkaPrzypadku(potwierdzony), pole(potwierdzony));
         const bays = potwierdzony.bays.map((b): Bay => {
           if (b.ref_id !== wzorzec.poleZrodlaRef) return b;
           return {
@@ -117,7 +130,7 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
             ),
           };
         });
-        const zrodlo = zrodloU0Pola(migawka(bays), pole(potwierdzony));
+        const zrodlo = zrodloU0Pola(migawkaPrzypadku(potwierdzony, bays), pole(potwierdzony));
         expect(zrodlo.potwierdzone).toBe(true);
         expect(zrodlo.vtOznaczenie).toBe(vtOznaczony ? 'T1' : OZNACZENIE_VT_BEZ_OZNACZENIA);
         expect(zrodlo.poleZrodlaOznaczenie).toBe(
@@ -132,7 +145,7 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
   }
 
   it('niepotwierdzone źródło ⇒ brak odniesienia (zero fikcji na schemacie)', () => {
-    const zrodlo = zrodloU0Pola(migawka(bezPowiazania.bays), pole(bezPowiazania));
+    const zrodlo = zrodloU0Pola(migawkaPrzypadku(bezPowiazania), pole(bezPowiazania));
     expect(zrodlo.potwierdzone).toBe(false);
     expect(tekstOdniesieniaZrodlaU0(zrodlo)).toBeNull();
     expect(tekstOdniesieniaZrodlaU0(undefined)).toBeNull();
@@ -140,15 +153,18 @@ describe('źródło 3U₀ — deskryptor schematu i odniesienie przy przekaźnik
 
   it('deskryptor: pole bez powiązania i bez 67N nie niesie źródła; z 67N albo powiązaniem — niesie', () => {
     const baza = pole(bezPowiazania);
-    const bezNiczego: Bay = { ...baza, zrodlo_u0_ref: null, protection_codes: ['51', '50'] };
-    expect(zrodloU0WidokuPola(migawka(bezPowiazania.bays), bezNiczego)).toBeUndefined();
-    expect(zrodloU0Deskryptora(migawka(bezPowiazania.bays), bezNiczego)).toEqual({});
-    expect('zrodloU0' in zrodloU0Deskryptora(migawka(bezPowiazania.bays), bezNiczego)).toBe(false);
-    // 67N zapisana bez powiązania (model sprzed reguły albo import) — źródło rozstrzygnięte,
-    // niepotwierdzone (podstawa ostrzeżenia „!" przy przekaźniku).
-    const z67n: Bay = { ...bezNiczego, protection_codes: ['51', '67N'] };
-    expect(zrodloU0WidokuPola(migawka(bezPowiazania.bays), z67n)?.potwierdzone).toBe(false);
+    // Sterownik pola bez wejścia 3U₀: funkcje {51, 50} — bez źródła; {51, 67N} — źródło
+    // rozstrzygnięte, niepotwierdzone (podstawa ostrzeżenia „!" przy przekaźniku).
+    const zSterownikiem = (kody: readonly string[]) =>
+      migawka(bezPowiazania.bays, [
+        ...bezPowiazania.protection_assignments.filter((s) => s.bay_ref !== baza.ref_id),
+        sterownikTestowy({ bayRef: baza.ref_id, kody }),
+      ]);
+    expect(zrodloU0WidokuPola(zSterownikiem(['51', '50']), baza)).toBeUndefined();
+    expect(zrodloU0Deskryptora(zSterownikiem(['51', '50']), baza)).toEqual({});
+    expect('zrodloU0' in zrodloU0Deskryptora(zSterownikiem(['51', '50']), baza)).toBe(false);
+    expect(zrodloU0WidokuPola(zSterownikiem(['51', '67N']), baza)?.potwierdzone).toBe(false);
     const zPowiazaniem = pole(potwierdzony);
-    expect(zrodloU0Deskryptora(migawka(potwierdzony.bays), zPowiazaniem).zrodloU0?.potwierdzone).toBe(true);
+    expect(zrodloU0Deskryptora(migawkaPrzypadku(potwierdzony), zPowiazaniem).zrodloU0?.potwierdzone).toBe(true);
   });
 });

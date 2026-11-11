@@ -31,6 +31,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import type { Bay, ProtectionAssignment } from '../../../../../types/enm';
+import { aparatySterownika, nastawyFunkcji, sterownikPola } from '../../../../shared/sterownikZabezpieczen';
 import { buildSceneV3 } from '../buildScene';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -48,9 +50,14 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
     expect(SCIEZKA_DANYCH.bays.length).toBeGreaterThan(0);
     expect(SCIEZKA_DANYCH.measurements.length).toBeGreaterThan(0);
     expect(SCIEZKA_DANYCH.protection_assignments.length).toBeGreaterThan(0);
-    // Kontrola odwrotna — dowód, że 52s faktycznie mierzyła pustkę.
+    // Kontrola odwrotna — dowód, że 52s faktycznie mierzyła pustkę: bez przekładników,
+    // a sterowniki pól szablonu (ADR-022: każde pole szablonu z funkcjami ma sterownik) bez
+    // przekładnika na wejściu i bez macierzy wyzwoleń — nie ma czego rysować torem ani linią.
     expect((KONWENCJA_52S.measurements ?? []).length).toBe(0);
-    expect((KONWENCJA_52S.protection_assignments ?? []).length).toBe(0);
+    for (const s of (KONWENCJA_52S.protection_assignments ?? []) as ProtectionAssignment[]) {
+      expect(s.wejscia.ct_ref ?? null).toBeNull();
+      expect(s.macierz_wyzwolen).toEqual([]);
+    }
   });
 
   it('scena z tej fixtury niesie WIĘCEJ przekładników i adnotacji z przypisań zabezpieczeń niż z 52s', () => {
@@ -100,27 +107,27 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   // Łańcuch danych, bez którego warstwa milczy — każde ogniwo osobno, bo każde
   // z nich w trakcie budowy fixtury okazało się brakujące i dawało ciche zero:
   //   `primary_devices` w kolejności szablonu → `switch_state` jako OBIEKT z
-  //   polskim literałem → `linked_ref` CT na Measurement → `protection_ref` pola
-  //   na ProtectionAssignment.
+  //   polskim literałem → `linked_ref` CT na Measurement → sterownik pola (ADR-022:
+  //   `bay_ref` sterownika, wejście prądów fazowych = przekładnik pola, macierz wyzwoleń na
+  //   wyłącznik pola).
   it('ogniwa łańcucha danych są kompletne (każde brakujące dawało ciche zero)', () => {
     // Karta W5-B: `bays` niesie WSZYSTKIE pola modelu (także pola stacji i pola GPZ bez
     // aparatów pierwotnych). Ścieżka danych = pola z aparatami pierwotnymi; każde ogniwo
     // sprawdzamy na każdym z nich.
-    const pola = (SCIEZKA_DANYCH.bays as {
-      protection_ref?: string;
-      primary_devices?: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
-    }[]).filter((pole) => (pole.primary_devices ?? []).length > 0) as {
-      protection_ref?: string;
-      primary_devices: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
-    }[];
+    const pola = (SCIEZKA_DANYCH.bays as Bay[]).filter((pole) => (pole.primary_devices ?? []).length > 0);
     expect(pola.length).toBeGreaterThanOrEqual(3);
     for (const pole of pola) {
-      expect(pole.protection_ref).toBeTruthy();
-      const laczniki = pole.primary_devices.filter((d) => ['CB', 'DS', 'ES'].includes(d.kind));
+      const sterownik = sterownikPola(SCIEZKA_DANYCH, pole.ref_id);
+      expect(sterownik, pole.ref_id).toBeTruthy();
+      const aparaty = pole.primary_devices ?? [];
+      const laczniki = aparaty.filter((d) => ['CB', 'DS', 'ES'].includes(d.kind));
       for (const l of laczniki) expect(l.switch_state?.actual_state).toBeTruthy();
-      for (const ct of pole.primary_devices.filter((d) => d.kind === 'CT')) {
+      for (const ct of aparaty.filter((d) => d.kind === 'CT')) {
         expect(ct.linked_ref).toBeTruthy();
+        expect(sterownik!.wejscia.ct_ref).toBe(ct.linked_ref);
       }
+      const wylacznik = aparaty.find((d) => d.kind === 'CB')!;
+      expect(aparatySterownika(sterownik)).toEqual([wylacznik.linked_ref ?? wylacznik.device_ref]);
     }
   });
 
@@ -137,15 +144,19 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   });
 
   it('koordynacja jest selektywna czasowo i czuła na doziemienie (dobór fizyczny)', () => {
-    const nastawy = (kod: string) =>
-      SCIEZKA_DANYCH.protection_assignments
-        .flatMap((p: { settings: { function_type: string; threshold_a?: number; time_multiplier?: number }[] }) => p.settings)
-        .filter((s: { function_type: string }) => s.function_type === kod);
-    const tms = nastawy('overcurrent_51').map((s: { time_multiplier?: number }) => s.time_multiplier);
+    const zSterownikow = (kod: string) =>
+      (SCIEZKA_DANYCH.protection_assignments as ProtectionAssignment[]).flatMap((p) =>
+        p.funkcje.filter((f) => f.kod === kod).map((f) => nastawyFunkcji(p, f.ref)),
+      ).filter((n) => Object.keys(n).length > 0);
+    const tms = zSterownikow('51').map((n) => Number(n.tms));
+    expect(tms.length).toBeGreaterThanOrEqual(2);
     // Pole liniowe MUSI mieć mniejszy mnożnik czasowy niż pole transformatorowe,
     // inaczej zwarcie na odpływie wyłączyłoby całą sekcję zamiast jednego pola.
     expect(Math.min(...tms)).toBeLessThan(Math.max(...tms));
-    const i0 = nastawy('earth_fault_51N').map((s: { threshold_a?: number }) => s.threshold_a ?? 0);
+    const i0 = zSterownikow('51N').map((n) => Number(n.prog));
+    expect(i0.length).toBeGreaterThan(0);
+    // Próg ziemnozwarciowy po stronie pierwotnej przekładnika (jednostka zapisana w nastawie).
+    for (const n of zSterownikow('51N')) expect(n.jednostka_progu).toBe('A_PIERWOTNY');
     // Czułość: nastawa poniżej prądu doziemnego 150 A z zapasem ≥ 1,5-krotnym…
     for (const v of i0) expect(150 / v).toBeGreaterThanOrEqual(1.5);
     // …i powyżej prądu pojemnościowego własnego odpływu (rząd 2 A).

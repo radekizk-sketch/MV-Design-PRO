@@ -249,6 +249,11 @@
 .mvd-insp-fresh-stale .mvd-insp-fresh-dot {
   background: var(--mvd-warn);
 }
+/* Zdanie przyczyny orzeczonej przez serwer — może być długie, więc zawija się. */
+.mvd-insp-fresh-przyczyna {
+  white-space: normal;
+  color: var(--mvd-muted);
+}
 .mvd-insp-fresh-recalc {
   padding: 1px 8px;
   font-size: 11px;

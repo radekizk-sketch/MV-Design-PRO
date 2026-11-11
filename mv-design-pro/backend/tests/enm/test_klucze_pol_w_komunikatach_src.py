@@ -111,6 +111,7 @@ ETYKIETA = "etykieta"
 #: wyłącznie kanały ZDANIE (etykieta „(SZR)”, odznaka „PTPiREE” nie jest zdaniem z natury).
 KANALY_TRESCI: dict[str, str] = {
     "ability_pl": ETYKIETA,
+    "action_pl": ZDANIE,
     "akcja_naprawcza_pl": ZDANIE,
     "akcja_pl": ZDANIE,
     "alias_pl": ETYKIETA,
@@ -162,6 +163,7 @@ KANALY_TRESCI: dict[str, str] = {
     "etykieta_do_pl": ETYKIETA,
     "etykieta_od_pl": ETYKIETA,
     "etykieta_pl": ETYKIETA,
+    "fault_duration_basis_pl": ZDANIE,
     "faza_nieznana_powod_pl": ZDANIE,
     "fix_hint_pl": ZDANIE,
     "function_label_pl": ETYKIETA,
@@ -176,6 +178,7 @@ KANALY_TRESCI: dict[str, str] = {
     "kombinacja_wniosek_pl": ETYKIETA,
     "komentarz_pl": ZDANIE,
     "komunikat": ZDANIE,
+    "komunikat_cieplny_pl": ZDANIE,
     "komunikat_pl": ZDANIE,
     "kontekst_sily_sieci_powod_pl": ZDANIE,
     "kryterium_pl": ETYKIETA,
@@ -201,6 +204,7 @@ KANALY_TRESCI: dict[str, str] = {
     "nazwa_punktu_pl": ETYKIETA,
     "nazwa_stacji_pl": ETYKIETA,
     "nazwa_urzadzenia_pl": ETYKIETA,
+    "nazwa_znamienia_pl": ETYKIETA,
     "new_value_pl": ETYKIETA,
     "no_module_reason_pl": ZDANIE,
     "norma_pl": ETYKIETA,
@@ -217,24 +221,32 @@ KANALY_TRESCI: dict[str, str] = {
     "old_value_pl": ETYKIETA,
     "operator_name_pl": ETYKIETA,
     "operator_pl": ETYKIETA,
+    "opis_czasu_wlasnego_pl": ETYKIETA,
+    "opis_czlonu_pl": ETYKIETA,
     "opis_kryterium_pl": ZDANIE,
+    "opis_nastaw_pl": ETYKIETA,
     "opis_pl": ZDANIE,
+    "opis_projektanta_pl": ETYKIETA,
     "opis_przedmiotu_pl": ZDANIE,
+    "opis_przypadku_pl": ZDANIE,
     "opis_typu_pl": ZDANIE,
     "opis_uziemienia_pl": ZDANIE,
     "opis_zrodla_pl": ZDANIE,
     "ostrzezenia": ZDANIE,
     "over_limit_label_pl": ETYKIETA,
     "oznaczenie_pl": ETYKIETA,
+    "oznaczenie_urzadzenia_pl": ETYKIETA,
     "parametry_robocze_pl": ZDANIE,
     "pasmo_brak_etykieta_pl": ETYKIETA,
     "pasmo_brak_powod_pl": ZDANIE,
     "pasmo_q_pl": ETYKIETA,
+    "podstawa_czasu_pl": ZDANIE,
     "podstawa_ostrzezenie_pl": ZDANIE,
     "podstawa_pl": ZDANIE,
     "podstawa_przekroczenie_pl": ZDANIE,
     "podstawa_reguly_pl": ZDANIE,
     "podstawa_t_pomiaru_pl": ZDANIE,
+    "podstawa_tabeli_pl": ZDANIE,
     "podstawa_u_min_pl": ZDANIE,
     "podstawa_zakresow_pl": ZDANIE,
     "podwojne_doziemienie_pl": ZDANIE,
@@ -245,6 +257,7 @@ KANALY_TRESCI: dict[str, str] = {
     "pominiete_pl": ZDANIE,
     "pominiete_zrodla_pl": ZDANIE,
     "powod_blokady_nowych_pol_pl": ZDANIE,
+    "powod_braku_czasu_pl": ZDANIE,
     "powod_braku_niepewnosci_pl": ZDANIE,
     "powod_braku_pl": ZDANIE,
     "powod_decyzji_pl": ZDANIE,
@@ -258,6 +271,7 @@ KANALY_TRESCI: dict[str, str] = {
     "pozycja_pl": ETYKIETA,
     "praktyka_pl": ZDANIE,
     "procedure_basis_pl": ZDANIE,
+    "profil_pl": ETYKIETA,
     "profile_name_pl": ETYKIETA,
     "proof_status_pl": ETYKIETA,
     "provenance_caveat_pl": ZDANIE,
@@ -285,6 +299,7 @@ KANALY_TRESCI: dict[str, str] = {
     "result_pl": ETYKIETA,
     "result_status_reason_pl": ZDANIE,
     "rodzaj_elementu_pl": ETYKIETA,
+    "rodzaj_obwodu_uzasadnienie_pl": ZDANIE,
     "rodzaj_pl": ETYKIETA,
     "rodzaj_pradu_pl": ETYKIETA,
     "rodzaj_przewodu_pl": ETYKIETA,
@@ -293,6 +308,7 @@ KANALY_TRESCI: dict[str, str] = {
     "section_label_pl": ETYKIETA,
     "sekcja_audytowa_pl": ZDANIE,
     "settings_podstawa_pl": ZDANIE,
+    "short_circuit_unavailable_pl": ZDANIE,
     "skrot_pl": ETYKIETA,
     "skutek_pl": ETYKIETA,
     "slad_pl": ZDANIE,
@@ -303,6 +319,7 @@ KANALY_TRESCI: dict[str, str] = {
     "status_label_pl": ETYKIETA,
     "status_pl": ETYKIETA,
     "statystyka_pl": ETYKIETA,
+    "sterownik_pl": ETYKIETA,
     "substitution_pl": ETYKIETA,
     "summary_pl": ZDANIE,
     "supply_assumption_pl": ZDANIE,
@@ -363,6 +380,7 @@ KANALY_TRESCI: dict[str, str] = {
     "zakres_sieci_pl": ZDANIE,
     "zakres_stosowalnosci_pl": ZDANIE,
     "zalozenia_pl": ZDANIE,
+    "zalozenie_kappa_pl": ZDANIE,
     "zalozenie_pl": ZDANIE,
     "zastrzezenia_pl": ZDANIE,
     "zawartosc_pl": ETYKIETA,
@@ -2418,7 +2436,7 @@ _ZMIENNA_WYLICZENIA = re.compile(
 #: Bazy klas wyliczeń (``enum``) — klasa dziedzicząca po nich (przechodnio) jest wyliczeniem.
 _BAZY_WYLICZEN = frozenset({"Enum", "StrEnum", "IntEnum", "Flag", "IntFlag"})
 #: Wartość wyliczenia będąca SŁOWEM po polsku (małe litery, spacje, łącznik) — wstawiona
-#: w zdanie czyta się jak tekst, nie jak kod (np. ``RODZAJE_OBWODU``: „odbiorczy”).
+#: w zdanie czyta się jak tekst, nie jak kod (np. ``RodzajObwoduNn``: „odbiorczy”).
 _WARTOSC_SLOWNA = re.compile(r"[a-ząćęłńóśźż][a-ząćęłńóśźż \-–]*")
 
 
@@ -2652,12 +2670,16 @@ WYLICZENIA_BEZ_ETYKIETY: dict[str, str] = {
         "cytowana obok listy dozwolonych wartości pliku, które autor danych wpisuje"
     ),
     "application/analyses/swz/werdykt_tt_it.py:rodzaj": (
-        "rodzaj obwodu PN-HD 60364-4-41 §411.3.2.2/.3 — wartości `RODZAJE_OBWODU` są polskimi "
-        "słowami („odbiorczy”, „rozdzielczy”); jedyne źródło: `rodzaj_obwodu_dla_aparatu`"
+        "rodzaj obwodu PN-HD 60364-4-41 §411.3.2.2/.3 — wartości `RodzajObwoduNn` są polskimi "
+        "słowami („odbiorczy”, „rozdzielczy”); jedyne źródło: `rozstrzygnij_rodzaj_obwodu_nn`"
+    ),
+    "enm/nastawy_zabezpieczen.py:kod": (
+        "cytat kodu funkcji wpisanego w sterowniku pola, spoza rejestru funkcji EAZ — projektant "
+        "poprawia dokładnie ten kod (ten sam powód co cytat kodów spoza słownika w `enm/pola.py`)"
     ),
     "application/analyses/swz/werdykt.py:rodzaj": (
-        "rodzaj obwodu PN-HD 60364-4-41 §411.3.2.2/.3 — wartości `RODZAJE_OBWODU` są polskimi "
-        "słowami („odbiorczy”, „rozdzielczy”); jedyne źródło: `rodzaj_obwodu_dla_aparatu`"
+        "rodzaj obwodu PN-HD 60364-4-41 §411.3.2.2/.3 — wartości `RodzajObwoduNn` są polskimi "
+        "słowami („odbiorczy”, „rozdzielczy”); jedyne źródło: `rozstrzygnij_rodzaj_obwodu_nn`"
     ),
     "api/generators.py:req.nc_rfg_module": (
         "typ modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) wpisany przez "
@@ -4157,7 +4179,7 @@ def test_wylaczenia_sklejen_sa_zywe(
 
 def test_wyliczenia_bez_etykiety_maja_wartosci_slowne_albo_normowe() -> None:
     """Warunek wpisów ``WYLICZENIA_BEZ_ETYKIETY`` i kolekcji oznaczeń normowych: wartości
-    ``NetworkType`` są oznaczeniami układu sieci wg PN-HD 60364-1 §312.2, ``RODZAJE_OBWODU``
+    ``NetworkType`` są oznaczeniami układu sieci wg PN-HD 60364-1 §312.2, ``RodzajObwoduNn``
     — polskimi słowami, ``TypModulu`` — typami A–D (rozporządzenie 2016/631 art. 5), klucze
     ``FUNKCJE_INNEJ_STREFY`` — numerami IEEE C37.2 / ANSI, ``Izolacja`` — PVC / XLPE,
     oznaczenia bloków fabrycznych — literami jednostek bloku, ``RODZAJE_PRADU_ROZNICOWEGO_RCD``
@@ -4165,16 +4187,16 @@ def test_wyliczenia_bez_etykiety_maja_wartosci_slowne_albo_normowe() -> None:
     Nowa wartość spoza tych zbiorów czerwieni test (wpis wyłączenia przestaje być prawdą)."""
     from typing import get_args
 
-    from application.analyses.swz.werdykt import RODZAJE_OBWODU
     from catalog.profiles.nc_rfg.loader import TypModulu
     from domain.der_protection_functions import FUNKCJE_INNEJ_STREFY
     from network_model.catalog.switchgear.factory_configuration import FACTORY_CONFIGURATIONS
     from network_model.catalog.types import RODZAJE_PRADU_ROZNICOWEGO_RCD
+    from network_model.catalog.wartosci_robocze import RodzajObwoduNn
     from network_model.solvers.cable_ampacity_derating import Izolacja
     from network_model.solvers.fault_loop_iec60364 import NetworkType, ProtectionArrangement
 
     assert {t.value for t in NetworkType} <= {"TN-S", "TN-C-S", "TN-C", "TT", "IT"}
-    assert all(re.fullmatch(r"[a-ząćęłńóśźż]+", rodzaj) for rodzaj in RODZAJE_OBWODU)
+    assert all(re.fullmatch(r"[a-ząćęłńóśźż]+", rodzaj) for rodzaj in get_args(RodzajObwoduNn))
     assert set(get_args(TypModulu)) == {"A", "B", "C", "D"}
     assert all(re.fullmatch(r"\d{2}[A-Z]{1,2}", kod) for kod in FUNKCJE_INNEJ_STREFY)
     assert set(get_args(Izolacja)) == {"PVC", "XLPE"}

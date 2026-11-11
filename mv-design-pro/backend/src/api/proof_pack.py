@@ -363,7 +363,7 @@ def _wywod_sekcje_wkladow(
         naglowek.append(
             {
                 "tekst": (
-                    "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. "
+                    "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. "
                     f"{zrodlo_tb.opis_pl}"
                 ),
                 "latex": None,

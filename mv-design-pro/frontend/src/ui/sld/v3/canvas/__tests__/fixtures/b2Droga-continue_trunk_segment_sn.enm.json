@@ -31,8 +31,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -44,8 +42,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       }
     ],
     "branch_points": [],

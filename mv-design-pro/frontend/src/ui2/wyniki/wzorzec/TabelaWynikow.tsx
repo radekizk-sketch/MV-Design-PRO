@@ -21,7 +21,7 @@
  * prawdy, nigdy dwie niezależne liczby.
  */
 
-import { useMemo, useRef, useEffect, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useEffect, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useGlobalSelectionSync } from '../../../ui/selection';
 import { canonicalizeSelectedElement } from '../../../ui/shared/selectionResolution';
@@ -35,6 +35,7 @@ import type {
 } from './wzorzecModel';
 import { TekstZWzorami } from '../../kreatory/rama';
 import { WZORZEC_STRINGS } from './strings';
+import { useCelGestuDwukliku } from '../../shared/useCelGestuDwukliku';
 import { akcjaNaprawcza, type RodzajPrzekroczenia } from './akcjeNaprawcze';
 
 /**
@@ -166,6 +167,9 @@ export function TabelaWynikow({
   const snapshot = useSnapshotStore((stan) => stan.snapshot);
   // Karta K8: wiersz ekranu pełnego niesie bieg ekranu — schemat przełącza się na niego.
   const pokazBiegEkranu = usePokazBiegEkranuNaSchemacie();
+  // Dwuklik wartości z dowodem: cel gestu = wartość pod PIERWSZYM klikiem (zaznaczenie
+  // wiersza rozwija inspektor i tabela przepływa między kliknięciami gestu).
+  const rozpocznijGestDowodu = useCelGestuDwukliku<string>((ref) => onOtworzDowod?.(ref));
   // D-2 (deep-link SLD → preselekcja wiersza): mapa klucz wiersza → węzeł DOM,
   // do przewinięcia widoku na wybrany wiersz. Ref (nie state) — nie wywołuje
   // dodatkowych renderów, wyłącznie odczyt w efekcie poniżej.
@@ -337,6 +341,7 @@ export function TabelaWynikow({
             kolumna={kol}
             komorka={wiersz[kol.klucz]}
             onOtworzDowod={onOtworzDowod}
+            rozpocznijGestDowodu={rozpocznijGestDowodu}
           />
         ))}
         {kolumnaDecyzji && (
@@ -457,10 +462,13 @@ function Komorka({
   kolumna,
   komorka,
   onOtworzDowod,
+  rozpocznijGestDowodu,
 }: {
   kolumna: DefinicjaKolumny;
   komorka: WartoscKomorki | undefined;
   onOtworzDowod?: (ref: string) => void;
+  /** Początek gestu dwukliku (cel gestu = ta wartość, `useCelGestuDwukliku`). */
+  rozpocznijGestDowodu: (ref: string, zdarzenie: ReactMouseEvent<Element>) => void;
 }) {
   const wyr = wyrownanieKolumny(kolumna);
   const klasyTd = [
@@ -518,6 +526,11 @@ function Komorka({
           aria-label={WZORZEC_STRINGS.pokazDowod}
           title={WZORZEC_STRINGS.pokazDowod}
           data-mvd-action="dowod"
+          // Pierwszy klik zaznacza wiersz (klik idzie dalej do `tr`), a zaznaczenie rozwija
+          // inspektor i tabela przepływa — cel gestu trzyma dwuklik przy TEJ wartości.
+          onClick={(e) => {
+            if (dowodRef !== undefined) rozpocznijGestDowodu(dowodRef, e);
+          }}
           onDoubleClick={otworz}
           onKeyDown={onKeyDown}
         >

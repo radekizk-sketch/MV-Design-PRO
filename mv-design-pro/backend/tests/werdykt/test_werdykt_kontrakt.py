@@ -169,7 +169,7 @@ _NOSNIKI_JEDNOSTKI: dict[str, Callable[[str], object]] = {
         podstawa=f.podstawa(),
     ),
     "margines": lambda j: Margines(
-        wartosc={"wartosc": 1.0, "jednostka": j}, definicja_latex=r"m = x_{\lim} - x"
+        wartosc={"wartosc": 1.0, "jednostka": j}, definicja_latex=r"\Delta x = x_{\lim} - x"
     ),
     "niepewnosc": lambda j: Niepewnosc(
         wartosc={"wartosc": 1.0, "jednostka": j}, metoda_pl="połowienie kroku"

@@ -26,11 +26,13 @@ from network_model.solvers.conductor_thermal_withstand import (
     derive_k_iec60949,
 )
 
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
+
 
 def _wejscie(**over: object) -> ConductorThermalInput:
     """Kabel Al/XLPE 120 mm², katalog MILCZY o Ith(1s) i Jth(1s)."""
     dane: dict[str, object] = {
-        "ith_a": 8000.0,
+        **prad_bez_skladowej_nieokresowej(8000.0),
         "fault_duration_s": 0.5,
         "ith_1s_a": None,
         "jth_1s_a_per_mm2": None,
@@ -237,7 +239,9 @@ def test_dowod_pokazuje_wzor_normy_a_nie_odczyt_z_karty() -> None:
     """
     wynik = check_conductor_thermal_withstand(_wejscie())
 
-    krok = wynik.white_box_trace[0]
+    # Krok 1 to I_th przy czasie trwania zwarcia (wielkość porównywana), krok 2 — k.
+    assert wynik.white_box_trace[0]["key"] == "conductor_thermal_ith"
+    krok = wynik.white_box_trace[1]
     assert krok["key"] == "conductor_thermal_k_factor"
     assert "ln" in krok["formula_latex"]
     assert "rho" in krok["formula_latex"]

@@ -52,7 +52,12 @@ import {
   rodzinaAnalizy,
   type RodzinaAnalizy,
 } from './rodzinyBiegow';
-import { swiezoscBiegu, type SwiezoscBiegu, type WerdyktPrzypadku } from './swiezoscBiegu';
+import {
+  swiezoscBiegu,
+  type BiegDoOcenySwiezosci,
+  type SwiezoscBiegu,
+  type WerdyktPrzypadku,
+} from './swiezoscBiegu';
 import { komunikatZapytania } from '../../shared/bladZapytania';
 
 export {
@@ -196,6 +201,7 @@ export {
   ETYKIETA_SWIEZOSCI,
   swiezoscBiegu,
   zdanieSwiezosci,
+  type BiegDoOcenySwiezosci,
   type StanSwiezosciBiegu,
   type SwiezoscBiegu,
   type WerdyktPrzypadku,
@@ -372,7 +378,7 @@ export function useWybierzBieg(): (runId: string, zrodlo: ZrodloWyboru) => void 
 }
 
 /** Świeżość biegu z jednego predykatu — bieżąca rewizja i werdykt serwera ze store'ów. */
-export function useSwiezoscBiegu(run: Pick<ExecutionRun, 'model_revision'> | null): SwiezoscBiegu | null {
+export function useSwiezoscBiegu(run: BiegDoOcenySwiezosci | null): SwiezoscBiegu | null {
   const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
   const przypadek = useStudyCasesStore((s) => s.activeCase);
   return useMemo(

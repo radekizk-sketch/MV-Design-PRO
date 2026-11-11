@@ -92,7 +92,24 @@ def naruszenia_gazu_fluorowanego_pola(
 ) -> list[NaruszenieGazuFluorowanego]:
     """Naruszenia zakazu w jednym rekordzie pola (rodzina, potem aparaty w kolejności listy)."""
     bay_ref = str(pole.get("ref_id") or "")
-    opis_pola = opis_elementu(dict(enm), bay_ref, "pola")
+    opis_pola: list[str] = []
+
+    def _odmowa(co_pl: str, *, gaz_fluorowany: bool | None, stan: str | None) -> str | None:
+        """Reguła zakazu dla ``co_pl`` w tym polu. Opis pola (wyszukanie po identyfikatorze
+        w całej migawce) powstaje dopiero przy naruszeniu i raz na pole — walidator i strażnik
+        operacji wołają tę funkcję dla KAŻDEGO pola przy każdej operacji, a pole bez naruszenia
+        opisu nie potrzebuje (pomiar: substrat 52 stacji, 39 tys. wyszukań na budowę)."""
+        if (
+            odmowa_gazu_fluorowanego_pl(co_pl, gaz_fluorowany=gaz_fluorowany, stan_obiektu=stan)
+            is None
+        ):
+            return None
+        if not opis_pola:
+            opis_pola.append(opis_elementu(dict(enm), bay_ref, "pola"))
+        return odmowa_gazu_fluorowanego_pl(
+            f"{co_pl} {opis_pola[0]}", gaz_fluorowany=gaz_fluorowany, stan_obiektu=stan
+        )
+
     wynik: list[NaruszenieGazuFluorowanego] = []
     stan_pola = napis_lub_none(pole.get("stan_obiektu"))
     rodzina_ref = napis_lub_none(pole.get("switchgear_family_ref"))
@@ -103,10 +120,10 @@ def naruszenia_gazu_fluorowanego_pola(
 
     rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(rodzina_ref or "")
     if rodzina is not None:
-        powod = odmowa_gazu_fluorowanego_pl(
-            f"Rodzina rozdzielnicy {rodzina.family_name} {opis_pola}",
+        powod = _odmowa(
+            f"Rodzina rozdzielnicy {rodzina.family_name}",
             gaz_fluorowany=rodzina.gaz_fluorowany,
-            stan_obiektu=stan_pola,
+            stan=stan_pola,
         )
         if powod is not None:
             wynik.append(
@@ -128,11 +145,7 @@ def naruszenia_gazu_fluorowanego_pola(
         pozycja = katalog_biezacy().mv_apparatus_types.get(str(catalog_ref))
         nazwa = nazwa_nadana_pozycji_katalogu(pozycja) or "pozycja katalogu aparatów"
         device_ref = str(aparat.get("device_ref") or "")
-        powod = odmowa_gazu_fluorowanego_pl(
-            f"Aparat {nazwa} {opis_pola}",
-            gaz_fluorowany=True,
-            stan_obiektu=stan_aparatu,
-        )
+        powod = _odmowa(f"Aparat {nazwa}", gaz_fluorowany=True, stan=stan_aparatu)
         if powod is not None:
             wynik.append(
                 NaruszenieGazuFluorowanego(
@@ -152,11 +165,7 @@ def naruszenia_gazu_fluorowanego_pola(
     ):
         pozycja = katalog_biezacy().mv_apparatus_types.get(str(glowny_ref))
         nazwa = nazwa_nadana_pozycji_katalogu(pozycja) or "pozycja katalogu aparatów"
-        powod = odmowa_gazu_fluorowanego_pl(
-            f"Aparat główny {nazwa} {opis_pola}",
-            gaz_fluorowany=True,
-            stan_obiektu=stan_pola,
-        )
+        powod = _odmowa(f"Aparat główny {nazwa}", gaz_fluorowany=True, stan=stan_pola)
         if powod is not None:
             wynik.append(
                 NaruszenieGazuFluorowanego(

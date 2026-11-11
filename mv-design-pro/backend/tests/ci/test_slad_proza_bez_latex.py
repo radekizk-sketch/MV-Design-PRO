@@ -73,6 +73,7 @@ from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Sol
 
 from tests.application.analyses.test_migotanie import _bus, _ibg, _sc_run
 from tests.cgmes.golden_enm import build_golden_enm
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
 
 _SKRYPT = Path(__file__).resolve().parents[3] / "scripts" / "slad_proza_bez_latex_guard.py"
 _spec = importlib.util.spec_from_file_location("slad_proza_bez_latex_guard", _SKRYPT)
@@ -234,7 +235,7 @@ def test_slad_przewodu_w_kontrakcie(
 ) -> None:
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=ith_a,
+            **prad_bez_skladowej_nieokresowej(ith_a),
             fault_duration_s=0.5,
             ith_1s_a=94.0 * 120.0 if k_z_katalogu else None,
             jth_1s_a_per_mm2=94.0 if k_z_katalogu else None,

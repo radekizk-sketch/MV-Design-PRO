@@ -2,7 +2,10 @@
  * Zrzuty ŻYWEJ aplikacji dla karty KD-6 (bramka 5, dyrektywa właściciela #8):
  *  - ogniwo z werdyktami wytrzymałości aparatury pochodzącymi z MODELU
  *    (żadnej ręcznej konfiguracji stacji — aparat z pozycji katalogu APARAT_SN),
- *  - rozbicie czasu wyłączenia wyprowadzonego z NASTAW zabezpieczeń pola.
+ *    jako tabela pól z rozwiniętym porównaniem pierwszego pola (karta APARATURA-TABELA),
+ *  - czas wyłączenia wyprowadzony z NASTAW zabezpieczeń pola i widok każdego pola
+ *    rozwiniętego ze „Szczegółami obliczeń” (karta KD6-SZCZEGOLY), z pomiarem wysokości
+ *    i liczb DOM do pliku wyników biegu.
  * Oba motywy. Zrzut = jedyny dowód wyglądu na stronie oceny.
  *
  * Scena jest REALNA: projekt + przypadek + sieć ze stacją, której pole liniowe
@@ -47,6 +50,7 @@ type DomainOpResponse = {
     transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
+    protection_assignments?: Array<{ ref_id: string; catalog_ref?: string | null }>;
   };
 };
 
@@ -157,20 +161,11 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
             ratio_primary_a: 400.0,
             ratio_secondary_a: 5.0,
           },
+          // Sterownik pola z zestawem funkcji rodzaju (I> 51, I>> 50); nastawy zapisuje niżej
+          // JEDYNY pisarz nastaw `update_protection_settings` (karta OCHRONA-JEDNO-ZRODLO).
           relay: {
             catalog_binding: catalogBinding('ZABEZPIECZENIE', PRZEKAZNIK_ID),
             relay_type: 'NADPRADOWY',
-            settings: [
-              {
-                function_type: 'overcurrent_51',
-                threshold_a: 400.0,
-                // Jednostka progu jest częścią nastawy (karta BIEG-ZABEZPIECZEN-Z-MODELU,
-                // PZ-09): 400 A po stronie pierwotnej przekładnika 400/5 A.
-                threshold_unit: 'A_PIERWOTNY',
-                curve_type: 'DT',
-                time_delay_s: 0.3,
-              },
-            ],
           },
         },
       },
@@ -182,6 +177,16 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       'TR',
     ],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
+  });
+
+  // Nastawy sterownika pola: I> 400 A po stronie pierwotnej przekładnika 400/5 A (jednostka
+  // progu jest częścią nastawy), charakterystyka niezależna 0,3 s; I>> wyłączony.
+  const sterownik = (op.snapshot?.protection_assignments ?? []).find((p) => p.catalog_ref === PRZEKAZNIK_ID);
+  expect(sterownik, 'sterownik pola z przekaźnikiem z katalogu').toBeTruthy();
+  op = await domainOp(request, studyCase.id, 'update_protection_settings', {
+    protection_ref: sterownik!.ref_id,
+    nastawy: { '51': { prog: 400.0, jednostka_progu: 'A_PIERWOTNY', krzywa: 'DT', zwloka_s: 0.3 } },
+    wlaczone: { '50': false },
   });
 
   const stacja = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
@@ -305,6 +310,43 @@ async function otworz(page: Page, scena: Scena, motyw: string, hash: string): Pr
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
 }
 
+/** Rozwija każde pole i jego szczegóły natywnym klikiem; zwraca liczby z DOM i wysokości. */
+async function zmierzSzczegolyPol(
+  page: Page,
+  pola: readonly string[],
+): Promise<{ wysokoscSekcjiPx: number; pola: Record<string, { wysokoscPx: number; teksty: Record<string, string> }> }> {
+  const wynik: Record<string, { wysokoscPx: number; teksty: Record<string, string> }> = {};
+  for (const pole of pola) {
+    const przelacz = page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pole}`);
+    if ((await przelacz.getAttribute('aria-expanded')) !== 'true') await przelacz.click();
+    const szczegolyPrzelacz = page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole}`);
+    if ((await szczegolyPrzelacz.getAttribute('aria-expanded')) !== 'true') {
+      await szczegolyPrzelacz.click();
+    }
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole}`)).toBeVisible();
+    const wiersz = page.getByTestId(`mvd-zwarcia-aparatura-pole-${pole}`);
+    const wysokoscPx = await wiersz.evaluate((tr) => {
+      const rozwiniecie = tr.nextElementSibling as HTMLElement | null;
+      return tr.getBoundingClientRect().height + (rozwiniecie?.getBoundingClientRect().height ?? 0);
+    });
+    const teksty = await page.evaluate((p) => {
+      const zebrane: Record<string, string> = {};
+      for (const el of document.querySelectorAll<HTMLElement>('[data-testid^="mvd-zwarcia-aparatura-"]')) {
+        const id = el.dataset.testid ?? '';
+        if (id.endsWith(`-${p}`) || id.includes(`-${p}-`)) zebrane[id] = (el.innerText ?? '').trim();
+      }
+      return zebrane;
+    }, pole);
+    wynik[pole] = { wysokoscPx, teksty };
+  }
+  const wspolne = page.getByTestId('mvd-zwarcia-aparatura-prady-wspolne');
+  if ((await wspolne.count()) > 0) {
+    wynik['(wspólne)'] = { wysokoscPx: 0, teksty: { 'prady-wspolne': (await wspolne.innerText()).trim() } };
+  }
+  const ramka = await page.getByTestId('mvd-zwarcia-aparatura').boundingBox();
+  return { wysokoscSekcjiPx: Math.round(ramka?.height ?? 0), pola: wynik };
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -338,28 +380,84 @@ test.describe('kd6:zrzuty', () => {
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
 
-      // Układ rekordów K: każda karta werdyktu ma czytelną szerokość. Karty wpięte luźno
-      // w wiersz flex kurczyły się do kilku znaków i sekcja miała ~186 000 px wysokości.
-      const karty = page
-        .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
-        .locator(':scope > *');
-      // Trzy rekordy K na pole: wytrzymałość dynamiczna, cieplna i zdolność wyłączania
-      // (karta SC-IB-ITH-ZRODLA dodała trzeci — I_b ≤ I_cu dla wyłącznika SN).
-      expect(await karty.count()).toBe(3);
-      for (const karta of await karty.all()) {
-        const ramka = await karta.boundingBox();
-        expect(ramka?.width ?? 0, 'karta werdyktu nie może być ściśnięta').toBeGreaterThan(280);
+      // Tabela pól (karta APARATURA-TABELA): jeden wiersz na pole, natywne rozwinięcie
+      // pierwszego wiersza pokazuje porównanie trzech kryteriów (szczytowy, cieplny,
+      // wyłączalny) z liczbami rekordów K tego pola.
+      const tabela = page.getByTestId('mvd-zwarcia-aparatura-werdykty');
+      for (const pole of scena.polaZWerdyktem) {
+        await expect(tabela.getByTestId(`mvd-zwarcia-aparatura-pole-${pole}`)).toBeVisible();
       }
+      const przelacz = page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pierwszePole}`);
+      await przelacz.click();
+      await expect(przelacz).toHaveAttribute('aria-expanded', 'true');
+      const porownanie = page.getByTestId(`mvd-zwarcia-aparatura-porownanie-${pierwszePole}`);
+      await expect(porownanie).toBeVisible();
+      expect(await porownanie.locator('tbody > tr').count()).toBe(3);
       const ramkaSekcji = await sekcja.boundingBox();
       expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
 
+      // Sekcja żyje w przewijanym kontenerze ekranu wyników: zrzut elementu wyższego niż okno
+      // malował tylko część w oknie (pomiar FIX-E2E-PELNE), więc okno podnosimy do wysokości
+      // sekcji, żeby kontener nie przewijał i cała sekcja była namalowana.
+      await page.setViewportSize({
+        width: 1360,
+        height: Math.ceil(ramkaSekcji?.height ?? 0) + 600,
+      });
+      await sekcja.scrollIntoViewIfNeeded();
       await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
-      const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pierwszePole}`);
+      // Czas wyłączenia pierwszego pola pod tabelą kryteriów (t_zab + t_wył = T_k) i jego
+      // szczegóły obliczeń (dane wejściowe → wzory → podstawienia → wyniki pośrednie → wynik).
+      await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pierwszePole}`).click();
+      const szczegoly = page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pierwszePole}`);
+      await expect(szczegoly).toBeVisible();
+      const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-szczegoly-${pierwszePole}`);
       await expect(czas).toBeVisible();
+      // Karta KD6 (realny backend): tekst szczegółów i podpowiedzi bez symbolu w notacji ASCII
+      // z podkreśleniem (symbole wyłącznie przez MathRenderer), zdanie członu nastawczego nazywa
+      // zabezpieczenie przez pole, bez dublowania słowa, a zapas nie używa litery m.
+      const tekstySzczegolow = await szczegoly.evaluate((el) => {
+        const kopia = el.cloneNode(true) as HTMLElement;
+        kopia.querySelectorAll('[data-latex]').forEach((w) => w.remove());
+        const tytuly = [...el.querySelectorAll('[title]')].map((w) => w.getAttribute('title') ?? '');
+        const wzory = [...el.querySelectorAll('[data-latex]')].map((w) => w.getAttribute('data-latex') ?? '');
+        return { tekst: kopia.textContent ?? '', tytuly, wzory };
+      });
+      const golyIndeks = /(?<![\p{L}\p{N}_\\])\p{L}_(?:\{[^}]*\}|[\p{L}\p{N}]+)/u;
+      expect(tekstySzczegolow.tekst).not.toMatch(golyIndeks);
+      for (const tytul of tekstySzczegolow.tytuly) expect(tytul).not.toMatch(golyIndeks);
+      const opisCzasu = (await page.getByTestId(`mvd-zwarcia-aparatura-czas-opis-${pierwszePole}`).textContent()) ?? '';
+      expect(opisCzasu).toContain('charakterystyka: czas niezależny (DT), zabezpieczenie pola „');
+      expect(opisCzasu).not.toMatch(/zabezpieczeni[ae] Zabezpieczenie/);
+      expect(tekstySzczegolow.wzory.filter((w) => /^m\s*=/.test(w))).toEqual([]);
+      const ramkaSzczegolow = await szczegoly.boundingBox();
+      await page.setViewportSize({
+        width: 1360,
+        height: Math.ceil((ramkaSekcji?.height ?? 0) + (ramkaSzczegolow?.height ?? 0)) + 600,
+      });
+      await czas.scrollIntoViewIfNeeded();
       await bramkaTresciMatematycznej(page);
       await czas.screenshot({ path: path.join(OUTPUT_DIR, `kd6-tclearing-${id}.png`) });
+
+      // POMIAR (standard §10 kontraktu prezentacji: meldunek podaje pomiar przed/po): każde pole
+      // rozwinięte natywnie, ze szczegółami obliczeń; liczby z DOM (prądy, Tk, zapasy, wartości
+      // porównania) i wysokości do pliku wyników biegu — porównanie liczb przed/po zmianie UI.
+      const pomiar = await zmierzSzczegolyPol(page, scena.polaZWerdyktem);
+      fs.writeFileSync(test.info().outputPath(`kd6-pomiar-${id}.json`), JSON.stringify(pomiar, null, 2));
+
+      // Zrzut widoku każdego pola rozwiniętego ze szczegółami obliczeń (karta KD6-SZCZEGOLY):
+      // tabela kryteriów, czas wyłączenia, wyprowadzenie. Okno na całą sekcję (przewijany
+      // kontener ekranu wyników maluje tylko część w oknie).
+      await page.setViewportSize({ width: 1360, height: pomiar.wysokoscSekcjiPx + 600 });
+      for (const [i, pole] of scena.polaZWerdyktem.entries()) {
+        const widokPola = page.getByTestId(`mvd-zwarcia-aparatura-rozwiniecie-${pole}`);
+        await widokPola.scrollIntoViewIfNeeded();
+        await bramkaTresciMatematycznej(page);
+        await widokPola.screenshot({
+          path: path.join(OUTPUT_DIR, `kd6-szczegoly-pole${i + 1}-${id}.png`),
+        });
+      }
     });
   }
 });

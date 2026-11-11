@@ -103,13 +103,12 @@ def _zmien_nastawy(app_client, case_id: str) -> None:
     """TMS stopnia I> zabezpieczenia Q2 0,1 → 0,2 (w zakresie katalogu) — zmiana NASTAW."""
     model = get_enm(_klucz_modelu(case_id))
     q2 = next(p for p in model.protection_assignments if p.name == "Zabezpieczenie odejścia S01")
-    nastawy = [dict(n) for n in NASTAWY_Q2]
-    nastawy[0]["time_multiplier"] = 0.2
+    nastawy = {"51": {**NASTAWY_Q2["51"], "tms": 0.2}}
     _operacja(
         app_client,
         case_id,
         "update_protection_settings",
-        {"protection_ref": q2.ref_id, "settings": nastawy},
+        {"protection_ref": q2.ref_id, "nastawy": nastawy},
     )
 
 

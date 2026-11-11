@@ -1804,8 +1804,9 @@ class SwitchEquipmentType:
             UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
             (rodzina napieciowa "12/17.5/24 kV" JEST U_m). ``None`` = karta
             katalogowa tej pozycji jeszcze nie wniosla tej wartosci wprost.
-        i_cu_ka: Znamionowa zdolnosc wylaczalna zwarciowa I_cu [kA] wg
-            IEC 62271-100 — WYLACZNIE dla aparatow zdolnych wylaczac prady
+        i_cu_ka: Znamionowa zdolnosc wylaczania zwarciowa [kA] — dla wylacznika SN
+            znamionowy prad wylaczalny zwarciowy I_sc wg IEC 62271-100 § 4.101
+            (nazwa pola wspolna z I_cu aparatow nN wg IEC 60947-2) — WYLACZNIE dla aparatow zdolnych wylaczac prady
             zwarciowe (wylaczniki, reklozery, bezpieczniki). Rozlaczniki i
             odlaczniki (equipment_kind LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH)
             NIE MAJA tej zdolnosci z definicji normy — ``None`` u nich oznacza

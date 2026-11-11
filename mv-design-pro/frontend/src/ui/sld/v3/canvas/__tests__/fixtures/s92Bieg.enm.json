@@ -30,8 +30,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -43,8 +41,7 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -75,12 +72,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N"
-      ],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/000",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -92,8 +83,7 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/000",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -124,12 +114,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N"
-      ],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -141,8 +125,7 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/001",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -174,16 +157,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [
-        "87T",
-        "51",
-        "50",
-        "51N",
-        "63",
-        "26",
-        "63P"
-      ],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/002",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -195,8 +168,7 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/002",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -227,12 +199,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N"
-      ],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/003",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -244,8 +210,7 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/003",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -276,12 +241,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N"
-      ],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/004",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -293,8 +252,7 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/004",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -324,8 +282,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_main_breaker",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -337,8 +293,7 @@
         "nn_main_breaker"
       ],
       "terminal_bus_ref": "nn/9fc9f6014a8a7ba52fed1dd39c0047d0/feeder_bus",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -374,8 +329,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_feeder/000",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -385,8 +338,7 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/a03a840e51b5edc9d95f0674af4888eb/feeder_bus",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -422,8 +374,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_feeder/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -433,8 +383,7 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/c42dce2f7b789d928f488b7a04ac9e93/feeder_bus",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -470,8 +419,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_feeder/002",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -481,8 +428,7 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/b77a43fc591a4236c555a4eb9bb30a6a/feeder_bus",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -518,8 +464,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_feeder/003",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -529,8 +473,7 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/6d47ebc785a3a9444cb0d9a08e095579/feeder_bus",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -566,8 +509,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/nn_feeder/004",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -577,8 +518,7 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/7aa7cd3255ad853dbd72730a9fffb8c4/feeder_bus",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     }
   ],
   "branch_points": [],
@@ -673,6 +613,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_bus",
       "id": "d12d4b33-0c43-5cfb-b348-dce65455a326",
       "materialized_params": {
@@ -697,6 +638,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field_breaker/000",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -710,6 +652,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_bus",
       "id": "d0a4d749-40b6-5fcc-a589-f2ffcf409800",
       "materialized_params": {
@@ -734,6 +677,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field_breaker/001",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -747,6 +691,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_bus",
       "id": "29b34f03-96cb-56fe-ab24-474f80eb1931",
       "materialized_params": {
@@ -771,6 +716,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field_breaker/002",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -784,6 +730,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_bus",
       "id": "406c186b-b87b-565b-96ab-32af675ddfd6",
       "materialized_params": {
@@ -808,6 +755,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field_breaker/003",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -821,6 +769,7 @@
     {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_bus",
       "id": "8cb90779-d623-51dd-b6b9-1b98e5eb665c",
       "materialized_params": {
@@ -845,6 +794,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field_breaker/004",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1026,6 +976,7 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/nn_bus",
       "id": "8814de45-0beb-599f-8951-8e9586b1cc9f",
       "materialized_params": null,
@@ -1040,6 +991,7 @@
       "parameter_source": null,
       "r_ohm": null,
       "ref_id": "nn/9fc9f6014a8a7ba52fed1dd39c0047d0/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "MIGRACJA",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1051,6 +1003,7 @@
     {
       "catalog_namespace": "APARAT_NN",
       "catalog_ref": "cb_nn_400a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/nn_bus",
       "id": "398cc472-e099-55a7-8668-7dc017720511",
       "materialized_params": {
@@ -1093,6 +1046,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": null,
       "ref_id": "nn/a03a840e51b5edc9d95f0674af4888eb/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1104,6 +1058,7 @@
     {
       "catalog_namespace": "APARAT_NN",
       "catalog_ref": "cb_nn_400a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/nn_bus",
       "id": "40dbf976-5d32-5bc1-a889-991f2850a7ea",
       "materialized_params": {
@@ -1146,6 +1101,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": null,
       "ref_id": "nn/c42dce2f7b789d928f488b7a04ac9e93/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1157,6 +1113,7 @@
     {
       "catalog_namespace": "APARAT_NN",
       "catalog_ref": "cb_nn_400a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/nn_bus",
       "id": "e1fbeace-adae-5935-aa1b-97eb9da27bf8",
       "materialized_params": {
@@ -1199,6 +1156,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": null,
       "ref_id": "nn/b77a43fc591a4236c555a4eb9bb30a6a/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1210,6 +1168,7 @@
     {
       "catalog_namespace": "APARAT_NN",
       "catalog_ref": "cb_nn_400a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/nn_bus",
       "id": "07fafb40-b8fe-55d8-bee5-e7c682e11a14",
       "materialized_params": {
@@ -1252,6 +1211,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": null,
       "ref_id": "nn/6d47ebc785a3a9444cb0d9a08e095579/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1263,6 +1223,7 @@
     {
       "catalog_namespace": "APARAT_NN",
       "catalog_ref": "cb_nn_400a",
+      "czas_wylaczenia_zwarcia_s": null,
       "from_bus_ref": "stn/e175ec51477c27677da547384cfababc/nn_bus",
       "id": "2c1838f0-2eae-5849-83aa-15e277c01ab5",
       "materialized_params": {
@@ -1305,6 +1266,7 @@
       "parameter_source": "CATALOG",
       "r_ohm": null,
       "ref_id": "nn/7aa7cd3255ad853dbd72730a9fffb8c4/feeder_device",
+      "rodzaj_obwodu_nn": null,
       "source_mode": "KATALOG",
       "stan_obiektu": "PROJEKTOWANY",
       "status": "closed",
@@ -1634,7 +1596,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "14d4cfb93eb44a2c3e5242449cbfbc1fd82a80a57079559106d915d46f059126",
+    "hash_sha256": "7b7ff333ee60f526c8d56cace98bc79b2bd7e6602effad31071e78043afa99af",
     "name": "Bieg na schemacie",
     "revision": 6,
     "updated_at": "2026-09-25T00:00:00Z"
@@ -1835,7 +1797,258 @@
     }
   ],
   "measurements": [],
-  "protection_assignments": [],
+  "protection_assignments": [
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "stn/e175ec51477c27677da547384cfababc/sn_field/000",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "51",
+          "ref": "51",
+          "wlaczona": true
+        },
+        {
+          "kod": "50",
+          "ref": "50",
+          "wlaczona": true
+        },
+        {
+          "kod": "51N",
+          "ref": "51N",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "42ec7897-0222-5651-bf2a-aae8cb64bc71",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole liniowe wejściowe 1",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/000/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    },
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "stn/e175ec51477c27677da547384cfababc/sn_field/001",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "51",
+          "ref": "51",
+          "wlaczona": true
+        },
+        {
+          "kod": "50",
+          "ref": "50",
+          "wlaczona": true
+        },
+        {
+          "kod": "51N",
+          "ref": "51N",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "dd225ec0-cb5f-5a6e-b8f3-4700536a7f92",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole liniowe wyjściowe 2",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/001/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    },
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "stn/e175ec51477c27677da547384cfababc/sn_field/002",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "87T",
+          "ref": "87T",
+          "wlaczona": true
+        },
+        {
+          "kod": "51",
+          "ref": "51",
+          "wlaczona": true
+        },
+        {
+          "kod": "50",
+          "ref": "50",
+          "wlaczona": true
+        },
+        {
+          "kod": "51N",
+          "ref": "51N",
+          "wlaczona": true
+        },
+        {
+          "kod": "63",
+          "ref": "63",
+          "wlaczona": true
+        },
+        {
+          "kod": "26",
+          "ref": "26",
+          "wlaczona": true
+        },
+        {
+          "kod": "63P",
+          "ref": "63P",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "bea9d746-83ae-59a8-8043-36e4b3014fc1",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole transformatorowe 3",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/002/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    },
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "stn/e175ec51477c27677da547384cfababc/sn_field/003",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "51",
+          "ref": "51",
+          "wlaczona": true
+        },
+        {
+          "kod": "50",
+          "ref": "50",
+          "wlaczona": true
+        },
+        {
+          "kod": "51N",
+          "ref": "51N",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "77623ef2-4657-5562-82d2-9d181607509f",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole liniowe wyjściowe 4",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/003/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    },
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "stn/e175ec51477c27677da547384cfababc/sn_field/004",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "51",
+          "ref": "51",
+          "wlaczona": true
+        },
+        {
+          "kod": "50",
+          "ref": "50",
+          "wlaczona": true
+        },
+        {
+          "kod": "51N",
+          "ref": "51N",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "7f649aa1-c13a-527e-85e3-7ced3678c62a",
+      "is_enabled": true,
+      "macierz_wyzwolen": [],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole liniowe wyjściowe 5",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/004/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": null,
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": null
+      }
+    }
+  ],
   "shunt_capacitors": [],
   "sources": [
     {

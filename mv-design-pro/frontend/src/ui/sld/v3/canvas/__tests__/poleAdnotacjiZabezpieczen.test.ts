@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { poleAdnotacjiZabezpieczen, SEKCJA_ZABEZPIECZEN_KARTY_POLA } from '../poleAdnotacjiZabezpieczen';
 import { buildKartaTechniczna } from '../../../shared/kartaTechnicznaElementu';
+import { kodyFunkcjiPola } from '../../../../shared/sterownikZabezpieczen';
 import type { DaneElementuKanwy } from '../../../shared/daneElementuKanwy';
 import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 
@@ -41,7 +42,10 @@ describe('poleAdnotacjiZabezpieczen — iloczyn cech', () => {
 
   it('id sekcji docelowej istnieje w karcie pola', () => {
     const enm = (fxZ11 as unknown as { snapshot: EnergyNetworkModel }).snapshot;
-    for (const bay of enm.bays.filter((b) => (b.protection_codes ?? []).length > 0)) {
+    // Pola z funkcjami sterownika (jedna struktura zabezpieczeń) — warunek testu: niepusty zbiór.
+    const pola = enm.bays.filter((b) => kodyFunkcjiPola(enm, b.ref_id).length > 0);
+    expect(pola.length).toBeGreaterThan(0);
+    for (const bay of pola) {
       const dane = { kind: 'bay', elementId: bay.ref_id } as unknown as DaneElementuKanwy;
       const karta = buildKartaTechniczna(enm, dane);
       expect(karta?.rodzaj).toBe('pole');

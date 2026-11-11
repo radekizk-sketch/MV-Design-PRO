@@ -21,6 +21,7 @@ from enum import StrEnum
 from typing import Any
 
 from domain.project_archive import (
+    SEKCJE_EMITOWANE_GDY_NIEPUSTE,
     ArchiveFingerprints,
     ProjectArchive,
     archive_to_dict,
@@ -70,6 +71,9 @@ SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
         "analysis_runs_index": "run_id",
     },
     "results": {},
+    # Rejestry magazynu scenariuszy — tożsamość wpisu to identyfikator scenariusza
+    # (scenariusze nazwane i wybory zabezpieczeń przypadków `zabezpieczenia-przypadku:<case_id>`).
+    "scenariusze": {"rejestry": "scenario_id"},
 }
 
 # Pola sekcji, które są POJEDYNCZYM obiektem (nie listą elementów) — porównanie
@@ -87,6 +91,7 @@ _SECTION_HASH_MAP: dict[str, str] = {
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
     "enm": "enm_hash",
+    "scenariusze": "scenariusze_hash",
 }
 
 # Mapowanie nazw sekcji na etykiety PL
@@ -98,6 +103,7 @@ _SECTION_LABELS_PL: dict[str, str] = {
     "interpretations": "Interpretacje",
     "issues": "Problemy",
     "enm": "Model sieci",
+    "scenariusze": "Scenariusze i zabezpieczenia przypadków",
 }
 
 # Pola, po których element listy modelu sieci ma tożsamość: elementy techniczne
@@ -372,7 +378,32 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "bay_role": "Rola pola",
     "substation_ref": "Stacja",
     "equipment_refs": "Aparaty pola",
-    "protection_ref": "Zabezpieczenie",
+    # sterownik zabezpieczen (ADR-022): pole, wejscia, funkcje, grupy nastaw, macierz wyzwolen
+    "bay_ref": "Pole",
+    "prad_znamionowy_wejscia_a": "Prąd znamionowy wejścia [A]",
+    "charakterystyki_ref": "Profil charakterystyk funkcji",
+    "wejscia": "Wejścia pomiarowe",
+    "ct_ref": "Przekładnik prądowy",
+    "vt_ref": "Przekładnik napięciowy",
+    "i0_uklad": "Układ prądu zerowego 3I0",
+    "i0_ct_ref": "Przekładnik Ferrantiego",
+    "u0_uklad": "Układ napięcia zerowego 3U0",
+    "u0_vt_ref": "Przekładnik napięcia zerowego",
+    "ct_strony_2_refs": "Przekładniki drugiej strony",
+    "funkcje": "Funkcje",
+    "kod": "Kod funkcji",
+    "wlaczona": "Funkcja włączona",
+    "grupy_nastaw": "Grupy nastaw",
+    "aktywna_grupa": "Aktywna grupa nastaw",
+    "numer": "Numer grupy",
+    "funkcja_ref": "Funkcja",
+    "nastawy": "Nastawy",
+    "klucz": "Nastawa",
+    "wartosc": "Wartość nastawy",
+    "pochodzenie": "Pochodzenie nastawy",
+    "macierz_wyzwolen": "Macierz wyzwoleń",
+    "aparat_refs": "Aparaty wyzwalane",
+    "pobudza_spz": "Pobudza SPZ",
     # obiekty zagniezdzone modelu (wartosci zlozone pokazywane po polsku)
     "order": "Kolejność",
     "segment_ref": "Odcinek",
@@ -395,12 +426,6 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "reason": "Uzasadnienie",
     "unit_system": "Układ jednostek",
     "sn_nominal_kv": "Napięcie znamionowe SN [kV]",
-    "function_type": "Funkcja zabezpieczenia",
-    "threshold_a": "Próg prądowy [A]",
-    "time_delay_s": "Zwłoka [s]",
-    "curve_type": "Charakterystyka",
-    "time_multiplier": "Mnożnik czasowy",
-    "is_directional": "Kierunkowe",
     "moc_przylaczeniowa_mw": "Moc przyłączeniowa [MW]",
     "wymagany_cos_phi": "Wymagany współczynnik mocy",
     "tryb_pracy": "Tryb pracy",
@@ -685,6 +710,7 @@ _ETYKIETY_TYPOW_PL: dict[str, str] = {
     "settings": "Ustawienia przypadków",
     "canonical_runs": "Przebiegi obliczeń",
     "analysis_runs_index": "Indeks przebiegów (historyczny)",
+    "rejestry": "Scenariusze (z historią rewizji)",
 }
 
 _PRZEDROSTEK_PRZYPADKU = "przypadek:"
@@ -1072,6 +1098,10 @@ def compare_archives(
     for section_name in section_names:
         sec_hash_a = _get_section_hash(archive_a.fingerprints, section_name)
         sec_hash_b = _get_section_hash(archive_b.fingerprints, section_name)
+        if section_name in SEKCJE_EMITOWANE_GDY_NIEPUSTE and not sec_hash_a and not sec_hash_b:
+            # Sekcja nieobecna w obu archiwach nie jest porównywana (liczba sekcji porównania
+            # projektów bez scenariuszy bez zmian).
+            continue
 
         # Pobierz dane sekcji — obsluz aliasy
         section_data_key = section_name

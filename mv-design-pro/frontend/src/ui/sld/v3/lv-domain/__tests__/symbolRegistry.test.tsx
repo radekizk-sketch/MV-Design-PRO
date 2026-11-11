@@ -232,13 +232,15 @@ describe('Symbole elementów nie-gałęziowych — z DANYCH, nie z domysłu', ()
     expect(symbolPomiaru('VT')).toBe('cad.przekladnikNapieciowy');
   });
 
-  it('funkcje zabezpieczeń: znaki IEC do prostokąta (≤2, inaczej pierwszy + licznik), pełne listy IEC/ANSI/nazw osobno; kod nieznany przechodzi bez zmian', () => {
-    expect(znakiIec(['overcurrent_50', 'overcurrent_51'])).toEqual(['I>>', 'I>']);
-    expect(znakiIec(['rocof_81R', 'underfrequency_81U', 'vector_shift_78'])).toEqual(['df/dt', '+2']);
-    expect(znakiIecPelne(['rocof_81R', 'underfrequency_81U', 'vector_shift_78'])).toEqual(['df/dt', 'f<', 'Δφ']);
-    expect(znakiIecPelne(['earth_fault_51N', 'directional_67N', 'undervoltage_27', 'overvoltage_59', 'overfrequency_81O', 'earth_fault_50N', 'directional_67'])).toEqual(['I0>', 'I0>→', 'U<', 'U>', 'f>', 'I0>>', 'I>→']);
-    expect(kodyAnsiPelne(['rocof_81R', 'underfrequency_81U', 'vector_shift_78'])).toEqual(['81R', '81U', '78']);
-    expect(nazwyFunkcjiPl(['overcurrent_51', 'earth_fault_51N'])).toEqual(['nadprądowe zwłoczne', 'ziemnozwarciowe zwłoczne']);
+  it('funkcje zabezpieczeń (kody rejestru funkcji — te same co sterownik w modelu): znaki do prostokąta (≤2, inaczej pierwszy + licznik), pełne listy znaków/ANSI/nazw osobno; kod nieznany przechodzi bez zmian', () => {
+    expect(znakiIec(['50', '51'])).toEqual(['I>>', 'I>']);
+    expect(znakiIec(['81R', '81U', '78'])).toEqual(['df/dt', '+2']);
+    // Opis słowny rejestru („skok wektora", „I> kierunkowe") nie mieści się w prostokącie —
+    // znak to numer ANSI funkcji.
+    expect(znakiIecPelne(['81R', '81U', '78'])).toEqual(['df/dt', 'f<', '78']);
+    expect(znakiIecPelne(['51N', '67N', '27', '59', '81O', '50N', '67'])).toEqual(['Io>', '67N', 'U<', 'U>', 'f>', 'Io>>', '67']);
+    expect(kodyAnsiPelne(['81R', '81U', '78', 'Go>'])).toEqual(['81R', '81U', '78', 'Go>']);
+    expect(nazwyFunkcjiPl(['51', '51N'])).toEqual(['nadprądowe zwłoczne', 'ziemnozwarciowe zwłoczne (prąd zerowy)']);
     expect(kodyAnsiPelne(['nieznany_kod'])).toEqual(['nieznany_kod']);
     expect(znakiIecPelne(['nieznany_kod'])).toEqual(['nieznany_kod']);
     expect(znakiIec([])).toEqual([]);

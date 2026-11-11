@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
+import { sterownikTestowy } from '../../../test/sterownik';
 import { wyczyscRejestrBiegow } from '../../../test/biegNieaktualny';
 import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
@@ -438,20 +439,34 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     });
   });
 
-  it('zabezpieczenie: rodzaj + wyłącznik + liczba nastaw', () => {
+  it.each([1, 2])('zabezpieczenie: urządzenie + funkcje + aparaty wyzwalane + nastawy grupy aktywnej %i', (grupa) => {
+    // Sterownik w jednej strukturze (karta OCHRONA-JEDNO-ZRODLO): nastawy dwóch funkcji
+    // w grupie 1, jednej w grupie 2 — liczba nastaw czytana z grupy AKTYWNEJ.
     const model = pustyModel();
-    (model.protection_assignments as unknown[]).push(
-      bazowyElement('pa-1', {
-        breaker_ref: 'br-1',
-        device_type: 'overcurrent',
-        settings: [{ a: 1 }, { b: 2 }],
-        is_enabled: true,
-      }),
-    );
+    const sterownik = sterownikTestowy({
+      ref: 'pa-1',
+      nazwa: 'Sterownik pola 1',
+      kody: ['51', '50'],
+      wylacznik: 'br-1',
+      nastawy: { '51': { prog: 400, zwloka_s: 0.3 }, '50': { prog: 2000 } },
+    });
+    (model.protection_assignments as unknown[]).push({
+      ...sterownik,
+      grupy_nastaw: [
+        ...sterownik.grupy_nastaw,
+        { numer: 2, funkcje: [{ funkcja_ref: '51', nastawy: [{ klucz: 'prog', wartosc: 300, pochodzenie: 'PROJEKTANT' }] }] },
+      ],
+      aktywna_grupa: grupa,
+    });
     const katalogowe = mapowanieObiektuInspektora(model, 'pa-1')?.wlasciwosci.find(
       (s) => s.id === 'katalogowe',
     );
-    expect(katalogowe?.wiersze.find((w) => w.etykieta === 'Liczba nastaw')?.wartosc.wartosc).toBe(2);
+    const wartosc = (etykieta: string) => katalogowe?.wiersze.find((w) => w.etykieta === etykieta)?.wartosc.wartosc;
+    expect(wartosc('Urządzenie')).toBe('Sterownik pola 1');
+    expect(wartosc('Funkcje')).toBe('51, 50');
+    expect(wartosc('Aparaty wyzwalane')).toBe('br-1');
+    expect(wartosc('Aktywna grupa nastaw')).toBe(grupa);
+    expect(wartosc('Liczba nastaw w aktywnej grupie')).toBe(grupa === 1 ? 3 : 1);
   });
 
   it('ciąg liniowy: rodzaj + pole startowe + liczniki', () => {

@@ -40,6 +40,8 @@ from network_model.solvers.conductor_thermal_withstand import (
     check_conductor_thermal_withstand,
 )
 
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
+
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_ZRODLO_250 = "src-gpz-15kv-250mva-rx010"
 CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
@@ -252,7 +254,7 @@ def test_dane_cieplne_linii_docieraja_do_galezi_grafu() -> None:
 
 def _wejscie_przewodu_golego(**nadpisania: Any) -> ConductorThermalInput:
     dane: dict[str, Any] = {
-        "ith_a": 5000.0,
+        **prad_bez_skladowej_nieokresowej(5000.0),
         "fault_duration_s": 0.5,
         "ith_1s_a": JTH_AL_ST_OHL * 70.0,
         "jth_1s_a_per_mm2": JTH_AL_ST_OHL,

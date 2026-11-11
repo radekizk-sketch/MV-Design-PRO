@@ -422,7 +422,23 @@ async function otworzZabezpieczeniaIAutomatyke(page: Page): Promise<void> {
   await expect(page.getByTestId('mvd-cmdk-dialog')).toBeVisible();
   await page.getByTestId('mvd-cmdk-input').fill('Zabezpieczenia i automatyka');
   await page.getByTestId('mvd-cmdk-opcja-ekran:E-27').click();
-  await expect(page.getByTestId('mvd-za-nastawy')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('mvd-za-zabezpieczenia')).toBeVisible({ timeout: 20000 });
+}
+
+/**
+ * Edytor nastaw sterownika wyłącznika o nazwie `nazwaWylacznika` w tabeli E-27 (sterownik =
+ * wiersz). Wiersz rozwijany NATYWNYM klikiem „Nastawy" (gdy ekran nie rozwinął go sam — jeden
+ * sterownik w modelu rozwija się od razu). Zwraca przedrostek identyfikatorów edytora.
+ */
+async function edytorSterownika(page: Page, nazwaWylacznika: string): Promise<string> {
+  const wiersz = page.locator('tr[data-testid^="mvd-za-wiersz-"]').filter({ hasText: nazwaWylacznika });
+  await expect(wiersz).toHaveCount(1, { timeout: 20000 });
+  const klucz = (await wiersz.getAttribute('data-testid'))!.replace('mvd-za-wiersz-', '');
+  const przelacz = page.getByTestId(`mvd-za-nastawy-${klucz}`);
+  if ((await przelacz.getAttribute('aria-expanded')) !== 'true') await przelacz.click();
+  const prefiks = `mvd-za-edytor-${klucz}`;
+  await expect(page.getByTestId(prefiks)).toBeVisible({ timeout: 20000 });
+  return prefiks;
 }
 
 /** Realna droga do E-28: Wyniki → „Pozostałe analizy" → karta koordynacji → Otwórz. */
@@ -544,40 +560,43 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   await page.getByTestId('mvd-kreator-przekaznik-zapisz').click();
   await expect(page.getByTestId('mvd-kreator-przekaznik')).toHaveCount(0, { timeout: 20000 });
 
-  // (3) Nastawy w edytorze — przypisanie bez nastaw jest nazwanym brakiem, nie wartością domyślną.
-  await otworzZabezpieczeniaIAutomatyke(page);
-  // Korzeń edytora (`section`) — elementy potomne mają testid z tym samym przedrostkiem, a
-  // lista braków też nazywa zabezpieczenie.
-  const edytor = page
-    .locator('section[data-testid^="mvd-za-edytor-"]')
-    .filter({ hasText: NAZWA_ZABEZPIECZENIA });
-  await expect(edytor).toHaveCount(1, { timeout: 20000 });
-  const prefiks = (await edytor.getAttribute('data-testid'))!;
-  await expect(page.getByTestId(`${prefiks}-braki`)).toBeVisible();
-  await expect(page.getByTestId(`${prefiks}-przekladnia`)).toContainText('600/5 A');
-  // Zakres progu w pomocy pola słowami („krotności prądu znamionowego" ze wzorem symbolu),
-  // nie zapisem mnożnikowym „×In".
-  await expect(edytor).not.toContainText('×In');
-  // `add_relay` bez nastaw tworzy stopnie rodziny z pustymi polami (nazwany brak) — stopień
-  // I>> (50) wyłączony świadomie, I> (51) z nastawą. Pusty aktywny stopień byłby brakiem
+  // (3) Nastawy w edytorze sterownika — sterownik bez nastaw jest nazwanym brakiem, nie
+  // wartością domyślną. Kreator dokłada zestaw funkcji rodzaju (I> 51 i I>> 50) bez nastaw;
+  // I>> (50) wyłączony świadomie, I> (51) z nastawą — pusty włączony stopień byłby brakiem
   // blokującym ocenę urządzenia (jedna ścieżka oceny nie zgaduje nastaw).
-  const aktywny50 = page.getByTestId(`${prefiks}-overcurrent_50-aktywny`);
-  if (await aktywny50.isChecked()) await aktywny50.click();
-  await expect(aktywny50).not.toBeChecked();
-  const aktywny51 = page.getByTestId(`${prefiks}-overcurrent_51-aktywny`);
-  if (!(await aktywny51.isChecked())) await aktywny51.click();
-  await page.getByTestId(`${prefiks}-overcurrent_51-prog`).fill('1.5');
-  await page.getByTestId(`${prefiks}-overcurrent_51-jednostka`).selectOption('A_WTORNY');
-  await page.getByTestId(`${prefiks}-overcurrent_51-krzywa`).selectOption('IEC_SI');
-  await page.getByTestId(`${prefiks}-overcurrent_51-tms`).fill('0.1');
+  await otworzZabezpieczeniaIAutomatyke(page);
+  const prefiks = await edytorSterownika(page, 'Wyłącznik odcinka 1');
+  await expect(page.getByTestId(`${prefiks}-braki-liczba`)).toBeVisible();
+  await expect(page.getByTestId(`${prefiks}-przekladnia`)).toContainText('600/5 A');
+  const wlaczona50 = page.getByTestId(`${prefiks}-50-wlaczona`);
+  if (await wlaczona50.isChecked()) await wlaczona50.click();
+  await expect(wlaczona50).not.toBeChecked();
+  const wlaczona51 = page.getByTestId(`${prefiks}-51-wlaczona`);
+  if (!(await wlaczona51.isChecked())) await wlaczona51.click();
+  await page.getByTestId(`${prefiks}-51-prog`).fill('1.5');
+  await page.getByTestId(`${prefiks}-51-jednostka_progu`).selectOption('A_WTORNY');
+  await page.getByTestId(`${prefiks}-51-krzywa`).selectOption('IEC_SI');
+  await page.getByTestId(`${prefiks}-51-tms`).fill('0.1');
   await page.getByTestId(`${prefiks}-zapisz`).click();
   await expect(page.getByTestId(`${prefiks}-gotowe`)).toBeVisible({ timeout: 20000 });
   // Próg pierwotny z backendu (1,5 A wtórnie × 600/5 = 180 A) — front niczego nie przelicza.
-  await expect(page.getByTestId(`${prefiks}-overcurrent_51-pierwotny`)).toContainText('180');
+  await expect(page.getByTestId(`${prefiks}-51-pierwotny`)).toContainText('180');
+  // Pomiar standardu warsztatu (tabela nastaw, szczegóły na żądanie): wysokość ekranu E-27
+  // i edytora sterownika po zapisie, w px okna 1280×720 przeglądarki testu — do meldunku karty.
+  const ramkaEkranu = await page.getByTestId('mvd-za-zabezpieczenia').boundingBox();
+  const ramkaEdytora = await page.getByTestId(prefiks).boundingBox();
+  console.log(
+    `POMIAR-E27 ${JSON.stringify({
+      ekran_px: Math.round(ramkaEkranu?.height ?? 0),
+      edytor_px: Math.round(ramkaEdytora?.height ?? 0),
+    })}`,
+  );
 
-  // (3a) Obwód wtórny przekładnika — dane jądra nasycenia (karta CT-JEDEN-WERDYKT). Bez
-  // długości i przekroju przewodów wiarygodność punktu jest uczciwie nieustalona; 5 m żyły
-  // 2,5 mm² i przekaźnik 1 VA przy 15 VA / 5P20 dają ALF_eff wielokrotnie powyżej ALF_wym.
+  // (3a) Obwód wtórny przekładnika — dane jądra nasycenia (karta CT-JEDEN-WERDYKT), w
+  // szczegółach edytora (na żądanie). Bez długości i przekroju przewodów wiarygodność punktu
+  // jest uczciwie nieustalona; 5 m żyły 2,5 mm² i przekaźnik 1 VA przy 15 VA / 5P20 dają
+  // ALF_eff wielokrotnie powyżej ALF_wym.
+  await page.getByTestId(`${prefiks}-szczegoly-przelacz`).click();
   await page.getByTestId(`${prefiks}-obwod-dlugosc`).fill('5');
   await page.getByTestId(`${prefiks}-obwod-przekroj`).fill('2.5');
   await page.getByTestId(`${prefiks}-obwod-dodaj-aparat`).click();
@@ -590,7 +609,9 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await otworzZabezpieczeniaIAutomatyke(page);
-  await expect(page.getByTestId(`${prefiks}-overcurrent_51-tms`)).toHaveValue('0.1', { timeout: 20000 });
+  await edytorSterownika(page, 'Wyłącznik odcinka 1');
+  await expect(page.getByTestId(`${prefiks}-51-tms`)).toHaveValue('0.1', { timeout: 20000 });
+  await page.getByTestId(`${prefiks}-szczegoly-przelacz`).click();
   await expect(page.getByTestId(`${prefiks}-obwod-dlugosc`)).toHaveValue('5');
   await expect(page.getByTestId(`${prefiks}-obwod-aparat-0-moc`)).toHaveValue('1');
 
@@ -609,9 +630,10 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
 
   // (6) Zmiana nastawy w modelu → wynik A nieaktualny → ocena ponownie (bieg B, ten sam bieg SC).
   await otworzZabezpieczeniaIAutomatyke(page);
-  await page.getByTestId(`${prefiks}-overcurrent_51-tms`).fill('0.3');
+  await edytorSterownika(page, 'Wyłącznik odcinka 1');
+  await page.getByTestId(`${prefiks}-51-tms`).fill('0.3');
   await page.getByTestId(`${prefiks}-zapisz`).click();
-  await expect(page.getByTestId(`${prefiks}-overcurrent_51-tms`)).toHaveValue('0.3');
+  await expect(page.getByTestId(`${prefiks}-51-tms`)).toHaveValue('0.3');
   await expect(page.getByTestId(`${prefiks}-blad`)).toHaveCount(0);
   await otworzKoordynacje(page);
   await expect(page.getByTestId('mvd-ocena-zabezpieczen-nieaktualny')).toBeVisible({ timeout: 20000 });
@@ -648,6 +670,7 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
     await page.getByTestId('mvd-ocena-zabezpieczen').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(OUTPUT_DIR, `ocena-zabezpieczen-z-modelu-${motyw}.png`) });
     await otworzZabezpieczeniaIAutomatyke(page);
+    await edytorSterownika(page, 'Wyłącznik odcinka 1');
     await page.getByTestId(prefiks).scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(OUTPUT_DIR, `edytor-nastaw-zabezpieczenia-${motyw}.png`) });
     kadry.push(

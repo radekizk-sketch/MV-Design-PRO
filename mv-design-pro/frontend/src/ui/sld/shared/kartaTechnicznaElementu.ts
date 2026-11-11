@@ -26,15 +26,18 @@ import type {
   Branch,
   Bus,
   EnergyNetworkModel,
+  FuseBranch,
   Generator,
   Measurement,
+  ProtectionAssignment,
   Source,
   GPZSection,
   StanObiektu,
   Substation,
+  SwitchBranch,
   Transformer,
 } from '../../../types/enm';
-import { isSwitchBranch } from '../../../types/enm';
+import { isFuseBranch, isSwitchBranch } from '../../../types/enm';
 import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/rodzajeGalezi';
 import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
@@ -78,7 +81,9 @@ import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
-import { funkcjaEaz, RODZAJ_FUNKCJI_EAZ_PL } from '../../shared/funkcjeEaz';
+import { etykietaFunkcjiEaz, funkcjaEaz } from '../../shared/funkcjeEaz';
+import { aparatyWyzwalaneFunkcji, opisNastawFunkcji } from '../../shared/opisNastawSterownika';
+import { numerGrupyEfektywnej, sterownikPola } from '../../shared/sterownikZabezpieczen';
 import { NAZWY_STANOW_OBIEKTU_PL, stanObiektuLacznika } from '../../shared/stanObiektu';
 import { OPIS_POLOZENIA_PL, stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import { symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
@@ -779,12 +784,19 @@ function stanObiektuAparatu(ix: IndeksModelu, aparat: AparatPola): string | null
   return null;
 }
 
+/** Sterownik zabezpieczeń pola (JEDYNA struktura zabezpieczeń modelu — `ProtectionAssignment`
+ *  z `bay_ref` pola). JEDNO źródło tabeli funkcji i celu akcji wierszy funkcji (nastawy
+ *  istniejącego sterownika albo dodanie urządzenia). */
+function sterownikPolaKarty(ix: IndeksModelu, bay: Bay): ProtectionAssignment | null {
+  return sterownikPola(ix.model, bay.ref_id);
+}
+
 /**
- * Zabezpieczenie pola — JEDNA funkcja odczytu (`ui/shared/zabezpieczeniePola`), ta sama co oznaczenie
- * zabezpieczeń na kanwie i inspektor ui2. Sterownik przypisany: jeden wiersz z funkcjami z nastaw
- * i (gdy wzorzec pola je podaje) wiersz funkcji wymaganych przez wzorzec. Brak sterownika przy
- * funkcjach wymaganych: jedno zdanie z akcją „dodaj zabezpieczenie” (`add_relay` z `bay_ref`).
- * Pole pomiaru napięcia (rola bez zabezpieczenia w torze) — bez wiersza.
+ * Zabezpieczenie pola — JEDEN stan prezentacji (`ui/shared/zabezpieczeniePola`, czytający sterownik
+ * pola przez `ui/shared/sterownikZabezpieczen`), ten sam co inspektor ui2. Sterownik przypisany:
+ * wiersz z nazwą urządzenia i funkcjami. Brak sterownika: jedno zdanie z akcją „dodaj
+ * zabezpieczenie” (`add_relay` z `bay_ref`). Pole pomiaru napięcia (rola bez zabezpieczenia
+ * w torze) — bez wiersza.
  */
 function wierszeZabezpieczeniaPola(ix: IndeksModelu, bay: Bay): WierszKarty[] {
   const stan = zabezpieczeniePola(ix.model, bay);
@@ -792,7 +804,7 @@ function wierszeZabezpieczeniaPola(ix: IndeksModelu, bay: Bay): WierszKarty[] {
   if (tekst === null) return [];
   // Brak sterownika to brak danej modelu (`wartosc: null`), nazwany zdaniem i z akcją naprawczą —
   // nigdy wartość zastępcza.
-  const wiersze: WierszKarty[] = [
+  return [
     brakZabezpieczenia(stan)
       ? wiersz('zabezpieczenie', 'Zabezpieczenie', null, {
           brakPl: tekst,
@@ -804,10 +816,6 @@ function wierszeZabezpieczeniaPola(ix: IndeksModelu, bay: Bay): WierszKarty[] {
         })
       : wiersz('zabezpieczenie', 'Zabezpieczenie', tekst),
   ];
-  if (stan.rodzaj === 'sterownik' && stan.wymagane.length > 0) {
-    wiersze.push(wiersz('funkcje_wymagane', 'Wymagane przez wzorzec pola', stan.wymagane.join(', ')));
-  }
-  return wiersze;
 }
 
 /** Polska nazwa rodzaju przekładnika (słownik ENM `measurement_type`) — bez kodu CT/VT w UI. */
@@ -1260,21 +1268,21 @@ function opisGeneratora(g: Generator): string {
 }
 
 /**
- * Sekcja „Zabezpieczenia i automatyka" karty pola (karta UX-04/POLE-LINIOWE-WZORZEC): wiersz na
- * KAŻDĄ funkcję `Bay.protection_codes` — kod (numer IEEE C37.2 albo skrót krajowy), zapis
- * z rysunku standardu, nazwa polska i rodzaj ze słownika backendu (`ui/shared/funkcjeEaz.ts`)
- * i przejście do nastaw (blok przekaźnika na schemacie niesie wszystkie kody pola — odbiór B-02
- * właściciela 2026-11-04, więc karta nie rozróżnia funkcji „na schemacie” i „poza nim”): pole z urządzeniem
- * zabezpieczeniowym → ekran E-27 (edytor nastaw), pole bez urządzenia → kreator przekaźnika
- * z refem pola (`add_relay`). Kod spoza słownika (model go nie dopuszcza) dostaje jawne
- * „brak w słowniku funkcji", nie zmyśloną nazwę.
+ * Sekcja „Zabezpieczenia i automatyka" karty pola (karta OCHRONA-JEDNO-ZRODLO, standard warsztatu
+ * §10): zwarta tabela — funkcja sterownika pola = wiersz (włączone funkcje w kolejności
+ * sterownika; dwa stopnie jednej funkcji to dwa wiersze): funkcja (zapis z rysunku i kod), nazwa,
+ * nastawy aktywnej grupy z jednostkami, czas (charakterystyka, TMS, zwłoki), aparat wyzwalany
+ * z macierzy wyzwoleń. Blok przekaźnika na schemacie niesie WSZYSTKIE włączone funkcje sterownika
+ * bez licznika „+N" (odbiór B-02 właściciela 2026-11-04, `compose/protectionMarking.ts`), więc
+ * kolumna miejsca na schemacie nie niosłaby informacji i jej nie ma. Wartości z JEDNEGO zapisu
+ * (`opisNastawFunkcji`), tego samego co edytor nastaw E-27. Przejście do edycji: pole ze
+ * sterownikiem → ekran E-27, pole bez sterownika → kreator przekaźnika (`add_relay`). Kod spoza
+ * słownika (model go nie dopuszcza) dostaje jawne „brak w słowniku funkcji".
  */
 function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty {
-  const kody = bay.protection_codes ?? [];
-  // Urządzenie zabezpieczeniowe pola z JEDNEJ funkcji odczytu (`zabezpieczeniePola`) — ta sama
-  // reguła rozstrzyga wiersz „Zabezpieczenie” i cel akcji wierszy funkcji (nastawy albo dodanie).
-  const maUrzadzenie = zabezpieczeniePola(ix.model, bay).rodzaj === 'sterownik';
-  const akcja: AkcjaWierszaKarty = maUrzadzenie
+  const sterownik = sterownikPolaKarty(ix, bay);
+  const grupa = sterownik ? numerGrupyEfektywnej(sterownik) : null;
+  const akcja: AkcjaWierszaKarty = sterownik
     ? { etykietaPl: 'Nastawy', cel: { rodzaj: 'ekran', kodEkranu: 'E-27' } }
     : {
         etykietaPl: 'Dodaj urządzenie (nastawy)',
@@ -1290,28 +1298,37 @@ function sekcjaZabezpieczenIAutomatyki(ix: IndeksModelu, bay: Bay): SekcjaKarty 
     tabele: [
       {
         klucz: 'funkcje_eaz',
-        podpis: 'Funkcje zabezpieczeń i automatyki pola',
+        podpis:
+          grupa !== null
+            ? `Funkcje zabezpieczeń i automatyki pola — nastawy grupy ${grupa} (aktywnej)`
+            : 'Funkcje zabezpieczeń i automatyki pola',
         kolumny: [
-          { klucz: 'kod', etykieta: 'Kod (ANSI)' },
-          { klucz: 'oznaczenie', etykieta: 'Oznaczenie' },
           { klucz: 'funkcja', etykieta: 'Funkcja' },
-          { klucz: 'rodzaj', etykieta: 'Rodzaj' },
+          { klucz: 'nazwa', etykieta: 'Nazwa' },
+          { klucz: 'nastawy', etykieta: 'Nastawy' },
+          { klucz: 'czas', etykieta: 'Czas' },
+          { klucz: 'wylacznik', etykieta: 'Wyłącza' },
         ],
-        wiersze: kody.map((kod) => {
-          const f = funkcjaEaz(kod);
-          return {
-            klucz: kod,
-            komorki: {
-              kod: f?.ansi ? `${kod} (ANSI ${f.ansi})` : kod,
-              oznaczenie: f?.oznaczeniePl ?? null,
-              funkcja: f?.nazwaPl ?? 'brak w słowniku funkcji',
-              rodzaj: f ? RODZAJ_FUNKCJI_EAZ_PL[f.rodzaj] : null,
-            },
-            akcja,
-          };
-        }),
+        wiersze: (sterownik?.funkcje ?? [])
+          .filter((fn) => fn.wlaczona !== false)
+          .map((fn) => {
+            const f = funkcjaEaz(fn.kod);
+            const opis = opisNastawFunkcji(sterownik, fn, grupa ?? undefined);
+            return {
+              klucz: fn.ref,
+              komorki: {
+                funkcja: etykietaFunkcjiEaz(fn.kod),
+                nazwa: f?.nazwaPl ?? 'brak w słowniku funkcji',
+                nastawy: opis.nastawy ?? (opis.wSchemacie > 0 ? 'brak nastaw' : null),
+                czas: opis.czas,
+                wylacznik: aparatyWyzwalaneFunkcji(ix.model, bay, sterownik, fn.ref),
+              },
+              akcja,
+            };
+          }),
         pustaPl: 'Pole nie ma funkcji zabezpieczeń ani automatyki w modelu.',
-        zrodloPl: 'Funkcje: model pola (Bay.protection_codes); nazwy: słownik funkcji EAZ.',
+        zrodloPl:
+          'Funkcje, nastawy i macierz wyzwoleń: sterownik pola w modelu; nazwy: rejestr funkcji EAZ.',
       },
     ],
   };
@@ -1500,6 +1517,49 @@ function kartaAparatu(
         ],
         zrodloPl: zn.zrodloPl,
       },
+      ...(galaz && (isFuseBranch(galaz) || (isSwitchBranch(galaz) && galaz.type !== 'bus_coupler'))
+        ? [sekcjaCzasuWylaczenia(galaz)]
+        : []),
+    ],
+  };
+}
+
+/** Przyjęty czas zwarcia obwodu chronionego aparatem — wartość projektanta na gałęzi aparatu
+ *  (`update_element_parameters`, klucz `czas_wylaczenia_zwarcia_s`). Bez deklaracji backend
+ *  bierze czas z nastaw zabezpieczenia albo charakterystyki aparatu, a bez nich wartość roboczą
+ *  normy (SN: 1 s IEC 62271-1 §4.7; nN: PN-HD 60364-4-41) — wiersz mówi to wprost. */
+function sekcjaCzasuWylaczenia(galaz: SwitchBranch | FuseBranch): SekcjaKarty {
+  const czas = galaz.czas_wylaczenia_zwarcia_s ?? null;
+  const rodzaj = galaz.rodzaj_obwodu_nn ?? null;
+  return {
+    id: 'czas_wylaczenia',
+    tytul: 'Wyłączenie zwarcia',
+    wiersze: [
+      wiersz(
+        'czas_wylaczenia_zwarcia',
+        'Czas wyłączenia zwarcia',
+        czas === null
+          ? 'z nastaw albo charakterystyki aparatu; bez nich wartość robocza normy'
+          : zapisLiczby(czas, 's'),
+        {
+          edycja: edycja(galaz.ref_id, 'czas_wylaczenia_zwarcia_s', czas),
+          zrodloPl: czas === null ? 'wyznacza obliczenie' : 'wartość projektanta',
+        },
+      ),
+      // Pakiet 9: rodzaj obwodu nN — jedna klasyfikacja dla I²t i SWZ (wartość projektanta na
+      // aparacie; bez niej reguła prądu znamionowego aparatu z backendu).
+      wiersz(
+        'rodzaj_obwodu_nn',
+        'Rodzaj obwodu nN',
+        rodzaj === null
+          ? 'aparat ≤ 63 A — obwód odbiorczy (wartość robocza), > 63 A — rozdzielczy'
+          : `obwód ${rodzaj}`,
+        {
+          edycja: edycja(galaz.ref_id, 'rodzaj_obwodu_nn', rodzaj),
+          zrodloPl:
+            rodzaj === null ? 'PN-HD 60364-4-41:2017 §411.3.2.2' : 'wartość projektanta',
+        },
+      ),
     ],
   };
 }

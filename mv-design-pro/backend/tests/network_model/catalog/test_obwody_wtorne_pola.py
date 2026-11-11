@@ -49,7 +49,7 @@ from network_model.catalog.obwody_wtorne_pola import (
     PowiazanieFunkcjiEaz,
     SygnalPola,
     WejscieFunkcjiEaz,
-    powiazania_aparatow_pola,
+    napedy_aparatow_pola,
 )
 
 SZABLONY = list(itertools.product(WYKONANIA_POLA_LINIOWEGO_GPZ, WYKONANIA_LACZNIKOW_POLA))
@@ -386,10 +386,8 @@ def test_naped_z_szablonu_na_lacznikach_pola(wykonanie: str, laczniki: str) -> N
     szablon = szablon_pola_liniowego_gpz(wykonanie, laczniki)
     obwody = szablon.obwody_wtorne
     assert obwody is not None
-    aparaty = powiazania_aparatow_pola(
-        template_primary_devices(szablon.template_id, field_ref="pole-test"),
-        obwody,
-        szablon.funkcje_eaz,
+    aparaty = napedy_aparatow_pola(
+        template_primary_devices(szablon.template_id, field_ref="pole-test"), obwody
     )
     z_napedem = {(a.get("designation"), a["kind"], a["naped"]) for a in aparaty if a.get("naped")}
     oczekiwane = {("Q0", "CB", "SILNIKOWY")}

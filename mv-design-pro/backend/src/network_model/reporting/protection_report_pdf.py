@@ -26,6 +26,7 @@ from typing import Any
 from network_model.nazwy import jest_nazwa
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
+    NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
     NAGLOWKI_NASTAW_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
@@ -36,6 +37,7 @@ from network_model.reporting.protection_tcc_presentation import (
     uzasadnienia_sprawdzen,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
+    zdania_funkcji_nieocenianych,
 )
 
 # Check for reportlab availability at import time
@@ -249,6 +251,18 @@ def export_protection_coordination_to_pdf(
         c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak urządzeń")
         y -= line_height
+
+    zdania_nieocenianych = zdania_funkcji_nieocenianych(list(devices))
+    if zdania_nieocenianych:
+        y -= line_height
+        y = check_page_break(20 * mm)
+        draw_text(NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL, left_margin, font_size=11, bold=True)
+        for zdanie in zdania_nieocenianych:
+            for fragment in textwrap.wrap(zdanie, width=110):
+                y = check_page_break(line_height)
+                c.setFont("DejaVuSans", 8)
+                c.drawString(left_margin + 4 * mm, y, fragment)
+                y -= line_height
 
     y -= section_spacing
 

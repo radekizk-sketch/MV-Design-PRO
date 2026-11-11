@@ -20,6 +20,8 @@ from network_model.solvers.conductor_thermal_withstand import (
     check_conductor_thermal_withstand,
 )
 
+from tests.utils.prad_cieplny import prad_bez_skladowej_nieokresowej
+
 # Stala materialowa Al/XLPE z katalogu kabli SN (mv_cable_line_catalog).
 JTH_AL_XLPE = 94.0
 
@@ -39,7 +41,7 @@ def test_przekroj_za_maly_dla_realnego_zwarcia_sn() -> None:
 
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=12500.0,
+            **prad_bez_skladowej_nieokresowej(12500.0),
             fault_duration_s=0.5,
             ith_1s_a=ith_1s,
             jth_1s_a_per_mm2=JTH_AL_XLPE,
@@ -65,7 +67,7 @@ def test_wiekszy_przekroj_spelnia_to_samo_zwarcie() -> None:
     """Ten sam przypadek na 120 mm²: I_dop = 94·120/√0,5 = 15 952,4 A > 12 500 A."""
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=12500.0,
+            **prad_bez_skladowej_nieokresowej(12500.0),
             fault_duration_s=0.5,
             ith_1s_a=JTH_AL_XLPE * 120.0,
             jth_1s_a_per_mm2=JTH_AL_XLPE,
@@ -86,13 +88,13 @@ def test_krotszy_czas_wylaczenia_podnosi_dopuszczalny_prad_wg_pierwiastka() -> N
     Przy t = 0,25 s I_dop = 8 000/0,5 = 16 000 A > 10 000 A => PASS. Stosunek = 2,0.
     """
     baza = ConductorThermalInput(
-        ith_a=10000.0,
+        **prad_bez_skladowej_nieokresowej(10000.0),
         fault_duration_s=1.0,
         ith_1s_a=8000.0,
         jth_1s_a_per_mm2=JTH_AL_XLPE,
     )
     krotszy = ConductorThermalInput(
-        ith_a=10000.0,
+        **prad_bez_skladowej_nieokresowej(10000.0),
         fault_duration_s=0.25,
         ith_1s_a=8000.0,
         jth_1s_a_per_mm2=JTH_AL_XLPE,
@@ -119,7 +121,9 @@ def test_energia_cieplna_jest_niezmiennikiem_kryterium() -> None:
     ith_1s = 6580.0
     for czas in (0.05, 0.2, 0.5, 1.0, 3.0):
         wynik = check_conductor_thermal_withstand(
-            ConductorThermalInput(ith_a=1.0, fault_duration_s=czas, ith_1s_a=ith_1s)
+            ConductorThermalInput(
+                **prad_bez_skladowej_nieokresowej(1.0), fault_duration_s=czas, ith_1s_a=ith_1s
+            )
         )
         assert wynik.admissible_current_a is not None
         energia = wynik.admissible_current_a**2 * czas
@@ -129,7 +133,9 @@ def test_energia_cieplna_jest_niezmiennikiem_kryterium() -> None:
 def test_rowna_wytrzymalosc_jest_spelnieniem_kryterium() -> None:
     """Przypadek graniczny I_th = I_dop: kryterium jest spelnione (nierownosc nieostra)."""
     wynik = check_conductor_thermal_withstand(
-        ConductorThermalInput(ith_a=6580.0, fault_duration_s=1.0, ith_1s_a=6580.0)
+        ConductorThermalInput(
+            **prad_bez_skladowej_nieokresowej(6580.0), fault_duration_s=1.0, ith_1s_a=6580.0
+        )
     )
     assert wynik.status == STATUS_PASS
     assert wynik.margin_a == pytest.approx(0.0, abs=1e-9)
@@ -140,15 +146,21 @@ def test_rowna_wytrzymalosc_jest_spelnieniem_kryterium() -> None:
     ("dane", "oczekiwany_kod"),
     [
         (
-            ConductorThermalInput(ith_a=None, fault_duration_s=0.5, ith_1s_a=6580.0),
+            ConductorThermalInput(
+                **prad_bez_skladowej_nieokresowej(None), fault_duration_s=0.5, ith_1s_a=6580.0
+            ),
             READINESS_FAULT_CURRENT_MISSING,
         ),
         (
-            ConductorThermalInput(ith_a=12500.0, fault_duration_s=None, ith_1s_a=6580.0),
+            ConductorThermalInput(
+                **prad_bez_skladowej_nieokresowej(12500.0), fault_duration_s=None, ith_1s_a=6580.0
+            ),
             READINESS_FAULT_DURATION_MISSING,
         ),
         (
-            ConductorThermalInput(ith_a=12500.0, fault_duration_s=0.5, ith_1s_a=None),
+            ConductorThermalInput(
+                **prad_bez_skladowej_nieokresowej(12500.0), fault_duration_s=0.5, ith_1s_a=None
+            ),
             READINESS_CONDUCTOR_THERMAL_DATA_MISSING,
         ),
     ],
@@ -171,7 +183,9 @@ def test_brak_danej_daje_niedostepnosc_a_nie_liczbe_zastepcza(
 def test_wartosci_niedodatnie_traktowane_jak_brak_danej() -> None:
     """Zero i wartosci ujemne nie sa danymi fizycznymi — daja niedostepnosc, nie dzielenie."""
     wynik = check_conductor_thermal_withstand(
-        ConductorThermalInput(ith_a=12500.0, fault_duration_s=0.0, ith_1s_a=6580.0)
+        ConductorThermalInput(
+            **prad_bez_skladowej_nieokresowej(12500.0), fault_duration_s=0.0, ith_1s_a=6580.0
+        )
     )
     assert wynik.status == STATUS_UNAVAILABLE
     assert READINESS_FAULT_DURATION_MISSING in wynik.readiness_codes
@@ -181,7 +195,10 @@ def test_brak_gestosci_pradu_nie_blokuje_werdyktu() -> None:
     """Jth sluzy tylko do minimalnego przekroju — jego brak nie odbiera werdyktu."""
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=12500.0, fault_duration_s=0.5, ith_1s_a=6580.0, jth_1s_a_per_mm2=None
+            **prad_bez_skladowej_nieokresowej(12500.0),
+            fault_duration_s=0.5,
+            ith_1s_a=6580.0,
+            jth_1s_a_per_mm2=None,
         )
     )
     assert wynik.status == STATUS_FAIL
@@ -191,7 +208,9 @@ def test_brak_gestosci_pradu_nie_blokuje_werdyktu() -> None:
 
 def test_wszystkie_braki_raportowane_naraz_bez_duplikatow() -> None:
     wynik = check_conductor_thermal_withstand(
-        ConductorThermalInput(ith_a=None, fault_duration_s=None, ith_1s_a=None)
+        ConductorThermalInput(
+            **prad_bez_skladowej_nieokresowej(None), fault_duration_s=None, ith_1s_a=None
+        )
     )
     assert wynik.status == STATUS_UNAVAILABLE
     assert set(wynik.readiness_codes) == {

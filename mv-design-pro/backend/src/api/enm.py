@@ -351,9 +351,8 @@ def get_enm_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
 
-    has_protection_data = bool(enm.protection_assignments) or (
-        bool(enm.bays) and any(b.protection_ref is not None for b in enm.bays)
-    )
+    # Jedyny nośnik zabezpieczeń: sterowniki w `protection_assignments` (ADR-022).
+    has_protection_data = bool(enm.protection_assignments)
 
     return {
         "case_id": case_id,
@@ -583,7 +582,6 @@ def get_nn_circuit_sheet(
     station_ref: str,
     load_flow_run_id: str | None = None,
     short_circuit_run_id: str | None = None,
-    fault_duration_s: float | None = None,
 ) -> dict[str, Any]:
     """Arkusz obliczeń obwodów nN klasy projektu wykonawczego (karta ARKUSZ-NN,
     docs/nn/ARKUSZ_OBLICZEN_NN_2026-08.md).
@@ -593,7 +591,9 @@ def get_nn_circuit_sheet(
     tabliczki" — źródło nazwane jawnie w wierszu), aparat/nastawy/zapas,
     Iz′ skorygowane, k2/I2, przewód/przekrój/γ, kryteria (i)/(ii),
     długość, ΔU odcinkowy/całkowity, Ik″max (``short_circuit_run_id``)/
-    Ik1_min, SWZ, I²t (wymaga ``short_circuit_run_id`` I ``fault_duration_s``),
+    Ik1_min, SWZ, I²t (wymaga ``short_circuit_run_id``; czas wyłączenia obwodu z jednego
+    dostawcy ``czas_wylaczenia_nn`` — wartość projektanta na aparacie, charakterystyka
+    aparatu przy I″k albo wartość robocza PN-HD 60364-4-41),
     status doboru — PROVENANCE per wiersz. Read-only; kompozycja gotowych
     dostawców (zero fizyki tutaj).
 
@@ -601,7 +601,6 @@ def get_nn_circuit_sheet(
     kolumny zależne od biegu dostają uczciwy trzeci stan „brak danych" z
     akcją naprawczą po stronie UI („uruchom bieg"), nie fabrykowaną liczbę.
     """
-    enm = _get_enm(klucz)
     load_flow_run = _resolve_run_for_sheet(
         case_id=case_id,
         run_id=load_flow_run_id,
@@ -614,12 +613,12 @@ def get_nn_circuit_sheet(
         param_name="short_circuit_run_id",
         expected_analysis_type="short_circuit_sn",
     )
+    enm = _model_arkusza(klucz, case_id, (load_flow_run, short_circuit_run))
     return build_nn_circuit_sheet(
         enm=enm,
         station_ref=station_ref,
         load_flow_run=load_flow_run,
         short_circuit_run=short_circuit_run,
-        fault_duration_s=fault_duration_s,
     )
 
 
@@ -671,16 +670,64 @@ def post_wytrzymalosc_aparatury(
                 "prądzie zwarciowym maksymalnym (scenariusz MAX)."
             ),
         )
-    enm = _get_enm(klucz)
+    enm = _model_biegu(run)
     project_id = _resolve_project_id(case_id, request)
     return widok_wytrzymalosci_z_biegu(
         enm=enm,
         station_ref=body.station_ref,
-        wiersze_biegu=build_short_circuit_results(run)["rows"],
+        wiersze_biegu=build_short_circuit_results(run, include_wyprowadzenie=True)["rows"],
         run_id=str(run.id),
         # Konfiguracja stacji pozostaje nadrzędna dla pól skonfigurowanych ręcznie.
         bay_device_withstand=_bay_device_withstand(project_id, body.station_ref, request),
     )
+
+
+def _model_biegu(run: Any) -> EnergyNetworkModel:
+    """Model, na którym policzono bieg — JEGO migawka (`CanonicalRun.snapshot`).
+
+    Migawka biegu jest migawką efektywną: model w rewizji biegu ⊕ scenariusz biegu ⊕ wybór
+    zabezpieczeń przypadku (ADR-022). Prądy, t_b i czas wyłączenia pól muszą pochodzić z TEJ
+    SAMEJ migawki — model bieżący (HEAD) albo HEAD ⊕ scenariusz łączyłby prąd biegu
+    z nastawami innego stanu (edycja po biegu, inny wybór grupy, scenariusz usunięty
+    z magazynu po biegu). Świeżość wyniku wobec modelu bieżącego mówi osobno nakładka statusu.
+    """
+    return EnergyNetworkModel.model_validate(run.snapshot)
+
+
+def _model_arkusza(klucz: str, case_id: str, biegi: tuple[Any, ...]) -> EnergyNetworkModel:
+    """Model arkusza obwodów nN — migawka PRZYPADKU, jedna dla wszystkich kolumn.
+
+    Podane biegi: migawka biegu (`_model_biegu`) — biegi rozpływu i zwarcia muszą być
+    policzone na tej samej migawce (inaczej Ib i Ik″ opisywałyby dwa różne stany sieci:
+    422 z nazwaną przyczyną). Bez biegów: model przypadku = model bieżący ⊕ wybór
+    zabezpieczeń przypadku (ADR-022) — ten sam, który policzy najbliższy bieg przypadku.
+    """
+    from enm.scenariusze import (
+        SCENARIUSZ_NORMALNY,
+        apply_scenario,
+        naloz_wybor_przypadku,
+        scenariusz_przypadku,
+    )
+
+    podane = [b for b in biegi if b is not None]
+    if podane:
+        odciski = {b.snapshot_hash for b in podane}
+        if len(odciski) > 1:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Bieg rozpływu i bieg zwarciowy policzono na różnych stanach sieci "
+                    "(inna rewizja modelu albo inny scenariusz) — wskaż biegi tego samego stanu "
+                    "albo przelicz jeden z nich."
+                ),
+            )
+        return _model_biegu(podane[0])
+    enm = _get_enm(klucz)
+    wybor = scenariusz_przypadku(klucz, case_id)
+    if wybor is None:
+        return enm
+    efektywna = naloz_wybor_przypadku(apply_scenario(enm, SCENARIUSZ_NORMALNY), wybor)
+    return EnergyNetworkModel.model_validate(efektywna.snapshot)
 
 
 def _bay_device_withstand(

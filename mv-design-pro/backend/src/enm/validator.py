@@ -2307,7 +2307,7 @@ class ENMValidator:
         potwierdzonym źródle, więc W064 łapie powiązanie nieaktualne (pole pomiaru napięcia
         usunięte, przekładnik zmieniony) i model sprzed reguły. Poziom IMPORTANT: obliczenia sieci
         są poprawne, fikcyjna jest funkcja zabezpieczeniowa pola."""
-        if not any(pole.protection_codes for pole in enm.bays):
+        if not enm.protection_assignments:
             return
         # Import LENIWY: reguła czyta szablony pól (cykl `bay_templates` ↔ pakiet `enm`).
         from .zrodlo_napiecia_zerowego import (
@@ -3697,11 +3697,10 @@ class ENMValidator:
                §1 p. 2 — JEDEN predykat `enm/uklad_sieci_nn.py`, ten sam co
                ELIG_FLNN_MISSING_EARTHING_SYSTEM) — wymagane dla kryterium
                SWZ/ochrony przeciwporazeniowej (IEC 60364-4-41).
-        E064 - ProtectionAssignment.breaker_ref wskazuje galaz, ktorej NIE MA w
-               modelu (LV-INV-03 — zabezpieczenie musi byc fizycznie w torze;
-               kontrola ogolna, nie ograniczona do pasma nN — dowolna dolaczajaca
-               operacja usuwajaca galaz z przypisanym zabezpieczeniem musi albo
-               odlaczyc zabezpieczenie, albo zostawic slad wykrywalny tutaj).
+        E064 - sterownik zabezpieczen (ProtectionAssignment) wskazuje element spoza
+               modelu: pole, wylacznik macierzy wyzwolen, przekladnik wejscia, albo
+               jest drugim sterownikiem tego samego pola (LV-INV-03 — zabezpieczenie
+               musi byc fizycznie w torze; regula wspolna z operacjami).
         W060 - odcinek KABLOWY nN (Cable, oba konce nN) bez meta.
                cable_laying_conditions — obciazalnosc liczona wg zalozenia
                katalogowego (jawne ostrzezenie, nie cichy domysl).
@@ -3910,28 +3909,33 @@ class ENMValidator:
                 )
             )
 
-        # --- E064: zabezpieczenie wskazujace nieistniejaca galaz --------------
-        branch_refs = {b.ref_id for b in enm.branches}
-        for pa in enm.protection_assignments:
-            if pa.breaker_ref and pa.breaker_ref not in branch_refs:
+        # --- E064: sterownik wskazujacy element spoza modelu ------------------
+        # JEDNA regula z operacjami (`attach_protection`/`update_protection`):
+        # `enm.zabezpieczenie.naruszenia_referencji_sterownika`.
+        from .zabezpieczenie import (
+            indeks_referencji_sterownikow,
+            naruszenia_referencji_sterownika,
+        )
+
+        indeks_sterownikow = indeks_referencji_sterownikow(enm)
+        for pa in sorted(enm.protection_assignments, key=lambda p: p.ref_id):
+            for _rodzaj, komunikat, ref in naruszenia_referencji_sterownika(
+                enm, pa, indeks=indeks_sterownikow
+            ):
                 issues.append(
                     ValidationIssue(
                         code="E064",
                         severity=SEVERITY_BLOCKER,
-                        message_pl=(
-                            f"{opis_obiektu(pa, 'Zabezpieczenie')} wskazuje wyłącznik, którego "
-                            "nie ma w modelu sieci."
-                        ),
-                        element_refs=[pa.ref_id, pa.breaker_ref],
+                        message_pl=f"{opis_obiektu(pa, 'Sterownik zabezpieczeń')}: {komunikat}",
+                        element_refs=[pa.ref_id, ref],
                         wizard_step_hint="K7",
                         suggested_fix=(
-                            "Przypisz zabezpieczenie do istniejącej gałęzi łącznikowej."
+                            "Wskaż w sterowniku istniejące pole, wyłączniki macierzy wyzwoleń "
+                            "i przekładniki wejść."
                         ),
                         fix_action=FixAction(
-                            action_type="OPEN_MODAL",
-                            element_ref=pa.ref_id,
-                            modal_type="ProtectionModal",
-                            payload_hint={"required": "breaker_ref"},
+                            action_type="NAVIGATE_TO_ELEMENT",
+                            element_ref=pa.bay_ref or pa.ref_id,
                         ),
                     )
                 )

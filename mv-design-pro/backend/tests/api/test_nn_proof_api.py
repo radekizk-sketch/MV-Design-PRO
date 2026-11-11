@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 from zipfile import ZipFile
 
+import pytest
 from enm.models import (
     Bus,
     Cable,
@@ -60,7 +61,15 @@ def _seed_enm(client, case_id: str) -> None:
             Bus(ref_id="b2", name="B2", voltage_kv=0.4),
         ],
         sources=[
-            Source(ref_id="src", name="GPZ", bus_ref="sn", model="thevenin", r_ohm=0.1, x_ohm=0.5)
+            Source(
+                ref_id="src",
+                name="GPZ",
+                bus_ref="sn",
+                model="thevenin",
+                r_ohm=0.1,
+                x_ohm=0.5,
+                catalog_ref="src-ref",
+            )
         ],
         transformers=[
             Transformer(
@@ -76,6 +85,7 @@ def _seed_enm(client, case_id: str) -> None:
                 vector_group="Dyn11",
                 lv_earthing_system="TN-C-S",
                 lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
+                catalog_ref="tr-ref",
             )
         ],
         branches=[
@@ -89,6 +99,16 @@ def _seed_enm(client, case_id: str) -> None:
                 x_ohm_per_km=0.08,
                 return_conductor_r_ohm_per_km_20c=0.32,
                 return_conductor_x_ohm_per_km=0.08,
+                # Karta typu kabla (6a): obciążalność, przekrój, dane cieplne z modelu — nie
+                # z żądania. I_th(1 s) = J_th · S (zgodne dane cieplne).
+                catalog_ref="yaky-120",
+                materialized_params={"i_max_a": 100.0},
+                insulation="PVC",
+                conductor_material="CU",
+                cross_section_mm2=120.0,
+                jth_1s_a_per_mm2=115.0,
+                ith_1s_a=13800.0,
+                operating_temperature_c=70.0,
                 short_circuit_temperature_c=160.0,
             ),
             SwitchBranch(
@@ -98,6 +118,7 @@ def _seed_enm(client, case_id: str) -> None:
                 from_bus_ref="b1",
                 to_bus_ref="b2",
                 catalog_namespace="APARAT_NN_MCB",
+                catalog_ref="mcb-b16",
                 materialized_params={"in_a": 16.0, "curve_class": "B", "icn_ka": 6.0},
             ),
         ],
@@ -129,19 +150,6 @@ def _payload(case_id: str, **overrides) -> dict:
         "segment_ref": "c1",
         "p_mw": 0.005,
         "q_mvar": 0.002,
-        "u_ll_kv": 0.4,
-        "iz_katalogowe_a": 100.0,
-        "srodowisko": "powietrze",
-        "izolacja": "PVC",
-        "temperatura_c": 30.0,
-        "liczba_obwodow": 1,
-        "ik_max_ka": 5.0,
-        "ith_a": 200.0,
-        "fault_duration_s": 0.1,
-        "ith_1s_a": 6000.0,
-        "cross_section_mm2": 120.0,
-        "jth_1s_a_per_mm2": 50.0,
-        "vdrop_u_source_kv": 0.4,
         "vdrop_delta_u_total_kv": 0.005,
         "vdrop_delta_u_total_percent": 1.25,
     }
@@ -203,14 +211,103 @@ def test_preview_brak_danych_zwraca_200_z_uczciwym_statusem(app_client) -> None:
     assert body["status"] == "brak danych"
 
 
-def test_ik_max_ka_opcjonalny(app_client) -> None:
+def _bieg_zwarciowy(client, case_id: str) -> str:
+    """Zapisany bieg zwarciowy IEC 60909 przypadku (scenariusz MAX) — realny bieg kanoniczny."""
+    from enm.canonical_analysis import create_run, execute_run
+
+    run = execute_run(
+        create_run(
+            case_id=case_id, klucz_twin=_klucz(client, case_id), analysis_type="short_circuit_sn"
+        ).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    return str(run.id)
+
+
+def _krok_cieplny(body: dict) -> dict:
+    return next(k for k in body["proof"]["steps"] if k["step_number"] == 7)
+
+
+@pytest.mark.parametrize("wskazany", [True, False], ids=["bieg_wskazany", "bieg_najnowszy"])
+def test_preview_z_biegiem_bierze_ik_i_czas_z_modelu_i_biegu(app_client, wskazany: bool) -> None:
+    """6b-iloczyn dla dowodu: bieg {wskazany, najnowszy przypadku}. I″k i κ z wiersza biegu,
+    czas wyłączenia z charakterystyki MCB B16 (I″k ≫ 5·In → wyzwolenie magnetyczne ≤ 0,1 s)."""
     case_id = _nowy_przypadek(app_client)
     _seed_enm(app_client, case_id)
-    payload = _payload(case_id)
-    payload["ik_max_ka"] = None
+    run_id = _bieg_zwarciowy(app_client, case_id)
+    payload = _payload(case_id, **({"short_circuit_run_id": run_id} if wskazany else {}))
     resp = app_client.post("/api/nn-proof/circuit/preview", json=payload)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    zrodla = body["zrodla"]
+    assert zrodla["short_circuit_run_id"] == run_id
+    assert zrodla["kryterium_cieplne_ocenione"] is True
+    assert zrodla["czas_wylaczenia"]["zrodlo"] == "charakterystyka_aparatu"
+    assert zrodla["czas_wylaczenia"]["czas_s"] == pytest.approx(0.1)
+    assert zrodla["tk_kryterium_cieplnego_s"] == zrodla["czas_wylaczenia"]["czas_s"]
+
+
+def test_preview_bez_biegu_kryterium_cieplne_nieocenione_z_akcja(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    resp = app_client.post("/api/nn-proof/circuit/preview", json=_payload(case_id))
     assert resp.status_code == 200
-    assert resp.json()["summary"]["total_steps"] == 10
+    body = resp.json()
+    assert body["summary"]["total_steps"] == 10
+    assert body["zrodla"]["kryterium_cieplne_ocenione"] is False
+    assert body["zrodla"]["akcja_pl"] == "Uruchom obliczenia zwarciowe"
+    # Bez I″k charakterystyka nie jest pytana: wartość robocza normy (MCB 16 A, TN-C-S, 230 V).
+    czas = body["zrodla"]["czas_wylaczenia"]
+    assert (czas["zrodlo"], czas["czas_s"], czas["kompletnosc_dowodu"]) == (
+        "wartosc_robocza",
+        0.4,
+        "NIEPELNY",
+    )
+    assert czas["dane_przyjete"][0]["jakosc"] == "ESTIMATED"
+
+
+def test_nadpisanie_czasu_na_aparacie_operacja_domenowa_wygrywa(app_client) -> None:
+    """Zasada nr 4: projektant zmienia wartość roboczą w modelu (operacja domenowa) i przelicza."""
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    resp_op = app_client.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "update_element_parameters",
+                "payload": {
+                    "element_ref": "ap1",
+                    "parameters": {"czas_wylaczenia_zwarcia_s": 0.3},
+                },
+            }
+        },
+    )
+    assert resp_op.status_code == 200, resp_op.text
+    assert resp_op.json().get("error") is None, resp_op.json()
+    run_id = _bieg_zwarciowy(app_client, case_id)
+    resp = app_client.post(
+        "/api/nn-proof/circuit/preview",
+        json=_payload(case_id, short_circuit_run_id=run_id),
+    )
+    czas = resp.json()["zrodla"]["czas_wylaczenia"]
+    assert (czas["zrodlo"], czas["czas_s"], czas["kompletnosc_dowodu"]) == (
+        "projektant",
+        0.3,
+        "PELNY",
+    )
+    assert resp.json()["zrodla"]["tk_kryterium_cieplnego_s"] == pytest.approx(0.3)
+
+
+@pytest.mark.parametrize(
+    "pole",
+    ["u_ll_kv", "fault_duration_s", "ikss_a", "kappa", "ith_1s_a", "temperatura_c", "ik_max_ka"],
+)
+def test_pola_modelu_w_zadaniu_sa_odmowa(app_client, pole: str) -> None:
+    """Dane modelu i biegu nie wchodzą żądaniem — pole spoza kontraktu to 422, nie cisza."""
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id)
+    resp = app_client.post("/api/nn-proof/circuit/preview", json=_payload(case_id, **{pole: 1.0}))
+    assert resp.status_code == 422
 
 
 def test_report_sekcje_nn_zwraca_wszystkie_sekcje(app_client) -> None:

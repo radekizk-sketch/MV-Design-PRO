@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   SensitivityTable,
@@ -54,13 +54,17 @@ describe('SensitivityTable', () => {
     expect(screen.queryByText('Werdykt')).toBeNull();
   });
 
-  it('klik w wiersz zgłasza urządzenie', () => {
+  it('klik w wiersz zgłasza urządzenie', async () => {
     const onRowClick = vi.fn();
     const [pierwsze] = WYNIK.sensitivity_checks;
     render(
       <SensitivityTable checks={WYNIK.sensitivity_checks} devices={URZADZENIA} onRowClick={onRowClick} />,
     );
-    fireEvent.click(screen.getByText(nazwa(pierwsze.device_id)));
+    // Klik w nazwę urządzenia W JEGO wierszu: sterowniki pól szablonu różnych stacji noszą tę
+    // samą nazwę pola („Sterownik pola Pole liniowe wejściowe 1"), wiersz wskazuje referencja.
+    await userEvent.click(
+      within(screen.getByTestId(`sensitivity-row-${pierwsze.device_id}`)).getByText(nazwa(pierwsze.device_id)),
+    );
     expect(onRowClick).toHaveBeenCalledWith(pierwsze.device_id);
   });
 
@@ -116,10 +120,11 @@ describe('SelectivityTable', () => {
     expect(klik).toHaveBeenCalledTimes(1);
   });
 
-  it('klik w wiersz prowadzi do pary (nadrzędne, podrzędne)', () => {
+  it('klik w wiersz prowadzi do pary (nadrzędne, podrzędne)', async () => {
     const onRowClick = vi.fn();
     render(<SelectivityTable checks={WYNIK.selectivity_checks} devices={URZADZENIA} onRowClick={onRowClick} />);
-    fireEvent.click(screen.getByText(nazwa(PARA.downstream_device_id)));
+    // Natywny klik (pointerdown → mouseup → click), nie syntetyczne zdarzenie (Zero-Debt pkt 5).
+    await userEvent.click(screen.getByText(nazwa(PARA.downstream_device_id)));
     expect(onRowClick).toHaveBeenCalledWith(PARA.upstream_device_id, PARA.downstream_device_id);
   });
 
@@ -154,11 +159,11 @@ describe('OverloadTable', () => {
     }
   });
 
-  it('klik w wiersz zgłasza urządzenie', () => {
+  it('klik w wiersz zgłasza urządzenie', async () => {
     const onRowClick = vi.fn();
     const [pierwsze] = WYNIK.overload_checks;
     render(<OverloadTable checks={WYNIK.overload_checks} devices={URZADZENIA} onRowClick={onRowClick} />);
-    fireEvent.click(screen.getByText(nazwa(pierwsze.device_id)));
+    await userEvent.click(screen.getByText(nazwa(pierwsze.device_id)));
     expect(onRowClick).toHaveBeenCalledWith(pierwsze.device_id);
   });
 

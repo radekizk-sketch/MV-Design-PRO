@@ -24,6 +24,7 @@ import { dirname, resolve } from 'node:path';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { BACKEND_BASE, otworzAplikacje, siecKadrow, ustawMotyw } from './siecKadrowStacji';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(
@@ -45,6 +46,8 @@ const PRZEKSZTALTNIK_PV_NN = 'conv-pv-nn-0p5mw-0p4kv';
 async function kliknijStacje(page: Page, stacjaRef: string): Promise<void> {
   const blok = page.locator(`[data-testid="sld-v3-l0-${stacjaRef}"]`);
   await expect(blok).toBeAttached({ timeout: 30000 });
+  // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+  await czekajNaStabilnaGeometrie(blok);
   const ramka = await blok.boundingBox();
   expect(ramka, 'blok stacji ma ramkę na ekranie').not.toBeNull();
   await page.mouse.click(ramka!.x + ramka!.width / 2, ramka!.y + ramka!.height / 2);

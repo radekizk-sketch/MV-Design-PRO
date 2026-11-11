@@ -16,7 +16,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { Bay } from '../../../../../types/enm';
+import type { Bay, ProtectionAssignment } from '../../../../../types/enm';
 import { zrodloU0Pola, type ZrodloU0PolaView } from '../../../v2/model/zrodloNapieciaZerowego';
 import fikstura from '../../../v2/model/__tests__/fixtures/parytet_zrodla_u0.json';
 import {
@@ -198,6 +198,8 @@ interface PrzypadekParytetu {
   readonly nazwa: string;
   readonly pole_ref: string;
   readonly bays: readonly Bay[];
+  /** Sterowniki pól przypadku — źródło 3U₀ to wejście sterownika pola (ADR-022). */
+  readonly protection_assignments: readonly ProtectionAssignment[];
 }
 
 const przypadki = fikstura.przypadki as unknown as readonly PrzypadekParytetu[];
@@ -207,7 +209,13 @@ function scena(nazwa: string): { readonly pole: Bay; readonly zrodlo: ZrodloU0Po
   if (!przypadek) throw new Error(`brak przypadku ${nazwa}`);
   const pole = przypadek.bays.find((b) => b.ref_id === przypadek.pole_ref);
   if (!pole) throw new Error(`brak pola w przypadku ${nazwa}`);
-  return { pole, zrodlo: zrodloU0Pola({ bays: [...przypadek.bays] }, pole) };
+  return {
+    pole,
+    zrodlo: zrodloU0Pola(
+      { bays: [...przypadek.bays], protection_assignments: [...przypadek.protection_assignments] },
+      pole,
+    ),
+  };
 }
 
 describe('67N — iloczyn {Z.10, Z.11.1} × {Z.17 obecne, brak} × {potwierdzone, niepotwierdzone} (sceny z operacji)', () => {

@@ -73,11 +73,13 @@ export interface BayPrimaryDeviceView {
    *  (`BayPrimaryDevice.wykonanie` = WYSUWNE) — rysunek QET ze znacznikiem „○” członu wysuwnego
    *  obok „×”. Brak = wykonanie stałe albo nieokreślone (bez znacznika). */
   readonly wysuwny?: boolean;
-  /** Kody funkcji EAZ zasilanych z aparatu (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródła
-   *  linii pomiarowych do przekaźnika pola. Brak = aparat nie zasila żadnej funkcji. */
+  /** Kody funkcji EAZ zasilanych z aparatu — wejścia sterownika pola wskazujące aparat
+   *  (`ProtectionAssignment.wejscia`, `funkcjeZasilaneZAparatu`); źródła linii pomiarowych do
+   *  przekaźnika pola. Brak = aparat nie zasila żadnej funkcji. */
   readonly funkcjeEazZasilane?: readonly string[];
-  /** Kody funkcji EAZ wyłączających wyłącznik (`BayPrimaryDevice.funkcje_eaz_wylaczajace`) —
-   *  cel linii wyłączania przekaźnika. Brak = żadna funkcja nie wyłącza aparatu. */
+  /** Kody funkcji EAZ wyłączających wyłącznik — macierz wyzwoleń sterownika pola
+   *  (`ProtectionAssignment.macierz_wyzwolen`, `funkcjeWylaczajaceAparat`); cel linii wyłączania
+   *  przekaźnika. Brak = żadna funkcja nie wyłącza aparatu. */
   readonly funkcjeEazWylaczajace?: readonly string[];
   /** Liczba uzwojeń wtórnych przekładnika napięciowego (`BayPrimaryDevice.uzwojenia`) —
    *  wybiera rysunek z właściwą liczbą okręgów. Brak = tabliczka niepodana. */
@@ -93,12 +95,12 @@ export interface PortAparatuPolaView {
 
 /**
  * F9.9 (SLD_CAD_SPEC_V3 §17.2) — adnotacja zabezpieczeń JEDNEGO pola,
- * projekcja `Bay.protection_codes` + `Bay.protection_ref` →
- * `ProtectionAssignment` (`v2/canvas/enmToSldAdapter.ts`
+ * projekcja sterownika pola `ProtectionAssignment` (`bay_ref` pola — jedyna
+ * struktura zabezpieczeń) (`v2/canvas/enmToSldAdapter.ts`
  * `resolveBayProtectionMarking`). `codes` jest ZAWSZE niepuste (adapter
- * zwraca `undefined` dla całego pola, gdy `Bay.protection_codes` jest puste —
+ * zwraca `undefined` dla całego pola, gdy sterownik nie ma włączonych funkcji —
  * §17.2 „brak danych = brak oznaczenia"). `breakerRef`/`ctRef` to SUROWE
- * referencje ENM (`ProtectionAssignment.breaker_ref`/`ct_ref`) — dopasowanie
+ * referencje ENM (macierz wyzwoleń i `wejscia.ct_ref` sterownika) — dopasowanie
  * na KONKRETNY aparat NARYSOWANEGO stosu dzieje się w `compose/
  * protectionMarking.ts` (adapter nie zna geometrii/kolejności rysowania).
  */
@@ -237,7 +239,7 @@ export interface MiniBlockBayDescriptor {
    *  nie zgadywał wyposażenia z typu pola. `undefined` gdy pole bez szablonu. */
   readonly configId?: string;
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): adnotacja zabezpieczeń tego pola —
-   *  `undefined` gdy `Bay.protection_codes` puste/nieobecne (brak danych =
+   *  `undefined` gdy sterownik pola nie ma włączonych funkcji (brak danych =
    *  brak oznaczenia, §17.2 dosłownie). */
   readonly protectionMarking?: BayProtectionMarkingView;
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `Measurement.ref_id` pomiaru
@@ -256,7 +258,8 @@ export interface MiniBlockBayDescriptor {
    *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak
    *  oznaczenia, §18.3 dosłownie — zero „z domysłu"). */
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
-  /** Źródło napięcia zerowego 3U₀ funkcji 67N pola (`Bay.zrodlo_u0_ref` rozstrzygnięty regułą
+  /** Źródło napięcia zerowego 3U₀ funkcji 67N pola (wejście `u0_vt_ref` sterownika pola
+   *  rozstrzygnięte regułą
    *  `v2/model/zrodloNapieciaZerowego.ts`, lustro backendu) — `undefined`, gdy pole nie ma
    *  powiązania ani funkcji wymagającej źródła. Czyta je walidacja topologiczna 67N
    *  (`compose/protectionTopologyValidation.ts`). */

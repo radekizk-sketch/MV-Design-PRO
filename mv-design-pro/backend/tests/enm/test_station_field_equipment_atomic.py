@@ -28,6 +28,7 @@ from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
+from enm.zabezpieczenie import sterownik_pola
 
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
@@ -115,6 +116,18 @@ def _insert_payload(segment_ref: str, sn_fields: list[dict[str, Any]]) -> dict[s
     }
 
 
+def _dobrane(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    """Sterowniki z dobranym urządzeniem (pozycja katalogu) — karta OCHRONA-JEDNO-ZRODLO: każde
+    pole z szablonu ma JEDEN sterownik z zestawem funkcji szablonu od chwili budowy, a dobór
+    urządzenia (`add_relay`) uzupełnia TEN sterownik, nie dokłada drugiego rekordu."""
+    return [p for p in snapshot.get("protection_assignments", []) if p.get("catalog_ref")]
+
+
+def _jeden_sterownik_na_pole(snapshot: dict[str, Any]) -> None:
+    pola_sterownikow = [p["bay_ref"] for p in snapshot.get("protection_assignments", [])]
+    assert len(pola_sterownikow) == len(set(pola_sterownikow)), pola_sterownikow
+
+
 def _pomiary(snapshot: dict[str, Any], typ: str) -> list[dict[str, Any]]:
     return [m for m in snapshot.get("measurements", []) if m.get("measurement_type") == typ]
 
@@ -158,19 +171,22 @@ def test_insert_station_creates_field_equipment_in_same_snapshot() -> None:
     assert len(vt_list) == 1
     assert ct_list[0]["catalog_ref"] == CT_REF
     assert vt_list[0]["catalog_ref"] == VT_REF
-    assert len(snapshot.get("protection_assignments", [])) == 1
+    assert len(_dobrane(snapshot)) == 1
+    _jeden_sterownik_na_pole(snapshot)
 
     # Utworzone elementy zgłoszone w `changes` (konsument selekcji/undo).
     utworzone = set(result["changes"]["created_element_ids"])
     assert ct_list[0]["ref_id"] in utworzone
     assert vt_list[0]["ref_id"] in utworzone
-    assert snapshot["protection_assignments"][0]["ref_id"] in utworzone
+    assert _dobrane(snapshot)[0]["ref_id"] in utworzone
 
     # Zdarzenia domenowe wyposażenia dopisane do przebiegu operacji stacyjnej.
     typy_zdarzen = [z.get("event_type") for z in result["domain_events"]]
     assert "CT_CREATED" in typy_zdarzen
     assert "VT_CREATED" in typy_zdarzen
-    assert "PROTECTION_CREATED" in typy_zdarzen
+    # Sterownik pola powstaje z szablonu razem z polem; dobór urządzenia zmienia jego
+    # konfigurację (zdarzenie zmiany, nie drugie utworzenie).
+    assert "PROTECTION_SETTINGS_UPDATED" in typy_zdarzen
     numery = [z.get("event_seq") for z in result["domain_events"]]
     assert numery == sorted(numery), "Numeracja zdarzeń musi rosnąć monotonicznie"
 
@@ -191,11 +207,11 @@ def test_relay_binds_breaker_and_measurements_of_the_same_field() -> None:
 
     assert result.get("error") is None, result.get("error")
     snapshot = result["snapshot"]
-    przypisanie = snapshot["protection_assignments"][0]
+    (przypisanie,) = _dobrane(snapshot)
     ct = _pomiary(snapshot, "CT")[0]
     vt = _pomiary(snapshot, "VT")[0]
-    assert przypisanie["ct_ref"] == ct["ref_id"]
-    assert przypisanie["vt_ref"] == vt["ref_id"]
+    assert przypisanie["wejscia"]["ct_ref"] == ct["ref_id"]
+    assert przypisanie["wejscia"]["vt_ref"] == vt["ref_id"]
 
     field_ref = ct["bay_ref"]
     breaker = next(
@@ -203,12 +219,14 @@ def test_relay_binds_breaker_and_measurements_of_the_same_field() -> None:
         for b in snapshot["branches"]
         if (b.get("meta") or {}).get("field_ref") == field_ref and b.get("type") == "breaker"
     )
-    assert przypisanie["breaker_ref"] == breaker["ref_id"]
+    # Każda funkcja zabezpieczeniowa sterownika wyzwala wyłącznik TEGO pola (macierz wyzwoleń).
+    assert przypisanie["macierz_wyzwolen"]
+    assert {a for w in przypisanie["macierz_wyzwolen"] for a in w["aparat_refs"]} == {
+        breaker["ref_id"]
+    }
 
-    # Pole niesie referencję zabezpieczenia (rekord pola `bays`).
-    specs = pola_stacji(snapshot, _stacja(snapshot, "Stacja B-3")["ref_id"])
-    spec = next(s for s in specs if s.get("ref_id") == field_ref)
-    assert spec["protection_ref"] == przypisanie["ref_id"]
+    # Sterownik pola to ten sam rekord, który model zwraca dla pola (jeden na pole).
+    assert sterownik_pola(snapshot, field_ref) == przypisanie
 
 
 def test_equipment_may_be_declared_for_many_fields() -> None:
@@ -229,7 +247,8 @@ def test_equipment_may_be_declared_for_many_fields() -> None:
     assert len(_pomiary(snapshot, "CT")) == 2
     # Pole bez wskazanego VT nie dostaje przekładnika napięciowego (uczciwy brak).
     assert len(_pomiary(snapshot, "VT")) == 1
-    assert len(snapshot["protection_assignments"]) == 2
+    assert len(_dobrane(snapshot)) == 2
+    _jeden_sterownik_na_pole(snapshot)
 
 
 # ---------------------------------------------------------------------------
@@ -334,7 +353,8 @@ def test_sequential_path_still_works_without_equipment_field() -> None:
 
     assert len(_pomiary(snapshot, "CT")) == 1
     assert len(_pomiary(snapshot, "VT")) == 1
-    assert len(snapshot["protection_assignments"]) == 1
+    assert len(_dobrane(snapshot)) == 1
+    _jeden_sterownik_na_pole(snapshot)
 
 
 def test_atomic_and_sequential_paths_produce_the_same_equipment() -> None:
@@ -397,12 +417,17 @@ def test_atomic_and_sequential_paths_produce_the_same_equipment() -> None:
         ]
         zabezpieczenia = [
             {
-                "catalog_ref": p["catalog_ref"],
-                "device_type": p["device_type"],
-                "breaker_ref": p["breaker_ref"],
-                "ct_ref": p["ct_ref"],
-                "vt_ref": p["vt_ref"],
-                "settings": p["settings"],
+                klucz: p.get(klucz)
+                for klucz in (
+                    "ref_id",
+                    "bay_ref",
+                    "catalog_ref",
+                    "wejscia",
+                    "funkcje",
+                    "grupy_nastaw",
+                    "aktywna_grupa",
+                    "macierz_wyzwolen",
+                )
             }
             for p in sorted(snapshot["protection_assignments"], key=lambda p: p["ref_id"])
         ]
@@ -435,7 +460,8 @@ def test_append_station_creates_field_equipment_in_same_snapshot() -> None:
     snapshot = result["snapshot"]
     assert len(_pomiary(snapshot, "CT")) == 1
     assert len(_pomiary(snapshot, "VT")) == 1
-    assert len(snapshot["protection_assignments"]) == 1
+    assert len(_dobrane(snapshot)) == 1
+    _jeden_sterownik_na_pole(snapshot)
 
 
 def test_append_station_invalid_equipment_aborts_whole_operation() -> None:
@@ -534,7 +560,16 @@ def test_domyslna_nazwa_zabezpieczenia_uzywa_nazwy_pola_nie_referencji() -> None
     result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
 
     assert result.get("error") is None, result.get("error")
-    przypisanie = result["snapshot"]["protection_assignments"][0]
-    nazwa = str(przypisanie["name"])
-    assert "/" not in nazwa, f"Nazwa niesie referencję maszynową: {nazwa}"
-    assert nazwa.startswith("Zabezpieczenie pola ")
+    snapshot = result["snapshot"]
+    # Ta sama reguła nazwy dla sterownika z szablonu pola i dla doboru urządzenia (`add_relay`):
+    # pole z doborem i pola bez doboru mają nazwę z nazwy pola, nigdy z identyfikatora.
+    nazwy_pol = {
+        p["ref_id"]: p["name"]
+        for p in pola_stacji(snapshot, _stacja(snapshot, "Stacja B-3")["ref_id"])
+    }
+    sterowniki = [p for p in snapshot["protection_assignments"] if p["bay_ref"] in nazwy_pol]
+    assert len(sterowniki) == 3 and len(_dobrane(snapshot)) == 1
+    for sterownik in sterowniki:
+        nazwa = str(sterownik["name"])
+        assert "/" not in nazwa, f"Nazwa niesie referencję maszynową: {nazwa}"
+        assert nazwa == f"Sterownik pola {nazwy_pol[sterownik['bay_ref']]}"

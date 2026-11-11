@@ -51,12 +51,12 @@ from enm.models import (
     ENMHeader,
     Generator,
     ProtectionAssignment,
-    ProtectionSetting,
 )
 from network_model.catalog.repository import get_default_mv_catalog
 from werdykt import OcenaKryterium
 
 from tests.golden.zapis_fikstur import json_fikstury
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 _FRONTEND_SRC = Path(__file__).resolve().parents[3] / "frontend" / "src"
 
@@ -136,24 +136,17 @@ def _ssci() -> dict[str, Any]:
     }
 
 
-def _bay_lom(ref: str, nazwa: str, stacja: str, szyna: str, zabezpieczenie: str | None) -> Bay:
-    return Bay(
-        ref_id=ref,
-        name=nazwa,
-        bay_role="OZE",
-        substation_ref=stacja,
-        bus_ref=szyna,
-        protection_ref=zabezpieczenie,
-    )
+def _bay_lom(ref: str, nazwa: str, stacja: str, szyna: str) -> Bay:
+    return Bay(ref_id=ref, name=nazwa, bay_role="OZE", substation_ref=stacja, bus_ref=szyna)
 
 
-def _zabezpieczenie_lom(ref: str, nastawy: list[ProtectionSetting]) -> ProtectionAssignment:
-    return ProtectionAssignment(
+def _zabezpieczenie_lom(ref: str, bay_ref: str, nastawy: list[Stopien]) -> ProtectionAssignment:
+    return sterownik(
         ref_id=ref,
         name=f"Zabezpieczenie LoM {ref}",
-        breaker_ref=f"cb-{ref}",
-        device_type="custom",
-        settings=nastawy,
+        bay_ref=bay_ref,
+        wylacznik=f"cb-{ref}",
+        stopnie=nastawy,
     )
 
 
@@ -192,22 +185,20 @@ def _enm_lom_trzy_pola() -> EnergyNetworkModel:
             ),
         ],
         bays=[
-            _bay_lom("bay-pv-a", "Pole PV A", "gpz-1", "bus-oze-1", None),
-            _bay_lom("bay-bess-b", "Pole BESS B", "gpz-1", "bus-oze-2", "prot-bess"),
-            _bay_lom("bay-fw-c", "Pole FW C", "gpz-2", "bus-oze-3", "prot-fw"),
+            _bay_lom("bay-pv-a", "Pole PV A", "gpz-1", "bus-oze-1"),
+            _bay_lom("bay-bess-b", "Pole BESS B", "gpz-1", "bus-oze-2"),
+            _bay_lom("bay-fw-c", "Pole FW C", "gpz-2", "bus-oze-3"),
         ],
         protection_assignments=[
             _zabezpieczenie_lom(
                 "prot-bess",
-                [
-                    ProtectionSetting(
-                        function_type="rocof_81R", threshold_hz_s=1.0, time_delay_s=0.3
-                    )
-                ],
+                "bay-bess-b",
+                [stopien("81R", prog_hz_s=1.0, zwloka_s=0.3)],
             ),
             _zabezpieczenie_lom(
                 "prot-fw",
-                [ProtectionSetting(function_type="underfrequency_81U", threshold_hz=47.5)],
+                "bay-fw-c",
+                [stopien("81U", prog_hz=47.5)],
             ),
         ],
     )

@@ -1,20 +1,20 @@
-"""Powiązania obwodów wtórnych wzorca pola na rekordach aparatów (poprawki P0 2026-10-29 karty
-UX-04/POLE-LINIOWE-WZORZEC): napęd łącznika (`BayPrimaryDevice.naped` — wyłącznik Q0 silnikowy,
-łącznik trójpołożeniowy Q1 zasobnikowy z obsługą ręczną, decyzja architekta 2026-10-30), funkcje
-EAZ mierzące z przekładnika (`funkcje_eaz_zasilane`) i działające na wyłącznik
-(`funkcje_eaz_wylaczajace`). Schemat pola rysuje z nich połączenia przekaźnika z rdzeniem CT,
-przekładnikiem Ferrantiego, uzwojeniem VT i wyłącznikiem oraz znaki napędu przy łącznikach.
+"""Powiązania obwodów wtórnych wzorca pola: napęd łącznika na rekordzie aparatu
+(`BayPrimaryDevice.naped` — wyłącznik Q0 silnikowy, łącznik trójpołożeniowy Q1 zasobnikowy
+z obsługą ręczną, decyzja architekta 2026-10-30) oraz wiązania JEDYNEGO sterownika pola
+(karta OCHRONA-JEDNO-ZRODLO, ADR-022): wejścia pomiarowe (`ProtectionAssignment.wejscia` —
+rdzeń CT, przekładnik Ferrantiego, uzwojenie VT) i macierz wyzwoleń (funkcja → wyłącznik).
+Schemat pola rysuje z nich połączenia przekaźnika z przekładnikami i wyłącznikiem.
 
 Iloczyn cech: szablon (9: Z.10 / Z.11.1 / Z.11 × wykonanie łączników) × droga zapisu {budowa GPZ,
 `set_bay_equipment` szablon, katalog z oznaczeniami wzorca, katalog z innym oznaczeniem
 przekładnika, katalog bez przekładnika Ferrantiego, zmiana szablonu, usunięcie wyposażenia}.
 
 Wyrocznie: (1) tabela odczytu rysunku Z.11.1 s.91 zapisana literalnie (kto mierzy z T1, T2, T3,
-co działa na Q0); (2) powiązania przeliczone wprost z danych wzorca, ograniczone do funkcji,
-które pole MA (`Bay.protection_codes` — zestaw korygowany klasą pola, IRiESD II.4.5.4.2);
+co działa na Q0); (2) wiązania przeliczone wprost z danych wzorca, ograniczone do funkcji,
+które pole MA (funkcje sterownika — zestaw korygowany klasą pola, IRiESD II.4.5.4.2);
 (3) PREDYKAT PARAMI z odczytem pola (`pole_liniowe_gpz._opis_wejscia`): dla funkcji pola odczyt
-mówi „brak aparatu w polu" dokładnie wtedy, gdy aparat o oznaczeniu wejścia nie ma funkcji
-w `funkcje_eaz_zasilane`; funkcja wzorca, której pole nie ma, nie wiąże żadnego aparatu.
+mówi „brak aparatu w polu" dokładnie wtedy, gdy sterownik nie wiąże funkcji z aparatem
+o oznaczeniu wejścia; funkcja wzorca, której pole nie ma, nie wiąże żadnego aparatu.
 """
 
 from __future__ import annotations
@@ -27,12 +27,19 @@ import pytest
 from enm.hash import hash_migawki_enm
 from enm.models import BayPrimaryDevice, EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pole_liniowe_gpz import _opis_wejscia
+from enm.zabezpieczenie import (
+    funkcje_wylaczajace_aparat,
+    funkcje_zasilane_z_aparatu,
+    kody_funkcji_pola,
+    ref_aparatu_wyzwalanego,
+    sterownik_pola,
+)
 from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
 from network_model.catalog.obwody_wtorne_pola import (
     POLA_POWIAZAN_APARATU,
     RODZAJ_APARATU_WEJSCIA,
     ObwodyWtornePola,
-    powiazania_aparatow_pola,
+    napedy_aparatow_pola,
 )
 from pydantic import ValidationError
 
@@ -126,8 +133,8 @@ def _zapis(enm: dict[str, Any], szablon_id: str, droga: str) -> dict[str, Any]:
 def _oczekiwane(
     obwody: ObwodyWtornePola, aparaty: list[dict[str, Any]], funkcje_pola: list[str]
 ) -> dict[str, dict[str, Any]]:
-    """Wyrocznia z danych wzorca: oznaczenie aparatu → oczekiwane pola powiązań (tylko funkcje
-    pola)."""
+    """Wyrocznia z danych wzorca: oznaczenie aparatu → napęd, funkcje mierzące z aparatu
+    (``zasilane``) i działające na niego (``wylaczajace``) — tylko funkcje pola."""
     wynik: dict[str, dict[str, Any]] = {
         str(a.get("designation")): {} for a in aparaty if a.get("designation")
     }
@@ -136,29 +143,44 @@ def _oczekiwane(
     for n in obwody.napedy:
         if rodzaj.get(n.aparat) == n.rodzaj_aparatu:
             wynik[n.aparat]["naped"] = n.naped
-    for p in obwody.powiazania:
-        if p.funkcja not in funkcje_pola:
-            continue
-        if p.wylacznik is not None and rodzaj.get(p.wylacznik) == "CB":
-            pola = wynik[p.wylacznik]
-            pola.setdefault("funkcje_eaz_wylaczajace", [])
-            if p.funkcja not in pola["funkcje_eaz_wylaczajace"]:
-                pola["funkcje_eaz_wylaczajace"].append(p.funkcja)
-        for w in p.wejscia:
-            if w.aparat is not None and rodzaj.get(w.aparat) == RODZAJ_APARATU_WEJSCIA[w.rodzaj]:
-                pola = wynik[w.aparat]
-                pola.setdefault("funkcje_eaz_zasilane", [])
-                if p.funkcja not in pola["funkcje_eaz_zasilane"]:
-                    pola["funkcje_eaz_zasilane"].append(p.funkcja)
+
+    def _dopisz(oznaczenie: str, klucz: str, kod: str) -> None:
+        lista = wynik[oznaczenie].setdefault(klucz, [])
+        if kod not in lista:
+            lista.append(kod)
+
+    # Kolejność kodów = kolejność funkcji sterownika (zestaw pola), nie kolejność rysunku.
+    for kod in funkcje_pola:
+        for p in obwody.powiazania:
+            if p.funkcja != kod:
+                continue
+            if p.wylacznik is not None and rodzaj.get(p.wylacznik) == "CB":
+                _dopisz(p.wylacznik, "wylaczajace", kod)
+            for w in p.wejscia:
+                if (
+                    w.aparat is not None
+                    and rodzaj.get(w.aparat) == RODZAJ_APARATU_WEJSCIA[w.rodzaj]
+                ):
+                    _dopisz(w.aparat, "zasilane", kod)
     return wynik
 
 
-def _powiazania(rekord: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return {
-        str(a.get("designation")): {k: a[k] for k in POLA_POWIAZAN_APARATU if a.get(k)}
-        for a in rekord["primary_devices"]
-        if a.get("designation")
-    }
+def _powiazania(enm: dict[str, Any], rekord: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Odczyt modelu: napęd z rekordu aparatu, funkcje z JEDYNEGO sterownika pola."""
+    sterownik = sterownik_pola(enm, rekord["ref_id"]) or {}
+    wynik: dict[str, dict[str, Any]] = {}
+    for a in rekord["primary_devices"]:
+        if not a.get("designation"):
+            continue
+        pola = {k: a[k] for k in POLA_POWIAZAN_APARATU if a.get(k)}
+        zasilane = funkcje_zasilane_z_aparatu(sterownik, a["device_ref"])
+        wylaczajace = funkcje_wylaczajace_aparat(sterownik, ref_aparatu_wyzwalanego(a))
+        if zasilane:
+            pola["zasilane"] = zasilane
+        if wylaczajace:
+            pola["wylaczajace"] = wylaczajace
+        wynik[str(a["designation"])] = pola
+    return wynik
 
 
 @pytest.mark.parametrize("szablon_id,droga", list(itertools.product(SZABLONY, DROGI)))
@@ -167,65 +189,73 @@ def test_powiazania_aparatow_wg_wzorca_i_predykat_parami_z_odczytem(szablon_id: 
     rekord = _pole(enm)
     obwody = BAY_TEMPLATE_REGISTRY[szablon_id].obwody_wtorne
     assert obwody is not None
-    assert _powiazania(rekord) == _oczekiwane(
-        obwody, rekord["primary_devices"], rekord["protection_codes"]
-    )
-    # Każdy rekord przechodzi kontrakt aparatu (walidator powiązań na rodzaju).
+    kody = kody_funkcji_pola(enm, rekord["ref_id"])
+    assert kody, (szablon_id, droga)
+    assert _powiazania(enm, rekord) == _oczekiwane(obwody, rekord["primary_devices"], kody)
+    # Każdy rekord przechodzi kontrakt aparatu.
     for a in rekord["primary_devices"]:
         BayPrimaryDevice.model_validate(a)
-    # Predykat parami: odczyt pola i powiązania na aparacie z JEDNEJ reguły dopasowania.
+    # Predykat parami: odczyt pola i wiązania sterownika z JEDNEJ reguły dopasowania.
+    sterownik = sterownik_pola(enm, rekord["ref_id"])
     aparaty = {str(a["designation"]): a for a in rekord["primary_devices"] if a.get("designation")}
-    wylaczajace = {
-        kod for a in rekord["primary_devices"] for kod in a.get("funkcje_eaz_wylaczajace") or []
-    }
     for p in obwody.powiazania:
-        if p.funkcja not in rekord["protection_codes"]:
+        if p.funkcja not in kody:
             # Funkcja wzorca, której pole nie ma (korekta klasą pola) — nie wiąże aparatu.
-            assert all(
-                p.funkcja not in (a.get("funkcje_eaz_zasilane") or [])
-                for a in rekord["primary_devices"]
-            ), (droga, p.funkcja)
-            assert p.funkcja not in wylaczajace, (droga, p.funkcja)
+            for a in rekord["primary_devices"]:
+                assert p.funkcja not in funkcje_zasilane_z_aparatu(sterownik, a["device_ref"])
+                assert p.funkcja not in funkcje_wylaczajace_aparat(
+                    sterownik, ref_aparatu_wyzwalanego(a)
+                )
             continue
         for w in p.wejscia:
             if w.aparat is None:
                 continue
             brak = "brak aparatu w polu" in _opis_wejscia(w, aparaty)
-            zasilane = (aparaty.get(w.aparat) or {}).get("funkcje_eaz_zasilane") or []
+            aparat = aparaty.get(w.aparat)
+            zasilane = funkcje_zasilane_z_aparatu(sterownik, aparat["device_ref"]) if aparat else []
             assert brak is (p.funkcja not in zasilane), (droga, p.funkcja, w.aparat)
     if droga == "katalog_inne_oznaczenie_t1":
         t11 = next(a for a in rekord["primary_devices"] if a.get("designation") == "T11")
-        assert "funkcje_eaz_zasilane" not in t11 or not t11["funkcje_eaz_zasilane"]
+        assert funkcje_zasilane_z_aparatu(sterownik, t11["device_ref"]) == []
+        assert "ct_ref" not in sterownik["wejscia"]
     if droga == "katalog_bez_t2":
         assert all(a["kind"] != "CORE_BALANCE_CT" for a in rekord["primary_devices"])
+        assert sterownik["wejscia"].get("i0_uklad") != "FERRANTI"
 
 
 #: Tabela odczytu rysunku ENEA Z.11.1 s.91 (`docs/uiux/UX04_POLE_LINIOWE_WZORZEC.md` §9.3),
 #: zapisana literalnie: co działa na Q0 i kto mierzy z T1, T2, T3. 51N to kryterium prądowe Io
 #: bloku „Zab. ziemnozwarciowe t1, t2" z przekładnika Ferrantiego T2 (czerwona linia z zacisku 2
 #: rysunku; uwaga sesji głównej 2026-10-29 pkt 4, §11.9) — w polu BEZ warunku źródła 3U₀.
-TABELA_Z11_1_WYLACZAJACE_Q0 = [
+#: Kolejność kodów — kolejność funkcji sterownika pola (zestaw szablonu).
+TABELA_Z11_1_WYLACZAJACE_Q0 = {
     "51", "50", "51N", "67N", "50BF", "79", "SCO",
     "27", "59", "81U", "81O", "81R", "NZ", "SPZE", "OWG",
-]  # fmt: skip
+}  # fmt: skip
 TABELA_Z11_1_ZASILANE = {
-    "T1": ["51", "50", "ZS", "50BF", "67"],
-    "T2": ["51N", "67N"],
-    "T3": ["67", "27", "59", "81U", "81O", "81R", "NZ"],
+    "T1": {"51", "50", "ZS", "50BF", "67"},
+    "T2": {"51N", "67N"},
+    "T3": {"67", "27", "59", "81U", "81O", "81R", "NZ"},
 }
 
 
 @pytest.mark.parametrize("zrodlo_u0", [False, True], ids=["bez_zrodla_u0", "zrodlo_u0_z17"])
 def test_tabela_rysunku_z11_1(zrodlo_u0: bool):
-    """Wyrocznia literalna z rysunku s.91: wzorzec (wszystkie funkcje rysunku) daje tabelę
-    1:1; pole liniowe z klasą pola niesie tabelę ograniczoną do SWOICH funkcji
-    (`protection_codes` — w polu klasy mieszanej bez SCO, IRiESD II.4.5.4.2). Decyzja
-    właściciela 2026-10-29 pkt 4: 67N (i jego powiązanie z przekładnikiem Ferrantiego T2) pole
-    ma WYŁĄCZNIE z potwierdzonym źródłem 3U₀ — przekładnikiem pola pomiaru napięcia Z.17 sekcji
-    powiązanym w modelu; bez niego T2 zasila wyłącznie 51N (kryterium prądowe Io, bez warunku
-    — uwaga sesji głównej pkt 4)."""
+    """Wyrocznia literalna z rysunku s.91: pole liniowe z klasą pola niesie tabelę ograniczoną
+    do SWOICH funkcji (funkcje sterownika — w polu klasy mieszanej bez SCO, IRiESD
+    II.4.5.4.2). Decyzja właściciela 2026-10-29 pkt 4: 67N (i jego wejście z przekładnika
+    Ferrantiego T2) pole ma WYŁĄCZNIE z potwierdzonym źródłem 3U₀ — przekładnikiem pola pomiaru
+    napięcia Z.17 sekcji powiązanym w modelu; bez niego T2 zasila wyłącznie 51N (kryterium
+    prądowe Io, bez warunku — uwaga sesji głównej pkt 4)."""
     obwody = BAY_TEMPLATE_REGISTRY[Z11_1].obwody_wtorne
     assert obwody is not None
+    # Wzorzec rysunku = tabela 1:1 (wszystkie funkcje rysunku, bez korekty klasą pola).
+    wzorzec_q0 = {p.funkcja for p in obwody.powiazania if p.wylacznik == "Q0"}
+    assert wzorzec_q0 == TABELA_Z11_1_WYLACZAJACE_Q0
+    for oznaczenie, kody in TABELA_Z11_1_ZASILANE.items():
+        assert {
+            p.funkcja for p in obwody.powiazania for w in p.wejscia if w.aparat == oznaczenie
+        } == kody, oznaczenie
     enm = _z_szablonu(_gpz(), Z11_1)
     # Klasa pola mieszanego (Z.11.1 — pole z generacją, IRiESD II.4.5.4.2): zestaw bez SCO.
     zadanie: dict[str, Any] = {
@@ -239,85 +269,101 @@ def test_tabela_rysunku_z11_1(zrodlo_u0: bool):
         zadanie["zrodlo_u0_ref"] = vt_ref
     enm = ok(op(enm, "set_bay_equipment", zadanie))
     rekord = _pole(enm)
-    wszystkie = [p.funkcja for p in obwody.powiazania]
-    p_wzorca = {
-        str(a.get("designation")): {k: a[k] for k in POLA_POWIAZAN_APARATU if a.get(k)}
-        for a in powiazania_aparatow_pola(rekord["primary_devices"], obwody, wszystkie)
-    }
-    assert p_wzorca["Q0"] == {
-        "naped": "SILNIKOWY",
-        "funkcje_eaz_wylaczajace": TABELA_Z11_1_WYLACZAJACE_Q0,
-    }
-    for oznaczenie, kody in TABELA_Z11_1_ZASILANE.items():
-        assert p_wzorca[oznaczenie] == {"funkcje_eaz_zasilane": kody}
-    kody_pola = rekord["protection_codes"]
+    kody_pola = kody_funkcji_pola(enm, rekord["ref_id"])
     # Pole klasy mieszanej: zestaw bez SCO — funkcja rysunku, której pole nie ma, nie wiąże Q0.
     assert "SCO" not in kody_pola and "SCO" in TABELA_Z11_1_WYLACZAJACE_Q0
-    p = _powiazania(rekord)
-    assert p["Q0"] == {
-        "naped": "SILNIKOWY",
-        "funkcje_eaz_wylaczajace": [k for k in TABELA_Z11_1_WYLACZAJACE_Q0 if k in kody_pola],
-    }
+    p = _powiazania(enm, rekord)
+    assert p["Q0"]["naped"] == "SILNIKOWY"
+    assert set(p["Q0"]["wylaczajace"]) == TABELA_Z11_1_WYLACZAJACE_Q0 & set(kody_pola)
     assert ("67N" in kody_pola) is zrodlo_u0
     for oznaczenie, kody in TABELA_Z11_1_ZASILANE.items():
-        oczekiwane = [k for k in kody if k in kody_pola]
-        assert p[oznaczenie] == ({"funkcje_eaz_zasilane": oczekiwane} if oczekiwane else {})
-    assert p["T2"] == {"funkcje_eaz_zasilane": ["51N", "67N"] if zrodlo_u0 else ["51N"]}
+        assert set(p[oznaczenie].get("zasilane", [])) == kody & set(kody_pola), oznaczenie
+    assert p["T2"] == {"zasilane": ["51N", "67N"] if zrodlo_u0 else ["51N"]}
     # Łącznik trójpołożeniowy Q1: znak napędu (kwadrat na sprzężeniu, obsługa ręczna) na s.91;
     # odłącznik z uziemieniem Q5 odgałęzienia przekładnika napięciowego — bez znaku napędu.
-    assert p_wzorca["Q1"] == p["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
+    assert p["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
     for oznaczenie in ("PF0", "Q5", "GK1", "PF1", "GK"):
         assert p[oznaczenie] == {}
 
 
 def test_zmiana_zestawu_funkcji_pola_przelicza_powiazania():
-    """Predykat parami (zestaw funkcji pola × powiązania aparatów): zmiana `protection_codes`
-    pisarzem `zmien_pole` bez zmiany aparatów przelicza powiązania (iniekcja: przeliczanie
+    """Predykat parami (zestaw funkcji sterownika × wiązania): zmiana zestawu funkcji pisarzem
+    `zmien_pole` bez zmiany aparatów przelicza wiersze macierzy wyzwoleń (iniekcja: przeliczanie
     tylko przy zmianie aparatów zostawia Q0 wyłączany funkcją, której pole już nie ma)."""
     from enm.pola import zmien_pole
 
     enm = _z_szablonu(_gpz(), Z11_1)
     rekord = _pole(enm)
-    zmien_pole(enm, rekord["ref_id"], protection_codes=["51", "50"])
-    po = _powiazania(_po_ref(enm, rekord["ref_id"]))
-    assert po["Q0"] == {"naped": "SILNIKOWY", "funkcje_eaz_wylaczajace": ["51", "50"]}
-    assert po["T1"] == {"funkcje_eaz_zasilane": ["51", "50"]}
+    zmien_pole(enm, rekord["ref_id"], funkcje_eaz=["51", "50"])
+    po = _powiazania(enm, _po_ref(enm, rekord["ref_id"]))
+    assert po["Q0"] == {"naped": "SILNIKOWY", "wylaczajace": ["51", "50"]}
+    assert po["T1"] == {"zasilane": ["51", "50"]}
     assert po["T2"] == {} and po["T3"] == {}
+    sterownik = sterownik_pola(enm, rekord["ref_id"])
+    assert {w["funkcja_ref"] for w in sterownik["macierz_wyzwolen"]} == {"51", "50"}
     # Napęd jest atrybutem łącznika, nie powiązaniem funkcji — zestaw funkcji go nie zdejmuje.
     assert po["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
-    zmien_pole(enm, rekord["ref_id"], protection_codes=[])
-    po = _powiazania(_po_ref(enm, rekord["ref_id"]))
+    zmien_pole(enm, rekord["ref_id"], funkcje_eaz=[])
+    po = _powiazania(enm, _po_ref(enm, rekord["ref_id"]))
     assert po["Q0"] == {"naped": "SILNIKOWY"} and po["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
+    assert sterownik_pola(enm, rekord["ref_id"])["macierz_wyzwolen"] == []
 
 
 def test_budowa_gpz_niesie_powiazania_szablonu_domyslnego():
-    """Pole liniowe GPZ zbudowane operacją GPZ (pisarz `dodaj_pole`) ma powiązania szablonu,
-    który budowa mu nadała — bez osobnego zapisu wyposażenia."""
+    """Pole liniowe GPZ zbudowane operacją GPZ (pisarz `dodaj_pole`) ma sterownik z wiązaniami
+    szablonu, który budowa mu nadała — bez osobnego zapisu wyposażenia."""
     enm = _gpz()
     rekord = _pole(enm)
     obwody = BAY_TEMPLATE_REGISTRY[rekord["bay_template_ref"]].obwody_wtorne
     assert obwody is not None
-    assert _powiazania(rekord) == _oczekiwane(
-        obwody, rekord["primary_devices"], rekord["protection_codes"]
-    )
-    assert _powiazania(rekord)["Q0"]["naped"] == "SILNIKOWY"
+    kody = kody_funkcji_pola(enm, rekord["ref_id"])
+    assert _powiazania(enm, rekord) == _oczekiwane(obwody, rekord["primary_devices"], kody)
+    assert _powiazania(enm, rekord)["Q0"]["naped"] == "SILNIKOWY"
+
+
+def test_zmiana_szablonu_przepina_wejscia_na_aparaty_wlasciwego_rodzaju():
+    """Regresja (karta OCHRONA-JEDNO-ZRODLO): identyfikator aparatu pola wynika z numeru
+    kolejnego (``…::dev::N``), więc po zmianie szablonu ten sam identyfikator wskazuje INNY
+    aparat. Wcześniejsze wiązanie wejścia, które teraz wskazuje aparat innego rodzaju (rdzeń
+    CT → wyłącznik), nie zostaje: pisarz stosuje tę samą regułę rodzaju wejścia co walidator
+    modelu (`RODZAJE_WEJSCIA_STEROWNIKA`). Iniekcja: zachowanie wiązania po samym istnieniu
+    identyfikatora daje ``ct_ref`` = wyłącznik Q0."""
+    from enm.zabezpieczenie import RODZAJE_WEJSCIA_STEROWNIKA, naruszenia_referencji_sterownika
+
+    for szablon_id in SZABLONY:
+        enm = _z_szablonu(_gpz(), szablon_id)
+        rekord = _pole(enm)
+        sterownik = sterownik_pola(enm, rekord["ref_id"])
+        rodzaj = {a["device_ref"]: a["kind"] for a in rekord["primary_devices"]}
+        for klucz, dopuszczone in RODZAJE_WEJSCIA_STEROWNIKA.items():
+            wartosc = sterownik["wejscia"].get(klucz)
+            for ref in wartosc if isinstance(wartosc, list) else [wartosc] if wartosc else []:
+                assert rodzaj[ref] in dopuszczone, (szablon_id, klucz, rodzaj[ref])
+        assert naruszenia_referencji_sterownika(enm, sterownik) == [], szablon_id
 
 
 def test_zmiana_szablonu_i_usuniecie_wyposazenia_zdejmuja_powiazania():
     enm = _z_szablonu(_gpz(), Z11_1)
-    po_z10 = _pole(_z_szablonu(enm, Z10))
-    assert "T3" not in _powiazania(po_z10)
+    po_z10_enm = _z_szablonu(enm, Z10)
+    po_z10 = _pole(po_z10_enm)
+    assert "T3" not in _powiazania(po_z10_enm, po_z10)
     obwody_z10 = BAY_TEMPLATE_REGISTRY[Z10].obwody_wtorne
     assert obwody_z10 is not None
-    assert _powiazania(po_z10) == _oczekiwane(
-        obwody_z10, po_z10["primary_devices"], po_z10["protection_codes"]
+    assert _powiazania(po_z10_enm, po_z10) == _oczekiwane(
+        obwody_z10, po_z10["primary_devices"], kody_funkcji_pola(po_z10_enm, po_z10["ref_id"])
     )
     pole = _pole(enm)
-    pusty = _po_ref(
-        ok(op(enm, "set_bay_equipment", {"bay_ref": pole["ref_id"], "mode": "wyczysc"})),
-        pole["ref_id"],
+    po_wyczyszczeniu = ok(
+        op(enm, "set_bay_equipment", {"bay_ref": pole["ref_id"], "mode": "wyczysc"})
     )
+    pusty = _po_ref(po_wyczyszczeniu, pole["ref_id"])
     assert pusty["primary_devices"] == []
+    sterownik = sterownik_pola(po_wyczyszczeniu, pole["ref_id"])
+    # Bez aparatów sterownik nie wiąże ani przekładnika, ani wyłącznika.
+    assert sterownik is None or (
+        sterownik["macierz_wyzwolen"] == []
+        and not any(k.endswith("_ref") or k.endswith("_refs") for k in sterownik["wejscia"])
+    )
 
 
 SZABLONY_BEZ_OBWODOW = {
@@ -328,10 +374,10 @@ SZABLONY_BEZ_OBWODOW = {
 }
 
 
-def test_pola_bez_obwodow_wzorca_nie_maja_powiazan():
+def test_pola_bez_obwodow_wzorca_nie_maja_napedow_wzorca():
     """Szablony bez obwodów wtórnych wzorca (pole liniowe ogólne, zasilające, transformatorowe,
-    pomiaru napięcia) — żaden aparat nie dostaje powiązań (bez domysłu z oznaczenia Q0/T1),
-    a pole liniowe przełączone z Z.11.1 na szablon ogólny traci dawne powiązania."""
+    pomiaru napięcia) — żaden aparat nie dostaje napędu wzorca (bez domysłu z oznaczenia Q0),
+    a pole liniowe przełączone z Z.11.1 na szablon ogólny traci dawny napęd."""
     enm = _z_szablonu(_gpz(), Z11_1)
     stacja = next(s for s in enm["substations"] if s.get("gpz_sections"))
     for rola in ("IN", "TR", "MEASUREMENT"):
@@ -371,86 +417,105 @@ def test_funkcja_czysta_i_deterministyczna():
     obwody = BAY_TEMPLATE_REGISTRY[Z11_1].obwody_wtorne
     rekord = _pole(_z_szablonu(_gpz(), Z11_1))
     wejscie = copy.deepcopy(rekord["primary_devices"])
-    kody = rekord["protection_codes"]
-    pierwszy = powiazania_aparatow_pola(wejscie, obwody, kody)
+    pierwszy = napedy_aparatow_pola(wejscie, obwody)
     assert wejscie == rekord["primary_devices"]  # wejście nietknięte
-    assert powiazania_aparatow_pola(pierwszy, obwody, kody) == pierwszy  # idempotentna
-    assert powiazania_aparatow_pola(wejscie, None, kody) == [
+    assert napedy_aparatow_pola(pierwszy, obwody) == pierwszy  # idempotentna
+    assert napedy_aparatow_pola(wejscie, None) == [
         {k: v for k, v in a.items() if k not in POLA_POWIAZAN_APARATU} for a in wejscie
     ]
 
 
-@pytest.mark.parametrize(
-    "kind,pole_powiazania,wartosc",
-    [
-        ("CT", "naped", "SILNIKOWY"),
-        ("DS", "naped", "SILNIKOWY"),
-        ("CT", "funkcje_eaz_wylaczajace", ["51"]),
-        ("VT", "funkcje_eaz_wylaczajace", ["27"]),
-        ("CB", "funkcje_eaz_zasilane", ["51"]),
-        ("CABLE_HEAD", "funkcje_eaz_zasilane", ["67N"]),
-        ("CT", "funkcje_eaz_zasilane", ["51", "51"]),
-        ("CB", "funkcje_eaz_wylaczajace", ["51", "51"]),
-    ],
-)
-def test_kontrakt_aparatu_odrzuca_powiazania_na_niewlasciwym_rodzaju(
-    kind: str, pole_powiazania: str, wartosc: Any
-):
+@pytest.mark.parametrize("kind", ["CT", "DS", "VT", "CABLE_HEAD"])
+def test_kontrakt_aparatu_odrzuca_naped_na_niewlasciwym_rodzaju(kind: str):
     rekord = {
         "device_ref": "pole::dev::0",
         "symbol_ref": f"symbol:{kind.lower()}",
         "kind": kind,
         "placement": "MIDSTREAM",
-        pole_powiazania: wartosc,
+        "naped": "SILNIKOWY",
     }
     with pytest.raises(ValidationError):
         BayPrimaryDevice.model_validate(rekord)
 
 
-@pytest.mark.parametrize(
-    "kind,pole_powiazania,wartosc",
-    [
-        ("CB", "naped", "SILNIKOWY"),
-        ("CB", "funkcje_eaz_wylaczajace", ["51", "50"]),
-        ("CT", "funkcje_eaz_zasilane", ["51"]),
-        ("VT", "funkcje_eaz_zasilane", ["27"]),
-        ("CORE_BALANCE_CT", "funkcje_eaz_zasilane", ["67N"]),
-    ],
-)
-def test_kontrakt_aparatu_przyjmuje_powiazania_wlasciwego_rodzaju(
-    kind: str, pole_powiazania: str, wartosc: Any
-):
+@pytest.mark.parametrize("pole_dawne", ["funkcje_eaz_zasilane", "funkcje_eaz_wylaczajace"])
+def test_kontrakt_aparatu_nie_ma_dawnych_powiazan_funkcji(pole_dawne: str):
+    """Druga struktura skasowana (ADR-022, karta OCHRONA-JEDNO-ZRODLO): aparat pola nie niesie
+    powiązań funkcji — niesie je sterownik. Dawne pole nie trafia do rekordu."""
+    assert pole_dawne not in BayPrimaryDevice.model_fields
     rekord = {
         "device_ref": "pole::dev::0",
-        "symbol_ref": f"symbol:{kind.lower()}",
-        "kind": kind,
+        "symbol_ref": "symbol:cb",
+        "kind": "CB",
         "placement": "MIDSTREAM",
-        pole_powiazania: wartosc,
+        pole_dawne: ["51"],
     }
-    assert getattr(BayPrimaryDevice.model_validate(rekord), pole_powiazania) == wartosc
+    assert pole_dawne not in BayPrimaryDevice.model_validate(rekord).model_dump()
 
 
-def test_odcisk_modelu_bez_powiazan_jak_brak_pola_a_powiazania_sa_trescia():
+def test_kontrakt_aparatu_przyjmuje_naped_wylacznika():
+    rekord = {
+        "device_ref": "pole::dev::0",
+        "symbol_ref": "symbol:cb",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "naped": "SILNIKOWY",
+    }
+    assert BayPrimaryDevice.model_validate(rekord).naped == "SILNIKOWY"
+
+
+def test_odcisk_modelu_bez_napedu_jak_brak_pola_a_naped_i_sterownik_sa_trescia():
     enm = _z_szablonu(_gpz(), Z11_1)
     bez = copy.deepcopy(enm)
     puste = copy.deepcopy(enm)
     for b in bez["bays"]:
         for a in b["primary_devices"]:
-            for k in POLA_POWIAZAN_APARATU:
-                a.pop(k, None)
+            a.pop("naped", None)
     for b in puste["bays"]:
         for a in b["primary_devices"]:
             a["naped"] = None
-            a["funkcje_eaz_zasilane"] = []
-            a["funkcje_eaz_wylaczajace"] = []
     assert hash_migawki_enm(bez) == hash_migawki_enm(puste)
     assert hash_migawki_enm(enm) != hash_migawki_enm(puste)
-    for klucz in POLA_POWIAZAN_APARATU:
-        tylko = copy.deepcopy(puste)
-        for b, zrodlowe in zip(tylko["bays"], enm["bays"], strict=True):
-            for a, z in zip(b["primary_devices"], zrodlowe["primary_devices"], strict=True):
-                if z.get(klucz):
-                    a[klucz] = z[klucz]
-        assert hash_migawki_enm(tylko) != hash_migawki_enm(puste), klucz
+    # Wiązanie sterownika jest treścią modelu.
+    inny = copy.deepcopy(enm)
+    inny["protection_assignments"][0]["macierz_wyzwolen"] = []
+    assert hash_migawki_enm(inny) != hash_migawki_enm(enm)
     # Determinizm: ta sama droga zapisu → ten sam odcisk.
     assert hash_migawki_enm(_z_szablonu(_gpz(), Z11_1)) == hash_migawki_enm(enm)
+
+
+@pytest.mark.parametrize(
+    "klucz,rodzaj_obcy",
+    [
+        ("ct_ref", "CB"),
+        ("ct_ref", "VT"),
+        ("i0_ct_ref", "CT"),
+        ("vt_ref", "CT"),
+        ("vt_ref", "CORE_BALANCE_CT"),
+    ],
+)
+def test_wejscie_na_aparacie_innego_rodzaju_jest_naruszeniem_i_wraca_z_wzorca(
+    klucz: str, rodzaj_obcy: str
+):
+    """Predykat parami (walidator × pisarz): wejście sterownika wskazujące aparat pola innego
+    rodzaju niż dopuszczony dla wejścia (`RODZAJE_WEJSCIA_STEROWNIKA`) jest naruszeniem modelu
+    i pisarz z szablonu go nie zachowuje — przy KAŻDEJ zmianie zestawu funkcji, nie tylko przy
+    wymianie aparatów (iniekcja: reguła samego istnienia identyfikatora zostawia wejście)."""
+    from enm.pola import zmien_pole
+    from enm.zabezpieczenie import NARUSZENIE_PRZEKLADNIK, naruszenia_referencji_sterownika
+
+    enm = _z_szablonu(_gpz(), Z11_1)
+    rekord = _pole(enm)
+    obcy = next(a for a in rekord["primary_devices"] if a["kind"] == rodzaj_obcy)
+    sterownik = sterownik_pola(enm, rekord["ref_id"])
+    poprawne = dict(sterownik["wejscia"])
+    sterownik["wejscia"][klucz] = obcy["device_ref"]
+    if klucz == "i0_ct_ref":
+        sterownik["wejscia"]["i0_uklad"] = "FERRANTI"
+    naruszenia = naruszenia_referencji_sterownika(enm, sterownik)
+    assert [(n[0], n[2]) for n in naruszenia] == [(NARUSZENIE_PRZEKLADNIK, obcy["device_ref"])]
+    assert "innego rodzaju" in naruszenia[0][1]
+    zmien_pole(enm, rekord["ref_id"], funkcje_eaz=kody_funkcji_pola(enm, rekord["ref_id"]))
+    po = sterownik_pola(enm, rekord["ref_id"])
+    assert po["wejscia"] == poprawne
+    assert naruszenia_referencji_sterownika(enm, po) == []

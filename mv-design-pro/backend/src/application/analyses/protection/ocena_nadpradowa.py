@@ -46,7 +46,10 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from application.analyses.prad_zwarciowy_galezi import prad_netto_galezi_z_wkladow
-from application.analyses.protection.catalog.catalog_store import load_device_capability
+from application.analyses.protection.catalog.catalog_store import (
+    load_device_capability,
+    profil_charakterystyk,
+)
 from application.analyses.protection.catalog.models import (
     JEDNOSTKA_ZAKRESU_KROTNOSC_IN,
     DeviceCapability,
@@ -62,16 +65,25 @@ from domain.canonical_operations import opis_kodu_gotowosci_pl
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
-from enm.models import (
-    EnergyNetworkModel,
-    Measurement,
-    ProtectionAssignment,
-    ProtectionSetting,
-)
-from enm.nastawy_zabezpieczen import ETYKIETY_JEDNOSTEK_PROGU_PL
-from enm.nazwy_elementow import nazwa_elementu
+from enm.models import EnergyNetworkModel, ProtectionAssignment
+from enm.nazwy_elementow import nazwa_elementu, oznaczenie_zabezpieczenia
 from enm.tor_pola import szyna_raportowa
+from enm.zabezpieczenie import (
+    PrzekladnikPradowy,
+    aparaty_funkcji,
+    nastawy_funkcji,
+    nazwa_sterownika,
+    przekladnik_pradowy,
+)
+from network_model.catalog.funkcje_eaz import (
+    ETYKIETY_WARTOSCI_WYBORU,
+    FUNKCJE_EAZ,
+    KRZYWE_CZASOWE,
+    etykieta_funkcji_eaz,
+)
 from network_model.catalog.wartosci_robocze import (
+    PROFIL_CHARAKTERYSTYK_ROBOCZY,
+    dana_przyjeta_charakterystyk,
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,
 )
@@ -127,9 +139,7 @@ from werdykt import (
 KOD_BRAK_PRZEKLADNIKA = "zabezpieczenia.brak_przekladnika"
 KOD_PRZEKLADNIK_NIE_PRADOWY = "zabezpieczenia.przekladnik_nie_pradowy"
 KOD_PRZEKLADNIA_NIEPOPRAWNA = "zabezpieczenia.przekladnia_niepoprawna"
-KOD_BRAK_POZYCJI_KATALOGU = "zabezpieczenia.brak_pozycji_katalogu"
-KOD_KATALOG_BEZ_ZAKRESOW = "zabezpieczenia.katalog_bez_zakresow_nastaw"
-KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA = "zabezpieczenia.jednostka_zakresu_nieustalona"
+KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY = "zabezpieczenia.profil_charakterystyk_nieuzyteczny"
 KOD_WEJSCIE_NIEZGODNE = "zabezpieczenia.wejscie_przekaznika_niezgodne"
 KOD_BRAK_PROGU = "zabezpieczenia.brak_progu"
 KOD_JEDNOSTKA_PROGU_NIEUSTALONA = "zabezpieczenia.jednostka_progu_nieustalona"
@@ -152,6 +162,7 @@ KOD_STRONA_DOLNA_TRANSFORMATORA = "zabezpieczenia.prad_strony_dolnej_transformat
 KOD_BRAK_ROZPLYWU = "zabezpieczenia.brak_rozplywu_zwarciowego"
 KOD_PRAD_NIELICZBOWY = "zabezpieczenia.prad_zwarciowy_nieliczbowy"
 KOD_BRAK_PUNKTOW_W_STREFIE = "zabezpieczenia.brak_punktow_zwarcia_w_strefie"
+KOD_BRAK_WYZWOLENIA = "zabezpieczenia.brak_wylacznika_w_macierzy_wyzwolen"
 
 #: Przyczyny pominięcia urządzenia (nie odmowa: ocena nadprądowa go nie dotyczy).
 POMINIETE_WYLACZONE = "zabezpieczenia.urzadzenie_wylaczone_z_ruchu"
@@ -165,34 +176,53 @@ WIARYGODNOSC_NIEUSTALONA = "NIEUSTALONA"
 #: Funkcje nadprądowe fazowe, które ta ścieżka ocenia. Stopień 50 (I>>) i 51 (I>) są
 #: niezależne: wyłącznik otwiera ten, który zadziała pierwszy (IEC 60255-151, stopnie
 #: działają równolegle), więc czas urządzenia = najkrótszy czas stopni, które ruszyły.
-FUNKCJE_OCENIANE: tuple[str, ...] = ("overcurrent_51", "overcurrent_50")
+FUNKCJE_OCENIANE: tuple[str, ...] = tuple(
+    kod for kod, f in FUNKCJE_EAZ.items() if f.ocena == "NADPRADOWA_IEC_60255"
+)
 
 #: Funkcje, których ta ścieżka NIE ocenia — z nazwanym powodem (jawnie, nie cicho).
 #: Funkcja ziemnozwarciowa widzi 3·I0 w torze składowej zerowej, a rozpływ biegu SC niesie
 #: rozkład składowej zgodnej; kierunkowa wymaga kierunku mocy zwarciowej, którego bieg nie
-#: wyznacza. Odpowiedź na oba to osobny tor (rozpływ składowej zerowej, kierunek).
-FUNKCJE_NIEOCENIANE: dict[str, str] = {
-    "earth_fault_50N": (
+#: wyznacza. Pozostałe funkcje rejestru bez ewaluatora — zdanie ogólne `powod_nieoceniania`.
+_POWODY_NIEOCENIANIA: dict[str, str] = {
+    "50N": (
         "Funkcja ziemnozwarciowa 50N widzi potrojony prąd składowej zerowej toru, a rozpływ biegu "
         "zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
     ),
-    "earth_fault_51N": (
+    "51N": (
         "Funkcja ziemnozwarciowa 51N widzi potrojony prąd składowej zerowej toru, a rozpływ biegu "
         "zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
     ),
-    "directional_67": (
+    "67": (
         "Funkcja kierunkowa 67 wymaga kierunku mocy zwarciowej w miejscu przekaźnika, którego "
         "bieg zwarciowy nie wyznacza — ta ocena jej nie obejmuje."
     ),
-    "directional_67N": (
+    "67N": (
         "Funkcja kierunkowa 67N wymaga kierunku i składowej zerowej — ta ocena jej nie obejmuje."
     ),
 }
 
-ETYKIETY_FUNKCJI_PL: dict[str, str] = {
-    "overcurrent_51": "I> (51)",
-    "overcurrent_50": "I>> (50)",
-}
+
+def powod_nieoceniania(kod: str) -> str:
+    """Zdanie, dlaczego ocena nadprądowa nie obejmuje funkcji (status NIE_OCENIONO)."""
+    if kod in _POWODY_NIEOCENIANIA:
+        return _POWODY_NIEOCENIANIA[kod]
+    wpis = FUNKCJE_EAZ.get(kod)
+    etykieta = etykieta_funkcji_eaz(kod)
+    if wpis is not None and wpis.ocena == "LOM":
+        return (
+            f"Funkcję {etykieta} ocenia analiza ochrony od pracy wyspowej (LoM), nie ocena "
+            "nadprądowa przy zwarciu."
+        )
+    return (
+        f"Funkcja {etykieta} nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena "
+        "nie wyznacza (status: nie oceniono)."
+    )
+
+
+#: Etykieta ocenianego stopnia z rejestru funkcji (jedna etykieta w produkcie).
+ETYKIETY_FUNKCJI_PL: dict[str, str] = {kod: etykieta_funkcji_eaz(kod) for kod in FUNKCJE_OCENIANE}
+
 
 #: Krzywa modelu → typ rdzenia IEC 60255. Literał modelu (``KrzywaNastawy``) JEST kodem krzywej
 #: w katalogu IED (``curves_supported``) — jedna nazwa krzywej w produkcie, bez mapy nazw
@@ -213,16 +243,8 @@ KRZYWE_IEEE: dict[str, IEEECurveType] = {
     "IEEE_EI": IEEECurveType.EXTREMELY_INVERSE,
 }
 
-ETYKIETY_KRZYWYCH_PL: dict[str, str] = {
-    "DT": "czas niezależny (DT)",
-    "IEC_SI": "IEC normalnie odwrotna (SI)",
-    "IEC_VI": "IEC bardzo odwrotna (VI)",
-    "IEC_EI": "IEC skrajnie odwrotna (EI)",
-    "IEC_LTI": "IEC odwrotna długoczasowa (LTI, 120)",
-    "IEEE_MI": "IEEE umiarkowanie odwrotna (MI)",
-    "IEEE_VI": "IEEE bardzo odwrotna (VI)",
-    "IEEE_EI": "IEEE skrajnie odwrotna (EI)",
-}
+#: Etykiety krzywych — z rejestru funkcji (jedno źródło z kartą pola i edytorem nastaw).
+ETYKIETY_KRZYWYCH_PL: dict[str, str] = {k: ETYKIETY_WARTOSCI_WYBORU[k] for k in KRZYWE_CZASOWE}
 
 #: Aparaty, które PRZERYWAJĄ prąd zwarciowy — tylko one mogą być wykonawcą zabezpieczenia.
 _APARATY_WYLACZAJACE = frozenset({SwitchType.BREAKER, SwitchType.RECLOSER})
@@ -252,6 +274,44 @@ class PozycjaGotowosci:
             "akcja_naprawcza_pl": self.akcja_naprawcza_pl,
             "funkcja": self.funkcja,
         }
+
+
+#: Krótka nazwa braku kompletności nastawy stopnia — do streszczenia braków sterownika.
+_BRAK_STOPNIA_KROTKO_PL: dict[str, str] = {
+    KOD_BRAK_PROGU: "progu rozruchowego",
+    KOD_JEDNOSTKA_PROGU_NIEUSTALONA: "jednostki progu",
+    KOD_BRAK_CHARAKTERYSTYKI: "charakterystyki czasowej",
+    KOD_BRAK_ZWLOKI: "zwłoki",
+    KOD_BRAK_MNOZNIKA: "mnożnika czasowego",
+}
+
+
+def streszczenie_brakow_nastaw(nazwa_pl: str, braki: Sequence[PozycjaGotowosci]) -> str:
+    """Braki nastaw sterownika jednym akapitem — JEDNO streszczenie dla czasu wyłączenia pola
+    (``czas_wylaczenia_pola``), czasu wyłączenia gałęzi (``czas_wylaczenia_galezi``)
+    i koordynacji (``coordination.analyzer``).
+
+    Braki kompletności stopni (próg, jednostka, charakterystyka, zwłoka, mnożnik) grupuje per
+    funkcja — nazwa sterownika pada raz, nie przy każdym braku; pozostałe braki (przekładnik,
+    zakresy katalogu, macierz wyzwoleń) zostają własnym zdaniem, w kolejności rozstrzygnięcia.
+    Żaden brak nie ginie: każdy z pełnym zdaniem i akcją naprawczą zostaje w ``braki``
+    (szczegóły na żądanie)."""
+    stopnie: dict[str, list[str]] = {}
+    czesci: list[str | None] = []
+    for brak in braki:
+        krotko = _BRAK_STOPNIA_KROTKO_PL.get(brak.kod)
+        if krotko is None or brak.funkcja is None:
+            czesci.append(brak.komunikat_pl)
+            continue
+        if not stopnie:
+            czesci.append(None)  # miejsce zdania o stopniach — pierwszy brak stopnia
+        stopnie.setdefault(brak.funkcja, []).append(krotko)
+    opis_stopni = "; ".join(
+        f"{etykieta_funkcji_eaz(funkcja)} — brak {', '.join(dict.fromkeys(krotkie))}"
+        for funkcja, krotkie in stopnie.items()
+    )
+    zdanie_stopni = f"Nastawy zabezpieczenia {nazwa_pl} są niekompletne: {opis_stopni}."
+    return " ".join(zdanie_stopni if c is None else c for c in czesci)
 
 
 @dataclass(frozen=True)
@@ -294,18 +354,24 @@ class NastawyUrzadzenia:
 
     urzadzenie_ref: str
     nazwa_pl: str
-    breaker_ref: str
+    #: Zabezpieczenie w zdaniach po rzeczowniku „zabezpieczenie” (``oznaczenie_zabezpieczenia``,
+    #: karta KD6) — ``nazwa_pl`` zostaje etykietą urządzenia w listach i rekordach.
+    oznaczenie_pl: str
+    breaker_ref: str | None
     ct_ref: str | None
     przekladnia_a: tuple[float, float] | None
     klasa_ct: str | None
     alf: float | None
     #: Wejście JĄDRA nasycenia CT (``ct_burden_saturation``, IEC 61869-2 § 5.6) bez
     #: wymaganego ALF — ten dopisuje ``wiarygodnosc_punktu`` z prądu punktu. Dane z modelu
-    #: (``Measurement.rating`` + ``Measurement.obwod_wtorny``) i z pozycji katalogu CT
+    #: (tabliczka i obwód wtórny przekładnika wejścia prądów fazowych sterownika) i z pozycji katalogu CT
     #: (``rct_ohm``); brak przekładnika = ``None``. Karta CT-JEDEN-WERDYKT.
     wejscie_nasycenia: CtBurdenInput | None
     pozycja_katalogu: str | None
     zakresy: dict[str, Any] | None
+    #: Źródło charakterystyk funkcji (`charakterystyki_sterownika`): profil, pochodzenie
+    #: i dana przyjęta profilu roboczego — wchodzi do danych przyjętych każdego rekordu oceny.
+    charakterystyki: CharakterystykiSterownika | None
     stopnie: tuple[StopienNastaw, ...]
     braki: tuple[PozycjaGotowosci, ...]
     funkcje_nieoceniane: tuple[dict[str, str], ...]
@@ -326,6 +392,9 @@ class NastawyUrzadzenia:
             "obwod_wtorny_ct": _opis_wejscia_nasycenia(self.wejscie_nasycenia),
             "pozycja_katalogu": self.pozycja_katalogu,
             "zakresy": self.zakresy,
+            "charakterystyki": (
+                self.charakterystyki.to_dict() if self.charakterystyki is not None else None
+            ),
             "stopnie": [s.to_dict() for s in self.stopnie],
             "braki": [b.to_dict() for b in self.braki],
             "funkcje_nieoceniane": list(self.funkcje_nieoceniane),
@@ -356,6 +425,8 @@ class OcenaPunktu:
 
     urzadzenie_ref: str
     nazwa_urzadzenia_pl: str
+    #: Zabezpieczenie w zdaniach (``NastawyUrzadzenia.oznaczenie_pl``, karta KD6).
+    oznaczenie_urzadzenia_pl: str
     breaker_ref: str
     punkt_ref: str
     nazwa_punktu_pl: str
@@ -406,7 +477,10 @@ class OdmowaUrzadzenia:
 
     urzadzenie_ref: str
     nazwa_pl: str
-    breaker_ref: str
+    #: Zabezpieczenie w zdaniach po rzeczowniku „zabezpieczenie” (``oznaczenie_zabezpieczenia``,
+    #: karta KD6) — ``nazwa_pl`` zostaje etykietą urządzenia w listach i rekordach.
+    oznaczenie_pl: str
+    breaker_ref: str | None
     braki: tuple[PozycjaGotowosci, ...]
     ocena: OcenaKryterium
     kandydaci_naprawy: tuple[str, ...] = ()
@@ -452,47 +526,108 @@ class WynikOceny:
 
 
 # ---------------------------------------------------------------------------
-# 1. Nastawy z modelu
+# 1. Nastawy z modelu (sterownik pola — `enm.zabezpieczenie`)
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class NastawaStopnia:
+    """Odczyt jednego stopnia nadprądowego ze sterownika w grupie efektywnej — wartości modelu
+    bez wartości zastępczych (``None`` = nazwany brak)."""
+
+    funkcja: str
+    funkcja_ref: str
+    prog: float | None
+    jednostka_progu: str | None
+    krzywa: str | None
+    tms: float | None
+    zwloka_s: float | None
+
+
+def _liczba_lub_none(wartosc: object) -> float | None:
+    if isinstance(wartosc, int | float) and not isinstance(wartosc, bool):
+        return float(wartosc)
+    return None
+
+
+def _napis_lub_none(wartosc: object) -> str | None:
+    return wartosc if isinstance(wartosc, str) and wartosc else None
+
+
+def stopnie_nadpradowe(assignment: ProtectionAssignment) -> list[NastawaStopnia]:
+    """Stopnie ocenianych funkcji nadprądowych (`FUNKCJE_OCENIANE`) włączone w sterowniku —
+    nastawy z grupy efektywnej (`numer_grupy_efektywnej`: grupa aktywna albo wybór przypadku
+    nałożony w migawce efektywnej, ADR-022)."""
+    wynik: list[NastawaStopnia] = []
+    for funkcja in assignment.funkcje:
+        if funkcja.kod not in FUNKCJE_OCENIANE or not funkcja.wlaczona:
+            continue
+        nastawy = nastawy_funkcji(assignment, funkcja.ref)
+        wynik.append(
+            NastawaStopnia(
+                funkcja=funkcja.kod,
+                funkcja_ref=funkcja.ref,
+                prog=_liczba_lub_none(nastawy.get("prog")),
+                jednostka_progu=_napis_lub_none(nastawy.get("jednostka_progu")),
+                krzywa=_napis_lub_none(nastawy.get("krzywa")),
+                tms=_liczba_lub_none(nastawy.get("tms")),
+                zwloka_s=_liczba_lub_none(nastawy.get("zwloka_s")),
+            )
+        )
+    return wynik
+
+
+def wylacznik_urzadzenia(assignment: ProtectionAssignment) -> str | None:
+    """Wyłącznik wykonawczy ocenianych stopni — z macierzy wyzwoleń (pierwszy aparat wiersza
+    stopnia zwłocznego, potem bezzwłocznego). ``None`` — żaden oceniany stopień nie działa na
+    wyłącznik (nazwany brak, nie domysł z pola)."""
+    for kod in FUNKCJE_OCENIANE:
+        for funkcja in assignment.funkcje:
+            if funkcja.kod == kod and funkcja.wlaczona:
+                aparaty = aparaty_funkcji(assignment, funkcja.ref)
+                if aparaty:
+                    return aparaty[0]
+    return None
 
 
 def _przekladnik(
     enm: EnergyNetworkModel, assignment: ProtectionAssignment
-) -> tuple[Measurement | None, list[PozycjaGotowosci]]:
-    nazwa = nazwa_elementu(assignment, "protection_assignments")
-    if not assignment.ct_ref:
+) -> tuple[PrzekladnikPradowy | None, list[PozycjaGotowosci]]:
+    oznaczenie = oznaczenie_zabezpieczenia(enm, assignment)
+    ct_ref = assignment.wejscia.ct_ref
+    if not ct_ref:
         return None, [
             PozycjaGotowosci(
                 kod=KOD_BRAK_PRZEKLADNIKA,
                 komunikat_pl=(
-                    f"Zabezpieczenie {nazwa} nie ma przypisanego przekładnika prądowego — "
-                    "prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+                    f"Zabezpieczenie {oznaczenie} nie ma przypiętego przekładnika prądowego do wejścia "
+                    "prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
                 ),
                 akcja_naprawcza_pl=(
-                    "Dodaj przekładnik prądowy w polu zabezpieczenia i przypisz go do "
-                    "zabezpieczenia (karta pola → Zabezpieczenia)."
+                    "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia "
+                    "sterownika (karta pola → Zabezpieczenia i automatyka)."
                 ),
             )
         ]
-    ct = next((m for m in enm.measurements if m.ref_id == assignment.ct_ref), None)
-    if ct is None or ct.measurement_type != "CT":
+    ct = przekladnik_pradowy(enm, ct_ref)
+    if ct is None:
         return None, [
             PozycjaGotowosci(
                 kod=KOD_PRZEKLADNIK_NIE_PRADOWY,
                 komunikat_pl=(
-                    f"Przekładnik przypisany do zabezpieczenia {nazwa} nie jest przekładnikiem "
-                    "prądowym tego modelu."
+                    f"Wejście prądów fazowych zabezpieczenia {oznaczenie} wskazuje aparat, który nie "
+                    "jest przekładnikiem prądowym z opisaną przekładnią rdzenia zabezpieczeniowego."
                 ),
                 akcja_naprawcza_pl="Wskaż w zabezpieczeniu przekładnik prądowy pola.",
             )
         ]
-    if ct.rating.ratio_primary <= 0 or ct.rating.ratio_secondary <= 0:
+    if ct.ratio_primary <= 0 or ct.ratio_secondary <= 0:
         return ct, [
             PozycjaGotowosci(
                 kod=KOD_PRZEKLADNIA_NIEPOPRAWNA,
                 komunikat_pl=(
-                    f"Przekładnik {nazwa_elementu(ct, 'measurements')} ma niedodatnią przekładnię "
-                    "— przeliczenie nastawy na stronę pierwotną jest niemożliwe."
+                    f"Przekładnik {ct.nazwa} ma niedodatnią przekładnię — przeliczenie nastawy "
+                    "na stronę pierwotną jest niemożliwe."
                 ),
                 akcja_naprawcza_pl="Wybierz przekładnik z katalogu o właściwej przekładni.",
             )
@@ -500,101 +635,142 @@ def _przekladnik(
     return ct, []
 
 
-def _zdolnosc_katalogu(
+#: Pochodzenie charakterystyk funkcji sterownika (`charakterystyki_sterownika`).
+ZRODLO_CHARAKTERYSTYK_PROJEKTANT = "PROJEKTANT"
+ZRODLO_CHARAKTERYSTYK_WYROB = "WYROB"
+ZRODLO_CHARAKTERYSTYK_ROBOCZE = "WARTOSC_ROBOCZA"
+
+
+@dataclass(frozen=True)
+class CharakterystykiSterownika:
+    """Charakterystyki analityczne funkcji sterownika (zakresy nastaw, krzywe) i ich źródło.
+
+    ``zrodlo`` — ``PROJEKTANT`` (profil wskazany w sterowniku, ``charakterystyki_ref``),
+    ``WYROB`` (profil związany z pozycją katalogu wyrobu, ``analytical_library_ref``) albo
+    ``WARTOSC_ROBOCZA`` (profil roboczy rejestru wartości roboczych — wyrób nie podał zakresów,
+    zasada nr 4); ``dana_przyjeta`` — wpis danych przyjętych werdyktu dla profilu roboczego."""
+
+    zdolnosc: DeviceCapability
+    zrodlo: str
+    dana_przyjeta: DanaPrzyjeta | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "profil": self.zdolnosc.device_id,
+            "model": self.zdolnosc.model,
+            "zrodlo": self.zrodlo,
+            "jakosc": self.dana_przyjeta.jakosc if self.dana_przyjeta is not None else None,
+            "powod_pl": self.dana_przyjeta.powod_pl if self.dana_przyjeta is not None else None,
+        }
+
+
+def charakterystyki_sterownika(
     enm: EnergyNetworkModel, assignment: ProtectionAssignment
-) -> tuple[DeviceCapability | None, list[PozycjaGotowosci]]:
-    nazwa = nazwa_elementu(assignment, "protection_assignments")
-    if not assignment.catalog_ref:
-        return None, [
-            PozycjaGotowosci(
-                kod=KOD_BRAK_POZYCJI_KATALOGU,
-                komunikat_pl=(
-                    f"Zabezpieczenie {nazwa} nie ma pozycji katalogowej — zakres nastaw "
-                    "przekaźnika jest nieznany, więc nastaw nie da się sprawdzić."
-                ),
-                akcja_naprawcza_pl="Wskaż typ przekaźnika z katalogu zabezpieczeń.",
-            )
-        ]
+) -> tuple[CharakterystykiSterownika | None, list[PozycjaGotowosci]]:
+    """Charakterystyki funkcji sterownika — JEDNO rozstrzygnięcie (ocena, edytor nastaw, raport).
+
+    Pierwszeństwo: profil wskazany przez projektanta (``charakterystyki_ref``) > profil związany
+    z wyrobem w katalogu (``analytical_library_ref`` pozycji ``catalog_ref``) > profil roboczy
+    (`PROFIL_CHARAKTERYSTYK_ROBOCZY`, zasada nr 4: brak zakresów w karcie wyrobu nie blokuje
+    oceny — dana przyjęta ``ESTIMATED``). Profil wskazany przez projektanta, którego nie ma
+    w katalogu analitycznym albo który nie ma ustalonej jednostki zakresów, jest nazwanym
+    brakiem modelu (operacja zapisu go odrzuca — tu obrona odczytu migawki).
+    """
+    nazwa = nazwa_sterownika(enm, assignment)
+    if assignment.charakterystyki_ref:
+        wskazany = profil_charakterystyk(assignment.charakterystyki_ref)
+        if wskazany is None:
+            return None, [
+                PozycjaGotowosci(
+                    kod=KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
+                    komunikat_pl=(
+                        f"Profil charakterystyk sterownika {nazwa} nie istnieje w katalogu "
+                        "analitycznym albo nie ma ustalonej jednostki zakresów nastaw."
+                    ),
+                    akcja_naprawcza_pl=(
+                        f"Wskaż w karcie pola profil charakterystyk sterownika {nazwa} "
+                        "z katalogu analitycznego albo zdejmij wskazanie."
+                    ),
+                )
+            ]
+        return CharakterystykiSterownika(wskazany, ZRODLO_CHARAKTERYSTYK_PROJEKTANT, None), []
     # JEDEN RESOLVER katalogu (`enm.katalog_projektu`): katalog statyczny + pozycje projektu
     # niesione przez model — ten sam, którym operacje zapisu sprawdzają `catalog_ref`.
-    typ = katalog_dla_modelu(enm).get_protection_device_type(assignment.catalog_ref)
-    ref_analityczny = typ.analytical_library_ref if typ is not None else None
-    zdolnosc = load_device_capability(ref_analityczny) if ref_analityczny else None
-    if zdolnosc is None:
-        return None, [
-            PozycjaGotowosci(
-                kod=KOD_KATALOG_BEZ_ZAKRESOW,
-                komunikat_pl=(
-                    f"Pozycja katalogowa zabezpieczenia {nazwa} nie niesie zakresów nastaw "
-                    "(brak powiązania z katalogiem analitycznym urządzeń)."
-                ),
-                akcja_naprawcza_pl=(
-                    "Wybierz typ przekaźnika, którego pozycja katalogowa ma zakresy nastaw."
-                ),
-            )
-        ]
-    if zdolnosc.jednostka_zakresow_pradowych is None:
-        return zdolnosc, [
-            PozycjaGotowosci(
-                kod=KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
-                komunikat_pl=(
-                    f"Zakresy nastaw prądowych pozycji katalogu „{zdolnosc.model}” nie mają "
-                    "ustalonej jednostki ani podstawy (karta producenta) — nie są używane do "
-                    "oceny."
-                ),
-                akcja_naprawcza_pl=(
-                    "Wybierz typ przekaźnika z zakresami potwierdzonymi kartą producenta albo "
-                    "profilem referencyjnym."
-                ),
-            )
-        ]
-    return zdolnosc, []
-
-
-def _kod_funkcji(funkcja: str) -> str:
-    return "51" if funkcja == "overcurrent_51" else "50"
+    typ = (
+        katalog_dla_modelu(enm).get_protection_device_type(assignment.catalog_ref)
+        if assignment.catalog_ref
+        else None
+    )
+    z_wyrobu = profil_charakterystyk(typ.analytical_library_ref if typ is not None else None)
+    if z_wyrobu is not None:
+        return CharakterystykiSterownika(z_wyrobu, ZRODLO_CHARAKTERYSTYK_WYROB, None), []
+    if not assignment.catalog_ref:
+        powod = "sterownik nie wskazuje wyrobu z katalogu urządzeń"
+    elif typ is None or not typ.analytical_library_ref:
+        powod = f"karta wyrobu {typ.name_pl if typ is not None else assignment.catalog_ref} nie podaje zakresów nastaw"
+    else:
+        powod = f"zakresy nastaw wyrobu {typ.name_pl} nie mają ustalonej jednostki ani podstawy"
+    roboczy = load_device_capability(PROFIL_CHARAKTERYSTYK_ROBOCZY)
+    if roboczy is None:  # pragma: no cover - spójność rejestru i katalogu pilnuje test
+        raise AssertionError("profil roboczy charakterystyk nie istnieje w katalogu analitycznym")
+    return (
+        CharakterystykiSterownika(
+            roboczy,
+            ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+            dana_przyjeta_charakterystyk(
+                sterownik_pl=nazwa, profil_pl=roboczy.model, powod_pl=powod
+            ),
+        ),
+        [],
+    )
 
 
 def progi_stopnia(
-    nastawa: ProtectionSetting, ct: Measurement | None
+    nastawa: NastawaStopnia, ct: PrzekladnikPradowy | None
 ) -> tuple[float, float, str] | None:
     """(próg wtórny [A], próg pierwotny [A], wzór przeliczenia LaTeX) — JEDNO przeliczenie.
 
-    Próg z modelu jest podany po stronie zadeklarowanej w ``threshold_unit`` (PZ-09); druga
-    strona wynika z przekładni przekładnika pola. Brak progu, jednostki albo przekładni
-    przekładnika prądowego → ``None`` (wołający nazywa brak — ocena, czasy wyłączenia,
-    widok nastaw pola czytają to samo przeliczenie).
+    Próg z modelu jest podany po stronie zadeklarowanej w ``jednostka_progu`` (PZ-09); druga
+    strona wynika z przekładni przekładnika pola (zaczep roboczy z karty pola). Brak progu,
+    jednostki albo przekładni przekładnika prądowego → ``None`` (wołający nazywa brak —
+    ocena, czasy wyłączenia, widok nastaw pola czytają to samo przeliczenie).
     """
-    if nastawa.threshold_a is None or nastawa.threshold_a <= 0 or nastawa.threshold_unit is None:
+    if nastawa.prog is None or nastawa.prog <= 0 or nastawa.jednostka_progu is None:
         return None
-    if ct is None or ct.measurement_type != "CT":
+    if ct is None:
         return None
-    i1n = ct.rating.ratio_primary
-    i2n = ct.rating.ratio_secondary
+    i1n = ct.ratio_primary
+    i2n = ct.ratio_secondary
     if i1n <= 0 or i2n <= 0:
         return None
-    if nastawa.threshold_unit == "A_WTORNY":
+    if nastawa.jednostka_progu == "A_WTORNY":
         return (
-            nastawa.threshold_a,
-            prad_pierwotny_z_wtornego_a(nastawa.threshold_a, i1n, i2n),
+            nastawa.prog,
+            prad_pierwotny_z_wtornego_a(nastawa.prog, i1n, i2n),
             r"I_{s,1} = I_{s,2} \cdot \frac{I_{1n}}{I_{2n}}",
         )
     return (
-        prad_wtorny_z_pierwotnego_a(nastawa.threshold_a, i1n, i2n),
-        nastawa.threshold_a,
+        prad_wtorny_z_pierwotnego_a(nastawa.prog, i1n, i2n),
+        nastawa.prog,
         r"I_{s,2} = I_{s,1} \cdot \frac{I_{2n}}{I_{1n}}",
     )
 
 
 def _rozwiaz_stopien(
     *,
-    nastawa: ProtectionSetting,
-    nazwa: str,
-    ct: Measurement,
+    nastawa: NastawaStopnia,
+    oznaczenie: str,
+    ct: PrzekladnikPradowy,
     zdolnosc: DeviceCapability,
+    profil_roboczy: bool = False,
 ) -> tuple[StopienNastaw | None, list[PozycjaGotowosci]]:
-    """Jeden stopień 50/51: kompletność, przeliczenie na stronę pierwotną, zakresy katalogu."""
-    funkcja = nastawa.function_type
+    """Jeden stopień 50/51: kompletność, przeliczenie na stronę pierwotną, zakresy katalogu.
+
+    ``profil_roboczy`` — charakterystyki z profilu roboczego (zasada nr 4: wyrób nie podał
+    zakresów). Zgodność z profilem (funkcja, krzywa, wejście, zakresy) jest wtedy sprawdzeniem
+    na założeniu — widocznym w ``sprawdzenia`` — a nie blokadą oceny; braki kompletności nastaw
+    (próg, jednostka, krzywa, zwłoka, mnożnik) blokują zawsze, bo są brakami MODELU."""
+    funkcja = nastawa.funkcja
     etykieta = ETYKIETY_FUNKCJI_PL[funkcja]
     braki: list[PozycjaGotowosci] = []
 
@@ -608,70 +784,76 @@ def _rozwiaz_stopien(
             )
         )
 
-    akcja_nastaw = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
-    if nastawa.threshold_a is None or nastawa.threshold_a <= 0:
+    def brak_zgodnosci(kod: str, komunikat: str, akcja: str) -> None:
+        if not profil_roboczy:
+            brak(kod, komunikat, akcja)
+
+    akcja_nastaw = (
+        f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {oznaczenie} w karcie pola."
+    )
+    if nastawa.prog is None or nastawa.prog <= 0:
         brak(
             KOD_BRAK_PROGU,
-            f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma dodatniego progu rozruchowego.",
+            f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma dodatniego progu rozruchowego.",
             akcja_nastaw,
         )
-    if nastawa.threshold_unit is None:
+    if nastawa.jednostka_progu is None:
         brak(
             KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
-            f"Próg stopnia {etykieta} zabezpieczenia {nazwa} nie ma zadeklarowanej jednostki "
+            f"Próg stopnia {etykieta} zabezpieczenia {oznaczenie} nie ma zadeklarowanej jednostki "
             "(strona wtórna albo pierwotna przekładnika).",
             akcja_nastaw,
         )
-    if nastawa.curve_type is None:
+    if nastawa.krzywa is None:
         brak(
             KOD_BRAK_CHARAKTERYSTYKI,
-            f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma charakterystyki czasowej.",
+            f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma charakterystyki czasowej.",
             akcja_nastaw,
         )
-    elif nastawa.curve_type == "DT":
-        if nastawa.time_delay_s is None or nastawa.time_delay_s <= 0:
+    elif nastawa.krzywa == "DT":
+        if nastawa.zwloka_s is None or nastawa.zwloka_s <= 0:
             brak(
                 KOD_BRAK_ZWLOKI,
-                f"Stopień {etykieta} zabezpieczenia {nazwa} (czas niezależny) nie ma dodatniej "
+                f"Stopień {etykieta} zabezpieczenia {oznaczenie} (czas niezależny) nie ma dodatniej "
                 "zwłoki — wpisz czas nastawiony przekaźnika.",
                 akcja_nastaw,
             )
-    elif nastawa.time_multiplier is None or nastawa.time_multiplier <= 0:
+    elif nastawa.tms is None or nastawa.tms <= 0:
         brak(
             KOD_BRAK_MNOZNIKA,
-            f"Stopień {etykieta} zabezpieczenia {nazwa} (charakterystyka zależna) nie ma "
+            f"Stopień {etykieta} zabezpieczenia {oznaczenie} (charakterystyka zależna) nie ma "
             "dodatniego mnożnika czasowego.",
             akcja_nastaw,
         )
     if braki:
         return None, braki
 
-    assert nastawa.threshold_a is not None and nastawa.threshold_unit is not None
-    assert nastawa.curve_type is not None
-    i1n = ct.rating.ratio_primary
-    i2n = ct.rating.ratio_secondary
+    assert nastawa.prog is not None and nastawa.jednostka_progu is not None
+    assert nastawa.krzywa is not None
+    i1n = ct.ratio_primary
+    i2n = ct.ratio_secondary
     progi = progi_stopnia(nastawa, ct)
     assert progi is not None
     prog_wtorny, prog_pierwotny, wzor = progi
 
-    kod = _kod_funkcji(funkcja)
+    kod = funkcja
     if kod not in zdolnosc.functions_supported:
-        brak(
+        brak_zgodnosci(
             KOD_FUNKCJA_SPOZA_KATALOGU,
             f"Przekaźnik „{zdolnosc.model}” nie ma funkcji {kod} według katalogu.",
             f"Usuń stopień {etykieta} albo wybierz przekaźnik z funkcją {kod}.",
         )
-    if nastawa.curve_type not in zdolnosc.curves_supported:
-        brak(
+    if nastawa.krzywa not in zdolnosc.curves_supported:
+        brak_zgodnosci(
             KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
             f"Przekaźnik „{zdolnosc.model}” nie ma charakterystyki "
-            f"{ETYKIETY_KRZYWYCH_PL[nastawa.curve_type]} według katalogu.",
+            f"{ETYKIETY_KRZYWYCH_PL[nastawa.krzywa]} według katalogu.",
             f"Wybierz dla stopnia {etykieta} charakterystykę dostępną w przekaźniku.",
         )
 
     # Zakres prądowy katalogu jest cechą STRONY WTÓRNEJ (PZ-09): ×In albo A wtórne — jedna
     # funkcja porównania dla oceny z modelu i doboru aparatu (`catalog.zakresy`).
-    minimum, maksimum = zakres_pradowy(zdolnosc, _kod_funkcji(funkcja))
+    minimum, maksimum = zakres_pradowy(zdolnosc, funkcja)
     wartosc_w_jednostce_zakresu, jednostka_zakresu_pl = wartosc_w_jednostce_zakresu_katalogu(
         zdolnosc, prog_wtorny, i2n
     )
@@ -679,7 +861,7 @@ def _rozwiaz_stopien(
         zdolnosc.jednostka_zakresow_pradowych == JEDNOSTKA_ZAKRESU_KROTNOSC_IN
         and i2n not in zdolnosc.rated_current_inputs_a
     ):
-        brak(
+        brak_zgodnosci(
             KOD_WEJSCIE_NIEZGODNE,
             f"Prąd znamionowy wtórny przekładnika ({_liczba(i2n)} A) nie jest prądem "
             f"znamionowym wejścia przekaźnika „{zdolnosc.model}” "
@@ -693,9 +875,9 @@ def _rozwiaz_stopien(
         and maksimum is not None
         and not w_zakresie(wartosc_w_jednostce_zakresu, minimum, maksimum)
     ):
-        brak(
+        brak_zgodnosci(
             KOD_PROG_POZA_ZAKRESEM,
-            f"Próg stopnia {etykieta} zabezpieczenia {nazwa} po stronie wtórnej wynosi "
+            f"Próg stopnia {etykieta} zabezpieczenia {oznaczenie} po stronie wtórnej wynosi "
             f"{_liczba(wartosc_w_jednostce_zakresu)} {jednostka_zakresu_pl}, poza zakresem "
             f"przekaźnika {_liczba(minimum)}–{_liczba(maksimum)} {jednostka_zakresu_pl}.",
             f"Popraw próg stopnia {etykieta} albo przekładnię przekładnika pola.",
@@ -711,8 +893,8 @@ def _rozwiaz_stopien(
             "podstawa_pl": zdolnosc.podstawa_zakresow_pl,
         }
     ]
-    if nastawa.curve_type == "DT":
-        zwloka = nastawa.time_delay_s
+    if nastawa.krzywa == "DT":
+        zwloka = nastawa.zwloka_s
         assert zwloka is not None
         if zdolnosc.t_51_s_min is not None and zdolnosc.t_51_s_max is not None:
             czas_w_zakresie = w_zakresie(zwloka, zdolnosc.t_51_s_min, zdolnosc.t_51_s_max)
@@ -728,7 +910,7 @@ def _rozwiaz_stopien(
                 }
             )
             if not czas_w_zakresie:
-                brak(
+                brak_zgodnosci(
                     KOD_ZWLOKA_POZA_ZAKRESEM,
                     f"Zwłoka stopnia {etykieta} ({_liczba(zwloka)} s) jest poza zakresem "
                     f"przekaźnika {_liczba(zdolnosc.t_51_s_min)}–"
@@ -736,7 +918,7 @@ def _rozwiaz_stopien(
                     f"Popraw zwłokę stopnia {etykieta}.",
                 )
     else:
-        tms = nastawa.time_multiplier
+        tms = nastawa.tms
         assert tms is not None
         czas_w_zakresie = w_zakresie(tms, zdolnosc.tms_51_min, zdolnosc.tms_51_max)
         sprawdzenia.append(
@@ -751,7 +933,7 @@ def _rozwiaz_stopien(
             }
         )
         if not czas_w_zakresie:
-            brak(
+            brak_zgodnosci(
                 KOD_MNOZNIK_POZA_ZAKRESEM,
                 f"Mnożnik czasowy stopnia {etykieta} ({_liczba(tms)}) jest poza zakresem "
                 f"przekaźnika {_liczba(zdolnosc.tms_51_min)}–{_liczba(zdolnosc.tms_51_max)}.",
@@ -763,19 +945,19 @@ def _rozwiaz_stopien(
     return (
         StopienNastaw(
             funkcja=funkcja,
-            krzywa=nastawa.curve_type,
-            wartosc_progu=nastawa.threshold_a,
-            jednostka_progu=nastawa.threshold_unit,
+            krzywa=nastawa.krzywa,
+            wartosc_progu=nastawa.prog,
+            jednostka_progu=nastawa.jednostka_progu,
             prog_wtorny_a=prog_wtorny,
             prog_pierwotny_a=prog_pierwotny,
-            tms=nastawa.time_multiplier if nastawa.curve_type != "DT" else None,
-            zwloka_s=nastawa.time_delay_s if nastawa.curve_type == "DT" else None,
+            tms=nastawa.tms if nastawa.krzywa != "DT" else None,
+            zwloka_s=nastawa.zwloka_s if nastawa.krzywa == "DT" else None,
             slad={
                 "zrodlo_pl": (
-                    f"nastawa stopnia {etykieta} zapisana w modelu przy zabezpieczeniu {nazwa}"
+                    f"nastawa stopnia {etykieta} zapisana w modelu przy zabezpieczeniu {oznaczenie}"
                 ),
-                "wartosc_w_modelu": nastawa.threshold_a,
-                "jednostka_w_modelu": nastawa.threshold_unit,
+                "wartosc_w_modelu": nastawa.prog,
+                "jednostka_w_modelu": nastawa.jednostka_progu,
                 "przekladnia_a": [i1n, i2n],
                 "przeliczenie_latex": wzor,
                 "prog_wtorny_a": prog_wtorny,
@@ -790,48 +972,61 @@ def _rozwiaz_stopien(
 def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -> NastawyUrzadzenia:
     """Nastawy urządzenia z modelu — JEDYNE rozwiązanie (ocena, czasy wyłączenia, edytor).
 
-    Stopień nadprądowy obecny na liście nastaw musi być kompletny: próg z jednostką,
-    charakterystyka, zwłoka (DT) albo mnożnik (zależna). Stopnia wyłączonego nie ma na liście.
+    Czyta sterownik pola (`enm.zabezpieczenie`): funkcje 51/50 włączone w sterowniku, nastawy
+    z grupy efektywnej (grupa aktywna albo wybór przypadku nałożony w migawce efektywnej),
+    przekładnik wejścia prądów fazowych (zaczep roboczy z karty pola), wyłącznik z macierzy
+    wyzwoleń. Stopień włączony musi być kompletny: próg z jednostką, charakterystyka, zwłoka
+    (DT) albo mnożnik (zależna). Funkcja sterownika bez ewaluatora trafia do
+    ``funkcje_nieoceniane`` z wyjaśnieniem (NIE_OCENIONO, nigdy cisza).
     """
-    nazwa = nazwa_elementu(assignment, "protection_assignments")
+    nazwa = nazwa_sterownika(enm, assignment)
+    oznaczenie = oznaczenie_zabezpieczenia(enm, assignment)
     braki: list[PozycjaGotowosci] = []
     ct, braki_ct = _przekladnik(enm, assignment)
     braki.extend(braki_ct)
-    zdolnosc, braki_katalogu = _zdolnosc_katalogu(enm, assignment)
+    charakterystyki, braki_katalogu = charakterystyki_sterownika(enm, assignment)
+    zdolnosc = charakterystyki.zdolnosc if charakterystyki is not None else None
     braki.extend(braki_katalogu)
 
     nieoceniane = tuple(
-        {"funkcja": n.function_type, "powod_pl": FUNKCJE_NIEOCENIANE[n.function_type]}
-        for n in assignment.settings
-        if n.function_type in FUNKCJE_NIEOCENIANE
+        {"funkcja": f.kod, "powod_pl": powod_nieoceniania(f.kod)}
+        for f in assignment.funkcje
+        if f.wlaczona and f.kod not in FUNKCJE_OCENIANE
     )
-    nastawy_oc = [n for n in assignment.settings if n.function_type in FUNKCJE_OCENIANE]
+    nastawy_oc = stopnie_nadpradowe(assignment)
     stopnie: list[StopienNastaw] = []
     if not nastawy_oc:
         braki.append(
             PozycjaGotowosci(
                 kod=KOD_BRAK_STOPNI,
                 komunikat_pl=(
-                    f"Zabezpieczenie {nazwa} nie ma nastaw stopni nadprądowych I> (51) ani "
+                    f"Zabezpieczenie {oznaczenie} nie ma nastaw stopni nadprądowych I> (51) ani "
                     "I>> (50)."
                 ),
-                akcja_naprawcza_pl=f"Wpisz nastawy stopni nadprądowych zabezpieczenia {nazwa}.",
+                akcja_naprawcza_pl=f"Wpisz nastawy stopni nadprądowych zabezpieczenia {oznaczenie}.",
             )
         )
-    for nastawa in sorted(nastawy_oc, key=lambda n: n.function_type, reverse=True):
+    for nastawa in sorted(nastawy_oc, key=lambda n: FUNKCJE_OCENIANE.index(n.funkcja)):
         if ct is None or braki_ct or zdolnosc is None or braki_katalogu:
             # Bez przekładnika i zakresów katalogu stopień i tak zgłasza braki kompletności —
             # projektant widzi komplet tego, czego brakuje, nie tylko pierwszą przeszkodę.
-            braki.extend(_braki_kompletnosci(nastawa, nazwa))
+            braki.extend(_braki_kompletnosci(nastawa, oznaczenie))
             continue
         stopien, braki_stopnia = _rozwiaz_stopien(
-            nastawa=nastawa, nazwa=nazwa, ct=ct, zdolnosc=zdolnosc
+            nastawa=nastawa,
+            oznaczenie=oznaczenie,
+            ct=ct,
+            zdolnosc=zdolnosc,
+            profil_roboczy=(
+                charakterystyki is not None
+                and charakterystyki.zrodlo == ZRODLO_CHARAKTERYSTYK_ROBOCZE
+            ),
         )
         braki.extend(braki_stopnia)
         if stopien is not None:
             stopnie.append(stopien)
 
-    klasa = ct.rating.accuracy_class if ct is not None else None
+    klasa = ct.accuracy_class if ct is not None else None
     wejscie = _wejscie_nasycenia(enm, ct) if ct is not None and not braki_ct else None
     # ALF w kontrakcie nastaw jest liczbą zmiennoprzecinkową; jądro i ``alf_z_klasy`` niosą
     # go jako int — jedna postać wyjścia niezależnie od źródła (stabilna odpowiedź JSON).
@@ -839,33 +1034,34 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
     return NastawyUrzadzenia(
         urzadzenie_ref=assignment.ref_id,
         nazwa_pl=nazwa,
-        breaker_ref=assignment.breaker_ref,
-        ct_ref=assignment.ct_ref,
+        oznaczenie_pl=oznaczenie,
+        breaker_ref=wylacznik_urzadzenia(assignment),
+        ct_ref=assignment.wejscia.ct_ref,
         przekladnia_a=(
-            (ct.rating.ratio_primary, ct.rating.ratio_secondary)
-            if ct is not None and not braki_ct
-            else None
+            (ct.ratio_primary, ct.ratio_secondary) if ct is not None and not braki_ct else None
         ),
         klasa_ct=klasa,
         alf=float(alf_ct) if alf_ct is not None else None,
         wejscie_nasycenia=wejscie,
         pozycja_katalogu=assignment.catalog_ref,
         zakresy=_zakresy_katalogu(zdolnosc) if zdolnosc is not None else None,
+        charakterystyki=charakterystyki,
         stopnie=tuple(stopnie),
         braki=tuple(braki),
         funkcje_nieoceniane=nieoceniane,
     )
 
 
-def _wejscie_nasycenia(enm: EnergyNetworkModel, ct: Measurement) -> CtBurdenInput:
+def _wejscie_nasycenia(enm: EnergyNetworkModel, ct: PrzekladnikPradowy) -> CtBurdenInput:
     """Wejście jądra nasycenia CT z modelu — fakty bez liczenia (wzorzec W3-B).
 
     Źródła (jedno na wielkość, zero wartości zastępczych):
       - prąd znamionowy wtórny ``I2n`` — przekładnia przekładnika w modelu;
-      - moc znamionowa ``Sn`` — ``Measurement.rating.burden_va``;
+      - moc znamionowa ``Sn`` — tabliczka przekładnika (`enm.zabezpieczenie.przekladnik_pradowy`:
+        przekładnik pomiarowy albo rdzeń zabezpieczeniowy aparatu pola);
       - ``ALF`` — z klasy zabezpieczeniowej przekładnika w modelu (``5P10`` → 10) tym samym
         wyprowadzeniem, którego używa jądro; klasa pomiarowa albo brak klasy → ``None``;
-      - obwód wtórny (długość, przekrój, aparaty, styki) — ``Measurement.obwod_wtorny``;
+      - obwód wtórny (długość, przekrój, aparaty, styki) — obwód wtórny przekładnika;
       - rezystancja uzwojenia wtórnego ``Rct`` — WYŁĄCZNIE z pozycji katalogu CT, z którą
         przekładnik jest związany (dana producencka; model jej nie niesie).
     Każdy brak zamienia jądro w nazwany kod gotowości (``ct.*``), nigdy w ``ALF·I₁n``.
@@ -876,9 +1072,9 @@ def _wejscie_nasycenia(enm: EnergyNetworkModel, ct: Measurement) -> CtBurdenInpu
         pozycja = katalog_dla_modelu(enm).get_ct_type(ct.catalog_ref)
         rct_ohm = pozycja.rct_ohm if pozycja is not None else None
     return CtBurdenInput(
-        i2n_a=ct.rating.ratio_secondary,
-        sn_va=ct.rating.burden_va,
-        alf=alf_z_klasy(ct.rating.accuracy_class),
+        i2n_a=ct.ratio_secondary,
+        sn_va=ct.burden_va,
+        alf=alf_z_klasy(ct.accuracy_class),
         dlugosc_przewodu_m=obwod.dlugosc_przewodu_m if obwod is not None else None,
         przekroj_przewodu_mm2=obwod.przekroj_przewodu_mm2 if obwod is not None else None,
         obciazenia_aparatow=(
@@ -909,44 +1105,44 @@ def _opis_wejscia_nasycenia(wejscie: CtBurdenInput | None) -> dict[str, Any] | N
     }
 
 
-def _braki_kompletnosci(nastawa: ProtectionSetting, nazwa: str) -> list[PozycjaGotowosci]:
+def _braki_kompletnosci(nastawa: NastawaStopnia, oznaczenie: str) -> list[PozycjaGotowosci]:
     """Braki kompletności stopnia niezależne od przekładnika i katalogu."""
-    etykieta = ETYKIETY_FUNKCJI_PL[nastawa.function_type]
-    akcja = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {nazwa} w karcie pola."
+    etykieta = ETYKIETY_FUNKCJI_PL[nastawa.funkcja]
+    akcja = f"Uzupełnij nastawy stopnia {etykieta} zabezpieczenia {oznaczenie} w karcie pola."
     wynik: list[PozycjaGotowosci] = []
-    if nastawa.threshold_a is None or nastawa.threshold_a <= 0:
+    if nastawa.prog is None or nastawa.prog <= 0:
         wynik.append(
             PozycjaGotowosci(
                 kod=KOD_BRAK_PROGU,
                 komunikat_pl=(
-                    f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma dodatniego progu "
+                    f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma dodatniego progu "
                     "rozruchowego."
                 ),
                 akcja_naprawcza_pl=akcja,
-                funkcja=nastawa.function_type,
+                funkcja=nastawa.funkcja,
             )
         )
-    if nastawa.threshold_unit is None:
+    if nastawa.jednostka_progu is None:
         wynik.append(
             PozycjaGotowosci(
                 kod=KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
                 komunikat_pl=(
-                    f"Próg stopnia {etykieta} zabezpieczenia {nazwa} nie ma zadeklarowanej "
+                    f"Próg stopnia {etykieta} zabezpieczenia {oznaczenie} nie ma zadeklarowanej "
                     "jednostki (strona wtórna albo pierwotna przekładnika)."
                 ),
                 akcja_naprawcza_pl=akcja,
-                funkcja=nastawa.function_type,
+                funkcja=nastawa.funkcja,
             )
         )
-    if nastawa.curve_type is None:
+    if nastawa.krzywa is None:
         wynik.append(
             PozycjaGotowosci(
                 kod=KOD_BRAK_CHARAKTERYSTYKI,
                 komunikat_pl=(
-                    f"Stopień {etykieta} zabezpieczenia {nazwa} nie ma charakterystyki czasowej."
+                    f"Stopień {etykieta} zabezpieczenia {oznaczenie} nie ma charakterystyki czasowej."
                 ),
                 akcja_naprawcza_pl=akcja,
-                funkcja=nastawa.function_type,
+                funkcja=nastawa.funkcja,
             )
         )
     return wynik
@@ -970,7 +1166,7 @@ def _zakresy_katalogu(zdolnosc: DeviceCapability) -> dict[str, Any]:
             for kod, etykieta in ETYKIETY_KRZYWYCH_PL.items()
             if kod in zdolnosc.curves_supported
         ],
-        "overcurrent_51": {
+        "51": {
             "prog": [zdolnosc.i_pickup_51_a_min, zdolnosc.i_pickup_51_a_max],
             "mnoznik": [zdolnosc.tms_51_min, zdolnosc.tms_51_max],
             "zwloka_s": (
@@ -979,7 +1175,7 @@ def _zakresy_katalogu(zdolnosc: DeviceCapability) -> dict[str, Any]:
                 else None
             ),
         },
-        "overcurrent_50": {
+        "50": {
             "prog": [zdolnosc.i_inst_50_a_min, zdolnosc.i_inst_50_a_max],
             "zwloka_s": (
                 [zdolnosc.t_51_s_min, zdolnosc.t_51_s_max]
@@ -990,47 +1186,28 @@ def _zakresy_katalogu(zdolnosc: DeviceCapability) -> dict[str, Any]:
     }
 
 
-def slownik_nastaw() -> dict[str, Any]:
-    """Słownik edytora nastaw (etykiety po polsku) — funkcje oceniane, charakterystyki modelu
-    i jednostki progu. Źródło list wyboru edytora dla urządzenia bez zakresów katalogu.
-    """
-    return {
-        "funkcje": [
-            {"kod": funkcja, "etykieta_pl": ETYKIETY_FUNKCJI_PL[funkcja]}
-            for funkcja in FUNKCJE_OCENIANE
-        ],
-        "charakterystyki": [
-            {"kod": kod, "etykieta_pl": etykieta} for kod, etykieta in ETYKIETY_KRZYWYCH_PL.items()
-        ],
-        "jednostki_progu": [
-            {"kod": kod, "etykieta_pl": etykieta}
-            for kod, etykieta in ETYKIETY_JEDNOSTEK_PROGU_PL.items()
-        ],
-    }
-
-
 def urzadzenia_nadpradowe(
     enm: EnergyNetworkModel,
 ) -> tuple[list[ProtectionAssignment], list[PominieteUrzadzenie]]:
     """Przypisania objęte oceną nadprądową (po ``ref_id``) + pominięte z przyczyną.
 
-    Oceną jest objęte urządzenie czynne z co najmniej jedną funkcją nadprądową fazową albo
-    zadeklarowane jako nadprądowe (``device_type == "overcurrent"``) — to drugie bez nastaw
-    to ODMOWA z nazwanym brakiem, nie pominięcie.
+    Oceną jest objęte urządzenie czynne z co najmniej jedną włączoną funkcją nadprądową fazową
+    (51, 50) w sterowniku — bez nastaw to ODMOWA z nazwanym brakiem, nie pominięcie.
     """
     objete: list[ProtectionAssignment] = []
     pominiete: list[PominieteUrzadzenie] = []
     for assignment in sorted(enm.protection_assignments, key=lambda a: a.ref_id):
-        nazwa = nazwa_elementu(assignment, "protection_assignments")
-        ma_funkcje_oc = any(n.function_type in FUNKCJE_OCENIANE for n in assignment.settings)
-        if not ma_funkcje_oc and assignment.device_type != "overcurrent":
+        nazwa = nazwa_sterownika(enm, assignment)
+        oznaczenie = oznaczenie_zabezpieczenia(enm, assignment)
+        ma_funkcje_oc = any(f.kod in FUNKCJE_OCENIANE and f.wlaczona for f in assignment.funkcje)
+        if not ma_funkcje_oc:
             pominiete.append(
                 PominieteUrzadzenie(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nazwa,
                     kod=POMINIETE_BEZ_FUNKCJI_NADPRADOWYCH,
                     powod_pl=(
-                        f"Zabezpieczenie {nazwa} nie ma funkcji nadprądowych fazowych I>/I>> — "
+                        f"Zabezpieczenie {oznaczenie} nie ma funkcji nadprądowych fazowych I>/I>> — "
                         "ocena nadprądowa go nie dotyczy."
                     ),
                 )
@@ -1042,7 +1219,7 @@ def urzadzenia_nadpradowe(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nazwa,
                     kod=POMINIETE_WYLACZONE,
-                    powod_pl=f"Zabezpieczenie {nazwa} jest wyłączone z ruchu w modelu.",
+                    powod_pl=f"Zabezpieczenie {oznaczenie} jest wyłączone z ruchu w modelu.",
                 )
             )
             continue
@@ -1609,7 +1786,7 @@ def czas_urzadzenia(
 def _podstawa_nastawy(nastawy: NastawyUrzadzenia, stopien: StopienNastaw) -> PodstawaWymagania:
     return PodstawaWymagania(
         rodzaj="ZALOZENIE_PROJEKTOWE",
-        dokument=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} zapisane w modelu sieci projektu",
+        dokument=f"Nastawy zabezpieczenia {nastawy.oznaczenie_pl} zapisane w modelu sieci projektu",
         wydanie="model sieci biegu oceny (odcisk migawki w kopercie biegu)",
         jednostka_redakcyjna=(
             f"stopień {stopien.etykieta_pl}: próg {_liczba(stopien.wartosc_progu)} A "
@@ -1621,6 +1798,15 @@ def _podstawa_nastawy(nastawy: NastawyUrzadzenia, stopien: StopienNastaw) -> Pod
             "zadziałanie przy prądzie powyżej progu wg definicji rozruchu IEC 60255-151"
         ),
     )
+
+
+def _dane_przyjete_charakterystyk(nastawy: NastawyUrzadzenia) -> tuple[DanaPrzyjeta, ...]:
+    """Profil roboczy charakterystyk (zasada nr 4) — zakresy nastaw i krzywa stopnia stoją na
+    założeniu, więc każdy rekord oceny sterownika niesie je w danych przyjętych."""
+    charakterystyki = nastawy.charakterystyki
+    if charakterystyki is None or charakterystyki.dana_przyjeta is None:
+        return ()
+    return (charakterystyki.dana_przyjeta,)
 
 
 def _dowod_obliczenia(
@@ -1735,7 +1921,8 @@ def ocena_punktu_rekord(
                 else ()
             )
             + dane_galezi
-            + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss"),
+            + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss")
+            + _dane_przyjete_charakterystyk(nastawy),
         ),
         zakres_waznosci=_zakres_waznosci(wiarygodnosc, powod_wiarygodnosci),
         slad=[
@@ -1752,7 +1939,11 @@ def ocena_punktu_rekord(
 
 
 def odmowa_rekord(
-    *, urzadzenie_ref: str, nazwa_pl: str, braki: Sequence[PozycjaGotowosci]
+    *,
+    urzadzenie_ref: str,
+    nazwa_pl: str,
+    oznaczenie_pl: str,
+    braki: Sequence[PozycjaGotowosci],
 ) -> OcenaKryterium:
     """Rekord K ``NIE_OCENIONO`` urządzenia wstrzymanego nazwanymi brakami."""
     from application.ocena_niewykonana import ocena_niewykonana
@@ -1770,7 +1961,7 @@ def odmowa_rekord(
         ),
         podstawa=PodstawaWymagania(
             rodzaj="ZALOZENIE_PROJEKTOWE",
-            dokument=f"Nastawy zabezpieczenia {nazwa_pl} zapisane w modelu sieci projektu",
+            dokument=f"Nastawy zabezpieczenia {oznaczenie_pl} zapisane w modelu sieci projektu",
             status="NIEUSTALONE",
             uwagi_pl="nastawy albo dane toru pomiarowego niekompletne — patrz braki",
         ),
@@ -1965,12 +2156,31 @@ def ocen_zabezpieczenia(
     for assignment in urzadzenia:
         nastawy = rozwiaz_nastawy(enm, assignment)
         wszystkie_nastawy.append(nastawy)
-        nazwa_aparatu = _nazwa_aparatu(enm, assignment.breaker_ref)
         braki: list[PozycjaGotowosci] = list(nastawy.braki)
-        strefa, braki_strefy, kandydaci = strefa_urzadzenia(
-            graph, ref_to_graph_id(assignment.breaker_ref), nazwa_aparatu=nazwa_aparatu
-        )
-        braki.extend(braki_strefy)
+        wylacznik = nastawy.breaker_ref
+        strefa: StrefaUrzadzenia | None = None
+        kandydaci: tuple[str, ...] = ()
+        if wylacznik is None:
+            braki.append(
+                PozycjaGotowosci(
+                    kod=KOD_BRAK_WYZWOLENIA,
+                    komunikat_pl=(
+                        f"Stopnie nadprądowe zabezpieczenia {nastawy.nazwa_pl} nie działają na "
+                        "żaden wyłącznik (macierz wyzwoleń sterownika) — nie ma czym wyłączyć "
+                        "zwarcia."
+                    ),
+                    akcja_naprawcza_pl=(
+                        "Wskaż wyłącznik pola w macierzy wyzwoleń funkcji 51/50 (karta pola → "
+                        "Zabezpieczenia i automatyka)."
+                    ),
+                )
+            )
+        else:
+            nazwa_aparatu = _nazwa_aparatu(enm, wylacznik)
+            strefa, braki_strefy, kandydaci = strefa_urzadzenia(
+                graph, ref_to_graph_id(wylacznik), nazwa_aparatu=nazwa_aparatu
+            )
+            braki.extend(braki_strefy)
         punkty: list[PunktZwarciaStrefy] = []
         if strefa is not None:
             opis_strefy = strefa.to_dict(nazwy_wezlow)
@@ -2002,7 +2212,7 @@ def ocen_zabezpieczenia(
                         kod=KOD_BRAK_PUNKTOW_W_STREFIE,
                         komunikat_pl=(
                             f"Bieg zwarciowy nie ma żadnego punktu zwarcia z prądem w strefie "
-                            f"zabezpieczenia {nastawy.nazwa_pl}."
+                            f"zabezpieczenia {nastawy.oznaczenie_pl}."
                         ),
                         akcja_naprawcza_pl=(
                             "Uruchom obliczenie zwarciowe obejmujące szyny strefy zabezpieczenia."
@@ -2014,18 +2224,20 @@ def ocen_zabezpieczenia(
                 OdmowaUrzadzenia(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nastawy.nazwa_pl,
-                    breaker_ref=assignment.breaker_ref,
+                    oznaczenie_pl=nastawy.oznaczenie_pl,
+                    breaker_ref=wylacznik,
                     braki=tuple(braki),
                     kandydaci_naprawy=kandydaci,
                     ocena=odmowa_rekord(
                         urzadzenie_ref=assignment.ref_id,
                         nazwa_pl=nastawy.nazwa_pl,
+                        oznaczenie_pl=nastawy.oznaczenie_pl,
                         braki=braki,
                     ),
                 )
             )
             continue
-        assert strefa is not None
+        assert strefa is not None and wylacznik is not None
         braki_punktow: list[PozycjaGotowosci] = []
         for punkt_strefy in punkty:
             punkt = punkt_strefy.punkt_ref
@@ -2060,6 +2272,7 @@ def ocen_zabezpieczenia(
             oceny.append(
                 _ocena_punktu(
                     nastawy=nastawy,
+                    wylacznik=wylacznik,
                     punkt=punkt,
                     nazwa_punktu=nazwa_punktu,
                     prad=prad,
@@ -2076,11 +2289,13 @@ def ocen_zabezpieczenia(
                 OdmowaUrzadzenia(
                     urzadzenie_ref=assignment.ref_id,
                     nazwa_pl=nastawy.nazwa_pl,
-                    breaker_ref=assignment.breaker_ref,
+                    oznaczenie_pl=nastawy.oznaczenie_pl,
+                    breaker_ref=wylacznik,
                     braki=tuple(unikalne),
                     ocena=odmowa_rekord(
                         urzadzenie_ref=assignment.ref_id,
                         nazwa_pl=nastawy.nazwa_pl,
+                        oznaczenie_pl=nastawy.oznaczenie_pl,
                         braki=unikalne,
                     ),
                 )
@@ -2097,6 +2312,7 @@ def ocen_zabezpieczenia(
 def _ocena_punktu(
     *,
     nastawy: NastawyUrzadzenia,
+    wylacznik: str,
     punkt: str,
     nazwa_punktu: str,
     prad: float,
@@ -2122,7 +2338,8 @@ def _ocena_punktu(
     return OcenaPunktu(
         urzadzenie_ref=nastawy.urzadzenie_ref,
         nazwa_urzadzenia_pl=nastawy.nazwa_pl,
-        breaker_ref=nastawy.breaker_ref,
+        oznaczenie_urzadzenia_pl=nastawy.oznaczenie_pl,
+        breaker_ref=wylacznik,
         punkt_ref=punkt,
         nazwa_punktu_pl=nazwa_punktu,
         prad_przekaznika_a=prad,
@@ -2166,7 +2383,11 @@ def _liczba(wartosc: float) -> str:
 
 
 __all__ = [
-    "FUNKCJE_NIEOCENIANE",
+    "KOD_BRAK_WYZWOLENIA",
+    "NastawaStopnia",
+    "powod_nieoceniania",
+    "stopnie_nadpradowe",
+    "wylacznik_urzadzenia",
     "FUNKCJE_OCENIANE",
     "NIEWIARYGODNY",
     "WIARYGODNOSC_NIEUSTALONA",

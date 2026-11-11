@@ -45,7 +45,7 @@ pilnuje, że nowe pole kontraktu solvera nie zostanie pominięte milcząco):
 - ``has_scada_communication``, ``has_disturbance_recorder`` ← ``deklaracje_modulu`` (1:1,
                             ``None`` = nie zadeklarowano; stan komunikacji i rejestratora
                             pola to migawka RUCHOWA ``BayRuntimeState``/
-                            ``DisturbanceRecorderState``, nie deklaracja projektowa zdolności
+                            dawny rejestrator zakłóceń odczytu pola, nie deklaracja projektowa zdolności
                             modułu — nośnikiem deklaracji jest blok modułu)
 - ``active_power_control_enabled``, ``stop_generation_enabled``,
   ``reduction_generation_enabled``, ``island_operation_capable``, ``black_start_capable``,

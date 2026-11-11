@@ -835,17 +835,19 @@
     "missing_data": [],
     "protection_assignments": [
       {
-        "breaker_ref": "QF-T1",
+        "bay_ref": null,
         "ct_ref": "CT-T1",
-        "device_type": "overcurrent",
         "function_codes": [
-          "overcurrent_50",
-          "overcurrent_51"
+          "50",
+          "51"
         ],
         "is_enabled": true,
         "name": "Zabezpieczenie T1",
         "ref_id": "REL-T1",
-        "vt_ref": null
+        "vt_ref": null,
+        "wylaczniki_refs": [
+          "QF-T1"
+        ]
       }
     ],
     "root_bus_refs": [
@@ -1528,14 +1530,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-08_island_grid_forming",
-    "model_hash": "a10514c74faef95d52c8202373b02297013c95958d62031a8732ae2268aff1fe",
+    "model_hash": "99838a089c040a1af12192617322249046f154fb99a5f2d1ee6ca9b55100b4d9",
     "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "6c6e10d7ad242b7e9dd68c100c76251fb1ac9b011f828827805580db4277dd4c",
+  "projection_hash": "65f2dfdb21a466c92278d5986d9a0fb07cd3212e22b621caec9b7b25590821b7",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1862,13 +1864,22 @@
               "station_ref": "stW",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Odbiór 1)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 25 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 250.0,
                 "ik1_min_a": 1150.13096,
                 "margines": 4.60052384,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1150.1 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 250.0 A (MCB C 25 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1150.1 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 250.0 A (MCB C 25 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Odbiór 1) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -1876,6 +1887,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 25 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -2413,6 +2425,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód rozdzielczy — aparat 125 A > 63 A (PN-HD 60364-4-41:2017 §411.3.2.2: obwód odbiorczy do 63 A)",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
                     "u0_v": 230.940108
@@ -2754,6 +2767,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód rozdzielczy — aparat 100 A > 63 A (PN-HD 60364-4-41:2017 §411.3.2.2: obwód odbiorczy do 63 A)",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
                     "u0_v": 230.940108
@@ -2794,12 +2808,12 @@
     {
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
-      "calculation_run_id": "ea90acb7-84d6-5576-9c8a-79e3a436812a",
+      "calculation_run_id": "bf27202a-dc68-57a8-91f5-16900518b064",
       "case_id": "fixture-08_island_grid_forming",
-      "equivalent_id": "910e30e7-8de9-5e5d-be71-8655a2464c32",
+      "equivalent_id": "387172b9-55f9-5fc6-be9d-b506e1d098c8",
       "ikss_ka": 18.6825711,
       "missing_data": [],
-      "model_hash": "a10514c74faef95d52c8202373b02297013c95958d62031a8732ae2268aff1fe",
+      "model_hash": "99838a089c040a1af12192617322249046f154fb99a5f2d1ee6ca9b55100b4d9",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN po stronie SN transformatora — granica wizualna domeny nN jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten równoważnik jest dokładnie tym wejściem, którym obliczenie pętli zwarcia nN liczy stronę SN.",
       "operating_state_id": "bdb2b930431b3b709ed647d1b4a1c835cf7c7ca6aa2ccc60dafc59eeb301c798",

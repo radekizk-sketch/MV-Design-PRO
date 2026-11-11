@@ -46,6 +46,11 @@ type Enm = {
   substations?: Array<{ ref_id: string; name?: string; station_type?: string | null }>;
   bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string }>;
   buses?: Array<{ ref_id: string; name?: string }>;
+  protection_assignments?: Array<{
+    ref_id: string;
+    bay_ref?: string | null;
+    funkcje?: Array<{ kod: string; wlaczona: boolean }>;
+  }>;
 };
 
 const katalog = (namespace: string, itemId: string) => ({
@@ -117,10 +122,14 @@ async function siecGpz(
   const polaGpz = (enm.bays ?? []).filter((b) => b.substation_ref === gpz!.ref_id);
   const poleLiniowe = polaGpz.find((b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER') ?? polaGpz[0];
   expect(poleLiniowe, 'pole liniowe GPZ').toBeTruthy();
-  // Funkcja SPZ (ANSI 79) w danych EAZ pola — źródło plakietki „SPZ" (dane aktywów, nie domysł).
-  await operacja(request, caseId, 'update_element_parameters', {
-    element_ref: poleLiniowe!.ref_id,
-    parameters: { protection_codes: ['50', '51', '79'] },
+  // Funkcja SPZ (ANSI 79) w sterowniku pola — źródło plakietki „SPZ" (dane aktywów, nie domysł).
+  // Sterownik pola powstaje z szablonu pola; zestaw funkcji zapisuje JEDYNY pisarz nastaw
+  // (`update_protection_settings`, karta OCHRONA-JEDNO-ZRODLO).
+  const sterownik = (enm.protection_assignments ?? []).find((p) => p.bay_ref === poleLiniowe!.ref_id);
+  expect(sterownik, 'sterownik pola liniowego GPZ (szablon pola)').toBeTruthy();
+  await operacja(request, caseId, 'update_protection_settings', {
+    protection_ref: sterownik!.ref_id,
+    funkcje: ['50', '51', '79'],
   });
   enm = await operacja(request, caseId, 'continue_trunk_segment_sn', {
     field_ref: poleLiniowe!.ref_id,
@@ -128,8 +137,15 @@ async function siecGpz(
   });
   const koniec = (enm.buses ?? []).find((b) => b.name === 'Zacisk końcowy Odcinek 1');
   expect(koniec, 'zacisk końcowy odcinka').toBeTruthy();
-  await operacja(request, caseId, 'add_load_sn', { bus_ref: koniec!.ref_id, p_mw: 1.2, q_mvar: 0.3 });
-  return { projectId, projectName, caseId, caseName };
+  const poOdbiorze = await operacja(request, caseId, 'add_load_sn', { bus_ref: koniec!.ref_id, p_mw: 1.2, q_mvar: 0.3 });
+  // Oczekiwana liczba plakietek „SPZ" — z MODELU: pola GPZ, których sterownik ma włączoną funkcję
+  // 79 (szablon pola liniowego Z.10 niesie SPZ; jedno źródło funkcji — sterownik pola).
+  const polaGpzRefy = new Set(polaGpz.map((b) => b.ref_id));
+  const polaZSpz = (poOdbiorze.protection_assignments ?? []).filter(
+    (p) => p.bay_ref && polaGpzRefy.has(p.bay_ref) && (p.funkcje ?? []).some((f) => f.kod === '79' && f.wlaczona),
+  ).length;
+  expect(polaZSpz, 'pole liniowe z dopisaną funkcją 79').toBeGreaterThan(0);
+  return { projectId, projectName, caseId, caseName, polaZSpz };
 }
 
 async function otworzSchemat(
@@ -214,7 +230,7 @@ test('GPZ-PARYTET — kadry bloku GPZ przed biegiem i po biegu rozpływu mocy (o
     await przyblizGpz(page);
     await expect(page.getByTestId('sld-v3-gpz-adnotacje')).toHaveAttribute('data-gpz-wynik', 'brak');
     await expect(page.getByTestId('sld-v3-gpz-bilans-zasilania')).toHaveText('Zasilanie GPZ: brak wyniku rozpływu mocy');
-    await expect(page.locator('[data-testid^="sld-v3-gpz-plakietka-"][data-gpz-plakietka="SPZ"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid^="sld-v3-gpz-plakietka-"][data-gpz-plakietka="SPZ"]')).toHaveCount(seed.polaZSpz);
     await expect(page.locator('[data-uzwojenia-stan]').first()).toBeAttached();
     await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-przed-biegiem-${motyw.klucz}.png`) });
   }
@@ -266,6 +282,20 @@ test('GPZ-PARYTET — dwie sekcje SN i trzy transformatory: wieże obok siebie (
     await page.getByRole('button', { name: 'Dopasuj widok' }).click();
     await page.waitForTimeout(500);
     const uzwojenia = page.locator('[data-uzwojenia-stan]');
+    // Kadr całej sieci może wypaść poniżej progu szczegółu (L0: GPZ zwinięty do bloku — kanon
+    // KD-5), np. gdy każde pole GPZ niesie blok sterownika z szablonu pola (karta
+    // OCHRONA-JEDNO-ZRODLO: scena 1720 → 2096 px szerokości). Intencja testu to wieże
+    // transformatorów obok siebie W ROZWINIĘTYM GPZ — więc przybliżenie natywnym kółkiem nad
+    // środkiem strefy GPZ, aż symbole uzwojeń są narysowane (wszystkie trzy wieże w kadrze).
+    const strefa = page.getByTestId('sld-v3-gpz-zone');
+    await expect(strefa).toHaveCount(1, { timeout: 30000 });
+    for (let i = 0; i < 10 && (await uzwojenia.count()) < 3; i += 1) {
+      const box = await strefa.boundingBox();
+      if (!box) break;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.wheel(0, -120);
+      await page.waitForTimeout(250);
+    }
     await expect(uzwojenia).toHaveCount(3, { timeout: 30000 });
     // Trzy symbole transformatora w trzech różnych, rozłącznych kolumnach.
     const ramki = [];

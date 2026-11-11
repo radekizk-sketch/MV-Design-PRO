@@ -1003,7 +1003,26 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # (None) pól, rozłącznik sekcyjny gn03 bez SF₆, pole bez potwierdzonego źródła 3U₀ bez 67N
     # i kody technologiczne pola transformatora jako numery IEEE C37.2. Żadna liczba wyniku;
     # enumeracja, dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "688f14c18f8dc078aa7b20409cb8b52d581cc0a66f651f61aa767766d95165ac",
+    # 2026-11-04 (karta OCHRONA-JEDNO-ZRODLO, jedna struktura sterownika pola): gn01
+    # 138e3743… → fa645cd8…, gn03 bez zmiany. Pełne widoki z kodu bazy `44a2c6c02`
+    # (`git archive`, odtwarzają dokładnie poprzedni pin) i po karcie porównane liść po liściu:
+    # IDENTYCZNY zbiór 408 kluczy, różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # Jedyna różnica modelu wejściowego (738 → 765 liści, 0 liści wspólnych o innej wartości):
+    # kody funkcji zabezpieczeń z szablonu pola (`Bay.protection_codes`) i pola `protection_ref`,
+    # `zrodlo_u0_ref` pól (27 liści) przeszły do sterowników pól `protection_assignments`
+    # (`bay_ref`, `funkcje`, `aktywna_grupa` — 54 liście). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne.
+    # 2026-11-11 (scalenie karty delt scenariusza zabezpieczeń — OCHRONA-JEDNO-ZRODLO — do
+    # drzewa integracji po polu liniowym): gn01 688f14c1… → ebe3989f…, gn03 bez zmiany
+    # (1f688e57…). Pełne widoki z kodu strony integracji (`git archive` pierwszego rodzica
+    # scalenia, odtwarzają dokładnie poprzednie piny obu sieci) i z drzewa scalonego porównane
+    # liść po liściu: gn01 — IDENTYCZNY zbiór 408 kluczy widoku, różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`; model wejściowy 738 → 765 liści, 0 liści wspólnych
+    # o innej wartości — dokładnie przejście karty opisane wyżej (27 liści `protection_codes`,
+    # `protection_ref`, `zrodlo_u0_ref` pól → 54 liście sterowników `protection_assignments`).
+    # gn03 — widok identyczny co do bajtu; model traci 4 liście `None` (`protection_ref`,
+    # `zrodlo_u0_ref` dwóch pól), poza odciskiem. Enumeracja, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "ebe3989f7939ae5faa4ef98554b3f081bbf8930e1a63d7944882c20e4bd1ff63",
     "gn03_pierscien": "1f688e57b125b15352400bd158d68242cbf2b2430d2f713b9ec575fdf227dcf4",
 }
 

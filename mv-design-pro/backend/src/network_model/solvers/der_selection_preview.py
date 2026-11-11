@@ -44,9 +44,15 @@ from network_model.solvers.conductor_thermal_withstand import (
     STATUS_FAIL as STATUS_THERMAL_FAIL,
 )
 from network_model.solvers.conductor_thermal_withstand import (
+    STATUS_PASS as STATUS_THERMAL_PASS,
+)
+from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
+    ConductorThermalResult,
     check_conductor_thermal_withstand,
 )
+from network_model.solvers.wytrzymalosc_cieplna_pola import prad_cieplny_zastepczy
+from werdykt.kontrakt import WyjasnienieWerdyktu
 
 # ---------------------------------------------------------------------------
 # Wspólny epsilon porównań doborowych mocy, prądu i spadku napięcia (reprezentacja binarna).
@@ -292,6 +298,21 @@ class CableCandidate:
         return None
 
 
+def _ith_a(thermal: ConductorThermalResult) -> float:
+    """I_th [A] przy czasie wyłączenia ze śladu kryterium cieplnego (policzony przez solver)."""
+    assert thermal.prad_cieplny is not None
+    return float(thermal.prad_cieplny["ith_a"])
+
+
+def _ith_kabla_a(data: CableSelectionInput) -> float:
+    """I_th [A] wejścia doboru przy jego czasie — ta sama funkcja co kryterium cieplne."""
+    wynik = prad_cieplny_zastepczy(ikss=data.ikss_a, kappa=data.kappa, tk_s=data.fault_duration_s)
+    if wynik.ith is None:
+        # Odrzucenie zwarciowe istnieje tylko po rachunku I_th — brak wyniku to błąd programu.
+        raise AssertionError(f"I_th doboru kabla nie wyznaczony: {wynik.powod_pl}")
+    return float(wynik.ith)
+
+
 @dataclass(frozen=True)
 class CableSelectionInput:
     """Wejście doboru kabla SN toru DER."""
@@ -317,10 +338,20 @@ class CableSelectionInput:
     # Oba pola sa OPCJONALNE: bez nich dobor zachowuje sie DOKLADNIE jak dotad
     # (kryterium pomijane, zero zmian wyniku), bo prad zwarciowy w miejscu zabudowy
     # znany jest dopiero po biegu SC, a czas wylaczenia po analizie zabezpieczen.
-    # ith_a          — prad zwarciowy ekwiwalentny cieplnie [A] (IEC 60909-0 §12)
+    # ikss_a         — prad zwarciowy poczatkowy I″k w miejscu zabudowy [A] (bieg SC)
+    # kappa          — wspolczynnik udaru κ tego punktu (bieg SC)
     # fault_duration_s — czas wylaczenia zabezpieczenia przy tym pradzie [s]
-    ith_a: float | None = None
+    # I_th = I″k·√(m(κ, t) + n) przy TYM czasie liczy jedna funkcja normy (aparatura
+    # i przewody — ``solvers.wytrzymalosc_cieplna_pola.prad_cieplny_zastepczy``).
+    ikss_a: float | None = None
+    kappa: float | None = None
     fault_duration_s: float | None = None
+    # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN, pakiet 6b: podstawa czasu (zdanie
+    # rozstrzygnięcia ``rozstrzygnij_czas_trwania_zwarcia``: projektant > nastawy > wartość
+    # robocza 1 s) i powód braku prądu zwarciowego — oba trafiają do rekordu kryterium
+    # zwarciowego (``CableThermalCriterion``), który zastępuje dawne ciche pominięcie.
+    fault_duration_basis_pl: str = ""
+    short_circuit_unavailable_pl: str | None = None
     # Karta F-K7 (znalezisko Z6): wspolczynniki korekcyjne obciazalnosci wg warunkow
     # ULOZENIA. `None` znaczy „warunki katalogowe" — wynik jest wtedy BIT-IDENTYCZNY
     # z dotychczasowym, ale zalozenie jest jawne w sladzie (dotad nie bylo nigdzie
@@ -349,6 +380,166 @@ class CableProposal:
     derating_total: float = 1.0
 
 
+#: Stany rekordu kryterium wytrzymałości zwarciowej kabla (kontrakt werdyktu wyjaśnialnego).
+STATUS_KRYTERIUM_SPELNIA = "SPELNIA"
+STATUS_KRYTERIUM_NIE_SPELNIA = "NIE_SPELNIA"
+STATUS_KRYTERIUM_NIE_OCENIONO = "NIE_OCENIONO"
+
+#: Akcja rekordu bez prądu zwarciowego w miejscu przyłączenia toru.
+AKCJA_URUCHOM_ZWARCIA_PL = (
+    "Uruchom obliczenia zwarciowe dla przypadku — kryterium wytrzymałości zwarciowej kabla "
+    "oceni się przy prądzie zwarciowym początkowym i współczynniku udaru szyny przyłączenia."
+)
+#: Powód domyślny, gdy wołający nie podał własnego (dobór bez wskazanego przypadku).
+POWOD_BRAKU_PRADU_ZWARCIOWEGO_PL = (
+    "Brak prądu zwarciowego w miejscu przyłączenia toru — dobór nie wskazuje biegu "
+    "zwarciowego przypadku."
+)
+_BRAK_PRADU_SZYNY_PL = (
+    "prąd zwarciowy początkowy i współczynnik udaru szyny przyłączenia z aktualnego biegu "
+    "zwarciowego przypadku"
+)
+_BRAK_WYTRZYMALOSCI_TYPU_PL = (
+    "wytrzymałość cieplna 1 s albo materiał żyły i izolacja w typie kabla propozycji"
+)
+
+
+@dataclass(frozen=True)
+class CableThermalCriterion:
+    """Trzecie kryterium doboru kabla (F-K1): wytrzymałość zwarciowa żyły — ZAWSZE rekord.
+
+    Dawniej brak I″k/κ/czasu pomijał kryterium po cichu (kandydat przechodził na dwóch
+    kryteriach, nikt o tym nie mówił). Rekord niesie status maszynowy razem z wyjaśnieniem:
+    co oceniono, wynik (I_th przy czasie t), limit (prąd dopuszczalny propozycji przy t),
+    margines, podstawę czasu i — gdy nie oceniono — akcję naprawczą. Status maszynowy idzie
+    ZAWSZE z ``wyjasnienie`` (kontrakt werdyktu wyjaśnialnego §5): zdanie, przyczyna przy
+    statusie innym niż spełnione i lista brakujących danych przy braku oceny.
+    """
+
+    status: str
+    wyjasnienie: WyjasnienieWerdyktu
+    ikss_a: float | None = None
+    kappa: float | None = None
+    fault_duration_s: float | None = None
+    fault_duration_basis_pl: str = ""
+    ith_a: float | None = None
+    admissible_current_a: float | None = None
+    margin_a: float | None = None
+    action_pl: str | None = None
+
+
+_POWOD_BRAKU_WYTRZYMALOSCI_PL = (
+    "katalog nie podaje wytrzymałości cieplnej 1 s ani danych materiałowych żyły"
+)
+
+
+def _kryterium_zwarciowe(
+    data: CableSelectionInput,
+    *,
+    propozycja: CableCandidate | None,
+    wynik_propozycji: ConductorThermalResult | None,
+    tylko_odrzucenia_zwarciowe: bool,
+) -> CableThermalCriterion:
+    """Rekord kryterium zwarciowego wyniku doboru — jedno miejsce dla każdej gałęzi wyniku."""
+    if data.ikss_a is None or data.kappa is None or data.fault_duration_s is None:
+        return CableThermalCriterion(
+            status=STATUS_KRYTERIUM_NIE_OCENIONO,
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl="Wytrzymałości zwarciowej kabla nie oceniono.",
+                przyczyna_pl=data.short_circuit_unavailable_pl or POWOD_BRAKU_PRADU_ZWARCIOWEGO_PL,
+                czego_brakuje=(_BRAK_PRADU_SZYNY_PL,),
+            ),
+            ikss_a=data.ikss_a,
+            kappa=data.kappa,
+            fault_duration_s=data.fault_duration_s,
+            fault_duration_basis_pl=data.fault_duration_basis_pl,
+            action_pl=AKCJA_URUCHOM_ZWARCIA_PL,
+        )
+    ith_a = _ith_kabla_a(data)
+
+    def rekord(
+        status: str,
+        zdanie_pl: str,
+        *,
+        przyczyna_pl: str | None = None,
+        czego_brakuje: tuple[str, ...] = (),
+        action_pl: str | None = None,
+        admissible_current_a: float | None = None,
+        margin_a: float | None = None,
+    ) -> CableThermalCriterion:
+        """Rekord z liczbami wejścia wspólnymi dla każdej gałęzi z danymi (I″k, κ, czas, I_th)."""
+        return CableThermalCriterion(
+            status=status,
+            wyjasnienie=WyjasnienieWerdyktu(
+                zdanie_pl=zdanie_pl, przyczyna_pl=przyczyna_pl, czego_brakuje=czego_brakuje
+            ),
+            ikss_a=data.ikss_a,
+            kappa=data.kappa,
+            fault_duration_s=data.fault_duration_s,
+            fault_duration_basis_pl=data.fault_duration_basis_pl,
+            ith_a=ith_a,
+            admissible_current_a=admissible_current_a,
+            margin_a=margin_a,
+            action_pl=action_pl,
+        )
+
+    czas = f"{data.fault_duration_s:g} s"
+    if propozycja is None:
+        if tylko_odrzucenia_zwarciowe:
+            return rekord(
+                STATUS_KRYTERIUM_NIE_SPELNIA,
+                (
+                    f"Żaden kabel z katalogu nie wytrzyma prądu cieplnego {ith_a:.0f} A przez "
+                    f"czas trwania zwarcia {czas} (IEC 60949)."
+                ),
+                przyczyna_pl=(
+                    "Prąd cieplny przekracza prąd dopuszczalny żyły każdego kandydata, który "
+                    "spełnił kryterium obciążalności i zmiany napięcia."
+                ),
+                action_pl=(
+                    "Skróć czas wyłączenia zwarcia w polu przyłączenia albo dobierz kabel o "
+                    "większej wytrzymałości zwarciowej spoza katalogu."
+                ),
+            )
+        return rekord(
+            STATUS_KRYTERIUM_NIE_OCENIONO,
+            "Wytrzymałości zwarciowej kabla nie oceniono.",
+            przyczyna_pl=(
+                "Żaden kabel nie spełnił kryterium obciążalności i zmiany napięcia, więc nie ma "
+                "propozycji do sprawdzenia."
+            ),
+            czego_brakuje=(
+                "propozycja kabla spełniająca kryterium obciążalności i zmiany napięcia",
+            ),
+        )
+    assert wynik_propozycji is not None
+    if wynik_propozycji.status == STATUS_THERMAL_PASS:
+        dopuszczalny = wynik_propozycji.admissible_current_a
+        assert dopuszczalny is not None
+        return rekord(
+            STATUS_KRYTERIUM_SPELNIA,
+            (
+                f"{propozycja.name}: prąd cieplny {ith_a:.0f} A przy czasie trwania zwarcia "
+                f"{czas} nie przekracza prądu dopuszczalnego żyły {dopuszczalny:.0f} A (zapas "
+                f"{wynik_propozycji.margin_a:.0f} A; IEC 60949, prąd cieplny wg IEC 60909-0 "
+                f"§4.7)."
+            ),
+            admissible_current_a=dopuszczalny,
+            margin_a=wynik_propozycji.margin_a,
+        )
+    # UNAVAILABLE: katalog kandydata nie daje podstawy wytrzymałości (Ith/Jth ani materiału).
+    powod = (wynik_propozycji.decision_reason_pl or _POWOD_BRAKU_WYTRZYMALOSCI_PL).rstrip(".")
+    return rekord(
+        STATUS_KRYTERIUM_NIE_OCENIONO,
+        f"Wytrzymałości zwarciowej kabla {propozycja.name} nie oceniono.",
+        przyczyna_pl=f"{powod[:1].upper()}{powod[1:]}.",
+        czego_brakuje=(_BRAK_WYTRZYMALOSCI_TYPU_PL,),
+        action_pl=(
+            "Uzupełnij w typie kabla wytrzymałość cieplną 1 s albo materiał żyły i izolację."
+        ),
+    )
+
+
 @dataclass(frozen=True)
 class CableSelectionResult:
     """Wynik doboru kabla SN — WHITE BOX: próg prądu + kandydaci odrzuceni z powodem."""
@@ -369,6 +560,8 @@ class CableSelectionResult:
     derating_set: str = WARUNKI_KATALOGOWE.nazwa
     derating_total: float = 1.0
     derating_assumption_pl: str = ""
+    # Rekord kryterium wytrzymałości zwarciowej kabla — zawsze obecny w wyniku ``propose_mv_cable``.
+    thermal_criterion: CableThermalCriterion | None = None
 
 
 def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
@@ -405,6 +598,8 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
     # Kandydat razem z CALYM wynikiem ΔU — znak (spadek/wzrost) nie jest wtedy
     # odtwarzany po fakcie w warstwie wyzej, tylko przenoszony z rachunku solvera.
     eligible: list[tuple[CableCandidate, CableVoltageDropResult]] = []
+    # Wynik kryterium zwarciowego kandydatów dopuszczonych (rekord propozycji czyta TEN wynik).
+    cieplne: dict[str, ConductorThermalResult] = {}
 
     for candidate in data.candidates:
         drop = compute_cable_voltage_drop(
@@ -457,15 +652,15 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                 )
             )
             continue
-        # Kryterium 3 (F-K1): wytrzymalosc zwarciowa zyly. Sprawdzane WYLACZNIE gdy
-        # znane sa prad cieplny i czas wylaczenia — brak tych danych nie moze skutkowac
-        # cichym przepuszczeniem kandydata jako „spelniajacego", wiec nie jest wtedy
-        # kryterium wcale (kandydat przechodzi na podstawie dwoch pozostalych, a brak
-        # sprawdzenia zglasza wyzsza warstwa kodem gotowosci).
-        if data.ith_a is not None and data.fault_duration_s is not None:
+        # Kryterium 3 (F-K1): wytrzymalosc zwarciowa zyly. Sprawdzane gdy znane sa prad
+        # zwarciowy, κ i czas trwania zwarcia; bez nich kandydat przechodzi na dwoch
+        # pozostalych kryteriach, a wynik niesie rekord ``thermal_criterion`` NIE_OCENIONO
+        # z powodem i akcja (pakiet 6b — nie ciche pominiecie).
+        if data.ikss_a is not None and data.kappa is not None and data.fault_duration_s is not None:
             thermal = check_conductor_thermal_withstand(
                 ConductorThermalInput(
-                    ith_a=data.ith_a,
+                    ikss_a=data.ikss_a,
+                    kappa=data.kappa,
                     fault_duration_s=data.fault_duration_s,
                     ith_1s_a=candidate.ith_1s(),
                     jth_1s_a_per_mm2=candidate.jth_1s_a_per_mm2,
@@ -489,12 +684,13 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                         candidate.catalog_ref,
                         candidate.name,
                         "wytrzymalosc_zwarciowa_niewystarczajaca",
-                        f"Prąd cieplny {data.ith_a:g} A przekracza dopuszczalny "
+                        f"Prąd cieplny {_ith_a(thermal):g} A przekracza dopuszczalny "
                         f"{thermal.admissible_current_a:g} A przy czasie "
                         f"{data.fault_duration_s:g} s.{uzupelnienie}",
                     )
                 )
                 continue
+            cieplne[candidate.catalog_ref] = thermal
         eligible.append((candidate, drop))
 
     if not eligible:
@@ -515,7 +711,7 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             error_code = "converter.der_sn.dobor_kabel_wytrzymalosc_zwarciowa"
             error_pl = (
                 f"❌ Wytrzymałość zwarciowa — żaden kabel z katalogu nie wytrzyma prądu "
-                f"cieplnego {data.ith_a:g} A przez {data.fault_duration_s:g} s."
+                f"cieplnego {_ith_kabla_a(data):g} A przez {data.fault_duration_s:g} s."
             )
         elif rejected:
             error_code = "converter.der_sn.dobor_kabel_spadek_przekroczony"
@@ -538,6 +734,12 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             derating_set=derating.nazwa,
             derating_total=derating.iloczyn,
             derating_assumption_pl=derating.zalozenie_pl(),
+            thermal_criterion=_kryterium_zwarciowe(
+                data,
+                propozycja=None,
+                wynik_propozycji=None,
+                tylko_odrzucenia_zwarciowe=bool(rejected) and only_thermal,
+            ),
         )
 
     # Najmniejszy przekrój spełniający oba warunki; remis rozstrzyga ref (determinizm).
@@ -566,6 +768,12 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
         derating_set=derating.nazwa,
         derating_total=derating.iloczyn,
         derating_assumption_pl=derating.zalozenie_pl(),
+        thermal_criterion=_kryterium_zwarciowe(
+            data,
+            propozycja=best,
+            wynik_propozycji=cieplne.get(best.catalog_ref),
+            tylko_odrzucenia_zwarciowe=False,
+        ),
     )
 
 

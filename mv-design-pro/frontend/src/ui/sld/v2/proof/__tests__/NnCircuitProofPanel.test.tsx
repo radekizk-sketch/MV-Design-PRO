@@ -42,7 +42,6 @@ async function wypelnijWymaganePola(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByTestId('nn-circuit-proof-segment-ref'), 'c1');
   await user.type(screen.getByTestId('nn-circuit-proof-p-mw'), '0.005');
   await user.type(screen.getByTestId('nn-circuit-proof-q-mvar'), '0.002');
-  await user.type(screen.getByTestId('nn-circuit-proof-iz-katalogowe'), '100');
   await user.type(screen.getByTestId('nn-circuit-proof-vdrop-delta'), '0.005');
 }
 
@@ -103,6 +102,25 @@ describe('NnCircuitProofPanel', () => {
     expect(body.segment_ref).toBe('c1');
     expect(body.project_id).toBe('proj-1');
     expect(body.case_id).toBe('case-1');
+    // Dane modelu i biegu nie idą żądaniem (backend odrzuca pole spoza kontraktu 422).
+    expect(Object.keys(body).sort()).toEqual(
+      [
+        'breaker_ref',
+        'bus_ref',
+        'case_id',
+        'case_name',
+        'p_mw',
+        'project_id',
+        'project_name',
+        'q_mvar',
+        'run_id',
+        'run_timestamp',
+        'segment_ref',
+        'snapshot_id',
+        'station_ref',
+        'vdrop_delta_u_total_kv',
+      ].sort(),
+    );
 
     await waitFor(() => expect(anchorClicked).toBe(true));
     await screen.findByText('Pakiet pobrany.');

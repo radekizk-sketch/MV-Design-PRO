@@ -700,13 +700,14 @@
         "catalog_item_id",
         "catalog_item_version",
         "catalog_ref",
-        "ct_ref",
+        "charakterystyki_ref",
         "field_ref",
+        "funkcje",
         "name",
+        "prad_znamionowy_wejscia_a",
         "protection",
         "relay_type",
-        "settings",
-        "vt_ref"
+        "wejscia"
       ],
       "zagniezdzone": {
         "catalog_binding": {
@@ -778,7 +779,6 @@
         "funkcja_pomiaru",
         "gpz_section_id",
         "manufacturer_ref",
-        "protection_ref",
         "rodzaj_pomiaru",
         "source_refs",
         "source_status",
@@ -1105,7 +1105,6 @@
             "field_role",
             "funkcja_pomiaru",
             "manufacturer_ref",
-            "protection_ref",
             "rodzaj_pomiaru",
             "source_refs",
             "source_status",
@@ -1521,7 +1520,6 @@
             "field_role",
             "funkcja_pomiaru",
             "manufacturer_ref",
-            "protection_ref",
             "rodzaj_pomiaru",
             "source_refs",
             "source_status",
@@ -1883,8 +1881,17 @@
     },
     "update_protection_settings": {
       "pola": [
+        "aktywna_grupa",
+        "charakterystyki_ref",
+        "funkcje",
+        "grupa",
+        "macierz_wyzwolen",
+        "nastawy",
+        "pochodzenie",
+        "prad_znamionowy_wejscia_a",
         "protection_ref",
-        "settings"
+        "wejscia",
+        "wlaczone"
       ],
       "zagniezdzone": {}
     }
@@ -6754,7 +6761,7 @@
     {
       "operacja": "update_protection_settings",
       "ladunek": {
-        "protection_ref": 1
+        "aktywna_grupa": 1
       },
       "obce": []
     },

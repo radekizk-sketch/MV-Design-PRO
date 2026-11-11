@@ -7,6 +7,12 @@ import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
  * (`exportPatternToPdf`) — jedno źródło konwencji pobierania plików w tym repo.
  */
 
+/**
+ * Żądanie niesie wyłącznie tożsamość pakietu, obwód w modelu i dane, których model nie
+ * przechowuje (P/Q obwodu, ΔU całkowite). Napięcie szyny, obciążalność i warunki ułożenia,
+ * dane cieplne przewodu, I″k i κ oraz czas wyłączenia backend bierze z modelu i biegu
+ * zwarciowego; pole spoza kontraktu backend odrzuca (422).
+ */
 export interface NnCircuitProofRequest {
   readonly project_id: string;
   readonly case_id: string;
@@ -20,25 +26,10 @@ export interface NnCircuitProofRequest {
   readonly breaker_ref: string;
   readonly segment_ref: string;
   readonly apparatus_branch_ref?: string;
+  /** Bieg zwarciowy przypadku; pominięty — backend bierze najnowszy zakończony (scenariusz MAX). */
+  readonly short_circuit_run_id?: string;
   readonly p_mw: number;
   readonly q_mvar: number;
-  readonly u_ll_kv: number;
-  readonly iz_katalogowe_a: number;
-  readonly srodowisko: 'powietrze' | 'grunt';
-  readonly izolacja: 'PVC' | 'XLPE';
-  readonly temperatura_c: number;
-  readonly liczba_obwodow: number;
-  readonly rezystywnosc_gruntu_km_w?: number;
-  readonly ik_max_ka?: number;
-  readonly ith_a?: number;
-  readonly fault_duration_s?: number;
-  readonly ith_1s_a?: number;
-  readonly jth_1s_a_per_mm2?: number;
-  readonly cross_section_mm2?: number;
-  readonly conductor_material?: string;
-  readonly temp_operating_c?: number;
-  readonly temp_short_circuit_c?: number;
-  readonly vdrop_u_source_kv: number;
   readonly vdrop_delta_u_total_kv: number;
   readonly vdrop_delta_u_total_percent?: number;
 }

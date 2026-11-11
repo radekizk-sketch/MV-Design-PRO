@@ -35,6 +35,7 @@ from enm.store import (
 
 from tests.catalog_test_helpers import gpz_source_record
 from tests.utils.biegi import run_short_circuit_now
+from tests.utils.sterownik import rekord_sterownika, stopien
 
 
 def _nowy_przypadek(uow_factory) -> str:
@@ -181,7 +182,6 @@ def _enm_with_bay() -> dict:
                 "substation_ref": "sub_1",
                 "bus_ref": "bus_sn_b",
                 "equipment_refs": ["cb_in_1", "line_1"],
-                "protection_ref": "prot_oc_1",
             },
         ],
         "junctions": [],
@@ -208,28 +208,31 @@ def _enm_with_bay() -> dict:
         "protection_assignments": [
             {
                 "id": "00000000-0000-0000-0000-000000020109",
-                "ref_id": "prot_oc_1",
-                "name": "Zabezpieczenie pola IN",
                 "tags": [],
                 "meta": {},
-                "breaker_ref": "cb_in_1",
-                "ct_ref": "ct_in_1",
-                "device_type": "overcurrent",
-                "settings": [
-                    {
-                        "function_type": "overcurrent_51",
-                        "threshold_a": 240.0,
-                        "time_delay_s": 0.5,
-                        "curve_type": "IEC_SI",
-                    },
-                    {
-                        "function_type": "overcurrent_50",
-                        "threshold_a": 800.0,
-                        "time_delay_s": 0.05,
-                        "curve_type": "DT",
-                    },
-                ],
-                "is_enabled": True,
+                **rekord_sterownika(
+                    "prot_oc_1",
+                    name="Zabezpieczenie pola IN",
+                    bay_ref="bay_in_1",
+                    wylacznik="cb_in_1",
+                    ct_ref="ct_in_1",
+                    stopnie=[
+                        stopien(
+                            "51",
+                            prog=240.0,
+                            jednostka_progu="A_PIERWOTNY",
+                            krzywa="IEC_SI",
+                            tms=0.5,
+                        ),
+                        stopien(
+                            "50",
+                            prog=800.0,
+                            jednostka_progu="A_PIERWOTNY",
+                            zwloka_s=0.05,
+                            krzywa="DT",
+                        ),
+                    ],
+                ),
             },
         ],
         "branch_points": [],
@@ -247,7 +250,6 @@ def _enm_with_field_specs_only() -> dict:
                 "bay_role": bay["bay_role"],
                 "bus_ref": bay["bus_ref"],
                 "equipment_refs": bay["equipment_refs"],
-                "protection_ref": bay["protection_ref"],
                 "tags": bay["tags"],
                 "meta": bay["meta"],
             }
@@ -269,6 +271,7 @@ def _enm_with_fw_bay() -> dict:
     payload["bays"][0]["ref_id"] = "bay_fw_1"
     payload["bays"][0]["name"] = "Pole FW"
     payload["bays"][0]["bay_role"] = "OZE"
+    payload["protection_assignments"][0]["bay_ref"] = "bay_fw_1"
     payload["measurements"][0]["bay_ref"] = "bay_fw_1"
     payload["measurements"].append(
         {
@@ -350,7 +353,7 @@ def test_get_field_view_returns_canonical_bay_contract(uow_factory):
     assert canonical["integrity_status"] == "po_migracji"
     assert canonical["base_model"]["bay_role"] == "LINIA_IN"
     assert canonical["base_model"]["measurement_chain"]["ct_refs"] == ["ct_in_1"]
-    assert canonical["base_model"]["protection_config"]["functions"][0]["code"] in {"50", "51"}
+    assert [f["kod"] for f in canonical["base_model"]["zabezpieczenie"]["funkcje"]] == ["51", "50"]
     # Zmiana kanonu (karta #135, fabrykacja stanu ruchowego pola): dostępność pomiarów
     # i sterowania ("czesciowe" / "czesciowo_dostepne") była wymyślana z samej obecności
     # przekładnika i zabezpieczenia w modelu. Model bez źródła runtime nie ma telemetrii —
@@ -410,7 +413,7 @@ def test_get_field_view_czyta_pola_zmigrowane_z_archiwum(uow_factory, payload):
     assert item["bay_name"] == "Pole IN"
     assert item["canonical_model"]["base_model"]["bay_role"] == "LINIA_IN"
     assert item["canonical_model"]["base_model"]["measurement_chain"]["ct_refs"] == ["ct_in_1"]
-    assert item["canonical_model"]["base_model"]["protection_config"]["unit_ref"] == "prot_oc_1"
+    assert item["canonical_model"]["base_model"]["zabezpieczenie"]["ref_id"] == "prot_oc_1"
 
 
 def test_get_field_view_nie_syntetyzuje_pol_gpz_z_sekcji(uow_factory):

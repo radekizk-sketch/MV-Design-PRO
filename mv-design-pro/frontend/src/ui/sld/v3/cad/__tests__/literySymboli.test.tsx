@@ -32,7 +32,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import metrykiKroju from '../../core/metrykiKroju.json';
 import { MIN_TEXT_SCREEN_PX } from '../../core/text';
-import { FUNKCJA_ZABEZPIECZENIA, znakiIec } from '../../lv-domain/symbolRegistry';
+import { znakiIec } from '../../lv-domain/symbolRegistry';
+import { wszystkieFunkcjeEaz } from '../../../../shared/funkcjeEaz';
 import { CAD_U_PX } from '../../lv-domain/visualGrammar';
 import type { SymbolId } from '../../symbols/defs';
 import {
@@ -499,7 +500,8 @@ describe('(B) tusz litery nie dotyka kreski własnego symbolu', () => {
   });
 
   it('znaki wnętrza zabezpieczenia CAD (notacja IEC funkcji nN): każda funkcja sama, każda para i lista > 2 („+N”)', () => {
-    const kody = Object.keys(FUNKCJA_ZABEZPIECZENIA);
+    // Każda funkcja zabezpieczeniowa rejestru (kody, które niesie sterownik w modelu).
+    const kody = wszystkieFunkcjeEaz().filter((f) => f.rodzaj === 'ZABEZPIECZENIE').map((f) => f.kod);
     const listy = [...kody.map((k) => [k]), ...kody.flatMap((a) => kody.filter((b) => b !== a).map((b) => [a, b])), kody];
     const bazowa = CAD_SYMBOL_STROKE_PX / CAD_U_PX;
     const ids = CAD_SYMBOL_IDS.filter((id) => ELECTRICAL_CAD_SYMBOL_REGISTRY[id].functionalClass === 'zabezpieczenie');
@@ -569,10 +571,12 @@ describe('(B) blok zabezpieczeń: kody słownika funkcji EAZ wierszami wewnątrz
   // Wpis może mieć komentarz między nawiasem a kodem — pomijany.
   const KODY = [...zrodlo.matchAll(/FunkcjaEaz\(\s*(?:#[^\n]*\n\s*)*"([^"]+)"/g)].map((m) => m[1]);
 
-  // 34 kody: jedna nomenklatura, każda funkcja raz (decyzja architekta 2026-10-30 — SCO
-  // z ponownym załączeniem po SCO jednym wpisem, numery IEEE C37.2 zamiast nazw własnych).
-  it('słownik czytany ze źródła backendu (34 kody, bez powtórzeń)', () => {
-    expect(KODY).toHaveLength(34);
+  // 38 kodów: jedna nomenklatura, każda funkcja raz (decyzja architekta 2026-10-30 — SCO
+  // z ponownym załączeniem po SCO jednym wpisem; karta OCHRONA-JEDNO-ZRODLO dodała funkcje
+  // 21, 46, 49, 87L, żeby sterownik pola modelował każdą funkcję bez przebudowy;
+  // numery IEEE C37.2 zamiast nazw własnych).
+  it('słownik czytany ze źródła backendu (38 kodów, bez powtórzeń)', () => {
+    expect(KODY).toHaveLength(38);
     expect(new Set(KODY).size).toBe(KODY.length);
   });
 
@@ -595,6 +599,24 @@ describe('(B) blok zabezpieczeń: kody słownika funkcji EAZ wierszami wewnątrz
       }
       przypadki += 1;
     }
-    expect(przypadki).toBe(34 + 34 * 33);
+    expect(przypadki).toBe(38 + 38 * 37);
+    expect(wOkregu).toBeGreaterThan(0);
+  });
+
+  it('kody, które pismem 8 px nie mieszczą się w okręgu same — jawna lista (idą do wierszy bloku)', () => {
+    const zaSzerokie = KODY.filter((k) => ukladKodowWOkregu([k]).kody.length === 0);
+    expect(zaSzerokie).toMatchInlineSnapshot(`
+      [
+        "50BF",
+        "SPZE",
+        "OWG",
+        "ZAWSC",
+      ]
+    `);
+  });
+
+  it('para kodów pola liniowego ENEA (51, 50) i (51N, 67N) mieści się w dwóch wierszach', () => {
+    expect(ukladKodowWOkregu(['51', '50', '51N']).kody).toEqual(['51', '50']);
+    expect(ukladKodowWOkregu(['51N', '67N']).kody).toEqual(['51N', '67N']);
   });
 });

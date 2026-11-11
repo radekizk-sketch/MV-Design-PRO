@@ -368,15 +368,21 @@ def test_kazdy_typ_aparatu_ma_nazwe() -> None:
 
 def test_rodzaj_obwodu_jednym_predykatem_dla_tn_i_tt_it() -> None:
     """Rodzaj obwodu (odbiorczy/rozdzielczy) wchodzi wprost do zdań werdyktu TN i TT/IT —
-    ``rodzaj_obwodu_dla_aparatu`` jest JEDYNYM miejscem walidacji i zwraca wyłącznie słowa
-    ``RODZAJE_OBWODU``; rodzaj spoza słownika odrzuca tak samo dla obu układów."""
-    from application.analyses.swz.werdykt import RODZAJE_OBWODU, rodzaj_obwodu_dla_aparatu
+    ``rozstrzygnij_rodzaj_obwodu_nn`` jest JEDYNYM miejscem walidacji (to samo rozstrzygnięcie
+    czyta I²t obwodu nN) i zwraca wyłącznie słowa ``RodzajObwoduNn``; rodzaj spoza słownika
+    odrzuca tak samo dla obu układów, a komunikat nie powtarza wartości spoza słownika."""
+    from typing import get_args
+
+    from network_model.catalog.wartosci_robocze import RodzajObwoduNn, rozstrzygnij_rodzaj_obwodu_nn
 
     wyniki = {
-        rodzaj_obwodu_dla_aparatu(in_a, jawny)
+        rozstrzygnij_rodzaj_obwodu_nn(rodzaj_projektanta=jawny, in_a=in_a).rodzaj
         for in_a in (None, 16.0, 400.0)
-        for jawny in (None, *RODZAJE_OBWODU)
+        for jawny in (None, *get_args(RodzajObwoduNn))
     }
-    assert wyniki == set(RODZAJE_OBWODU)
-    with pytest.raises(ValueError, match="Rodzaj obwodu musi być"):
-        rodzaj_obwodu_dla_aparatu(16.0, "final")
+    assert wyniki == set(get_args(RodzajObwoduNn))
+    with pytest.raises(
+        ValueError, match="Rodzaj obwodu nN musi być odbiorczy albo rozdzielczy"
+    ) as blad:
+        rozstrzygnij_rodzaj_obwodu_nn(rodzaj_projektanta="final", in_a=16.0)
+    assert "final" not in str(blad.value)

@@ -234,6 +234,10 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "insert_section_switch_sn:normal_state": "Pozycja normalna",  # lacznik/strings.ts stan
     "insert_section_switch_sn:close_ref": "Dotychczasowy punkt podziału do zamknięcia",  # lacznik/strings.ts zamknijPoprzedni
     "update_element_parameters:normal_state": "Pozycja normalna łącznika",
+    # Pakiety 6a i 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: przyjęty czas zwarcia na
+    # łączniku (obwód nN i pole SN) — wiersz karty technicznej i pole „przyjęty czas zwarcia”.
+    "update_element_parameters:czas_wylaczenia_zwarcia_s": "Przyjęty czas zwarcia [s]",  # ui2/wyniki/zwarcia/aparatura/strings.ts przyjetyCzas
+    "update_element_parameters:rodzaj_obwodu_nn": "Rodzaj obwodu nN",  # ui/sld/shared/kartaTechnicznaElementu.ts (wiersz rodzaj_obwodu_nn)
     "switch_state": "Stan normalny łączników odgałęzienia",
     "set_bay_equipment:mode": "Sposób wyposażenia pola",
     "set_bay_equipment:devices": "Aparaty pola",
@@ -685,19 +689,6 @@ def wartosc_w_zdaniu(wartosc: object) -> str:
 def w_cudzyslowie(nazwy: Iterable[str]) -> list[str]:
     """Każda nazwa w cudzysłowie „…” — do list wartości w zdaniu."""
     return [f"„{nazwa}”" for nazwa in nazwy]
-
-
-#: Rodzaj zabezpieczenia (``ProtectionAssignment.device_type``) → nazwa przymiotnikowa
-#: („zabezpieczenie nadprądowe"). Słowa = inspektor frontu
-#: (``ui2/adapters/inspectorAdapter.ts::ETYKIETA_RODZAJU_ZABEZPIECZENIA``, małą literą).
-NAZWY_RODZAJOW_ZABEZPIECZENIA_PL: dict[str, str] = {
-    "overcurrent": "nadprądowe",
-    "earth_fault": "ziemnozwarciowe",
-    "directional_overcurrent": "nadprądowe kierunkowe",
-    "distance": "odległościowe",
-    "differential": "różnicowe",
-    "custom": "niestandardowe",
-}
 
 
 #: Rodzaj generatora (``Generator.gen_type``) → nazwa. Słowa = formularz źródła frontu

@@ -35,7 +35,7 @@ const TB_PROPOZYCJA: CzasTbPunktu = {
   pochodzenie: 'PROPOZYCJA',
   wartosc_robocza: true,
   jakosc: 'ESTIMATED',
-  opis_pl: 't_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …): brak pól.',
+  opis_pl: 'Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 …): brak pól.',
   zrodlo_pl: 'węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)',
 };
 const TB_POLE_ROBOCZE: CzasTbPunktu = {
@@ -43,7 +43,7 @@ const TB_POLE_ROBOCZE: CzasTbPunktu = {
   pochodzenie: 'Z_POL',
   wartosc_robocza: true,
   jakosc: 'ESTIMATED',
-  opis_pl: 't_b = 0,16 s z pola Odpływ 1 (czas własny wyłącznika — wartość robocza).',
+  opis_pl: 'Czas przerwania prądu zwarciowego 0,16 s z pola Odpływ 1 (czas własny wyłącznika — wartość robocza).',
   pole_ref: 'pole/1',
   pole_nazwa: 'Odpływ 1',
   zabezpieczenie_ref: 'zab/1',
@@ -59,7 +59,7 @@ const TB_POLE_KARTA: CzasTbPunktu = {
   jakosc: null,
   czas_wlasny_s: 0.05,
   czas_wlasny_pochodzenie: 'KATALOG',
-  opis_pl: 't_b = 0,15 s z pola Odpływ 1 (czas własny wyłącznika z karty katalogowej).',
+  opis_pl: 'Czas przerwania prądu zwarciowego 0,15 s z pola Odpływ 1 (czas własny wyłącznika z karty katalogowej).',
 };
 
 describe('naBilansIEC — Ib i iDC(tb) × obecność wartości', () => {
@@ -113,7 +113,7 @@ describe('naBilansIEC — pozycja tb × pochodzenie tb punktu', () => {
 describe('naZalozeniaZwarc — czas wyłączenia tb biegu', () => {
   const NAZWA = (ref: string) => `Element ${ref}`;
   const OPIS_REGULY =
-    'Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól …';
+    'Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu każdego punktu zwarcia to najkrótszy czas wyłączenia pól …';
 
   it('tb scenariusza → wiersz z wartością w sekundach', () => {
     const z = naZalozeniaZwarc(

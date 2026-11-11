@@ -50,8 +50,10 @@ from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import ia_gwarantowane_a
 from network_model.catalog.wartosci_robocze import (
+    RodzajObwoduRozstrzygniety,
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,
+    rozstrzygnij_rodzaj_obwodu_nn,
 )
 from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import (
@@ -62,14 +64,6 @@ from network_model.solvers.protection_lv_curves import (
     compute_fuse_gg_gate,
 )
 from werdykt import DanaPrzyjeta, format_liczba
-
-# Próg prądu znamionowego obwodu odbiorczego wg §411.3.2.2 normy — karta P0.6
-# upraszcza do JEDNEGO progu 63 A (patrz docstring
-# ``lv_disconnection_times_iec60364_4_41`` — norma rozróżnia 63 A dla obwodów
-# z gniazdami / 32 A dla odbiorników na stałe; obecność gniazd nie jest
-# modelowana). Uproszczenie JAWNE — konsument może nadpisać przez
-# ``rodzaj_obwodu`` jawnie podany.
-PROG_PRADU_OBWODU_ODBIORCZEGO_A = 63.0
 
 _TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG", "MCCB")
 
@@ -87,31 +81,12 @@ def nazwa_typu_aparatu_swz_pl(typ: str) -> str:
     return NAZWY_TYPOW_APARATU_SWZ_PL.get(typ, "aparat rodzaju spoza słownika werdyktu SWZ")
 
 
-#: Rodzaje obwodu PN-HD 60364-4-41 §411.3.2.2 (odbiorczy) i §411.3.2.3 (rozdzielczy) — słowa
-#: polskie, wartości stoją wprost w zdaniach werdyktu SWZ (TN i TT/IT).
-RODZAJE_OBWODU: tuple[str, ...] = ("odbiorczy", "rozdzielczy")
-
-
-def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> str:
-    """Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDEN predykat dla werdyktu TN i TT/IT.
-
-    Jawnie podany rodzaj wygrywa; bez niego próg ``PROG_PRADU_OBWODU_ODBIORCZEGO_A`` na prądzie
-    znamionowym aparatu (uproszczenie karty P0.6, patrz komentarz stałej); aparat bez In =
-    obwód rozdzielczy (dłuższy czas — zachowanie zastane werdyktu TN, wołający TT/IT nazywa
-    brak In w śladzie).
-    """
-    if rodzaj_jawny is not None:
-        if rodzaj_jawny not in RODZAJE_OBWODU:
-            raise ValueError(
-                "Rodzaj obwodu musi być odbiorczy, rozdzielczy albo nieokreślony "
-                "(wtedy wynika z prądu znamionowego aparatu)."
-            )
-        return rodzaj_jawny
-    return (
-        "odbiorczy"
-        if (in_a is not None and in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A)
-        else "rozdzielczy"
-    )
+def dane_przyjete_rodzaju(
+    rodzaj: RodzajObwoduRozstrzygniety, miejsce_pl: str
+) -> tuple[DanaPrzyjeta, ...]:
+    """Dana przyjęta rodzaju obwodu (wartość robocza) dla werdyktu — pusta przy deklaracji."""
+    dana = rodzaj.dana_przyjeta(miejsce_pl=miejsce_pl)
+    return (dana,) if dana is not None else ()
 
 
 class SwzStatus(StrEnum):
@@ -264,6 +239,7 @@ def ocen_swz(
     aparat: AparatZabezpieczajacy,
     rodzaj_obwodu: str | None = None,
     dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
+    miejsce_pl: str = "obwód nN",
 ) -> SwzResult:
     """Werdykt 3-stanowy SWZ dla obwodu w układzie TN (IEC 60364-4-41).
 
@@ -279,9 +255,11 @@ def ocen_swz(
             route_segments_min_scenario``).
         u0_v: Napięcie fazowe znamionowe [V] (zwykle 230 V).
         aparat: Dane aparatu zabezpieczającego (MCB albo wkładka gG).
-        rodzaj_obwodu: ``"odbiorczy"`` / ``"rozdzielczy"`` — jeśli ``None``,
-            wyprowadzone z ``aparat.in_a`` wg progu 63 A (uproszczenie karty,
-            patrz ``PROG_PRADU_OBWODU_ODBIORCZEGO_A``).
+        rodzaj_obwodu: ``"odbiorczy"`` / ``"rozdzielczy"`` — wartość projektanta na aparacie
+            obwodu (``rodzaj_obwodu_nn``); ``None`` — rozstrzygnięcie z prądu znamionowego
+            aparatu (``rozstrzygnij_rodzaj_obwodu_nn``: ≤ 63 A — obwód odbiorczy jako wartość
+            robocza, dana przyjęta w wyniku).
+        miejsce_pl: nazwa obwodu w danej przyjętej rodzaju obwodu.
 
     Raises:
         ValueError: ``ik1_min_a < 0``, ``rodzaj_obwodu`` spoza
@@ -295,7 +273,11 @@ def ocen_swz(
     trace: list[dict[str, Any]] = []
     pasmo = pasmo_dla_u0(u0_v)
 
-    rodzaj = rodzaj_obwodu_dla_aparatu(aparat.in_a, rodzaj_obwodu)
+    rozstrzygniecie = rozstrzygnij_rodzaj_obwodu_nn(
+        rodzaj_projektanta=rodzaj_obwodu, in_a=aparat.in_a
+    )
+    rodzaj = rozstrzygniecie.rodzaj
+    dane_przyjete = (*dane_przyjete, *dane_przyjete_rodzaju(rozstrzygniecie, miejsce_pl))
 
     wpis_czasu = TABLICA_TN_ODBIORCZE[pasmo] if rodzaj == "odbiorczy" else CZAS_TN_ROZDZIELCZY
     t_wymagany = wpis_czasu.czas_s
@@ -307,6 +289,7 @@ def ocen_swz(
             "u0_v": u0_v,
             "pasmo_u0": pasmo,
             "rodzaj_obwodu": rodzaj,
+            "rodzaj_obwodu_uzasadnienie_pl": rozstrzygniecie.uzasadnienie_pl,
             "t_wymagany_s": t_wymagany,
             "podstawa": wpis_czasu.podstawa,
         }

@@ -22,8 +22,10 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     ZRODLO_BRAK_PRADU,
     ZRODLO_NASTAWA,
     ZRODLO_PONIZEJ_ROZRUCHU,
+    ZRODLO_PROJEKTANT,
+    ZRODLO_WARTOSC_ROBOCZA,
     ZRODLO_ZALOZENIE_PRZYPADKU,
-    mapa_tk_s_z_nastaw,
+    mapa_tk_s,
     nastawy_aparatow_modelu,
     podsumowanie_czasow,
     slad_czasu,
@@ -43,6 +45,8 @@ from network_model.solvers.short_circuit_contributions import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+
+from tests.utils.sterownik import sterownik, stopien
 
 # ---------------------------------------------------------------------------
 # Fixtures: GPZ -[wylacznik CB1]- BUS2 -[kabel A]- BUS3 -[kabel B]- BUS4
@@ -211,28 +215,27 @@ def _zabezpieczenie(
     threshold_a: float = 600.0,
     time_multiplier: float | None = 0.2,
     time_delay_s: float | None = None,
-    function_type: str = "overcurrent_51",
+    kod: str = "51",
     is_enabled: bool = True,
 ) -> ProtectionAssignment:
     """Zabezpieczenie z modelu: próg po stronie PIERWOTNEJ (jednostka jawna, PZ-09),
     przekładnik 600/5 5P20, przekaźnik z katalogu z zakresami w ×In (REF-OC-200)."""
-    return ProtectionAssignment(
+    return sterownik(
         ref_id=f"prot-{breaker_ref}",
         name=f"Zabezpieczenie {breaker_ref}",
-        breaker_ref=breaker_ref,
+        wylacznik=breaker_ref,
         ct_ref="ct",
-        device_type="overcurrent",
         catalog_ref="REF-OC-200",
         is_enabled=is_enabled,
-        settings=[
-            {
-                "function_type": function_type,
-                "threshold_a": threshold_a,
-                "threshold_unit": "A_PIERWOTNY",
-                "curve_type": curve_type,
-                "time_multiplier": time_multiplier,
-                "time_delay_s": time_delay_s,
-            }
+        stopnie=[
+            stopien(
+                kod,
+                prog=threshold_a,
+                jednostka_progu="A_PIERWOTNY",
+                krzywa=curve_type,
+                tms=time_multiplier,
+                zwloka_s=time_delay_s,
+            )
         ],
     )
 
@@ -276,7 +279,7 @@ def test_czas_z_charakterystyki_odwrotnej_zgadza_sie_z_rachunkiem_recznym() -> N
     assert pozycja.z_nastawy is True
     assert pozycja.tk_s == pytest.approx(0.594119, abs=1e-5)
     assert pozycja.urzadzenie_ref == ref_to_graph_id("CB1")
-    assert pozycja.funkcja == "overcurrent_51"
+    assert pozycja.funkcja == "51"  # kod funkcji rejestru (karta OCHRONA-JEDNO-ZRODLO)
     assert pozycja.prad_galezi_a == pytest.approx(6000.0)
     assert pozycja.prad_rozruchowy_a == pytest.approx(600.0)
     assert pozycja.krzywa == "IEC_SI"
@@ -397,7 +400,7 @@ def test_funkcja_ziemnozwarciowa_nie_wyznacza_czasu_zwarcia_miedzyfazowego() -> 
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        nastawy_aparatow=_nastawy(_zabezpieczenie(function_type="earth_fault_51N")),
+        nastawy_aparatow=_nastawy(_zabezpieczenie(kod="51N")),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW
@@ -434,27 +437,51 @@ def test_niekompletna_nastawa_krzywej_odwrotnej_daje_jawny_brak() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_mape_nadpisan_tworza_WYLACZNIE_czasy_z_nastaw() -> None:
-    """Czas przypadku nadpisuje sie tylko tam, gdzie nastawa zostala rozwiazana.
-
-    Wpisanie tu galezi bez czasu odebraloby projektantowi ocene, ktora ma prawo
-    zrobic na wlasnym zalozeniu normowym — a wpisanie jej z czasem przypadku
-    udawaloby nastawe. Dlatego takiej galezi w mapie po prostu NIE MA.
-    """
-    czasy = wyznacz_czasy_wylaczenia(
-        graph=_graf(), sc_result=_sc_result(prad_a=6000.0), nastawy_aparatow=_nastawy()
+def test_mapa_czasu_ma_kazda_galaz_z_jednego_rozstrzygniecia() -> None:
+    """Pakiet 8: mapa czasu trwania zwarcia (``mapa_tk_s``) niesie KAŻDĄ gałąź śladu — czas
+    nigdy nie jest pusty. Intencja dawnego testu („czas przypadku nie udaje nastawy”) zostaje:
+    źródło rozróżnia nastawę, czas przypadku i wartość roboczą 1 s, a liczba nastawy jest
+    liczbą solvera IEC 60255."""
+    bez_nastaw = slad_czasu(
+        wyznacz_czasy_wylaczenia(
+            graph=_graf(), sc_result=_sc_result(prad_a=6000.0), nastawy_aparatow=_nastawy()
+        ),
+        tk_s_zalozony=1.0,
+        czas_przypadku_jawny=False,
     )
-    assert mapa_tk_s_z_nastaw(czasy) == {}
+    assert mapa_tk_s(bez_nastaw) == {"kabel_A": 1.0, "kabel_B": 1.0}
+    assert {p["zrodlo"] for p in bez_nastaw.values()} == {ZRODLO_WARTOSC_ROBOCZA}
+    for pozycja in bez_nastaw.values():
+        assert "IEC 62271-1" in pozycja["podstawa_pl"]
+        assert pozycja["dana_przyjeta"]["jakosc"] == "ESTIMATED"
 
-    z_nastawa = wyznacz_czasy_wylaczenia(
-        graph=_graf(),
-        sc_result=_sc_result(prad_a=6000.0),
-        nastawy_aparatow=_nastawy(_zabezpieczenie()),
+    z_nastawa = slad_czasu(
+        wyznacz_czasy_wylaczenia(
+            graph=_graf(),
+            sc_result=_sc_result(prad_a=6000.0),
+            nastawy_aparatow=_nastawy(_zabezpieczenie()),
+        ),
+        tk_s_zalozony=1.0,
+        czas_przypadku_jawny=False,
     )
-    mapa = mapa_tk_s_z_nastaw(z_nastawa)
+    mapa = mapa_tk_s(z_nastawa)
     assert set(mapa) == {"kabel_A", "kabel_B"}
     assert all(wartosc == pytest.approx(0.594119, abs=1e-5) for wartosc in mapa.values())
     assert list(mapa) == sorted(mapa), "kolejnosc deterministyczna"
+    assert all(p["dana_przyjeta"] is None for p in z_nastawa.values())
+
+    projektant = slad_czasu(
+        wyznacz_czasy_wylaczenia(
+            graph=_graf(),
+            sc_result=_sc_result(prad_a=6000.0),
+            nastawy_aparatow=_nastawy(_zabezpieczenie()),
+        ),
+        tk_s_zalozony=1.0,
+        czasy_projektanta={"kabel_A": (3.0, "przyjęty czas zwarcia na wyłączniku „Q1”")},
+    )
+    assert projektant["kabel_A"]["tk_s"] == pytest.approx(3.0)
+    assert projektant["kabel_A"]["zrodlo"] == ZRODLO_PROJEKTANT
+    assert projektant["kabel_B"]["zrodlo"] == ZRODLO_NASTAWA
 
 
 def test_slad_czasu_nazywa_zrodlo_dla_KAZDEJ_galezi() -> None:
@@ -560,7 +587,7 @@ def test_galaz_z_wkladem_pominietym_nie_wykazuje_pradu_zero(
     if sciezka == "ponizej_rozruchu":
         assert NAZWA_WKLADU_POMINIETEGO in czasy["kabel_B"].powod_pl
         assert "0.0 A" not in czasy["kabel_B"].powod_pl
-        assert "Prąd gałęzi 400.0 A" in czasy["kabel_A"].powod_pl
+        assert "Prąd gałęzi 400 A" in czasy["kabel_A"].powod_pl
         assert NAZWA_WKLADU_POMINIETEGO not in czasy["kabel_A"].powod_pl
     slad = slad_czasu(czasy, tk_s_zalozony=1.0)
     assert slad["kabel_B"]["prad_galezi_a"] is None

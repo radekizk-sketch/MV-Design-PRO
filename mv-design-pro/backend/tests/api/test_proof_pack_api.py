@@ -448,8 +448,8 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
         "Punkt zwarcia: całkowity początkowy prąd zwarciowy"
     )
     assert dane["wywod"][2]["tekst"].startswith(
-        "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s "
-        "— wartość robocza"
+        "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. "
+        "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza"
     )
     assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
     # Karta PODSTAWA-Q: po zdaniu t_min — zdania wartości roboczych maszyny (x″d, cos φ_rG).
@@ -862,9 +862,10 @@ def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalo
     assert response.status_code == 200, response.text
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
-    # VD4 12kV 630A z katalogu: U_m=12kV >= 10,0kV (biegu); I_cu=20kA >= 4,54kA -> PASS.
+    # VD4 12kV 630A z katalogu: U_m=12kV >= 10,0kV (biegu); I_sc=20kA >= 4,54kA -> PASS.
+    # Wyłącznik SN: znamię I_sc wg IEC 62271-100 § 4.101 (karta APARATURA-TABELA), nie I_cu.
     u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
-    icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
+    icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{sc}")
     assert u_m_value["value"] == 12.0
     assert icu_value["value"] == 20.0
     assert dokument["summary"]["key_results"]["u_m_ok"]["value"] == "PASS"
@@ -941,7 +942,7 @@ def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu():
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
     u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
-    icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
+    icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{sc}")
     assert u_m_value["value"] == 99.0
     assert icu_value["value"] == 77.0
 
@@ -978,16 +979,18 @@ def test_sc3f_contributions_bez_scenariusza_i_z_c_factor_to_422(tmp_path) -> Non
 
 
 @pytest.mark.parametrize(
-    ("type_ref", "symbol"),
+    ("type_ref", "symbol", "znamie"),
     [
-        ("sw-cb-abb-vd4-12kv-630a", "I_b"),
-        ("sw-fuse-eti-vv-12kv-63a", "I_k''"),
-        ("sw-rec-abb-rec615-17kv-630a", "I_b"),
+        # Znamię wg normy aparatu (karta APARATURA-TABELA): wyłącznik i reklozer SN — I_sc
+        # (IEC 62271-100 § 4.101), bezpiecznik SN — I_1 (IEC 60282-1).
+        ("sw-cb-abb-vd4-12kv-630a", "I_b", "I_{sc}"),
+        ("sw-fuse-eti-vv-12kv-63a", "I_k''", "I_{1}"),
+        ("sw-rec-abb-rec615-17kv-630a", "I_b", "I_{sc}"),
     ],
     ids=["wylacznik_sn", "bezpiecznik_sn", "reklozer_sn"],
 )
 def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
-    type_ref: str, symbol: str
+    type_ref: str, symbol: str, znamie: str
 ):
     """Karta SC-IB-ITH-ZRODLA — realna ścieżka HTTP: rodzaj aparatu z pozycji katalogu
     (``type_ref``) wybiera wielkość kryterium wyłączania tym samym predykatem co ocena pól
@@ -1018,7 +1021,7 @@ def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dowod = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
     krok = next(k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_P12_004")
-    assert krok["equation"]["latex"] == rf"I_{{cu}} \ge {symbol}"
+    assert krok["equation"]["latex"] == rf"{znamie} \ge {symbol}"
 
 
 @pytest.mark.parametrize("t_b_s", [0.10, 0.2])

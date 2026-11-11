@@ -1489,7 +1489,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "1d64e0c021d6a894923a0af25c10585be9848ac143336230072e57952df3bd8c",
+  "projection_hash": "9d75fc01cce562ca896e18a354d626322d9e13d5bb50db9bd439ddef50c025af",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1816,13 +1816,22 @@
               "station_ref": "stAB",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Odbiór A1)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 63 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 630.0,
                 "ik1_min_a": 1549.22389,
                 "margines": 2.45908553,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1549.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1549.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Odbiór A1) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -1830,6 +1839,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 63 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -2387,6 +2397,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód rozdzielczy — aparat 100 A > 63 A (PN-HD 60364-4-41:2017 §411.3.2.2: obwód odbiorczy do 63 A)",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
                     "u0_v": 230.940108
@@ -2724,13 +2735,22 @@
               "station_ref": "stAB",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Odbiór B2)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": null,
                 "ik1_min_a": 1548.94553,
                 "margines": null,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1548.9 A większy od prądu niezadziałania 40.0 A (wkładka gG 32 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy wymaganym czasie wyłączenia 0.4 s SWZ (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania przy czasie umownym (1-4 h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki prądu niezadziałania i zadziałania (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (3600 s), NIE w wymaganym czasie SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe).",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1548.9 A większy od prądu niezadziałania 40.0 A (wkładka gG 32 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy wymaganym czasie wyłączenia 0.4 s SWZ (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania przy czasie umownym (1-4 h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki prądu niezadziałania i zadziałania (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (3600 s), NIE w wymaganym czasie SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe). Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Odbiór B2) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "nierozstrzygalne",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -2738,6 +2758,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -3094,6 +3115,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód rozdzielczy — aparat 80 A > 63 A (PN-HD 60364-4-41:2017 §411.3.2.2: obwód odbiorczy do 63 A)",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
                     "u0_v": 230.940108

@@ -60,12 +60,12 @@ ZERO NOWEJ FIZYKI — czysta KOMPOZYCJA istniejących dostawców:
                             `_kryterium_swz`).
   - I²t:                    `network_model.solvers.conductor_thermal_
                             withstand.check_conductor_thermal_withstand` —
-                            Ith z biegu zwarciowego (`ith_ka` w punkcie
-                            najgorszym), czas wyłączenia `fault_duration_s`
-                            PARAMETREM WEJŚCIOWYM (wymaga analizy koordynacji
-                            zabezpieczeń — poza zakresem tej karty, jak w
-                            `api/nn_proof.py::LVCircuitVerificationPackRequest`,
-                            które TEŻ przyjmuje go jako wejście, nie liczy).
+                            I″k i κ z biegu zwarciowego (punkt najgorszy),
+                            czas wyłączenia z `czas_wylaczenia_nn.
+                            czas_wylaczenia_obwodu_nn` (wartość projektanta na
+                            aparacie > charakterystyka aparatu przy I″k >
+                            wartość robocza PN-HD 60364-4-41) — ten sam
+                            dostawca co dowód obwodu nN (`api/nn_proof.py`).
   - ΔU odcinkowy/całkowity: `application.analyses.voltage_profile_view.
                             build_voltage_profile_view` (dekompozycja P0.4),
                             ograniczona do odcinków NALEŻĄCYCH do trasy tego
@@ -95,6 +95,7 @@ from __future__ import annotations
 import math
 from typing import Any, Literal
 
+from application.analyses.czas_wylaczenia_nn import CzasWylaczeniaNn, czas_wylaczenia_obwodu_nn
 from application.analyses.fault_loop.route import (
     LvBusPath,
     RouteExtractionError,
@@ -166,8 +167,9 @@ from network_model.catalog.wartosci_robocze import (
     dane_przyjete_maszyn,
 )
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
+from network_model.pochodne import ka_na_a, km_na_m, kv_na_v, napiecie_fazowe_v, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
+    WspolczynnikiObciazalnosciNN,
     obciazalnosc_skorygowana,
     wspolczynniki_nn,
 )
@@ -335,9 +337,45 @@ def _pole_warunkow(warunki: dict[str, Any], klucz: str, rodzaj: type[Any]) -> An
         raise OdmowaDanychError(f"pole {nazwa} ma niepoprawną wartość") from exc
 
 
-def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
+def _iz_katalogowe_kabla(cable: Cable) -> float | None:
+    """Obciążalność długotrwała z karty typu kabla (materializacja katalogowa) [A]."""
     params = cable.materialized_params if isinstance(cable.materialized_params, dict) else None
-    iz_katalogowe = params.get("i_max_a") if params else None
+    wartosc = params.get("i_max_a") if params else None
+    return float(wartosc) if wartosc is not None else None
+
+
+def _wspolczynniki_ulozenia_kabla(cable: Cable) -> tuple[WspolczynnikiObciazalnosciNN, str]:
+    """Współczynniki Iz′ odcinka z warunków ułożenia w modelu (``meta.cable_laying_conditions``)
+    — JEDNO odczytanie dla arkusza i dowodu obwodu nN. Bez deklaracji: warunki katalogowe
+    (powietrze 30 °C, jeden obwód — iloczyn 1,0, konwencja kodu W060). Rzuca
+    ``KeyError``/``ValueError``/``OdmowaDanychError`` przy deklaracji niekompletnej.
+    """
+    warunki = (cable.meta or {}).get("cable_laying_conditions") if cable.meta else None
+    if not warunki:
+        izolacja: Literal["PVC", "XLPE"] = "PVC" if cable.insulation == "PVC" else "XLPE"
+        return (
+            wspolczynniki_nn(
+                srodowisko="powietrze", izolacja=izolacja, temperatura_c=30.0, liczba_obwodow=1
+            ),
+            "Warunki katalogowe (brak zadeklarowanych warunków ułożenia — kod W060); "
+            "w rzeczywistej trasie obciążalność może być mniejsza.",
+        )
+    wspolczynniki = wspolczynniki_nn(
+        srodowisko=_pole_warunkow(warunki, "environment", str),
+        izolacja=_pole_warunkow(warunki, "insulation", str),
+        temperatura_c=_pole_warunkow(warunki, "ambient_temperature_c", float),
+        liczba_obwodow=_pole_warunkow(warunki, "circuit_count", int),
+        rezystywnosc_gruntu_km_w=(
+            _pole_warunkow(warunki, "soil_thermal_resistivity_km_w", float)
+            if warunki.get("soil_thermal_resistivity_km_w") is not None
+            else None
+        ),
+    )
+    return wspolczynniki, wspolczynniki.zalozenie_pl()
+
+
+def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
+    iz_katalogowe = _iz_katalogowe_kabla(cable)
     if iz_katalogowe is None:
         return {
             "branch_ref": cable.ref_id,
@@ -350,38 +388,9 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
                 "(obciążalność długotrwała z karty typu) — brak wiązania z katalogiem kabli nN."
             ),
         }
-    iz_katalogowe = float(iz_katalogowe)
-    warunki = (cable.meta or {}).get("cable_laying_conditions") if cable.meta else None
-    if not warunki:
-        return {
-            "branch_ref": cable.ref_id,
-            "iz_katalogowe_a": iz_katalogowe,
-            "iz_prime_a": iz_katalogowe,
-            "rozklad": {
-                "f_temperatura": 1.0,
-                "f_rezystywnosc_gruntu": 1.0,
-                "f_grupowanie": 1.0,
-                "iloczyn": 1.0,
-            },
-            "status": "OK",
-            "reason_pl": (
-                "Warunki katalogowe (brak zadeklarowanych warunków ułożenia — kod W060); "
-                "w rzeczywistej trasie obciążalność może być mniejsza."
-            ),
-        }
     try:
-        wspolczynniki = wspolczynniki_nn(
-            srodowisko=_pole_warunkow(warunki, "environment", str),
-            izolacja=_pole_warunkow(warunki, "insulation", str),
-            temperatura_c=_pole_warunkow(warunki, "ambient_temperature_c", float),
-            liczba_obwodow=_pole_warunkow(warunki, "circuit_count", int),
-            rezystywnosc_gruntu_km_w=(
-                _pole_warunkow(warunki, "soil_thermal_resistivity_km_w", float)
-                if warunki.get("soil_thermal_resistivity_km_w") is not None
-                else None
-            ),
-        )
-    except OdmowaDanychError as exc:
+        wspolczynniki, uzasadnienie = _wspolczynniki_ulozenia_kabla(cable)
+    except (KeyError, ValueError, OdmowaDanychError) as exc:
         return {
             "branch_ref": cable.ref_id,
             "iz_katalogowe_a": iz_katalogowe,
@@ -405,7 +414,7 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "iloczyn": wspolczynniki.iloczyn,
         },
         "status": "OK",
-        "reason_pl": wspolczynniki.zalozenie_pl(),
+        "reason_pl": uzasadnienie,
     }
 
 
@@ -493,19 +502,19 @@ def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do
 def _ik_z_biegu_zwarciowego(
     run: CanonicalRun, bus_ref: str
 ) -> tuple[float | None, float | None, bool, tuple[DanaPrzyjeta, ...], list[dict[str, Any]]]:
-    """(ikss_ka, ith_ka, tolerancja_nn_robocza, dane gałęzi, parametry_robocze_maszyn)
+    """(ikss_ka, kappa, tolerancja_nn_robocza, dane gałęzi, parametry_robocze_maszyn)
     w punkcie ``bus_ref`` z biegu IEC 60909 (REUSE build_short_circuit_results).
     ``(None, None, False, (), [])`` gdy punkt nie występuje w wyniku tego biegu (uczciwy brak,
     nie 0). Trzeci element — znacznik wiersza: punkt w sieci nN liczonej z wartością roboczą
     tolerancji (karta TOLERANCJA-NN-WARTOSC-ROBOCZA); czwarty — dane przyjęte gałęzi
     z wartością roboczą impedancji wchodzącej do prądu punktu (karta LINIA-110); piąty —
     wartości robocze parametrów maszyn wirujących wyspy punktu (karta PODSTAWA-Q, rozstrz. 3).
-    Wszystkie z TEGO SAMEGO wiersza."""
+    Wszystkie z TEGO SAMEGO wiersza; κ — wejście I_th przy czasie wyłączenia obwodu."""
     for row in build_short_circuit_results(run).get("rows", []):
         if row.get("element_id") == bus_ref:
             return (
                 row.get("ikss_ka"),
-                row.get("ith_ka"),
+                row.get("kappa"),
                 bool(row.get("tolerancja_nn_robocza")),
                 dane_przyjete_galezi_wiersza(row),
                 list(row.get("parametry_robocze_maszyn") or ()),
@@ -574,23 +583,29 @@ def _delta_u_dla_trasy(
 def _i2t_dla_kabla(
     cable: Cable,
     *,
-    ith_ka: float | None,
-    fault_duration_s: float | None,
+    ikss_ka: float | None,
+    kappa: float | None,
+    czas: CzasWylaczeniaNn,
     dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
 ) -> dict[str, Any]:
-    if ith_ka is None:
-        return _brak(
-            "Brak prądu zwarciowego zastępczego cieplnego — wymaga biegu zwarciowego "
-            "IEC 60909 wskazanego w żądaniu karty obwodu."
-        )
-    if fault_duration_s is None:
-        return _brak(
-            "Brak czasu wyłączenia zwarcia — wymaga analizy koordynacji zabezpieczeń (poza "
-            "zakresem tej karty); podaj go w żądaniu karty obwodu."
-        )
+    if ikss_ka is None or kappa is None:
+        return {
+            **_brak(
+                "Kryterium cieplne nie zostało ocenione: brak początkowego prądu zwarciowego i "
+                "współczynnika udaru punktu (wejście prądu cieplnego zastępczego przy czasie "
+                "wyłączenia) — uruchom obliczenia zwarciowe IEC 60909 i wskaż bieg w żądaniu "
+                "karty obwodu."
+            ),
+            "akcja_pl": "Uruchom obliczenia zwarciowe",
+        }
+    fault_duration_s = czas.czas_s
+    dane_przyjete = dane_przyjete + czas.dane_przyjete
     wynik = check_conductor_thermal_withstand(
+        # I_th = I″k·√(m(κ, t) + n) przy czasie wyłączenia TEGO obwodu (jedna funkcja I_th
+        # aparatury i przewodów), nie I_th biegu przy czasie cieplnym scenariusza.
         ConductorThermalInput(
-            ith_a=ka_na_a(ith_ka),
+            ikss_a=ka_na_a(ikss_ka),
+            kappa=kappa,
             fault_duration_s=fault_duration_s,
             ith_1s_a=cable.ith_1s_a,
             jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
@@ -616,6 +631,11 @@ def _i2t_dla_kabla(
             "i2t_dopuszczalne_a2s": wynik.i2t_admissible_a2s,
             "margines_procent": wynik.margin_percent,
             "prad_dopuszczalny_a": wynik.admissible_current_a,
+            # I_th przy czasie wyłączenia obwodu (I″k, κ, t, m, n) — wielkość porównywana.
+            "prad_cieplny": wynik.prad_cieplny,
+            # Czas wyłączenia obwodu z pochodzeniem (projektant / charakterystyka / wartość
+            # robocza normy) — wartość robocza czyni ocenę NIEPEŁNĄ (dane przyjęte sekcji).
+            "czas_wylaczenia": czas.to_dict(),
         },
         (
             "IEC 60949 / IEC 60364-4-43 §434 (energia zwarcia wobec wytrzymałości cieplnej "
@@ -667,7 +687,6 @@ def _build_row(
     worst_point_impedancyjny: str | None,
     load_flow_run: CanonicalRun | None,
     short_circuit_run: CanonicalRun | None,
-    fault_duration_s: float | None,
     provenance: dict[str, Any],
 ) -> dict[str, Any]:
     root_branch = _znajdz_galaz(enm, root_branch_ref)
@@ -837,6 +856,7 @@ def _build_row(
             ib_a=ib_a,
             iz_prime_a=iz_prime_a,
             ik_max_ka=None,  # dostarczone osobno niżej z biegu SC, gdy dostępny
+            rodzaj_obwodu=getattr(aparat_korzenia, "rodzaj_obwodu_nn", None),
         )
         dobor_status = wynik_dobor["status"]
         dobor_reason = wynik_dobor.get("reason_pl")
@@ -845,12 +865,12 @@ def _build_row(
 
     # --- Ik″max/min ------------------------------------------------------
     ikss_ka: float | None = None
-    ith_ka: float | None = None
+    kappa: float | None = None
     zrodlo_ik_max_pl = ""
     dane_ik_max: tuple[DanaPrzyjeta, ...] = ()
     dane_ith: tuple[DanaPrzyjeta, ...] = ()
     if short_circuit_run is not None:
-        ikss_ka, ith_ka, ik_roboczy, dane_linii_ik, robocze_maszyn = _ik_z_biegu_zwarciowego(
+        ikss_ka, kappa, ik_roboczy, dane_linii_ik, robocze_maszyn = _ik_z_biegu_zwarciowego(
             short_circuit_run, worst_bus_ref
         )
         zrodlo_ik_max_pl = f"bieg zwarciowy IEC 60909 ({short_circuit_run.id})"
@@ -899,6 +919,7 @@ def _build_row(
         ik_min_sekcja = _brak(dobor_reason or "Ik1_min niedostępne.")
 
     # --- Aparat / nastawy / kryteria (i)-(iv) — REUSE oceniaj_kandydata ---
+    urzadzenie_korzenia: UrzadzenieOchronneNn | None = None
     if aparat_korzenia is None:
         aparat_sekcja = _brak(
             "Brak zamodelowanego aparatu zabezpieczającego u początku odpływu — pierwsza "
@@ -912,6 +933,7 @@ def _build_row(
         status_doboru_sekcja = _brak("Wymaga rozpoznanego aparatu zabezpieczającego.")
     else:
         urzadzenie, reason = resolve_urzadzenie_ochronne(aparat_korzenia)
+        urzadzenie_korzenia = urzadzenie
         if urzadzenie is None:
             aparat_sekcja = _brak(reason or "Aparat bez wiązania katalogowego.")
             zapas_sekcja = _brak("Wymaga rozwiązanego aparatu.")
@@ -1033,6 +1055,7 @@ def _build_row(
                     u0_v=dobor_wejscie["u0_v"],
                     dane_przyjete_ik_max=dane_ik_max,
                     dane_przyjete_ik1_min=dane_ik1_min,
+                    rodzaj_obwodu=getattr(aparat_korzenia, "rodzaj_obwodu_nn", None),
                 )
                 kr_i = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_I)
                 kr_ii = next(k for k in ocena.kryteria if k.nazwa == NAZWA_KRYTERIUM_II)
@@ -1082,8 +1105,16 @@ def _build_row(
     i2t_sekcja = (
         _i2t_dla_kabla(
             kabel_decydujacy,
-            ith_ka=ith_ka,
-            fault_duration_s=fault_duration_s,
+            ikss_ka=ikss_ka,
+            kappa=kappa,
+            czas=czas_wylaczenia_obwodu_nn(
+                aparat=aparat_korzenia,
+                urzadzenie=urzadzenie_korzenia,
+                ik_a=ka_na_a(ikss_ka) if ikss_ka is not None else None,
+                uklad=system,
+                u0_v=napiecie_fazowe_v(kv_na_v(trafo.ulv_kv)),
+                miejsce_pl=f"obwód {nazwa_po_identyfikatorze(root_branch_ref, enm)}",
+            ),
             dane_przyjete=dane_ith,
         )
         if kable
@@ -1156,7 +1187,6 @@ def _build_provenance(
     enm: EnergyNetworkModel,
     load_flow_run: CanonicalRun | None,
     short_circuit_run: CanonicalRun | None,
-    fault_duration_s: float | None,
 ) -> dict[str, Any]:
     """PROVENANCE (run_id-y + rewizja modelu + świeżość) — JEDNO miejsce
     składania, dzielone przez ``build_nn_circuit_sheet`` (per stacja) i
@@ -1166,8 +1196,7 @@ def _build_provenance(
     enm_hash = compute_enm_hash(enm)
     return {
         "load_flow_run_id": str(load_flow_run.id) if load_flow_run else None,
-        "short_circuit_run_id": (str(short_circuit_run.id) if short_circuit_run else None),
-        "fault_duration_s": fault_duration_s,
+        "short_circuit_run_id": str(short_circuit_run.id) if short_circuit_run else None,
         "rewizja_modelu": enm_hash,
         "swiezosc": {
             "load_flow_aktualny": (
@@ -1191,7 +1220,6 @@ def build_nn_circuit_sheet(
     station_ref: str,
     load_flow_run: CanonicalRun | None = None,
     short_circuit_run: CanonicalRun | None = None,
-    fault_duration_s: float | None = None,
 ) -> dict[str, Any]:
     """Arkusz obliczeń obwodów nN — wszystkie odpływy JEDNEJ rozdzielnicy/stacji.
 
@@ -1246,7 +1274,6 @@ def build_nn_circuit_sheet(
         enm=enm,
         load_flow_run=load_flow_run,
         short_circuit_run=short_circuit_run,
-        fault_duration_s=fault_duration_s,
     )
 
     # Arkusz obejmuje odpływy WSZYSTKICH transformatorów stacji (klasa B-02):
@@ -1325,7 +1352,6 @@ def build_nn_circuit_sheet(
                 worst_point_impedancyjny=worst_impedancyjny.get(root_branch_ref),
                 load_flow_run=load_flow_run,
                 short_circuit_run=short_circuit_run,
-                fault_duration_s=fault_duration_s,
                 provenance=provenance,
             )
         )
@@ -1350,7 +1376,6 @@ def build_nn_circuit_sheet_row_for_breaker(
     breaker_ref: str,
     load_flow_run: CanonicalRun | None = None,
     short_circuit_run: CanonicalRun | None = None,
-    fault_duration_s: float | None = None,
 ) -> dict[str, Any]:
     """Jeden wiersz arkusza dla OBWODU WSKAZANEGO WPROST (``bus_ref`` +
     ``breaker_ref``), nie wykrytego automatycznie BFS-em jak w
@@ -1390,12 +1415,157 @@ def build_nn_circuit_sheet_row_for_breaker(
         worst_point_impedancyjny=bus_ref,
         load_flow_run=load_flow_run,
         short_circuit_run=short_circuit_run,
-        fault_duration_s=fault_duration_s,
         provenance=_build_provenance(
             enm=enm,
             load_flow_run=load_flow_run,
             short_circuit_run=short_circuit_run,
-            fault_duration_s=fault_duration_s,
         ),
     )
     return {"status": "OK", **wiersz}
+
+
+# =============================================================================
+# DOWÓD OBWODU nN — wejście z MODELU i BIEGU (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN, 6a)
+# =============================================================================
+
+
+def wejscie_dowodu_obwodu_nn_z_modelu(
+    *,
+    enm: EnergyNetworkModel,
+    short_circuit_run: CanonicalRun | None,
+    station_ref: str,
+    bus_ref: str,
+    breaker_ref: str,
+    segment_ref: str,
+    apparatus_branch_ref: str | None,
+    project_name: str,
+    case_name: str,
+    run_timestamp: Any,
+    solver_version: str,
+    p_mw: float,
+    q_mvar: float,
+    vdrop_delta_u_total_kv: float,
+    vdrop_delta_u_total_percent: float | None,
+) -> dict[str, Any]:
+    """Wejście pakietu LV_CIRCUIT_VERIFICATION złożone z modelu i biegu, nie z żądania.
+
+    * U_LL — napięcie znamionowe szyny punktu (``Bus.voltage_kv``), także napięcie odniesienia
+      ΔU;
+    * Iz katalogowe i współczynniki ułożenia — karta typu kabla odcinka i warunki ułożenia
+      zapisane na odcinku (te same odczyty co arkusz, `_iz_katalogowe_kabla`,
+      `_wspolczynniki_ulozenia_kabla`);
+    * I″k i κ punktu — wiersz biegu zwarciowego (`_ik_z_biegu_zwarciowego`, ta sama funkcja co
+      arkusz); bez biegu kryterium cieplne i zdolność wyłączania nie są oceniane;
+    * dane cieplne przewodu — pola odcinka zmaterializowane z karty typu kabla;
+    * czas wyłączenia — `czas_wylaczenia_obwodu_nn` (ten sam dostawca co arkusz).
+    """
+    from application.proof_engine.lv_circuit_verification_binding import (
+        _find_branch,
+        zbuduj_wejscie_dowodu_obwodu_nn,
+    )
+
+    szyna = next((b for b in enm.buses if b.ref_id == bus_ref), None)
+    if szyna is None:
+        return {"status": "brak danych", "missing_data": ["bus"], "reason_pl": None}
+    odcinek = _znajdz_galaz(enm, segment_ref)
+    if not isinstance(odcinek, Cable):
+        return {
+            "status": "brak danych",
+            "missing_data": ["segment"],
+            "reason_pl": "Wskazany odcinek nie jest kablem w modelu sieci.",
+        }
+    iz_katalogowe = _iz_katalogowe_kabla(odcinek)
+    if iz_katalogowe is None:
+        return {
+            "status": "brak danych",
+            "missing_data": ["segment_catalog_binding"],
+            "reason_pl": _iz_prime_dla_kabla(odcinek)["reason_pl"],
+        }
+    try:
+        wspolczynniki, _ = _wspolczynniki_ulozenia_kabla(odcinek)
+    except (KeyError, ValueError) as exc:
+        return {
+            "status": "brak danych",
+            "missing_data": ["segment_laying_conditions"],
+            "reason_pl": (
+                f"Warunki ułożenia odcinka '{nazwa_elementu(odcinek, 'branches')}' "
+                f"niekompletne/niepoprawne: {exc}"
+            ),
+        }
+
+    ikss_ka: float | None = None
+    kappa: float | None = None
+    if short_circuit_run is not None:
+        ikss_ka, kappa, _, _, _ = _ik_z_biegu_zwarciowego(short_circuit_run, bus_ref)
+
+    breaker = _find_branch(enm, breaker_ref)
+    apparatus = _find_branch(enm, apparatus_branch_ref) if apparatus_branch_ref else None
+    urzadzenie = (
+        resolve_urzadzenie_ochronne(breaker, apparatus_branch=apparatus)[0]
+        if breaker is not None
+        else None
+    )
+    station = _find_station(enm, station_ref)
+    trafo = resolve_transformer_for_bus(enm, station, bus_ref)[0] if station is not None else None
+    czas = czas_wylaczenia_obwodu_nn(
+        aparat=apparatus if apparatus is not None else breaker,
+        urzadzenie=urzadzenie,
+        ik_a=ka_na_a(ikss_ka) if ikss_ka is not None else None,
+        uklad=uklad_nn_transformatora(trafo) if trafo is not None else None,
+        u0_v=napiecie_fazowe_v(kv_na_v(szyna.voltage_kv)),
+        miejsce_pl=f"obwód {nazwa_po_identyfikatorze(breaker_ref, enm)}",
+    )
+    thermal = check_conductor_thermal_withstand(
+        ConductorThermalInput(
+            ikss_a=ka_na_a(ikss_ka) if ikss_ka is not None else None,
+            kappa=kappa,
+            fault_duration_s=czas.czas_s,
+            ith_1s_a=odcinek.ith_1s_a,
+            jth_1s_a_per_mm2=odcinek.jth_1s_a_per_mm2,
+            cross_section_mm2=odcinek.cross_section_mm2,
+            conductor_material=odcinek.conductor_material,
+            insulation=odcinek.insulation,
+            temp_operating_c=odcinek.operating_temperature_c,
+            temp_short_circuit_c=odcinek.short_circuit_temperature_c,
+        )
+    )
+    wynik = zbuduj_wejscie_dowodu_obwodu_nn(
+        enm=enm,
+        station_ref=station_ref,
+        bus_ref=bus_ref,
+        breaker_ref=breaker_ref,
+        segment_ref=segment_ref,
+        project_name=project_name,
+        case_name=case_name,
+        run_timestamp=run_timestamp,
+        solver_version=solver_version,
+        p_mw=p_mw,
+        q_mvar=q_mvar,
+        u_ll_kv=szyna.voltage_kv,
+        iz_katalogowe_a=iz_katalogowe,
+        wspolczynniki=wspolczynniki,
+        ik_max_ka=ikss_ka,
+        thermal=thermal,
+        vdrop_u_source_kv=szyna.voltage_kv,
+        vdrop_delta_u_total_kv=vdrop_delta_u_total_kv,
+        vdrop_delta_u_total_percent=vdrop_delta_u_total_percent,
+        apparatus_branch_ref=apparatus_branch_ref,
+    )
+    return {
+        **wynik,
+        # Pochodzenie danych dowodu: bieg zwarciowy i czas wyłączenia z wyjaśnieniem.
+        "zrodla": {
+            "short_circuit_run_id": str(short_circuit_run.id) if short_circuit_run else None,
+            "kryterium_cieplne_ocenione": ikss_ka is not None and kappa is not None,
+            "akcja_pl": (
+                None
+                if ikss_ka is not None and kappa is not None
+                else "Uruchom obliczenia zwarciowe"
+            ),
+            "czas_wylaczenia": czas.to_dict(),
+            # Czas, przy którym solver policzył I_th przewodu (echo wyniku, nie wejścia).
+            "tk_kryterium_cieplnego_s": (
+                thermal.prad_cieplny["tk_s"] if thermal.prad_cieplny is not None else None
+            ),
+        },
+    }

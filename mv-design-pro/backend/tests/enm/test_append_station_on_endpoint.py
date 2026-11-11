@@ -434,10 +434,18 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
     assert len(pola_sn) == 3
     assert all(spec.get("bus_ref") == endpoint for spec in pola_sn)
     assert all(spec.get("equipment_refs") for spec in pola_sn)
-    # PS-4: append materializuje protection_codes wspólnym resolverem (parytet z insert).
+    # PS-4: append materializuje zestaw funkcji wspólnym resolverem (parytet z insert) — od
+    # karty OCHRONA-JEDNO-ZRODLO jako funkcje sterownika pola (jedna struktura zabezpieczeń).
     by_role = {spec["field_role"]: spec for spec in pola_sn}
-    assert by_role["LINIA_IN"].get("protection_codes") == ["51", "50", "51N"]
-    assert "87T" in (by_role["TRANSFORMATOROWE"].get("protection_codes") or [])
+
+    def _kody_sterownika(pole_ref: str) -> list[str]:
+        (sterownik,) = (
+            p for p in new_snap["protection_assignments"] if p.get("bay_ref") == pole_ref
+        )
+        return [f["kod"] for f in sterownik["funkcje"]]
+
+    assert _kody_sterownika(by_role["LINIA_IN"]["ref_id"]) == ["51", "50", "51N"]
+    assert "87T" in _kody_sterownika(by_role["TRANSFORMATOROWE"]["ref_id"])
     station_bays = pola_stacji(new_snap, sub["ref_id"])
     assert {bay["bay_role"] for bay in station_bays} >= {"IN", "OUT", "TR"}
     assert all(bay.get("equipment_refs") for bay in station_bays)

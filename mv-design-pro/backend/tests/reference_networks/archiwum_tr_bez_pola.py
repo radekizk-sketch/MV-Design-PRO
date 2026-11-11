@@ -51,6 +51,7 @@ from typing import Any
 from unittest.mock import patch
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from enm.zabezpieczenie import aparaty_sterownika
 from fastapi.testclient import TestClient
 
 from tests.reference_networks.budowa_przez_api import (
@@ -174,7 +175,8 @@ def zapis_sprzed_reguly_toru(enm: dict[str, Any]) -> dict[str, Any]:
 
     Dla każdego pola TR stacji: rekord pola znika z ``bays``, aparat pola (gałęzie z jego
     ``equipment_refs`` obecne w ``branches``; transformator z tej listy ZOSTAJE) znika z
-    ``branches``, zacisk pola (``terminal_bus_ref``) znika z ``buses``, a transformator
+    ``branches``, zacisk pola (``terminal_bus_ref``) znika z ``buses``, sterownik zabezpieczeń
+    pola znika z ``protection_assignments``, a transformator
     pola wraca stroną górną na szynę SN stacji (``bus_ref`` pola) — tak przyłączała go
     operacja sprzed reguły toru. Po przekształceniu w modelu nie zostaje żadne odwołanie
     do usuniętego pola, zacisku ani aparatu (inaczej ``NiepelnePrzeksztalcenie``)."""
@@ -193,6 +195,19 @@ def zapis_sprzed_reguly_toru(enm: dict[str, Any]) -> dict[str, Any]:
                 usuniete.add(ref)
         usuniete.add(pole["ref_id"])
         usuniete.add(pole["terminal_bus_ref"])
+    # Sterownik zabezpieczeń pola TR (ADR-022: rekord ``protection_assignments`` z ``bay_ref``
+    # pola i macierzą wyzwoleń na aparat pola) nie istniał w zapisie sprzed reguły toru — pole,
+    # którego dotyczył, nie istniało. Znika razem z polem (także sterownik wyzwalający wyłącznie
+    # usunięty aparat).
+    sterowniki_usuniete = {
+        s["ref_id"]
+        for s in wynik.get("protection_assignments") or []
+        if s.get("bay_ref") in usuniete or set(aparaty_sterownika(s)) & usuniete
+    }
+    usuniete |= sterowniki_usuniete
+    wynik["protection_assignments"] = [
+        s for s in wynik.get("protection_assignments") or [] if s["ref_id"] not in usuniete
+    ]
     wynik["bays"] = [p for p in wynik["bays"] if p["ref_id"] not in usuniete]
     wynik["branches"] = [g for g in wynik["branches"] if g["ref_id"] not in usuniete]
     wynik["buses"] = [s for s in wynik["buses"] if s["ref_id"] not in usuniete]

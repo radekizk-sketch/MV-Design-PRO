@@ -4,6 +4,7 @@
       "bay_role": "FEEDER",
       "config_ref": "kanoniczny:bay_template_aux",
       "field_role": "FEEDER",
+      "funkcje_eaz": [],
       "group": "specjalne",
       "main_path": true,
       "name": "Pole potrzeb własnych",
@@ -63,7 +64,6 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_aux",
@@ -75,6 +75,10 @@
       "bay_role": "COUPLER",
       "config_ref": "kanoniczny:bay_template_coupler",
       "field_role": "SPRZEGLO",
+      "funkcje_eaz": [
+        "51",
+        "50"
+      ],
       "group": "sprzeglowe",
       "main_path": true,
       "name": "Pole sprzęgła",
@@ -153,10 +157,6 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_coupler",
@@ -168,6 +168,14 @@
       "bay_role": "OZE",
       "config_ref": "kanoniczny:bay_template_der_bess",
       "field_role": "OZE",
+      "funkcje_eaz": [
+        "67",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R"
+      ],
       "group": "OZE",
       "main_path": true,
       "name": "Pole źródłowe BESS",
@@ -299,14 +307,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [
-        "67",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_der_bess",
@@ -318,6 +318,14 @@
       "bay_role": "OZE",
       "config_ref": "kanoniczny:bay_template_der_fw",
       "field_role": "OZE",
+      "funkcje_eaz": [
+        "67",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R"
+      ],
       "group": "OZE",
       "main_path": true,
       "name": "Pole źródłowe FW",
@@ -449,14 +457,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [
-        "67",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_der_fw",
@@ -468,6 +468,14 @@
       "bay_role": "OZE",
       "config_ref": "kanoniczny:bay_template_der_pv",
       "field_role": "OZE",
+      "funkcje_eaz": [
+        "67",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R"
+      ],
       "group": "OZE",
       "main_path": true,
       "name": "Pole źródłowe PV",
@@ -599,14 +607,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [
-        "67",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_der_pv",
@@ -618,6 +618,15 @@
       "bay_role": "OUT",
       "config_ref": "kanoniczny:bay_template_gpz_line_enea_z10_staly_z_odlacznikiem",
       "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF",
+        "79",
+        "SCO"
+      ],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -761,15 +770,6 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "ZS",
-        "50BF",
-        "79",
-        "SCO"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_line_enea_z10_staly_z_odlacznikiem",
@@ -781,6 +781,15 @@
       "bay_role": "OUT",
       "config_ref": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy",
       "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF",
+        "79",
+        "SCO"
+      ],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -908,15 +917,6 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "ZS",
-        "50BF",
-        "79",
-        "SCO"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
@@ -928,6 +928,15 @@
       "bay_role": "OUT",
       "config_ref": "kanoniczny:bay_template_gpz_line_enea_z10_wysuwny",
       "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N",
+        "ZS",
+        "50BF",
+        "79",
+        "SCO"
+      ],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -1052,15 +1061,6 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N",
-        "ZS",
-        "50BF",
-        "79",
-        "SCO"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_line_enea_z10_wysuwny",
@@ -1072,6 +1072,24 @@
       "bay_role": "OUT",
       "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem",
       "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "67",
+        "51N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R",
+        "ZS",
+        "50BF",
+        "79",
+        "SPZE",
+        "OWG",
+        "NZ",
+        "SCO"
+      ],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -1333,7 +1351,18 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
+      "wykonanie_pola": "Z11_1"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
+      "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
         "51",
         "50",
         "67",
@@ -1351,17 +1380,6 @@
         "NZ",
         "SCO"
       ],
-      "renderable": true,
-      "source": "kanoniczny",
-      "template_id": "bay_template_gpz_line_enea_z11_1_staly_z_odlacznikiem",
-      "tylko_gpz": true,
-      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
-      "wykonanie_pola": "Z11_1"
-    },
-    {
-      "bay_role": "OUT",
-      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
-      "field_role": "LINIA_OUT",
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -1590,7 +1608,18 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": "Z11_1"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny",
+      "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
         "51",
         "50",
         "67",
@@ -1608,17 +1637,6 @@
         "NZ",
         "SCO"
       ],
-      "renderable": true,
-      "source": "kanoniczny",
-      "template_id": "bay_template_gpz_line_enea_z11_1_trojpolozeniowy",
-      "tylko_gpz": true,
-      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
-      "wykonanie_pola": "Z11_1"
-    },
-    {
-      "bay_role": "OUT",
-      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_1_wysuwny",
-      "field_role": "LINIA_OUT",
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -1861,7 +1879,18 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_1_wysuwny",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "WYSUWNY",
+      "wykonanie_pola": "Z11_1"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
+      "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
         "51",
         "50",
         "67",
@@ -1879,17 +1908,6 @@
         "NZ",
         "SCO"
       ],
-      "renderable": true,
-      "source": "kanoniczny",
-      "template_id": "bay_template_gpz_line_enea_z11_1_wysuwny",
-      "tylko_gpz": true,
-      "wykonanie_lacznikow": "WYSUWNY",
-      "wykonanie_pola": "Z11_1"
-    },
-    {
-      "bay_role": "OUT",
-      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
-      "field_role": "LINIA_OUT",
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -2170,7 +2188,18 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
+      "wykonanie_pola": "Z11"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy",
+      "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
         "51",
         "50",
         "67",
@@ -2188,17 +2217,6 @@
         "NZ",
         "SCO"
       ],
-      "renderable": true,
-      "source": "kanoniczny",
-      "template_id": "bay_template_gpz_line_enea_z11_staly_z_odlacznikiem",
-      "tylko_gpz": true,
-      "wykonanie_lacznikow": "STALY_Z_ODLACZNIKIEM",
-      "wykonanie_pola": "Z11"
-    },
-    {
-      "bay_role": "OUT",
-      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_trojpolozeniowy",
-      "field_role": "LINIA_OUT",
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -2446,7 +2464,18 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_line_enea_z11_trojpolozeniowy",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": "Z11"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny",
+      "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
         "51",
         "50",
         "67",
@@ -2464,17 +2493,6 @@
         "NZ",
         "SCO"
       ],
-      "renderable": true,
-      "source": "kanoniczny",
-      "template_id": "bay_template_gpz_line_enea_z11_trojpolozeniowy",
-      "tylko_gpz": true,
-      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
-      "wykonanie_pola": "Z11"
-    },
-    {
-      "bay_role": "OUT",
-      "config_ref": "kanoniczny:bay_template_gpz_line_enea_z11_wysuwny",
-      "field_role": "LINIA_OUT",
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -2736,24 +2754,6 @@
           "symbol_ref": "symbol:core_balance_ct"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "67",
-        "51N",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R",
-        "ZS",
-        "50BF",
-        "79",
-        "SPZE",
-        "OWG",
-        "NZ",
-        "SCO"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_line_enea_z11_wysuwny",
@@ -2765,6 +2765,14 @@
       "bay_role": "MEASUREMENT",
       "config_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17",
       "field_role": "POMIAROWE",
+      "funkcje_eaz": [
+        "59",
+        "27",
+        "59N",
+        "81U",
+        "SCO",
+        "81R"
+      ],
       "group": "pomiarowe",
       "main_path": true,
       "name": "Pole pomiarowe",
@@ -2870,14 +2878,6 @@
           ]
         }
       ],
-      "protection_codes": [
-        "59",
-        "27",
-        "59N",
-        "81U",
-        "SCO",
-        "81R"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_gpz_pomiar_napiecia_enea_z17",
@@ -2889,6 +2889,11 @@
       "bay_role": "IN",
       "config_ref": "kanoniczny:bay_template_line_in",
       "field_role": "LINIA_IN",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N"
+      ],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wejściowe",
@@ -3005,11 +3010,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_line_in",
@@ -3021,6 +3021,11 @@
       "bay_role": "OUT",
       "config_ref": "kanoniczny:bay_template_line_out",
       "field_role": "LINIA_OUT",
+      "funkcje_eaz": [
+        "51",
+        "50",
+        "51N"
+      ],
       "group": "liniowe",
       "main_path": true,
       "name": "Pole liniowe wyjściowe",
@@ -3137,11 +3142,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [
-        "51",
-        "50",
-        "51N"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_line_out",
@@ -3153,6 +3153,7 @@
       "bay_role": "MEASUREMENT",
       "config_ref": "kanoniczny:bay_template_measurement",
       "field_role": "POMIAROWE",
+      "funkcje_eaz": [],
       "group": "pomiarowe",
       "main_path": true,
       "name": "Pole pomiarowe",
@@ -3208,7 +3209,6 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_measurement",
@@ -3220,6 +3220,7 @@
       "bay_role": "FEEDER",
       "config_ref": "kanoniczny:bay_template_reserve",
       "field_role": "FEEDER",
+      "funkcje_eaz": [],
       "group": "specjalne",
       "main_path": true,
       "name": "Pole rezerwowe",
@@ -3260,7 +3261,6 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "protection_codes": [],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_reserve",
@@ -3272,6 +3272,15 @@
       "bay_role": "TR",
       "config_ref": "kanoniczny:bay_template_transformer",
       "field_role": "TRANSFORMATOROWE",
+      "funkcje_eaz": [
+        "87T",
+        "51",
+        "50",
+        "51N",
+        "63",
+        "26",
+        "63P"
+      ],
       "group": "transformatorowe",
       "main_path": true,
       "name": "Pole transformatorowe",
@@ -3388,15 +3397,6 @@
           "symbol_ref": "symbol:transformer_device"
         }
       ],
-      "protection_codes": [
-        "87T",
-        "51",
-        "50",
-        "51N",
-        "63",
-        "26",
-        "63P"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_transformer",
@@ -3408,6 +3408,14 @@
       "bay_role": "OZE",
       "config_ref": "kanoniczny:mv_source_cb",
       "field_role": "OZE",
+      "funkcje_eaz": [
+        "67",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R"
+      ],
       "group": "OZE",
       "main_path": true,
       "name": "Pole źródłowe SN (wyłącznikowe)",
@@ -3540,14 +3548,6 @@
           "symbol_ref": "symbol:cable_head"
         }
       ],
-      "protection_codes": [
-        "67",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R"
-      ],
       "renderable": true,
       "source": "kanoniczny",
       "template_id": null,
@@ -3559,6 +3559,14 @@
       "bay_role": "OZE",
       "config_ref": "kanoniczny:mv_source_lbs",
       "field_role": "OZE",
+      "funkcje_eaz": [
+        "67",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "81R"
+      ],
       "group": "OZE",
       "main_path": true,
       "name": "Pole źródłowe SN (rozłącznikowe)",
@@ -3705,14 +3713,6 @@
           "render_variant": "kanoniczny",
           "symbol_ref": "symbol:cable_head"
         }
-      ],
-      "protection_codes": [
-        "67",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",

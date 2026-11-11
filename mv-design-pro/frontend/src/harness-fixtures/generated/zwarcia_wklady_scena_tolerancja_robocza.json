@@ -117,7 +117,7 @@
         "latex": null
       },
       {
-        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -182,7 +182,7 @@
             "latex": null
           },
           {
-            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -277,14 +277,14 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "cc087f7a45fc68b7da019f1b444fba5226f5d6f1bf9f9e616dd4f9882ab33489",
+    "input_hash": "6d4137391b374ff85984b7db11bc61f1247befbb54792c2bcbe78571279e42f7",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
       "pochodzenie": "PROPOZYCJA",
       "wartosc_robocza": true,
       "jakosc": "ESTIMATED",
-      "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
     },
     "parametry_robocze_maszyn": [
@@ -489,7 +489,7 @@
         "latex": null
       },
       {
-        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -554,7 +554,7 @@
             "latex": null
           },
           {
-            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -649,14 +649,14 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "00102ea5c896379003a68ed21c54ad35bf5dd8f00981232b620f08405c28b931",
+    "input_hash": "c2c33807d93e8904e1507ddd05bc62851df88dc8f7c2e2df689caa2111b1feb3",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
       "pochodzenie": "PROPOZYCJA",
       "wartosc_robocza": true,
       "jakosc": "ESTIMATED",
-      "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
     },
     "parametry_robocze_maszyn": [
@@ -843,7 +843,7 @@
         "latex": null
       },
       {
-        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -908,7 +908,7 @@
             "latex": null
           },
           {
-            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -1003,14 +1003,14 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "db886db38d006fcc7b5033c1a934a58c0caee11f143eb2870c08a44ccf4510a3",
+    "input_hash": "0f9933544b84338cb7380fa27ae035f84c9d0655f70d75c3b339f2427d33499b",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
       "pochodzenie": "PROPOZYCJA",
       "wartosc_robocza": true,
       "jakosc": "ESTIMATED",
-      "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
     },
     "parametry_robocze_maszyn": [
@@ -1224,7 +1224,7 @@
         "latex": null
       },
       {
-        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -1289,7 +1289,7 @@
             "latex": null
           },
           {
-            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -1384,14 +1384,14 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "c01bde60b104a79af3dfa2b937c8582dc18651ed9b3e8507cf15c6a22c095402",
+    "input_hash": "85ce615718b85f3e663a9234a39bbc9fee0ea2605bcdc9ff394c2902bf3b3df6",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
       "pochodzenie": "PROPOZYCJA",
       "wartosc_robocza": true,
       "jakosc": "ESTIMATED",
-      "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
     },
     "parametry_robocze_maszyn": [
@@ -1596,7 +1596,7 @@
         "latex": null
       },
       {
-        "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -1661,7 +1661,7 @@
             "latex": null
           },
           {
-            "tekst": "Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia. Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "tekst": "Minimalny czas zwłoki równy czasowi przerwania prądu punktu zwarcia. Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           },
           {
@@ -1756,14 +1756,14 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "5b53d40c83a9e070011cc3b306773901eb37bfecfe58c7cce7d2bcc766762e3f",
+    "input_hash": "77605e102e1b5476d2faae1a8819b1442f476a80921b84b96e45d21897e1ae98",
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "t_min_zrodlo": {
       "wartosc_s": 0.1,
       "pochodzenie": "PROPOZYCJA",
       "wartosc_robocza": true,
       "jakosc": "ESTIMATED",
-      "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
     },
     "parametry_robocze_maszyn": [

@@ -794,7 +794,7 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
   const deviceOptions = useMemo(() => buildControlDeviceOptions(candidate), [candidate]);
   const breakerRef = deviceOptions[0]?.ref_id ?? '';
   const fieldRef = candidate?.bay_ref ?? '';
-  const hasRelay = Boolean(candidate?.canonical_model.base_model.protection_config);
+  const hasRelay = Boolean(candidate?.canonical_model.base_model.zabezpieczenie);
   const context = {
     bay_ref: fieldRef,
     field_ref: fieldRef,
@@ -967,7 +967,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
     for (const item of fieldReadModel.data.fields) {
       const counts = measurementCountsForField(item);
       if (counts.ct > 0) withCt += 1;
-      if (item.canonical_model.base_model.protection_config) withRelay += 1;
+      if (item.canonical_model.base_model.zabezpieczenie) withRelay += 1;
     }
 
     return {

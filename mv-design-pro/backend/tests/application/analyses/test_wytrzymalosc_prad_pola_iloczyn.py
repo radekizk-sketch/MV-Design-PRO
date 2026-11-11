@@ -35,6 +35,7 @@ from typing import Any
 import pytest
 from application.analyses import aparaty_pol as modul_aparatow
 from application.analyses.protection import ocena_nadpradowa
+from application.analyses.protection.catalog import catalog_store
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from application.analyses.wytrzymalosc_aparatury_pol import widok_wytrzymalosci_z_biegu
 from enm.models import (
@@ -46,11 +47,17 @@ from enm.models import (
     Measurement,
     ParameterOverride,
     ProtectionAssignment,
-    ProtectionSetting,
     Substation,
     SwitchBranch,
 )
 from network_model.catalog import get_default_mv_catalog
+
+from tests.utils.prad_cieplny import (
+    KAPPA_FIKSTURY,
+    ith_normy,
+    wiersz_biegu_3f,
+)
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 WYLACZNIK = "sw-cb-abb-vd4-12kv-630a"  # I_th 20 kA / 1 s, I_dyn 50 kA (2,5·I_th)
 PRZEKAZNIK = "REF-OC-200"
@@ -78,22 +85,12 @@ STALE_IEC = {"IEC_SI": (0.14, 0.02), "IEC_VI": (13.5, 1.0), "IEC_EI": (80.0, 2.0
 KRZYWE = ("IEC_SI", "IEC_VI", "IEC_EI", "DT")
 
 
-def _nastawa(krzywa: str) -> ProtectionSetting:
+def _nastawa(krzywa: str) -> Stopien:
     if krzywa == "DT":
-        return ProtectionSetting(
-            function_type="overcurrent_51",
-            threshold_a=PROG_A,
-            threshold_unit="A_PIERWOTNY",
-            curve_type="DT",
-            time_delay_s=ZWLOKA_DT_S,
+        return stopien(
+            "51", prog=PROG_A, jednostka_progu="A_PIERWOTNY", krzywa="DT", zwloka_s=ZWLOKA_DT_S
         )
-    return ProtectionSetting(
-        function_type="overcurrent_51",
-        threshold_a=PROG_A,
-        threshold_unit="A_PIERWOTNY",
-        curve_type=krzywa,
-        time_multiplier=TMS,
-    )
+    return stopien("51", prog=PROG_A, jednostka_progu="A_PIERWOTNY", krzywa=krzywa, tms=TMS)
 
 
 def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
@@ -131,14 +128,14 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
             )
         )
         przypisania.append(
-            ProtectionAssignment(
+            sterownik(
                 ref_id=f"prot/{nr}",
                 name=f"Zabezpieczenie pola {nr}",
-                breaker_ref=f"aparat/{nr}",
+                bay_ref=pole,
+                wylacznik=f"aparat/{nr}",
                 ct_ref=f"ct/{nr}",
                 catalog_ref=PRZEKAZNIK,
-                device_type="overcurrent",
-                settings=[_nastawa(krzywa)],
+                stopnie=[_nastawa(krzywa)],
             )
         )
         pola.append(
@@ -168,18 +165,9 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
 
 
 def _wiersze_biegu() -> list[dict[str, Any]]:
-    wiersze = [
-        {
-            "target_id": szyna,
-            "element_id": szyna,
-            "target_name": f"Szyna {szyna}",
-            "fault_type": "3F",
-            "ikss_ka": ik,
-            "ip_ka": ip,
-            "ith_ka": ith,
-        }
-        for szyna, ik, ip, ith in POLA.values()
-    ]
+    # Kształt realnego wiersza biegu: κ i czas cieplny biegu T_k idą z I_th (wiersz bez nich
+    # nie powstaje w produkcji — ``tests.utils.prad_cieplny``).
+    wiersze = [wiersz_biegu_3f(szyna, ik, ip, ith) for szyna, ik, ip, ith in POLA.values()]
     # Wiersz zwarcia 1F z większym prądem — NIE wchodzi do oceny wytrzymałości.
     wiersze.append({**wiersze[0], "fault_type": "1F", "ikss_ka": 50.0, "ip_ka": 99.0})
     return wiersze
@@ -210,6 +198,9 @@ def przekaznik_z_krzywa_ei(monkeypatch: pytest.MonkeyPatch) -> None:
             zdolnosc, curves_supported=(*zdolnosc.curves_supported, "IEC_EI")
         )
 
+    # Profil charakterystyk sterownika czyta JEDEN predykat `profil_charakterystyk` modułu
+    # katalogu (zapis i ocena) — dopisanie EI idzie tam, nie do kopii nazwy w module oceny.
+    monkeypatch.setattr(catalog_store, "load_device_capability", _zdolnosc)
     monkeypatch.setattr(ocena_nadpradowa, "load_device_capability", _zdolnosc)
 
 
@@ -272,10 +263,16 @@ def test_iloczyn_pole_czas_wlasny_krzywa_kryterium(
         assert [d["wartosc"] for d in dane] == [{"wartosc": 50.0, "jednostka": "kA"}]
         return
 
-    assert ocena["wynik"]["wartosc"] == {"wartosc": ith_ka, "jednostka": "kA"}
     t_k = czlon + czas_wlasny_s
     assert czas["t_clearing_s"] == pytest.approx(t_k, abs=1e-6)
     t_k = czas["t_clearing_s"]
+    # Wielkość porównywana = I_th przy T_k TEGO pola (IEC 60909-0 §4.7, wyrocznia niezależna),
+    # nie I_th biegu przy T_k biegu; prąd cieplny biegu zostaje w ``prady_pola``.
+    assert pole["prady_pola"]["ith_ka"] == ith_ka
+    ith_pola = ith_normy(ik_ka, KAPPA_FIKSTURY, t_k)
+    assert ocena["wynik"]["wartosc"]["jednostka"] == "kA"
+    assert ocena["wynik"]["wartosc"]["wartosc"] == pytest.approx(ith_pola, rel=1e-12)
+    assert ocena["wynik"]["wartosc"]["wartosc"] == pole["prad_cieplny_pola"]["ith_ka"]
     limit_ka = 20.0 if t_k <= 1.0 else 20.0 * (1.0 / t_k) ** 0.5
     assert ocena["limit"]["wartosc"]["wartosc"] == pytest.approx(limit_ka, rel=1e-9)
     assert ocena["status_maszynowy"] == "SPELNIA"

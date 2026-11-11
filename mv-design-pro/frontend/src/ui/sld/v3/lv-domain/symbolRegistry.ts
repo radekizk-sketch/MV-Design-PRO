@@ -30,6 +30,7 @@
  */
 import { ELECTRICAL_CAD_SYMBOL_REGISTRY, type CadSymbolId } from '../cad/cadSymbolRegistry';
 import type { LvDeviceType, LvDomainGenerator, LvDomainMeasurement } from './types';
+import { funkcjaEaz } from '../../../shared/funkcjeEaz';
 
 export type NosnikStanu = 'noz' | 'brak';
 
@@ -229,37 +230,34 @@ export function symbolPomiaru(kind: LvDomainMeasurement['measurement_type']): Ca
 /** Zabezpieczenie (urządzenie wtórne przy aparacie) — prostokąt ze znakami IEC. */
 export const SYMBOL_ZABEZPIECZENIA: CadSymbolId = 'cad.zabezpieczenie';
 
-/** Kody funkcji ENM → numer ANSI/IEEE C37.2 (panel, podpowiedź) i ZNAK
- *  wielkości charakterystycznej w notacji IEC (wnętrze prostokąta
- *  zabezpieczenia — praktyka polskiej dokumentacji zabezpieczeń). */
-export const FUNKCJA_ZABEZPIECZENIA: Readonly<Record<string, { readonly ansi: string; readonly iec: string; readonly nazwaPl: string }>> = {
-  overcurrent_50: { ansi: '50', iec: 'I>>', nazwaPl: 'nadprądowe bezzwłoczne' },
-  overcurrent_51: { ansi: '51', iec: 'I>', nazwaPl: 'nadprądowe zwłoczne' },
-  earth_fault_50N: { ansi: '50N', iec: 'I0>>', nazwaPl: 'ziemnozwarciowe bezzwłoczne' },
-  earth_fault_51N: { ansi: '51N', iec: 'I0>', nazwaPl: 'ziemnozwarciowe zwłoczne' },
-  directional_67: { ansi: '67', iec: 'I>→', nazwaPl: 'nadprądowe kierunkowe' },
-  directional_67N: { ansi: '67N', iec: 'I0>→', nazwaPl: 'ziemnozwarciowe kierunkowe' },
-  rocof_81R: { ansi: '81R', iec: 'df/dt', nazwaPl: 'pochodna częstotliwości (LoM)' },
-  vector_shift_78: { ansi: '78', iec: 'Δφ', nazwaPl: 'skok wektora (LoM)' },
-  underfrequency_81U: { ansi: '81U', iec: 'f<', nazwaPl: 'podczęstotliwościowe' },
-  overfrequency_81O: { ansi: '81O', iec: 'f>', nazwaPl: 'nadczęstotliwościowe' },
-  undervoltage_27: { ansi: '27', iec: 'U<', nazwaPl: 'podnapięciowe' },
-  overvoltage_59: { ansi: '59', iec: 'U>', nazwaPl: 'nadnapięciowe' },
-};
+/** Najdłuższy znak funkcji mieszczący się we wnętrzu prostokąta zabezpieczenia CAD. */
+const MAKS_DLUGOSC_ZNAKU = 5;
 
-/** Pełna lista numerów ANSI (panel odpływu, podpowiedź). */
+/** Znak funkcji (kod rejestru `funkcjeEaz` — ten sam, który niesie sterownik w modelu) do
+ *  prostokąta zabezpieczenia: oznaczenie IEC rejestru („I>", „Io>", „df/dt"), a gdy rejestr
+ *  podaje opis słowny („I> kierunkowe", „skok wektora") — numer ANSI/kod funkcji. Karta
+ *  OCHRONA-JEDNO-ZRODLO: JEDEN rejestr funkcji dla schematu SN, nN, karty pola i raportu —
+ *  dawna lokalna tabela kodów `overcurrent_51…` (druga prawda) jest skasowana. */
+function znakFunkcji(kod: string): string {
+  const f = funkcjaEaz(kod);
+  if (!f) return kod;
+  const oznaczenie = f.oznaczeniePl;
+  return /\s/.test(oznaczenie) || [...oznaczenie].length > MAKS_DLUGOSC_ZNAKU ? (f.ansi ?? f.kod) : oznaczenie;
+}
+
+/** Pełna lista numerów ANSI (panel odpływu, podpowiedź); funkcja bez numeru ANSI — kod rejestru. */
 export function kodyAnsiPelne(functionCodes: readonly string[]): readonly string[] {
-  return functionCodes.map((code) => FUNKCJA_ZABEZPIECZENIA[code]?.ansi ?? code);
+  return functionCodes.map((code) => funkcjaEaz(code)?.ansi ?? code);
 }
 
-/** Pełna lista znaków IEC (podpowiedź, panel). */
+/** Pełna lista znaków funkcji (podpowiedź, panel). */
 export function znakiIecPelne(functionCodes: readonly string[]): readonly string[] {
-  return functionCodes.map((code) => FUNKCJA_ZABEZPIECZENIA[code]?.iec ?? code);
+  return functionCodes.map(znakFunkcji);
 }
 
-/** Nazwy polskie funkcji (panel odpływu). */
+/** Nazwy polskie funkcji z rejestru (panel odpływu). */
 export function nazwyFunkcjiPl(functionCodes: readonly string[]): readonly string[] {
-  return functionCodes.map((code) => FUNKCJA_ZABEZPIECZENIA[code]?.nazwaPl ?? code);
+  return functionCodes.map((code) => funkcjaEaz(code)?.nazwaPl ?? code);
 }
 
 /** Znaki IEC do WNĘTRZA prostokąta zabezpieczenia: maks. 2 wiersze; przy

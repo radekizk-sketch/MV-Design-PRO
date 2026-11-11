@@ -40,6 +40,7 @@ from enm.interlock_rules import (
 from enm.mapping import map_enm_to_network_graph
 from enm.models import BayPrimaryDevice, EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.validator import ENMValidator
+from enm.zabezpieczenie import kody_funkcji_pola, sterownik_pola
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_REGISTRY,
     BAY_TEMPLATES_GPZ_LINE,
@@ -503,7 +504,9 @@ def _sprawdz_pole(enm: dict[str, Any], pole: dict[str, Any], szablon_id: str) ->
     (galaz_ref,) = pole["equipment_refs"]
     assert cb["linked_ref"] == galaz_ref and galezie[galaz_ref]["type"] == "breaker"
     assert cb.get("catalog_ref") == APARAT
-    assert pole["protection_codes"] == funkcje_eaz_szablonu(szablon_id, pole.get("klasa_pola"))
+    assert kody_funkcji_pola(enm, pole["ref_id"]) == funkcje_eaz_szablonu(
+        szablon_id, pole.get("klasa_pola")
+    )
     for aparat in aparaty:
         assert aparat["device_ref"].startswith(pole["ref_id"])
 
@@ -561,14 +564,14 @@ def test_funkcje_eaz_tylko_w_polu_z_aparatem_albo_szablonem(z_aparatem: bool, se
     assert len(pola) == sekcje
     for pole in pola:
         if z_aparatem:
-            assert pole["protection_codes"], "pole z wyłącznikiem niesie funkcje szablonu"
-            assert pole["protection_codes"] == funkcje_eaz_szablonu(
-                pole["bay_template_ref"], pole.get("klasa_pola")
-            )
+            kody = kody_funkcji_pola(enm, pole["ref_id"])
+            assert kody, "pole z wyłącznikiem niesie funkcje szablonu"
+            assert kody == funkcje_eaz_szablonu(pole["bay_template_ref"], pole.get("klasa_pola"))
         else:
             assert pole["bay_template_ref"] is None
             assert not pole["equipment_refs"] and not pole["primary_devices"]
-            assert pole["protection_codes"] == []
+            # Pole bez funkcji nie dostaje pustego sterownika (`ustaw_funkcje_pola`).
+            assert sterownik_pola(enm, pole["ref_id"]) is None
 
 
 def test_przydzial_pola_przy_odgalezieniu_tym_samym_wzorcem():

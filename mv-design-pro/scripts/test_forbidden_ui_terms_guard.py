@@ -208,3 +208,24 @@ def test_komunikat_zapytania_tresc_zrodla_prawdy_poza_nim_jest_czerwona(tmp_path
         tresc = f.read()
     sciezka = _napisz(tmp_path, tresc, "kopia.ts")
     assert guard.scan_komunikat_zapytania(sciezka), "kopia źródła prawdy musi być naruszeniem"
+
+
+# Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN pakiet 8: czas zwarcia nigdy „nieustalony”.
+# Iloczyn: szyk {czas … nieustalony, nieustalony czas, nieznany czas} × nośnik {literał, JSX}
+# + brak fałszywego trafienia na stanie łącznika („położenie nieustalone”, inna dziedzina).
+
+
+def test_flags_czas_nieustalony_in_every_word_order(tmp_path: Path) -> None:
+    for tresc in (
+        "const a = '— czas wyłączenia pola nieustalony';\n",
+        "const b = 'Nieustalony czas zwarcia';\n",
+        "const c = 'nieznany czas wyłączenia';\n",
+        "export const X = () => <span>czas trwania zwarcia nieustalony</span>;\n",
+    ):
+        naruszenia = guard.scan_file(_napisz(tmp_path, tresc))
+        assert any("pakiet 8" in reason for _l, _c, reason in naruszenia), tresc
+
+
+def test_czas_rule_does_not_fire_on_switch_position_state(tmp_path: Path) -> None:
+    sciezka = _napisz(tmp_path, "const p = 'Położenie nieustalone — brak danej w modelu';\n")
+    assert guard.scan_file(sciezka) == []

@@ -44,8 +44,6 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
     Measurement,
-    ProtectionAssignment,
-    ProtectionSetting,
     Substation,
     SwitchBranch,
 )
@@ -58,6 +56,8 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETR_I_TH,
     rozstrzygnij_parametry_aparatu_sn,
 )
+
+from tests.utils.sterownik import sterownik, stopien
 
 #: Pozycja → (rodzaj, I_k karty [kA] albo None, I_cw karty [kA] albo None). Wartości
 #: pozycji z danymi przepisane z kart w katalogu (ABB VD4 / OJS / NAL 12 kV, ETI VV,
@@ -229,20 +229,17 @@ def _model(ref: str) -> EnergyNetworkModel:
             )
         ],
         protection_assignments=[
-            ProtectionAssignment(
+            sterownik(
                 ref_id="prot/1",
                 name="Zabezpieczenie pola 1",
-                breaker_ref="aparat/1",
+                # Sterownik należy do pola (``bay_ref``) — jedyne powiązanie pola z nastawami.
+                bay_ref="pole/1",
+                wylacznik="aparat/1",
                 ct_ref="ct/1",
                 catalog_ref="REF-OC-200",
-                device_type="overcurrent",
-                settings=[
-                    ProtectionSetting(
-                        function_type="overcurrent_51",
-                        threshold_a=500.0,
-                        threshold_unit="A_PIERWOTNY",
-                        curve_type="DT",
-                        time_delay_s=0.4,
+                stopnie=[
+                    stopien(
+                        "51", prog=500.0, jednostka_progu="A_PIERWOTNY", krzywa="DT", zwloka_s=0.4
                     )
                 ],
             )
@@ -265,6 +262,10 @@ _WIERSZE_BIEGU = [
         "ikss_ka": 5.0,
         "ip_ka": 12.5,
         "ith_ka": 5.1,
+        # Realny wiersz biegu niesie κ i czas cieplny biegu T_k zawsze, gdy niesie I_th
+        # (``tests.utils.prad_cieplny``); bez nich fikstura nie odtwarzała produkcji.
+        "kappa": 1.8,
+        "tk_s": 1.0,
     }
 ]
 
@@ -299,7 +300,7 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert dynamiczna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert dynamiczna["limit"] is None
         assert any(
-            "nie niesie prądu szczytowego wytrzymywanego" in b
+            "nie niesie znamionowego prądu szczytowego" in b
             for b in dynamiczna["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.pozycja_bez_znamion_wytrzymalosci" in pole["kody_gotowosci"]
@@ -312,25 +313,30 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
         assert cieplna["limit"] is None
         assert any(
-            "nie niesie prądu krótkotrwałego wytrzymywanego" in b
+            "nie niesie znamionowego prądu krótkotrwałego" in b
             for b in cieplna["wyjasnienie"]["czego_brakuje"]
         )
     elif rodzaj == "CIRCUIT_BREAKER":
         assert cieplna["status_maszynowy"] == "SPELNIA"
         assert cieplna["limit"]["wartosc"] == {"wartosc": icw, "jednostka": "kA"}
     if rodzaj in ("DISCONNECTOR", "LOAD_SWITCH", "EARTH_SWITCH"):
-        # Zdolność wyłączania „nie dotyczy” z rodzaju — bez braku „nie niesie I_cu”.
+        # Zdolność wyłączania „nie dotyczy” z rodzaju — bez braku „nie niesie znamienia”.
         assert wylaczanie["status_maszynowy"] == "NIE_DOTYCZY"
-        assert not any("I_cu" in b for b in wylaczanie["wyjasnienie"]["czego_brakuje"]), wylaczanie[
-            "wyjasnienie"
-        ]
+        assert not any(
+            "znamienia zdolności wyłączania" in b
+            for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
+        ), wylaczanie["wyjasnienie"]
         assert "aparatura.brak_zdolnosci_wylaczania" not in pole["kody_gotowosci"]
     elif ik is None:
         # Brak danej ≠ nie dotyczy: wyłącznik ma tę zdolność, karta jej nie podaje.
         assert wylaczanie["status_maszynowy"] == "NIE_OCENIONO"
         assert wylaczanie["limit"] is None
         assert any(
-            "nie niesie znamionowej zdolności wyłączania zwarciowej" in b
+            # Wyłącznik SN/WN: znamię I_sc wg IEC 62271-100 (karta APARATURA-TABELA), nie I_cu
+            # wyłącznika nN. Proza nazywa znamię słowami (karta KD6 — symbol wyłącznie z pól
+            # `*_latex`), więc rozróżnienie niesie nazwa znamienia IEC 62271-100.
+            "nie niesie znamienia zdolności wyłączania" in b
+            and "znamionowy prąd wyłączalny zwarciowy" in b
             for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.brak_zdolnosci_wylaczania" in pole["kody_gotowosci"]

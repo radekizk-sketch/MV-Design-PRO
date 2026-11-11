@@ -6,25 +6,25 @@ REST API endpoints for managing fault scenarios as first-class domain objects.
 Endpoints:
     POST   /api/execution/study-cases/{case_id}/fault-scenarios  — Create scenario
     GET    /api/execution/study-cases/{case_id}/fault-scenarios  — List scenarios
-    GET    /api/execution/fault-scenarios/{scenario_id}          — Get scenario
-    PUT    /api/execution/fault-scenarios/{scenario_id}          — Update scenario
-    DELETE /api/execution/fault-scenarios/{scenario_id}          — Delete scenario
-    GET    /api/execution/fault-scenarios/{scenario_id}/eligibility — Check eligibility
-    GET    /api/execution/fault-scenarios/{scenario_id}/sld-overlay — SLD overlay
-    POST   /api/execution/fault-scenarios/{scenario_id}/runs     — Create run
+    GET    /api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}   — Get scenario
+    PUT    /api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}   — Update scenario
+    DELETE /api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}   — Delete scenario
+    GET    /api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/eligibility
+    GET    /api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/sld-overlay
+    POST   /api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/runs
 
 All responses use Polish error messages for UI consistency.
 ZERO heuristics. ZERO auto-completion.
 
 KLUCZ MAGAZYNU (karta C6-PERSIST). Scenariusze żyją w magazynie scenariuszy per
 projekt (`enm/scenariusze.py`), adresowanym kluczem Canonical Project Twin — nie
-`case_id`. Końcówki adresowane `{case_id}` w ścieżce tłumaczą go przez
-`api/klucz_twin_dep.klucz_twin_z_sciezki` (JEDYNE tłumaczenie). Końcówki
-adresowane WYŁĄCZNIE `{scenario_id}` (bez `case_id` w ścieżce) nie znają
-projektu z góry — klucz jest odnajdywany PRZEGLĄDANIEM magazynu scenariuszy
-(`enm.scenariusze.znajdz_klucz_scenariusza`, `_wymagany_klucz` niżej): każdy
-plik scenariusza niesie własny klucz, więc nie ma tu drugiej prawdy (indeksu
-osobnego) do utrzymania w zgodzie z rzeczywistymi plikami.
+`case_id`. KAŻDA końcówka niesie `{case_id}` w ścieżce i tłumaczy go przez
+`api/klucz_twin_dep.klucz_twin_z_sciezki` (JEDYNE tłumaczenie), więc scenariusz
+jest zawsze wyszukiwany w obrębie projektu (klucz projektu + `scenario_id`,
+`_klucz_scenariusza_przypadku` niżej). Wyszukiwanie po samym `scenario_id`
+ponad projektami zostało usunięte (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN):
+identyfikator scenariusza jest unikalny tylko w projekcie, bo import archiwum do
+tej samej instancji odtwarza te same identyfikatory w nowym projekcie.
 """
 
 from __future__ import annotations
@@ -48,7 +48,6 @@ from domain.fault_scenario import (
     FaultScenarioValidationError,
     FaultType,
 )
-from enm.scenariusze import znajdz_klucz_scenariusza
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field
@@ -66,17 +65,30 @@ def get_fault_scenario_service() -> FaultScenarioService:
     return _service
 
 
-def _wymagany_klucz(scenario_id: UUID) -> str:
-    """Klucz magazynu scenariusza adresowanego WYŁĄCZNIE `scenario_id`.
+def _klucz_scenariusza_przypadku(
+    case_id: str,
+    scenario_id: UUID,
+    http_request: Request,
+    service: FaultScenarioService,
+) -> str:
+    """Klucz magazynu scenariusza adresowanego `case_id` + `scenario_id` — wyszukiwanie
+    ZAWSZE w obrębie projektu przypadku.
 
-    JEDYNE tłumaczenie dla końcówek bez `case_id` w ścieżce (§0 karty
-    C6-PERSIST, pkt 2) — przeglądanie magazynu (`znajdz_klucz_scenariusza`),
-    nigdy osobny indeks. Brak dopasowania = uczciwy `FaultScenarioNotFoundError`
-    (404), nieodróżnialny od „scenariusz nigdy nie istniał" — z perspektywy
-    wołającego to ten sam brak.
+    Klucz projektu pochodzi z JEDYNEGO tłumaczenia `case_id -> klucz`
+    (`klucz_twin_z_sciezki`); scenariusz jest czytany wyłącznie z magazynu tego
+    projektu. Dawne przeglądanie magazynów WSZYSTKICH projektów po samym
+    `scenario_id` było defektem: dwa projekty z tym samym identyfikatorem
+    scenariusza (import archiwum do tej samej instancji) rozstrzygała kolejność
+    katalogów, a bieg w drugim projekcie czytał scenariusz pierwszego.
+    Scenariusz innego przypadku tego samego projektu to ten sam uczciwy brak (404)
+    co scenariusz, którego nigdy nie było — trasa przypadku nie sięga do cudzych
+    scenariuszy.
     """
-    klucz = znajdz_klucz_scenariusza(str(scenario_id))
-    if klucz is None:
+    parsed_case_id = parsuj_uuid(case_id, "case_id")
+    klucz = klucz_twin_z_sciezki(case_id, http_request)
+    wpis = service.get_scenario_ze_wpisem(klucz, scenario_id)
+    assert wpis.fault_spec is not None  # gwarantowane przez get_scenario_ze_wpisem
+    if wpis.fault_spec.study_case_id != parsed_case_id:
         raise FaultScenarioNotFoundError(str(scenario_id))
     return klucz
 
@@ -411,10 +423,10 @@ def list_fault_scenarios(case_id: str, http_request: Request) -> dict[str, Any]:
 
 
 @router.get(
-    "/api/execution/fault-scenarios/{scenario_id}",
+    "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}",
     response_model=FaultScenarioResponse,
 )
-def get_fault_scenario(scenario_id: str) -> dict[str, Any]:
+def get_fault_scenario(case_id: str, scenario_id: str, http_request: Request) -> dict[str, Any]:
     """
     Pobierz szczegóły scenariusza zwarcia.
     """
@@ -422,7 +434,7 @@ def get_fault_scenario(scenario_id: str) -> dict[str, Any]:
     service = get_fault_scenario_service()
 
     try:
-        klucz = _wymagany_klucz(parsed_id)
+        klucz = _klucz_scenariusza_przypadku(case_id, parsed_id, http_request, service)
         return _payload_scenariusza(service, klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
@@ -432,12 +444,14 @@ def get_fault_scenario(scenario_id: str) -> dict[str, Any]:
 
 
 @router.put(
-    "/api/execution/fault-scenarios/{scenario_id}",
+    "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}",
     response_model=FaultScenarioResponse,
 )
 def update_fault_scenario(
+    case_id: str,
     scenario_id: str,
     request: UpdateFaultScenarioRequest,
+    http_request: Request,
 ) -> dict[str, Any]:
     """
     Zaktualizuj scenariusz zwarcia (copy-on-write, nowa rewizja w magazynie).
@@ -472,7 +486,7 @@ def update_fault_scenario(
         fault_impedance_dict = request.fault_impedance.model_dump()
 
     try:
-        klucz = _wymagany_klucz(parsed_id)
+        klucz = _klucz_scenariusza_przypadku(case_id, parsed_id, http_request, service)
         service.update_scenario(
             klucz,
             parsed_id,
@@ -497,11 +511,11 @@ def update_fault_scenario(
 
 
 @router.delete(
-    "/api/execution/fault-scenarios/{scenario_id}",
+    "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
 )
-def delete_fault_scenario(scenario_id: str) -> None:
+def delete_fault_scenario(case_id: str, scenario_id: str, http_request: Request) -> None:
     """
     Usuń scenariusz zwarcia.
 
@@ -512,7 +526,7 @@ def delete_fault_scenario(scenario_id: str) -> None:
     service = get_fault_scenario_service()
 
     try:
-        klucz = _wymagany_klucz(parsed_id)
+        klucz = _klucz_scenariusza_przypadku(case_id, parsed_id, http_request, service)
         service.delete_scenario(klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(
@@ -527,10 +541,12 @@ def delete_fault_scenario(scenario_id: str) -> None:
 
 
 @router.get(
-    "/api/execution/fault-scenarios/{scenario_id}/eligibility",
+    "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/eligibility",
     response_model=ScenarioEligibilityResponse,
 )
-def get_scenario_eligibility(scenario_id: str) -> dict[str, Any]:
+def get_scenario_eligibility(
+    case_id: str, scenario_id: str, http_request: Request
+) -> dict[str, Any]:
     """
     Sprawdź gotowość scenariusza do uruchomienia analizy.
 
@@ -540,7 +556,7 @@ def get_scenario_eligibility(scenario_id: str) -> dict[str, Any]:
     service = get_fault_scenario_service()
 
     try:
-        klucz = _wymagany_klucz(parsed_id)
+        klucz = _klucz_scenariusza_przypadku(case_id, parsed_id, http_request, service)
         result = service.check_scenario_eligibility(klucz, parsed_id)
         return result.to_dict()
     except FaultScenarioNotFoundError as exc:
@@ -551,9 +567,11 @@ def get_scenario_eligibility(scenario_id: str) -> dict[str, Any]:
 
 
 @router.get(
-    "/api/execution/fault-scenarios/{scenario_id}/sld-overlay",
+    "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/sld-overlay",
 )
-def get_scenario_sld_overlay(scenario_id: str) -> dict[str, Any]:
+def get_scenario_sld_overlay(
+    case_id: str, scenario_id: str, http_request: Request
+) -> dict[str, Any]:
     """
     Pobierz overlay SLD dla scenariusza zwarcia.
 
@@ -564,7 +582,7 @@ def get_scenario_sld_overlay(scenario_id: str) -> dict[str, Any]:
     service = get_fault_scenario_service()
 
     try:
-        klucz = _wymagany_klucz(parsed_id)
+        klucz = _klucz_scenariusza_przypadku(case_id, parsed_id, http_request, service)
         overlay = service.get_scenario_sld_overlay(klucz, parsed_id)
         return overlay
     except FaultScenarioNotFoundError as exc:
@@ -575,11 +593,13 @@ def get_scenario_sld_overlay(scenario_id: str) -> dict[str, Any]:
 
 
 @router.post(
-    "/api/execution/fault-scenarios/{scenario_id}/runs",
+    "/api/execution/study-cases/{case_id}/fault-scenarios/{scenario_id}/runs",
     status_code=status.HTTP_201_CREATED,
 )
 def create_run_from_scenario(
+    case_id: str,
     scenario_id: str,
+    http_request: Request,
     request: CreateRunFromScenarioRequest | None = None,
 ) -> dict[str, Any]:
     """
@@ -592,7 +612,7 @@ def create_run_from_scenario(
     service = get_fault_scenario_service()
 
     try:
-        klucz = _wymagany_klucz(parsed_id)
+        klucz = _klucz_scenariusza_przypadku(case_id, parsed_id, http_request, service)
         wpis = service.get_scenario_ze_wpisem(klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
         raise HTTPException(

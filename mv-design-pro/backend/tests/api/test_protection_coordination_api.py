@@ -83,24 +83,38 @@ def test_koordynacja_urzadzen_modelu_przez_api(scena: tuple[Any, str, dict[str, 
     podsumowanie = odpowiedz.json()
     # P-06: potwierdzenie niesie liczby zbiorcze, nie werdykt ogólny.
     assert "overall_verdict" not in podsumowanie
-    assert podsumowanie["total_devices"] == 2
-    assert podsumowanie["total_checks"] == 5
+    # Osiem sterowników modelu: dwa przy wyłącznikach liniowych z nastawami i sześć sterowników
+    # pól stacji z szablonu (funkcje bez nastaw) — każdy jest urządzeniem modelu, a brak jego
+    # nastaw jest jawnym brakiem, nie pominięciem (karta OCHRONA-JEDNO-ZRODLO).
+    assert podsumowanie["total_devices"] == 8
+    # Kontrole: czułość 8 (2 z ilorazem + 6 z nazwanym brakiem), selektywność 1, przeciążalność 2.
+    assert podsumowanie["total_checks"] == 11
     assert podsumowanie["najmniejszy_odstep_s"] == pytest.approx(0.3)
     assert podsumowanie["najmniejszy_iloraz_czulosci"] > 1.0
     assert podsumowanie["najmniejszy_iloraz_przeciazalnosci"] > 1.0
 
     run_id = podsumowanie["run_id"]
     wynik = klient.get(f"/api/protection-coordination/{run_id}").json()
-    assert {d["name"] for d in wynik["devices"]} == {
-        NAZWA_ZABEZPIECZENIA_Q1,
-        NAZWA_ZABEZPIECZENIA_Q2,
-    }
-    assert all(d["nastawy"]["stopnie"] for d in wynik["devices"])
+    gotowe = {d["name"] for d in wynik["devices"] if d["nastawy"]["gotowe"]}
+    assert gotowe == {NAZWA_ZABEZPIECZENIA_Q1, NAZWA_ZABEZPIECZENIA_Q2}
+    assert all(d["nastawy"]["stopnie"] for d in wynik["devices"] if d["name"] in gotowe)
+    bez_nastaw = [d for d in wynik["devices"] if d["name"] not in gotowe]
+    assert len(bez_nastaw) == 6
+    assert all(d["nastawy"]["braki"] and not d["nastawy"]["stopnie"] for d in bez_nastaw)
+    # Kontrola czułości urządzenia bez nastaw: bez ilorazu, z JEDNYM streszczeniem braków
+    # (nazwa sterownika raz, braki stopni grupowane per funkcja).
+    for kontrola in (
+        c for c in wynik["sensitivity_checks"] if c["device_id"] in {d["id"] for d in bez_nastaw}
+    ):
+        assert kontrola["ratio"] is None
+        nazwa = next(d["name"] for d in bez_nastaw if d["id"] == kontrola["device_id"])
+        assert kontrola["notes_pl"].count(nazwa) <= 3, kontrola["notes_pl"]
+        assert "są niekompletne: I> (51) — brak progu rozruchowego" in (kontrola["notes_pl"])
     assert len(wynik["pary"]) == 1
     assert len(wynik["tcc_curves"]) == 2 and all(k["points"] for k in wynik["tcc_curves"])
     assert wynik["fault_markers"]
     assert wynik["trace_steps"]
-    for rodzaj, liczba in (("sensitivity", 2), ("selectivity", 1), ("overload", 2)):
+    for rodzaj, liczba in (("sensitivity", 8), ("selectivity", 1), ("overload", 2)):
         assert len(wynik[f"{rodzaj}_checks"]) == liczba
         assert all("verdict" not in c for c in wynik[f"{rodzaj}_checks"])
     assert "overall_verdict" not in wynik
@@ -178,6 +192,9 @@ def test_siec_zmieniona_od_biegu_odmowa(scena: tuple[Any, str, dict[str, str]]) 
 def test_model_bez_zabezpieczen_odmowa(app_client: Any) -> None:
     reset_canonical_runs()
     enm, _a, _b = siec_magistrali()
+    # Pola stacji z szablonu dostają sterowniki z funkcjami szablonu; model BEZ zabezpieczeń
+    # to model bez żadnego sterownika (pola bez zabezpieczenia są stanem dopuszczalnym).
+    enm["protection_assignments"] = []
     projekt, biegi = _projekt(app_client, EnergyNetworkModel.model_validate(enm))
     odpowiedz = _uruchom(app_client, projekt, _zadanie(biegi))
     assert odpowiedz.status_code == 422

@@ -47,6 +47,7 @@ import type {
   LvDomainBus,
   LvDomainDevice,
   LvDomainGraphView,
+  LvDomainProtectionAssignment,
   LvDomainSegment,
   LvEnergizationState,
   LvTerminalState,
@@ -371,7 +372,12 @@ export function composeLvDomainScene(
   for (const m of [...view.measurements].sort((a, b) => sortRefs(a.ref_id, b.ref_id))) {
     measurementsByBus.set(m.bus_ref, [...(measurementsByBus.get(m.bus_ref) ?? []), m]);
   }
-  const relayByBreaker = new Map(view.protection_assignments.map((p) => [p.breaker_ref, p] as const));
+  // Sterownik przy aparacie, który wyzwala (macierz wyzwoleń); kolejność wejścia deterministyczna
+  // (backend sortuje), pierwszy sterownik wyzwalający aparat wygrywa.
+  const relayByBreaker = new Map<string, LvDomainProtectionAssignment>();
+  for (const p of view.protection_assignments) {
+    for (const ref of p.wylaczniki_refs) if (!relayByBreaker.has(ref)) relayByBreaker.set(ref, p);
+  }
   const boundaryByBus = new Map<string, typeof view.boundary_links[number][]>();
   for (const link of [...view.boundary_links].sort((a, b) => sortRefs(a.branch_ref, b.branch_ref))) {
     boundaryByBus.set(link.from_bus_ref, [...(boundaryByBus.get(link.from_bus_ref) ?? []), link]);

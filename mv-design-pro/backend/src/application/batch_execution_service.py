@@ -3,8 +3,8 @@
 Orkiestracja SERII biegów kanonicznych nad scenariuszami zwarciowymi jednego
 przypadku obliczeniowego. Każdy element serii to ZWYKŁY bieg kanoniczny
 (`enm.canonical_analysis.create_run` + `execute_run`) — ten sam tor, którym
-idzie pojedynczy bieg ze scenariusza (`POST /api/execution/fault-scenarios/
-{id}/runs` + `POST /api/execution/runs/{id}/execute`). Seria niczego nie
+idzie pojedynczy bieg ze scenariusza (`POST /api/execution/study-cases/
+{case_id}/fault-scenarios/{id}/runs` + `POST /api/execution/runs/{id}/execute`). Seria niczego nie
 liczy sama (NOT-A-SOLVER) i nie przechowuje wyników — wyniki żyją w
 artefaktach biegów kanonicznych, dostępnych istniejącymi końcówkami
 (`GET /api/execution/runs/{run_id}/results`).

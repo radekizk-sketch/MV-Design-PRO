@@ -23,6 +23,24 @@ def load_device_capability(device_id: str) -> DeviceCapability | None:
     return None
 
 
+def profil_charakterystyk(device_id: str | None) -> DeviceCapability | None:
+    """Profil charakterystyk funkcji sterownika, którego zakresy da się porównać z nastawą.
+
+    JEDEN predykat dla zapisu (`update_protection_settings` odrzuca wskazanie profilu
+    nieużytecznego) i odczytu (`ocena_nadpradowa.charakterystyki_sterownika`): profil istnieje
+    w katalogu analitycznym i ma ustaloną jednostkę zakresów prądowych — inaczej ``None``.
+    """
+    profil = load_device_capability(device_id) if device_id else None
+    if profil is None or profil.jednostka_zakresow_pradowych is None:
+        return None
+    return profil
+
+
+def profile_charakterystyk() -> list[DeviceCapability]:
+    """Profile charakterystyk do wyboru w karcie pola — ten sam predykat co zapis i ocena."""
+    return [d for d in list_devices() if profil_charakterystyk(d.device_id) is not None]
+
+
 def list_devices(vendor: str | None = None) -> list[DeviceCapability]:
     devices = _load_catalog()
     if vendor:

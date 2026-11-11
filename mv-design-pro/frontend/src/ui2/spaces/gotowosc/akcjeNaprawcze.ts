@@ -101,10 +101,11 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (196 kodów — pomiar `len(READINESS_CODES)` 2026-11-11 na drzewie
- * integracji po scaleniu karty UX-04/POLE-LINIOWE-WZORZEC: 183 kody strony integracji (karty zespołu
- * uziemiającego SN i UX-04/POLE-BKR-MODEL) + 13 kodów karty pola liniowego (11 kodów `bay.*`
- * i 2 kody stanu obiektu w katalogu); po stronie karty 187 = 174 bazy + 13). Brak wpisu dla kodu
+ * KOMPLETNA tabela kodów kanonu (197 kodów — pomiar `len(READINESS_CODES)` 2026-11-11 na drzewie
+ * integracji po scaleniu karty delt scenariusza zabezpieczeń: 196 kodów strony integracji (183 kody
+ * kart zespołu uziemiającego SN i UX-04/POLE-BKR-MODEL + 13 kodów karty pola liniowego — 11 kodów
+ * `bay.*` i 2 kody stanu obiektu w katalogu) + 1 kod strony delt
+ * (`conductor.thermal_data_inconsistent`, karta KD6). Brak wpisu dla kodu
  * z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
@@ -340,6 +341,7 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'vt.winding_category_missing': KATALOG,
   // --- Przewody i kable ------------------------------------------------------------
   'conductor.thermal_data_missing': KATALOG,
+  'conductor.thermal_data_inconsistent': KATALOG,
   'conductor.fault_current_missing': przestrzen('obliczenia', POWOD_BIEG_ZWARCIOWY),
   'conductor.fault_duration_missing': przestrzen(
     'wyniki',

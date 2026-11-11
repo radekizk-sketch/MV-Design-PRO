@@ -26,10 +26,11 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (
 )
 from application.twin_key import klucz_twin_dla_przypadku
 from enm.canonical_analysis import create_run, execute_run, get_run, reset_canonical_runs
-from enm.models import Cable, Measurement, ProtectionAssignment, ProtectionSetting
+from enm.models import Cable, Measurement
 from enm.store import reset_enm_store, set_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
+from tests.utils.sterownik import sterownik, stopien
 
 
 @pytest.fixture(autouse=True)
@@ -64,7 +65,14 @@ def _nowy_przypadek(uow_factory) -> str:
     return str(case_id)
 
 
-def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0, case_id: str = "c-cieplna"):
+def _przebieg(
+    *,
+    z_zabezpieczeniem: bool,
+    prog_a: float = 100.0,
+    case_id: str = "c-cieplna",
+    options: dict[str, float] | None = None,
+    czas_projektanta_s: float | None = None,
+):
     """Bieg zwarciowy na sieci wzorcowej, opcjonalnie z zabezpieczeniem na sprzegle.
 
     ``sw_coupler`` to jedyny wylacznik sieci wzorcowej i lezy miedzy zasilaniem a
@@ -85,34 +93,51 @@ def _przebieg(*, z_zabezpieczeniem: bool, prog_a: float = 100.0, case_id: str = 
             )
         )
         model.protection_assignments.append(
-            ProtectionAssignment(
+            sterownik(
                 ref_id="prot_coupler",
                 name="Zabezpieczenie sprzegla",
-                breaker_ref="sw_coupler",
+                wylacznik="sw_coupler",
                 ct_ref="ct_coupler",
                 catalog_ref="REF-OC-200",
-                device_type="overcurrent",
-                settings=[
-                    ProtectionSetting(
-                        function_type="overcurrent_51",
-                        threshold_a=prog_a,
-                        threshold_unit="A_PIERWOTNY",
-                        curve_type="IEC_SI",
-                        time_multiplier=0.2,
+                stopnie=[
+                    stopien(
+                        "51", prog=prog_a, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI", tms=0.2
                     )
                 ],
             )
         )
+    if czas_projektanta_s is not None:
+        # Przyjęty czas zwarcia projektanta na wyłączniku chroniącym przewody (pakiet 8).
+        model.branches = [
+            (
+                g.model_copy(update={"czas_wylaczenia_zwarcia_s": czas_projektanta_s})
+                if g.ref_id == "sw_coupler"
+                else g
+            )
+            for g in model.branches
+        ]
     set_enm(case_id, model)
     run = execute_run(
-        create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn").id
+        create_run(
+            case_id=case_id,
+            klucz_twin=case_id,
+            analysis_type="short_circuit_sn",
+            options=options,
+        ).id
     )
     return get_run(run.id)
 
 
-def test_bez_mapy_zabezpieczen_czas_jest_jawnym_zalozeniem_przypadku() -> None:
-    """Brak nastaw nie odbiera oceny — odbiera prawo nazwania czasu nastawa."""
-    widok = build_wytrzymalosc_cieplna_view(_przebieg(z_zabezpieczeniem=False))
+@pytest.mark.parametrize("czas_przypadku", [None, 0.8], ids=["bez_czasu_przypadku", "przypadek"])
+def test_bez_mapy_zabezpieczen_czas_jest_jawnym_zalozeniem(czas_przypadku: float | None) -> None:
+    """Brak nastaw nie odbiera oceny — odbiera prawo nazwania czasu nastawą.
+
+    Iloczyn (pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): przypadek z jawnym czasem
+    cieplnym → założenie przypadku; bez niego → wartość robocza 1 s wg IEC 62271-1 §4.7
+    (dana przyjęta ``ESTIMATED`` w widoku), nigdy czas pusty.
+    """
+    options = None if czas_przypadku is None else {"thermal_time_seconds": czas_przypadku}
+    widok = build_wytrzymalosc_cieplna_view(_przebieg(z_zabezpieczeniem=False, options=options))
 
     podsumowanie = widok["czasy_wylaczenia"]
     assert podsumowanie["z_nastawy"] == 0
@@ -121,15 +146,57 @@ def test_bez_mapy_zabezpieczen_czas_jest_jawnym_zalozeniem_przypadku() -> None:
     for pozycja in widok["ocena"]["items"]:
         czas = pozycja["czas_wylaczenia"]
         assert czas is not None, "kazda galaz musi miec jawne zrodlo czasu"
-        assert czas["zrodlo"] == "zalozenie_przypadku"
-        assert czas["tk_s"] == pytest.approx(widok["tk_s"])
-        assert "założony czas przypadku" in czas["powod_pl"]
+        if czas_przypadku is None:
+            assert czas["zrodlo"] == "wartosc_robocza"
+            assert czas["tk_s"] == pytest.approx(1.0)
+            assert "IEC 62271-1" in czas["powod_pl"]
+        else:
+            assert czas["zrodlo"] == "zalozenie_przypadku"
+            assert czas["tk_s"] == pytest.approx(czas_przypadku)
+            assert "założony czas przypadku" in czas["powod_pl"]
+    dane = widok.get("dane_przyjete") or []
+    czasy_przyjete = [d for d in dane if d["wartosc"] == {"wartosc": 1.0, "jednostka": "s"}]
+    assert len(czasy_przyjete) == (1 if czas_przypadku is None else 0)
+    if czasy_przyjete:
+        assert czasy_przyjete[0]["jakosc"] == "ESTIMATED"
+
+
+@pytest.mark.parametrize("z_zabezpieczeniem", [False, True], ids=["bez_nastaw", "z_nastawa"])
+@pytest.mark.parametrize("czas_s", [0.2, 5.0], ids=["krotki", "dlugi"])
+def test_czas_projektanta_na_wylaczniku_ma_pierwszenstwo(
+    czas_s: float, z_zabezpieczeniem: bool
+) -> None:
+    """Iloczyn (pakiet 8): wartość projektanta na wyłączniku chroniącym > nastawa > wartość
+    robocza — dla gałęzi chronionych przez ``sw_coupler`` czas = wartość projektanta (także
+    przy kompletnej nastawie), bez danej przyjętej czasu. Wynik kryterium (spełnione /
+    niespełnione) × źródło czasu przypina
+    ``test_wytrzymalosc_cieplna_przewodow.py::test_wynik_przewodu_idzie_za_czasem_z_rozstrzygniecia``
+    (sieć wzorcowa nie ma gałęzi chronionej z porównywalnym prądem)."""
+    widok = build_wytrzymalosc_cieplna_view(
+        _przebieg(z_zabezpieczeniem=z_zabezpieczeniem, czas_projektanta_s=czas_s)
+    )
+    projektanta = [
+        p
+        for p in widok["ocena"]["items"]
+        if (p["czas_wylaczenia"] or {}).get("zrodlo") == "projektant"
+    ]
+    assert projektanta, "wyłącznik sprzęgła chroni co najmniej jedną gałąź"
+    for pozycja in projektanta:
+        assert pozycja["czas_wylaczenia"]["tk_s"] == pytest.approx(czas_s)
+        assert "przyjęty czas zwarcia na wyłączniku" in pozycja["czas_wylaczenia"]["powod_pl"]
+    assert widok["czasy_wylaczenia"]["z_nastawy"] == 0
+    dane = widok.get("dane_przyjete") or []
+    assert not any(
+        str(d.get("nazwa_pl", "")).startswith("czas trwania zwarcia")
+        and d["wartosc"]["wartosc"] == czas_s
+        for d in dane
+    )
 
 
 def test_z_mapa_zabezpieczen_czas_pochodzi_z_nastawy_i_rozni_sie_od_zalozenia() -> None:
     """DOWOD ROZNICY: ten sam model z nastawa daje INNY czas niz zalozenie przypadku.
 
-    Gdyby przelozenie ``breaker_ref`` -> lacznik grafu nie dzialalo, oba przebiegi
+    Gdyby przelozenie wyłącznika macierzy wyzwoleń -> lacznik grafu nie dzialalo, oba przebiegi
     dalyby identyczny czas (zalozenie) i test by tego nie odroznil.
     """
     widok = build_wytrzymalosc_cieplna_view(_przebieg(z_zabezpieczeniem=True))
@@ -150,7 +217,7 @@ def test_z_mapa_zabezpieczen_czas_pochodzi_z_nastawy_i_rozni_sie_od_zalozenia() 
         ), "czas z charakterystyki nie moze przypadkiem rownac sie zalozeniu przypadku"
         assert czas["urzadzenie_ref"], "slad musi wskazywac aparat"
         assert czas["krzywa"] == "IEC_SI"
-        assert czas["funkcja"] == "overcurrent_51"
+        assert czas["funkcja"] == "51"
 
 
 def test_dowod_zaczyna_sie_od_zrodla_czasu_i_niesie_kroki_kryterium() -> None:

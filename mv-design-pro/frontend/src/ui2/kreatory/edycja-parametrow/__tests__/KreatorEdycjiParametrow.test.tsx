@@ -362,7 +362,7 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       expect(executeDomainOperationMock).not.toHaveBeenCalled();
     });
 
-    it('kontekst „Zmień wartość” (field = parametr aparatu) → kursor w polu aparatu, nie w wierszu klucz → wartość', async () => {
+    it('kontekst parametru aparatu z inspektora (field = parametr aparatu) → kursor w polu aparatu, nie w wierszu klucz → wartość', async () => {
       vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
       context = { element_ref: APARAT.ref_id, element_type: 'Switch', field: 'break_time_s' };
       render(<KreatorEdycjiParametrow />);
@@ -370,7 +370,7 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       await waitFor(() => expect(screen.getByTestId(`${A}-break_time_s`)).toHaveFocus());
     });
 
-    it('akcja naprawcza blokady E011 (field = overrides) → kursor w pierwszym polu aparatu', async () => {
+    it('akcja naprawcza blokady E011 i „Parametry aparatu” (field = overrides) → kursor w pierwszym polu aparatu', async () => {
       vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
       context = { element_ref: APARAT.ref_id, element_type: 'Switch', field: 'overrides' };
       render(<KreatorEdycjiParametrow />);

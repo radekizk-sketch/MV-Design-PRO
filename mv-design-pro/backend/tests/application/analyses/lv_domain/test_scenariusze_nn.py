@@ -97,7 +97,7 @@ class TestFaktyScenariuszy:
         assert role["QF-02"]["feeder_kind"] == "sub_board"
         assert role["QF-03"]["feeder_kind"] == "der"
         assert [m["ref_id"] for m in p["graph"]["measurements"]] == ["CT-T1"]
-        assert [z["breaker_ref"] for z in p["graph"]["protection_assignments"]] == ["QF-T1"]
+        assert [z["wylaczniki_refs"] for z in p["graph"]["protection_assignments"]] == [["QF-T1"]]
         assert _kody(p) == set()
 
     def test_02_vs_03_sprzeglo_zmienia_stan_sekcji(self, projekcje) -> None:
@@ -197,9 +197,11 @@ class TestFaktyScenariuszy:
             "QF-G1_pcc",
         }
         funkcje = {
-            z["breaker_ref"]: z["function_codes"] for z in p["graph"]["protection_assignments"]
+            tuple(z["wylaczniki_refs"]): z["function_codes"]
+            for z in p["graph"]["protection_assignments"]
         }
-        assert funkcje["QF-PV1"] == ["rocof_81R", "underfrequency_81U", "vector_shift_78"]
+        # Kody funkcji z rejestru, w kolejności zapisu sterownika.
+        assert funkcje[("QF-PV1",)] == ["81R", "78", "81U"]
         assert _wyspa_szyny(p, "RGnN-1")["energization_state"] == "ENERGIZED"
         assert _kody(p) == set()
 

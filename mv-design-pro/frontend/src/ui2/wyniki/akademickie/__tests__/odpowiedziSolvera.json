@@ -56,7 +56,7 @@
           "zakres_stosowalnosci_pl": "tolerancja podana z wartością odniesienia"
         },
         "margines": {
-          "definicja_latex": "m = x_{\\lim} - x",
+          "definicja_latex": "\\Delta x = x_{\\lim} - x",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "IEEE 14-bus — rozpływ mocy — napięcie węzła 4",
@@ -426,7 +426,7 @@
               "zakres_stosowalnosci_pl": "napięcie dotykowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "GPZ Zachód — szyny SN",
@@ -584,7 +584,7 @@
               "zakres_stosowalnosci_pl": "napięcie krokowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "GPZ Zachód — szyny SN",
@@ -1032,7 +1032,7 @@
               "zakres_stosowalnosci_pl": "wymagane napięcie trwałej pracy równe przepięciu dorywczemu sieci (doziemienie długotrwałe)"
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "Stacja SN/nN Ogrodowa",
@@ -1178,7 +1178,7 @@
               "zakres_stosowalnosci_pl": "przepięcie dorywcze: współczynnik doziemienia razy napięcie najwyższe urządzenia przez pierwiastek z trzech"
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "Stacja SN/nN Ogrodowa",
@@ -1351,7 +1351,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "Stacja SN/nN Ogrodowa",
@@ -1752,7 +1752,7 @@
               "zakres_stosowalnosci_pl": null
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
@@ -1903,7 +1903,7 @@
               "zakres_stosowalnosci_pl": "dopuszczalny czas utyku z karty silnika"
             },
             "margines": {
-              "definicja_latex": "m = x_{\\lim} - x",
+              "definicja_latex": "\\Delta x = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
@@ -2050,7 +2050,7 @@
               "zakres_stosowalnosci_pl": "moment obciążenia przy rozruchu z danych napędu"
             },
             "margines": {
-              "definicja_latex": "m = x - x_{\\lim}",
+              "definicja_latex": "\\Delta x = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
               "punkt_pl": "silnik M1 (szyna Stacja SN/nN Ogrodowa)",
@@ -2343,7 +2343,7 @@
           "zakres_stosowalnosci_pl": null
         },
         "margines": {
-          "definicja_latex": "m = x_{\\lim} - x",
+          "definicja_latex": "\\Delta x = x_{\\lim} - x",
           "niedefiniowalny": false,
           "powod_pl": null,
           "punkt_pl": "Sieć SN 15 kV — GPZ Zachód — szyny SN",

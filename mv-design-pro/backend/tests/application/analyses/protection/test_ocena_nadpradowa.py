@@ -33,16 +33,15 @@ from application.analyses.protection.ocena_nadpradowa import (
     KOD_APARAT_OTWARTY,
     KOD_APARAT_POZA_TOREM,
     KOD_BRAK_MNOZNIKA,
-    KOD_BRAK_POZYCJI_KATALOGU,
     KOD_BRAK_PROGU,
     KOD_BRAK_PRZEKLADNIKA,
     KOD_BRAK_STOPNI,
     KOD_BRAK_ZWLOKI,
     KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
     KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
-    KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
     KOD_MNOZNIK_POZA_ZAKRESEM,
     KOD_PRAD_NIELICZBOWY,
+    KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
     KOD_PROG_POZA_ZAKRESEM,
     KOD_STREFA_NIEJEDNOZNACZNA,
     KOD_WEJSCIE_NIEZGODNE,
@@ -50,6 +49,9 @@ from application.analyses.protection.ocena_nadpradowa import (
     POMINIETE_BEZ_FUNKCJI_NADPRADOWYCH,
     POMINIETE_WYLACZONE,
     WIARYGODNOSC_NIEUSTALONA,
+    ZRODLO_CHARAKTERYSTYK_PROJEKTANT,
+    ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+    ZRODLO_CHARAKTERYSTYK_WYROB,
     czas_stopnia,
     ocen_zabezpieczenia,
     prad_roboczy_przekaznika,
@@ -63,6 +65,7 @@ from enm.models import (
     Measurement,
     ProtectionAssignment,
 )
+from network_model.catalog.types import ProtectionDeviceType
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.grid_source import GridShortCircuitSource
@@ -72,6 +75,8 @@ from network_model.solvers.protection_iec60255 import (
     IEC60255_CURVE_PARAMS,
     IEC60255CurveType,
 )
+
+from tests.utils.sterownik import Stopien, sterownik, stopien
 
 #: Pozycja katalogu ZABEZPIECZENIE z zakresami w ×In i podstawą (profil referencyjny D-33):
 #: I> 0,05–5 ×In, I>> 0,1–40 ×In, TMS 0,05–1,0, zwłoka 0,05–100 s, krzywe IEC_SI/IEC_VI/DT.
@@ -184,48 +189,48 @@ def _ct(
     )
 
 
-def _stopien_51(**nad: Any) -> dict[str, Any]:
-    wpis = {
-        "function_type": "overcurrent_51",
-        "threshold_a": 2.0,  # A wtórne → 2,0·600/5 = 240 A pierwotne; 0,4 ×In w zakresie
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "IEC_SI",
-        "time_multiplier": 0.2,
+def _stopien_51(**nad: Any) -> Stopien:
+    # A wtórne → 2,0·600/5 = 240 A pierwotne; 0,4 ×In w zakresie
+    nastawy: dict[str, Any] = {
+        "prog": 2.0,
+        "jednostka_progu": "A_WTORNY",
+        "krzywa": "IEC_SI",
+        "tms": 0.2,
     }
-    wpis.update(nad)
-    return wpis
+    nastawy.update(nad)
+    return stopien("51", **nastawy)
 
 
-def _stopien_50(**nad: Any) -> dict[str, Any]:
-    wpis = {
-        "function_type": "overcurrent_50",
-        "threshold_a": 20.0,  # A wtórne → 2400 A pierwotne; 4 ×In
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "DT",
-        "time_delay_s": 0.3,
+def _stopien_50(**nad: Any) -> Stopien:
+    # A wtórne → 2400 A pierwotne; 4 ×In
+    nastawy: dict[str, Any] = {
+        "prog": 20.0,
+        "jednostka_progu": "A_WTORNY",
+        "krzywa": "DT",
+        "zwloka_s": 0.3,
     }
-    wpis.update(nad)
-    return wpis
+    nastawy.update(nad)
+    return stopien("50", **nastawy)
 
 
 def _przypisanie(
     breaker: str,
-    settings: list[dict[str, Any]],
+    settings: list[Stopien],
     *,
     ct_ref: str | None = "ct",
     catalog_ref: str | None = REL_REF,
-    device_type: str = "overcurrent",
+    charakterystyki_ref: str | None = None,
     is_enabled: bool = True,
 ) -> ProtectionAssignment:
-    return ProtectionAssignment(
+    return sterownik(
         ref_id=f"zab-{breaker}",
         name=f"Zabezpieczenie {breaker}",
-        breaker_ref=breaker,
+        wylacznik=breaker,
         ct_ref=ct_ref,
-        device_type=device_type,
         catalog_ref=catalog_ref,
-        settings=settings,
+        stopnie=settings,
         is_enabled=is_enabled,
+        **({"charakterystyki_ref": charakterystyki_ref} if charakterystyki_ref else {}),
     )
 
 
@@ -285,15 +290,15 @@ def test_komplet_nastaw_daje_progi_pierwotne_z_przekladni() -> None:
     assert nastawy.gotowe, nastawy.braki
     progi = {s.funkcja: s.prog_pierwotny_a for s in nastawy.stopnie}
     assert progi == {
-        "overcurrent_51": pytest.approx(240.0),
-        "overcurrent_50": pytest.approx(2400.0),
+        "51": pytest.approx(240.0),
+        "50": pytest.approx(2400.0),
     }
     assert nastawy.alf == 20.0
 
 
 def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
     """Próg podany po stronie pierwotnej 240 A = 2,0 A wtórne = 0,4 ×In — w zakresie."""
-    stopien = _stopien_51(threshold_a=240.0, threshold_unit="A_PIERWOTNY")
+    stopien = _stopien_51(prog=240.0, jednostka_progu="A_PIERWOTNY")
     nastawy = rozwiaz_nastawy(_model(), _przypisanie(Q1, [stopien]))
     assert nastawy.gotowe
     assert nastawy.stopnie[0].prog_wtorny_a == pytest.approx(2.0)
@@ -302,53 +307,63 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
 @pytest.mark.parametrize(
     ("przypisanie", "ct", "kod"),
     [
-        # model bez nastaw stopni nadprądowych
-        (_przypisanie(Q1, []), None, KOD_BRAK_STOPNI),
-        # stopień bez progu (dawniej: I> = 100 A z wartości domyślnej)
-        (_przypisanie(Q1, [_stopien_51(threshold_a=None)]), None, KOD_BRAK_PROGU),
-        # jednostka progu nieustalona (dawniej: próg czytany jako pierwotny)
+        # sterownik bez stopni nadprądowych: tylko funkcja ziemnozwarciowa 51N wyzwalająca Q1
+        # (sterownik bez żadnej funkcji nie ma wyłącznika — macierz wyzwoleń wiąże funkcję
+        # z aparatem, więc „sterownik przy Q1 bez funkcji" nie istnieje w modelu)
         (
-            _przypisanie(Q1, [_stopien_51(threshold_unit=None)]),
+            _przypisanie(
+                Q1,
+                [stopien("51N", prog=0.2, jednostka_progu="A_WTORNY", krzywa="DT", zwloka_s=0.5)],
+            ),
+            None,
+            KOD_BRAK_STOPNI,
+        ),
+        # stopień bez progu (dawniej: I> = 100 A z wartości domyślnej)
+        (_przypisanie(Q1, [_stopien_51(prog=None)]), None, KOD_BRAK_PROGU),
+        # stopień bez progu i bez strony przekładnika — oba braki nazwane (próg ze stroną
+        # niezadeklarowaną nie wchodzi do modelu: `bledy_sterownika`, PZ-09)
+        (
+            _przypisanie(Q1, [_stopien_51(prog=None, jednostka_progu=None)]),
             None,
             KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
         ),
         # charakterystyka zależna bez TMS (dawniej: TMS = 0,3 z wartości domyślnej)
         (
-            _przypisanie(Q1, [_stopien_51(time_multiplier=None)]),
+            _przypisanie(Q1, [_stopien_51(tms=None)]),
             None,
             KOD_BRAK_MNOZNIKA,
         ),
         # DT bez zwłoki (dawniej: 0 s)
-        (_przypisanie(Q1, [_stopien_50(time_delay_s=None)]), None, KOD_BRAK_ZWLOKI),
+        (_przypisanie(Q1, [_stopien_50(zwloka_s=None)]), None, KOD_BRAK_ZWLOKI),
         # próg poza zakresem katalogu: 0,1 A wtórne = 0,02 ×In < 0,05 ×In
         (
-            _przypisanie(Q1, [_stopien_51(threshold_a=0.1)]),
+            _przypisanie(Q1, [_stopien_51(prog=0.1)]),
             None,
             KOD_PROG_POZA_ZAKRESEM,
         ),
         # TMS poza zakresem 0,05–1,0
         (
-            _przypisanie(Q1, [_stopien_51(time_multiplier=1.5)]),
+            _przypisanie(Q1, [_stopien_51(tms=1.5)]),
             None,
             KOD_MNOZNIK_POZA_ZAKRESEM,
         ),
         # charakterystyka spoza katalogu przekaźnika (REF-OC-200: IEC_SI, IEC_VI, DT)
         (
-            _przypisanie(Q1, [_stopien_51(curve_type="IEC_EI")]),
+            _przypisanie(Q1, [_stopien_51(krzywa="IEC_EI")]),
             None,
             KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU,
         ),
-        # zakres katalogu bez ustalonej jednostki (pozycja producenta bez karty w repo)
+        # profil charakterystyk wskazany przez projektanta, którego nie ma w katalogu
         (
-            _przypisanie(Q1, [_stopien_51()], catalog_ref=REL_BEZ_JEDNOSTKI),
+            _przypisanie(Q1, [_stopien_51()], charakterystyki_ref="PROFIL-NIEISTNIEJACY"),
             None,
-            KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
+            KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
         ),
-        # brak pozycji katalogu
+        # profil charakterystyk wskazany przez projektanta bez ustalonej jednostki zakresów
         (
-            _przypisanie(Q1, [_stopien_51()], catalog_ref=None),
+            _przypisanie(Q1, [_stopien_51()], charakterystyki_ref=REL_BEZ_JEDNOSTKI),
             None,
-            KOD_BRAK_POZYCJI_KATALOGU,
+            KOD_PROFIL_CHARAKTERYSTYK_NIEUZYTECZNY,
         ),
         # brak przekładnika
         (_przypisanie(Q1, [_stopien_51()], ct_ref=None), None, KOD_BRAK_PRZEKLADNIKA),
@@ -368,12 +383,149 @@ def test_kazdy_brak_jest_nazwany_i_blokuje_ocene(przypisanie, ct, kod) -> None:
     assert all(b.akcja_naprawcza_pl for b in nastawy.braki)
 
 
+# ---------------------------------------------------------------------------
+# Wyrób (catalog_ref) i charakterystyki funkcji (charakterystyki_ref) — dwa odwołania sterownika.
+# Iloczyn: źródło charakterystyk {projektant, wyrób z profilem, wyrób bez profilu, profil bez
+# jednostki, brak wyrobu} × zgodność nastawy z profilem {zgodna, krzywa spoza profilu} ×
+# skutek {blokada, sprawdzenie na założeniu}.
+# ---------------------------------------------------------------------------
+
+#: Wyrób z kartą w katalogu urządzeń bez profilu analitycznego (``analytical_library_ref``) —
+#: postać karty wyrobu, który podaje dane urządzenia, ale nie zakresy nastaw funkcji.
+WYROB_BEZ_PROFILU = "WYROB-BEZ-ZAKRESOW"
+
+
+class _KatalogZWyrobemBezProfilu:
+    """Resolver katalogu modelu z jedną dodatkową kartą wyrobu bez profilu analitycznego."""
+
+    def __init__(self, bazowy: Any) -> None:
+        self._bazowy = bazowy
+
+    def get_protection_device_type(self, ref: str) -> ProtectionDeviceType | None:
+        if ref == WYROB_BEZ_PROFILU:
+            return ProtectionDeviceType(
+                id=WYROB_BEZ_PROFILU,
+                name_pl="Sterownik polowy (karta bez zakresów nastaw)",
+                analytical_library_ref=None,
+            )
+        return self._bazowy.get_protection_device_type(ref)
+
+
+@pytest.fixture
+def katalog_z_wyrobem_bez_profilu(monkeypatch: pytest.MonkeyPatch) -> None:
+    import application.analyses.protection.ocena_nadpradowa as modul
+
+    oryginal = modul.katalog_dla_modelu
+    monkeypatch.setattr(
+        modul, "katalog_dla_modelu", lambda enm: _KatalogZWyrobemBezProfilu(oryginal(enm))
+    )
+
+
+@pytest.mark.parametrize(
+    ("catalog_ref", "charakterystyki_ref", "zrodlo", "profil", "fragment_powodu"),
+    [
+        (REL_REF, None, ZRODLO_CHARAKTERYSTYK_WYROB, "REF-OC-200", None),
+        (REL_REF, "REF-OC-EF-300", ZRODLO_CHARAKTERYSTYK_PROJEKTANT, "REF-OC-EF-300", None),
+        (None, "REF-OC-200", ZRODLO_CHARAKTERYSTYK_PROJEKTANT, "REF-OC-200", None),
+        (None, None, ZRODLO_CHARAKTERYSTYK_ROBOCZE, "REF-OC-EF-300", "nie wskazuje wyrobu"),
+        (
+            REL_BEZ_JEDNOSTKI,
+            None,
+            ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+            "REF-OC-EF-300",
+            "nie mają ustalonej jednostki",
+        ),
+        (
+            WYROB_BEZ_PROFILU,
+            None,
+            ZRODLO_CHARAKTERYSTYK_ROBOCZE,
+            "REF-OC-EF-300",
+            "nie podaje zakresów",
+        ),
+    ],
+    ids=[
+        "wyrob",
+        "projektant_przed_wyrobem",
+        "projektant_bez_wyrobu",
+        "brak_wyrobu",
+        "profil_bez_jednostki",
+        "wyrob_bez_profilu",
+    ],
+)
+@pytest.mark.usefixtures("katalog_z_wyrobem_bez_profilu")
+def test_charakterystyki_z_jednego_rozstrzygniecia_wg_pierwszenstwa(
+    catalog_ref: str | None,
+    charakterystyki_ref: str | None,
+    zrodlo: str,
+    profil: str,
+    fragment_powodu: str | None,
+) -> None:
+    """Brak zakresów w karcie wyrobu nie blokuje oceny (zasada nr 4): profil roboczy, dana
+    przyjęta ``ESTIMATED`` w danych przyjętych rekordu, kompletność ``NIEPELNY``. Profil
+    wyrobu albo projektanta jest daną źródłową — rekord bez danej przyjętej charakterystyk."""
+    przypisanie = _przypisanie(
+        Q2, [_stopien_51()], catalog_ref=catalog_ref, charakterystyki_ref=charakterystyki_ref
+    )
+    nastawy = rozwiaz_nastawy(_model(), przypisanie)
+    assert nastawy.gotowe, nastawy.braki
+    assert nastawy.charakterystyki is not None
+    assert (nastawy.charakterystyki.zrodlo, nastawy.charakterystyki.zdolnosc.device_id) == (
+        zrodlo,
+        profil,
+    )
+    (ocena,) = _ocen(_model(przypisanie)).oceny
+    dane = ocena.ocena.dowod.status_danych.dane_przyjete
+    nazwy = [d.nazwa_pl for d in dane if d.nazwa_pl.startswith("charakterystyki funkcji")]
+    if fragment_powodu is None:
+        assert nazwy == []
+        assert nastawy.charakterystyki.dana_przyjeta is None
+        assert ocena.ocena.dowod.status_danych.stan == "ZWALIDOWANE"
+    else:
+        dana = nastawy.charakterystyki.dana_przyjeta
+        assert dana is not None and dana.jakosc == "ESTIMATED"
+        assert fragment_powodu in dana.powod_pl
+        assert nazwy == [dana.nazwa_pl]
+        assert ocena.ocena.dowod.status_danych.stan == "UNVALIDATED_INPUT"
+        assert ocena.ocena.kompletnosc_dowodu == "NIEPELNY"
+    assert nastawy.to_dict()["charakterystyki"]["zrodlo"] == zrodlo
+
+
+@pytest.mark.parametrize(
+    ("catalog_ref", "blokuje"),
+    [(REL_REF, True), (None, False), (WYROB_BEZ_PROFILU, False)],
+    ids=["profil_wyrobu_blokuje", "profil_roboczy_brak_wyrobu", "profil_roboczy_bez_zakresow"],
+)
+@pytest.mark.parametrize(
+    ("stopien_poza", "kod"),
+    [
+        (lambda: _stopien_51(krzywa="IEC_EI"), KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU),
+        (lambda: _stopien_51(tms=1.5), KOD_MNOZNIK_POZA_ZAKRESEM),
+        (lambda: _stopien_51(prog=0.1), KOD_PROG_POZA_ZAKRESEM),
+    ],
+    ids=["krzywa", "mnoznik", "prog"],
+)
+@pytest.mark.usefixtures("katalog_z_wyrobem_bez_profilu")
+def test_niezgodnosc_z_profilem_blokuje_tylko_dla_danej_zrodlowej(
+    catalog_ref: str | None, blokuje: bool, stopien_poza: Any, kod: str
+) -> None:
+    """Predykat parami: zgodność nastawy z profilem jest blokadą, gdy profil jest daną wyrobu,
+    a sprawdzeniem na założeniu (widocznym w ``sprawdzenia`` z ``w_zakresie=False``), gdy profil
+    jest wartością roboczą — założenie nie może zatrzymać oceny (zasada nr 4)."""
+    nastawy = rozwiaz_nastawy(_model(), _przypisanie(Q1, [stopien_poza()], catalog_ref=catalog_ref))
+    kody = {b.kod for b in nastawy.braki}
+    assert (kod in kody) is blokuje
+    assert nastawy.gotowe is (not blokuje)
+    if not blokuje and kod != KOD_CHARAKTERYSTYKA_SPOZA_KATALOGU:
+        (stopien,) = nastawy.stopnie
+        assert any(not s["w_zakresie"] for s in stopien.slad["sprawdzenia_zakresu"])
+
+
 def test_brak_blokuje_tylko_swoje_urzadzenie() -> None:
     """Pozycja gotowości wstrzymuje ocenę TEGO urządzenia i tylko jego (§0.2 karty)."""
     wynik = _ocen(
         _model(
             _przypisanie(Q1, [_stopien_51()]),
-            _przypisanie(Q2, [_stopien_51(threshold_a=None)]),
+            _przypisanie(Q2, [_stopien_51(prog=None)]),
         )
     )
     assert {o.urzadzenie_ref for o in wynik.odmowy} == {"zab-q2"}
@@ -383,8 +535,7 @@ def test_brak_blokuje_tylko_swoje_urzadzenie() -> None:
 def test_urzadzenie_wylaczone_i_bez_funkcji_nadpradowych_sa_pominiete_z_przyczyna() -> None:
     lom = _przypisanie(
         Q2,
-        [{"function_type": "rocof_81R", "threshold_hz_s": 2.0, "time_delay_s": 0.5}],
-        device_type="custom",
+        [stopien("81R", prog_hz_s=2.0, zwloka_s=0.5)],
     )
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51()], is_enabled=False), lom))
     assert {(p.urzadzenie_ref, p.kod) for p in wynik.pominiete} == {
@@ -415,9 +566,9 @@ _IEEE = {
 
 def _stopien_z_krzywa(krzywa: str):
     if krzywa == "DT":
-        wpis = _stopien_51(curve_type="DT", time_multiplier=None, time_delay_s=0.35)
+        wpis = _stopien_51(krzywa="DT", tms=None, zwloka_s=0.35)
     else:
-        wpis = _stopien_51(curve_type=krzywa, time_multiplier=0.2)
+        wpis = _stopien_51(krzywa=krzywa, tms=0.2)
     przypisanie = _przypisanie(Q1, [wpis])
     return rozwiaz_nastawy(_model(), przypisanie)
 
@@ -615,7 +766,7 @@ def test_rekord_werdyktu_niesie_kryterium_wynik_limit_i_dowod() -> None:
 
 
 def test_odmowa_ma_rekord_nie_ocenionej_oceny_z_brakami() -> None:
-    wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(threshold_a=None)])))
+    wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(prog=None)])))
     (odmowa,) = wynik.odmowy
     assert odmowa.ocena.status_maszynowy == "NIE_OCENIONO"
     assert odmowa.ocena.wyjasnienie.czego_brakuje
@@ -627,12 +778,12 @@ def test_decyduje_najszybszy_stopien_ktory_ruszyl() -> None:
     """
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(), _stopien_50()])))
     punkt_b2 = next(o for o in wynik.oceny if o.punkt_ref == B2)
-    assert punkt_b2.stopien_decydujacy == "overcurrent_50"
+    assert punkt_b2.stopien_decydujacy == "50"
     assert punkt_b2.t_zadzialania_s == pytest.approx(0.3)
     punkt_b4 = next(o for o in wynik.oceny if o.punkt_ref == B4)
     # 4000 A < 2400 A? nie — 4000 > 2400, M50 = 1,667 → DT 0,3 s; 51: M = 16,67 →
     # t = 0,028/(16,67^0,02 − 1) = 0,028/0,057887 = 0,4837 s → decyduje 50.
-    assert punkt_b4.stopien_decydujacy == "overcurrent_50"
+    assert punkt_b4.stopien_decydujacy == "50"
 
 
 def test_wynik_deterministyczny() -> None:

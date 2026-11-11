@@ -458,6 +458,7 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
             nazwa_punktu_pl=nazwa_po_identyfikatorze(bus_ref, enm),
             aparat_in_a=urzadzenie.in_a,
+            rodzaj_obwodu=getattr(breaker, "rodzaj_obwodu_nn", None),
         )
         pola_swz = pola_swz_z_werdyktu_tt_it(werdykt_tt_it)
     else:
@@ -479,6 +480,8 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             ik1_min_a=petla.fault_loop.ik_min_a,
             u0_v=petla.u0_v,
             aparat=aparat_swz,
+            rodzaj_obwodu=getattr(breaker, "rodzaj_obwodu_nn", None),
+            miejsce_pl=nazwa_po_identyfikatorze(bus_ref, enm),
             # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: Ik1_min z c wartości roboczej tolerancji nN
             # — przyczyna werdyktu w dowodzie nazywa daną przyjętą.
             dane_przyjete=dane_przyjete_petli(

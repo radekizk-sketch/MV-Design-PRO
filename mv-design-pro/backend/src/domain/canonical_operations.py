@@ -324,7 +324,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "funkcja_pomiaru",
             "gpz_section_id",
             "manufacturer_ref",
-            "protection_ref",
             "rodzaj_pomiaru",
             "source_refs",
             "source_status",
@@ -671,23 +670,37 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_item_id",
             "catalog_item_version",
             "catalog_ref",
-            "ct_ref",
+            "charakterystyki_ref",
             "field_ref",
+            "funkcje",
             "name",
+            "prad_znamionowy_wejscia_a",
             "protection",
             "relay_type",
-            "settings",
-            "vt_ref",
+            "wejscia",
         ),
     ),
     "update_protection_settings": OperationSpec(
         canonical_name="update_protection_settings",
         category=OperationCategory.PROTECTION,
-        # Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu —
-        # następca skasowanej zaślepki `update_relay_settings`.
+        # Karta OCHRONA-JEDNO-ZRODLO (ADR-022): JEDYNY pisarz konfiguracji sterownika
+        # zabezpieczeń w modelu — nastawy w grupach 1–4, grupa aktywna, zestaw i stan funkcji,
+        # macierz wyzwoleń, wiązania wejść.
         description_pl="Zapis nastaw zabezpieczenia w modelu sieci",
         target_layer="Domain / NetworkModel",
-        required_fields=("protection_ref", "settings"),
+        required_fields=("protection_ref",),
+        optional_fields=(
+            "aktywna_grupa",
+            "charakterystyki_ref",
+            "funkcje",
+            "grupa",
+            "macierz_wyzwolen",
+            "nastawy",
+            "pochodzenie",
+            "prad_znamionowy_wejscia_a",
+            "wejscia",
+            "wlaczone",
+        ),
         creates_elements=False,
     ),
     # --- Universal (13 operations) ---
@@ -1476,7 +1489,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "field_role",
                     "funkcja_pomiaru",
                     "manufacturer_ref",
-                    "protection_ref",
                     "rodzaj_pomiaru",
                     "source_refs",
                     "source_status",
@@ -1668,7 +1680,6 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "field_role",
                     "funkcja_pomiaru",
                     "manufacturer_ref",
-                    "protection_ref",
                     "rodzaj_pomiaru",
                     "source_refs",
                     "source_status",
@@ -3123,6 +3134,18 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Brak wytrzymałości cieplnej przewodu w katalogu (prąd albo gęstość prądu jednosekundowego) — "
             "uzupełnij pozycję katalogową"
+        ),
+        fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
+    ),
+    "conductor.thermal_data_inconsistent": ReadinessCodeSpec(
+        code="conductor.thermal_data_inconsistent",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Dane cieplne przewodu są sprzeczne (prąd znamionowy krótkotrwały wytrzymywany przez "
+            "1 s różni się od iloczynu gęstości prądu jednosekundowego i przekroju) — popraw "
+            "pozycję katalogową albo dane odcinka"
         ),
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
     ),

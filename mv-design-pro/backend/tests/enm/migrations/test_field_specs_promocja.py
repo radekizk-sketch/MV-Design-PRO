@@ -30,6 +30,8 @@ from enm.pola import czy_pole_nn, pola_nn, zacisk_pola
 from enm.store import LegacyFieldSpecsError, przygotuj_model_po_odczycie, reset_enm_store, set_enm
 from enm.validator import ENMValidator
 
+from tests.utils.sterownik import rekord_sterownika, stopien_51
+
 #: ARCHIWUM: migawka substratu 52 stacji zapisana PRZED kartą W5-B (drzewo `f3c435b6`,
 #: ścieżka produktu — 172 wpisy pól SN i 199 wpisów pól nN w `meta` stacji). Zamrożona celowo:
 #: fikstury generowane po W5-B nie niosą już dawnych kluczy, a migracja musi umieć wczytać
@@ -73,7 +75,6 @@ def _model(klucz: str, nazwa: str, scalenie: str, meta: str) -> dict[str, Any]:
                 "substation_ref": "st",
                 "bus_ref": szyna,
                 "equipment_refs": ["aparat-rekordu"],
-                "protection_codes": ["51"],
                 "meta": {"sn_field_template": {"x": 1}, "bay_ref": "x", "created_by": "op"},
             }
         )
@@ -123,12 +124,13 @@ def _model(klucz: str, nazwa: str, scalenie: str, meta: str) -> dict[str, Any]:
             }
         ],
         "protection_assignments": [
-            {
-                "ref_id": "pa",
-                "name": "Z",
-                "breaker_ref": "aparat-wpisu",
-                "device_type": "overcurrent",
-            }
+            rekord_sterownika(
+                "pa",
+                name="Z",
+                bay_ref="bay/st/out",
+                wylacznik="aparat-wpisu",
+                stopnie=[stopien_51()],
+            )
         ],
         "branches": [
             {
@@ -189,17 +191,18 @@ def test_iloczyn_migracji_wpisu_stacji(klucz: str, nazwa: str, scalenie: str, me
     assert not {"sn_field_template", "bay_ref", "field_ref"} & set(pole["meta"])
     if scalenie == "bay_ref":
         assert pole["equipment_refs"] == ["aparat-wpisu", "aparat-rekordu"]
-        assert pole["protection_codes"] == ["51"]
         assert pole["meta"]["created_by"] == "op"
         # KOMPLET odwołań do dawnego `bay/…` przepisany (`_ODWOLANIA_DO_POLA`): przekładnik
         # (`Measurement.bay_ref`), aparat (`meta.bay_ref`/`meta.field_ref` gałęzi), wytwórca
-        # (`Generator.meta.field_ref`), odbiór odpływu (`Load.meta.feeder_ref`).
+        # (`Generator.meta.field_ref`), odbiór odpływu (`Load.meta.feeder_ref`), sterownik
+        # zabezpieczeń (`ProtectionAssignment.bay_ref`, ADR-022).
         stare = {"bay/st/out"}
         assert dane["measurements"][0]["bay_ref"] == "field/st/1"
         assert dane["branches"][0]["meta"]["bay_ref"] == "field/st/1"
         assert dane["branches"][0]["meta"]["field_ref"] == "field/st/1"
         assert dane["generators"][0]["meta"]["field_ref"] == "field/st/1"
         assert dane["loads"][0]["meta"]["feeder_ref"] == "field/st/1"
+        assert dane["protection_assignments"][0]["bay_ref"] == "field/st/1"
         assert stare.isdisjoint(_napisy(dane))
     else:
         assert dane["measurements"][0]["bay_ref"] == "bay/st/out"
@@ -305,12 +308,11 @@ def test_substrat_52_stacji_migruje_sie_w_calosci() -> None:
         assert zacisk_pola(pole) == aparat["to_bus_ref"]
     tekst = json.dumps(dane)
     assert "field_specs" not in tekst
-    # Kody funkcji EAZ: archiwum sprzed karty jednej nomenklatury (2026-10-30) niesie w 53
-    # wpisach pól transformatora klucze-nazwy „Buchholz", „temp", „ciśnienie"; promocja
-    # przepisuje je na numery słownika (kontrakt `Bay` odrzuca kod spoza słownika).
-    kody = [k for pole in dane["bays"] for k in pole["protection_codes"]]
-    assert not {"Buchholz", "temp", "ciśnienie"} & set(kody)
-    assert (kody.count("63"), kody.count("26"), kody.count("63P")) == (53, 53, 53)
+    # Kody funkcji EAZ dawnego wpisu pola (w tym klucze-nazwy „Buchholz", „temp", „ciśnienie"
+    # 53 pól transformatora sprzed karty jednej nomenklatury): karta OCHRONA-JEDNO-ZRODLO
+    # (ADR-022) zostawia zabezpieczenie wyłącznie w sterowniku pola, więc klucz wpisu
+    # `protection_codes` jest martwy — rekord pola go nie niesie.
+    assert all("protection_codes" not in pole for pole in dane["bays"])
     drugi, zmieniono_drugi = przygotuj_model_po_odczycie(copy.deepcopy(model))
     assert zmieniono_drugi is False
     assert drugi.model_dump(mode="json") == dane
@@ -379,3 +381,24 @@ def test_substrat_52_stacji_migruje_sie_w_calosci() -> None:
     (trafo_gpz,) = (t for t in model.transformers if t.ref_id == e066_archiwum[0].element_refs[0])
     assert trafo_gpz.lv_bus_ref in {z.bus_ref for z in model.sources}
     assert not [z for z in ENMValidator().validate(swiezy).issues if z.code == "E066"]
+
+
+@pytest.mark.parametrize(
+    ("klucz_wpisu", "wartosc"), [("protection_ref", "REF-OC-200"), ("protection_codes", ["51"])]
+)
+@pytest.mark.parametrize("klucz", POZIOMY)
+def test_dawne_zabezpieczenie_wpisu_pola_nie_jest_migrowane(
+    klucz: str, klucz_wpisu: str, wartosc: object
+) -> None:
+    """Karta OCHRONA-JEDNO-ZRODLO (ADR-022): zabezpieczenie zapisane w rekordzie pola skasowano
+    BEZ migracji — dawny klucz wpisu jest martwy: nie powstaje z niego sterownik (dawne
+    ``protection_ref`` niosło raz pozycję katalogu, raz referencję przypisania; migracja nie
+    zgaduje), a rekord pola nie niesie dawnej treści."""
+    dane = _model(klucz, "z_nazwa", "bez_bay_ref", "nietypowany")
+    dane["protection_assignments"] = []
+    dane["substations"][0]["meta"][klucz][0][klucz_wpisu] = wartosc
+    po, zmieniono = migruj(EnergyNetworkModel.model_validate(dane))
+    wynik = po.model_dump(mode="json")
+    assert zmieniono and [b["ref_id"] for b in wynik["bays"]] == ["field/st/1"]
+    assert wynik["protection_assignments"] == []
+    assert klucz_wpisu not in wynik["bays"][0]

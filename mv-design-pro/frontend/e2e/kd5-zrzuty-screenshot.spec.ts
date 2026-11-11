@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
@@ -209,6 +210,8 @@ test.describe('kd5:zrzuty', () => {
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd5-gpz-l0-${id}.png`) });
 
       // (2) Klik NATYWNY w blok ⇒ rozwiniecie (kamera na progu szczegolu).
+      // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+      await czekajNaStabilnaGeometrie(wezelBloku);
       const box = await wezelBloku.boundingBox();
       expect(box).not.toBeNull();
       await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);

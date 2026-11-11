@@ -182,13 +182,13 @@ class TestGetScenario:
     def test_get_scenario(self):
         created = _create_scenario(case_id=CASE_ID)
         sid = created["scenario_id"]
-        resp = client.get(f"{BASE_URL}/fault-scenarios/{sid}")
+        resp = client.get(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}")
         assert resp.status_code == 200
         assert resp.json()["scenario_id"] == sid
 
     def test_get_scenario_not_found(self):
         fake_id = str(uuid4())
-        resp = client.get(f"{BASE_URL}/fault-scenarios/{fake_id}")
+        resp = client.get(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{fake_id}")
         assert resp.status_code == 404
 
 
@@ -199,7 +199,7 @@ class TestUpdateScenario:
         old_hash = created["content_hash"]
 
         resp = client.put(
-            f"{BASE_URL}/fault-scenarios/{sid}",
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}",
             json={"name": "Zaktualizowany"},
         )
         assert resp.status_code == 200
@@ -211,7 +211,7 @@ class TestUpdateScenario:
     def test_update_scenario_not_found(self):
         fake_id = str(uuid4())
         resp = client.put(
-            f"{BASE_URL}/fault-scenarios/{fake_id}",
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{fake_id}",
             json={"name": "Nowa nazwa"},
         )
         assert resp.status_code == 404
@@ -221,16 +221,16 @@ class TestDeleteScenario:
     def test_delete_scenario(self):
         created = _create_scenario(case_id=CASE_ID)
         sid = created["scenario_id"]
-        resp = client.delete(f"{BASE_URL}/fault-scenarios/{sid}")
+        resp = client.delete(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}")
         assert resp.status_code == 204
 
         # Verify deleted
-        resp = client.get(f"{BASE_URL}/fault-scenarios/{sid}")
+        resp = client.get(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}")
         assert resp.status_code == 404
 
     def test_delete_scenario_not_found(self):
         fake_id = str(uuid4())
-        resp = client.delete(f"{BASE_URL}/fault-scenarios/{fake_id}")
+        resp = client.delete(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{fake_id}")
         assert resp.status_code == 404
 
 
@@ -238,7 +238,7 @@ class TestSldOverlay:
     def test_get_sld_overlay(self):
         created = _create_scenario(case_id=CASE_ID, name="Overlay test")
         sid = created["scenario_id"]
-        resp = client.get(f"{BASE_URL}/fault-scenarios/{sid}/sld-overlay")
+        resp = client.get(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/sld-overlay")
         assert resp.status_code == 200
         data = resp.json()
         assert data["overlay_type"] == "fault_scenario"
@@ -265,7 +265,7 @@ class TestEligibility:
 
         created = _create_scenario(case_id=CASE_ID, fault_type=fault_type)
         sid = created["scenario_id"]
-        resp = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility")
+        resp = client.get(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/eligibility")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "INELIGIBLE"
@@ -291,7 +291,9 @@ class TestEligibility:
         assert resp.status_code == 201, resp.text
         sid = resp.json()["scenario_id"]
 
-        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility")
+        eligibility = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/eligibility"
+        )
         assert eligibility.status_code == 200
         data = eligibility.json()
         assert data["status"] == "INELIGIBLE"

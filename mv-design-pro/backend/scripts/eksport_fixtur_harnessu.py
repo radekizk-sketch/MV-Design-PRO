@@ -251,6 +251,7 @@ from enm.scenariusze import (  # noqa: E402
 from enm.slownik_komunikatow import NAZWY_RODZAJOW_GALEZI_PL  # noqa: E402
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from enm.tor_pola import szyny_stacji  # noqa: E402
+from enm.zabezpieczenie import kody_funkcji_pola, sterownik_pola  # noqa: E402
 from infrastructure.persistence.db import (  # noqa: E402
     create_engine_from_url,
     create_session_factory,
@@ -4174,17 +4175,19 @@ _KATALOG_PRZEKAZNIKA_SCENY_LOM = "EM_ETANGO_1250_V0"
 #: wobec wymaganych ≥ 2,0 Hz/s — ryzyko zbędnych wyłączeń, werdykt WARN z pełnym
 #: wywodem) oraz 81U/81O DOKŁADNIE na krawędziach pasma 47,5–51,5 Hz (werdykt
 #: spełniony). Ocena — w tym werdykt i wywód — pochodzi WYŁĄCZNIE z backendu.
-_NASTAWY_LOM_SCENY: tuple[dict[str, Any], ...] = (
-    {"function_type": "rocof_81R", "threshold_hz_s": 1.0, "time_delay_s": 0.2},
-    {"function_type": "underfrequency_81U", "threshold_hz": 47.5, "time_delay_s": 0.5},
-    {"function_type": "overfrequency_81O", "threshold_hz": 51.5, "time_delay_s": 0.5},
-)
+_NASTAWY_LOM_SCENY: dict[str, dict[str, Any]] = {
+    "81R": {"prog_hz_s": 1.0, "zwloka_s": 0.2},
+    "81U": {"prog_hz": 47.5, "zwloka_s": 0.5},
+    "81O": {"prog_hz": 51.5, "zwloka_s": 0.5},
+}
 
 
 def _enm_sceny_lom() -> EnergyNetworkModel:
     """Model sceny „lom": GPZ 110/15 kV → magistrala → stacja SN/nN z trzema
     polami SN (aparat pola z katalogu) → farma PV 1 MW w polu wytwórcy, a w TYM polu
-    (relacja `Generator.meta.field_ref`) przekaźnik z nastawami funkcji LoM (`add_relay`).
+    (relacja `Generator.meta.field_ref`) sterownik pola z funkcjami LoM (operacja `add_relay` —
+    urządzenie z katalogu i funkcje; nastawy — `update_protection_settings`, jedna droga zapisu
+    nastaw).
 
     Wszystko operacjami domenowymi — tą samą drogą, którą model buduje
     projektant. Scena „lom" istnieje po to, żeby pokazać OCENĘ nastaw wobec okien
@@ -4272,17 +4275,27 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
     pole_wytworcy = ref_pola_wytworcy(farma_pv)
     if pole_wytworcy is None:
         raise RuntimeError("Scena LoM: źródło PV bez relacji z polem wytwórcy (meta.field_ref).")
+    # Funkcje LoM dokładane do funkcji sterownika pola (szablon pola) — pole ma JEDEN sterownik.
+    funkcje_pola = kody_funkcji_pola(enm, pole_wytworcy, tylko_wlaczone=False)
     enm = _operacja_domenowa_sceny(
         enm,
         "add_relay",
         {
             "field_ref": pole_wytworcy,
-            "relay_type": "CZESTOTLIWOSCIOWY",
+            "funkcje": [*funkcje_pola, *(k for k in _NASTAWY_LOM_SCENY if k not in funkcje_pola)],
             "name": "Zabezpieczenie od pracy wyspowej pola wytwórcy",
             "catalog_binding": _wiazanie_katalogowe(
                 "ZABEZPIECZENIE", _KATALOG_PRZEKAZNIKA_SCENY_LOM
             ),
-            "settings": [dict(nastawa) for nastawa in _NASTAWY_LOM_SCENY],
+        },
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "update_protection_settings",
+        {
+            "protection_ref": sterownik_pola(enm, pole_wytworcy)["ref_id"],
+            "grupa": 1,
+            "nastawy": {kod: dict(n) for kod, n in _NASTAWY_LOM_SCENY.items()},
         },
     )
     model = EnergyNetworkModel.model_validate(enm)

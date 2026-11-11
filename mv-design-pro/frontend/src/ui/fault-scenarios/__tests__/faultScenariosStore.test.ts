@@ -4,8 +4,9 @@
  * Determinism, sort order, basic operations.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useFaultScenariosStore } from '../store';
+import { useStudyCasesStore } from '../../study-cases/store';
 
 describe('FaultScenariosStore', () => {
   beforeEach(() => {
@@ -65,3 +66,61 @@ describe('FaultScenariosStore', () => {
     expect(typeof state.createScenario).toBe('function');
   });
 });
+
+/*
+ * Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: scenariusz zwarciowy jest scenariuszem nazwanym
+ * magazynu scenariuszy — wejściem oceny świeżości biegów przypadku. Każdy zapis (utworzenie,
+ * zmiana, usunięcie) odczytuje ponownie werdykt aktywnego przypadku, żeby odcisk wejść
+ * (`odcisk_wejsc_swiezosci`) i za nim nagłówki ekranów analiz oraz lista biegów pobrały
+ * swoje werdykty od nowa. Iloczyn: operacja {utwórz, zmień, usuń} × odczyt przypadku po niej.
+ */
+describe('FaultScenariosStore — zapis scenariusza odświeża werdykt aktywnego przypadku', () => {
+  const PROJEKT = 'proj-scen';
+  const PRZYPADEK = 'case-scen';
+  const scenariusz = { scenario_id: 's-1', study_case_id: PRZYPADEK, name: 'Zwarcie na szynie' };
+  let adresy: string[] = [];
+
+  beforeEach(() => {
+    adresy = [];
+    useFaultScenariosStore.getState().reset();
+    useStudyCasesStore.setState({ projectId: PROJEKT } as never);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const url = String(input);
+        adresy.push(`${init?.method ?? 'GET'} ${url}`);
+        if (url === `/api/study-cases/project/${PROJEKT}/active`) {
+          return { ok: false, status: 204, json: async () => null } as unknown as Response;
+        }
+        return { ok: true, status: 200, json: async () => scenariusz } as Response;
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    useStudyCasesStore.setState({ projectId: null } as never);
+  });
+
+  const odczytPrzypadku = () => adresy.filter((a) => a === `GET /api/study-cases/project/${PROJEKT}/active`);
+
+  it.each(['utworz', 'zmien', 'usun'] as const)('operacja „%s" odczytuje werdykt przypadku', async (op) => {
+    const magazyn = useFaultScenariosStore.getState();
+    if (op === 'utworz') {
+      await magazyn.createScenario(PRZYPADEK, { name: 'Zwarcie na szynie' } as never);
+    } else {
+      useFaultScenariosStore.setState({ scenarios: [scenariusz as never] });
+      if (op === 'zmien') {
+        await magazyn.updateScenario('s-1', { name: 'Zwarcie na szynie 2' } as never);
+      } else {
+        await magazyn.deleteScenario('s-1');
+      }
+    }
+    await vi.waitFor(() => expect(odczytPrzypadku()).toHaveLength(1));
+    // Odczyt PO zapisie — nigdy przed nim (inaczej odcisk opisywałby stan sprzed zmiany).
+    const zapis = adresy.findIndex((a) => !a.startsWith('GET '));
+    expect(zapis).toBeGreaterThanOrEqual(0);
+    expect(adresy.indexOf(odczytPrzypadku()[0]!)).toBeGreaterThan(zapis);
+  });
+});
+

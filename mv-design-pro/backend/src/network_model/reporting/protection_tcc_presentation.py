@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from network_model.catalog.funkcje_eaz import etykieta_funkcji_eaz
 from network_model.nazwy import nazwa_nadana
 
 #: Kod podstawy oznaczajacy krzywa policzona ze wzoru przekaznikowego.
@@ -116,8 +117,6 @@ NAGLOWKI_NASTAW_PL: tuple[str, ...] = (
     "Charakterystyka",
 )
 
-_STOPNIE_PL: dict[str, str] = {"overcurrent_51": "I> (51)", "overcurrent_50": "I>> (50)"}
-
 
 def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str, str, str, str]]:
     """Wiersze tabeli nastaw urządzenia wyniku koordynacji — po jednym na stopień.
@@ -143,13 +142,35 @@ def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str
         wiersze.append(
             (
                 nazwa,
-                _STOPNIE_PL.get(str(stopien.get("funkcja")), str(stopien.get("funkcja"))),
+                etykieta_funkcji_eaz(stopien.get("funkcja")),
                 f"{prog:.1f}" if isinstance(prog, int | float) else NIE_DOTYCZY,
                 czas,
                 str(stopien.get("krzywa") or NIE_DOTYCZY),
             )
         )
     return wiersze
+
+
+#: Nagłówek sekcji raportu z funkcjami sterowników, których produkt nie ocenia.
+NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL = "Funkcje bez oceny (status: nie oceniono)"
+
+
+def zdania_funkcji_nieocenianych(urzadzenia: list[dict[str, Any]]) -> list[str]:
+    """Zdania raportu o funkcjach sterownika, których produkt nie ocenia (karta
+    OCHRONA-JEDNO-ZRODLO pkt 5): urządzenie, funkcja (zapis z rysunku i kod) i powód — ten sam
+    zapis ``nastawy.funkcje_nieoceniane`` co widok zabezpieczeń i edytor nastaw. Funkcja bez
+    ewaluatora nie znika z raportu po cichu; kolejność: nazwa urządzenia, potem kolejność
+    funkcji sterownika. PDF i DOCX czytają to samo."""
+    zdania: list[str] = []
+    for urzadzenie in sorted(
+        urzadzenia, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
+    ):
+        for wpis in (urzadzenie.get("nastawy") or {}).get("funkcje_nieoceniane") or []:
+            zdania.append(
+                f"{nazwa_wpisu_urzadzenia(urzadzenie)} · "
+                f"{etykieta_funkcji_eaz(str(wpis.get('funkcja')))}: {wpis.get('powod_pl')}"
+            )
+    return zdania
 
 
 def uzasadnienia_sprawdzen(sprawdzenia: list[dict[str, Any]], nazwy: dict[str, str]) -> list[str]:

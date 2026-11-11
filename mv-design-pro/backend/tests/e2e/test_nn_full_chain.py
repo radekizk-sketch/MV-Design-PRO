@@ -769,6 +769,18 @@ def _typed_pf_result(model: EnergyNetworkModel):
 # ---------------------------------------------------------------------------
 
 
+def _bieg_sc_max_tego_testu() -> str:
+    """Bieg SC MAX (3F) na bieżącym modelu łańcucha w bazie przebiegów bieżącego testu."""
+    bieg = run_short_circuit_now(
+        case_id=_CASE_ID,
+        klucz_twin=_KLUCZ,
+        project_id=None,
+        options={"fault_type": "3F", "scenario": "max"},
+    )
+    assert bieg.status == "FINISHED"
+    return str(bieg.id)
+
+
 class TestNnFullChain:
     """Bramka końcowa P0: łańcuch nN na JEDNYM modelu, krok po kroku."""
 
@@ -1579,6 +1591,11 @@ class TestNnFullChain:
         assert _STAN.get("swz_zerohop") is not None
 
     # -- KROK 10: pakiet dowodowy + raport -----------------------------------
+    #
+    # Dowód obwodu nN czyta bieg zwarciowy z rejestru przebiegów (`short_circuit_run_id`), a
+    # każdy test ma WŁASNĄ bazę przebiegów (`tests/conftest.py::_izolowana_baza_przebiegow`) —
+    # bieg z kroku 9 nie istnieje w kroku 10. `_bieg_sc_max_tego_testu` liczy bieg SC MAX
+    # na BIEŻĄCYM modelu łańcucha (ten sam stan co krok 9) w bazie TEGO testu.
 
     def test_krok_10a_pakiet_dowodowy_obwod_silnika_pelny_przebieg(self, app_client) -> None:
         """FLIP (karta NAPRAWA-A §0.3.10, „pakiet dowodowy dla obwodu
@@ -1605,15 +1622,10 @@ class TestNnFullChain:
             "segment_ref": _REFS["k2_cable_ref"],
             "p_mw": 0.022,
             "q_mvar": 0.013,
-            "u_ll_kv": 0.4,
-            "iz_katalogowe_a": _STAN["iz_katalogowe_a_k2"],
-            "srodowisko": "grunt",
-            "izolacja": "PVC",
-            "temperatura_c": 20.0,
-            "liczba_obwodow": 1,
-            "rezystywnosc_gruntu_km_w": 1.0,
-            "ik_max_ka": _STAN["ik_max_ka_leaf_silnik"],
-            "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
+            # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (6a): napięcie, obciążalność, warunki
+            # ułożenia, I″k/κ i czas wyłączenia dowód bierze z MODELU i BIEGU zwarciowego —
+            # żądanie niesie tylko dane spoza modelu (P/Q, ΔU całkowite).
+            "short_circuit_run_id": _bieg_sc_max_tego_testu(),
             "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
         }
         preview_resp = app_client.post("/api/nn-proof/circuit/preview", json=payload)
@@ -1674,15 +1686,10 @@ class TestNnFullChain:
             "segment_ref": _REFS["k2_cable_ref"],
             "p_mw": 0.022,
             "q_mvar": 0.013,
-            "u_ll_kv": 0.4,
-            "iz_katalogowe_a": _STAN["iz_katalogowe_a_k2"],
-            "srodowisko": "grunt",
-            "izolacja": "PVC",
-            "temperatura_c": 20.0,
-            "liczba_obwodow": 1,
-            "rezystywnosc_gruntu_km_w": 1.0,
-            "ik_max_ka": _STAN["ik_max_ka_rgnn"],
-            "vdrop_u_source_kv": _STAN["u_source_kv_silnik"],
+            # Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (6a): napięcie, obciążalność, warunki
+            # ułożenia, I″k/κ i czas wyłączenia dowód bierze z MODELU i BIEGU zwarciowego —
+            # żądanie niesie tylko dane spoza modelu (P/Q, ΔU całkowite).
+            "short_circuit_run_id": _bieg_sc_max_tego_testu(),
             "vdrop_delta_u_total_kv": _STAN["delta_u_total_kv_silnik"],
         }
         resp1 = app_client.post("/api/nn-proof/circuit/pack", json=payload)

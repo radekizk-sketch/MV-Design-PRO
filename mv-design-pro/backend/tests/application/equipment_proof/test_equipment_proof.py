@@ -290,7 +290,8 @@ def test_equipment_proof_not_applicable_step_shows_nie_dotyczy_not_brak():
     device_step = next(
         s for s in bundle.proof_document.steps if s.title_pl == "Dane urządzenia (nameplate)"
     )
-    icu_value = next(v for v in device_step.input_values if v.symbol == "I_{cu}")
+    # Punkt SN 15 kV — znamię wyłączania wyłącznika SN to I_sc (IEC 62271-100 § 4.101).
+    icu_value = next(v for v in device_step.input_values if v.symbol == "I_{sc}")
 
     assert icu_value.value == "NIE DOTYCZY"
     assert "BRAK" not in icu_value.formatted
@@ -405,7 +406,14 @@ def test_icu_wielkosc_kryterium_wg_pasma_napiecia(
     # Dowód mówi, CO porównano: wzór kroku z symbolem wielkości kryterium.
     krok = next(k for k in bundle.proof_document.steps if k.equation.equation_id == "EQ_P12_004")
     symbol = "I_k''" if klucz == "ikss_ka" else "I_b"
-    assert krok.equation.latex == rf"I_{{cu}} \ge {symbol}"
+    # Znamię wg normy aparatu pasma (karta APARATURA-TABELA): SN — I_sc (IEC 62271-100),
+    # nN — I_cu (IEC 60947-2), pasmo nieustalone — nazwa ogólna, bez symbolu jednej normy.
+    znamie = {12.0: "I_{sc}", 0.4: "I_{cu}", None: r"I_{\mathrm{wył}}"}[u_kv]
+    assert krok.equation.latex == rf"{znamie} \ge {symbol}"
+    (dane_urzadzenia,) = (
+        k for k in bundle.proof_document.steps if k.equation.equation_id == "EQ_P12_001"
+    )
+    assert any(v.symbol == znamie for v in dane_urzadzenia.input_values)
 
 
 def test_icu_sn_uwagi_niosa_tb_i_skladowa_nieokresowa() -> None:
@@ -503,7 +511,8 @@ def test_icu_bezpiecznika_wobec_ik_spodziewanego(u_kv: float | None, ib_ka: floa
     assert "IEC 60282-1" in check.message_pl
     assert check.notes == ()
     krok = next(k for k in bundle.proof_document.steps if k.equation.equation_id == "EQ_P12_004")
-    assert krok.equation.latex == r"I_{cu} \ge I_k''"
+    # Bezpiecznik: znamionowy maksymalny prąd wyłączalny I_1 (IEC 60282-1), nie I_cu.
+    assert krok.equation.latex == r"I_{1} \ge I_k''"
 
 
 def test_znacznik_bezpiecznika_nie_zmienia_odcisku_innych_aparatow() -> None:

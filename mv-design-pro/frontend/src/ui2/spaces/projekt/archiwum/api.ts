@@ -39,6 +39,8 @@ export interface ZawartoscArchiwum {
   readonly operating_cases_count: number;
   readonly canonical_runs_count: number;
   readonly enm_models_count: number;
+  /** Rejestry magazynu scenariuszy: scenariusze nazwane i wybory zabezpieczeń przypadków. */
+  readonly scenariusze_count: number;
 }
 
 /** Podgląd archiwum bez importu (`PreviewResponse`). */

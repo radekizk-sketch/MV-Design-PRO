@@ -33,6 +33,9 @@ export interface ParametryDoboru {
   reactiveCharacter?: ReactiveCharacter;
   /** V12K-207: warunki ułożenia kabla (nazwa zestawu z backendu albo własne wartości). */
   layingConditions?: CableLayingConditions | null;
+  /** Przypadek i szyna SN przyłączenia — źródło I″k i κ kryterium zwarciowego kabla. */
+  caseId?: string | null;
+  snBusRef?: string | null;
 }
 
 /**
@@ -61,6 +64,8 @@ export function zbudujZapytanieDoboru(
   if (params.maxDeltaUPct != null) request.max_delta_u_pct = params.maxDeltaUPct;
   if (params.reactiveCharacter != null) request.reactive_character = params.reactiveCharacter;
   if (params.layingConditions != null) request.laying_conditions = params.layingConditions;
+  if (params.caseId) request.case_id = params.caseId;
+  if (params.snBusRef) request.sn_bus_ref = params.snBusRef;
   return request;
 }
 

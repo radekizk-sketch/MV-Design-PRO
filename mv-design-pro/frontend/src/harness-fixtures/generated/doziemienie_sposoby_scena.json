@@ -454,7 +454,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -832,8 +832,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [],
-            "protection_ref": null,
             "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -845,8 +843,7 @@
               "gpz_line_field"
             ],
             "terminal_bus_ref": null,
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           }
         ],
         "branch_points": [],
@@ -1391,13 +1388,13 @@
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:a601a6e48a594798237d3e4e6eb27b421ff2eee22d9c1eb4c0b1bdd0b8fe3923",
+          "proof_ref": "proof:short-circuit:a0ebf671b67a4386d8252a6c5841b95a6969e9119a6f81579fca842ebbc3ba67",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:a601a6e48a594798237d3e4e6eb27b421ff2eee22d9c1eb4c0b1bdd0b8fe3923",
+            "proof_ref": "proof:short-circuit:a0ebf671b67a4386d8252a6c5841b95a6969e9119a6f81579fca842ebbc3ba67",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [],
@@ -1738,7 +1735,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+        "snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -1764,14 +1761,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4"
+          "snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
-          "enm_hash": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
-          "enm_snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+          "snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
+          "enm_hash": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
+          "enm_snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -1781,13 +1778,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "d02e430be69e43588ec9e272b91adc463ec66dcbc8efbddb622eebf6b8c6a872",
-          "result_hash": "ff8832eb812d8c5a2eab2ac8dd30b00293ee846c93b53f8a707d6635382d6df1",
+          "input_hash": "b9caa203ad68c5d043b49582f7480e4b085151d8190c57fc9ebdd831ff43fa82",
+          "result_hash": "e9bc572a63992a227e7957b4e66594eea84c6d70d54eae4dd6ffa5fbeb6b3cb5",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+          "catalog_snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -1817,7 +1814,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -1826,8 +1823,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-kompensowany",
-      "snapshot_id": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
-      "input_hash": "d02e430be69e43588ec9e272b91adc463ec66dcbc8efbddb622eebf6b8c6a872",
+      "snapshot_id": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
+      "input_hash": "b9caa203ad68c5d043b49582f7480e4b085151d8190c57fc9ebdd831ff43fa82",
       "white_box_trace": [],
       "selection_index": {},
       "catalog_context": [
@@ -2094,7 +2091,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+        "snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -2120,14 +2117,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4"
+          "snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
-          "enm_hash": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
-          "enm_snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+          "snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
+          "enm_hash": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
+          "enm_snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -2137,13 +2134,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "d02e430be69e43588ec9e272b91adc463ec66dcbc8efbddb622eebf6b8c6a872",
-          "result_hash": "ff8832eb812d8c5a2eab2ac8dd30b00293ee846c93b53f8a707d6635382d6df1",
+          "input_hash": "b9caa203ad68c5d043b49582f7480e4b085151d8190c57fc9ebdd831ff43fa82",
+          "result_hash": "e9bc572a63992a227e7957b4e66594eea84c6d70d54eae4dd6ffa5fbeb6b3cb5",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+          "catalog_snapshot_ref": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -2195,8 +2192,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [],
-            "protection_ref": null,
             "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -2208,8 +2203,7 @@
               "gpz_line_field"
             ],
             "terminal_bus_ref": null,
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           },
           {
             "apparatus_catalog_ref": null,
@@ -2242,14 +2236,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [
-              "51N",
-              "50N",
-              "ZAWSC",
-              "BT",
-              "BD"
-            ],
-            "protection_ref": null,
             "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -2259,8 +2245,7 @@
             "switchgear_family_ref": null,
             "tags": [],
             "terminal_bus_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal",
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           }
         ],
         "branch_points": [],
@@ -2355,6 +2340,7 @@
           {
             "catalog_namespace": null,
             "catalog_ref": null,
+            "czas_wylaczenia_zwarcia_s": null,
             "from_bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
             "id": "ea583bb0-ee7c-5dd6-bcdf-d272f96ba494",
             "materialized_params": null,
@@ -2375,6 +2361,7 @@
             "parameter_source": null,
             "r_ohm": 0.0,
             "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_device",
+            "rodzaj_obwodu_nn": null,
             "source_mode": null,
             "stan_obiektu": "PROJEKTOWANY",
             "status": "closed",
@@ -2489,7 +2476,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4",
+          "hash_sha256": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -2516,7 +2503,64 @@
         ],
         "loads": [],
         "measurements": [],
-        "protection_assignments": [],
+        "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51N",
+                "ref": "51N",
+                "wlaczona": true
+              },
+              {
+                "kod": "50N",
+                "ref": "50N",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZAWSC",
+                "ref": "ZAWSC",
+                "wlaczona": true
+              },
+              {
+                "kod": "BT",
+                "ref": "BT",
+                "wlaczona": true
+              },
+              {
+                "kod": "BD",
+                "ref": "BD",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "48311692-db65-5892-8f91-6b44cf9a66d1",
+            "is_enabled": true,
+            "macierz_wyzwolen": [],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole zespołu uziemiającego",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": null,
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": null
+            }
+          }
+        ],
         "shunt_capacitors": [],
         "sources": [
           {
@@ -2749,7 +2793,7 @@
           }
         ]
       },
-      "snapshot_id": "15b3979c28283848947c8523443c0e6ffb1cb3f94bc322d2e602660dcdc35ef4"
+      "snapshot_id": "6d58ee5b0ac27c03232aacc373103b04a74364c77b1e1263b3150a4e50642aa6"
     }
   },
   "rezystor": {
@@ -2827,7 +2871,7 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)",
             "ib_z_udzialem_maszyn": false
           },
@@ -3003,13 +3047,13 @@
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+            "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -3414,7 +3458,7 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
               "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
             }
           ]
@@ -3424,7 +3468,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+        "snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -3450,14 +3494,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0"
+          "snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
-          "enm_hash": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
-          "enm_snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+          "snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
+          "enm_hash": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
+          "enm_snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -3467,13 +3511,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "3bd78e4fd56cfbe288003057329563e3aefb7b00e815c30e8471c6c4123cf687",
-          "result_hash": "4574d5a9a03fa26b52f5b63851d316c3e183a3a493e5fd011478aad2fea9cd77",
+          "input_hash": "4a6e74bb47621f743901a23fc4ded2aa8f01ad23d1cf1ae97eb84ccd9ca56443",
+          "result_hash": "b62d184302ea8805de9ec157d0932226e16a2d84a3facd91742818ebb9ade959",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+          "catalog_snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -3503,7 +3547,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -3512,8 +3556,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-rezystor",
-      "snapshot_id": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
-      "input_hash": "3bd78e4fd56cfbe288003057329563e3aefb7b00e815c30e8471c6c4123cf687",
+      "snapshot_id": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
+      "input_hash": "4a6e74bb47621f743901a23fc4ded2aa8f01ad23d1cf1ae97eb84ccd9ca56443",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -3547,7 +3591,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3594,7 +3638,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3652,7 +3696,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3694,7 +3738,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3735,7 +3779,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3775,7 +3819,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3815,7 +3859,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3853,7 +3897,7 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
               "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
             }
           },
@@ -3861,13 +3905,13 @@
           "result": {
             "i_dc_a": 0.0
           },
-          "notes": "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "notes": "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
           "step": 8,
           "target_id": "38808155-8c48-5bba-bd1d-1ac3e5b8a6f1",
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3908,7 +3952,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3948,7 +3992,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:d214fb571517bbbeb731500545385d950acbc89efe122c8d0ba288be8cb6efe9",
+          "proof_ref": "proof:short-circuit:fead1f1629c5c00d6b396c1ee71fc4931d8ca7b34505fdcacd9dfc896588a356",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4238,7 +4282,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+        "snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -4264,14 +4308,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0"
+          "snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
-          "enm_hash": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
-          "enm_snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+          "snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
+          "enm_hash": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
+          "enm_snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -4281,13 +4325,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "3bd78e4fd56cfbe288003057329563e3aefb7b00e815c30e8471c6c4123cf687",
-          "result_hash": "4574d5a9a03fa26b52f5b63851d316c3e183a3a493e5fd011478aad2fea9cd77",
+          "input_hash": "4a6e74bb47621f743901a23fc4ded2aa8f01ad23d1cf1ae97eb84ccd9ca56443",
+          "result_hash": "b62d184302ea8805de9ec157d0932226e16a2d84a3facd91742818ebb9ade959",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+          "catalog_snapshot_ref": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -4339,8 +4383,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [],
-            "protection_ref": null,
             "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -4352,8 +4394,7 @@
               "gpz_line_field"
             ],
             "terminal_bus_ref": null,
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           },
           {
             "apparatus_catalog_ref": null,
@@ -4386,14 +4427,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [
-              "51N",
-              "50N",
-              "ZAWSC",
-              "BT",
-              "BD"
-            ],
-            "protection_ref": null,
             "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -4403,8 +4436,7 @@
             "switchgear_family_ref": null,
             "tags": [],
             "terminal_bus_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal",
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           }
         ],
         "branch_points": [],
@@ -4499,6 +4531,7 @@
           {
             "catalog_namespace": null,
             "catalog_ref": null,
+            "czas_wylaczenia_zwarcia_s": null,
             "from_bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
             "id": "ea583bb0-ee7c-5dd6-bcdf-d272f96ba494",
             "materialized_params": null,
@@ -4519,6 +4552,7 @@
             "parameter_source": null,
             "r_ohm": 0.0,
             "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_device",
+            "rodzaj_obwodu_nn": null,
             "source_mode": null,
             "stan_obiektu": "PROJEKTOWANY",
             "status": "closed",
@@ -4633,7 +4667,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0",
+          "hash_sha256": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -4660,7 +4694,64 @@
         ],
         "loads": [],
         "measurements": [],
-        "protection_assignments": [],
+        "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51N",
+                "ref": "51N",
+                "wlaczona": true
+              },
+              {
+                "kod": "50N",
+                "ref": "50N",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZAWSC",
+                "ref": "ZAWSC",
+                "wlaczona": true
+              },
+              {
+                "kod": "BT",
+                "ref": "BT",
+                "wlaczona": true
+              },
+              {
+                "kod": "BD",
+                "ref": "BD",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "48311692-db65-5892-8f91-6b44cf9a66d1",
+            "is_enabled": true,
+            "macierz_wyzwolen": [],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole zespołu uziemiającego",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": null,
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": null
+            }
+          }
+        ],
         "shunt_capacitors": [],
         "sources": [
           {
@@ -4888,7 +4979,7 @@
           }
         ]
       },
-      "snapshot_id": "591ec940f9fd38b33a749bf4f2c12f0a811758ba5c7c4a762ed9383c370e6fe0"
+      "snapshot_id": "2fda43f0838b0d9f6a38608354ee179c621e97931779d6e2c931c8f36348fd50"
     }
   },
   "bezposrednie": {
@@ -4957,7 +5048,7 @@
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": true,
             "jakosc": "ESTIMATED",
-            "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)",
             "ib_z_udzialem_maszyn": false
           },
@@ -5092,13 +5183,13 @@
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+            "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -5478,7 +5569,7 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
               "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
             }
           ]
@@ -5488,7 +5579,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+        "snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -5514,14 +5605,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce"
+          "snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
-          "enm_hash": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
-          "enm_snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+          "snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
+          "enm_hash": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
+          "enm_snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -5531,13 +5622,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "b7e3765439461c128ed76c0565972a2413f6c7914c7a2178892ee18facae57ac",
-          "result_hash": "b9542dc274b898353657345d040a02d240db58bfd4122a5f8cf622cc0ba5bb77",
+          "input_hash": "410a8d410024d2c334737445e921ce4af5b0a850e31035b6adb6ea0fe2c161fd",
+          "result_hash": "55e6526658eb6862c3cc18f7879e45efe7adc746218f05f0f62d1fcd2baca831",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+          "catalog_snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -5567,7 +5658,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu przerwania prądu — czas przerwania prądu każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -5576,8 +5667,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-bezposrednie",
-      "snapshot_id": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
-      "input_hash": "b7e3765439461c128ed76c0565972a2413f6c7914c7a2178892ee18facae57ac",
+      "snapshot_id": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
+      "input_hash": "410a8d410024d2c334737445e921ce4af5b0a850e31035b6adb6ea0fe2c161fd",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -5611,7 +5702,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5658,7 +5749,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5716,7 +5807,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5758,7 +5849,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5799,7 +5890,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5839,7 +5930,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5879,7 +5970,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5917,7 +6008,7 @@
               "pochodzenie": "PROPOZYCJA",
               "wartosc_robocza": true,
               "jakosc": "ESTIMATED",
-              "opis_pl": "Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+              "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
               "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
             }
           },
@@ -5925,13 +6016,13 @@
           "result": {
             "i_dc_a": 9.74112099924
           },
-          "notes": "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: Czas wyłączenia 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości (ocena zachowawcza), krótszy — większe. Zmień czas wyłączenia w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "notes": "Początkowy prąd zwarciowy części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). Stosunek R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: Czas przerwania prądu zwarciowego 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe. Zmień czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
           "step": 8,
           "target_id": "38808155-8c48-5bba-bd1d-1ac3e5b8a6f1",
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5972,7 +6063,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6012,7 +6103,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:28c262643bb2121c8db66cb3a07e2f60c9a579f9286308163d9b6479eaae347b",
+          "proof_ref": "proof:short-circuit:861ac6cf55690ba2ed4e7a2111022442dd68ac89bd87d8189d3e3226300ddfcb",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6302,7 +6393,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+        "snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -6328,14 +6419,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce"
+          "snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
-          "enm_hash": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
-          "enm_snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+          "snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
+          "enm_hash": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
+          "enm_snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -6345,13 +6436,13 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "b7e3765439461c128ed76c0565972a2413f6c7914c7a2178892ee18facae57ac",
-          "result_hash": "b9542dc274b898353657345d040a02d240db58bfd4122a5f8cf622cc0ba5bb77",
+          "input_hash": "410a8d410024d2c334737445e921ce4af5b0a850e31035b6adb6ea0fe2c161fd",
+          "result_hash": "55e6526658eb6862c3cc18f7879e45efe7adc746218f05f0f62d1fcd2baca831",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+          "catalog_snapshot_ref": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
@@ -6403,8 +6494,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [],
-            "protection_ref": null,
             "ref_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/bay/001/001",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -6416,8 +6505,7 @@
               "gpz_line_field"
             ],
             "terminal_bus_ref": null,
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           },
           {
             "apparatus_catalog_ref": null,
@@ -6450,14 +6538,6 @@
             "outgoing_destination_ref": null,
             "ports": [],
             "primary_devices": [],
-            "protection_codes": [
-              "51N",
-              "50N",
-              "ZAWSC",
-              "BT",
-              "BD"
-            ],
-            "protection_ref": null,
             "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
             "rodzaj_pomiaru": null,
             "runtime_state": null,
@@ -6467,8 +6547,7 @@
             "switchgear_family_ref": null,
             "tags": [],
             "terminal_bus_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal",
-            "wybor_bloku": null,
-            "zrodlo_u0_ref": null
+            "wybor_bloku": null
           }
         ],
         "branch_points": [],
@@ -6563,6 +6642,7 @@
           {
             "catalog_namespace": null,
             "catalog_ref": null,
+            "czas_wylaczenia_zwarcia_s": null,
             "from_bus_ref": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
             "id": "ea583bb0-ee7c-5dd6-bcdf-d272f96ba494",
             "materialized_params": null,
@@ -6583,6 +6663,7 @@
             "parameter_source": null,
             "r_ohm": 0.0,
             "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_device",
+            "rodzaj_obwodu_nn": null,
             "source_mode": null,
             "stan_obiektu": "PROJEKTOWANY",
             "status": "closed",
@@ -6697,7 +6778,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce",
+          "hash_sha256": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -6724,7 +6805,64 @@
         ],
         "loads": [],
         "measurements": [],
-        "protection_assignments": [],
+        "protection_assignments": [
+          {
+            "aktywna_grupa": 1,
+            "bay_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay",
+            "catalog_namespace": null,
+            "catalog_ref": null,
+            "charakterystyki_ref": null,
+            "funkcje": [
+              {
+                "kod": "51N",
+                "ref": "51N",
+                "wlaczona": true
+              },
+              {
+                "kod": "50N",
+                "ref": "50N",
+                "wlaczona": true
+              },
+              {
+                "kod": "ZAWSC",
+                "ref": "ZAWSC",
+                "wlaczona": true
+              },
+              {
+                "kod": "BT",
+                "ref": "BT",
+                "wlaczona": true
+              },
+              {
+                "kod": "BD",
+                "ref": "BD",
+                "wlaczona": true
+              }
+            ],
+            "grupy_nastaw": [],
+            "id": "48311692-db65-5892-8f91-6b44cf9a66d1",
+            "is_enabled": true,
+            "macierz_wyzwolen": [],
+            "materialized_params": null,
+            "meta": {},
+            "name": "Sterownik pola Pole zespołu uziemiającego",
+            "overrides": [],
+            "parameter_source": null,
+            "prad_znamionowy_wejscia_a": null,
+            "ref_id": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay/sterownik",
+            "source_mode": null,
+            "tags": [],
+            "wejscia": {
+              "ct_ref": null,
+              "ct_strony_2_refs": [],
+              "i0_ct_ref": null,
+              "i0_uklad": null,
+              "u0_uklad": null,
+              "u0_vt_ref": null,
+              "vt_ref": null
+            }
+          }
+        ],
         "shunt_capacitors": [],
         "sources": [
           {
@@ -6932,7 +7070,7 @@
           }
         ]
       },
-      "snapshot_id": "becf998d869cb637c1b763e846857a01e8b6bed7437655a4a4946102de5c90ce"
+      "snapshot_id": "bb1006eeeebc01643a7938a61ae81454e3be92ee2c4b47c90c2277bd12de43fa"
     }
   }
 }

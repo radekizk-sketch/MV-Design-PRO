@@ -35,10 +35,12 @@ ZRODLA DANYCH (plik:linia w kodzie zrodlowym, stan na 2026-07-25):
 - czas trwania zwarcia: DWA zrodla, w jawnej kolejnosci pierwszenstwa.
   (1) Czas WYZNACZONY Z NASTAW zabezpieczenia danej galezi -
   ``application/analyses/protection/czas_wylaczenia_galezi.czasy_dla_modelu``,
-  podany tu przez ``tk_s_by_branch`` (patrz wywolanie ``mapa_tk_s_z_nastaw``
-  nizej w tym module). Galaz bez rozwiazanej nastawy jest w tej mapie
-  NIEOBECNA - i to jest celowe.
-  (2) Fallback: ``ShortCircuitResult.tk_s`` - POJEDYNCZA wartosc dla calego
+  podany tu przez ``tk_s_by_branch`` (``mapa_tk_s(slad_czasu(...))`` nizej w tym
+  module). Pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: JEDNO rozstrzygnięcie
+  ``rozstrzygnij_czas_trwania_zwarcia`` — wartosc projektanta na wylaczniku chroniacym
+  (``czas_wylaczenia_zwarcia_s``) > nastawa > czas przypadku podany jawnie > wartosc
+  robocza 1 s (IEC 62271-1 §4.7, dana przyjeta).
+  (2) Czas przypadku: ``ShortCircuitResult.tk_s`` - POJEDYNCZA wartosc dla calego
   wyniku zwarciowego (parametr wejsciowy przypadku, wspolny dla calej sieci,
   uzyty tez do wyliczenia ``ith_a`` na poziomie wezla) -
   ``network_model/solvers/short_circuit_iec60909.py:102``. To jest czas
@@ -78,7 +80,8 @@ from application.analyses.prad_zwarciowy_galezi import (
 )
 from application.analyses.protection.czas_wylaczenia_galezi import (
     czasy_dla_modelu,
-    mapa_tk_s_z_nastaw,
+    czasy_projektanta_galezi,
+    mapa_tk_s,
     podsumowanie_czasow,
     slad_czasu,
 )
@@ -115,6 +118,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     STANDARD_REFS,
     ConductorThermalInput,
     check_conductor_thermal_withstand,
+    zalozenie_kappa_punktu_dla_galezi,
 )
 from network_model.solvers.short_circuit_contributions import (
     NAZWA_WKLADU_POMINIETEGO,
@@ -165,6 +169,11 @@ class ConductorThermalWithstandItem:
     wrazliwosc: tuple[dict[str, Any], ...] = ()
     # Uzasadnienie wspolczynnika k (material, izolacja, temperatury, zrodlo).
     uzasadnienie_k: dict[str, Any] | None = None
+    # I_th galezi przy czasie trwania zwarcia (I″k galezi, κ, m, n) — wielkosc porownywana;
+    # ``i_fault_a`` pozostaje pradem poczatkowym I″k galezi z rozplywu biegu.
+    prad_cieplny: dict[str, Any] | None = None
+    # Dane przyjete rachunku (κ punktu zwarcia jako κ wkladu galezi).
+    dane_przyjete: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -187,6 +196,8 @@ class ConductorThermalWithstandItem:
             "zalecenia": [dict(z) for z in self.zalecenia],
             "wrazliwosc": [dict(w) for w in self.wrazliwosc],
             "uzasadnienie_k": self.uzasadnienie_k,
+            "prad_cieplny": self.prad_cieplny,
+            "dane_przyjete": [dict(d) for d in self.dane_przyjete],
         }
 
 
@@ -218,6 +229,13 @@ class ConductorThermalWithstandView:
             "items": [item.to_dict() for item in self.items],
             "summary": self.summary.to_dict(),
         }
+
+
+def _opis_punktu_zwarcia(graph: NetworkGraph, fault_node_id: str) -> str:
+    """Nazwa punktu zwarcia do opisu założenia κ (nazwa nadana węzła albo opis rodzaju)."""
+    wezel = graph.nodes.get(fault_node_id)
+    nazwa = nazwa_nadana(getattr(wezel, "name", None)) if wezel is not None else None
+    return f"punkt „{nazwa}”" if nazwa else "punkt zwarcia biegu"
 
 
 def _resolve_branch_thermal_catalog(
@@ -364,9 +382,15 @@ def build_conductor_thermal_withstand_view(
             )
             continue
 
+        # I_th gałęzi = I″k gałęzi·√(m + n), m(κ punktu zwarcia, T_k zabezpieczenia gałęzi) —
+        # ta sama funkcja co aparatura pól; κ punktu to jawne założenie (dana przyjęta).
         result = check_conductor_thermal_withstand(
             ConductorThermalInput(
-                ith_a=i_fault_a,
+                ikss_a=i_fault_a,
+                kappa=sc_result.kappa,
+                zalozenie_kappa=zalozenie_kappa_punktu_dla_galezi(
+                    sc_result.kappa, _opis_punktu_zwarcia(graph, sc_result.fault_node_id)
+                ),
                 fault_duration_s=tk_s,
                 ith_1s_a=ith_1s_a,
                 jth_1s_a_per_mm2=jth_1s_a_per_mm2,
@@ -396,6 +420,8 @@ def build_conductor_thermal_withstand_view(
                 zalecenia=result.recommendations,
                 wrazliwosc=result.sensitivity,
                 uzasadnienie_k=result.k_justification,
+                prad_cieplny=result.prad_cieplny,
+                dane_przyjete=tuple(d.model_dump(mode="json") for d in result.dane_przyjete),
             )
         )
 
@@ -640,7 +666,15 @@ def _ocena_dla_przebiegu(
     graph = map_enm_to_network_graph(model)
 
     czasy = czasy_dla_modelu(model=model, graph=graph, sc_result=sc_result)
-    slad = slad_czasu(czasy, tk_s_zalozony=sc_result.tk_s)
+    # Pakiet 8: jedno rozstrzygnięcie czasu trwania zwarcia — wartość projektanta na wyłączniku
+    # chroniącym > nastawa > czas przypadku podany jawnie (parametr scenariusza zwarciowego)
+    # > wartość robocza 1 s (IEC 62271-1 §4.7).
+    slad = slad_czasu(
+        czasy,
+        tk_s_zalozony=sc_result.tk_s,
+        czas_przypadku_jawny=(run.options or {}).get("thermal_time_seconds") is not None,
+        czasy_projektanta=czasy_projektanta_galezi(model=model, graph=graph, czasy=czasy),
+    )
 
     # Katalog nie jest przekazywany: w sciezce produkcyjnej dane cieplne przychodza
     # NA GALEZI (przeniesione z materializacji katalogowej przez mapowanie ENM),
@@ -649,7 +683,7 @@ def _ocena_dla_przebiegu(
         sc_result,
         graph,
         None,
-        tk_s_by_branch=mapa_tk_s_z_nastaw(czasy),
+        tk_s_by_branch=mapa_tk_s(slad),
         slad_czasu_by_branch=slad,
     )
     return sc_result, widok, slad
@@ -688,7 +722,26 @@ def build_wytrzymalosc_cieplna_view(
         # kazde kryterium musi dac sie odniesc do zapisu normy (uwaga 14).
         "normy": [dict(pozycja) for pozycja in STANDARD_REFS],
         "ocena": widok.to_dict(),
-        **_dane_przyjete_biegu(run),
+        **_dane_przyjete_widoku(run, slad),
+    }
+
+
+def _dane_przyjete_widoku(
+    run: CanonicalRun, slad: Mapping[str, Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Dane przyjęte biegu + czas trwania zwarcia gałęzi przyjęty jako wartość robocza 1 s
+    (pakiet 8, ``slad_czasu``) — ocena na nim ma status danych ``UNVALIDATED_INPUT``."""
+    wynik = dict(_dane_przyjete_biegu(run))
+    czasy: list[dict[str, Any]] = []
+    for _, pozycja in sorted(slad.items()):
+        dana = pozycja.get("dana_przyjeta")
+        if dana and dict(dana) not in czasy:
+            czasy.append(dict(dana))
+    if not czasy:
+        return wynik
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [*wynik.get("dane_przyjete", []), *czasy],
     }
 
 

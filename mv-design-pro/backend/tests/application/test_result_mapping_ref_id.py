@@ -81,8 +81,11 @@ def _bieg_zabezpieczen() -> CanonicalRun:
         {
             "ref_id": _REF_URZADZENIA,
             "name": "Zabezpieczenie pola 1",
-            "breaker_ref": galaz,
-            "device_type": "overcurrent",
+            # Sterownik w jednej strukturze zabezpieczeń (karta OCHRONA-JEDNO-ZRODLO).
+            "funkcje": [{"ref": "51", "kod": "51", "wlaczona": True}],
+            "macierz_wyzwolen": [
+                {"funkcja_ref": "51", "aparat_refs": [galaz], "pobudza_spz": False}
+            ],
         },
     ]
     run = dataclasses.replace(run, snapshot=snapshot)

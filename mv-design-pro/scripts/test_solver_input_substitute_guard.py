@@ -2204,7 +2204,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # karty) − skasowane karty, roznica zbiorow zero w obie strony. Karta dodala 79 nazw
     # (ocena pola liniowego, stan obiektu, tabliczki przekladnikow, obwody wtorne wzorca,
     # zrodlo 3U0, zaczep przekladnika) i skasowala 1 (`ct_cores`). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4579." in wyjscie, wyjscie
+    # Scalenie karty delt scenariusza zabezpieczen (OCHRONA-JEDNO-ZRODLO, KD6, rodzaj obwodu
+    # nN) do drzewa integracji (2026-11-11): 4579 -> 4597 — POMIAR zbiorow `contract_fields()`
+    # (`git archive`): baza scalenia `44a2c6c02` 4472, strona integracji 4579, strona karty
+    # 4598, drzewo scalone 4597. Wzgledem strony integracji +61 nazw (sterownik pola: `funkcje`
+    # rejestru, `grupy_nastaw`, `macierz_wyzwolen`, wejscia `i0_uklad`/`u0_uklad`/`u0_vt_ref`,
+    # delty przypadku `protection_groups`/`protection_overrides`, czas wylaczenia pola, rodzaj
+    # obwodu nN, wytrzymalosc cieplna pola) i -43 nazwy starej struktury zabezpieczen
+    # (`protection_codes`, `protection_ref`, `zrodlo_u0_ref`, `funkcje_eaz_zasilane`,
+    # `functions`, `threshold_*`, rekordy SPZ i rejestratora). Zbior drzewa scalonego = baza
+    # ∪ dodane obu stron − skasowane obu stron, z jednym wyjatkiem pomiaru: nazwa `m`
+    # (skasowana przez strone integracji w `proof_engine/unit_verifier.py`) wraca jako pole
+    # nowego `network_model/solvers/wytrzymalosc_cieplna_pola.py` strony karty. PASS
+    # niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4597." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2555,7 +2568,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): 606 + 11
         # = 617 — POMIAR guardem na bazie scalenia (599), stronie karty (610), stronie integracji
         # (606) i drzewie scalonym (617); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 617 plikow w zakresie: network_model, solver_input, enm, "
+        # Scalenie karty delt scenariusza zabezpieczen do drzewa integracji (2026-11-11): 617 + 4
+        # = 621 (+`network_model/solvers/wytrzymalosc_cieplna_pola.py`, +`enm/zabezpieczenie.py`,
+        # +`application/analyses/czas_wylaczenia_nn.py`,
+        # +`application/equipment_proof/wymagania_pola.py`; zero skasowanych) — POMIAR guardem na
+        # bazie scalenia, obu stronach i drzewie scalonym (zbior plikow = integracja ∪ dodane
+        # karty − skasowane karty); dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 621 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2781,7 +2800,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/obwody_wtorne_pola.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: 196 + 4 = 200 (baza
         # 193, karta 197); dlug 10/65 strony integracji (karta ZU zdjela 2 wpisy). POMIAR guardem.
-        "  network_model: pliki_skanowane=200, dlug=10 plikow/suma 65, "
+        # Scalenie karty delt scenariusza zabezpieczen: 200 -> 201 (+1
+        # `solvers/wytrzymalosc_cieplna_pola.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=201, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2885,7 +2906,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `enm/zrodlo_napiecia_zerowego.py`); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji: enm 79 + 7 = 86 (baza
         # 76, karta 83); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=86, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Scalenie karty delt scenariusza zabezpieczen: enm 86 -> 87 (+1 `enm/zabezpieczenie.py`,
+        # jeden pisarz sterownika pola); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
+        "  enm: pliki_skanowane=87, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -3007,7 +3030,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # integracji 256, BKR kasuje `analyses/opis_przebiegu.py`; zbior plikow drzewa scalonego
         # rowny (integracja ∪ dodane BKR) − skasowane BKR). Suma korzeni 606 = pin przeskanowanych
         # (dawny pin 256 dawal 607). POMIAR guardem; dlug i wykluczenia BEZ ZMIAN.
-        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
+        # Scalenie karty delt scenariusza zabezpieczen (2026-11-11): application 255 -> 257 (+2
+        # `analyses/czas_wylaczenia_nn.py`, `equipment_proof/wymagania_pola.py`); dlug
+        # i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie scalonym.
+        "  application: pliki_skanowane=257, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
@@ -3319,7 +3345,10 @@ def test_wylaczenie_korzenia_dziala_takze_na_mape_pol(tmp_path, monkeypatch) -> 
     monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("network_model/solvers",))
 
     monkeypatch.setattr(guard, "MODEL_ROOTS_POZA_MAPA", {})
-    assert {"real", "imag"} <= guard.contract_fields(), "Kontrola dwustronna: bez wpisu pola sa."
+    assert {
+        "real",
+        "imag",
+    } <= guard.contract_fields(), "Kontrola dwustronna: bez wpisu pola sa."
 
     monkeypatch.setattr(
         guard,

@@ -797,12 +797,20 @@ class TestDomainOpsCatalogPolicy:
         after = client.get(f"/api/cases/{case_id}/enm").json()
         assert len(after["protection_assignments"]) == 1
         assignment = after["protection_assignments"][0]
-        assert assignment["breaker_ref"] == "brk_1"
-        assert assignment["ct_ref"] == after["measurements"][0]["ref_id"]
+        # Kanon karty OCHRONA-JEDNO-ZRODLO (intencja dawnego testu zachowana): sterownik pola
+        # zapisany trwale z pozycją katalogu, wejściem prądów fazowych z przekładnika pola
+        # i wyłącznikiem pola w macierzy wyzwoleń (dawne płaskie `breaker_ref`/`ct_ref`).
+        assert assignment["bay_ref"] == "field_in_1"
+        assert assignment["wejscia"]["ct_ref"] == after["measurements"][0]["ref_id"]
         assert assignment["catalog_ref"] == "REF-OC-EF-500"
         assert assignment["catalog_namespace"] == "ZABEZPIECZENIE"
+        assert [f["kod"] for f in assignment["funkcje"]] == ["50", "51"]
+        assert {w["funkcja_ref"] for w in assignment["macierz_wyzwolen"]} == {
+            f["ref"] for f in assignment["funkcje"]
+        }
+        assert all(w["aparat_refs"] == ["brk_1"] for w in assignment["macierz_wyzwolen"])
         field_spec = next(b for b in after["bays"] if b["ref_id"] == "field_in_1")
-        assert field_spec["protection_ref"] == assignment["ref_id"]
+        assert field_spec.get("protection_ref") is None, "pole nie niesie drugiej referencji"
 
     def test_domain_ops_update_parameters_of_field_persists(self, client):
         """Intencja przepisana w W5-B: `bays` jest KANONICZNE — ogólna operacja zmienia opis pola

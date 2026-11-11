@@ -34,6 +34,7 @@ import type {
   LogicalViewsV1,
 } from '../../../../../types/enm';
 import { pole } from '../../../../../test/pola';
+import { sterownikTestowy } from '../../../../../test/sterownik';
 import { polaSnStacji } from '../../../../shared/polaStacji';
 import { ctRatingLabelText } from '../../../v3/compose/protectionMarking';
 import { zrodloU0Deskryptora } from '../../model/zrodloNapieciaZerowego';
@@ -2272,32 +2273,25 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('ct-m')?.ratioText).toBe('150/5');
   });
 
-  it('protectionMarking.ctRefsSecondary przenosi ProtectionAssignment.ct_refs_secondary, undefined gdy puste', () => {
+  it('protectionMarking.ctRefsSecondary przenosi wejście strony 2 sterownika (`wejscia.ct_strony_2_refs`), undefined gdy puste', () => {
     const snap = makeStationOnlySnapshot('ST-1');
     snap.bays = [
       {
         id: 'b1', ref_id: 'bay-1', name: 'Pole 87T', tags: [], meta: {},
         bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-        protection_codes: ['87T'], protection_ref: 'prot-1',
       } as never,
       {
         id: 'b2', ref_id: 'bay-2', name: 'Pole zwykłe', tags: [], meta: {},
         bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
-        protection_codes: ['51'], protection_ref: 'prot-2',
       } as never,
     ];
     snap.protection_assignments = [
-      {
-        id: 'assign-diff', ref_id: 'prot-1', name: 'Diff', tags: [], meta: {},
-        breaker_ref: 'cb-1', ct_ref: 'ct-1', ct_refs_secondary: ['ct-2'],
-        device_type: 'differential', settings: [], is_enabled: true,
-      },
-      {
-        id: 'assign-oc', ref_id: 'prot-2', name: 'OC', tags: [], meta: {},
-        breaker_ref: 'cb-2', ct_ref: 'ct-3',
-        device_type: 'overcurrent', settings: [], is_enabled: true,
-      },
-    ] as never;
+      sterownikTestowy({
+        ref: 'prot-1', bayRef: 'bay-1', kody: ['87T'], wylacznik: 'cb-1',
+        wejscia: { ct_ref: 'ct-1', ct_strony_2_refs: ['ct-2'] },
+      }),
+      sterownikTestowy({ ref: 'prot-2', bayRef: 'bay-2', kody: ['51'], wylacznik: 'cb-2', wejscia: { ct_ref: 'ct-3' } }),
+    ];
 
     const byRef = new Map(snap.bays.map((b) => [b.ref_id, resolveBayProtectionMarking(b, snap)?.ctRefsSecondary]));
     expect(byRef.get('bay-1')).toEqual(['ct-2']);
@@ -2349,17 +2343,17 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     snap.bays = [
       pole({
         ref_id: 'bay-1', bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn',
-        protection_codes: ['87T', '67N'], protection_ref: 'prot-1',
-        zrodlo_u0_ref: 'vt-z17',
       }),
       pole({ ref_id: 'bay-2', bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn' }),
     ];
+    // Sterownik pola z funkcjami 87T i 67N; powiązanie źródła 3U₀ (karta UX-04/POLE-LINIOWE-WZORZEC)
+    // to wejście 3U₀ sterownika (otwarty trójkąt) — adnotacja pola jak inne.
     snap.protection_assignments = [
-      {
-        id: 'assign-diff', ref_id: 'prot-1', name: 'Diff', tags: [], meta: {},
-        breaker_ref: 'cb-1', ct_ref: 'ct-1', device_type: 'differential', settings: [], is_enabled: true,
-      },
-    ] as never;
+      sterownikTestowy({
+        ref: 'prot-1', bayRef: 'bay-1', kody: ['87T', '67N'], wylacznik: 'cb-1',
+        wejscia: { ct_ref: 'ct-1', u0_uklad: 'OTWARTY_TROJKAT', u0_vt_ref: 'vt-z17' },
+      }),
+    ];
     snap.measurements = [
       {
         id: 'm1', ref_id: 'ct-1', name: 'CT1', tags: [], meta: {},

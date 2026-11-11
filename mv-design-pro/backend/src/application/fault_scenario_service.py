@@ -509,10 +509,13 @@ class FaultScenarioService:
         # z modelu sieci, więc kwalifikowalność mówiła „blokada", gdy bieg by się policzył,
         # i „kwalifikuje się", gdy `create_run` odrzucał model. Odtąd obie ścieżki czytają
         # `ocen_model_biegu` (kody i komunikaty odmowy biegu są kodami blokad tutaj).
+        # Wybór zabezpieczeń przypadku scenariusza (ADR-022) wchodzi do oceny tak samo jak
+        # do biegu — `create_run` dostaje ten sam `case_id` (predykaty parami).
         ocena = ocen_model_biegu(
             klucz_twin=klucz,
             analysis_type="short_circuit_sn",
             scenariusz=self.get_scenario_ze_wpisem(klucz, scenario_id),
+            case_id=str(scenario.study_case_id),
         )
         for blokada in ocena.blokady:
             blockers.append(
@@ -633,8 +636,8 @@ def solver_input_for_scenario(scenario: FaultScenario) -> dict[str, Any]:
     — JEDNA prawda projekcji scenariusza na opcje biegu, dzielona z magazynem
     scenariuszy; `FaultScenario` jest tu opakowywany w `OperatingScenario`
     tylko po to, żeby dwa niezależne wywołujące tego pliku (pojedynczy bieg
-    `POST /api/execution/fault-scenarios/{id}/runs` oraz seria `POST /api/
-    execution/study-cases/{id}/batches` — reguła KLASA, NIE INSTANCJA) nie
+    `POST /api/execution/study-cases/{case_id}/fault-scenarios/{id}/runs` oraz seria
+    `POST /api/execution/study-cases/{id}/batches` — reguła KLASA, NIE INSTANCJA) nie
     musiały same znać kształtu `OperatingScenario`.
     """
     return opcje_biegu_ze_scenariusza(_operating_scenario_z_fault(scenario))

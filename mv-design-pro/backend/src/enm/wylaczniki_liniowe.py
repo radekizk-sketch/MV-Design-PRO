@@ -23,6 +23,7 @@ from typing import Any, Literal
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 from .pola import napiecia_szyn, pole_aparatu
+from .zabezpieczenie import aparaty_sterownika, sterowniki
 
 #: Typ gałęzi łącznika, który jest wyłącznikiem (przerywa prąd zwarciowy).
 TYP_WYLACZNIKA = "breaker"
@@ -72,11 +73,10 @@ def wylaczniki_liniowe(enm: Mapping[str, Any]) -> list[dict[str, Any]]:
         if isinstance(kotwica, str):
             przekladniki.setdefault(kotwica, []).append(str(pomiar.get("ref_id")))
     zabezpieczenia: dict[str, list[str]] = {}
-    for przypisanie in enm.get("protection_assignments") or []:
-        if isinstance(przypisanie, Mapping) and isinstance(przypisanie.get("breaker_ref"), str):
-            zabezpieczenia.setdefault(przypisanie["breaker_ref"], []).append(
-                str(przypisanie.get("ref_id"))
-            )
+    for przypisanie in sterowniki(enm):
+        for aparat in aparaty_sterownika(przypisanie):
+            zabezpieczenia.setdefault(aparat, []).append(str(przypisanie.get("ref_id")))
+
     wynik: list[dict[str, Any]] = []
     for galaz in enm.get("branches") or []:
         if not isinstance(galaz, Mapping) or galaz.get("type") != TYP_WYLACZNIKA:

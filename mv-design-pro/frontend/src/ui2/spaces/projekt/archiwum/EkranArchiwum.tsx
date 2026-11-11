@@ -71,6 +71,7 @@ function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
           />
           <Wiersz etykieta={T.podgladPrzebiegi} wartosc={String(z.canonical_runs_count)} />
           <Wiersz etykieta={T.podgladModele} wartosc={String(z.enm_models_count)} />
+          <Wiersz etykieta={T.podgladScenariusze} wartosc={String(z.scenariusze_count)} />
         </div>
       ) : null}
       {/* Wersja zapisu i odcisk paczki — metadane produkcyjne (V12.7 §0.3). */}

@@ -26,7 +26,7 @@ export type WielkoscZwarciowaAparatuSn =
   | 'i_th_ka'
   | 'i_dyn_ka';
 
-/** Rodzaje łącznika SN ze znamionową zdolnością wyłączania zwarć (I_k, I_cu). */
+/** Rodzaje łącznika SN ze znamionową zdolnością wyłączania zwarć (I_k, I_sc wg IEC 62271-100). */
 export const RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA: ReadonlySet<string> = new Set([
   'CIRCUIT_BREAKER',
   'RECLOSER',

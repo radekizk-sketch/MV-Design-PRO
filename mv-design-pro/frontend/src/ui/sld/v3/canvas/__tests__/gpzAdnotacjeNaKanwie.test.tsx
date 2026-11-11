@@ -32,6 +32,8 @@ import { sldPaletteForTheme } from '../../theme/palette';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { KRYCIE_TLA_POLA_GPZ } from '../GpzAdnotacjeWarstwa';
 import { wyczyscRejestrBiegow, zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
+import { sterownikTestowy } from '../../../../../test/sterownik';
+import { kodyFunkcjiPola } from '../../../../shared/sterownikZabezpieczen';
 import fxPolGpz from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gpz_odgalezienie.json';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -218,7 +220,7 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
   // Rozszerzenie 5 karty UX-04: plakietki automatyki z kodów funkcji pola (SPZ⇔79, SCO⇔SCO,
   // LRW⇔50BF, NZ⇔NZ, OWG⇔OWG) × motyw; stan funkcji należy do nastaw (ADR-022), których
   // model nie niesie — obrys kreskowany i zdanie w podpowiedzi, nigdy domyślne „aktywna".
-  // Kody wpisane do rekordów pól migawki tak, jak zapisuje je operacja pola (`protection_codes`).
+  // Kody funkcji z jedynego źródła — sterowników zabezpieczeń pól (`protection_assignments`).
   // Migawka: rozdzielnica GPZ z czterema polami liniowymi z generatora backendu (fikstura
   // `pole_liniowe_z11_gpz_odgalezienie`) — migawka biegu `s92Bieg` ma jedno pole liniowe GPZ
   // (rola FEEDER), a jej pola `OUT` należą do stacji SN/nN, więc nie mają kart „Pola GPZ".
@@ -230,11 +232,16 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
         .filter((b) => (b.tags ?? []).includes('gpz_line_field'))
         .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
       expect(liniowe.length).toBeGreaterThan(1);
-      for (const pole of liniowe) pole.protection_codes = [];
-      // Zestaw szablonu Z.10 (backend `bay_templates`, każda funkcja raz — decyzja architekta
-      // 2026-10-30: dawny kod złożony „SPZ/SCO" obok 79 i SCO skasowany).
-      liniowe[0].protection_codes = ['51', '50', '51N', '67N', 'ZS', '50BF', '79', 'SCO'];
-      liniowe[1].protection_codes = ['51', '50', '81U', '50BF', '79', 'SPZE', 'OWG', 'NZ'];
+      // Sterowniki pól liniowych zastąpione dwoma sterownikami o znanych funkcjach (pozostałe
+      // pola liniowe bez sterownika — bez funkcji, bez plakietek). Zestaw szablonu Z.10 (backend
+      // `bay_templates`, każda funkcja raz — decyzja architekta 2026-10-30: dawny kod złożony
+      // „SPZ/SCO" obok 79 i SCO skasowany).
+      const refyLiniowych = new Set(liniowe.map((b) => b.ref_id));
+      zKodami.protection_assignments = [
+        ...(zKodami.protection_assignments ?? []).filter((p) => !refyLiniowych.has(p.bay_ref ?? '')),
+        sterownikTestowy({ bayRef: liniowe[0].ref_id, kody: ['51', '50', '51N', '67N', 'ZS', '50BF', '79', 'SCO'] }),
+        sterownikTestowy({ bayRef: liniowe[1].ref_id, kody: ['51', '50', '81U', '50BF', '79', 'SPZE', 'OWG', 'NZ'] }),
+      ];
       useSnapshotStore.setState({ snapshot: zKodami });
       const container = renderKanwe(2);
       powiekszDoCzytelnosci(container);
@@ -249,9 +256,11 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
       // automatykę SCO sekcji z rysunku i §26.9.8 / §26.10.6 Zeszytu 1 („przekaźnik zabudowany
       // w polu pomiaru napięcia") — plakietka SCO z JEGO kodów; poza tym polem i dwoma polami
       // liniowymi żaden kod nie daje plakietki (intencja: plakietki wyłącznie z kodów pól).
-      const polaPomiaru = (zKodami.bays ?? []).filter((b) => b.bay_role === 'MEASUREMENT' && (b.protection_codes ?? []).length > 0);
+      const polaPomiaru = (zKodami.bays ?? []).filter(
+        (b) => b.bay_role === 'MEASUREMENT' && kodyFunkcjiPola(zKodami, b.ref_id).length > 0,
+      );
       expect(polaPomiaru).toHaveLength(1);
-      expect(polaPomiaru[0].protection_codes).toContain('SCO');
+      expect(kodyFunkcjiPola(zKodami, polaPomiaru[0].ref_id)).toContain('SCO');
       expect(flagiPola(polaPomiaru[0].ref_id)).toEqual(['SCO']);
       const plakietki = [...container.querySelectorAll('[data-gpz-plakietka]')];
       expect(plakietki.length).toBe(3 + 4 + 1);

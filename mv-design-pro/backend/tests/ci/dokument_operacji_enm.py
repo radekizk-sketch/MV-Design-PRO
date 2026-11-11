@@ -447,22 +447,11 @@ def _karta_widmowa() -> dict[str, Any]:
     ).model_dump(mode="json")
 
 
-NASTAWY_ZABEZPIECZENIA: list[dict[str, Any]] = [
-    {
-        "function_type": "overcurrent_51",
-        "threshold_a": 2.0,
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "IEC_SI",
-        "time_multiplier": 0.3,
-    },
-    {
-        "function_type": "overcurrent_50",
-        "threshold_a": 20.0,
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "DT",
-        "time_delay_s": 0.4,
-    },
-]
+#: Nastawy sterownika w grupie aktywnej: funkcja (ref = kod rejestru) → {klucz schematu: wartość}.
+NASTAWY_ZABEZPIECZENIA: dict[str, dict[str, Any]] = {
+    "51": {"prog": 2.0, "jednostka_progu": "A_WTORNY", "krzywa": "IEC_SI", "tms": 0.3},
+    "50": {"prog": 20.0, "jednostka_progu": "A_WTORNY", "krzywa": "DT", "zwloka_s": 0.3},
+}
 
 
 KROKI: tuple[Krok, ...] = (
@@ -887,24 +876,20 @@ KROKI: tuple[Krok, ...] = (
     Krok(
         "przekaznik",
         "add_relay",
-        "zabezpieczenie nadprądowe pola liniowego z nastawami",
+        "sterownik zabezpieczeń pola liniowego (urządzenie z katalogu, wejście prądów fazowych)",
         lambda k: {
             "field_ref": _pole_stacji(k, "IN"),
-            "ct_ref": k.wskazany("ct"),
+            "wejscia": {"ct_ref": k.wskazany("ct")},
             "catalog_ref": PRZEKAZNIK,
-            "settings": NASTAWY_ZABEZPIECZENIA,
         },
     ),
     Krok(
         "nastawy",
         "update_protection_settings",
-        "zmiana nastaw (zwłoka członu zwarciowego 0,3 s)",
+        "nastawy funkcji I> (51) i I>> (50) w grupie aktywnej (zwłoka członu zwarciowego 0,3 s)",
         lambda k: {
             "protection_ref": k.wskazany("przekaznik"),
-            "settings": [
-                NASTAWY_ZABEZPIECZENIA[0],
-                {**NASTAWY_ZABEZPIECZENIA[1], "time_delay_s": 0.3},
-            ],
+            "nastawy": NASTAWY_ZABEZPIECZENIA,
         },
     ),
     # --- Topologia sieci nN -----------------------------------------------------------------

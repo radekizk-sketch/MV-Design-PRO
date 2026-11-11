@@ -24,6 +24,12 @@ export const ARKUSZ_STRINGS = {
     'Każdy odcinek i transformator wiąże się z typem na jeden z dwóch sposobów: kolumna '
     + '„typ_katalogowy” (typ z katalogu) albo pełna tabliczka w wierszu. Z tabliczki powstaje typ '
     + 'w katalogu projektu — bez wartości domyślnych.',
+  // Kolumna opcjonalna arkusza „Szyny” (karta UX-04/POLE-LINIOWE-WZORZEC): stan obiektu pól
+  // rozdzielnicy szyny — ta sama wartość, którą ocenia zakaz gazów fluorowanych w nowych polach.
+  formatStan:
+    'Kolumna „stan” arkusza „Szyny” (opcjonalna: „istniejący” albo „projektowany”, puste = '
+    + 'projektowany) nadaje stan obiektu polom rozdzielnicy szyny — pole istniejące może zawierać '
+    + 'gaz fluorowany, projektowane nie.',
   formatTabliczki: [
     {
       nazwa: 'Tabliczka odcinka',
@@ -31,12 +37,6 @@ export const ARKUSZ_STRINGS = {
     },
     { nazwa: 'Tabliczka transformatora', kolumny: ['Sn_MVA', 'uk_pct', 'Pk_kW', 'grupa', 'zaczepy'] },
   ],
-  // Kolumna opcjonalna arkusza „Szyny” (karta UX-04/POLE-LINIOWE-WZORZEC): stan obiektu pól
-  // rozdzielnicy szyny — ta sama wartość, którą ocenia zakaz gazów fluorowanych w nowych polach.
-  formatStan:
-    'Kolumna „stan” arkusza „Szyny” (opcjonalna: „istniejący” albo „projektowany”, puste = projektowany) '
-    + 'nadaje stan obiektu polom rozdzielnicy szyny — pole istniejące może zawierać gaz fluorowany, '
-    + 'projektowane nie.',
 
   wyborEyebrow: 'Plik z danymi',
   wybierz: 'Wybierz plik arkusza',

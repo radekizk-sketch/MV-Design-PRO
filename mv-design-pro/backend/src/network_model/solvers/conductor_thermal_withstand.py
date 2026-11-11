@@ -39,10 +39,29 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from network_model.solvers.wytrzymalosc_cieplna_pola import (
+    WZOR_I_TH_LATEX,
+    WZOR_M_LATEX,
+    PradCieplny,
+    prad_cieplny_zastepczy,
+)
+from werdykt import DanaPrzyjeta, Wielkosc
+from werdykt.proweniencja import FieldQuality
+
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONDUCTOR_THERMAL_DATA_MISSING = "conductor.thermal_data_missing"
 READINESS_FAULT_DURATION_MISSING = "conductor.fault_duration_missing"
 READINESS_FAULT_CURRENT_MISSING = "conductor.fault_current_missing"
+# Dane cieplne przewodu wzajemnie sprzeczne: I_th(1s) ≠ J_th(1s)·S przy podanym przekroju.
+# Kryterium prądowe (I_th(1s)/√t) i przekrojowe (S ≥ I_th·√t/J_th) to ta sama nierówność
+# I²t ≤ k²S² tylko wtedy, gdy I_th(1s) = J_th(1s)·S — inaczej dwa zapisy mogą dać dwa werdykty.
+READINESS_CONDUCTOR_THERMAL_DATA_INCONSISTENT = "conductor.thermal_data_inconsistent"
+
+#: Względna tolerancja zgodności I_th(1s) z J_th(1s)·S. Katalogi podają I_th(1s) zaokrąglone
+#: do trzech cyfr znaczących (np. 14,3 kA dla 150 mm² Al przy J_th = 94 A/mm²), co daje
+#: rozjazd ≤ 0,5 %; 1 % to dwukrotność tego zaokrąglenia — powyżej dane opisują dwa różne
+#: przewody (np. nadpisane I_th gałęzi przy przekroju i gęstości z katalogu).
+TOLERANCJA_ZGODNOSCI_DANYCH_CIEPLNYCH = 0.01
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -184,17 +203,24 @@ class ConductorThermalInput:
     Kazde pole moze byc None — brak danej daje wynik NIEDOSTEPNY z kodem gotowosci,
     a nie liczbe zastepcza.
 
-    ``ith_a``            — prad zwarciowy ekwiwalentny cieplnie [A] z biegu zwarciowego
-                           (IEC 60909-0 §12: I_th = I″k·√(m+n)).
+    ``ikss_a``           — prad zwarciowy poczatkowy I″k [A] przewodu (punktu albo galezi)
+                           z biegu zwarciowego.
+    ``kappa``            — wspolczynnik udaru κ punktu zwarcia z biegu (wejscie m).
     ``fault_duration_s`` — czas trwania zwarcia [s] = czas wylaczenia zabezpieczenia
                            przy TYM pradzie (z analizy zabezpieczen), nie wartosc umowna.
+    I_th = I″k·√(m(κ, t) + n) liczy JEDNA funkcja normy dla aparatury i przewodow
+    (``solvers.wytrzymalosc_cieplna_pola.prad_cieplny_zastepczy``) przy TYM czasie ``t`` —
+    nie I_th biegu przy czasie cieplnym scenariusza (para I_th, t opisuje jeden stan).
+    ``zalozenie_kappa`` — dana przyjeta, gdy κ nie jest wlasnym κ przewodu (np. κ punktu
+    zwarcia dla wkladu galezi); trafia do ``dane_przyjete`` wyniku.
     ``ith_1s_a``         — dopuszczalny prad cieplny przewodu dla 1 s [A] (katalog).
     ``jth_1s_a_per_mm2`` — gestosc pradu cieplnego dla 1 s [A/mm²] (katalog); potrzebna
                            wylacznie do wyznaczenia minimalnego przekroju.
     ``cross_section_mm2``— przekroj zastosowany [mm²]; do porownania z minimalnym.
     """
 
-    ith_a: float | None
+    ikss_a: float | None
+    kappa: float | None
     fault_duration_s: float | None
     ith_1s_a: float | None
     jth_1s_a_per_mm2: float | None = None
@@ -214,6 +240,7 @@ class ConductorThermalInput:
     # wyznacza utrata wytrzymalosci mechanicznej zyly i osprzet. Bez tego rozroznienia
     # dowod dla kazdej linii napowietrznej zglaszalby nieprawdziwy „brak izolacji".
     conductor_kind: str | None = None
+    zalozenie_kappa: DanaPrzyjeta | None = None
 
 
 @dataclass(frozen=True)
@@ -255,11 +282,19 @@ class ConductorThermalResult:
     # obliczen". Pusta krotka dla wyniku NIEDOSTEPNEGO (nie ma czego dowodzic)
     # oraz dla wynikow sprzed tej delty.
     white_box_trace: tuple[dict[str, Any], ...] = ()
+    # Prad cieplny I_th przy czasie trwania zwarcia (I″k, κ, t, m, n, I_th) — wielkosc
+    # porownywana; ``None`` = brak I″k (nie ma czego liczyc).
+    prad_cieplny: dict[str, Any] | None = None
+    # Dane przyjete rachunku (np. κ punktu zwarcia dla galezi) — wynik na zalozeniu jest
+    # odrozniony od potwierdzonego (kontrakt werdyktu §3).
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Nagrzewanie zwarciowe adiabatyczne (bez odpływu ciepła do otoczenia).",
             "Równoważna energia cieplna (kwadrat prądu razy czas) stała (IEC 60949).",
-            "Prąd zastępczy cieplny pochodzi z obliczeń zwarciowych — nie jest prądem początkowym.",
+            "Prąd zastępczy cieplny wyznaczony z początkowego prądu zwarciowego i współczynników "
+            "cieplnych składowej nieokresowej i okresowej przy czasie trwania zwarcia "
+            "(IEC 60909-0 §4.7); współczynnik składowej okresowej przyjęty równy 1.",
             "Czas t to rzeczywisty czas wyłączenia zabezpieczenia przy tym prądzie.",
             "Wytrzymałość przewodu odniesiona do 1 s według danych katalogowych.",
         )
@@ -285,8 +320,10 @@ def check_conductor_thermal_withstand(
     Zwraca werdykt PASS/FAIL albo UNAVAILABLE + kody gotowosci, gdy ktoregokolwiek
     ze skladnikow rachunku brakuje. Nie zgaduje zadnej wielkosci.
     """
-    ith = _positive(data.ith_a)
     duration = _positive(data.fault_duration_s)
+    cieplny = prad_cieplny_zastepczy(ikss=_positive(data.ikss_a), kappa=data.kappa, tk_s=duration)
+    ith = _positive(cieplny.ith)
+    dane_przyjete = (data.zalozenie_kappa,) if data.zalozenie_kappa is not None else ()
     ith_1s = _positive(data.ith_1s_a)
     jth = _positive(data.jth_1s_a_per_mm2)
     section = _positive(data.cross_section_mm2)
@@ -306,12 +343,27 @@ def check_conductor_thermal_withstand(
             ith_1s = jth * section
 
     braki: list[str] = []
-    if ith is None:
+    if _positive(data.ikss_a) is None or data.kappa is None:
         braki.append(READINESS_FAULT_CURRENT_MISSING)
     if duration is None:
         braki.append(READINESS_FAULT_DURATION_MISSING)
     if ith_1s is None:
         braki.append(READINESS_CONDUCTOR_THERMAL_DATA_MISSING)
+
+    if not braki and jth is not None and section is not None and ith_1s is not None:
+        z_gestosci = jth * section
+        if abs(ith_1s - z_gestosci) > TOLERANCJA_ZGODNOSCI_DANYCH_CIEPLNYCH * max(
+            ith_1s, z_gestosci
+        ):
+            return _odmowa_sprzecznych_danych(
+                ith_1s=ith_1s,
+                jth=jth,
+                section=section,
+                cieplny=cieplny,
+                zalozenie_kappa=data.zalozenie_kappa,
+                dane_przyjete=dane_przyjete,
+                powod_pl=None,
+            )
 
     if braki:
         return ConductorThermalResult(
@@ -321,6 +373,8 @@ def check_conductor_thermal_withstand(
             required_cross_section_mm2=None,
             margin_a=None,
             readiness_codes=tuple(dict.fromkeys(braki)),
+            prad_cieplny=_prad_cieplny_dict(cieplny, data.zalozenie_kappa),
+            dane_przyjete=dane_przyjete,
         )
 
     # mypy: po sprawdzeniu brakow wszystkie trzy sa float
@@ -343,6 +397,34 @@ def check_conductor_thermal_withstand(
     i2t_admissible = ith_1s * ith_1s  # k²S² = (Jth·S)² = I_th(1s)² dla t = 1 s
     margin_percent = (1.0 - utilization) * 100.0
 
+    criteria = _build_criteria(
+        ith_a=ith,
+        admissible_a=admissible,
+        i2t=i2t,
+        i2t_admissible=i2t_admissible,
+        required_section_mm2=required_section,
+        applied_section_mm2=section,
+    )
+    # Zapisy są równoważne tylko przy I_th(1s) = J_th(1s)·S. W granicy tolerancji zgodności
+    # danych werdykty mogą się rozejść tuż przy granicy kryterium — wtedy też odmowa z liczbami
+    # (nie asercja: rozjazd jest własnością danych, nie błędem programu).
+    werdykty = {poz["status"] for poz in criteria if poz["status"] != STATUS_UNAVAILABLE}
+    if werdykty != {status}:
+        return _odmowa_sprzecznych_danych(
+            ith_1s=ith_1s,
+            jth=jth,
+            section=section,
+            cieplny=cieplny,
+            zalozenie_kappa=data.zalozenie_kappa,
+            dane_przyjete=dane_przyjete,
+            powod_pl=(
+                "Kryteria cząstkowe danych cieplnych przewodu dały sprzeczne werdykty przy "
+                f"prądzie zastępczym cieplnym {_liczba_pl(ith, 0)} A wobec prądu dopuszczalnego "
+                f"{_liczba_pl(admissible, 0)} A — wynik leży na granicy kryterium, w obrębie "
+                "niepewności danych cieplnych."
+            ),
+        )
+
     return ConductorThermalResult(
         status=status,
         admissible_current_a=admissible,
@@ -350,18 +432,12 @@ def check_conductor_thermal_withstand(
         required_cross_section_mm2=required_section,
         margin_a=margin,
         readiness_codes=(),
+        prad_cieplny=_prad_cieplny_dict(cieplny, data.zalozenie_kappa),
+        dane_przyjete=dane_przyjete,
         i2t_a2s=i2t,
         i2t_admissible_a2s=i2t_admissible,
         margin_percent=margin_percent,
-        criteria=_build_criteria(
-            ith_a=ith,
-            admissible_a=admissible,
-            i2t=i2t,
-            i2t_admissible=i2t_admissible,
-            required_section_mm2=required_section,
-            applied_section_mm2=section,
-            status=status,
-        ),
+        criteria=criteria,
         decision_reason_pl=_decision_reason(
             status=status,
             ith_a=ith,
@@ -403,8 +479,58 @@ def check_conductor_thermal_withstand(
             i2t=i2t,
             i2t_admissible=i2t_admissible,
             k_justification=_build_k_justification(data, jth, k_derivation),
+            prad_cieplny=cieplny,
+            zalozenie_kappa=data.zalozenie_kappa,
         ),
     )
+
+
+def zalozenie_kappa_punktu_dla_galezi(kappa: float | None, punkt_pl: str) -> DanaPrzyjeta | None:
+    """Dana przyjęta: κ punktu zwarcia użyty jako κ wkładu prądu w gałęzi (przewód SN).
+
+    PODSTAWA. IEC 60909-0 §4.3.1 wyznacza κ dla PUNKTU zwarcia (stosunek R/X impedancji
+    zastępczej w miejscu zwarcia, metody B/C dla sieci oczkowych); IEC 60865-1 §5.8 liczy
+    skutki cieplne prądu zwarciowego z m(κ, T_k) tego punktu. Wkład gałęzi płynący drogą
+    o mniejszym R/X niż zastępcze może mieć wyższe κ niż punkt — wtedy m gałęzi jest większe,
+    a I_th z κ punktu zaniżony. Wynik biegu NIE niesie κ ani R/X dróg wkładu (wkład gałęziowy
+    rdzenia: tylko moduł prądu i kierunek, ``ShortCircuitBranchContribution``), więc κ = max
+    po drogach wkładu nie jest wyznaczalny bez nowego wyniku rdzenia — przyjęte κ punktu
+    jest jawnym założeniem, a ocena na nim ma kompletność dowodu NIEPEŁNĄ. κ nieskończony
+    albo brak κ — ``None`` (brak danej, nie założenie; rachunek I_th zgłasza przyczynę).
+    """
+    if kappa is None or not math.isfinite(kappa):
+        return None
+    return DanaPrzyjeta(
+        nazwa_pl="współczynnik udaru κ wkładu gałęzi",
+        wartosc=Wielkosc(wartosc=float(kappa), jednostka="1"),
+        powod_pl=(
+            f"przyjęto κ punktu zwarcia ({punkt_pl}) jako κ wkładu prądu w gałęzi — IEC "
+            "60909-0 §4.3.1 (κ punktu zwarcia) i IEC 60865-1 §5.8 (m z κ punktu); wynik biegu "
+            "nie niesie κ dróg wkładu, a droga o mniejszym R/X niż zastępcze dałaby wyższe κ "
+            "i większy prąd cieplny"
+        ),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+def _prad_cieplny_dict(
+    cieplny: PradCieplny, zalozenie_kappa: DanaPrzyjeta | None
+) -> dict[str, Any] | None:
+    """Ślad I_th przewodu (jednostki A); ``None`` bez prądu początkowego."""
+    if cieplny.ikss is None:
+        return None
+    return {
+        "ikss_a": cieplny.ikss,
+        "kappa": cieplny.kappa,
+        "tk_s": cieplny.tk_s,
+        "m": cieplny.m,
+        "n": cieplny.n,
+        "ith_a": cieplny.ith,
+        "wzor_latex": WZOR_I_TH_LATEX,
+        "wzor_m_latex": WZOR_M_LATEX,
+        "powod_pl": cieplny.powod_pl,
+        "zalozenie_kappa_pl": None if zalozenie_kappa is None else zalozenie_kappa.powod_pl,
+    }
 
 
 def _wartosc(value: float, unit: str, label: str) -> dict[str, Any]:
@@ -451,6 +577,8 @@ def _build_white_box_trace(
     i2t: float,
     i2t_admissible: float,
     k_justification: dict[str, Any],
+    prad_cieplny: PradCieplny,
+    zalozenie_kappa: DanaPrzyjeta | None,
 ) -> tuple[dict[str, Any], ...]:
     """Kroki dowodowe rachunku cieplnego (WHITE BOX, kanon pieciu pol).
 
@@ -692,6 +820,44 @@ def _build_white_box_trace(
             }
         )
 
+    # Krok I_th przy czasie trwania zwarcia — PIERWSZY: z niego idzie wielkość porównywana.
+    assert prad_cieplny.m is not None and prad_cieplny.n is not None
+    assert prad_cieplny.ikss is not None and prad_cieplny.kappa is not None
+    kroki.insert(
+        0,
+        {
+            "step": 0,
+            "key": "conductor_thermal_ith",
+            "title": "Prąd zastępczy cieplny przy czasie trwania zwarcia",
+            "formula_latex": WZOR_I_TH_LATEX,
+            "inputs": {
+                "ikss_a": _wartosc(prad_cieplny.ikss, "A", "Prąd zwarciowy początkowy"),
+                "kappa": {"value": prad_cieplny.kappa, "unit": "—", "label": "Współczynnik κ"},
+                "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
+                "m": {"value": prad_cieplny.m, "unit": "—", "label": "Współczynnik m"},
+                "n": {"value": prad_cieplny.n, "unit": "—", "label": "Współczynnik n"},
+            },
+            "substitution_latex": (
+                r"I_{th} = "
+                + _liczba_tex(prad_cieplny.ikss)
+                + r"\cdot\sqrt{"
+                + _liczba_tex(prad_cieplny.m)
+                + r" + "
+                + _liczba_tex(prad_cieplny.n)
+                + r"} = "
+                + _liczba_tex(ith_a)
+                + r"\ \mathrm{A}"
+            ),
+            "result": {"ith_a": _wartosc(ith_a, "A", "Prąd zastępczy cieplny")},
+            "notes": (
+                "IEC 60909-0 §4.7: m z κ i czasu trwania zwarcia t (ta sama funkcja co "
+                "aparatura pól), n = 1 (górne oszacowanie)."
+                + (f" Założenie: {zalozenie_kappa.powod_pl}" if zalozenie_kappa else "")
+            ),
+        },
+    )
+    for numer, krok in enumerate(kroki, start=1):
+        krok["step"] = numer
     return tuple(kroki)
 
 
@@ -738,7 +904,6 @@ def _build_criteria(
     i2t_admissible: float,
     required_section_mm2: float | None,
     applied_section_mm2: float | None,
-    status: str,
 ) -> tuple[dict[str, Any], ...]:
     """Kryteria czastkowe z OSOBNYM werdyktem — ktore ograniczenie zdecydowalo.
 
@@ -802,10 +967,51 @@ def _build_criteria(
             }
         )
 
-    # Zapisy sa rownowazne, wiec rozjazd werdyktow oznaczalby blad rachunku.
-    werdykty = {poz["status"] for poz in pozycje if poz["status"] != STATUS_UNAVAILABLE}
-    assert werdykty <= {status}, f"kryteria cząstkowe rozjechały się z werdyktem: {werdykty}"
+    # Zgodność werdyktów sprawdza wołający (`check_conductor_thermal_withstand`): rozjazd
+    # kończy się jawną odmową z liczbami, nie asercją.
     return tuple(pozycje)
+
+
+def _odmowa_sprzecznych_danych(
+    *,
+    ith_1s: float,
+    jth: float | None,
+    section: float | None,
+    cieplny: PradCieplny,
+    zalozenie_kappa: DanaPrzyjeta | None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...],
+    powod_pl: str | None,
+) -> ConductorThermalResult:
+    """BRAK PODSTAWY: I_th(1s) i J_th(1s)·S opisują różne przewody — bez rozstrzygnięcia,
+    która dana jest prawdziwa, werdykt byłby wyborem jednej z dwóch liczb."""
+    if jth is not None and section is not None:
+        z_gestosci = jth * section
+        rozjazd = abs(ith_1s - z_gestosci) / max(ith_1s, z_gestosci) * 100.0
+        zdanie = (
+            "Dane cieplne przewodu są sprzeczne: prąd znamionowy krótkotrwały wytrzymywany "
+            f"przez 1 s wynosi {_liczba_pl(ith_1s, 0)} A, a gęstość prądu jednosekundowego "
+            f"razy przekrój daje {_liczba_pl(jth)} A/mm² · {_liczba_pl(section, 0)} mm² = "
+            f"{_liczba_pl(z_gestosci, 0)} A (rozjazd {_liczba_pl(rozjazd)} %, dopuszczalny "
+            f"{_liczba_pl(TOLERANCJA_ZGODNOSCI_DANYCH_CIEPLNYCH * 100.0)} %). Popraw prąd "
+            "jednosekundowy, gęstość prądu cieplnego albo przekrój, by obie dane opisywały "
+            "ten sam przewód."
+        )
+    else:
+        zdanie = (
+            "Brak podstawy do werdyktu przy prądzie znamionowym krótkotrwałym wytrzymywanym "
+            f"przez 1 s równym {_liczba_pl(ith_1s, 0)} A."
+        )
+    return ConductorThermalResult(
+        status=STATUS_UNAVAILABLE,
+        admissible_current_a=None,
+        utilization=None,
+        required_cross_section_mm2=None,
+        margin_a=None,
+        readiness_codes=(READINESS_CONDUCTOR_THERMAL_DATA_INCONSISTENT,),
+        decision_reason_pl=zdanie if powod_pl is None else f"{zdanie} {powod_pl}",
+        prad_cieplny=_prad_cieplny_dict(cieplny, zalozenie_kappa),
+        dane_przyjete=dane_przyjete,
+    )
 
 
 def _decision_reason(

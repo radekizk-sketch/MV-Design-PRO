@@ -263,3 +263,81 @@ def nazwa_po_identyfikatorze(
     if element_ref is None:
         return spoza_modelu
     return mapa.get(str(element_ref), spoza_modelu)
+
+
+def _lista(model: object, kolekcja: str) -> list[object]:
+    elementy = _pole(model, kolekcja)
+    return list(elementy) if isinstance(elementy, list | tuple) else []
+
+
+def _slownik(element: object, klucz: str) -> Mapping[str, Any]:
+    wartosc = _pole(element, klucz)
+    return wartosc if isinstance(wartosc, Mapping) else {}
+
+
+def _aparaty_zabezpieczenia(przypisanie: object) -> tuple[str, ...]:
+    """Aparaty z macierzy wyzwoleń sterownika (posortowane, bez powtórzeń) — ten sam odczyt co
+    `enm.zabezpieczenie.aparaty_sterownika`; liść nie importuje `enm.zabezpieczenie`."""
+    wynik: set[str] = set()
+    for wiersz in _lista(przypisanie, "macierz_wyzwolen"):
+        wynik.update(str(a) for a in _lista(wiersz, "aparat_refs"))
+    return tuple(sorted(wynik))
+
+
+def _pole_zabezpieczenia(model: object, przypisanie: object) -> object | None:
+    """Pole rozdzielnicy, które chroni zabezpieczenie (rekord `bays`) albo `None`.
+
+    Dwa nośniki powiązania w modelu, w kolejności: `bay_ref` sterownika pola (jedna struktura
+    sterownika, karta OCHRONA-JEDNO-ZRODLO) i `meta.bay_ref` aparatu, na który sterownik działa
+    (macierz wyzwoleń — sterownik wyłącznika liniowego bez pola).
+    """
+    pola = sorted(_lista(model, "bays"), key=lambda b: str(_pole(b, "ref_id")))
+    bay_ref = _pole(przypisanie, "bay_ref")
+    if bay_ref:
+        pole = next((p for p in pola if _pole(p, "ref_id") == bay_ref), None)
+        if pole is not None:
+            return pole
+    aparaty = set(_aparaty_zabezpieczenia(przypisanie))
+    for galaz in sorted(_lista(model, "branches"), key=lambda g: str(_pole(g, "ref_id"))):
+        if _pole(galaz, "ref_id") not in aparaty:
+            continue
+        pole_ref = _slownik(galaz, "meta").get("bay_ref")
+        pole = next((p for p in pola if pole_ref and _pole(p, "ref_id") == pole_ref), None)
+        if pole is not None:
+            return pole
+    return None
+
+
+def oznaczenie_zabezpieczenia(model: object, przypisanie: object) -> str:
+    """Zabezpieczenie w zdaniu PO rzeczowniku „zabezpieczenie” (w dowolnym przypadku).
+
+    PO CO (karta KD6): domyślna nazwa przypisania to „Zabezpieczenie pola <pole>” albo
+    „Zabezpieczenie <wyłącznik>”, więc wstawiona po rzeczowniku dawała „zabezpieczenia
+    Zabezpieczenie pola …”. Zabezpieczenie nazywa się przez MIEJSCE, które chroni:
+    ``pola „<nazwa pola>”``, a bez pola ``wyłącznika „<nazwa wyłącznika>”`` (jedyny aparat
+    macierzy wyzwoleń). Gdy w tym samym miejscu jest więcej niż jedno zabezpieczenie (np.
+    podstawowe i rezerwowe), miejsce nie rozróżnia urządzeń — wtedy nazwa przypisania
+    w cudzysłowie. Bez oceny kształtu nazwy.
+    """
+    przypisania = _lista(model, "protection_assignments")
+    pole = _pole_zabezpieczenia(model, przypisanie)
+    if pole is not None:
+        w_tym_polu = [
+            p
+            for p in przypisania
+            if (n := _pole_zabezpieczenia(model, p)) is not None
+            and _pole(n, "ref_id") == _pole(pole, "ref_id")
+        ]
+        if len(w_tym_polu) <= 1:
+            return f"pola „{nazwa_elementu(pole, 'bays')}”"
+    else:
+        aparaty = _aparaty_zabezpieczenia(przypisanie)
+        wylacznik = (
+            next((g for g in _lista(model, "branches") if _pole(g, "ref_id") == aparaty[0]), None)
+            if len(aparaty) == 1
+            else None
+        )
+        przy_wylaczniku = [p for p in przypisania if _aparaty_zabezpieczenia(p) == aparaty]
+        if wylacznik is not None and len(przy_wylaczniku) <= 1:
+            return f"wyłącznika „{nazwa_elementu(wylacznik, 'branches')}”"
+    return f"„{nazwa_elementu(przypisanie, 'protection_assignments')}”"

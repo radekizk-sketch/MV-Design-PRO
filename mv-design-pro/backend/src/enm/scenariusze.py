@@ -1047,6 +1047,17 @@ class OperatingScenario(BaseModel):
     """W5-C: stan łącznika w scenariuszu (``ref_id`` łącznika → położenie). Łącznik zostaje
     w migawce efektywnej ze zmienionym ``status`` — inne pojęcie niż ``out_of_service``
     (element nieobecny); patrz nagłówek modułu."""
+    protection_groups: dict[str, Annotated[int, Field(ge=1, le=4)]] = Field(default_factory=dict)
+    """ADR-022 (karta OCHRONA-JEDNO-ZRODLO): wybór grupy nastaw sterownika w przypadku
+    (``ref_id`` sterownika → numer grupy 1–4). Model nie jest zmieniany — w migawce
+    efektywnej zmienia się ``aktywna_grupa`` sterownika, którą czyta każda ocena."""
+    protection_overrides: dict[str, dict[str, dict[str, float | str | bool | None]]] = Field(
+        default_factory=dict
+    )
+    """ADR-022: delta nastaw przypadku — ``ref_id`` sterownika → ``ref`` funkcji → klucz
+    schematu nastaw (rejestr funkcji) → wartość (``None`` zdejmuje nastawę). Nakładana na
+    grupę EFEKTYWNĄ (po ``protection_groups``) w migawce efektywnej; sprzeczna nastawa
+    (reguła `enm.nastawy_zabezpieczen.bledy_sterownika`) = scenariusz nie przystaje."""
     dynamika: ScenariuszDynamiczny | None = None
     """
     Harmonogram zdarzeń czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
@@ -1063,6 +1074,11 @@ class OperatingScenario(BaseModel):
             raise ValueError("Scenariusz pracy: element wyłączony z pracy podany dwukrotnie")
         if any(not ref for ref in self.switch_states):
             raise ValueError("Scenariusz pracy: stan łącznika bez wskazania łącznika")
+        if any(not ref for ref in [*self.protection_groups, *self.protection_overrides]):
+            raise ValueError(
+                "Scenariusz pracy: wybór grupy albo delta nastaw bez wskazania sterownika "
+                "zabezpieczeń"
+            )
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
             raise ValueError(
@@ -1092,6 +1108,8 @@ class OperatingScenario(BaseModel):
             or self.gen_scaling
             or self.injections
             or self.probe_shunts
+            or self.protection_groups
+            or self.protection_overrides
         )
 
     def tresc(self) -> dict[str, Any]:
@@ -1122,6 +1140,26 @@ class OperatingScenario(BaseModel):
                 else {}
             ),
             **({"dynamika": self.dynamika.tresc()} if self.dynamika is not None else {}),
+            # ADR-022: klucze wyłącznie dla niepustej delty zabezpieczeń — scenariusz bez niej
+            # ma bajtowo tę samą treść i hash co przed kartą OCHRONA-JEDNO-ZRODLO.
+            **(
+                {"protection_groups": dict(sorted(self.protection_groups.items()))}
+                if self.protection_groups
+                else {}
+            ),
+            **(
+                {
+                    "protection_overrides": {
+                        ref: {
+                            funkcja: dict(sorted(nastawy.items()))
+                            for funkcja, nastawy in sorted(funkcje.items())
+                        }
+                        for ref, funkcje in sorted(self.protection_overrides.items())
+                    }
+                }
+                if self.protection_overrides
+                else {}
+            ),
         }
 
     @property
@@ -1321,6 +1359,108 @@ def _przeskaluj(p_mw: float, mnoznik: float) -> float:
     return 0.0 if mnoznik == 0.0 else p_mw * mnoznik
 
 
+def _naloz_delte_zabezpieczen(
+    snapshot: dict[str, Any], scenariusz: OperatingScenario, nadpisania: list[Nadpisanie]
+) -> None:
+    """Delta zabezpieczeń przypadku (ADR-022) na migawce efektywnej: wybór grupy nastaw
+    (``protection_groups``), potem nastawy w grupie EFEKTYWNEJ (``protection_overrides``).
+
+    Sterownik spoza modelu, grupa nieobecna w sterowniku, funkcja spoza sterownika albo
+    nastawa sprzeczna (ta sama reguła co zapis modelu, `bledy_sterownika`) =
+    `ScenariuszNieprzystajeError` — nigdy cichy skip."""
+    if not scenariusz.protection_groups and not scenariusz.protection_overrides:
+        return
+    # Import leniwy: reguła nastaw czyta rejestr funkcji (cykl przez pakiet `enm`).
+    from .nastawy_zabezpieczen import bledy_sterownika
+    from .zabezpieczenie import aktywna_grupa_sterownika, zapisz_nastawy_funkcji
+
+    sterowniki = _indeks_elementow(snapshot, "protection_assignments")
+    zmienione: set[str] = set()
+    for ref_id, numer in sorted(scenariusz.protection_groups.items()):
+        sterownik = sterowniki.get(ref_id)
+        if sterownik is None:
+            raise _nieprzystaje(scenariusz, snapshot, ref_id, "brak sterownika zabezpieczeń")
+        numery = {int(g.get("numer")) for g in sterownik.get("grupy_nastaw") or []}
+        if numer not in numery:
+            raise ScenariuszNieprzystajeError(
+                scenariusz.scenario_id,
+                ref_id,
+                f"sterownik nie ma grupy nastaw {numer} (grupy w modelu: "
+                f"{', '.join(f'{n:d}' for n in sorted(numery)) or 'brak'})",
+            )
+        przed = sterownik.get("aktywna_grupa")
+        if przed == numer:
+            continue
+        sterownik["aktywna_grupa"] = numer
+        zmienione.add(ref_id)
+        nadpisania.append(
+            Nadpisanie("protection_groups", "protection_assignments", ref_id, przed, numer)
+        )
+    for ref_id, funkcje in sorted(scenariusz.protection_overrides.items()):
+        sterownik = sterowniki.get(ref_id)
+        if sterownik is None:
+            raise _nieprzystaje(scenariusz, snapshot, ref_id, "brak sterownika zabezpieczeń")
+        refy_funkcji = {str(f.get("ref")) for f in sterownik.get("funkcje") or []}
+        numer = aktywna_grupa_sterownika(sterownik)
+        for funkcja_ref, delta in sorted(funkcje.items()):
+            if funkcja_ref not in refy_funkcji:
+                raise ScenariuszNieprzystajeError(
+                    scenariusz.scenario_id,
+                    ref_id,
+                    "sterownik nie ma funkcji, której nastawy zmienia scenariusz",
+                )
+            grupa = next(
+                (g for g in sterownik.get("grupy_nastaw") or [] if g.get("numer") == numer),
+                None,
+            )
+            obecne = {
+                str(n.get("klucz")): n.get("wartosc")
+                for f in (grupa or {}).get("funkcje") or []
+                if f.get("funkcja_ref") == funkcja_ref
+                for n in f.get("nastawy") or []
+            }
+            wpis = next(
+                (
+                    f
+                    for f in (grupa or {}).get("funkcje") or []
+                    if f.get("funkcja_ref") == funkcja_ref
+                ),
+                None,
+            )
+            if wpis is None:
+                # Grupa albo wpis funkcji nieobecny — powstaje z samej delty.
+                zapisz_nastawy_funkcji(
+                    sterownik, numer_grupy=numer, funkcja_ref=funkcja_ref, nastawy=delta
+                )
+            else:
+                # Nastawy spoza delty zachowują wartość i pochodzenie z modelu.
+                lista = [n for n in wpis.get("nastawy") or [] if n.get("klucz") not in delta]
+                lista += [
+                    {"klucz": k, "wartosc": v, "pochodzenie": "PROJEKTANT"}
+                    for k, v in delta.items()
+                    if v is not None
+                ]
+                wpis["nastawy"] = sorted(lista, key=lambda n: str(n.get("klucz")))
+            zmienione.add(ref_id)
+
+            for klucz, wartosc in sorted(delta.items()):
+                if obecne.get(klucz) == wartosc:
+                    continue
+                nadpisania.append(
+                    Nadpisanie(
+                        f"protection_overrides.{funkcja_ref}.{klucz}",
+                        "protection_assignments",
+                        ref_id,
+                        obecne.get(klucz),
+                        wartosc,
+                    )
+                )
+    for ref_id in sorted(zmienione):
+        bledy = bledy_sterownika(sterowniki[ref_id])
+        if bledy:
+            raise ScenariuszNieprzystajeError(scenariusz.scenario_id, ref_id, "; ".join(bledy))
+
+
 def apply_scenario(
     enm: EnergyNetworkModel, scenariusz: OperatingScenario
 ) -> EffectiveNetworkSnapshot:
@@ -1445,6 +1585,8 @@ def apply_scenario(
                 )
             )
         snapshot["shunt_capacitors"] = lista
+
+    _naloz_delte_zabezpieczen(snapshot, scenariusz, nadpisania)
 
     if scenariusz.dynamika is not None:
         _waliduj_zdarzenia_dynamiczne(snapshot, scenariusz)
@@ -1719,48 +1861,6 @@ def wczytaj_scenariusz(
     raise ScenariuszNieistniejeError(klucz, scenario_id, rewizja)
 
 
-def znajdz_klucz_scenariusza(scenario_id: str) -> str | None:
-    """Klucz magazynu (projektu), ktory przechowuje scenariusz o tym identyfikatorze
-    — BEZ indeksu drugiej prawdy (karta C6-PERSIST).
-
-    Konczowki API adresowane WYLACZNIE `scenario_id` (bez `case_id` w sciezce:
-    `GET/PUT/DELETE .../fault-scenarios/{scenario_id}`, `.../eligibility`,
-    `.../sld-overlay`, `.../runs`) potrzebuja klucza magazynu, zeby w ogole
-    wolac `wczytaj_scenariusz`/`zapisz_scenariusz`/`usun_scenariusz` — a klucz
-    zalezy od PROJEKTU, ktorego adres nie jest czescia sciezki. Zamiast osobnego
-    pliku indeksu (`scenario_id -> klucz`), ktory moglby sie rozjechac z
-    rzeczywistymi plikami po awarii zapisu, PRZEGLADAMY magazyn: kazdy plik
-    scenariusza jest juz nazwany `<scenario_id>.json` (patrz `_sciezka_
-    scenariusza`) i jego WLASNY rejestr niesie pole `"klucz"` (patrz
-    `zapisz_scenariusz`) — jedno zrodlo prawdy, ten sam plik, ktory i tak trzeba
-    by odczytac.
-
-    Zwraca `None`, gdy zaden projekt nie ma pliku o tej nazwie (scenariusz
-    nigdy nie istnial, albo zyje wylacznie w `legacy_przypadki/` po migracji
-    klucza — CV-1); wolajacy tlumaczy to na `FaultScenarioNotFoundError`
-    (uczciwy 404, nieodrozniny od „scenariusz nigdy nie istnial" — z perspektywy
-    API to ten sam brak).
-
-    Wiele trafien jest teoretycznie niemozliwe (identyfikator scenariusza to
-    `uuid4()` nadany raz przy tworzeniu) — gdyby jednak wystapilo, wybor jest
-    DETERMINISTYCZNY (posortowane sciezki, pierwsza wygrywa), nie przypadkowy.
-    """
-    korzen = _store_dir()
-    if not korzen.is_dir():
-        return None
-    dopasowania = sorted(korzen.glob(f"*{SUFIKS_KATALOGU_SCENARIUSZY}/{scenario_id}.json"))
-    if not dopasowania:
-        return None
-    plik = dopasowania[0]
-    try:
-        rejestr = json.loads(plik.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise ScenariuszUszkodzonyError(f"{plik}: {exc}") from exc
-    if not isinstance(rejestr, dict) or not rejestr.get("klucz"):
-        raise ScenariuszUszkodzonyError(f"{plik}: brak pola 'klucz' w rejestrze")
-    return str(rejestr["klucz"])
-
-
 def lista_scenariuszy(klucz: str) -> list[OperatingScenario]:
     """Najnowsze, nieusuniete rewizje wszystkich scenariuszy projektu (po identyfikatorze)."""
     katalog = katalog_scenariuszy(klucz)
@@ -1772,6 +1872,20 @@ def lista_scenariuszy(klucz: str) -> list[OperatingScenario]:
         if stan is None or stan.usuniety:
             continue
         wynik.append(wczytaj_scenariusz(klucz, plik.stem))
+    return wynik
+
+
+def stany_scenariuszy(klucz: str) -> dict[str, StanScenariusza]:
+    """Bieżąca rewizja i flaga usunięcia KAŻDEGO scenariusza projektu (po identyfikatorze) —
+    wejście odcisku świeżości (`application.result_freshness.StanBiezacyModelu.odcisk_wejsc`)."""
+    katalog = katalog_scenariuszy(klucz)
+    if not katalog.is_dir():
+        return {}
+    wynik: dict[str, StanScenariusza] = {}
+    for plik in sorted(katalog.glob("*.json")):
+        stan = stan_scenariusza(klucz, plik.stem)
+        if stan is not None:
+            wynik[plik.stem] = stan
     return wynik
 
 
@@ -1827,3 +1941,258 @@ def usun_wszystkie_scenariusze() -> None:
     for sciezka in katalog.glob(f"*{SUFIKS_KATALOGU_SCENARIUSZY}"):
         if sciezka.is_dir():
             shutil.rmtree(sciezka, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Wybór zabezpieczeń PRZYPADKU obliczeniowego (ADR-022, karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN)
+# ---------------------------------------------------------------------------
+#
+# Przypadek obliczeniowy WYBIERA grupę nastaw sterownika albo nakłada nadpisanie nastaw jako
+# deltę scenariusza (Core Rule #4 doprecyzowana przez ADR-022). Nośnikiem jest scenariusz
+# nazwany o identyfikatorze WYPROWADZONYM z przypadku (`id_scenariusza_przypadku`) — jeden na
+# przypadek, w magazynie scenariuszy projektu (rewizje, nagrobek przy zdjęciu wszystkich delt).
+# Scenariusz przypadku niesie WYŁĄCZNIE `protection_groups`/`protection_overrides` i jest
+# nakładany na KAŻDY bieg tego przypadku (`naloz_wybor_przypadku`): na stan normalny (bieg bez
+# scenariusza — wtedy koperta biegu niesie referencję scenariusza przypadku) i na scenariusz
+# nazwany biegu (zwarciowy, łączeniowy, dynamiczny, warianty w pamięci). Bieg zapisuje wybór
+# w opcjach (`KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU` — treść i rewizja), a świeżość wyniku
+# porównuje zapis z bieżącą rewizją wyboru TEGO przypadku — zmiana w przypadku B unieważnia
+# wyłącznie biegi przypadku B; model bazowy nie zmienia się nigdy.
+
+#: Prefiks identyfikatora scenariusza przypadku (`zabezpieczenia-przypadku:<case_id>`). Prefiks
+#: jest ZASTRZEŻONY (zapis scenariusza nazwanego z nim jest odmową): dawny `przypadek-` był
+#: zwykłym słowem i kolidował z identyfikatorami scenariuszy nadanymi przez projektanta albo
+#: test (np. `przypadek-zu`), które bieg odrzucał jako wybór przypadku.
+PREFIKS_SCENARIUSZA_PRZYPADKU = "zabezpieczenia-przypadku:"
+#: Klucz opcji biegu z wyborem zabezpieczeń przypadku (obecny WYŁĄCZNIE, gdy przypadek ma
+#: wybór — opcje i `input_hash` biegów przypadków bez wyboru bajtowo bez zmian).
+KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU = "zabezpieczenia_przypadku"
+
+
+def id_scenariusza_przypadku(case_id: str) -> str:
+    """JEDYNA reguła identyfikatora scenariusza wyboru zabezpieczeń przypadku."""
+    return f"{PREFIKS_SCENARIUSZA_PRZYPADKU}{case_id}"
+
+
+def czy_scenariusz_przypadku(scenario_id: str) -> bool:
+    """Predykat „scenariusz jest wyborem zabezpieczeń przypadku" — dla list scenariuszy
+    nazwanych (nie pokazują go), zapisu nazwanego (odmowa) i biegu (nie jest scenariuszem
+    nazwanym do wyboru)."""
+    return scenario_id.startswith(PREFIKS_SCENARIUSZA_PRZYPADKU)
+
+
+def scenariusz_przypadku(klucz: str, case_id: str) -> OperatingScenario | None:
+    """Bieżący wybór zabezpieczeń przypadku; `None` — przypadek nie ma wyboru (nigdy albo
+    zdjęty nagrobkiem)."""
+    scenario_id = id_scenariusza_przypadku(case_id)
+    stan = stan_scenariusza(klucz, scenario_id)
+    if stan is None or stan.usuniety:
+        return None
+    return wczytaj_scenariusz(klucz, scenario_id)
+
+
+def rewizja_wyboru_przypadku(klucz: str, case_id: str) -> int | None:
+    """Rewizja bieżącego wyboru przypadku (`None` — brak wyboru); wejście oceny świeżości."""
+    stan = stan_scenariusza(klucz, id_scenariusza_przypadku(case_id))
+    if stan is None or stan.usuniety:
+        return None
+    return stan.rewizja
+
+
+def wybor_przypadku(
+    case_id: str,
+    protection_groups: dict[str, int],
+    protection_overrides: dict[str, dict[str, dict[str, float | str | bool | None]]],
+) -> OperatingScenario:
+    """Scenariusz wyboru zabezpieczeń przypadku z delt (bez zapisu; rewizję nada magazyn)."""
+    return OperatingScenario(
+        scenario_id=id_scenariusza_przypadku(case_id),
+        name="Zabezpieczenia przypadku",
+        kind=RodzajScenariusza.CUSTOM,
+        protection_groups=protection_groups,
+        protection_overrides=protection_overrides,
+    )
+
+
+def zapis_wyboru_w_opcjach(wybor: OperatingScenario) -> dict[str, Any]:
+    """Treść wyboru zapisywana w opcjach biegu — z niej świeżość czyta rewizję, a wariant
+    w pamięci odtwarza deltę bez sięgania do magazynu (`wybor_z_opcji`)."""
+    tresc = wybor.tresc()
+    return {
+        "scenario_id": wybor.scenario_id,
+        "revision": wybor.revision,
+        "protection_groups": tresc.get("protection_groups", {}),
+        "protection_overrides": tresc.get("protection_overrides", {}),
+    }
+
+
+def wybor_z_opcji(opcje: dict[str, Any] | None) -> OperatingScenario | None:
+    """Wybór zabezpieczeń przypadku zapisany w opcjach biegu (`None` — bieg bez wyboru)."""
+    zapis = (opcje or {}).get(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU)
+    if not isinstance(zapis, dict):
+        return None
+    return OperatingScenario(
+        scenario_id=str(zapis["scenario_id"]),
+        name="Zabezpieczenia przypadku",
+        kind=RodzajScenariusza.CUSTOM,
+        revision=int(zapis["revision"]),
+        protection_groups=dict(zapis.get("protection_groups") or {}),
+        protection_overrides=dict(zapis.get("protection_overrides") or {}),
+    )
+
+
+def rewizja_wyboru_z_opcji(opcje: dict[str, Any] | None) -> int | None:
+    """Rewizja wyboru przypadku, na której policzono bieg (`None` — bez wyboru)."""
+    zapis = (opcje or {}).get(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU)
+    return int(zapis["revision"]) if isinstance(zapis, dict) else None
+
+
+def naloz_wybor_przypadku(
+    migawka: EffectiveNetworkSnapshot, wybor: OperatingScenario
+) -> EffectiveNetworkSnapshot:
+    """Wybór zabezpieczeń przypadku NA migawce efektywnej biegu — JEDYNE składanie.
+
+    Delta trafia na kopię migawki tą samą funkcją co delta scenariusza nazwanego
+    (`_naloz_delte_zabezpieczen` — sterownik, grupa, funkcja i nastawy sprawdzane regułą
+    zapisu modelu `bledy_sterownika`). Migawka stanu normalnego staje się migawką scenariusza
+    przypadku (koperta biegu niesie jego referencję); migawka scenariusza nazwanego zachowuje
+    jego referencję. Scenariusz nazwany zmieniający TEN SAM sterownik co wybór przypadku =
+    `ScenariuszNieprzystajeError` — dwa wybory jednego sterownika w jednym biegu nie mają
+    pierwszeństwa do zgadnięcia.
+    """
+    if not wybor.protection_groups and not wybor.protection_overrides:
+        return migawka
+    sterowniki_nazwanego = {
+        n.ref_id for n in migawka.nadpisania if n.kolekcja == "protection_assignments"
+    }
+    for ref_id in sorted(sterowniki_nazwanego):
+        if ref_id in wybor.protection_groups or ref_id in wybor.protection_overrides:
+            raise ScenariuszNieprzystajeError(
+                migawka.scenario_id,
+                ref_id,
+                "scenariusz biegu i wybór zabezpieczeń przypadku zmieniają ten sam sterownik — "
+                "zostaw zmianę sterownika w jednym z nich",
+            )
+    snapshot = copy.deepcopy(migawka.snapshot)
+    nadpisania = list(migawka.nadpisania)
+    _naloz_delte_zabezpieczen(snapshot, wybor, nadpisania)
+    normalny = czy_stan_normalny(migawka.scenario_id)
+    return EffectiveNetworkSnapshot(
+        snapshot=snapshot,
+        snapshot_hash=migawka.base_hash if not nadpisania else hash_migawki_enm(snapshot),
+        base_hash=migawka.base_hash,
+        base_revision=migawka.base_revision,
+        scenario_id=wybor.scenario_id if normalny else migawka.scenario_id,
+        scenario_revision=wybor.revision if normalny else migawka.scenario_revision,
+        scenario_hash=wybor.hash if normalny else migawka.scenario_hash,
+        nadpisania=tuple(nadpisania),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Magazyn scenariuszy w archiwum projektu (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN)
+# ---------------------------------------------------------------------------
+#
+# Archiwum projektu niesie CAŁE rejestry scenariuszy projektu (wszystkie rewizje i nagrobki),
+# nie tylko bieżące treści: biegi archiwum zapisują rewizję scenariusza w kopercie i rewizję
+# wyboru zabezpieczeń przypadku w opcjach, a świeżość po imporcie porównuje je z rewizją
+# w magazynie — historia przycięta do ostatniej rewizji zmieniłaby numery i uczyniła świeże
+# wyniki nieaktualnymi. Pole `klucz` rejestru jest adresem magazynu instancji, nie treścią
+# projektu — eksport go pomija, import nadaje klucz nowego projektu.
+
+
+class RejestrArchiwumNieprawidlowyError(ValueError):
+    """Wpis sekcji scenariuszy archiwum nie jest rejestrem scenariusza (ścieżka pola w treści)."""
+
+    def __init__(self, komunikat: str, sciezka: str) -> None:
+        self.sciezka = sciezka
+        super().__init__(komunikat)
+
+
+def rejestry_scenariuszy_do_archiwum(klucz: str) -> list[dict[str, Any]]:
+    """Rejestry scenariuszy projektu do sekcji archiwum (po identyfikatorze, bez `klucz`)."""
+    katalog = katalog_scenariuszy(klucz)
+    if not katalog.is_dir():
+        return []
+    wynik: list[dict[str, Any]] = []
+    for plik in sorted(katalog.glob("*.json")):
+        rejestr = _wczytaj_rejestr(klucz, plik.stem)
+        if rejestr is None:
+            continue
+        wynik.append({k: copy.deepcopy(v) for k, v in rejestr.items() if k != "klucz"})
+    return wynik
+
+
+def _przemapuj_przypadek(case_id: object, mapa_przypadkow: dict[str, str]) -> object:
+    return mapa_przypadkow.get(str(case_id), case_id) if case_id is not None else None
+
+
+def przemapuj_rejestry_z_archiwum(
+    rejestry: list[Any], mapa_przypadkow: dict[str, str]
+) -> list[dict[str, Any]]:
+    """Rejestry z archiwum sprawdzone i przemapowane na przypadki nowego projektu — BEZ zapisu.
+
+    Przemapowanie dotyczy dwóch miejsc, w których scenariusz wskazuje przypadek: identyfikatora
+    wyboru zabezpieczeń przypadku (`zabezpieczenia-przypadku:<case_id>`, w rejestrze i w każdej rewizji) oraz
+    `fault_spec.study_case_id` scenariusza zwarciowego. Odciski rewizji (`hash`) nie zmieniają
+    się — treść scenariusza nie zawiera identyfikatora przypadku. Przypadek spoza mapy zostaje
+    wprost (ta sama reguła co `case_id` biegów archiwum). Każda nieusunięta rewizja jest
+    walidowana modelem `OperatingScenario` PRZED jakimkolwiek zapisem — wadliwe archiwum
+    odmawia importu w całości, nie zostawia połowy magazynu.
+    """
+    wynik: list[dict[str, Any]] = []
+    for indeks, rejestr in enumerate(rejestry):
+        sciezka = f"scenariusze.rejestry[{indeks}]"
+        if not isinstance(rejestr, dict):
+            raise RejestrArchiwumNieprawidlowyError(f"Pole {sciezka} nie jest obiektem", sciezka)
+        scenario_id = rejestr.get("scenario_id")
+        if not isinstance(scenario_id, str) or not scenario_id:
+            raise RejestrArchiwumNieprawidlowyError(
+                f"Brak identyfikatora scenariusza: {sciezka}.scenario_id", f"{sciezka}.scenario_id"
+            )
+        rewizje = rejestr.get("rewizje")
+        if not isinstance(rewizje, list) or not rewizje:
+            raise RejestrArchiwumNieprawidlowyError(
+                f"Pole {sciezka}.rewizje nie jest niepustą listą", f"{sciezka}.rewizje"
+            )
+        nowy_id = scenario_id
+        if czy_scenariusz_przypadku(scenario_id):
+            stary_case = scenario_id[len(PREFIKS_SCENARIUSZA_PRZYPADKU) :]
+            nowy_id = id_scenariusza_przypadku(str(mapa_przypadkow.get(stary_case, stary_case)))
+        nowe_rewizje: list[dict[str, Any]] = []
+        for nr, wpis in enumerate(rewizje):
+            sciezka_wpisu = f"{sciezka}.rewizje[{nr}]"
+            if not isinstance(wpis, dict) or not isinstance(wpis.get("revision"), int):
+                raise RejestrArchiwumNieprawidlowyError(
+                    f"Pole {sciezka_wpisu} nie jest rewizją scenariusza", sciezka_wpisu
+                )
+            wpis = copy.deepcopy(wpis)
+            if not wpis.get("usuniety"):
+                tresc = wpis.get("scenariusz")
+                if not isinstance(tresc, dict):
+                    raise RejestrArchiwumNieprawidlowyError(
+                        f"Brak treści rewizji: {sciezka_wpisu}.scenariusz",
+                        f"{sciezka_wpisu}.scenariusz",
+                    )
+                tresc["scenario_id"] = nowy_id
+                zwarcie = tresc.get("fault_spec")
+                if isinstance(zwarcie, dict) and "study_case_id" in zwarcie:
+                    zwarcie["study_case_id"] = _przemapuj_przypadek(
+                        zwarcie["study_case_id"], mapa_przypadkow
+                    )
+                try:
+                    OperatingScenario.model_validate(tresc)
+                except ValidationError as exc:
+                    raise RejestrArchiwumNieprawidlowyError(
+                        f"Nieprawidłowa treść rewizji {sciezka_wpisu}: {exc}",
+                        f"{sciezka_wpisu}.scenariusz",
+                    ) from exc
+            nowe_rewizje.append(wpis)
+        wynik.append({**copy.deepcopy(rejestr), "scenario_id": nowy_id, "rewizje": nowe_rewizje})
+    return wynik
+
+
+def zapisz_rejestry_z_archiwum(klucz: str, rejestry: list[dict[str, Any]]) -> None:
+    """Zapis rejestrów przemapowanych (`przemapuj_rejestry_z_archiwum`) pod klucz projektu."""
+    for rejestr in rejestry:
+        _zapisz_rejestr(klucz, rejestr["scenario_id"], {**rejestr, "klucz": klucz})

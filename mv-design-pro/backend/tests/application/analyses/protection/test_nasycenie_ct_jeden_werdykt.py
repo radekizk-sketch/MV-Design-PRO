@@ -49,6 +49,8 @@ from network_model.solvers.equipment_checks.ct_burden_saturation import (
     check_ct_burden_saturation,
 )
 
+from tests.utils.sterownik import sterownik, stopien
+
 KATALOG_CT = "ct_200_5_5p10_10va_abb"  # 200/5 A 5P10 10 VA — pozycja referencyjna
 RCT_PRODUCENTA = 0.15
 #: Obwód wtórny o łącznym obciążeniu S_2obl = 20 VA: przewody 2·0,017241·5/2,5 Ω przy
@@ -75,7 +77,9 @@ def _obwod() -> dict[str, Any]:
     }
 
 
-def _model(*, obwod: bool, klasa: str | None) -> tuple[EnergyNetworkModel, ProtectionAssignment]:
+def _model(
+    *, obwod: bool, klasa: str | None, wylacznik: str = "q-pola"
+) -> tuple[EnergyNetworkModel, ProtectionAssignment]:
     ct = Measurement(
         ref_id="ct-pola",
         name="Przekładnik pola",
@@ -90,22 +94,13 @@ def _model(*, obwod: bool, klasa: str | None) -> tuple[EnergyNetworkModel, Prote
         },
         obwod_wtorny=_obwod() if obwod else None,
     )
-    przypisanie = ProtectionAssignment(
+    przypisanie = sterownik(
         ref_id="zab-pola",
         name="Zabezpieczenie pola",
-        breaker_ref="q-pola",
+        wylacznik=wylacznik,
         ct_ref="ct-pola",
-        device_type="overcurrent",
         catalog_ref="REF-OC-200",
-        settings=[
-            {
-                "function_type": "overcurrent_51",
-                "threshold_a": 2.0,
-                "threshold_unit": "A_WTORNY",
-                "curve_type": "IEC_SI",
-                "time_multiplier": 0.2,
-            }
-        ],
+        stopnie=[stopien("51", prog=2.0, jednostka_progu="A_WTORNY", krzywa="IEC_SI", tms=0.2)],
     )
     model = EnergyNetworkModel(
         header=ENMHeader(name="Nasycenie CT — test"),
@@ -230,9 +225,7 @@ def test_ocena_punktu_niesie_werdykt_jadra_i_bez_marginesu_przy_nasyceniu(
         _graf,
     )
 
-    model, _ = _model(obwod=True, klasa="5P10")
-    przypisanie = model.protection_assignments[0].model_copy(update={"breaker_ref": Q1})
-    model = model.model_copy(update={"protection_assignments": [przypisanie]})
+    model, _ = _model(obwod=True, klasa="5P10", wylacznik=Q1)
     graf = _graf()
     wynik = ocen_zabezpieczenia(
         enm=model,

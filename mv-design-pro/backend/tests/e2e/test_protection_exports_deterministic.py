@@ -355,6 +355,54 @@ class TestProtectionDOCXContentValidation:
             assert not any(ident in komorka for ident in identyfikatory)
             assert "urzadzenie-usuniete" not in komorka
 
+    def test_funkcje_bez_oceny_w_raporcie_z_powodem_i_stacja(self) -> None:
+        """Karta OCHRONA-JEDNO-ZRODLO pkt 5: funkcja sterownika bez ewaluatora (51N, 87T,
+        technologiczne szablonu pola) nie znika z raportu po cichu — sekcja „Funkcje bez oceny"
+        niesie urządzenie (z nazwą stacji: nazwy pól powtarzają się między stacjami), funkcję
+        i powód z tego samego zapisu co widok zabezpieczeń. Iloczyn: urządzenie {z funkcjami bez
+        oceny (sterowniki pól szablonu), bez nich (wyłączniki liniowe z nastawami 50/51)}."""
+        from docx import Document as DocxDocument
+        from network_model.reporting.protection_tcc_presentation import (
+            NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+        )
+
+        result = _create_deterministic_protection_result()
+        oczekiwane = [
+            (d["name"], wpis["funkcja"], wpis["powod_pl"])
+            for d in result["devices"]
+            for wpis in (d.get("nastawy") or {}).get("funkcje_nieoceniane") or []
+        ]
+        bez = [d["name"] for d in result["devices"] if not d["nastawy"]["funkcje_nieoceniane"]]
+        # Warunek iloczynu: obie wartości cechy występują w wyniku sieci złotej.
+        assert oczekiwane and bez
+        # Nazwy urządzeń wyniku są jednoznaczne (stacja w nazwie sterownika pola).
+        nazwy = [d["name"] for d in result["devices"]]
+        assert len(set(nazwy)) == len(nazwy), nazwy
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "nieoceniane.docx"
+            export_protection_coordination_to_docx(result, path, deterministic=True)
+            akapity = [p.text for p in DocxDocument(str(path)).paragraphs]
+        assert NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL in akapity
+        zdania = akapity[akapity.index(NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL) + 1 :]
+        for nazwa, kod, powod in oczekiwane:
+            assert any(z.startswith(f"{nazwa} · ") and kod in z and powod in z for z in zdania), (
+                nazwa,
+                kod,
+            )
+        for nazwa in bez:
+            assert not any(z.startswith(f"{nazwa} · ") for z in zdania)
+
+        # Wynik bez funkcji bez oceny — sekcji nie ma (nie pusty nagłówek).
+        bez_sekcji = copy.deepcopy(result)
+        for d in bez_sekcji["devices"]:
+            if d.get("nastawy"):
+                d["nastawy"]["funkcje_nieoceniane"] = []
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "bez_nieocenianych.docx"
+            export_protection_coordination_to_docx(bez_sekcji, path, deterministic=True)
+            akapity = [p.text for p in DocxDocument(str(path)).paragraphs]
+        assert NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL not in akapity
+
     def test_no_codenames_in_docx(self) -> None:
         """Raport DOCX nie zawiera nazw kodowych projektu."""
         from docx import Document as DocxDocument
@@ -396,6 +444,35 @@ class TestProtectionPDFContentValidation:
             with open(path, "rb") as f:
                 magic = f.read(5)
             assert magic == b"%PDF-", "Plik nie jest poprawnym PDF-em"
+
+    def test_pdf_rysuje_sekcje_funkcji_bez_oceny(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """PDF rysuje każde zdanie sekcji „Funkcje bez oceny" z tej samej funkcji prezentacji co
+        DOCX (treść DOCX przypina test wyżej; czcionka TTF PDF koduje glify, więc tekstu PDF nie
+        czytamy) — szpieg na rysowaniu napisów płótna."""
+        import network_model.reporting.protection_report_pdf as modul_pdf
+        from network_model.reporting.protection_tcc_presentation import (
+            NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
+            zdania_funkcji_nieocenianych,
+        )
+        from reportlab.pdfgen.canvas import Canvas
+
+        narysowane: list[str] = []
+        oryginal = Canvas.drawString
+
+        def szpieg(self: Canvas, x: float, y: float, tekst: str, *a: Any, **k: Any) -> Any:
+            narysowane.append(tekst)
+            return oryginal(self, x, y, tekst, *a, **k)
+
+        monkeypatch.setattr(Canvas, "drawString", szpieg)
+        result = _create_deterministic_protection_result()
+        zdania = zdania_funkcji_nieocenianych(result["devices"])
+        assert zdania
+        with tempfile.TemporaryDirectory() as tmpdir:
+            modul_pdf.export_protection_coordination_to_pdf(result, Path(tmpdir) / "n.pdf")
+        assert NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL in narysowane
+        tekst = " ".join(narysowane)
+        for zdanie in zdania:
+            assert " ".join(zdanie.split()) in " ".join(tekst.split())
 
 
 # =============================================================================

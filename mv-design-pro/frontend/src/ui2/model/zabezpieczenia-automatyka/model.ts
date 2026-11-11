@@ -1,150 +1,121 @@
 /**
- * Model ekranu „Zabezpieczenia i automatyka" (E-27, realny dostawca ui2).
+ * Model ekranu „Zabezpieczenia i automatyka" (E-27).
  *
- * ZERO fizyki, ZERO fabrykacji: buduje wiersze przeglądu wyłącznie z gotowego
- * read-modelu pola (`useFieldReadModel` → `/api/cases/:id/enm/field-view`,
- * `application/field_read_model.py`). Każdy sterownik to `BayProtectionControlUnit`
- * z ENM (`enm/models.py`); pokazujemy DOKŁADNIE to, co niesie model — brak danych
- * to uczciwe „nie skonfigurowano", nie zmyślona wartość.
+ * Karta OCHRONA-JEDNO-ZRODLO (ADR-022): JEDNA struktura zabezpieczeń w modelu — sterownik
+ * (`ProtectionAssignment`) z funkcjami rejestru, grupami nastaw 1–4 i macierzą wyzwoleń. Automatyka
+ * (SPZ 79, SZR, LRW 50BF, SCO, kontrola synchronizmu 25…) to funkcje TEGO SAMEGO sterownika, więc
+ * ekran ma jedną tabelę: sterownik = wiersz (pole albo wyłącznik liniowy), funkcje, grupa
+ * aktywna, SPZ z nastaw funkcji 79. Dawna druga struktura (`protection_config` pola z cechami
+ * automatyki i stanem SPZ) jest skasowana.
  *
- * Automatyka (SPZ) pokazywana wyłącznie z pól, które niesie ENM
- * (`BayProtectionControlUnit`/`SpzState`) — bez pól cykli i stopni, których model nie ma.
+ * ZERO fizyki, ZERO fabrykacji: wiersze wyłącznie z modelu (rekordy pól read modelu pola
+ * i sterowniki migawki); brak danych to jawne „bez sterownika", nie zmyślona wartość.
  */
 
 import { nazwaObiektuPl } from '../../../ui/shared/nazwaObiektu';
 import type { FieldReadModelItem } from '../../../ui/field/useFieldReadModel';
-import type { BayProtectionControlUnit, SpzState } from '../../../types/enm';
-import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
+import type { EnergyNetworkModel, ProtectionAssignment } from '../../../types/enm';
+import {
+  kodyFunkcjiSterownika,
+  nastawyFunkcji,
+  nazwaUrzadzeniaSterownika,
+  numerGrupyEfektywnej,
+  sterowniki,
+  wylacznikSterownika,
+} from '../../../ui/shared/sterownikZabezpieczen';
+import { stacjaPola } from '../../../ui/shared/polaStacji';
+import { nazwaStacjiJakWDrzewie } from '../../../ui/shared/publicTechnicalLabels';
 
-/** Wiersz sekcji ZABEZPIECZENIA — pole z (ewentualnym) przypisaniem zabezpieczeń. */
+/** Stan SPZ z funkcji 79 sterownika (włączenie i liczba cykli aktywnej grupy). */
+export interface SpzWidok {
+  readonly wlaczone: boolean;
+  /** Liczba cykli z nastaw grupy aktywnej; `null` — nastawa niezapisana. */
+  readonly cykle: number | null;
+}
+
+/** Wiersz tabeli E-27 — pole rozdzielni albo wyłącznik liniowy ze sterownikiem. */
 export interface WierszZabezpieczenia {
-  readonly bayRef: string;
-  readonly bayName: string;
-  /** Model/urządzenie zabezpieczeniowe z ENM (null → brak przypisania). */
+  /** Klucz wiersza: referencja pola albo sterownika wyłącznika liniowego. */
+  readonly klucz: string;
+  /** Pole rozdzielni (`null` — sterownik wyłącznika liniowego bez pola). */
+  readonly bayRef: string | null;
+  readonly nazwa: string;
+  /** Stacja pola — nazwa jak w drzewie projektu (`null` — wyłącznik liniowy, pole bez stacji
+   *  w modelu). Nazwy pól powtarzają się między stacjami („Pole liniowe 1"), więc wiersz bez
+   *  stacji byłby niejednoznaczny. */
+  readonly stacja: string | null;
+  /** Sterownik zabezpieczeń (`null` — pole bez sterownika). */
+  readonly sterownikRef: string | null;
   readonly urzadzenie: string | null;
-  /** Kody funkcji zabezpieczeniowych (ANSI/IEC), np. 50, 51, 50N. */
+  /** Kody włączonych funkcji sterownika w kolejności zapisu. */
   readonly funkcje: readonly string[];
-  readonly maZabezpieczenie: boolean;
-  /** Szablon pola producenta (Reference Engine) — null gdy pole uniwersalne. */
+  readonly aktywnaGrupa: number | null;
+  /** SPZ (funkcja 79) — `null`, gdy sterownik jej nie ma. */
+  readonly spz: SpzWidok | null;
+  /** Szablon pola producenta (Reference Engine) — `null` gdy pole uniwersalne albo brak pola. */
   readonly szablon: string | null;
-  /** Rodzina rozdzielnicy producenta — null gdy bez producenta. */
   readonly rodzina: string | null;
 }
 
-/** Cecha automatyki z `automation_features` (chip on/off). */
-export interface CechaAutomatyki {
-  readonly klucz: string;
-  readonly etykieta: string;
-  readonly aktywna: boolean;
+function spzSterownika(sterownik: ProtectionAssignment): SpzWidok | null {
+  const funkcja = sterownik.funkcje.find((f) => f.kod === '79');
+  if (!funkcja) return null;
+  const cykle = nastawyFunkcji(sterownik, funkcja.ref).liczba_cykli;
+  return { wlaczone: funkcja.wlaczona !== false, cykle: typeof cykle === 'number' ? cykle : null };
 }
 
-/** Uczciwy widok stanu SPZ z ENM `SpzState`. */
-export interface SpzWidok {
-  readonly aktywny: boolean;
-  readonly probySzybkie: number;
-  readonly probyWolne: number;
-  readonly stanEtykieta: string;
-  readonly zablokowany: boolean;
-  readonly powodBlokady: string | null;
+function zSterownika(sterownik: ProtectionAssignment | null) {
+  return {
+    sterownikRef: sterownik?.ref_id ?? null,
+    urzadzenie: sterownik ? nazwaUrzadzeniaSterownika(sterownik) : null,
+    funkcje: kodyFunkcjiSterownika(sterownik),
+    aktywnaGrupa: sterownik ? numerGrupyEfektywnej(sterownik) : null,
+    spz: sterownik ? spzSterownika(sterownik) : null,
+  };
 }
 
-/** Wiersz sekcji AUTOMATYKA — sterownik polowy (`BayProtectionControlUnit`). */
-export interface Sterownik {
-  readonly bayRef: string;
-  readonly bayName: string;
-  readonly unitRef: string;
-  readonly urzadzenie: string | null;
-  readonly cechy: readonly CechaAutomatyki[];
-  /** null → SPZ nie skonfigurowany w modelu. */
-  readonly spz: SpzWidok | null;
-}
-
-/** Etykiety PL cech automatyki (klucze `automation_features` z read-modelu). */
-export const ETYKIETY_CECH: Record<string, string> = {
-  synchrocheck_enabled: 'Kontrola synchronizmu (25)',
-  arc_protection_enabled: 'Zabezpieczenie łukoochronne',
-  breaker_failure_enabled: 'Układ LRW (50BF)',
-};
-
-/** Etykiety PL stanu SPZ (`SpzState.state`). */
-export const ETYKIETY_STANU_SPZ: Record<SpzState['state'], string> = {
-  gotowe: 'Gotowe',
-  w_trakcie: 'W trakcie',
-  zakonczone: 'Zakończone',
-  odstawione: 'Odstawione',
-};
-
-function protectionConfig(item: FieldReadModelItem): BayProtectionControlUnit | null {
-  return item.canonical_model.base_model.protection_config ?? null;
-}
-
-/** Wiersze sekcji ZABEZPIECZENIA (wszystkie pola; braki jawne). */
+/**
+ * Wiersze tabeli: każde pole read modelu (sterownik pola z odczytu pola — ten sam rekord co
+ * `protection_assignments`) i każdy sterownik wyłącznika liniowego (sterownik bez pola z migawki).
+ * Kolejność deterministyczna: pola po referencji, potem wyłączniki liniowe po referencji.
+ */
 export function buildWierszeZabezpieczen(
   fields: readonly FieldReadModelItem[],
+  migawka: EnergyNetworkModel | null | undefined,
 ): WierszZabezpieczenia[] {
-  return fields
-    .map((item, indeks, wszystkie): WierszZabezpieczenia => {
-      const config = protectionConfig(item);
-      const funkcje = config
-        ? config.functions
-            .map((fn) => fn.code)
-            .filter((code): code is string => typeof code === 'string' && code.trim() !== '')
-        : [];
+  const stacjaWiersza = (bayRef: string): string | null => {
+    const ref = stacjaPola(migawka, bayRef);
+    const stacja = ref ? (migawka?.substations ?? []).find((s) => s.ref_id === ref) : undefined;
+    return migawka && stacja ? nazwaStacjiJakWDrzewie(migawka, stacja) : null;
+  };
+  const pola = fields
+    .map((item, indeks): WierszZabezpieczenia => {
       const base = item.canonical_model.base_model;
       return {
+        klucz: item.bay_ref,
         bayRef: item.bay_ref,
-        bayName: nazwaObiektuPl(item.bay_name, 'pole', { numer: indeks + 1, liczba: wszystkie.length }),
-        urzadzenie: config?.model ?? null,
-        funkcje,
-        maZabezpieczenie: config !== null,
+        nazwa: nazwaObiektuPl(item.bay_name, 'pole', { numer: indeks + 1, liczba: fields.length }),
+        stacja: stacjaWiersza(item.bay_ref),
+        ...zSterownika(base.zabezpieczenie ?? null),
         szablon: base.bay_template_ref ?? null,
         rodzina: base.switchgear_family_ref ?? null,
       };
     })
-    .sort((a, b) => a.bayRef.localeCompare(b.bayRef));
-}
-
-function buildCechy(features: Record<string, boolean>): CechaAutomatyki[] {
-  return Object.keys(features)
-    .sort((a, b) => a.localeCompare(b))
-    .map((klucz) => ({
-      klucz,
-      etykieta: etykietaZeSlownika(ETYKIETY_CECH, klucz),
-      aktywna: features[klucz] === true,
-    }));
-}
-
-function buildSpz(spz: SpzState | null | undefined): SpzWidok | null {
-  if (!spz) {
-    return null;
-  }
-  return {
-    aktywny: spz.enabled === true,
-    probySzybkie: spz.fast_attempts_max,
-    probyWolne: spz.slow_attempts_max,
-    stanEtykieta: ETYKIETY_STANU_SPZ[spz.state] ?? ETYKIETY_STANU_SPZ.odstawione,
-    zablokowany: spz.blocked === true,
-    powodBlokady: spz.blocked_reason ?? null,
-  };
-}
-
-/** Wiersze sekcji AUTOMATYKA (tylko pola ze sterownikiem `BayProtectionControlUnit`). */
-export function buildSterowniki(fields: readonly FieldReadModelItem[]): Sterownik[] {
-  return fields
-    .map((item, indeks, wszystkie): Sterownik | null => {
-      const config = protectionConfig(item);
-      if (!config) {
-        return null;
-      }
+    .sort((a, b) => a.klucz.localeCompare(b.klucz));
+  const bezPola = sterowniki(migawka).filter((s) => !s.bay_ref);
+  const liniowe = bezPola
+    .map((s, indeks): WierszZabezpieczenia => {
+      const wylacznik = wylacznikSterownika(s);
+      const galaz = wylacznik ? (migawka?.branches ?? []).find((b) => b.ref_id === wylacznik) : undefined;
       return {
-        bayRef: item.bay_ref,
-        bayName: nazwaObiektuPl(item.bay_name, 'pole', { numer: indeks + 1, liczba: wszystkie.length }),
-        unitRef: config.unit_ref,
-        urzadzenie: config.model ?? null,
-        cechy: buildCechy(config.automation_features ?? {}),
-        spz: buildSpz(config.spz),
+        klucz: s.ref_id,
+        bayRef: null,
+        nazwa: nazwaObiektuPl(galaz?.name?.trim() || s.name, 'lacznik', { numer: indeks + 1, liczba: bezPola.length }),
+        stacja: null,
+        ...zSterownika(s),
+        szablon: null,
+        rodzina: null,
       };
-    })
-    .filter((row): row is Sterownik => row !== null)
-    .sort((a, b) => a.bayRef.localeCompare(b.bayRef));
+    });
+  return [...pola, ...liniowe];
 }

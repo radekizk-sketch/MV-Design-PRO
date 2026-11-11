@@ -4,7 +4,9 @@
  *
  * Wejście: PRAWDZIWY model sieci złotej G08 i PRAWDZIWY read model `protection-view` z generatora
  * fikstur (przekładniki bez zapisanego obwodu — stąd dzisiejsza wiarygodność „nieustalona").
- * Wpisy natywne (userEvent); zapis mockowany na granicy magazynu migawki.
+ * Obwód wtórny jest w szczegółach edytora na żądanie (standard warsztatu §10) — test otwiera je
+ * natywnym klikiem jak projektant. Wpisy natywne (userEvent); zapis mockowany na granicy magazynu
+ * migawki.
  *
  * Iloczyn cech: {obwód w modelu zapisany, niezapisany} × {pole puste, wypełnione} ×
  * {aparat pełny, bez mocy, bez nazwy} × {zapis przyjęty, odmowa backendu, brak przypadku} ×
@@ -17,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import type { NastawyUrzadzeniaWidok, SlownikNastaw } from '../../../../ui/protection/nastawyModelu';
+import type { NastawyUrzadzeniaWidok } from '../../../../ui/protection/nastawyModelu';
 import type { EnergyNetworkModel, ObwodWtorny } from '../../../../types/enm';
 import { EdytorNastawZabezpieczenia } from '../EdytorNastawZabezpieczenia';
 import { formularzZObwodu, obwodZFormularza } from '../ObwodWtornyPrzekladnika';
@@ -27,11 +29,11 @@ import widokSceny from '../../../../harness-fixtures/generated/koordynacja_scena
 
 const MIGAWKA = migawkaSceny as unknown as EnergyNetworkModel;
 const WIDOK = widokSceny as unknown as {
-  assignments: { device_id: string; nastawy: NastawyUrzadzeniaWidok }[];
-  slownik_nastaw: SlownikNastaw;
+  assignments: { device_id: string; nastawy: NastawyUrzadzeniaWidok | null }[];
 };
-const [PIERWSZE] = WIDOK.assignments;
-const NASTAWY = PIERWSZE.nastawy;
+/** Pierwszy sterownik sieci złotej z przekładnikiem przypiętym do wejścia prądów fazowych. */
+const PIERWSZE = WIDOK.assignments.find((a) => a.nastawy?.ct_ref)!;
+const NASTAWY = PIERWSZE.nastawy!;
 const CT_REF = NASTAWY.ct_ref!;
 const TID = 'mvd-edytor-nastaw-obwod';
 
@@ -46,14 +48,11 @@ function migawkaZObwodem(obwod: ObwodWtorny | null): EnergyNetworkModel {
   };
 }
 
-function renderuj() {
-  return render(
-    <EdytorNastawZabezpieczenia
-      urzadzenieRef={PIERWSZE.device_id}
-      nastawy={NASTAWY}
-      slownik={WIDOK.slownik_nastaw}
-    />,
-  );
+async function renderuj(nastawy: NastawyUrzadzeniaWidok = NASTAWY) {
+  const user = userEvent.setup();
+  render(<EdytorNastawZabezpieczenia urzadzenieRef={PIERWSZE.device_id} nastawy={nastawy} />);
+  await user.click(screen.getByTestId('mvd-edytor-nastaw-szczegoly-przelacz'));
+  return user;
 }
 
 beforeEach(() => {
@@ -111,8 +110,7 @@ describe('formularz ↔ model (czyste funkcje)', () => {
 
 describe('ścieżka projektanta w edytorze nastaw', () => {
   it('obwód niezapisany: wpis długości, przekroju i aparatu → operacja z tym obwodem', async () => {
-    const user = userEvent.setup();
-    renderuj();
+    const user = await renderuj();
     expect(screen.getByTestId(TID)).toHaveTextContent(T.obwodTytul);
     expect(screen.getByTestId(`${TID}-dlugosc`)).toHaveValue(null);
 
@@ -143,8 +141,7 @@ describe('ścieżka projektanta w edytorze nastaw', () => {
         moc_stykow_va: 0.2,
       }),
     } as never);
-    const user = userEvent.setup();
-    renderuj();
+    const user = await renderuj();
     expect(screen.getByTestId(`${TID}-dlugosc`)).toHaveValue(7);
     expect(screen.getByTestId(`${TID}-przekroj`)).toHaveValue(4);
     expect(screen.getByTestId(`${TID}-moc-stykow`)).toHaveValue(0.2);
@@ -165,28 +162,22 @@ describe('ścieżka projektanta w edytorze nastaw', () => {
 
   it('odmowa backendu: komunikat operacji widoczny, bez cichego sukcesu', async () => {
     zapis.mockResolvedValueOnce({ snapshot: MIGAWKA, error: 'Przekrój musi być dodatni.' });
-    const user = userEvent.setup();
-    renderuj();
+    const user = await renderuj();
     await user.type(screen.getByTestId(`${TID}-dlugosc`), '5');
     await user.click(screen.getByTestId(`${TID}-zapisz`));
     expect(await screen.findByTestId(`${TID}-blad`)).toHaveTextContent('Przekrój musi być dodatni.');
   });
 
-  it('brak przypadku: zapis zablokowany, operacja nie wychodzi', () => {
+  it('brak przypadku: zapis zablokowany, operacja nie wychodzi', async () => {
     useAppStateStore.getState().reset();
-    renderuj();
+    await renderuj();
     expect(screen.getByTestId(`${TID}-zapisz`)).toBeDisabled();
     expect(zapis).not.toHaveBeenCalled();
   });
 
-  it('zabezpieczenie bez przekładnika: sekcji obwodu nie ma (nie ma czego zapisać)', () => {
-    render(
-      <EdytorNastawZabezpieczenia
-        urzadzenieRef={PIERWSZE.device_id}
-        nastawy={{ ...NASTAWY, ct_ref: null }}
-        slownik={WIDOK.slownik_nastaw}
-      />,
-    );
+  it('zabezpieczenie bez przekładnika: sekcji obwodu nie ma (nie ma czego zapisać)', async () => {
+    await renderuj({ ...NASTAWY, ct_ref: null });
+    expect(screen.getByTestId('mvd-edytor-nastaw-szczegoly')).toBeInTheDocument();
     expect(screen.queryByTestId(TID)).toBeNull();
   });
 });

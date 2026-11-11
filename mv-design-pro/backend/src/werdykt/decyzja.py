@@ -105,12 +105,18 @@ def jednostka_marginesu(jednostka_wyniku: str) -> str:
     return _JEDNOSTKA_MARGINESU.get(jednostka_wyniku, jednostka_wyniku)
 
 
+#: Symbol marginesu w definicjach LaTeX (karta KD6): ``\Delta x`` — zapas wielkości ``x`` do
+#: granicy. Dawny symbol ``m`` kolidował w jednym widoku ze współczynnikiem cieplnym ``m``
+#: IEC 60909 (I_th = I_k''·√(m+n)) — dwa różne znaczenia jednej litery w szczegółach obliczeń
+#: wytrzymałości aparatury. Jeden symbol dla wszystkich relacji (przypięty testem).
+SYMBOL_MARGINESU_LATEX = r"\Delta x"
+
 _DEFINICJE_MARGINESU: dict[Relacja, str] = {
-    "NIE_WIECEJ": r"m = x_{\lim} - x",
-    "NIE_MNIEJ": r"m = x - x_{\lim}",
-    "PASMO": r"m = \min\left(x - x_{\min},\; x_{\max} - x\right)",
-    "OBWIEDNIA_DOLNA": r"m = x(t^{*}) - x_{\lim}(t^{*})",
-    "OBWIEDNIA_GORNA": r"m = x_{\lim}(t^{*}) - x(t^{*})",
+    "NIE_WIECEJ": rf"{SYMBOL_MARGINESU_LATEX} = x_{{\lim}} - x",
+    "NIE_MNIEJ": rf"{SYMBOL_MARGINESU_LATEX} = x - x_{{\lim}}",
+    "PASMO": rf"{SYMBOL_MARGINESU_LATEX} = \min\left(x - x_{{\min}},\; x_{{\max}} - x\right)",
+    "OBWIEDNIA_DOLNA": rf"{SYMBOL_MARGINESU_LATEX} = x(t^{{*}}) - x_{{\lim}}(t^{{*}})",
+    "OBWIEDNIA_GORNA": rf"{SYMBOL_MARGINESU_LATEX} = x_{{\lim}}(t^{{*}}) - x(t^{{*}})",
 }
 
 
@@ -126,10 +132,11 @@ def margines(
 ) -> Margines:
     """Margines wyniku wobec limitu z definicją, punktem i skalą marginesu względnego.
 
-    Definicje: ``NIE_WIECEJ`` m = limit − wynik; ``NIE_MNIEJ`` m = wynik − limit; ``PASMO``
-    m = min(wynik − dolna, górna − wynik), a granicą odniesienia jest granica bliższa (przy
-    remisie dolna); ``OBWIEDNIA_DOLNA`` m = wynik − obwiednia(t*), ``OBWIEDNIA_GORNA``
-    m = obwiednia(t*) − wynik, gdzie wynik jest już ekstremum, a t* = ``chwila_s`` punktu
+    Definicje (symbol marginesu Δx — ``SYMBOL_MARGINESU_LATEX``): ``NIE_WIECEJ``
+    Δx = limit − wynik; ``NIE_MNIEJ`` Δx = wynik − limit; ``PASMO``
+    Δx = min(wynik − dolna, górna − wynik), a granicą odniesienia jest granica bliższa (przy
+    remisie dolna); ``OBWIEDNIA_DOLNA`` Δx = wynik − obwiednia(t*), ``OBWIEDNIA_GORNA``
+    Δx = obwiednia(t*) − wynik, gdzie wynik jest już ekstremum, a t* = ``chwila_s`` punktu
     krytycznego (obwiednia interpolowana liniowo, bez ekstrapolacji); ``LOGICZNE`` — margines
     niedefiniowalny z powodem (kryterium logiczne nie ma limitu skalarnego).
 

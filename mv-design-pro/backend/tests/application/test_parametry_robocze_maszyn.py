@@ -923,7 +923,14 @@ def test_konsumenci_zapisanego_biegu_siec_nn(maszyna: str, dane: str) -> None:
     )
     widok = build_wytrzymalosc_cieplna_view(run_nn)
     assert _ile(widok.get("dane_przyjete", []), NAZWA_B) == n_ikss
-    assert (widok.get("status_danych") == "UNVALIDATED_INPUT") is (n_ikss > 0)
+    # Czas trwania zwarcia przewodów jako wartość robocza 1 s (bieg bez czasu cieplnego
+    # przypadku — pakiet 8 karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN) to osobna dana przyjęta.
+    czas_roboczy = any(
+        str(d.get("nazwa_pl", "")).startswith("czas trwania zwarcia")
+        for d in widok.get("dane_przyjete", [])
+    )
+    assert czas_roboczy is ((run.options or {}).get("thermal_time_seconds") is None)
+    assert (widok.get("status_danych") == "UNVALIDATED_INPUT") is (n_ikss > 0 or czas_roboczy)
 
 
 @pytest.mark.parametrize("oznaczony", ["zaden", B2, B3, B4, "wszystkie"])

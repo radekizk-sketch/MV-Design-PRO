@@ -26,6 +26,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.validator import ENMValidator
+from enm.zabezpieczenie import kody_funkcji_pola
 from network_model.catalog.bay_templates import szablon_pola_liniowego_gpz
 from network_model.catalog.rodzaje_aparatury import RODZAJE_LACZNIKOW_POLA
 
@@ -377,10 +378,8 @@ def test_ponowny_szablon_zachowuje_polozenie_tej_samej_instancji(zmiana: dict[st
     if "zrodlo_u0_ref" in zmiana:
         # Operacja naprawdę przeliczyła pole (zdjęte źródło ⇒ bez 67N) — położenie przetrwało
         # zmianę zestawu funkcji, nie jej brak.
-        bay_przed = next(b for b in enm["bays"] if b["ref_id"] == bay_ref)
-        bay_po = next(b for b in po["bays"] if b["ref_id"] == bay_ref)
-        assert "67N" in bay_przed["protection_codes"]
-        assert "67N" not in bay_po["protection_codes"]
+        assert "67N" in kody_funkcji_pola(enm, bay_ref)
+        assert "67N" not in kody_funkcji_pola(po, bay_ref)
     assert ENMValidator().validate(EnergyNetworkModel.model_validate(po)).status != "FAIL"
 
 

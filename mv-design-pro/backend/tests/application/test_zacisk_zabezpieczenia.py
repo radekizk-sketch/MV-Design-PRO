@@ -13,8 +13,9 @@ Iloczyn cech (reguła KLASA, NIE INSTANCJA):
   szyna zbiorcza z trzema polami (milczy);
 - przypięcia: przy `od`, przy `do`, przy obu zaciskach, brak, pętla (wyłącznik w szeregu
   z oboma zaciskami) × wskazanie: `od`, `do`, brak — zgodne, sprzeczne, wybór;
-- typ urządzenia z katalogu: z funkcją 50/51, czysta 87L (poza), bez danych o funkcjach
-  (kandydat);
+- funkcje sterownika w modelu (ADR-022, jedyny nośnik): z funkcją 50/51, czysta 87L (poza),
+  87L + 51 (kandydat), bez funkcji (poza — sterownik bez funkcji niczego nie wyzwala),
+  funkcja 51 wyłączona (poza);
 - orientacja pakietu 110/15 kV: prąd obciążenia w miejscu zabezpieczenia `od` ≠ `do`;
 - predykaty parami: dostępność = bieg dla KAŻDEJ trójki (linia, wskazanie, szyna) sieci
   syntetycznych i GN_01…GN_05 z jednym dołożonym przypięciem.
@@ -28,7 +29,6 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from application.protection_settings import zacisk_zabezpieczenia as modul
 from application.protection_settings.batch_run import (
     BrakDanychNastawError,
     kandydaci_nastepnej_szyny,
@@ -46,7 +46,6 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     KOLEKCJE_WEZLOWE_MOCY,
     OdmowaZacisku,
     ZaciskZabezpieczenia,
-    funkcje_typu_zabezpieczenia,
     rozstrzygnij_zacisk,
     zaciski_galezi,
 )
@@ -73,7 +72,11 @@ from enm.models import (
     Transformer,
 )
 
+from tests.utils.sterownik import sterownik, stopien
+
 TYP_Z_FUNKCJA_50_51 = "REF-OC-200"
+#: Funkcje sterownika pakietu nastaw I>/I>> (domyślne przypięcie).
+FUNKCJE_50_51: tuple[str, ...] = ("51", "50")
 
 # ---------------------------------------------------------------------------
 # Sieci resolvera (bez solvera): linia L między szynami F (od) i T (do)
@@ -107,25 +110,38 @@ def _lacznik(ref_id: str, od: str, do: str, rodzaj: str = "breaker", stan: str =
 
 
 def _przypiecie(
-    ref_id: str, wylacznik: str, catalog_ref: str | None = TYP_Z_FUNKCJA_50_51
+    ref_id: str,
+    wylacznik: str,
+    kody: tuple[str, ...] = FUNKCJE_50_51,
+    *,
+    wylaczone: tuple[str, ...] = (),
 ) -> ProtectionAssignment:
-    return ProtectionAssignment(
+    """Sterownik z funkcjami ``kody`` działającymi (macierz wyzwoleń) na ``wylacznik``."""
+    return sterownik(
         ref_id=ref_id,
         name=f"Zabezpieczenie {ref_id}",
-        breaker_ref=wylacznik,
-        device_type="overcurrent",
-        catalog_ref=catalog_ref,
-        catalog_namespace="ZABEZPIECZENIE" if catalog_ref else None,
+        # Sterownik bez funkcji nie ma czego wyzwalać — wiersz macierzy tylko przy funkcjach
+        # (karta OCHRONA-JEDNO-ZRODLO; macierz wyzwoleń wiąże funkcję z wyłącznikiem).
+        wylacznik=wylacznik if kody else None,
+        catalog_ref=TYP_Z_FUNKCJA_50_51,
+        catalog_namespace="ZABEZPIECZENIE",
+        stopnie=[stopien(k) for k in kody],
+        wylaczone=wylaczone,
     )
 
 
-def _siec_resolvera(ksztalt: str, przypiecia: str, catalog_ref: str | None = None) -> dict:
+def _siec_resolvera(
+    ksztalt: str,
+    przypiecia: str,
+    kody: tuple[str, ...] = FUNKCJE_50_51,
+    *,
+    wylaczone: tuple[str, ...] = (),
+) -> dict:
     """Migawka z linią L (F → T) i przypięciami przy zaciskach wg `przypiecia`.
 
     Szyny zbiorcze `S_od` i `S_do` mają po trzy przyłączenia (wyłącznik pola, źródło albo
     odbiór, drugi odpływ), więc łańcuch nigdy nie „przechodzi" przez szynę zbiorczą.
     """
-    typ = TYP_Z_FUNKCJA_50_51 if catalog_ref is None else catalog_ref
     szyny = [
         Bus(ref_id=r, name=f"Szyna {r}", voltage_kv=15.0) for r in ("S_od", "S_do", "X_od", "X_do")
     ]
@@ -175,12 +191,12 @@ def _siec_resolvera(ksztalt: str, przypiecia: str, catalog_ref: str | None = Non
         return wylacznik
 
     if przypiecia in ("od", "oba"):
-        przypiete.append(_przypiecie("PA_od", pole("od"), typ))
+        przypiete.append(_przypiecie("PA_od", pole("od"), kody, wylaczone=wylaczone))
     if przypiecia in ("do", "oba"):
-        przypiete.append(_przypiecie("PA_do", pole("do"), typ))
+        przypiete.append(_przypiecie("PA_do", pole("do"), kody, wylaczone=wylaczone))
     if przypiecia == "petla":
         galezie.append(_lacznik("CB_petla", "F", "T"))
-        przypiete.append(_przypiecie("PA_petla", "CB_petla", typ))
+        przypiete.append(_przypiecie("PA_petla", "CB_petla", kody, wylaczone=wylaczone))
     enm = EnergyNetworkModel(
         header=ENMHeader(name=f"Resolver — {ksztalt} — {przypiecia}"),
         buses=szyny,
@@ -254,43 +270,27 @@ def test_iloczyn_cech_ksztalt_przypiecia_wskazanie(
         assert wynik.szyna_przeciwna_ref == szyny["do" if wynik.zacisk == "od" else "od"]
 
 
-def test_typ_czysta_87L_poza_filtrem_typ_bez_funkcji_kandydatem(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Filtr rodzaju urządzenia z KATALOGU (decyzja O-51 pkt 3): czysta różnicówka 87L bez
-    50/51 nie wskazuje zacisku pakietu nastaw I>/I>>; typ bez danych o funkcjach liczy się
-    jako kandydat (bez zgadywania)."""
-
-    def funkcje(
-        catalog_ref: str | None, _przestrzen: str | None, *, migawka: object
-    ) -> tuple[str, ...] | None:
-        return {"TYP-87L": ("87L",), "TYP-87L-51": ("87L", "51")}.get(catalog_ref or "")
-
-    monkeypatch.setattr(modul, "funkcje_typu_zabezpieczenia", funkcje)
-    tylko_87l = rozstrzygnij_zacisk(_siec_resolvera("wprost", "od", "TYP-87L"), "L", None)
+def test_funkcje_sterownika_filtruja_przypiecia_pakietu() -> None:
+    """Filtr rodzaju urządzenia (decyzja O-51 pkt 3) czyta FUNKCJE STEROWNIKA W MODELU (ADR-022
+    — jedyny nośnik; dawny odczyt funkcji z pozycji katalogu skasowany): czysta różnicówka 87L
+    bez 50/51 nie wskazuje zacisku pakietu nastaw I>/I>>, 87L + 51 wskazuje, sterownik bez
+    funkcji i sterownik z wyłączoną 51 milczą (model nie mówi, że działa nadprądowo)."""
+    tylko_87l = rozstrzygnij_zacisk(_siec_resolvera("wprost", "od", ("87L",)), "L", None)
     assert isinstance(tylko_87l, OdmowaZacisku) and tylko_87l.kod == KOD_BRAK_WSKAZANIA
-    z_51 = rozstrzygnij_zacisk(_siec_resolvera("wprost", "od", "TYP-87L-51"), "L", None)
+    z_51 = rozstrzygnij_zacisk(_siec_resolvera("wprost", "od", ("87L", "51")), "L", None)
     assert _werdykt(z_51) == ("od", "model")
-    bez_danych = rozstrzygnij_zacisk(_siec_resolvera("wprost", "do", "TYP-NIEZNANY"), "L", None)
-    assert _werdykt(bez_danych) == ("do", "model")
+    bez_funkcji = rozstrzygnij_zacisk(_siec_resolvera("wprost", "do", ()), "L", None)
+    assert isinstance(bez_funkcji, OdmowaZacisku) and bez_funkcji.kod == KOD_BRAK_WSKAZANIA
+    wylaczona = rozstrzygnij_zacisk(
+        _siec_resolvera("wprost", "do", ("51",), wylaczone=("51",)), "L", None
+    )
+    assert isinstance(wylaczona, OdmowaZacisku) and wylaczona.kod == KOD_BRAK_WSKAZANIA
     # Różnicówki 87L przy OBU zaciskach i nadprądowe tylko przy `od`: model rozstrzyga `od`.
-    snapshot = _siec_resolvera("wprost", "oba", "TYP-87L")
-    snapshot["protection_assignments"][0]["catalog_ref"] = "TYP-87L-51"
+    snapshot = _siec_resolvera("wprost", "oba", ("87L",))
+    snapshot["protection_assignments"][0] = _przypiecie("PA_od", "CB_od", ("87L", "51")).model_dump(
+        mode="json"
+    )
     assert _werdykt(rozstrzygnij_zacisk(snapshot, "L", None)) == ("od", "model")
-
-
-def test_funkcje_typu_z_katalogu_mv_i_biblioteki_analitycznej() -> None:
-    """Droga danych filtra bez podmiany: katalog MV → `analytical_library_ref` → biblioteka."""
-    assert set(
-        funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, "ZABEZPIECZENIE", migawka={}) or ()
-    ) == {
-        "50",
-        "51",
-    }
-    assert funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, None, migawka={}) is not None
-    assert funkcje_typu_zabezpieczenia("TYP-SPOZA-KATALOGU", "ZABEZPIECZENIE", migawka={}) is None
-    assert funkcje_typu_zabezpieczenia(TYP_Z_FUNKCJA_50_51, "CT", migawka={}) is None
-    assert funkcje_typu_zabezpieczenia(None, None, migawka={}) is None
 
 
 def test_funkcje_pakietu_to_stopnie_ktore_nastawy_wypelniaja() -> None:
@@ -550,7 +550,13 @@ def _kotwice_rejestru() -> list[tuple[str, CanonicalRun]]:
     kotwice: list[tuple[str, CanonicalRun]] = []
     for nazwa, sufiks in PRZYPIECIA_REJESTRU.items():
         surowa = copy.deepcopy(getattr(builders, nazwa)()["enm"])
-        lacznik = next(g["ref_id"] for g in surowa["branches"] if g["ref_id"].endswith(sufiks))
+        galaz = next(g for g in surowa["branches"] if g["ref_id"].endswith(sufiks))
+        lacznik = galaz["ref_id"]
+        # Macierz wyzwoleń sterownika działa wyłącznie na wyłącznik (jedna reguła operacji
+        # i walidatora, `naruszenia_referencji_sterownika`); łącznik pierścienia GN_03 jest
+        # rozłącznikiem, więc przypięcie dokłada go jako wyłącznik — kształt łańcucha
+        # szeregowego (to, co bada resolver) się nie zmienia.
+        galaz["type"] = "breaker"
         surowa.setdefault("protection_assignments", []).append(
             _przypiecie("PA_dolozone", lacznik).model_dump(mode="json")
         )

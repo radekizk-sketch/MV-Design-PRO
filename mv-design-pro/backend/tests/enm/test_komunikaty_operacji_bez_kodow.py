@@ -473,7 +473,7 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
         "nazwy pól tabliczki agregatu z `pole()`"
     ),
     "enm/domain_operations_v2.py:bledy": (
-        "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji`, "
+        "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji_eaz`, "
         "pola nazwami polskimi (karta BIEG-ZABEZPIECZEN-Z-MODELU)"
     ),
     "enm/wyposazenie_pola.py:zrodlo_po.braki_zrodla": (
@@ -1490,12 +1490,6 @@ def _wielkie_pierwsze(tekst: str) -> str:
             "ui/catalog/wartosciKodoweKarty.ts",
             "STATUS_KATALOGU_PL",
             _wielkie_pierwsze,
-        ),
-        (
-            slownik.NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
-            "ui/shared/etykietyZabezpieczen.ts",
-            "ETYKIETA_RODZAJU_ZABEZPIECZENIA",
-            _male_pierwsze,
         ),
         # `POWODY_BLOKADY_RODZINY_PL` był tu porównywany z kopią `POWOD_BLOKADY_PL` w pickerze
         # rodzin. Karta UX-04/POLE-LINIOWE-WZORZEC skasowała kopię: front pokazuje zdanie

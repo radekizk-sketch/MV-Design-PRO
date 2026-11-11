@@ -94,7 +94,7 @@ function linkedRefsForFieldItem(item: FieldReadModelItem): string[] {
   addUniqueRef(refs, baseModel.bay_ref);
   addUniqueRef(refs, baseModel.substation_ref);
   addUniqueRef(refs, baseModel.measurement_chain?.chain_ref);
-  addUniqueRef(refs, baseModel.protection_config?.unit_ref);
+  addUniqueRef(refs, baseModel.zabezpieczenie?.ref_id);
 
   baseModel.primary_devices.forEach((device) => {
     addUniqueRef(refs, device.device_ref);

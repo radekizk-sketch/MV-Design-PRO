@@ -588,6 +588,11 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   await openCaseInUi(page, seed);
   await expect(page.getByRole('button', { name: /^(Wykonaj analizę|Oblicz)$/ })).toBeVisible();
   await expect(page.locator('body')).toContainText('Stacje SN/nN');
-  await expect(page.locator('body')).toContainText(/Stacje:\s*50/);
+  // Liczba stacji z modelu: od karty K1 POWLOKA liczniki modelu żyją w panelu „na żądanie"
+  // paska narzędzi (dawny stały pas „Stacje: N" skasowany). Intencja bez zmian — UI pokazuje
+  // wszystkie 50 stacji wstawionych z szablonów; otwieramy panel natywnym klikiem.
+  await page.getByTestId('mvd-narzedzie-model').click();
+  await expect(page.getByTestId('mvd-licznik-stacje')).toHaveText('50');
+  await page.getByTestId('mvd-narzedzie-model').click();
   await expect(page.locator('body')).toContainText('Dowody (8)');
 });

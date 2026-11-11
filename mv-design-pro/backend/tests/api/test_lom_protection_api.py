@@ -10,11 +10,11 @@ from enm.models import (
     EnergyNetworkModel,
     ENMHeader,
     Generator,
-    ProtectionAssignment,
-    ProtectionSetting,
 )
 from enm.store import reset_enm_store, set_enm
 from fastapi import HTTPException
+
+from tests.utils.sterownik import sterownik, stopien
 
 
 @pytest.fixture(autouse=True)
@@ -40,16 +40,15 @@ def _seed_case(case_id: str) -> None:
                 bay_role="OZE",
                 substation_ref="stac_1",
                 bus_ref="bus_oze",
-                protection_ref="prot_lom",
             )
         ],
         protection_assignments=[
-            ProtectionAssignment(
+            sterownik(
                 ref_id="prot_lom",
                 name="Zabezpieczenie LoM",
-                breaker_ref="cb_1",
-                device_type="custom",
-                settings=[ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5)],
+                bay_ref="bay_oze",
+                wylacznik="cb_1",
+                stopnie=[stopien("81R", prog_hz_s=2.5)],
             )
         ],
     )

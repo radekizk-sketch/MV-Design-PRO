@@ -222,6 +222,43 @@ def test_skanuj_py_ignoruje_docstring_modulu(tmp_path: Path) -> None:
     assert wyniki == []
 
 
+@pytest.mark.parametrize(
+    ("literal", "trafienie"),
+    [
+        # Stała kodu Pythona (wielkie litery) — identyfikator, nie proza.
+        ('"Z_POL"', False),
+        ('"A_WTORNY"', False),
+        # Symbol wielkości z małą literą w indeksie — proza z gołym indeksem (karta KD6).
+        ('"czas wyłączenia t_b"', True),
+        ('"I_b"', True),
+        ('"prąd I_sc aparatu"', True),
+        # Proza słowami — czysta.
+        ('"znamionowy prąd wyłączalny zwarciowy"', False),
+    ],
+)
+def test_skanuj_py_stala_kodu_a_symbol_w_prozie(
+    tmp_path: Path, literal: str, trafienie: bool
+) -> None:
+    """Iloczyn: stała kodu / symbol w prozie / proza słowami (karta KD6)."""
+    plik = tmp_path / "przyklad.py"
+    plik.write_text(f"wartosc = {literal}\n", encoding="utf-8")
+
+    wyniki = guard.skanuj_py(plik)
+
+    assert bool(wyniki) is trafienie
+
+
+def test_proza_aparatury_pol_jest_w_skanie() -> None:
+    """Moduły prozy pokazywanej w szczegółach aparatury pól są skanowane (karta KD6)."""
+    wzgledne = {p.relative_to(guard.BACKEND_SRC).as_posix() for p in guard.BACKEND_PLIKI}
+    assert {
+        "application/analyses/wytrzymalosc_aparatury_pol.py",
+        "application/equipment_proof/wielkosc_wylaczania.py",
+        "application/analyses/protection/czas_wylaczenia_pola.py",
+        "network_model/core/czas_wylaczenia.py",
+    } <= wzgledne
+
+
 def test_skanuj_py_ignoruje_docstring_funkcji(tmp_path: Path) -> None:
     plik = tmp_path / "przyklad.py"
     plik.write_text(

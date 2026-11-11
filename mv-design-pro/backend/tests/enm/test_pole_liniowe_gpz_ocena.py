@@ -42,6 +42,7 @@ from enm.pole_liniowe_gpz import (
     oceny_pol_liniowych,
 )
 from enm.validator import ENMValidator
+from enm.zabezpieczenie import kody_funkcji_pola, sterownik_pola
 from enm.zrodlo_napiecia_zerowego import ZrodloU0Pola, zrodlo_u0_pola
 from network_model.catalog.bay_templates import WARUNKI_FUNKCJI_EAZ, WYMAGANIA_EAZ_KLASY_POLA
 from werdykt.etykiety import etykieta
@@ -207,7 +208,7 @@ def test_ocena_pola_w_iloczynie_cech(wykonanie, klasa, generacja_kw, odbior_kw, 
     assert [p for _r, p in ocena.odbiory] == ([float(odbior_kw)] if odbior_kw else [])
     assert ocena.ajee_wymagany is (generacja_kw >= 200 or odbior_kw > 4000)
     assert ocena.ajee_rdzen_obecny is (wykonanie == "Z11")
-    kody = list(pole["protection_codes"])
+    kody = kody_funkcji_pola(enm, pole["ref_id"])
     assert [n.kod for n in ocena.niezgodnosci] == _oczekiwane_niezgodnosci(
         wykonanie, klasa, kody, generacja_kw, odbior_kw
     )
@@ -365,7 +366,7 @@ def test_pole_odbiorcze_z10_ma_f_mniejsze_z_klasy():
     wymienia, więc klasa ODBIORCZE dopisuje 81U (rozbieżność rysunku z IRiESD). Pole Z.10 bez
     klasy niesie zestaw rysunku i ocena wskazuje brak f<."""
     _enm, z_klasa = _scena("Z10", "ODBIORCZE", 0, 0, 0)
-    assert "81U" in z_klasa["protection_codes"]
+    assert "81U" in kody_funkcji_pola(_enm, z_klasa["ref_id"])
     enm, bez_klasy = _scena("Z10", None, 0, 0, 0)
     ocena = ocena_pola_liniowego(enm, bez_klasy)
     assert ocena is not None
@@ -404,7 +405,11 @@ def test_iniekcja_funkcji_zakazanej(klasa, generacja_kw, odbior_kw, dopisany, ko
     enm, pole = _scena("Z11", klasa, generacja_kw, odbior_kw, 0)
     ocena = ocena_pola_liniowego(enm, pole)
     assert ocena is not None and ocena.niezgodnosci == ()
-    pole["protection_codes"] = [*pole["protection_codes"], dopisany]
+    # Funkcja dopisana do sterownika pola (jedna struktura zabezpieczeń, karta
+    # OCHRONA-JEDNO-ZRODLO) — tak, jak zapisuje ją `update_protection_settings` → `funkcje`.
+    sterownik_pola(enm, pole["ref_id"])["funkcje"].append(
+        {"ref": dopisany, "kod": dopisany, "wlaczona": True}
+    )
     po = ocena_pola_liniowego(enm, pole)
     assert po is not None and [n.kod for n in po.niezgodnosci] == [kod]
     assert next(f for f in po.oceny_funkcji if f.kod == dopisany).status == "NIE_SPELNIA"
@@ -506,7 +511,7 @@ def test_obwody_funkcji_pola_z_wzorca(wykonanie, klasa):
     enm, pole = _scena(wykonanie, klasa, 1000 if klasa != "ODBIORCZE" else 0, 0, 0)
     ocena = ocena_pola_liniowego(enm, pole)
     assert ocena is not None and ocena.obwody_wtorne is not None
-    kody = list(pole["protection_codes"])
+    kody = kody_funkcji_pola(enm, pole["ref_id"])
     powiazane = [p.funkcja for p in ocena.obwody_wtorne.powiazania]
     # Kolejność: zestaw funkcji pola, potem funkcje wzorca, których pole nie ma.
     assert [o.kod for o in ocena.obwody_funkcji] == [
@@ -575,7 +580,7 @@ def test_napiecie_zwrotne_pola(wykonanie, generacja_kw, ruch, stan):
     assert nz.stan_pomiaru == stan
     assert nz.mozliwe is (generacja_kw > 0)
     assert nz.zrodla_za_polem == (1 if generacja_kw else 0)
-    assert nz.blokada_nz is ("NZ" in pole["protection_codes"])
+    assert nz.blokada_nz is ("NZ" in kody_funkcji_pola(enm, pole["ref_id"]))
     assert nz.pomiar_pl.startswith("uzwojenie III przekładnika napięciowego T3")
     assert "Blok. ZW" in nz.pomiar_pl and nz.wyjasnienie_pl and nz.stan_pomiaru_pl
 

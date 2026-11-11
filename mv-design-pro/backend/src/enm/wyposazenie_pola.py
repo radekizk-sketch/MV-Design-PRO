@@ -681,8 +681,9 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     # który nie jest przekładnikiem z uzwojeniem otwartego trójkąta w polu pomiaru napięcia szyn
     # tej sekcji (albo w tym polu), nie zostaje zapisany jako źródło.
     rekord_po = {**rekord, **zmiany, "primary_devices": aparaty}
+    zrodlo_ref_po: object = zmiany["zrodlo_u0_ref"] if "zrodlo_u0_ref" in zmiany else ...
     if zmiany.get("zrodlo_u0_ref") is not None:
-        zrodlo_po = zrodlo_u0_pola(nowy, rekord_po)
+        zrodlo_po = zrodlo_u0_pola(nowy, rekord_po, zrodlo_ref_po)
         if zrodlo_po.braki_zrodla:
             return _error_response(
                 f"Pole {pole('zrodlo_u0_ref', 'set_bay_equipment')}: wskazany aparat nie jest "
@@ -700,7 +701,7 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     szablon_po = zmiany.get("bay_template_ref", rekord.get("bay_template_ref"))
     klasa_po = zmiany.get("klasa_pola", rekord.get("klasa_pola"))
     warunki_przed = warunki_funkcji_eaz_pola(enm, rekord)
-    warunki_po = warunki_funkcji_eaz_pola(nowy, rekord_po)
+    warunki_po = warunki_funkcji_eaz_pola(nowy, rekord_po, zrodlo_ref_po)
     if szablon_po and (
         szablon_po != rekord.get("bay_template_ref")
         or klasa_po != rekord.get("klasa_pola")
@@ -708,7 +709,7 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     ):
         from .domain_operations_v2 import _resolve_bay_template_protection_codes
 
-        zmiany["protection_codes"] = _resolve_bay_template_protection_codes(
+        zmiany["funkcje_eaz"] = _resolve_bay_template_protection_codes(
             rekord.get("manufacturer_ref"),
             szablon_po,
             str(rekord.get("bay_role")),

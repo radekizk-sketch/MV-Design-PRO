@@ -14,278 +14,22 @@
  * z odpowiedzią TEJ SAMEJ końcówki backendu wywołanej niezależnie, dla prądów
  * pobranych z wyniku biegu (`/api/analysis-runs/{id}/results/short-circuit`).
  */
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { wykonajBiegDoKonca } from './biegi';
+import { test, expect, type Page } from '@playwright/test';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
-import { transformatoryStacjiSnNn } from './transformatoryStacji';
+import {
+  BACKEND_BASE,
+  policzZwarcie,
+  sprawdzPradyPolZBiegiem,
+  widokZBiegu,
+  zbudujProjektZeStacja,
+  ZWLOKA_51_S,
+} from './siecZeStacjaZabezpieczona';
+import { formatujWielkosc } from '../src/ui2/wyniki/zwarcia/aparatura/format';
 
-const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
-const CABLE_ID = 'cable-tfk-yakxs-3x120';
-const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
-const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
-const CATALOG_VERSION = '2024.1';
 /** Aparat z katalogu wytrzymałości backendu (`DEVICE_WITHSTAND_CATALOG`). */
 const APARAT_ID = 'wstd_breaker_vacuum_15_25';
-const CZAS_WYLACZENIA_S = 0.5;
-
-let opCounter = 0;
-
-type DomainOpResponse = {
-  error?: string | null;
-  snapshot?: {
-    corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
-    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
-    substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
-  };
-};
-
-type PradyPola = {
-  punkt_ref: string | null;
-  ik_ka: number | null;
-  ip_ka: number | null;
-  ith_ka: number | null;
-  ib_ka: number | null;
-};
-
-type WidokWytrzymalosci = {
-  status: string;
-  bieg_zwarciowy_ref: string;
-  pola: Array<{
-    pole: string;
-    pole_ref: string | null;
-    zrodlo: 'model' | 'konfiguracja';
-    komunikat_pl: string;
-    prady_pola: PradyPola;
-    czas_wylaczenia: { zrodlo: string | null };
-  }>;
-};
-
-type WierszZwarcia = {
-  target_id: string;
-  element_id?: string;
-  target_name?: string | null;
-  ikss_ka?: number | null;
-  ip_ka: number | null;
-  ith_ka: number | null;
-  ib_ka?: number | null;
-};
-
-function catalogBinding(namespace: string, itemId: string) {
-  return {
-    catalog_namespace: namespace,
-    catalog_item_id: itemId,
-    catalog_item_version: CATALOG_VERSION,
-  };
-}
-
-async function domainOp(
-  request: APIRequestContext,
-  caseId: string,
-  name: string,
-  payload: Record<string, unknown>,
-): Promise<DomainOpResponse> {
-  const response = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/enm/domain-ops`, {
-    data: {
-      project_id: '',
-      snapshot_base_hash: '',
-      operation: {
-        name,
-        idempotency_key: `e2e-ogniwo-${name}-${String(++opCounter).padStart(4, '0')}`,
-        payload,
-      },
-    },
-  });
-  expect(response.ok()).toBeTruthy();
-  const body = (await response.json()) as DomainOpResponse;
-  expect(body.error ?? null).toBeNull();
-  return body;
-}
-
-type Kontekst = {
-  project: { id: string; name: string };
-  studyCase: { id: string; name: string };
-  stationRef: string;
-  busRefy: string[];
-};
-
-/** Projekt + przypadek + sieć ze stacją (aparat pola WSKAZANY z katalogu APARAT_SN). */
-async function zbudujProjektZeStacja(
-  request: APIRequestContext,
-  opis: string,
-): Promise<Kontekst> {
-  const znacznik = String(Date.now());
-  const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
-    data: {
-      name: `Ogniwo aparatura ${znacznik}`,
-      description: opis,
-      mode: 'TO-BE',
-      voltage_level_kv: 15.0,
-      frequency_hz: 50.0,
-    },
-  });
-  expect(projectResponse.ok()).toBeTruthy();
-  const project = (await projectResponse.json()) as { id: string; name: string };
-
-  const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
-    data: {
-      project_id: project.id,
-      name: `Przypadek ogniwa ${znacznik}`,
-      description: '',
-      config: {},
-      set_active: true,
-    },
-  });
-  expect(caseResponse.ok()).toBeTruthy();
-  const studyCase = (await caseResponse.json()) as { id: string; name: string };
-
-  await domainOp(request, studyCase.id, 'add_grid_source_sn', {
-    voltage_kv: 15.0,
-    sk3_mva: 250.0,
-    rx_ratio: 0.1,
-    catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-  });
-
-  let op: DomainOpResponse = {};
-  for (const [idx, length] of [300, 250].entries()) {
-    op = await domainOp(request, studyCase.id, 'continue_trunk_segment_sn', {
-      segment: {
-        rodzaj: 'KABEL',
-        dlugosc_m: length,
-        name: `Odcinek ${idx + 1}`,
-        catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
-      },
-    });
-  }
-  const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
-  expect(segmentRefs.length).toBeGreaterThan(0);
-
-  op = await domainOp(request, studyCase.id, 'insert_station_on_segment_sn', {
-    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
-    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
-    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
-    segment_id: segmentRefs[segmentRefs.length - 1],
-    station_type: 'B',
-    insert_at: { value: 0.5 },
-    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
-    // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
-    // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
-    // bez niego opisywal siec, ktorej kreator by nie zbudowal.
-    sn_fields: ['IN', 'OUT', 'TR'],
-    transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
-  });
-
-  const stacja = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
-  expect(stacja?.ref_id).toBeTruthy();
-  const stationRef = stacja!.ref_id;
-  const busRefy = stacja!.bus_refs ?? [];
-  expect(busRefy.length).toBeGreaterThan(0);
-
-  // Katalogi gałęzi/transformatorów (żeby bieg był policzalny). Kategoria
-  // katalogu MUSI pasować do rodzaju gałęzi — pozycję KABEL_SN dostają
-  // wyłącznie odcinki liniowe. Wcześniej ta pętla przypisywała kabel TAKŻE
-  // aparatom pól, kasując po cichu ich wiązanie APARAT_SN (defekt zastany
-  // naprawiony u źródła w karcie KD-6: `catalog.namespace_mismatch`).
-  const odcinki = (op.snapshot?.branches ?? []).filter(
-    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
-  );
-  expect(odcinki.length, 'Sieć musi mieć odcinki liniowe do policzenia biegu').toBeGreaterThan(0);
-  for (const branch of odcinki) {
-    await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
-      element_ref: branch.ref_id,
-      catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
-    });
-  }
-  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
-  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
-  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
-    await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
-      element_ref: transformer.ref_id,
-      catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID),
-    });
-    await domainOp(request, studyCase.id, 'update_element_parameters', {
-      element_ref: transformer.ref_id,
-      parameters: {
-        sn_mva: 0.63,
-        uhv_kv: 15.0,
-        ulv_kv: 0.4,
-        uk_percent: 4.0,
-        pk_kw: 6.5,
-        vector_group: 'Dyn5',
-        parameter_source: 'CATALOG',
-      },
-    });
-  }
-
-  return { project, studyCase, stationRef, busRefy };
-}
-
-/** Bieg zwarciowy przypadku + wiersz punktu leżącego na szynie stacji. */
-async function policzZwarcie(
-  request: APIRequestContext,
-  kontekst: Kontekst,
-): Promise<{ runId: string; punkt: WierszZwarcia; wiersze: WierszZwarcia[] }> {
-  const createRun = await request.post(
-    `${BACKEND_BASE}/api/execution/study-cases/${kontekst.studyCase.id}/runs`,
-    { data: { analysis_type: 'SC_3F' } },
-  );
-  expect(createRun.ok()).toBeTruthy();
-  const run = (await createRun.json()) as { id: string };
-  // Karta DYNAMIKA-W-TLE: `execute` zleca bieg w tle (202); gotowość = stan DONE
-  // biegu (`biegi.ts`), nie 200 z `results/index` (ten jest 200 także w toku).
-  await wykonajBiegDoKonca(request, BACKEND_BASE, run.id);
-
-  const wynikResponse = await request.get(
-    `${BACKEND_BASE}/api/analysis-runs/${run.id}/results/short-circuit`,
-  );
-  expect(wynikResponse.ok()).toBeTruthy();
-  const wynik = (await wynikResponse.json()) as { rows: WierszZwarcia[] };
-  const wiersze = wynik.rows.filter((r) => r.ip_ka !== null && r.ith_ka !== null);
-  expect(wiersze.length).toBeGreaterThan(0);
-
-  const punkt = wiersze.find((r) => kontekst.busRefy.includes(r.element_id ?? r.target_id));
-  expect(
-    punkt,
-    'Wynik biegu musi zawierać punkt zwarcia leżący na szynie badanej stacji.',
-  ).toBeTruthy();
-  return { runId: run.id, punkt: punkt!, wiersze: wynik.rows };
-}
-
-/** Widok wytrzymałości stacji dla zapisanego biegu (kontrakt: bieg, nie liczby). */
-async function widokZBiegu(
-  request: APIRequestContext,
-  kontekst: Kontekst,
-  runId: string,
-): Promise<WidokWytrzymalosci> {
-  const odpowiedz = await request.post(
-    `${BACKEND_BASE}/api/cases/${kontekst.studyCase.id}/enm/wytrzymalosc-aparatury`,
-    { data: { station_ref: kontekst.stationRef, short_circuit_run_id: runId } },
-  );
-  expect(odpowiedz.ok()).toBeTruthy();
-  const widok = (await odpowiedz.json()) as WidokWytrzymalosci;
-  expect(widok.bieg_zwarciowy_ref).toBe(runId);
-  return widok;
-}
-
-/**
- * Prądy KAŻDEGO pola = wiersz 3F biegu w punkcie zabudowy TEGO pola (karta
- * WYTRZYMALOSC-PRAD-POLA). Asercja idzie przeciw wynikowi biegu, nie przeciw
- * literałom: punkt pola musi być wierszem biegu, a liczby — jego liczbami.
- */
-function sprawdzPradyPolZBiegiem(widok: WidokWytrzymalosci, wiersze: WierszZwarcia[]): void {
-  for (const pole of widok.pola) {
-    const punkt = pole.prady_pola.punkt_ref;
-    expect(punkt, `Pole ${pole.pole} musi mieć punkt zabudowy w biegu`).toBeTruthy();
-    const wiersz = wiersze.find((r) => (r.element_id ?? r.target_id) === punkt);
-    expect(wiersz, `Punkt ${punkt} pola ${pole.pole} musi być wierszem biegu`).toBeTruthy();
-    expect(pole.prady_pola.ip_ka).toBe(wiersz!.ip_ka);
-    expect(pole.prady_pola.ith_ka).toBe(wiersz!.ith_ka);
-    // Karta SC-IB-ITH-ZRODLA: wielkość kryterium wyłączania I_b — z TEGO SAMEGO wiersza biegu.
-    expect(pole.prady_pola.ib_ka).toBe(wiersz!.ib_ka ?? null);
-  }
-}
+/** Czas wpisany w konfiguracji stacji — NIE jest źródłem tk (karta OCHRONA-JEDNO-ZRODLO). */
+const CZAS_Z_KONFIGURACJI_S = 9.0;
 
 test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury pola', async ({
   page,
@@ -296,6 +40,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   const kontekst = await zbudujProjektZeStacja(
     request,
     'Bramka KD-4: wynik zwarciowy → wytrzymałość aparatury',
+    true,
   );
   const { project, studyCase, stationRef } = kontekst;
 
@@ -304,10 +49,13 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
 
   // Pole modelu, dla którego inżynier wskaże aparat ręcznie: konfiguracja jest
   // kluczowana oznaczeniem pola modelu — wpis bez pola modelu nie ma punktu
-  // zabudowy, więc nie ma też prądu (werdykt uczciwie nieustalony).
+  // zabudowy, więc nie ma też prądu (werdykt uczciwie bez oceny — brak prądu pola).
   const widokModelu = await widokZBiegu(request, kontekst, runId);
-  expect(widokModelu.pola.length).toBeGreaterThan(0);
-  const POLE = widokModelu.pola[0].pole;
+  const wierszPolaZabezpieczonego = widokModelu.pola.find(
+    (p) => p.pole_ref === kontekst.poleZabezpieczoneRef,
+  );
+  expect(wierszPolaZabezpieczonego, 'wiersz pola ze sterownikiem').toBeTruthy();
+  const POLE = wierszPolaZabezpieczonego!.pole;
 
   // --- Aparatura pola w konfiguracji stacji (źródło aparatu i czasu) ---------
   const configResponse = await request.put(
@@ -322,7 +70,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
             // Liczby z DOBORU aparatu — ekran ma ich NIE użyć do sprawdzenia.
             i_peak_calculated_ka: 1.0,
             i_thermal_calculated_ka: 1.0,
-            t_clearing_s: CZAS_WYLACZENIA_S,
+            t_clearing_s: CZAS_Z_KONFIGURACJI_S,
           },
         },
       },
@@ -335,17 +83,28 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   const wierszKonfiguracji = widok.pola.find((p) => p.pole === POLE);
   expect(wierszKonfiguracji?.zrodlo).toBe('konfiguracja');
   const pradyPola = wierszKonfiguracji!.prady_pola;
+  // Jedno źródło tk: nastawy sterownika pola + czas własny wyłącznika — czas wpisany
+  // w konfiguracji stacji nie wchodzi do oceny (ten sam wiersz, oba kandydackie źródła).
+  const czas = wierszKonfiguracji!.czas_wylaczenia;
+  expect(czas.zrodlo).toBe('nastawy_pola');
+  expect(czas.czlon_nastawczy_s).toBeCloseTo(ZWLOKA_51_S, 6);
+  expect(czas.t_clearing_s).toBeCloseTo(ZWLOKA_51_S + (czas.czas_wlasny_wylacznika_s ?? NaN), 6);
+  expect(czas.t_clearing_s).not.toBeCloseTo(CZAS_Z_KONFIGURACJI_S, 3);
 
   // Werdykt referencyjny: jądro wytrzymałości z prądami PUNKTU ZABUDOWY POLA
-  // (wiersz biegu) i czasem z konfiguracji.
+  // (wiersz biegu) i czasem z nastaw pola. Prąd cieplny = I_th przy T_k TEGO pola
+  // (ślad `prad_cieplny_pola`, liczony z I_th wiersza biegu — sprawdzone wyżej).
+  const pradCieplnyPola = wierszKonfiguracji!.prad_cieplny_pola;
+  expect(pradCieplnyPola.tk_pola_s).toBeCloseTo(czas.t_clearing_s ?? NaN, 9);
+  expect(pradCieplnyPola.ith_ka, 'czas pola ustalony — I_th pola istnieje').not.toBeNull();
   const werdyktResponse = await request.post(
     `${BACKEND_BASE}/api/v1/catalog/audit2/validate-device-withstand`,
     {
       data: {
         device_id: APARAT_ID,
         i_peak_calculated_ka: pradyPola.ip_ka,
-        i_thermal_calculated_ka: pradyPola.ith_ka,
-        t_clearing_s: CZAS_WYLACZENIA_S,
+        i_thermal_calculated_ka: pradCieplnyPola.ith_ka,
+        t_clearing_s: czas.t_clearing_s,
       },
     },
   );
@@ -387,8 +146,21 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   await expect(wierszWerdyktu).toBeVisible({ timeout: 30000 });
   // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
   await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
-  await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
-  // Prądy pola widoczne przy werdykcie, z punktem zabudowy jako daną maszynową.
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-czas-${POLE}`)).toHaveAttribute(
+    'data-zrodlo-czasu',
+    'nastawy_pola',
+  );
+  // Prądy pola są w „Szczegółach obliczeń” (karta APARATURA-TABELA): natywny klik przełącznika
+  // wiersza, potem przełącznika szczegółów. Intencja przepisana (KD6-SZCZEGOLY pkt 4): słowny
+  // komunikat backendu powtarzał liczby tabeli, więc szczegóły go nie cytują — werdykt na
+  // ekranie wiąże z backendem atrybut wiersza (wyżej) i liczby tabeli kryteriów.
+  await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${POLE}`).click();
+  await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${POLE}`).click();
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-dane-${POLE}`)).toBeVisible();
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${POLE}`)).not.toContainText(
+    werdykt.message_pl,
+  );
+  // Prądy pola z punktem zabudowy jako daną maszynową.
   await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${POLE}`)).toHaveAttribute(
     'data-punkt-ref',
     pradyPola.punkt_ref ?? '',
@@ -458,19 +230,63 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
     // ŹRÓDŁO aparatu widoczne jako dana maszynowa — inżynier musi wiedzieć,
     // że ocenia aparat z modelu, a nie z własnego wpisu.
     await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
-    // Werdykt na ekranie = werdykt backendu (cytat, nie własne słowa ekranu).
-    await expect(wiersz).toContainText(pole.komunikat_pl);
+    // Zapasy w wierszu = margines rekordu K TEGO pola z odpowiedzi backendu (nigdy kopia
+    // innego pola); brak marginesu = jawne „brak”, nie liczba.
+    for (const rodzaj of ['dynamiczna', 'cieplna', 'wylaczanie'] as const) {
+      const rekord = pole.oceny.find((o) => o.kryterium_id.endsWith(`.${rodzaj}`));
+      const m = rekord?.margines?.wartosc?.wartosc ?? null;
+      const oczekiwany =
+        rekord === undefined
+          ? 'brak oceny'
+          : !rekord.stosowalnosc.dotyczy
+            ? 'nie dotyczy'
+            : m === null
+              ? 'brak'
+              : formatujWielkosc(m, 'zapas');
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-zapas-wiersz-${pole.pole}-${rodzaj}`),
+      ).toHaveText(oczekiwany);
+    }
+    // Czas trwania zwarcia pola: zawsze liczba backendu (projektant, nastawy albo wartość
+    // robocza 1 s IEC 62271-1 — pakiet 8), bez t_b innego pola.
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`)).toHaveText(
+      formatujWielkosc(pole.czas_wylaczenia.t_clearing_s, 'czas'),
+    );
+    // Werdykt na ekranie = werdykt backendu przez zapasy rekordów K (wyżej). Intencja przepisana
+    // (KD6-SZCZEGOLY pkt 4): słowny komunikat pola nie jest cytowany w szczegółach.
+    await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pole.pole}`).click();
+    await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole.pole}`).click();
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-dane-${pole.pole}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`),
+    ).not.toContainText(pole.komunikat_pl);
     // Prąd TEGO pola (punkt zabudowy pola z biegu), nie jedna liczba stacji.
     await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${pole.pole}`)).toHaveAttribute(
       'data-punkt-ref',
       pole.prady_pola.punkt_ref ?? '',
     );
-    // Rozbicie czasu wyłączenia: oba człony przy werdykcie (WHITE BOX).
-    const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
-    await expect(czas).toHaveAttribute(
-      'data-zrodlo-czasu',
-      pole.czas_wylaczenia.zrodlo ?? 'nieustalony',
+    // Wyprowadzenie z realnego biegu (karta KD6-SZCZEGOLY): wzory i_p / I_th / I_b z kroków
+    // śladu solvera i κ z wiersza biegu — widok tylko je pokazuje.
+    const wyprowadzenie = pole.prady_pola.wyprowadzenie;
+    expect(Object.keys(wyprowadzenie?.wzory ?? {}).sort()).toEqual(['ib', 'ip', 'ith']);
+    for (const klucz of ['ip', 'ith', 'ib']) {
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-wzor-${pole.pole}-${klucz}`).locator('.katex'),
+      ).toBeVisible();
+    }
+    expect(wyprowadzenie?.kappa).toBeDefined();
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-posrednia-${pole.pole}-kappa`)).toHaveText(
+      formatujWielkosc(wyprowadzenie?.kappa ?? Number.NaN, 'wspolczynnik'),
     );
+    // Wiersz cieplny: zdanie backendu („Spełnione dla t = 1 s”) przy rozstrzygniętym porównaniu.
+    if (pole.komunikat_cieplny_pl !== null) {
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-komunikat-cieplny-${pole.pole}`),
+      ).toHaveText(pole.komunikat_cieplny_pl);
+    }
+    // Źródło czasu jako dana maszynowa komórki Tk (rozbicie w szczegółach).
+    const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
+    await expect(czas).toHaveAttribute('data-zrodlo-czasu', pole.czas_wylaczenia.zrodlo);
   }
 });
 

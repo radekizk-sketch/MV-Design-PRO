@@ -57,6 +57,7 @@ from tests.network_model.solvers.test_prad_wylaczeniowy_iloczyn_cech import (
     _q_reczne,
     _wiersz,
 )
+from tests.utils.sterownik import rekord_sterownika, stopien_51
 
 APARAT_KATALOG = "sw-cb-abb-vd4-24kv-630a"
 PRZEKAZNIK_KATALOG = "REF-OC-200"
@@ -138,24 +139,16 @@ def _pole(
         "rating": {"ratio_primary": 400.0, "ratio_secondary": 5.0, "accuracy_class": "5P20"},
     }
     przypisanie = (
-        {
-            "ref_id": f"zab/{sufiks}",
-            "name": f"Zabezpieczenie pola {sufiks}",
-            "breaker_ref": wylacznik["ref_id"],
-            "ct_ref": przekladnik["ref_id"],
-            "catalog_ref": PRZEKAZNIK_KATALOG,
-            "device_type": "overcurrent",
-            "is_enabled": True,
-            "settings": [
-                {
-                    "function_type": "overcurrent_51",
-                    "threshold_a": 5.0,  # A wtórne · 400/5 = 400 A pierwotne
-                    "threshold_unit": "A_WTORNY",
-                    "curve_type": "DT",
-                    "time_delay_s": zwloka_s,
-                }
-            ],
-        }
+        rekord_sterownika(
+            f"zab/{sufiks}",
+            name=f"Zabezpieczenie pola {sufiks}",
+            bay_ref=pole_ref,
+            wylacznik=wylacznik["ref_id"],
+            ct_ref=przekladnik["ref_id"],
+            catalog_ref=PRZEKAZNIK_KATALOG,
+            # 5 A wtórne · 400/5 = 400 A pierwotne
+            stopnie=[stopien_51(5.0, krzywa="DT", zwloka_s=zwloka_s)],
+        )
         if zwloka_s is not None
         else None
     )
@@ -345,7 +338,7 @@ def test_wszystkie_pola_bez_nastaw_daja_wartosc_robocza_z_powodem_per_pole() -> 
     assert zrodlo["pochodzenie"] == "PROPOZYCJA"
     assert zrodlo["wartosc_s"] == CZAS_TB_ROBOCZY_S
     assert "pole P-a" in zrodlo["opis_pl"] and "pole P-b" in zrodlo["opis_pl"]
-    assert "nie ma przypisanego czynnego zabezpieczenia" in zrodlo["opis_pl"]
+    assert "nie ma czynnego sterownika zabezpieczeń" in zrodlo["opis_pl"]
     kody = [z["code"] for z in run.raw_result["zalozenia"]]
     assert kody.count(KOD_CZAS_TB_WARTOSC_ROBOCZA) == 1
 

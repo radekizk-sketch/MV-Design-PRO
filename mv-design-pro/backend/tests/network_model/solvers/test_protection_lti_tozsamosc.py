@@ -92,7 +92,7 @@ def test_jadro_bit_w_bit_jak_przed_karta(typ: IEC60255CurveType) -> None:
 
 def _stopien(krzywa: str, tms: float) -> StopienNastaw:
     return StopienNastaw(
-        funkcja="overcurrent_51",
+        funkcja="51",
         krzywa=krzywa,
         wartosc_progu=100.0,
         jednostka_progu="A_PIERWOTNY",
@@ -124,11 +124,10 @@ def test_literaly_modelu_pokrywaja_wszystkie_krzywe_odwrotne_jadra() -> None:
 
 
 def test_jeden_zbior_nazw_krzywych_modelu_i_jego_konsumentow() -> None:
-    """Literał krzywej w modelu ENM (`KrzywaNastawy`), odwzorowanie na rdzeń (IEC ∪ IEEE),
+    """Kod wyboru nastawy ``krzywa`` rejestru funkcji (`funkcje_eaz.KRZYWE_CZASOWE`), odwzorowanie na rdzeń (IEC ∪ IEEE),
     kod katalogu IED, etykieta i mapa odczytu zabezpieczeń (`CURVE_TYPE_MAP`) to TEN SAM
     zbiór nazw — pozostawiona stara nazwa („IEC_LI") w którymkolwiek miejscu dawałaby
     cichy brak czasu albo błąd kontraktu."""
-    from typing import get_args
 
     from application.analyses.protection.ocena_nadpradowa import (
         ETYKIETY_KRZYWYCH_PL,
@@ -136,9 +135,9 @@ def test_jeden_zbior_nazw_krzywych_modelu_i_jego_konsumentow() -> None:
         KRZYWE_IEEE,
     )
     from application.protection_read_model import CURVE_TYPE_MAP
-    from enm.models import KrzywaNastawy
+    from network_model.catalog.funkcje_eaz import KRZYWE_CZASOWE
 
-    literaly = set(get_args(KrzywaNastawy))
+    literaly = set(KRZYWE_CZASOWE)
     assert not set(KRZYWE_IEC) & set(KRZYWE_IEEE)
     assert literaly == set(KRZYWE_IEC) | set(KRZYWE_IEEE)
     assert literaly == set(CURVE_TYPE_MAP) == set(ETYKIETY_KRZYWYCH_PL)
@@ -196,7 +195,7 @@ def test_stan_katalogu_modelu_zaden_przekaznik_nie_oferuje_lti() -> None:
 # =============================================================================
 
 #: Kody krzywych katalogu IED, których model ENM nie zna (charakterystyki producenta bez
-#: literału `KrzywaNastawy`). Zbiór ZAMKNIĘTY: nowy alias krzywej modelu w katalogu (np. „IEC_NI"
+#: kodów `funkcje_eaz.KRZYWE_CZASOWE`). Zbiór ZAMKNIĘTY: nowy alias krzywej modelu w katalogu (np. „IEC_NI"
 #: obok „IEC_SI") albo nowa charakterystyka bez decyzji o jej nazwie zmienia kolor testu.
 _KODY_KATALOGU_SPOZA_MODELU = frozenset({"IEC_STI", "RXIDG", "IAC51", "I2T", "USER_DEFINED", "US1"})
 
@@ -239,10 +238,9 @@ def test_kody_krzywych_katalogu_ied_to_literaly_modelu_albo_jawne_kody_producent
     charakterystyk pozycji katalogu) pytają katalog LITERAŁEM modelu, więc każdy kod krzywej
     katalogu jest literałem modelu albo pozycją zamkniętego zbioru kodów producenta — trzeciej
     drogi (alias tej samej krzywej) nie ma."""
-    from typing import get_args
 
     from application.analyses.protection.catalog.catalog_store import load_device_capability
-    from enm.models import KrzywaNastawy
+    from network_model.catalog.funkcje_eaz import KRZYWE_CZASOWE
 
     dane = json.loads(
         (
@@ -251,7 +249,7 @@ def test_kody_krzywych_katalogu_ied_to_literaly_modelu_albo_jawne_kody_producent
         ).read_text(encoding="utf-8")
     )
     kody = {k for urzadzenie in dane["devices"] for k in urzadzenie.get("curves_supported", [])}
-    literaly = set(get_args(KrzywaNastawy))
+    literaly = set(KRZYWE_CZASOWE)
     assert kody - literaly == _KODY_KATALOGU_SPOZA_MODELU
     assert literaly <= kody, "literał modelu bez żadnego przekaźnika w katalogu"
     zdolnosc = load_device_capability(dane["devices"][0]["device_id"])

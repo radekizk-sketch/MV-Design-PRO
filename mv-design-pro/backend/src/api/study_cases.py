@@ -98,6 +98,9 @@ class StatusWynikowResponse(BaseModel):
     rewizja_biegu: int | None  # rewizja modelu, na ktorej policzono wynik
     rewizja_biezaca: int | None  # rewizja modelu teraz
     zmiany_od_biegu: list[ZmianaOdBieguResponse]  # co uniewaznilo wynik
+    # Odcisk wejsc oceny swiezosci (model, katalog, wybor zabezpieczen przypadku, scenariusze
+    # nazwane) — `None`, gdy model przypadku niezidentyfikowany; ten sam w werdykcie biegu.
+    odcisk_wejsc_swiezosci: str | None
 
 
 class StudyCaseResponse(StatusWynikowResponse):

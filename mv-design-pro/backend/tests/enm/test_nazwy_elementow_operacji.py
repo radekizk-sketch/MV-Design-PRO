@@ -45,6 +45,7 @@ from enm.topology_ops import (
     create_measurement,
     create_node,
 )
+from enm.zabezpieczenie import ODNOSNIK_STEROWNIKA_POLA
 from network_model.nazwy import jest_nazwa
 
 from tests.enm.test_enm_api import _valid_enm_with_field
@@ -124,7 +125,16 @@ def _bez_fragmentow_identyfikatorow(snapshot: dict[str, Any]) -> None:
                 continue
             ref = _identyfikator(element)
             assert not ref or ref not in nazwa, (kolekcja, ref, nazwa)
-            assert not ref or len(ref) < 12 or ref[-8:] not in nazwa, (kolekcja, ref, nazwa)
+            # Identyfikator sterownika pola = identyfikator pola + stały przyrostek słowny
+            # `/sterownik` (`enm.zabezpieczenie.referencja_sterownika_pola`); końcówką
+            # identyfikatora jest wtedy końcówka POLA — słowo przyrostka w nazwie „Sterownik pola …"
+            # nie pochodzi z identyfikatora.
+            ident = (
+                ref.removesuffix(f"/{ODNOSNIK_STEROWNIKA_POLA}")
+                if ref and kolekcja == "protection_assignments"
+                else ref
+            )
+            assert not ident or len(ident) < 12 or ident[-8:] not in nazwa, (kolekcja, ref, nazwa)
             assert not any(ziarno in nazwa for ziarno in ziarna), (kolekcja, ref, nazwa)
             for wzorzec in ("seg/", "/segment", "bus/", "gpz/", "stn/", "bp/"):
                 assert wzorzec not in nazwa, (kolekcja, ref, nazwa)
@@ -527,7 +537,14 @@ PRYMITYWY = [
     pytest.param(
         attach_protection,
         "protection_assignments",
-        {"ref_id": "nowe_zabezpieczenie", "breaker_ref": "wylacznik_1", "ct_ref": "ct_1"},
+        {
+            "ref_id": "nowe_zabezpieczenie",
+            "wejscia": {"ct_ref": "ct_1"},
+            "funkcje": [{"ref": "51", "kod": "51", "wlaczona": True}],
+            "macierz_wyzwolen": [
+                {"funkcja_ref": "51", "aparat_refs": ["wylacznik_1"], "pobudza_spz": False}
+            ],
+        },
         "Zabezpieczenie bez nazwy",
         id="zabezpieczenie",
     ),

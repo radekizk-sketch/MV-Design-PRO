@@ -23,7 +23,7 @@ BASE_URL = "/api/execution"
 def _lifespan_i_przypadek():
     """Zwiąż `client`/`CASE_ID` z realnym `uow_factory` i realnym StudyCase.
 
-    CV-1-W: `create_run_from_scenario` (`POST /fault-scenarios/{id}/runs`)
+    CV-1-W: `create_run_from_scenario` (`POST /study-cases/{case_id}/fault-scenarios/{id}/runs`)
     tłumaczy `scenario.study_case_id` na klucz magazynu ENM (`klucz_twin_z_
     sciezki`), więc bez wiersza StudyCase w bazie dostaje 404 z magazynu ENM
     (inwariant I-2). Bez `with` (lifespan) `app.state.uow_factory` też nie
@@ -189,7 +189,9 @@ class TestCreateRunFromScenario:
         scenario = _create_scenario(name="Run test 3F", fault_type="SC_3F")
         sid = scenario["scenario_id"]
 
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["status"] == "PENDING"
@@ -206,14 +208,18 @@ class TestCreateRunFromScenario:
         scenario = _create_scenario(name=f"Run test {fault_type}", fault_type=fault_type)
         sid = scenario["scenario_id"]
 
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 409
         assert "zablokowana" in response.json()["detail"].lower()
 
     def test_create_run_not_found(self):
         """Run creation for unknown scenario should fail."""
         fake_id = str(uuid4())
-        response = client.post(f"{BASE_URL}/fault-scenarios/{fake_id}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{fake_id}/runs", json={}
+        )
         assert response.status_code == 404
 
 
@@ -224,7 +230,9 @@ class TestGoldenFixture:
         _seed_valid_enm(CASE_ID)
         scenario = _create_scenario(name="Golden 3F", fault_type="SC_3F", element_ref="bus-main")
         sid = scenario["scenario_id"]
-        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+        eligibility = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/eligibility"
+        ).json()
         assert eligibility["status"] == "ELIGIBLE"
 
     def test_golden_sc2f_eligible_i_bieg_powstaje(self):
@@ -235,9 +243,13 @@ class TestGoldenFixture:
         _seed_valid_enm(CASE_ID)
         scenario = _create_scenario(name="Golden 2F", fault_type="SC_2F", element_ref="bus-main")
         sid = scenario["scenario_id"]
-        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+        eligibility = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/eligibility"
+        ).json()
         assert eligibility["status"] == "ELIGIBLE", eligibility
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 201, response.text
 
     def test_golden_sc1f_kabel_bez_z0_z_wartoscia_robocza_kwalifikuje_sie_i_bieg_powstaje(self):
@@ -265,13 +277,17 @@ class TestGoldenFixture:
         _seed_valid_enm(CASE_ID, r_kabla_ohm_per_km=0.0)
         scenario = _create_scenario(name="Golden 1F", fault_type="SC_1F", element_ref="bus-main")
         sid = scenario["scenario_id"]
-        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+        eligibility = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/eligibility"
+        ).json()
         assert eligibility["status"] == "INELIGIBLE"
         kody = [b["code"] for b in eligibility["blockers"]]
         assert kody == [KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ]
         assert eligibility["blockers"][0]["element_ref"] == "branch-1"
 
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 409
         assert "zablokowana" in response.json()["detail"].lower()
 
@@ -281,7 +297,9 @@ class TestGoldenFixture:
             name="Golden run 3F", fault_type="SC_3F", element_ref="bus-main"
         )
         sid = scenario["scenario_id"]
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 201
         assert response.json()["analysis_type"] == "SC_3F"
 
@@ -289,8 +307,12 @@ class TestGoldenFixture:
         """Same scenario produces identical SLD overlay payload."""
         scenario = _create_scenario(name="Overlay det", fault_type="SC_3F", element_ref="bus-1")
         sid = scenario["scenario_id"]
-        overlay_first = client.get(f"{BASE_URL}/fault-scenarios/{sid}/sld-overlay").json()
-        overlay_second = client.get(f"{BASE_URL}/fault-scenarios/{sid}/sld-overlay").json()
+        overlay_first = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/sld-overlay"
+        ).json()
+        overlay_second = client.get(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/sld-overlay"
+        ).json()
         assert overlay_first == overlay_second
 
     def test_golden_hash_determinism(self):
@@ -335,10 +357,12 @@ class TestDeleteScenarioWithRun:
         scenario = _create_scenario(name="Blokada usunięcia", element_ref="bus-main")
         sid = scenario["scenario_id"]
 
-        run_resp = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        run_resp = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert run_resp.status_code == 201, run_resp.text
 
-        delete_resp = client.delete(f"{BASE_URL}/fault-scenarios/{sid}")
+        delete_resp = client.delete(f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}")
         assert delete_resp.status_code == 409
         assert "powiązanymi przebiegami" in delete_resp.json()["detail"]
 
@@ -366,7 +390,9 @@ class TestCreateRunLocationOnBranch:
         assert resp.status_code == 201, resp.text
         sid = resp.json()["scenario_id"]
 
-        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        response = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert response.status_code == 409
         assert "zablokowana" in response.json()["detail"].lower()
 
@@ -385,7 +411,9 @@ class TestRunEnvelopeScenarioRef:
         scenario = _create_scenario(name="Koperta scenariusza", element_ref="bus-main")
         sid = scenario["scenario_id"]
 
-        run_resp = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        run_resp = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert run_resp.status_code == 201, run_resp.text
         run_id = run_resp.json()["id"]
 
@@ -408,13 +436,15 @@ class TestRunEnvelopeScenarioRef:
         sid = scenario["scenario_id"]
 
         update_resp = client.put(
-            f"{BASE_URL}/fault-scenarios/{sid}",
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}",
             json={"name": "Po aktualizacji"},
         )
         assert update_resp.status_code == 200, update_resp.text
         assert update_resp.json()["revision"] == 2
 
-        run_resp = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        run_resp = client.post(
+            f"{BASE_URL}/study-cases/{CASE_ID}/fault-scenarios/{sid}/runs", json={}
+        )
         assert run_resp.status_code == 201, run_resp.text
 
         run = get_run(_UUID(run_resp.json()["id"]))

@@ -430,6 +430,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "conductor.thermal_data_inconsistent",
+      "fix_navigation": {
+        "focus": "ith_1s_a",
+        "panel": "katalog",
+        "tab": "kable"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "conductor.thermal_data_missing",
       "fix_navigation": {
         "focus": "ith_1s_a",
@@ -1669,7 +1678,7 @@
       }
     }
   ],
-  "count": 196,
+  "count": 197,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1725,11 +1734,6 @@
       "action_type": "OPEN_MODAL",
       "modal_type": null,
       "panel": "transformer_panel"
-    },
-    {
-      "action_type": "OPEN_MODAL",
-      "modal_type": "ProtectionModal",
-      "panel": null
     },
     {
       "action_type": "OPEN_MODAL",

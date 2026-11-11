@@ -3,6 +3,7 @@ from __future__ import annotations
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
+from enm.zabezpieczenie import sterownik_pola
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
@@ -343,7 +344,6 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
                             "name": "Pole odpływowe 1",
                             "bay_role": "LINIA_ODG",
                             "bay_template_ref": "ZPUE_WLOSZCZOWA__RELF__LINE_OUT",
-                            "protection_ref": "prot/pole/1",
                         },
                         {
                             "name": "Pole odpływowe 2",
@@ -375,13 +375,16 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     # modelu w `bay_role` (dawniej tekst payloadu trafiał wprost do roli modelu).
     assert first["bay_role"] == "FEEDER"
     assert first["field_role"] == "LINIA_ODG"
-    # Powiązanie z zabezpieczeniem polowym.
-    assert first["protection_ref"] == "prot/pole/1"
+    # Powiązanie z zabezpieczeniem polowym (karta OCHRONA-JEDNO-ZRODLO): każde pole z szablonu
+    # ma JEDEN sterownik z zestawem funkcji szablonu; urządzenie dobiera wyłącznie `add_relay`.
+    for pole in (first, second):
+        sterownik = sterownik_pola(snapshot, pole["ref_id"])
+        assert sterownik is not None and sterownik["funkcje"]
+        assert not sterownik.get("catalog_ref")
     # Domknięcie długu V1: pole z rodziny katalogowej NIESIE wyposażenie z BOM-u
     # katalogowego pola (przedtem referencja producencka dawała pustą listę).
     assert len(first["primary_devices"]) == 6
     assert all(aparat["catalog_ref"] for aparat in first["primary_devices"])
-    assert second["protection_ref"] is None
 
 
 def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():

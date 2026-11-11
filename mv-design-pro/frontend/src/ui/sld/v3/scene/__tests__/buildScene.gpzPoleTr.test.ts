@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Branch, Bus, EnergyNetworkModel } from '../../../../../types/enm';
 import { pole } from '../../../../../test/pola';
+import { sterownikTestowy } from '../../../../../test/sterownik';
 import { buildSceneV3 } from '../buildScene';
 import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
 
@@ -49,9 +50,13 @@ function migawka(miejsce: Miejsce, grupa: string | null): { enm: EnergyNetworkMo
         gpz_section_id: sekcja.section_id,
         bay_number: 'FT1',
         equipment_refs: [trRef, WYLACZNIK],
-        protection_codes: ['87T', '51'],
       }),
     );
+    // Sterownik pola TR (ADR-022) z funkcjami 87T i 51 wyzwalającymi wyłącznik pola.
+    enm.protection_assignments = [
+      ...(enm.protection_assignments ?? []),
+      sterownikTestowy({ bayRef: POLE_TR, kody: ['87T', '51'], wylacznik: WYLACZNIK }),
+    ];
   }
   return { enm, trRef };
 }

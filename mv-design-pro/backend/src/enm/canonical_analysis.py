@@ -98,12 +98,18 @@ from enm.rozplyw_niesymetryczny_wynik import (
 )
 from enm.rozplyw_wysp import opis_wysp, scal_rozwiazania_wysp, scal_slady_oltc
 from enm.scenariusze import (
+    KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU,
     SCENARIUSZ_NORMALNY,
     EffectiveNetworkSnapshot,
     OperatingScenario,
     apply_scenario,
+    czy_scenariusz_przypadku,
+    naloz_wybor_przypadku,
     opcje_biegu_ze_scenariusza,
     referencja_koperty,
+    scenariusz_przypadku,
+    wybor_z_opcji,
+    zapis_wyboru_w_opcjach,
 )
 from enm.store import get_enm
 from enm.tolerancja_nn import dobierz_c_wezla
@@ -1190,6 +1196,7 @@ def ocen_model_biegu(
     analysis_type: str,
     options: dict[str, Any] | None = None,
     scenariusz: OperatingScenario | None = None,
+    case_id: str | None = None,
 ) -> OcenaModeluBiegu:
     """JEDNA ocena modelu liczonego dla biegu — bramy `create_run` i kwalifikowalności.
 
@@ -1209,13 +1216,33 @@ def ocen_model_biegu(
     """
     enm = get_enm(klucz_twin)
     scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
+    if czy_scenariusz_przypadku(scenariusz_biegu.scenario_id):
+        # Wybór zabezpieczeń przypadku nakłada się sam na każdy bieg swojego przypadku —
+        # wskazany jako scenariusz biegu byłby wyborem jednego przypadku w biegu innego.
+        raise OdmowaNazwana(
+            "Wybór zabezpieczeń przypadku nie jest scenariuszem do wskazania w biegu — "
+            "obowiązuje automatycznie w każdym biegu swojego przypadku.",
+            kod="bieg.scenariusz_przypadku_wskazany",
+            dane={"scenario_id": scenariusz_biegu.scenario_id},
+        )
     efektywna = apply_scenario(enm, scenariusz_biegu)
+    # ADR-022 (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN): wybór grupy nastaw i nadpisania
+    # nastaw przypadku na KAŻDYM biegu przypadku — ta sama ocena dla `create_run`
+    # i kwalifikowalności scenariusza zwarciowego (predykaty parami).
+    wybor = scenariusz_przypadku(klucz_twin, case_id) if case_id is not None else None
+    if wybor is not None:
+        efektywna = naloz_wybor_przypadku(efektywna, wybor)
     enm_liczony = (
         enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
     )
     validator = ENMValidator()
     walidacja = validator.validate(enm_liczony)
     opcje = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
+    opcje.pop(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU, None)
+    if wybor is not None:
+        # Zapis wyboru w opcjach (treść + rewizja): `input_hash`, świeżość wyniku i wariant
+        # w pamięci czytają go stąd. Klucz wyłącznie, gdy przypadek ma wybór.
+        opcje[KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU] = zapis_wyboru_w_opcjach(wybor)
     blokady: list[BlokadaModeluBiegu] = []
     # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
     # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
@@ -1309,7 +1336,11 @@ def create_run(
     ktory jawne `options` wolajacego nakladaja sie z pierwszenstwem.
     """
     ocena = ocen_model_biegu(
-        klucz_twin=klucz_twin, analysis_type=analysis_type, options=options, scenariusz=scenariusz
+        klucz_twin=klucz_twin,
+        analysis_type=analysis_type,
+        options=options,
+        scenariusz=scenariusz,
+        case_id=case_id,
     )
     if ocena.blokady:
         raise ocena.odmowa()
@@ -1381,7 +1412,11 @@ def create_run(
     run = CanonicalRun(
         id=uuid4(),
         case_id=case_id,
-        project_id=project_id,
+        # Ten sam projekt co w kopercie (parametr albo klucz twin). Dawne `project_id=project_id`
+        # zostawiało `None` w rekordzie biegu dla wołających bez parametru (bieg ze scenariusza
+        # zwarciowego, seria, biegi akademickie): koperta znała projekt, a rekord nie, więc
+        # eksport projektu (filtr po `project_id`) gubił te biegi.
+        project_id=project_id_koperty,
         analysis_type=analysis_type,
         status="CREATED",
         created_at=datetime.now(UTC),
@@ -1547,6 +1582,16 @@ def bieg_wariantu(
     `options=None` = opcje biegu bazowego.
     """
     opcje = dict(bazowy.options if options is None else options)
+    # ADR-022: wariant dziedziczy wybór zabezpieczeń przypadku biegu bazowego (ta sama treść
+    # i rewizja, zapisane w opcjach bazy) — nałożony na migawkę wariantu tą samą funkcją co
+    # w `create_run`; świeżość wariantu czyta go z tych samych opcji.
+    opcje.pop(KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU, None)
+    wybor = wybor_z_opcji(bazowy.options)
+    if wybor is not None:
+        migawka = naloz_wybor_przypadku(migawka, wybor)
+        opcje[KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU] = bazowy.options[
+            KLUCZ_OPCJI_ZABEZPIECZEN_PRZYPADKU
+        ]
     input_hash = _compute_input_hash(
         case_id=bazowy.case_id,
         analysis_type=analysis_type,
@@ -1556,7 +1601,13 @@ def bieg_wariantu(
     koperta_bazy = bazowy.koperta
     envelope: dict[str, Any] | None = None
     if koperta_bazy is not None:
-        if koperta_bazy.snapshot_hash != bazowy.snapshot_hash:
+        # Baza policzona WYŁĄCZNIE na wyborze zabezpieczeń przypadku (stan normalny ⊕ wybór —
+        # koperta niesie referencję scenariusza przypadku) nie jest składaniem scenariuszy:
+        # wybór nałożono na wariant wyżej.
+        baza_na_wyborze = koperta_bazy.scenario_ref is not None and czy_scenariusz_przypadku(
+            koperta_bazy.scenario_ref[0]
+        )
+        if koperta_bazy.snapshot_hash != bazowy.snapshot_hash and not baza_na_wyborze:
             # Bieg bazowy sam policzono na migawce z nadpisaniami scenariusza —
             # wariant wariantu (skladanie scenariuszy) nie jest modelowany
             # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,
@@ -2363,7 +2414,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         kroki.append(
             ProtectionTraceStep(
                 step="nastawy_urzadzenia",
-                description_pl=f"Nastawy zabezpieczenia {nastawy.nazwa_pl} z modelu",
+                description_pl=f"Nastawy zabezpieczenia {nastawy.oznaczenie_pl} z modelu",
                 inputs={"urzadzenie_ref": nastawy.urzadzenie_ref},
                 outputs=nastawy.to_dict(),
             )
@@ -2372,7 +2423,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             kroki.append(
                 ProtectionTraceStep(
                     step="strefa_urzadzenia",
-                    description_pl=f"Strefa zabezpieczenia {nastawy.nazwa_pl} z topologii modelu",
+                    description_pl=f"Strefa zabezpieczenia {nastawy.oznaczenie_pl} z topologii modelu",
                     inputs={"breaker_ref": nastawy.breaker_ref},
                     outputs=wynik.strefy[nastawy.urzadzenie_ref],
                 )
@@ -2382,7 +2433,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             ProtectionTraceStep(
                 step="ocena_punktu",
                 description_pl=(
-                    f"Zabezpieczenie {ocena.nazwa_urzadzenia_pl} — zwarcie w punkcie "
+                    f"Zabezpieczenie {ocena.oznaczenie_urzadzenia_pl} — zwarcie w punkcie "
                     f"{ocena.nazwa_punktu_pl}"
                 ),
                 inputs={
@@ -2405,7 +2456,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
         kroki.append(
             ProtectionTraceStep(
                 step="odmowa_urzadzenia",
-                description_pl=f"Ocena zabezpieczenia {odmowa.nazwa_pl} wstrzymana",
+                description_pl=f"Ocena zabezpieczenia {odmowa.oznaczenie_pl} wstrzymana",
                 inputs={"urzadzenie_ref": odmowa.urzadzenie_ref},
                 outputs={
                     "braki": [b.to_dict() for b in odmowa.braki],
@@ -4475,8 +4526,32 @@ def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
     return item.get(KLUCZ_ROZPLYWU) is not None or bool(item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU))
 
 
+#: Kroki śladu solvera IEC 60909, których wzór (``formula_latex``) idzie do wyprowadzenia
+#: prądów punktu (karta KD6-SZCZEGOLY): klucz kroku → klucz wielkości.
+_KROKI_WZOROW_PRADOW: dict[str, str] = {"Ip": "ip", "Ith": "ith", "Ib": "ib"}
+
+
+def _sc_wyprowadzenie_pradow(item: Mapping[str, Any]) -> dict[str, Any]:
+    """Współczynniki m, n i wzory i_p / I_th / I_b punktu z wiersza solvera (WHITE BOX).
+
+    Wzory pochodzą z kroków śladu TEGO wiersza (przypadek I_b — z maszynami albo odległy od
+    generatora — wybiera solver), liczby m, n z jego wyniku; ``None`` = solver ich nie podał.
+    """
+    wzory: dict[str, str] = {}
+    for krok in item.get("white_box_trace") or ():
+        klucz = _KROKI_WZOROW_PRADOW.get(str(krok.get("key")))
+        wzor = krok.get("formula_latex")
+        if klucz is not None and isinstance(wzor, str) and wzor and klucz not in wzory:
+            wzory[klucz] = wzor
+    return {
+        "m_factor": item.get("m_factor"),
+        "n_factor": item.get("n_factor"),
+        "wzory_pradow": wzory,
+    }
+
+
 def build_short_circuit_results(
-    run: CanonicalRun, *, include_rozplyw: bool = False
+    run: CanonicalRun, *, include_rozplyw: bool = False, include_wyprowadzenie: bool = False
 ) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
@@ -4496,6 +4571,9 @@ def build_short_circuit_results(
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
                 **_sc_pelny_bilans(item),
+                # Karta KD6-SZCZEGOLY: m, n i wzory prądów punktu — wyłącznie na żądanie
+                # konsumenta wyprowadzenia (wytrzymałość aparatury), lista bez zmian.
+                **(_sc_wyprowadzenie_pradow(item) if include_wyprowadzenie else {}),
                 # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
                 # (pole addytywne — starsze wyniki bez pola → None).
                 # V12K-281 (K13): lista wierszy zbiorczych domyślnie BEZ rozpływu —

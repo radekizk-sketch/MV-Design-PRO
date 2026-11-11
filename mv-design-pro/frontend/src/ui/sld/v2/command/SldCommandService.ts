@@ -5,7 +5,8 @@
  * Dostarcza:
  *   - rejestr menu per typ obiektu (SldMenuRegistry)
  *   - publish toast events (Polish messages)
- *   - integrację z BuildSequence (8 komend) + HistoryStore (undo/redo)
+ *   (operacje modelu wykonują wywołujący przez `sldActionExecutor`; ta fasada nie trzyma
+ *   własnej sekwencji komend ani historii)
  */
 
 export type SldElementKindForMenu =

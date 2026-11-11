@@ -46,6 +46,7 @@ import { czySzablonPojedynczegoPola, type SwitchgearFamily } from '../catalog/Sw
 import type { CatalogType, CTCatalogType, MVApparatusType } from '../catalog/types';
 import { zaczepyPrzekladnika } from '../sld/v2/model/tabliczkaPrzekladnika';
 import { czyLacznik } from '../shared/stanLacznika';
+import { refZrodlaU0Pola } from '../shared/sterownikZabezpieczen';
 import {
   BEZ_ZMIANY_KLASY,
   BEZ_ZMIANY_ZRODLA_U0,
@@ -219,7 +220,7 @@ export function EdytorWyposazeniaPola({
   // Klasa pola po zapisie (zmiana z formularza albo klasa rekordu) — wejście oceny szablonów.
   const klasaPo = klasa.zmien ? klasa.wartosc : (bay.klasa_pola ?? null);
   // Powiązanie źródła 3U₀ po zapisie (zmiana z formularza albo powiązanie rekordu).
-  const zrodloU0Po = zmianaZrodlaU0.zmien ? zmianaZrodlaU0.wartosc : (bay.zrodlo_u0_ref ?? null);
+  const zrodloU0Po = zmianaZrodlaU0.zmien ? zmianaZrodlaU0.wartosc : refZrodlaU0Pola(snapshot, bay.ref_id);
 
   // Szablony kanoniczne z oceną dopuszczalności W TYM POLU (rola, pole GPZ, rodzina rozdzielnicy,
   // klasa) — filtr i powody odmowy liczy backend tą samą regułą co strażnik operacji.

@@ -2,7 +2,7 @@
  * Nastawy zabezpieczenia Z MODELU po rozwiązaniu przez backend — kontrakt odczytu.
  *
  * Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): nastawy żyją w modelu przy urządzeniu
- * (`ProtectionAssignment.settings`). Rozwiązanie — przeliczenie progu na stronę pierwotną
+ * (grupy nastaw sterownika pola, `ProtectionAssignment.grupy_nastaw`). Rozwiązanie — przeliczenie progu na stronę pierwotną
  * przez przekładnię przekładnika, zakresy katalogu z podstawą, nazwane braki z akcją
  * naprawczą — robi JEDNA ścieżka backendu
  * (`application/analyses/protection/ocena_nadpradowa.py::NastawyUrzadzenia.to_dict`).
@@ -54,32 +54,40 @@ export interface ZakresyKataloguNastaw {
   readonly funkcje: readonly string[];
   readonly krzywe: readonly string[];
   readonly charakterystyki: readonly PozycjaSlownika[];
-  readonly overcurrent_51: ZakresFunkcji;
-  readonly overcurrent_50: ZakresFunkcji;
+  /** Zakresy stopni nadprądowych — klucz = kod funkcji rejestru. */
+  readonly '51': ZakresFunkcji;
+  readonly '50': ZakresFunkcji;
+}
+
+/** Pochodzenie charakterystyk: profil wskazany przez projektanta, profil wyrobu z katalogu albo
+ *  profil roboczy (zasada nr 4 — wyrób nie podał zakresów; jakość `ESTIMATED`). */
+export type ZrodloCharakterystyk = 'PROJEKTANT' | 'WYROB' | 'WARTOSC_ROBOCZA';
+
+export interface CharakterystykiSterownikaWidok {
+  readonly profil: string;
+  readonly model: string;
+  readonly zrodlo: ZrodloCharakterystyk;
+  readonly jakosc: string | null;
+  readonly powod_pl: string | null;
 }
 
 /** Nastawy urządzenia z modelu po rozwiązaniu — albo nazwane braki, które je blokują. */
 export interface NastawyUrzadzeniaWidok {
   readonly urzadzenie_ref: string;
   readonly nazwa_pl: string;
-  readonly breaker_ref: string;
+  readonly breaker_ref: string | null;
   readonly ct_ref: string | null;
   readonly przekladnia_a: readonly [number, number] | null;
   readonly klasa_ct: string | null;
   readonly alf: number | null;
   readonly pozycja_katalogu: string | null;
   readonly zakresy: ZakresyKataloguNastaw | null;
+  /** Źródło charakterystyk funkcji (`ocena_nadpradowa.CharakterystykiSterownika.to_dict`). */
+  readonly charakterystyki: CharakterystykiSterownikaWidok | null;
   readonly stopnie: readonly StopienNastawWidok[];
   readonly braki: readonly BrakNastaw[];
   readonly funkcje_nieoceniane: readonly { funkcja: string; powod_pl: string }[];
   readonly gotowe: boolean;
-}
-
-/** Słownik edytora nastaw (listy wyboru dla urządzenia bez zakresów katalogu). */
-export interface SlownikNastaw {
-  readonly funkcje: readonly PozycjaSlownika[];
-  readonly charakterystyki: readonly PozycjaSlownika[];
-  readonly jednostki_progu: readonly PozycjaSlownika[];
 }
 
 /**

@@ -46,6 +46,7 @@ from application.analyses.protection.ocena_nadpradowa import (
     OcenaPunktu,
     WynikOceny,
     czas_urzadzenia,
+    streszczenie_brakow_nastaw,
 )
 from domain.protection_device import (
     OverloadCheck,
@@ -109,7 +110,7 @@ def _najczulszy_stopien(nastawy: NastawyUrzadzenia) -> Any:
 def _stopien_przeciazeniowy(nastawy: NastawyUrzadzenia) -> Any:
     """Stopień, który ma NIE działać przy prądzie roboczym: zwłoczny I> (51), a gdy go nie
     ma — najczulszy (każdy stopień pobudzony prądem roboczym to fałszywe zadziałanie)."""
-    zwloczne = [s for s in nastawy.stopnie if s.funkcja == "overcurrent_51"]
+    zwloczne = [s for s in nastawy.stopnie if s.funkcja == "51"]
     return zwloczne[0] if zwloczne else _najczulszy_stopien(nastawy)
 
 
@@ -264,7 +265,7 @@ class OvercurrentCoordinationAnalyzer:
         wyniki: list[SensitivityCheck] = []
         for ref in sorted(set(nastawy) | set(odmowy)):
             if ref not in nastawy or not any(k[0] == ref for k in oceny_min):
-                braki = odmowy[ref].braki if ref in odmowy else ()
+                odmowa = odmowy.get(ref)
                 wyniki.append(
                     SensitivityCheck(
                         device_id=ref,
@@ -274,7 +275,11 @@ class OvercurrentCoordinationAnalyzer:
                         margin_percent=None,
                         required_ratio=wymagany,
                         notes_pl=(
-                            " ".join(b.komunikat_pl for b in braki)
+                            (
+                                streszczenie_brakow_nastaw(odmowa.oznaczenie_pl, odmowa.braki)
+                                if odmowa is not None
+                                else ""
+                            )
                             or "Bieg minimalny nie ma punktu zwarcia w strefie urządzenia."
                         ),
                     )
@@ -327,7 +332,7 @@ class OvercurrentCoordinationAnalyzer:
             slad.append(
                 {
                     "step": "czulosc",
-                    "description_pl": f"Czułość zabezpieczenia {n.nazwa_pl}",
+                    "description_pl": f"Czułość zabezpieczenia {n.oznaczenie_pl}",
                     "inputs": {
                         "punkty": [
                             {"punkt_ref": o.punkt_ref, "prad_przekaznika_a": o.prad_przekaznika_a}
@@ -410,7 +415,7 @@ class OvercurrentCoordinationAnalyzer:
             slad.append(
                 {
                     "step": "przeciazalnosc",
-                    "description_pl": f"Przeciążalność zabezpieczenia {n.nazwa_pl}",
+                    "description_pl": f"Przeciążalność zabezpieczenia {n.oznaczenie_pl}",
                     "inputs": {
                         "prad_roboczy_a": robocze.prad_a,
                         "galaz_ref": robocze.galaz_ref,
@@ -519,7 +524,7 @@ class OvercurrentCoordinationAnalyzer:
                         time_s=decydujacy["t_s"],
                     )
                 )
-            zwloczny = next((s for s in n.stopnie if s.funkcja == "overcurrent_51"), None)
+            zwloczny = next((s for s in n.stopnie if s.funkcja == "51"), None)
             odniesienie = zwloczny if zwloczny is not None else najczulszy
             krzywe.append(
                 TCCCurve(

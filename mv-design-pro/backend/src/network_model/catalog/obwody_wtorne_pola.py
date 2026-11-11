@@ -9,9 +9,10 @@ mierzy z którego rdzenia albo uzwojenia, który sygnał wysyła do wyłącznika
 pole wymienia z rozdzielnią — nie było nigdzie poza obrazem. Bez nich karta pola nie umiała
 pokazać, z czego funkcja mierzy, a przyszła karta nastaw (ADR-022) nie miałaby czego związać.
 
-ZAKRES. Moduł opisuje WZORZEC (szablon), nie nastawy ani stan funkcji: ten należy do aktywów EAZ
-modelu (ADR-022, `enm.models.ProtectionAssignment`, `BayProtectionControlUnit`) — luka zapisana
-w `docs/uiux/UX04_POLE_LINIOWE_WZORZEC.md` (tabela luk). Każdy wpis ma status weryfikacji:
+ZAKRES. Moduł opisuje WZORZEC (szablon), nie nastawy ani stan funkcji: ten należy do JEDYNEGO
+sterownika pola w modelu (ADR-022, `enm.models.ProtectionAssignment` — wejścia, funkcje, grupy
+nastaw, macierz wyzwoleń). Wzorzec wypełnia wiązania sterownika przy budowie pola
+(`enm.zabezpieczenie.ustaw_funkcje_pola`). Każdy wpis ma status weryfikacji:
 
 * ``ZWERYFIKOWANE_NA_RYSUNKU`` — linia albo napis widoczny na rysunku standardu;
 * ``ODCZYT_TEKSTU`` — z treści standardu albo IRiESD (punkt w podstawie);
@@ -27,7 +28,7 @@ oznaczenie, numer rdzenia/uzwojenia) sprawdza walidator `BayTemplate`.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from network_model.catalog.funkcje_eaz import kody_spoza_slownika
@@ -48,7 +49,7 @@ __all__ = [
     "SygnalPola",
     "StatusWeryfikacji",
     "WejscieFunkcjiEaz",
-    "powiazania_aparatow_pola",
+    "napedy_aparatow_pola",
 ]
 
 StatusWeryfikacji = Literal["ZWERYFIKOWANE_NA_RYSUNKU", "ODCZYT_TEKSTU", "INTERPRETACJA"]
@@ -86,7 +87,7 @@ OPIS_NAPEDU_PL: dict[RodzajNapedu, str] = {
 #: Rodzaj aparatu pola (`BayPrimaryDevice.kind`), z którego mierzy wejście funkcji EAZ — jedno
 #: źródło dla walidatora szablonu (`bay_templates._sprawdz_obwody_wtorne`), odczytu pola
 #: (`enm.pole_liniowe_gpz._opis_wejscia`) i materializacji powiązań na aparatach
-#: (`powiazania_aparatow_pola`).
+#: (sterownik pola: `enm.zabezpieczenie.ustaw_funkcje_pola`).
 RODZAJ_APARATU_WEJSCIA: dict[str, str] = {
     "RDZEN_CT": "CT",
     "UZWOJENIE_VT": "VT",
@@ -175,7 +176,7 @@ class PrzypisanieObwoduPrzekladnika(BaseModel):
 class NapedAparatuPola(BaseModel):
     """Napęd łącznika wzorca pola: oznaczenie i rodzaj aparatu, przy którym rysunek stawia znak
     napędu, oraz rodzaj napędu. Aparat pola dostaje napęd po OZNACZENIU i RODZAJU
-    (`powiazania_aparatow_pola`) — łącznik innego rodzaju o tym samym oznaczeniu (wariant
+    (`napedy_aparatow_pola`) — łącznik innego rodzaju o tym samym oznaczeniu (wariant
     wykonania łączników, którego rysunek nie przedstawia) napędu nie dostaje."""
 
     aparat: str  # oznaczenie aparatu na rysunku (np. „Q0", „Q1")
@@ -720,68 +721,32 @@ OBWODY_WTORNE_WYKONANIA_POLA: dict[str, ObwodyWtornePola] = {
 }
 
 
-#: Pola rekordu aparatu pola wyprowadzane z obwodów wtórnych wzorca (`powiazania_aparatow_pola`).
-POLA_POWIAZAN_APARATU = ("naped", "funkcje_eaz_zasilane", "funkcje_eaz_wylaczajace")
+#: Pole rekordu aparatu pola wyprowadzane z obwodów wtórnych wzorca (`napedy_aparatow_pola`).
+#: Powiązania funkcja→przekładnik i funkcja→wyłącznik NIE są polami aparatu: niesie je JEDYNY
+#: sterownik pola (`ProtectionAssignment.wejscia` / `macierz_wyzwolen`, karta
+#: OCHRONA-JEDNO-ZRODLO).
+POLA_POWIAZAN_APARATU = ("naped",)
 
 
-def powiazania_aparatow_pola(
+def napedy_aparatow_pola(
     aparaty: Sequence[Mapping[str, Any]],
     obwody: ObwodyWtornePola | None,
-    funkcje_pola: Collection[str],
 ) -> list[dict[str, Any]]:
-    """Powiązania obwodów wtórnych wzorca przeniesione na rekordy aparatów pola (nowe słowniki).
+    """Napędy łączników wzorca przeniesione na rekordy aparatów pola (nowe słowniki).
 
-    Reguła ta sama co odczyt pola (`enm.pole_liniowe_gpz._obwody_funkcji`): wejście funkcji
-    wskazuje aparat pola po OZNACZENIU i RODZAJU (`RODZAJ_APARATU_WEJSCIA`), wyłącznik
-    wykonawczy — wyłącznik (`CB`) o oznaczeniu `PowiazanieFunkcjiEaz.wylacznik`. Wynik:
-
-    * ``funkcje_eaz_zasilane`` — przekładnik (CT, VT, Ferrantiego): kody funkcji, które z niego
-      mierzą (kolejność powiązań wzorca, bez powtórzeń);
-    * ``funkcje_eaz_wylaczajace`` — wyłącznik: kody funkcji, które na niego działają;
-    * ``naped`` — łącznik, przy którym rysunek stawia znak napędu (`ObwodyWtornePola.napedy`),
-      po oznaczeniu i rodzaju aparatu — niezależnie od zestawu funkcji pola (napęd jest
-      atrybutem łącznika, nie powiązaniem funkcji).
-
-    Funkcje przenoszone są WYŁĄCZNIE dla powiązań funkcji, które pole ma (`funkcje_pola` =
-    `Bay.protection_codes`): zestaw pola liniowego jest korygowany klasą pola (IRiESD
-    II.4.5.4.2 — bez SCO w polu z generacją, bez SPZ w polu dedykowanym wytwórcy,
-    `bay_templates.funkcje_eaz_pola_liniowego`), a funkcja, której pole nie ma, nie mierzy
-    z przekładnika i nie działa na wyłącznik. Jedno źródło zestawu funkcji dla przekaźnika
-    pola na rysunku i powiązań aparatów (predykat parami).
-
-    Aparat, którego wzorzec nie wiąże (inne oznaczenie, inny rodzaj, pole bez obwodów
-    wzorca), tych pól nie dostaje — dawne wartości są zdejmowane, więc ponowne wyposażenie
-    pola nie zostawia powiązań aparatu, którego wzorzec już nie wiąże."""
+    ``naped`` dostaje łącznik, przy którym rysunek stawia znak napędu
+    (`ObwodyWtornePola.napedy`), po OZNACZENIU i RODZAJU aparatu — napęd jest atrybutem
+    łącznika, nie powiązaniem funkcji. Aparat, którego wzorzec nie wiąże (inne oznaczenie,
+    inny rodzaj, pole bez obwodów wzorca), pola nie dostaje — dawna wartość jest zdejmowana,
+    więc ponowne wyposażenie pola nie zostawia napędu, którego wzorzec już nie przewiduje."""
     wynik = [{k: v for k, v in a.items() if k not in POLA_POWIAZAN_APARATU} for a in aparaty]
     if obwody is None:
         return wynik
-    po_oznaczeniu: dict[str, list[dict[str, Any]]] = {}
-    for aparat in wynik:
-        oznaczenie = aparat.get("designation")
-        if isinstance(oznaczenie, str) and oznaczenie:
-            po_oznaczeniu.setdefault(oznaczenie, []).append(aparat)
-
-    def _dopisz(aparat: dict[str, Any], klucz: str, kod: str) -> None:
-        lista = aparat.setdefault(klucz, [])
-        if kod not in lista:
-            lista.append(kod)
-
     for naped in obwody.napedy:
-        for aparat in po_oznaczeniu.get(naped.aparat, []):
-            if aparat.get("kind") == naped.rodzaj_aparatu:
+        for aparat in wynik:
+            if (
+                aparat.get("designation") == naped.aparat
+                and aparat.get("kind") == naped.rodzaj_aparatu
+            ):
                 aparat["naped"] = naped.naped
-    obecne = set(funkcje_pola)
-    for p in obwody.powiazania:
-        if p.funkcja not in obecne:
-            continue
-        if p.wylacznik is not None:
-            for aparat in po_oznaczeniu.get(p.wylacznik, []):
-                if aparat.get("kind") == "CB":
-                    _dopisz(aparat, "funkcje_eaz_wylaczajace", p.funkcja)
-        for w in p.wejscia:
-            if w.aparat is None:
-                continue
-            for aparat in po_oznaczeniu.get(w.aparat, []):
-                if aparat.get("kind") == RODZAJ_APARATU_WEJSCIA[w.rodzaj]:
-                    _dopisz(aparat, "funkcje_eaz_zasilane", p.funkcja)
     return wynik

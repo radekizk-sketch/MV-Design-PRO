@@ -1242,7 +1242,7 @@ def ocen_wytrzymalosc_aparatu(
     i_th_ka: float | None,
     i_th_duration_s: float | None,
     i_peak_calculated_ka: float,
-    i_thermal_calculated_ka: float,
+    i_thermal_calculated_ka: float | None,
     t_clearing_s: float | None,
 ) -> dict:
     """JĄDRO WERDYKTU wytrzymałości (I_dyn / I_th) — jedno na cały system.
@@ -1265,9 +1265,15 @@ def ocen_wytrzymalosc_aparatu(
     (aparat 25 kA/1 s „wytrzymywał” 56 kA przy 0,2 s), a ograniczenie czasu od dołu
     do 0,01 s tylko przycinało ten wzrost — karta WYTRZYMALOSC-PRAD-POLA.
 
-    BRAK DANEJ NIE JEST WERDYKTEM: nieznane znamiona albo nieznany czas
-    wyłączenia dają ``None`` przy odpowiednim kryterium (a nie ``False``) —
-    „nie da się sprawdzić" to inny stan niż „nie wytrzymuje".
+    PRĄD PORÓWNYWANY — ``i_thermal_calculated_ka`` to I_th przy TYM SAMYM czasie wyłączenia
+    ``t_clearing_s`` co limit (aparat pola: ``solvers.wytrzymalosc_cieplna_pola``); ``None``
+    — prądu cieplnego przy tym czasie nie wyznaczono (kryterium bez porównania, nie spełnione).
+
+    BRAK DANEJ NIE JEST WERDYKTEM: brak znamion albo brak czasu wyłączenia dają ``None``
+    przy odpowiednim kryterium (a nie ``False``) — „nie da się sprawdzić" to inny stan niż
+    „nie wytrzymuje". Komunikat takiego stanu zaczyna się od „BRAK DANYCH:” i nazywa brak
+    (dyrektywa właściciela, karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN pakiet 8: bez słowa
+    „nieustalone” w tekstach dla użytkownika).
     """
     import math
 
@@ -1281,7 +1287,8 @@ def ocen_wytrzymalosc_aparatu(
     util_th: float | None = None
     i_th_effective: float | None = None
     if (
-        i_th_ka is not None
+        i_thermal_calculated_ka is not None
+        and i_th_ka is not None
         and i_th_ka > 0
         and i_th_duration_s is not None
         and i_th_duration_s > 0
@@ -1302,8 +1309,10 @@ def ocen_wytrzymalosc_aparatu(
     if i_th_ok is None:
         if i_th_ka is None or i_th_duration_s is None:
             braki.append("prądu cieplnego znamionowego")
-        else:
+        elif t_clearing_s is None:
             braki.append("czasu wyłączenia")
+        else:
+            braki.append("prądu cieplnego zastępczego przy czasie wyłączenia")
 
     niezaliczone: list[str] = []
     if i_dyn_ok is False and util_dyn is not None and i_dyn_ka is not None:
@@ -1327,7 +1336,7 @@ def ocen_wytrzymalosc_aparatu(
             zaliczone.append(f"wykorzystanie wytrzymałości cieplnej {util_th:.0f}%")
         czesc_zaliczona = f" Sprawdzone: {', '.join(zaliczone)}." if zaliczone else ""
         message = (
-            f"NIEUSTALONE: aparatura „{etykieta_pl}” — brak {', '.join(braki)}."
+            f"BRAK DANYCH: aparatura „{etykieta_pl}” — brak {', '.join(braki)}."
             f"{czesc_zaliczona}"
         )
     else:

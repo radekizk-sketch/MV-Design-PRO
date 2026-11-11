@@ -146,6 +146,7 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
           operating_cases_count: 1,
           canonical_runs_count: 4,
           enm_models_count: 2,
+          scenariusze_count: 5,
         },
       }),
     }));
@@ -172,6 +173,8 @@ describe('EkranArchiwum — odtworzenie projektu z paczki', () => {
     // Przebiegi = biegi kanoniczne archiwum 3.0.0 (jedyny rejestr biegów).
     expect(wartosc(T.podgladPrzebiegi)).toBe('4');
     expect(wartosc(T.podgladModele)).toBe('2');
+    // Rejestry magazynu scenariuszy (scenariusze nazwane + wybory zabezpieczeń przypadków).
+    expect(wartosc(T.podgladScenariusze)).toBe('5');
     // Wersja zapisu i odcisk paczki — metadane produkcyjne, poza pierwszym planem.
     expect(podglad).not.toHaveTextContent('abcdef0123456789');
     expect(podglad).not.toHaveTextContent(T.podgladWersja);

@@ -35,7 +35,12 @@ def _pierwszy(m: dict[str, Any], typ: str) -> dict[str, Any]:
 
 
 def _nastawa(m: dict[str, Any]) -> None:
-    m["protection_assignments"][0]["settings"][0]["time_multiplier"] = 0.9
+    # Pierwszy sterownik z nastawami: zwłoka członu 50 w grupie aktywnej (jedna struktura
+    # sterownika — karta OCHRONA-JEDNO-ZRODLO).
+    sterownik = next(p for p in m["protection_assignments"] if p["grupy_nastaw"])
+    (grupa,) = (g for g in sterownik["grupy_nastaw"] if g["numer"] == sterownik["aktywna_grupa"])
+    (zwloka,) = (n for n in grupa["funkcje"][0]["nastawy"] if n["klucz"] == "zwloka_s")
+    zwloka["wartosc"] = 0.9
 
 
 def _bez_przypisania(m: dict[str, Any]) -> None:

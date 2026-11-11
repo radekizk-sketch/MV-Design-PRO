@@ -1039,18 +1039,26 @@ describe('UX-04 — blok zabezpieczeń tuż przy wyłączniku Q0, środek na wys
  * obce elementy, numeru „52" bez związku nie ma, linia wyłączania kończy się na zacisku
  * sterującym cewki wyłączającej Q0 (port `wylacz` symbolu wyłącznika), a przekładnik Ferrantiego
  * T2 ma linię pomiarową do bloku (funkcja ziemnozwarciowa 51N z rdzenia T2, ENEA Z.10 s.89).
- * Wyrocznia z modelu (`Bay.protection_codes`, rekordy aparatów), nie z kompozycji; iniekcje na
+ * Wyrocznia z modelu (sterownik pola `ProtectionAssignment`, rekordy aparatów), nie z kompozycji; iniekcje na
  * gotowej scenie czerwienią każdy warunek. Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki
  * {trójpołożeniowy, stały} × sekcja {1, 2} × pole {zajęte, wolne} (fikstury) × warunek bloku
  * {kody, ramka, „52", cewka, T2}.
  */
+/** Wyrocznia kodów pola: SUROWY rekord sterownika (`bay_ref` pola), funkcje `wlaczona !== false`
+ *  w kolejności zapisu, kod raz (dwa stopnie jednej funkcji — jeden kod). */
+function kodySterownikaPola(enm: EnergyNetworkModel, bayRef: string): string[] {
+  const sterownik = (enm.protection_assignments ?? []).find((pa) => pa.bay_ref === bayRef);
+  const kody: string[] = [];
+  for (const f of sterownik?.funkcje ?? []) if (f.wlaczona !== false && !kody.includes(f.kod)) kody.push(f.kod);
+  return kody;
+}
+
 function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): string[] {
   const bledy: string[] = [];
   const zawiera = (a: Rect, b: Rect): boolean =>
     b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height;
   for (const pole of polaLiniowe(enm)) {
-    const bay = (enm.bays ?? []).find((b) => b.ref_id === pole.ref)!;
-    const kodyModelu = [...(bay.protection_codes ?? [])];
+    const kodyModelu = kodySterownikaPola(enm, pole.ref);
     const przekaznik = przekaznikPola(scena, pole.ref);
     if (!przekaznik) {
       bledy.push(`${pole.ref}: brak bloku zabezpieczeń`);
@@ -1249,7 +1257,7 @@ describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja f
       'kolejności danych',
     ],
   ] as const)('iniekcja: %s — czerwień', (_opis, zmiana, komunikat) => {
-    expect(komorkiKodow(scenaBazowa).length).toBe((enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.length);
+    expect(komorkiKodow(scenaBazowa).length).toBe(kodySterownikaPola(enmZ11, poleZ111.ref).length);
     const s = zmien(zmiana);
     expect(naruszeniaBlokuPrzekaznika(enmZ11, s).join('\n')).toContain(komunikat);
   });
@@ -1369,7 +1377,7 @@ describe('UX-04 — blok zabezpieczeń: ramka bez okręgu, jedna reprezentacja f
 
 /**
  * Test kontraktowy korekty v2 (karta pkt 2): kody bloku WYŁĄCZNIE z konfiguracji pola w modelu
- * (`Bay.protection_codes`) — bez zaszytej liczby, listy ani kolejności. Dla N funkcji pola
+ * (włączone funkcje sterownika pola, ADR-022) — bez zaszytej liczby, listy ani kolejności. Dla N funkcji pola
  * N ∈ {0, 1, 2, 7, 9} na LOD2 WSZYSTKIE kody stoją w ramce w dwóch kolumnach, liczba wierszy
  * ⌈N/2⌉, kolejność = kolejność danych (lewa kolumna z góry na dół, potem prawa), bez „+n"; na LOD1
  * ta sama ramka bez kodów, na LOD0 GPZ jest zwinięty (bloku nie ma). Kody — lista funkcji pola
@@ -1384,11 +1392,14 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
   const zKodami = (enm: EnergyNetworkModel, n: number): EnergyNetworkModel => {
     const kopia = structuredClone(enm);
     const liniowe = new Set(polaLiniowe(enm).map((p) => p.ref));
-    for (const b of kopia.bays ?? []) {
-      if (!liniowe.has(b.ref_id)) continue;
-      const wlasne = [...(b.protection_codes ?? [])].reverse();
+    for (const pa of kopia.protection_assignments ?? []) {
+      if (!pa.bay_ref || !liniowe.has(pa.bay_ref)) continue;
+      const wlasne = [...kodySterownikaPola(enm, pa.bay_ref)].reverse();
       const dopelnienie = ['67N', '27', '59', '81U', '81O', '46', '49', '21', '25'].filter((k) => !wlasne.includes(k));
-      (b as { protection_codes?: string[] }).protection_codes = [...wlasne, ...dopelnienie].slice(0, n);
+      const istniejace = new Map(pa.funkcje.filter((fn) => fn.wlaczona !== false).map((fn) => [fn.kod, fn] as const));
+      pa.funkcje = [...wlasne, ...dopelnienie].slice(0, n).map((kod) => istniejace.get(kod) ?? { ref: `${pa.ref_id}-funkcja-${kod}`, kod });
+      const refy = new Set(pa.funkcje.map((fn) => fn.ref));
+      pa.macierz_wyzwolen = (pa.macierz_wyzwolen ?? []).filter((w) => refy.has(w.funkcja_ref));
     }
     return kopia;
   };
@@ -1399,7 +1410,7 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
       it(`${nazwaFx} · N = ${n}: LOD2 — kody z danych w ramce, ⌈N/2⌉ wierszy; LOD1 — ramka bez kodów; LOD0 — brak; oba motywy bez okręgu`, () => {
         const model = zKodami(enm, n);
         const pola = polaLiniowe(model);
-        for (const pole of pola) expect((model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!.length, pole.ref).toBe(n);
+        for (const pole of pola) expect(kodySterownikaPola(model, pole.ref).length, pole.ref).toBe(n);
         const l2 = buildSceneV3(model, 2);
         if (n === 0) {
           for (const pole of pola) {
@@ -1410,11 +1421,11 @@ describe('UX-04 — kontrakt bloku zabezpieczeń: N funkcji z danych × LOD × m
           const bezT2 = (komunikat: string): boolean =>
             !(
               komunikat.endsWith('przekładnik Ferrantiego bez linii pomiarowej do przekaźnika') &&
-              !(model.bays ?? []).find((b) => komunikat.startsWith(`${b.ref_id}:`))!.protection_codes!.includes('51N')
+              !kodySterownikaPola(model, (model.bays ?? []).find((b) => komunikat.startsWith(`${b.ref_id}:`))!.ref_id).includes('51N')
             );
           expect(naruszeniaBlokuPrzekaznika(model, l2).filter(bezT2)).toEqual([]);
           for (const pole of pola) {
-            const kody = (model.bays ?? []).find((b) => b.ref_id === pole.ref)!.protection_codes!;
+            const kody = kodySterownikaPola(model, pole.ref);
             const komorki = etykietyKodow(l2, pole.ref);
             expect(komorki.map((l) => l.text), `${pole.ref}: kolejność danych`).toEqual([...kody]);
             expect(new Set(komorki.map((l) => l.rect.x)).size, `${pole.ref}: kolumny`).toBe(n === 1 ? 1 : 2);
@@ -1462,6 +1473,12 @@ function rodzajAdnotacjiZabezpieczen(l: OwnedLabel): string {
   return `nieznany (${sufiks})`;
 }
 
+function gpzBezPowiazan(): EnergyNetworkModel {
+  const enm = structuredClone((fxGpz110 as unknown as { snapshot: EnergyNetworkModel }).snapshot);
+  enm.protection_assignments = (enm.protection_assignments ?? []).map((pa) => ({ ...pa, wejscia: {}, macierz_wyzwolen: [] }));
+  return enm;
+}
+
 describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w krawędzi prostokąta', () => {
   // Iloczyn: kompozytor (pole GPZ z powiązaniami obwodów i bez nich, stacja SN — jeden blok
   // zabezpieczeń, karta JEDNA NOTACJA) × rodzaj etykiety (wiersz kodów, odniesienie 3U₀,
@@ -1473,6 +1490,9 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
     ...FIKSTURY,
     ['stacje SN i GPZ (geometria stacji, łączniki zamknięte)', (fxStacjeZamkniete as unknown as { snapshot: EnergyNetworkModel }).snapshot],
     ['GPZ 110 kV (geometria stacji)', (fxGpz110 as unknown as { snapshot: EnergyNetworkModel }).snapshot],
+    // Pole GPZ BEZ powiązań obwodów: sterowniki z funkcjami, bez wejść i bez macierzy wyzwoleń
+    // (stan po wyczyszczeniu wejść w edytorze nastaw) — przekaźnik z listą kodów pod okręgiem.
+    ['GPZ 110 kV · sterowniki bez wejść i macierzy wyzwoleń', gpzBezPowiazan()],
   ];
   const pokrycie = new Set<string>();
   for (const [nazwaFx, enm] of ZESTAW) {

@@ -4,8 +4,11 @@ Karta BIEG-ZABEZPIECZEN-Z-MODELU (decyzja D-21): urządzenia i nastawy zabezpiec
 modelu. Ta sieć niesie REALNE przypisania zabezpieczeń zapisane WYŁĄCZNIE operacjami
 domenowymi — tymi samymi, które woła ścieżka projektanta (``POST /api/cases/{id}/enm/
 domain-ops``): wyłącznik liniowy (``insert_section_switch_sn``, ``switch_type="WYLACZNIK"``),
-przekładnik prądowy z katalogu przy wyłączniku (``add_ct`` z ``breaker_ref``), przekaźnik
-z katalogu z nastawami (``add_relay`` z ``settings``). Zero ręcznego JSON-u zabezpieczeń.
+przekładnik prądowy z katalogu przy wyłączniku (``add_ct`` z ``breaker_ref``), sterownik
+zabezpieczeń z katalogu (``add_relay``: funkcje 50/51 rodzaju NADPRADOWY, wejście prądowe
+z przekładnika, macierz wyzwoleń na wyłącznik) i jego nastawy w grupie 1
+(``update_protection_settings`` — jedyny pisarz nastaw, karta OCHRONA-JEDNO-ZRODLO). Zero
+ręcznego JSON-u zabezpieczeń.
 
 Kształt: GPZ 110/15 kV (250 MVA) → kabel 900 m → Stacja S01 (SN/nN) → kabel → Stacja S02
 (SN/nN), odbiory 250 kW na szynach nN obu stacji. Dwa wyłączniki liniowe z zabezpieczeniem:
@@ -52,38 +55,15 @@ NAZWA_Q2 = "Wyłącznik odejścia S01"
 NAZWA_ZABEZPIECZENIA_Q1 = "Zabezpieczenie pola liniowego GPZ"
 NAZWA_ZABEZPIECZENIA_Q2 = "Zabezpieczenie odejścia S01"
 
-NASTAWY_Q1: list[dict[str, Any]] = [
-    {
-        "function_type": "overcurrent_51",
-        "threshold_a": 2.0,
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "IEC_SI",
-        "time_multiplier": 0.3,
-    },
-    {
-        "function_type": "overcurrent_50",
-        "threshold_a": 20.0,
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "DT",
-        "time_delay_s": 0.4,
-    },
-]
-NASTAWY_Q2: list[dict[str, Any]] = [
-    {
-        "function_type": "overcurrent_51",
-        "threshold_a": 1.5,
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "IEC_SI",
-        "time_multiplier": 0.1,
-    },
-    {
-        "function_type": "overcurrent_50",
-        "threshold_a": 15.0,
-        "threshold_unit": "A_WTORNY",
-        "curve_type": "DT",
-        "time_delay_s": 0.1,
-    },
-]
+#: Nastawy sterownika: funkcja (ref = kod rejestru) → {klucz schematu: wartość}.
+NASTAWY_Q1: dict[str, dict[str, Any]] = {
+    "51": {"prog": 2.0, "jednostka_progu": "A_WTORNY", "krzywa": "IEC_SI", "tms": 0.3},
+    "50": {"prog": 20.0, "jednostka_progu": "A_WTORNY", "krzywa": "DT", "zwloka_s": 0.4},
+}
+NASTAWY_Q2: dict[str, dict[str, Any]] = {
+    "51": {"prog": 1.5, "jednostka_progu": "A_WTORNY", "krzywa": "IEC_SI", "tms": 0.1},
+    "50": {"prog": 15.0, "jednostka_progu": "A_WTORNY", "krzywa": "DT", "zwloka_s": 0.1},
+}
 
 
 class BladBudowySieci(RuntimeError):
@@ -225,7 +205,7 @@ def dodaj_zabezpieczenie_nadpradowe(
     odcinek_ref: str,
     nazwa_wylacznika: str,
     nazwa_zabezpieczenia: str,
-    nastawy: list[dict[str, Any]],
+    nastawy: dict[str, dict[str, Any]],
 ) -> tuple[dict[str, Any], str, str]:
     """Wyłącznik liniowy + przekładnik + przekaźnik z nastawami — trzy operacje domenowe.
 
@@ -276,11 +256,10 @@ def dodaj_zabezpieczenie_nadpradowe(
         "add_relay",
         {
             "breaker_ref": wylacznik,
-            "ct_ref": wynik_ct["selection_hint"]["element_id"],
+            "wejscia": {"ct_ref": wynik_ct["selection_hint"]["element_id"]},
             "relay_type": "NADPRADOWY",
             "catalog_ref": KATALOG_PRZEKAZNIKA,
             "name": nazwa_zabezpieczenia,
-            "settings": nastawy,
         },
     )
     if wynik_zab.get("error") is not None:
@@ -290,7 +269,12 @@ def dodaj_zabezpieczenie_nadpradowe(
         p["ref_id"] == zabezpieczenie for p in wynik_zab["snapshot"]["protection_assignments"]
     ):
         raise BladBudowySieci("operacja add_relay nie zapisała przypisania zabezpieczenia")
-    return wynik_zab["snapshot"], wylacznik, zabezpieczenie
+    enm = operacja(
+        wynik_zab["snapshot"],
+        "update_protection_settings",
+        {"protection_ref": zabezpieczenie, "grupa": 1, "nastawy": nastawy},
+    )
+    return enm, wylacznik, zabezpieczenie
 
 
 def build_zabezpieczenia_magistrali_enm(

@@ -24,6 +24,7 @@ import scenariusze from '../../../../harness-fixtures/generated/dynamika_scena_s
 import wynik from '../../../../harness-fixtures/generated/dynamika_scena_wyniki.json';
 import przebiegi from '../../../../harness-fixtures/generated/dynamika_scena_przebiegi.json';
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
@@ -190,6 +191,10 @@ function ustawFetch(): void {
           ],
         });
       }
+      if (adres.endsWith(`/api/study-cases/project/${PROJEKT}/active`)) {
+        // Odczyt werdyktu przypadku po zapisie scenariusza nazwanego (odcisk wejść świeżości).
+        return odpowiedz(null);
+      }
       throw new Error(`Nieoczekiwane wywołanie fetch: ${metoda} ${adres}`);
     }),
   );
@@ -228,6 +233,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  useStudyCasesStore.setState({ projectId: null } as never);
   vi.clearAllMocks();
   useAppStateStore.setState({ activeCaseId: null });
 });
@@ -537,10 +543,17 @@ describe('EkranDynamiki — edytor z kontraktu i bieg', () => {
     fireEvent.change(screen.getByTestId('mvd-dynamika-pole-detektory-0-jednorazowy'), {
       target: { value: 'tak' },
     });
+    useStudyCasesStore.setState({ projectId: PROJEKT } as never);
     await act(async () => {
       fireEvent.click(screen.getByTestId('mvd-dynamika-scenariusz-zapisz'));
     });
     const zapis = atrapa.zadania.find((z) => z.metoda === 'POST' && z.url.endsWith('/scenariusze'));
+    // Scenariusz nazwany jest wejściem oceny świeżości biegów: po zapisie werdykt aktywnego
+    // przypadku jest odczytywany ponownie (karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN).
+    await waitFor(() => {
+      const odczyt = atrapa.zadania.findIndex((z) => z.url.endsWith(`/api/study-cases/project/${PROJEKT}/active`));
+      expect(odczyt).toBeGreaterThan(atrapa.zadania.indexOf(zapis!));
+    });
     expect(zapis?.cialo).toEqual({
       scenario_id: null,
       name: 'Wyłączenie kabla',

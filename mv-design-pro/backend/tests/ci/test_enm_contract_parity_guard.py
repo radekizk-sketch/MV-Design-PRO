@@ -122,7 +122,7 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     guardem).
     Karta UX-04/POLE-BKR-MODEL (2026-10-28): +1 — nowe pole Literal
     `ShuntCapacitor.uklad_polaczen` (`UkladPolaczenBaterii`, lustro TS `UKLADY_POLACZEN_BATERII`);
-    `Bay.bay_role` czyta teraz alias `RolaKanonicznaPolaSn` — to samo pole, nie nowe. Scalenie obu
+    `Bay.bay_role` czyta teraz alias `RolaPolaModelu` — to samo pole, nie nowe. Scalenie obu
     kart: 131 + 1 = 132 (pomiar guardem na drzewie scalonym).
 
     Karta UX-04/POLE-LINIOWE-WZORZEC (2026-10-29) dodaje PIEC pol Literal z lustrem w
@@ -147,17 +147,48 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     WARTOSC_ROBOCZA, lustro `ZrodloZaczepu` w `types/enm.ts`, parytet zbioru wartości
     zachowany): 133 -> 134 (pomiar guardem na drzewie karty).
 
+    Karta OCHRONA-JEDNO-ZRODLO (2026-11-04, jedna struktura sterownika pola, stara struktura
+    skasowana bez kompatybilności): 134 -> 127. Zdjęte z kontraktem starej struktury
+    (10): `ProtectionAssignment.device_type`, `BayProtectionControlUnit.settings_mode`,
+    `EventEntry.source`, `ProtectionFunctionState.execution_mode`,
+    `ProtectionFunctionState.missing_input_policy`, `ProtectionSetting.curve_type`,
+    `ProtectionSetting.function_type`, `ProtectionSetting.threshold_unit`,
+    `ProtectionSettingValue.quality`, `SpzState.state` (SPZ to funkcja `79` rejestru
+    `funkcje_eaz`, nie osobna encja). Dodane z lustrem w `types/enm.ts` i parytetem zbioru
+    wartości (3): `WejsciaZabezpieczenia.i0_uklad` (HOLMGREEN | FERRANTI),
+    `WejsciaZabezpieczenia.u0_uklad` (OTWARTY_TROJKAT | Z_NAPIEC_FAZOWYCH),
+    `NastawaFunkcji.pochodzenie` (PROJEKTANT | DOBOR | WARTOSC_ROBOCZA). Pomiar: zbiór par
+    (encja, pole) liczonych przez guard bazy `44a2c6c02` (134) i drzewa karty (127), różnica
+    zbiorów dokładnie jak wyżej.
+
+    Scalenie karty EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN z gałęzią kart KD6 i
+    UX-04/POLE-ZU-SKLADOWA-ZEROWA (zespół uziemiający SN, rola ``ZU`` w `RolaPolaModelu` — to
+    samo pole): 127 -> 133 — pomiar guardem na drzewie scalonym (pola Literal encji zespołu
+    uziemiającego i uziemienia sekcji z lustrem w `types/enm.ts`). Ta sama karta (jedna
+    klasyfikacja obwodu nN dla I²t i SWZ) dodaje `SwitchBranch.rodzaj_obwodu_nn` i
+    `FuseBranch.rodzaj_obwodu_nn` (odbiorczy | rozdzielczy, lustro `RodzajObwoduNn`
+    w `types/enm.ts`, parytet zbioru wartości zachowany): 133 -> 135 (pomiar guardem na drzewie
+    karty).
+
     Scalenie karty UX-04/POLE-LINIOWE-WZORZEC do drzewa integracji (2026-11-11): 132 + 8 = 140
     — pomiar guardem na bazie scalenia `687a2ef65` (126), stronie karty (134), stronie
-    integracji (132) i drzewie scalonym (140); pola obu stron rozłączne."""
+    integracji (132) i drzewie scalonym (140); pola obu stron rozłączne.
+
+    Scalenie karty delt scenariusza zabezpieczeń (OCHRONA-JEDNO-ZRODLO, KD6, rodzaj obwodu nN)
+    do drzewa integracji (2026-11-11): 140 - 10 + 5 = 135. Zbiory par (encja, pole) liczone przez
+    guard na stronie integracji (140), stronie karty (135) i drzewie scalonym (135): drzewo
+    scalone = strona integracji bez 10 pól starej struktury zabezpieczeń (wyżej) plus 5 pól
+    strony karty (`WejsciaZabezpieczenia.i0_uklad`, `WejsciaZabezpieczenia.u0_uklad`,
+    `NastawaFunkcji.pochodzenie`, `SwitchBranch.rodzaj_obwodu_nn`,
+    `FuseBranch.rodzaj_obwodu_nn`); pozostałe pola obu stron wspólne."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 140, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 140 — "
+    assert int(dopasowanie.group(1)) == 135, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 135 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

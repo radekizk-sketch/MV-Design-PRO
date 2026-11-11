@@ -533,6 +533,7 @@ def _kryterium_swz(
     ik1_min_a: float,
     u0_v: float,
     dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
+    rodzaj_obwodu: str | None = None,
 ) -> KryteriumWynik:
     """(iv) SWZ przy Ik_min — REUSE `application.analyses.swz.werdykt.ocen_swz`.
 
@@ -552,7 +553,13 @@ def _kryterium_swz(
         klasa_mcb=kandydat.klasa_mcb,
         ii_a=kandydat.ii_a if kandydat.kind == KIND_MCCB else None,
     )
-    wynik = ocen_swz(ik1_min_a=ik1_min_a, u0_v=u0_v, aparat=aparat, dane_przyjete=dane_przyjete)
+    wynik = ocen_swz(
+        ik1_min_a=ik1_min_a,
+        u0_v=u0_v,
+        aparat=aparat,
+        rodzaj_obwodu=rodzaj_obwodu,
+        dane_przyjete=dane_przyjete,
+    )
     return KryteriumWynik(
         nazwa=NAZWA_KRYTERIUM_SWZ,
         status=_SWZ_STATUS_MAP[wynik.status],
@@ -592,11 +599,14 @@ def oceniaj_kandydata(
     u0_v: float,
     dane_przyjete_ik_max: tuple[DanaPrzyjeta, ...] = (),
     dane_przyjete_ik1_min: tuple[DanaPrzyjeta, ...] = (),
+    rodzaj_obwodu: str | None = None,
 ) -> WynikKandydataNn:
     """Oceń JEDNEGO kandydata przeciw wszystkim czterem kryteriom (§0.5).
 
     ``dane_przyjete_ik_max`` / ``dane_przyjete_ik1_min`` — dane przyjęte, na których stoją
     prądy zwarciowe kryteriów (iii) i (iv) (wartość robocza tolerancji sieci nN).
+    ``rodzaj_obwodu`` — wartość projektanta na aparacie obwodu (``rodzaj_obwodu_nn``; obwód,
+    nie kandydat) — kryterium (iv) bierze ją przed regułą prądu znamionowego kandydata.
     """
     kryteria = (
         *oceniaj_przeciazenie_kandydata(kandydat=kandydat, ib_a=ib_a, iz_prime_a=iz_prime_a),
@@ -608,6 +618,7 @@ def oceniaj_kandydata(
             ik1_min_a=ik1_min_a,
             u0_v=u0_v,
             dane_przyjete=dane_przyjete_ik1_min,
+            rodzaj_obwodu=rodzaj_obwodu,
         ),
     )
     kwalifikuje = all(k.status == KryteriumStatus.SPELNIA for k in kryteria)
@@ -623,6 +634,7 @@ def ocen_kandydatow_nn(
     u0_v: float,
     kandydaci: tuple[KandydatAparatuNn, ...],
     dane_przyjete_ik1_min: tuple[DanaPrzyjeta, ...] = (),
+    rodzaj_obwodu: str | None = None,
 ) -> WynikDoboruAparatuNn:
     """Oceń WSZYSTKICH kandydatów i zwróć deterministyczny ranking.
 
@@ -656,6 +668,7 @@ def ocen_kandydatow_nn(
             ik1_min_a=ik1_min_a,
             u0_v=u0_v,
             dane_przyjete_ik1_min=dane_przyjete_ik1_min,
+            rodzaj_obwodu=rodzaj_obwodu,
         )
         for k in kandydaci
     ]
@@ -921,8 +934,12 @@ def wybierz_aparat_dla_obwodu_nn(
     iz_prime_a: float,
     ik_max_ka: float | None,
     catalog: CatalogRepository | None = None,
+    rodzaj_obwodu: str | None = None,
 ) -> dict[str, Any]:
     """Dobór aparatu nN dla obwodu — orkiestracja per obwód (API layer).
+
+    ``rodzaj_obwodu`` — wartość projektanta na aparacie obwodu (``rodzaj_obwodu_nn``), gdy
+    obwód ma już aparat w modelu; ``None`` — rodzaj z reguły prądu znamionowego kandydata.
 
     Ib, Iz′ i Ik″max są PARAMETRAMI WEJŚCIOWYMI (nie liczone tutaj):
       - Ib to prąd OBLICZENIOWY obwodu z definicji IEC 60364-4-43 §433.1 —
@@ -972,6 +989,7 @@ def wybierz_aparat_dla_obwodu_nn(
         u0_v=u0_v,
         kandydaci=kandydaci,
         dane_przyjete_ik1_min=obwod.dane_przyjete,
+        rodzaj_obwodu=rodzaj_obwodu,
     )
     return {
         "status": "OK",

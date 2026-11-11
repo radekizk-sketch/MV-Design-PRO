@@ -2,17 +2,21 @@
  * Karta UX-04/POLE-LINIOWE-WZORZEC: klik (NATYWNY — uchwyt trafienia warstwy `sld-v3-trafienia`,
  * jak mysz; bez syntetycznego `dispatchEvent`) w dowolny obiekt bloku przekaźnika otwiera kartę
  * POLA w prawym inspektorze, z wyróżnioną sekcją „Zabezpieczenia i automatyka": wiersz na każdą
- * funkcję `Bay.protection_codes` (kod IEEE C37.2 + nazwa polska ze słownika backendu) i akcja
- * prowadząca do nastaw (E-27 przy urządzeniu, kreator urządzenia bez niego).
+ * włączoną funkcję sterownika pola (karta OCHRONA-JEDNO-ZRODLO: `ProtectionAssignment` z `bay_ref`
+ * pola — jedyne źródło funkcji; kod IEEE C37.2 + nazwa polska ze słownika backendu) i akcja
+ * prowadząca do nastaw sterownika (E-27).
  *
  * Wyrocznia niezależna od kodu produkcyjnego: pole = człon `data-hit-owner-ref` przed `#`
- * (zapis warstwy trafień), treść wierszy z SUROWEGO `slownikFunkcjiEaz.json` i `Bay` fikstury.
+ * (zapis warstwy trafień), treść wierszy z SUROWEGO `slownikFunkcjiEaz.json` i SUROWEGO rekordu
+ * sterownika z fikstury (funkcje `wlaczona !== false`, klucz wiersza = `ref` funkcji).
  *
- * Iloczyn cech: pole {bez urządzenia zabezpieczeniowego (akcja: kreator urządzenia), z urządzeniem
- * (akcja: nastawy E-27)} × obiekt bloku {ramka bloku (symbol bloku zabezpieczeń — prostokątna ramka bez okręgu,
- * korekta v2 2026-11-04), wiersz kodów, wiersz „U0", linia
- * wyłączania, pozostałe adnotacje (tabliczka CT, numer urządzenia)}. Każda klasa obecna w DOM jest
- * klikana; obecność ramki i wiersza kodów jest warunkiem testu (nie cichy brak).
+ * Iloczyn cech: sterownik pola {z szablonu pola — funkcje bez nastaw, z nastawami grupy} × obiekt
+ * bloku {ramka bloku (symbol bloku zabezpieczeń — prostokątna ramka bez okręgu, korekta v2
+ * 2026-11-04), wiersz kodów, wiersz „U0", linia wyłączania, pozostałe adnotacje (tabliczka CT,
+ * numer urządzenia)} × tryb {edycja modelu, odczyt wyników}. Każda klasa obecna w DOM jest
+ * klikana; obecność ramki i wiersza kodów jest warunkiem testu (nie cichy brak). Pole BEZ
+ * sterownika nie ma funkcji, więc nie ma bloku przekaźnika — przypięte osobnym testem (akcja
+ * „dodaj zabezpieczenie" karty pola bez sterownika: `kartaTechnicznaElementu.parytet.test.tsx`).
  *
  * Stacje SN poza GPZ: blok stacji NIE rzutuje dziś adnotacji zabezpieczeń z modelu
  * (`enmToSldAdapter.ts::buildExplicitStationMiniBays` — 171 okręgów na substracie 52 stacji to
@@ -40,8 +44,7 @@ import fxZ11 from '../../../../../harness-fixtures/generated/pole_liniowe_z11_gp
 import slownik from '../../../../shared/slownikFunkcjiEaz.json';
 
 const here = dirname(fileURLToPath(import.meta.url));
-// GPZ z urządzeniem zabezpieczeniowym w modelu (`ProtectionAssignment` wskazany przez
-// `Bay.protection_ref`) — akcja wiersza prowadzi do nastaw (E-27).
+// GPZ ze sterownikami pól z nastawami grupy 1 (pola liniowe i transformatorowe GPZ).
 const enmZUrzadzeniem = (
   JSON.parse(
     readFileSync(resolve(here, '..', '..', 'scene', '__tests__', 'fixtures', 'gpzProtectionDataPath.enm.json'), 'utf8'),
@@ -50,16 +53,23 @@ const enmZUrzadzeniem = (
 const enmGpz = (fxZ11 as unknown as { snapshot: EnergyNetworkModel }).snapshot;
 
 const ROZDZIELNIE = [
-  ['GPZ Z.11 (pola bez urządzenia zabezpieczeniowego)', enmGpz],
-  ['GPZ z urządzeniami zabezpieczeniowymi', enmZUrzadzeniem],
+  ['GPZ Z.11 (sterowniki z szablonu pola, bez nastaw)', enmGpz],
+  ['GPZ ze sterownikami z nastawami', enmZUrzadzeniem],
 ] as const;
 
-/** Wyrocznia „pole ma urządzenie": przypisanie wskazane refem pola albo wyłącznikiem pola. */
-function maUrzadzenie(enm: EnergyNetworkModel, bay: EnergyNetworkModel['bays'][number]): boolean {
-  const refyPola = new Set([...bay.equipment_refs, ...(bay.primary_devices ?? []).map((d) => d.device_ref)]);
-  return (enm.protection_assignments ?? []).some(
-    (pa) => (bay.protection_ref != null && pa.ref_id === bay.protection_ref) || refyPola.has(pa.breaker_ref),
-  );
+/** Wyrocznia: surowy rekord sterownika pola z fikstury (`bay_ref` pola). */
+function sterownikZFikstury(enm: EnergyNetworkModel, bayRef: string) {
+  return (enm.protection_assignments ?? []).find((pa) => pa.bay_ref === bayRef);
+}
+
+/** Wyrocznia wierszy karty: włączone funkcje sterownika (klucz = `ref`, kod do słownika). */
+function funkcjeWlaczone(enm: EnergyNetworkModel, bayRef: string): { ref: string; kod: string }[] {
+  return (sterownikZFikstury(enm, bayRef)?.funkcje ?? []).filter((f) => f.wlaczona !== false);
+}
+
+/** Wyrocznia cechy iloczynu: sterownik ma zapisane nastawy w którejś grupie. */
+function maNastawy(enm: EnergyNetworkModel, bayRef: string): boolean {
+  return (sterownikZFikstury(enm, bayRef)?.grupy_nastaw ?? []).some((g) => (g.funkcje ?? []).length > 0);
 }
 
 type KlasaObiektu = 'ramka bloku' | 'wiersz kodów' | 'wiersz U0' | 'linia wyłączania' | 'inna adnotacja';
@@ -116,7 +126,7 @@ function skalaKanwy(svg: Element): number {
  * (`data-hit-for`, rola obrysu) o tym refie — ramka bloku ma klasę `adnotacja`, wiersze `etykieta`.
  */
 function uchwytyWgKlasy(container: HTMLElement, enm: EnergyNetworkModel): Map<KlasaObiektu, Element> {
-  const polaZKodami = new Set(enm.bays.filter((b) => (b.protection_codes ?? []).length > 0).map((b) => b.ref_id));
+  const polaZKodami = new Set(enm.bays.filter((b) => funkcjeWlaczone(enm, b.ref_id).length > 0).map((b) => b.ref_id));
   const scena = buildSceneV3(enm, 2);
   const refyWarstwy = new Set<string>([
     ...scena.symbols.filter((x) => x.meta?.elementKind === 'protectionAnnotation').map((x) => x.meta!.ownerRef!),
@@ -156,7 +166,6 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
           return;
         }
         const pole = (uchwyt.getAttribute('data-hit-owner-ref') ?? '').split('#')[0];
-        const bay = enm.bays.find((b) => b.ref_id === pole)!;
         fireEvent.click(uchwyt);
 
         expect(zaznaczone()).toEqual([pole]);
@@ -167,15 +176,14 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
         expect(within(sekcja).getByRole('heading', { name: 'Zabezpieczenia i automatyka' })).toBeInTheDocument();
 
         const wiersze = within(sekcja).getAllByTestId('inspektor-karta-wiersz-funkcje_eaz');
-        const kody = bay.protection_codes ?? [];
-        expect(wiersze.map((w) => w.getAttribute('data-klucz'))).toEqual(kody);
+        const funkcje = funkcjeWlaczone(enm, pole);
+        expect(wiersze.map((w) => w.getAttribute('data-klucz'))).toEqual(funkcje.map((f) => f.ref));
         wiersze.forEach((w, i) => {
-          const wpis = FUNKCJE[kody[i]];
-          expect(wpis, `kod ${kody[i]} w słowniku`).toBeDefined();
+          const wpis = FUNKCJE[funkcje[i].kod];
+          expect(wpis, `kod ${funkcje[i].kod} w słowniku`).toBeDefined();
           expect(w.textContent).toContain(wpis.nazwa_pl);
-          if (wpis.ansi) expect(w.textContent).toContain(`ANSI ${wpis.ansi}`);
           const akcja = within(w).getByTestId('inspektor-karta-akcja-wiersza');
-          expect(akcja.getAttribute('data-cel')).toBe(maUrzadzenie(enm, bay) ? 'E-27' : 'add_relay');
+          expect(akcja.getAttribute('data-cel')).toBe('E-27');
         });
       });
     }
@@ -190,10 +198,9 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
     expect(screen.queryByTestId('inspektor-element-kanwy')).toBeNull();
   });
 
-  // Akcja wiersza (przejście do nastaw) — natywny klik w przycisk wiersza po natywnym kliku w ramkę bloku.
-  // Iloczyn: pole {bez urządzenia, z urządzeniem} × tryb {edycja modelu, tylko odczyt wyników}.
-  // Nastawy urządzenia (ekran E-27) są odczytem — przycisk zawsze; dodanie urządzenia to zmiana
-  // modelu — tylko w trybie edycji.
+  // Akcja wiersza (przejście do nastaw) — natywny klik w przycisk wiersza po natywnym kliku w ramkę
+  // bloku. Iloczyn: sterownik {z szablonu, z nastawami} × tryb {edycja modelu, tylko odczyt wyników}.
+  // Nastawy sterownika (ekran E-27) są odczytem — przycisk w obu trybach, na każdym wierszu.
   for (const [nazwa, enm] of ROZDZIELNIE) {
     for (const tryb of ['MODEL_EDIT', 'RESULT_VIEW'] as const) {
       it(`akcja wiersza: ${nazwa} × tryb ${tryb}`, () => {
@@ -205,22 +212,13 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
           const { container } = przygotuj(enm);
           const uchwyt = uchwytyWgKlasy(container, enm).get('ramka bloku')!;
           const pole = uchwyt.getAttribute('data-hit-owner-ref')!;
-          const bay = enm.bays.find((b) => b.ref_id === pole)!;
           fireEvent.click(uchwyt);
           const sekcja = screen.getByTestId('inspektor-karta-zabezpieczenia');
           const przyciski = within(sekcja).queryAllByTestId('inspektor-karta-akcja-wiersza');
-          const zUrzadzeniem = maUrzadzenie(enm, bay);
-          const oczekiwanaLiczba = zUrzadzeniem || tryb === 'MODEL_EDIT' ? (bay.protection_codes ?? []).length : 0;
-          expect(przyciski).toHaveLength(oczekiwanaLiczba);
-          if (oczekiwanaLiczba === 0) return;
+          expect(przyciski).toHaveLength(funkcjeWlaczone(enm, pole).length);
           fireEvent.click(przyciski[0]);
-          if (zUrzadzeniem) {
-            expect(ekran).toHaveBeenCalledWith('E-27');
-            expect(operacja).not.toHaveBeenCalled();
-          } else {
-            expect(operacja).toHaveBeenCalledWith('add_relay', { bay_ref: pole });
-            expect(ekran).not.toHaveBeenCalled();
-          }
+          expect(ekran).toHaveBeenCalledWith('E-27');
+          expect(operacja).not.toHaveBeenCalled();
         } finally {
           useAppStateStore.setState({ activeMode: 'MODEL_EDIT' });
         }
@@ -228,13 +226,30 @@ describe('klik w blok przekaźnika → karta pola, sekcja „Zabezpieczenia i au
     }
   }
 
-  it('iloczyn pokrywa obie wartości cechy „urządzenie" (warunek testu)', () => {
+  it('iloczyn pokrywa obie wartości cechy „sterownik z nastawami" (warunek testu)', () => {
     const pierwszePole = (enm: EnergyNetworkModel) => {
       const { container } = przygotuj(enm);
       const pole = uchwytyWgKlasy(container, enm).get('ramka bloku')!.getAttribute('data-hit-owner-ref')!;
       cleanup();
-      return maUrzadzenie(enm, enm.bays.find((b) => b.ref_id === pole)!);
+      return maNastawy(enm, pole);
     };
     expect(ROZDZIELNIE.map(([, enm]) => pierwszePole(enm))).toEqual([false, true]);
+  });
+
+  it('pole bez sterownika: brak funkcji — brak bloku przekaźnika tego pola na kanwie', () => {
+    const { container: przed } = przygotuj(enmGpz);
+    const pole = uchwytyWgKlasy(przed, enmGpz).get('ramka bloku')!.getAttribute('data-hit-owner-ref')!;
+    cleanup();
+    const bezSterownika: EnergyNetworkModel = {
+      ...enmGpz,
+      protection_assignments: (enmGpz.protection_assignments ?? []).filter((pa) => pa.bay_ref !== pole),
+    };
+    const { container } = przygotuj(bezSterownika);
+    const uchwytyPola = [...container.querySelectorAll('[data-hit-klasa="adnotacja"][data-hit-owner-ref]')].filter(
+      (el) => (el.getAttribute('data-hit-owner-ref') ?? '').split('#')[0] === pole,
+    );
+    expect(uchwytyPola).toEqual([]);
+    // Pozostałe pola ze sterownikami nadal mają blok (usunięcie dotyczy jednego pola).
+    expect(uchwytyWgKlasy(container, bezSterownika).has('ramka bloku')).toBe(true);
   });
 });

@@ -109,7 +109,7 @@ function slad(over: Partial<SladCzasuWylaczenia> = {}): SladCzasuWylaczenia {
     powod_pl: 'Czas z charakterystyki IEC_SI zabezpieczenia pola przy prądzie gałęzi.',
     urzadzenie_ref: 'CB1',
     urzadzenie_nazwa: 'Wyłącznik pola liniowego',
-    funkcja: 'overcurrent_51',
+    funkcja: '51',
     prad_galezi_a: 6000,
     prad_rozruchowy_a: 600,
     krzywa: 'IEC_SI',

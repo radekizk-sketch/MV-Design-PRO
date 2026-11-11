@@ -19,7 +19,6 @@ describe('fieldReadModelSelectors', () => {
           gpz_section_id: 'A',
           primary_devices: [],
           measurement_chain: null,
-          protection_config: null,
           secondary_units: [],
         },
       },

@@ -33,6 +33,12 @@ export interface NaglowekAnalizy {
    * i pokazuje listę przyczyn zamiast samej pary rewizji.
    */
   caseId?: string;
+  /**
+   * Wynik nieaktualny z orzeczenia serwera przy tej samej rewizji modelu (zmiana wyboru
+   * zabezpieczeń przypadku albo scenariusza nazwanego biegu) — zdanie przyczyny po polsku
+   * z `useSwiezoscNaglowka` (jeden predykat `swiezoscBiegu`, to samo źródło co powłoka).
+   */
+  przyczynaSerwera?: string;
 }
 
 /**

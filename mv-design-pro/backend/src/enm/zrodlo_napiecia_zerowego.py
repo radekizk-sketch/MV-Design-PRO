@@ -16,7 +16,8 @@ nie mierzy — funkcja bez wejścia była fikcją. Rysunki standardu wskazują �
 WARUNEK przypisania 67N (`bay_templates.WARUNEK_ZRODLA_U0`) — oba składniki naraz:
 
 1. kryterium prądowe I0 — przekładnik Ferrantiego (aparat ``CORE_BALANCE_CT``) w polu;
-2. źródło U0 POTWIERDZONE w modelu — `Bay.zrodlo_u0_ref` (deklaracja projektanta) wskazuje
+2. źródło U0 POTWIERDZONE w modelu — wejście 3U₀ sterownika pola w układzie otwartego trójkąta
+   (`ProtectionAssignment.wejscia.u0_vt_ref`, deklaracja projektanta) wskazuje
    przekładnik napięciowy (aparat ``VT``) z uzwojeniem otwartego trójkąta
    (`UzwojeniePrzekladnikaNapieciowego.otwarty_trojkat`) w polu pomiaru napięcia szyn
    (rola ``MEASUREMENT``, funkcja pomiaru ``NAPIECIA_SZYN``) na TEJ SAMEJ szynie sekcji co pole
@@ -42,6 +43,7 @@ from network_model.catalog.bay_templates import WARUNEK_ZRODLA_U0, WARUNKI_FUNKC
 from network_model.catalog.rodzaje_aparatury import RODZAJ_PRZEKLADNIKA_FERRANTIEGO
 
 from .slownik_komunikatow import opis_elementu
+from .zabezpieczenie import kody_funkcji_pola, ref_zrodla_u0_pola
 
 __all__ = [
     "AKCJA_NAPRAWCZA_ZRODLA_U0_PL",
@@ -205,8 +207,9 @@ def zrodlo_u0_pola(
     enm: Mapping[str, Any], pole: Mapping[str, Any], zrodlo_ref: object = ...
 ) -> ZrodloU0Pola:
     """Rozstrzygnięcie warunku 67N pola. ``zrodlo_ref`` — powiązanie do sprawdzenia (operacja
-    sprawdza wartość z ładunku przed zapisem); domyślnie `Bay.zrodlo_u0_ref` rekordu pola."""
-    ref = pole.get("zrodlo_u0_ref") if zrodlo_ref is ... else zrodlo_ref
+    sprawdza wartość z ładunku przed zapisem); domyślnie wejście 3U₀ sterownika pola
+    (`enm.zabezpieczenie.ref_zrodla_u0_pola` — jedyny nośnik powiązania)."""
+    ref = ref_zrodla_u0_pola(enm, pole.get("ref_id")) if zrodlo_ref is ... else zrodlo_ref
     opis_pola = opis_elementu(dict(enm), pole.get("ref_id"), "pola")
     kandydaci = kandydaci_zrodla_u0(enm, pole)
     ferranti = any(a.get("kind") == RODZAJ_PRZEKLADNIKA_FERRANTIEGO for a in _aparaty(pole))
@@ -334,10 +337,13 @@ def _oznaczenie(enm: Mapping[str, Any], device_ref: str | None) -> str:
     return _oznaczenie_aparatu(znaleziony[0]) if znaleziony is not None else "napięciowy"
 
 
-def warunki_funkcji_eaz_pola(enm: Mapping[str, Any], pole: Mapping[str, Any]) -> frozenset[str]:
+def warunki_funkcji_eaz_pola(
+    enm: Mapping[str, Any], pole: Mapping[str, Any], zrodlo_ref: object = ...
+) -> frozenset[str]:
     """Warunki funkcji warunkowych (`bay_templates.WARUNKI_FUNKCJI_EAZ`) spełnione w modelu dla
-    pola — wejście resolvera zestawu funkcji (`_resolve_bay_template_protection_codes`)."""
-    if zrodlo_u0_pola(enm, pole).potwierdzone:
+    pola — wejście resolvera zestawu funkcji (`_resolve_bay_template_protection_codes`).
+    ``zrodlo_ref`` — powiązanie źródła 3U₀ po zmianie (operacja wyposażenia pola)."""
+    if zrodlo_u0_pola(enm, pole, zrodlo_ref).potwierdzone:
         return frozenset({WARUNEK_ZRODLA_U0})
     return frozenset()
 
@@ -381,7 +387,7 @@ def naruszenia_zrodla_u0(enm: Mapping[str, Any]) -> list[NaruszenieZrodlaU0]:
     """Pola z funkcją 67N zapisaną bez potwierdzonego źródła napięcia zerowego — w kolejności pól modelu."""
     wynik: list[NaruszenieZrodlaU0] = []
     for pole in _lista(enm, "bays"):
-        funkcje = funkcje_bez_zrodla_u0(pole.get("protection_codes") or [])
+        funkcje = funkcje_bez_zrodla_u0(kody_funkcji_pola(enm, pole.get("ref_id")))
         if not funkcje:
             continue
         zrodlo = zrodlo_u0_pola(enm, pole)

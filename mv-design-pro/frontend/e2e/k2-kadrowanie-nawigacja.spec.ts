@@ -39,6 +39,7 @@ import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { BACKEND_BASE, otworzAplikacje, polaStacjiEnm, siecKadrow, STACJE, ustawMotyw, type Enm } from './siecKadrowStacji';
+import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'k2-kadrowanie'));
@@ -314,6 +315,8 @@ for (const motyw of [
     expect(odcinek2, 'Odcinek 2 magistrali').toBeTruthy();
     const obrysOdcinka = page.locator(`[data-hit-role="obrys"][data-hit-klasa="tor"][data-hit-owner-ref^="${odcinek2.ref_id}"]`).first();
     await expect(obrysOdcinka).toHaveCount(1, { timeout: 30000 });
+    // Spoczynek kadru przed pomiarem punktu kliku (klasa G karty FIX-E2E-PELNE).
+    await czekajNaStabilnaGeometrie(obrysOdcinka);
     // Klik NATYWNY w punkt LEŻĄCY na trasie odcinka (trasa łamana: środek jej prostokąta
     // nie leży na kresce) — pierwszy punkt trasy, w którym obszar trafienia jest na wierzchu.
     const punkt = await obrysOdcinka.evaluate((el) => {

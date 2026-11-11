@@ -22,6 +22,7 @@ import type { BayPrimaryDeviceKind, EnergyNetworkModel } from '../../../../types
 import { symbolIdForPrimaryDeviceKind } from '../../v3/compose/apparatusSequence';
 import { ROLA_SYMBOLU_PL } from '../identyfikatorAparatu';
 import { KartaTechnicznaElementu } from '../../../network-build/inspektor-elementu/KartaTechnicznaElementu';
+import { sterownikTestowy } from '../../../../test/sterownik';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import {
   BRAK_DANYCH_PL,
@@ -215,7 +216,6 @@ function model(wariant: Wariant): EnergyNetworkModel {
         primary_devices: [
           { device_ref: 'cb-in', kind: 'CB', linked_ref: 'cb-in', catalog_ref: jesli('vd4-24-630-20'), stan_obiektu: jesli('PROJEKTOWANY') },
         ],
-        protection_codes: p ? ['50', '51'] : [],
         tags: [],
         meta: {},
       },
@@ -405,7 +405,16 @@ function model(wariant: Wariant): EnergyNetworkModel {
          { id: 'vt-1', ref_id: 'vt-1', name: 'VT pola 01', bay_ref: 'bay-in', measurement_type: 'VT', rating: { ratio_primary: 15000, ratio_secondary: 100, accuracy_class: '0.5' }, tags: [], meta: {} }]
       : [],
     protection_assignments: p
-      ? [{ id: 'pa-1', ref_id: 'pa-1', name: 'Zabezpieczenie pola 01', breaker_ref: 'cb-in', device_type: 'overcurrent', tags: [], meta: {} }]
+      ? [
+          sterownikTestowy({
+            ref: 'pa-1',
+            nazwa: 'Zabezpieczenie pola 01',
+            bayRef: 'bay-in',
+            kody: ['50', '51'],
+            wylacznik: 'cb-in',
+            wejscia: { ct_ref: 'ct-1' },
+          }),
+        ]
       : [],
   } as unknown as EnergyNetworkModel;
 }
@@ -534,10 +543,11 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
     // Znamiona i zabezpieczenie pola z tabeli stacji są na karcie pola.
     const pole = wiersze(karta('pole', 'pelne'));
     expect(pole.get('rola')!.wartosc).toBeTruthy();
-    // Jedno źródło zabezpieczenia pola (`zabezpieczeniePola`): sterownik przypisany (tu przez
-    // wyłącznik pola) z funkcjami z nastaw, obok funkcje wymagane przez wzorzec pola.
-    expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01: bez nastaw funkcji');
-    expect(pole.get('funkcje_wymagane')!.wartosc).toBe('50, 51');
+    // Jedno źródło zabezpieczenia pola (`zabezpieczeniePola`): sterownik pola z modelu (ADR-022,
+    // `bay_ref`) z kodami jego włączonych funkcji; osobnego wiersza „funkcje wymagane przez
+    // wzorzec” nie ma — zestaw szablonu jedzie przy budowie pola wprost do sterownika.
+    expect(pole.get('zabezpieczenie')!.wartosc).toBe('Zabezpieczenie pola 01: 50, 51');
+    expect(pole.has('funkcje_wymagane')).toBe(false);
     const aparaty = tabele(karta('pole', 'pelne')).get('tabela:aparaty')!;
     expect(aparaty.wiersze.find((r) => r.klucz === 'cb-in')!.komorki).toMatchObject({ ur: '24', ir: '630', ik: '20' });
     expect(wiersze(karta('aparat', 'pelne')).get('typ')?.wartosc).toBe('VD4 24 kV 630 A 20 kA');

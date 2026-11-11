@@ -2282,7 +2282,7 @@
     "scenario_id": "MAX",
     "station_ref": "stWIELE"
   },
-  "projection_hash": "d379ef25160af500501b895f01985bcf028a87f67f39de99b40a6b818bfb2361",
+  "projection_hash": "909a7aa69b7b13056f3da0e342c0b32c38349c3bae65b75c26e888f2080a239b",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2609,13 +2609,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Oświetlenie zewnętrzne parkingu północnego)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 320.0,
                 "ik1_min_a": 1157.88292,
                 "margines": 3.61838414,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Oświetlenie zewnętrzne parkingu północnego) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -2623,6 +2632,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -2950,13 +2960,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Wentylacja mechaniczna hali)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 480.0,
                 "ik1_min_a": 1591.00654,
                 "margines": 3.31459697,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Wentylacja mechaniczna hali) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -2964,6 +2983,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -3291,13 +3311,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Kotłownia gazowa)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 160.0,
                 "ik1_min_a": 731.233267,
                 "margines": 4.57020792,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Kotłownia gazowa) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -3305,6 +3334,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -3632,13 +3662,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Serwerownia (zasilanie gwarantowane))",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 320.0,
                 "ik1_min_a": 1157.88292,
                 "margines": 3.61838414,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Serwerownia (zasilanie gwarantowane)) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -3646,6 +3685,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -3973,13 +4013,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Winda osobowa nr 1)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 480.0,
                 "ik1_min_a": 1591.00654,
                 "margines": 3.31459697,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Winda osobowa nr 1) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -3987,6 +4036,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -4314,13 +4364,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Winda towarowa)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 160.0,
                 "ik1_min_a": 731.233267,
                 "margines": 4.57020792,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Winda towarowa) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -4328,6 +4387,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -4655,13 +4715,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Kuchnia stołówki pracowniczej)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 320.0,
                 "ik1_min_a": 1157.88292,
                 "margines": 3.61838414,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Kuchnia stołówki pracowniczej) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -4669,6 +4738,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -4996,13 +5066,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Warsztat mechaniczny)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 480.0,
                 "ik1_min_a": 1591.00654,
                 "margines": 3.31459697,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Warsztat mechaniczny) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -5010,6 +5089,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -5337,13 +5417,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Stacja ładowania pojazdów elektrycznych)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 160.0,
                 "ik1_min_a": 731.233267,
                 "margines": 4.57020792,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Stacja ładowania pojazdów elektrycznych) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -5351,6 +5440,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -5678,13 +5768,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Pompownia przeciwpożarowa)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 320.0,
                 "ik1_min_a": 1157.88292,
                 "margines": 3.61838414,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1157.9 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 320.0 A (MCB C 32 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Pompownia przeciwpożarowa) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -5692,6 +5791,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 32 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -6019,13 +6119,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Oświetlenie wewnętrzne biur)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 480.0,
                 "ik1_min_a": 1591.00654,
                 "margines": 3.31459697,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1591.0 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 480.0 A (MCB C 48 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Oświetlenie wewnętrzne biur) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -6033,6 +6142,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 48 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108
@@ -6360,13 +6470,22 @@
               "station_ref": "stWIELE",
               "status": "OK",
               "swz": {
+                "dane_przyjete": [
+                  {
+                    "jakosc": "ESTIMATED",
+                    "nazwa_pl": "rodzaj obwodu (Zacisk Gniazda ogólne piętro 1–3)",
+                    "powod_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                    "wartosc": null
+                  }
+                ],
                 "ia_wymagane_a": 160.0,
                 "ik1_min_a": 731.233267,
                 "margines": 4.57020792,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 731.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 160.0 A (MCB C 16 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego. Ik1_min liczony z daną przyjętą (wartość robocza): rodzaj obwodu (Zacisk Gniazda ogólne piętro 1–3) — ocena na danej przyjętej, nie potwierdzony dowód zgodności.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
+                "status_danych": "UNVALIDATED_INPUT",
                 "t_wymagany_s": 0.4,
                 "white_box_trace": [
                   {
@@ -6374,6 +6493,7 @@
                     "pasmo_u0": "120<U0<=230",
                     "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
+                    "rodzaj_obwodu_uzasadnienie_pl": "obwód odbiorczy — wartość robocza: aparat 16 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
                     "u0_v": 230.940108

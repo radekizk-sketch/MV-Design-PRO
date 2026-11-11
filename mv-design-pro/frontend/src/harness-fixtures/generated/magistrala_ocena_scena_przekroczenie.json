@@ -59,7 +59,7 @@
       "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym znamionowemu"
     },
     "margines": {
-      "definicja_latex": "m = x_{\\lim} - x",
+      "definicja_latex": "\\Delta x = x_{\\lim} - x",
       "niedefiniowalny": false,
       "powod_pl": null,
       "punkt_pl": "koniec odcinka 1 (koniec budowanego ciągu)",
@@ -203,7 +203,7 @@
         "zakres_stosowalnosci_pl": "obciążalność długotrwała typu NKT N2XS2Y 1×150/25 mm² 12/20 kV w warunkach odniesienia producenta"
       },
       "margines": {
-        "definicja_latex": "m = x_{\\lim} - x",
+        "definicja_latex": "\\Delta x = x_{\\lim} - x",
         "niedefiniowalny": false,
         "powod_pl": null,
         "punkt_pl": null,
@@ -342,7 +342,7 @@
         "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym znamionowemu"
       },
       "margines": {
-        "definicja_latex": "m = x_{\\lim} - x",
+        "definicja_latex": "\\Delta x = x_{\\lim} - x",
         "niedefiniowalny": false,
         "powod_pl": null,
         "punkt_pl": "koniec odcinka (odbiór skupiony na końcu)",

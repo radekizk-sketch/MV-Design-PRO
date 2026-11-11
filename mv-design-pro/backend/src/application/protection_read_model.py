@@ -13,10 +13,12 @@ from application.analyses.protection.base_values.models import (
     TransformerSide,
 )
 from application.analyses.protection.base_values.resolver import resolve_base_values
+from application.analyses.protection.catalog.catalog_store import profile_charakterystyk
 from application.analyses.protection.ocena_nadpradowa import (
+    NastawaStopnia,
     progi_stopnia,
     rozwiaz_nastawy,
-    slownik_nastaw,
+    wylacznik_urzadzenia,
 )
 from application.analyses.protection.sanity_checks import (
     ElementContext,
@@ -35,13 +37,20 @@ from enm.models import (
     Measurement,
     OverheadLine,
     ProtectionAssignment,
-    ProtectionSetting,
     Source,
     SwitchBranch,
     Transformer,
 )
 from enm.pola import punkt_przylaczenia_pola
 from enm.wylaczniki_liniowe import wylaczniki_liniowe
+from enm.zabezpieczenie import (
+    PrzekladnikPradowy,
+    aparaty_sterownika,
+    kody_funkcji_sterownika,
+    nastawy_funkcji,
+    przekladnik_pradowy,
+)
+from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ
 from network_model.nazwy import nazwa_nadana
 from protection.curves.iec_curves import (
     IEC_CURVE_LABELS_PL,
@@ -56,14 +65,23 @@ from protection.curves.ieee_curves import (
     generate_ieee_curve_points,
 )
 
-DEVICE_KIND_MAP = {
-    "overcurrent": "RELAY_OVERCURRENT",
-    "earth_fault": "RELAY_EARTH_FAULT",
-    "directional_overcurrent": "RELAY_OVERCURRENT",
-    "distance": "RELAY_DISTANCE",
-    "differential": "RELAY_DIFFERENTIAL",
-    "custom": "OTHER",
-}
+#: Rodzaj urządzenia w odczycie (``device_kind``) — z funkcji sterownika (rejestr), w kolejności
+#: pierwszeństwa: różnicowe, odległościowe, nadprądowe fazowe, ziemnozwarciowe.
+_RODZAJ_Z_FUNKCJI: tuple[tuple[frozenset[str], str], ...] = (
+    (frozenset({"87T", "87L"}), "RELAY_DIFFERENTIAL"),
+    (frozenset({"21"}), "RELAY_DISTANCE"),
+    (frozenset({"50", "51", "67"}), "RELAY_OVERCURRENT"),
+    (frozenset({"50N", "51N", "67N", "Yo>", "Go>"}), "RELAY_EARTH_FAULT"),
+)
+
+
+def _rodzaj_urzadzenia(assignment: ProtectionAssignment) -> str:
+    kody = set(kody_funkcji_sterownika(assignment))
+    for zbior, rodzaj in _RODZAJ_Z_FUNKCJI:
+        if kody & zbior:
+            return rodzaj
+    return "OTHER"
+
 
 #: Krzywa nastawy z modelu → (norma, kod generatora punktów I-t). Mapa ZAMKNIĘTA — zbiór
 #: kluczy = literał ``KrzywaNastawy`` modelu (test przypina); krzywa spoza mapy to błąd
@@ -88,60 +106,50 @@ _IT_CURVE_INVERSE_NUM_POINTS = 64
 # Zakres prądu jako wielokrotność progu (In>) dla generatora punktów solvera.
 _IT_CURVE_CURRENT_RANGE = (1.1, 20.0)
 
-FUNCTION_META = {
-    "overcurrent_50": {
-        "code": "OVERCURRENT_INST",
-        "ansi": ("50",),
-        "label_pl": "Nadprądowa bezzwłoczna (I>>)",
-    },
-    "overcurrent_51": {
-        "code": "OVERCURRENT_TIME",
-        "ansi": ("51",),
-        "label_pl": "Nadprądowa czasowa (I>)",
-    },
-    "earth_fault_50N": {
-        "code": "EARTH_FAULT_INST",
-        "ansi": ("50N",),
-        "label_pl": "Ziemnozwarciowa bezzwłoczna (Io>>)",
-    },
-    "earth_fault_51N": {
-        "code": "EARTH_FAULT_TIME",
-        "ansi": ("51N",),
-        "label_pl": "Ziemnozwarciowa czasowa (Io>)",
-    },
-    "directional_67": {
-        "code": "DIRECTIONAL_OC",
-        "ansi": ("67",),
-        "label_pl": "Nadprądowa kierunkowa",
-    },
-    "directional_67N": {
-        "code": "DIRECTIONAL_OC",
-        "ansi": ("67N",),
-        "label_pl": "Ziemnozwarciowa kierunkowa",
-    },
-    # D10 (addytywnie): funkcje ochrony od pracy wyspowej (LoM). Kody spójne z
-    # sanity_checks (ROCOF, UNDERFREQUENCY, OVERFREQUENCY).
-    "rocof_81R": {
-        "code": "ROCOF",
-        "ansi": ("81R",),
-        "label_pl": "Szybkość zmian częstotliwości (df/dt)",
-    },
-    "vector_shift_78": {
-        "code": "VECTOR_SHIFT",
-        "ansi": ("78",),
-        "label_pl": "Przesunięcie wektora napięcia",
-    },
-    "underfrequency_81U": {
-        "code": "UNDERFREQUENCY",
-        "ansi": ("81U",),
-        "label_pl": "Podczęstotliwościowa (f<)",
-    },
-    "overfrequency_81O": {
-        "code": "OVERFREQUENCY",
-        "ansi": ("81O",),
-        "label_pl": "Nadczęstotliwościowa (f>)",
-    },
+#: Kod funkcji rejestru → kod funkcji kontroli sensowności nastaw (`sanity_checks`). Funkcja
+#: spoza mapy jest w odczycie z kodem rejestru (prezentacja), bez kontroli sensowności.
+_KOD_KONTROLI: dict[str, str] = {
+    "50": "OVERCURRENT_INST",
+    "51": "OVERCURRENT_TIME",
+    "50N": "EARTH_FAULT_INST",
+    "51N": "EARTH_FAULT_TIME",
+    "67": "DIRECTIONAL_OC",
+    "67N": "DIRECTIONAL_OC",
+    "81R": "ROCOF",
+    "78": "VECTOR_SHIFT",
+    "81U": "UNDERFREQUENCY",
+    "81O": "OVERFREQUENCY",
 }
+
+#: Funkcje kierunkowe (nota w odczycie).
+_FUNKCJE_KIERUNKOWE = frozenset({"67", "67N"})
+
+
+def _stopien_funkcji(
+    assignment: ProtectionAssignment, funkcja_ref: str, kod: str
+) -> NastawaStopnia:
+    """Odczyt stopnia prądowego dowolnej funkcji z nastawą ``prog`` (schemat rejestru)."""
+    nastawy = nastawy_funkcji(assignment, funkcja_ref)
+
+    def _liczba(klucz: str) -> float | None:
+        wartosc = nastawy.get(klucz)
+        if isinstance(wartosc, int | float) and not isinstance(wartosc, bool):
+            return float(wartosc)
+        return None
+
+    def _napis(klucz: str) -> str | None:
+        wartosc = nastawy.get(klucz)
+        return wartosc if isinstance(wartosc, str) and wartosc else None
+
+    return NastawaStopnia(
+        funkcja=kod,
+        funkcja_ref=funkcja_ref,
+        prog=_liczba("prog"),
+        jednostka_progu=_napis("jednostka_progu"),
+        krzywa=_napis("krzywa"),
+        tms=_liczba("tms"),
+        zwloka_s=_liczba("zwloka_s"),
+    )
 
 
 @dataclass(frozen=True)
@@ -177,12 +185,15 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
     seen_diagnostic_keys: set[tuple[str, str, str | None, str]] = set()
 
     for assignment in sorted(enm.protection_assignments, key=lambda item: item.ref_id):
-        bay = _resolve_assignment_bay(assignment, bays, measurements)
-        ct = measurements.get(assignment.ct_ref) if assignment.ct_ref else None
-        vt = measurements.get(assignment.vt_ref) if assignment.vt_ref else None
-        breaker = branches.get(assignment.breaker_ref)
+        bay = _resolve_assignment_bay(assignment, bays)
+        ct = przekladnik_pradowy(enm, assignment.wejscia.ct_ref)
+        vt = measurements.get(assignment.wejscia.vt_ref) if assignment.wejscia.vt_ref else None
+        wylacznik = wylacznik_urzadzenia(assignment) or next(
+            iter(aparaty_sterownika(assignment)), None
+        )
+        breaker = branches.get(wylacznik) if wylacznik else None
         targets = _resolve_targets(
-            assignment=assignment,
+            breaker_ref=wylacznik,
             bay=bay,
             branches=branches,
             transformers=transformers,
@@ -216,7 +227,7 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
             )
             base_values = resolve_base_values(base_context)
             frontend_functions, sanity_functions = _build_functions(
-                assignment.settings,
+                assignment,
                 base_values,
                 ct,
             )
@@ -229,7 +240,7 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
                         "element_type": target.element_type,
                         "device_id": assignment.ref_id,
                         "device_name_pl": _resolve_device_name(assignment),
-                        "device_kind": DEVICE_KIND_MAP.get(assignment.device_type, "OTHER"),
+                        "device_kind": _rodzaj_urzadzenia(assignment),
                         "status": "ACTIVE" if assignment.is_enabled else "BLOCKED",
                         "settings_summary": {
                             "functions": frontend_functions,
@@ -312,12 +323,19 @@ def build_protection_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[s
         "assignments": assignments_out,
         "diagnostics": diagnostics_out,
         "summaries": summaries_out,
-        # Karta BIEG-ZABEZPIECZEN-Z-MODELU: listy wyboru edytora nastaw (funkcje,
-        # charakterystyki, jednostki progu) z backendu — edytor niczego nie wymyśla.
-        "slownik_nastaw": slownik_nastaw(),
         # Wyłączniki liniowe (bez pola) z przekładnikami i zabezpieczeniami przy nich — ekran
         # „Zabezpieczenia i automatyka" prowadzi z nich do kreatorów CT i zabezpieczenia.
         "wylaczniki_liniowe": wylaczniki_liniowe(enm.model_dump(mode="json")),
+        # Profile charakterystyk funkcji do wyboru w edytorze nastaw — ten sam predykat
+        # użyteczności co zapis (`update_protection_settings`) i ocena (karta
+        # OCHRONA-JEDNO-ZRODLO: wyrób i charakterystyki to dwa osobne odwołania sterownika).
+        "profile_charakterystyk": [
+            {
+                "kod": profil.device_id,
+                "etykieta_pl": " ".join(c for c in (profil.vendor, profil.model) if c),
+            }
+            for profil in profile_charakterystyk()
+        ],
     }
 
 
@@ -370,23 +388,20 @@ def _build_read_model_summary(
 def _resolve_assignment_bay(
     assignment: ProtectionAssignment,
     bays: dict[str, Bay],
-    measurements: dict[str, Measurement],
 ) -> Bay | None:
-    for bay in bays.values():
-        if bay.protection_ref == assignment.ref_id:
+    """Pole sterownika: pole, w którym stoi (``bay_ref``), albo — sterownik wyłącznika bez pola
+    — pole, którego wyposażenie zawiera wyłącznik z macierzy wyzwoleń."""
+    if assignment.bay_ref:
+        return bays.get(assignment.bay_ref)
+    aparaty = set(aparaty_sterownika(assignment))
+    for bay in sorted(bays.values(), key=lambda b: b.ref_id):
+        if aparaty & set(bay.equipment_refs):
             return bay
-    for bay in bays.values():
-        if assignment.breaker_ref in bay.equipment_refs:
-            return bay
-    if assignment.ct_ref:
-        ct = measurements.get(assignment.ct_ref)
-        if ct and ct.bay_ref:
-            return bays.get(ct.bay_ref)
     return None
 
 
 def _resolve_targets(
-    assignment: ProtectionAssignment,
+    breaker_ref: str | None,
     bay: Bay | None,
     branches: dict[str, Branch],
     transformers: dict[str, Transformer],
@@ -395,7 +410,7 @@ def _resolve_targets(
 ) -> list[ProtectedTarget]:
     targets: dict[str, ProtectedTarget] = {}
 
-    breaker = branches.get(assignment.breaker_ref)
+    breaker = branches.get(breaker_ref) if breaker_ref else None
     if breaker is not None:
         switch_target = _build_switch_target(breaker)
         if switch_target is not None:
@@ -405,7 +420,7 @@ def _resolve_targets(
         return list(targets.values())
 
     for equipment_ref in bay.equipment_refs:
-        if equipment_ref == assignment.breaker_ref:
+        if equipment_ref == breaker_ref:
             continue
         branch = branches.get(equipment_ref)
         if isinstance(branch, OverheadLine | Cable):
@@ -473,7 +488,7 @@ def _build_base_context(
     target: ProtectedTarget,
     bay: Bay | None,
     breaker: Branch | None,
-    ct: Measurement | None,
+    ct: PrzekladnikPradowy | None,
     vt: Measurement | None,
     buses: dict[str, Bus],
     transformers: dict[str, Transformer],
@@ -518,49 +533,56 @@ def _build_base_context(
         transformer_voltage_lv_kv=(transformer.ulv_kv if transformer is not None else None),
         transformer_side=transformer_side,
         connection_rated_current_a=(
-            _resolve_measurement_primary(ct, "CT")
-            if target.element_type in {"Source", "Generator"}
+            ct.ratio_primary
+            if ct is not None and target.element_type in {"Source", "Generator"}
             else None
         ),
     )
 
 
 def _build_functions(
-    settings: list[ProtectionSetting],
+    assignment: ProtectionAssignment,
     base_values: Any,
-    ct: Measurement | None,
+    ct: PrzekladnikPradowy | None,
 ) -> tuple[list[dict[str, Any]], list[SanityProtectionFunctionSummary]]:
     """Funkcje nastaw do prezentacji — próg w AMPERACH PIERWOTNYCH z jednego przeliczenia.
 
-    Próg bez jednostki albo bez przekładni przekładnika nie ma wartości pierwotnej: funkcja
-    trafia do widoku z nazwanym brakiem (``it_curve_missing_data``), bez nastawy liczbowej —
-    wcześniej ``threshold_a`` był czytany jako prąd pierwotny niezależnie od strony
-    przekładnika, a brak progu dawał próg 0 A.
+    Czyta sterownik (`enm.zabezpieczenie`): każda włączona funkcja rejestru z nastawą ``prog``
+    (stopnie prądowe fazowe i zerowe) w grupie efektywnej. Funkcja bez progu w grupie nie
+    trafia do widoku; próg ma zawsze stronę przekładnika (model odrzuca próg bez jednostki —
+    `enm.nastawy_zabezpieczen.bledy_nastaw_funkcji`, PZ-09), więc wartości pierwotnej brak
+    wyłącznie bez przekładni przekładnika — funkcja trafia z nazwanym brakiem ``ct_ratio``
+    (``it_curve_missing_data``), bez nastawy liczbowej.
     """
     frontend_functions: list[dict[str, Any]] = []
     sanity_functions: list[SanityProtectionFunctionSummary] = []
 
-    for setting in settings:
-        meta = FUNCTION_META.get(setting.function_type)
-        if meta is None or setting.threshold_a is None:
+    for funkcja in assignment.funkcje:
+        wpis = FUNKCJE_EAZ.get(funkcja.kod)
+        if not funkcja.wlaczona or wpis is None or wpis.schemat_nastawy("prog") is None:
             continue
+        setting = _stopien_funkcji(assignment, funkcja.ref, funkcja.kod)
+        if setting.prog is None:
+            continue
+        code = _KOD_KONTROLI.get(funkcja.kod, funkcja.kod)
+        ansi = (funkcja.kod,)
+        label_pl = f"{wpis.nazwa_pl[:1].upper()}{wpis.nazwa_pl[1:]} ({wpis.oznaczenie_pl})"
+        notes_pl = "Funkcja kierunkowa" if funkcja.kod in _FUNKCJE_KIERUNKOWE else None
         progi = progi_stopnia(setting, ct)
         prog_pierwotny_a = progi[1] if progi is not None else None
         if prog_pierwotny_a is None:
             frontend_functions.append(
                 {
-                    "code": meta["code"],
-                    "ansi": list(meta["ansi"]),
-                    "label_pl": meta["label_pl"],
+                    "code": code,
+                    "ansi": list(ansi),
+                    "label_pl": label_pl,
                     "setpoint": None,
                     "computed": None,
-                    "time_delay_s": setting.time_delay_s,
-                    "curve_type": setting.curve_type,
+                    "time_delay_s": setting.zwloka_s,
+                    "curve_type": setting.krzywa,
                     "it_curve": None,
-                    "it_curve_missing_data": [
-                        ("threshold_unit" if setting.threshold_unit is None else "ct_ratio")
-                    ],
-                    "notes_pl": ("Funkcja kierunkowa" if setting.is_directional else None),
+                    "it_curve_missing_data": ["ct_ratio"],
+                    "notes_pl": notes_pl,
                 }
             )
             continue
@@ -569,36 +591,37 @@ def _build_functions(
         computed = compute_from_setpoint(setpoint, base_values)
         it_curve, it_curve_missing = _build_it_curve(setting, prog_pierwotny_a)
         function_payload: dict[str, Any] = {
-            "code": meta["code"],
-            "ansi": list(meta["ansi"]),
-            "label_pl": meta["label_pl"],
+            "code": code,
+            "ansi": list(ansi),
+            "label_pl": label_pl,
             "setpoint": setpoint.to_dict(),
             "computed": computed.to_dict() if computed is not None else None,
-            "time_delay_s": setting.time_delay_s,
-            "curve_type": setting.curve_type,
+            "time_delay_s": setting.zwloka_s,
+            "curve_type": setting.krzywa,
             "it_curve": it_curve,
-            "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
+            "notes_pl": notes_pl,
         }
         if it_curve_missing:
             function_payload["it_curve_missing_data"] = it_curve_missing
         frontend_functions.append(function_payload)
-        sanity_functions.append(
-            SanityProtectionFunctionSummary(
-                code=meta["code"],
-                ansi=meta["ansi"],
-                label_pl=meta["label_pl"],
-                setpoint=setpoint,
-                time_delay_s=setting.time_delay_s,
-                curve_type=setting.curve_type,
-                notes_pl="Funkcja kierunkowa" if setting.is_directional else None,
+        if funkcja.kod in _KOD_KONTROLI:
+            sanity_functions.append(
+                SanityProtectionFunctionSummary(
+                    code=code,
+                    ansi=ansi,
+                    label_pl=label_pl,
+                    setpoint=setpoint,
+                    time_delay_s=setting.zwloka_s,
+                    curve_type=setting.krzywa,
+                    notes_pl=notes_pl,
+                )
             )
-        )
 
     return frontend_functions, sanity_functions
 
 
 def _build_it_curve(
-    setting: ProtectionSetting,
+    setting: NastawaStopnia,
     pickup_a: float,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Krzywa czasowo-prądowa (I-t) nastawy — punkty WYŁĄCZNIE z generatorów rdzenia.
@@ -611,25 +634,25 @@ def _build_it_curve(
       podstawiana zamiast brakującej zwłoki skasowana (karta BIEG-ZABEZPIECZEN-Z-MODELU:
       „DT bez zwłoki = 0 s" to cichy zapas).
     - Charakterystyki zależne IEC 60255 i IEEE C37.112 wymagają mnożnika czasowego
-      (``time_multiplier``: TMS albo TD) — brak → brak danych, bez fabrykowania mnożnika.
+      (nastawa ``tms``: TMS albo TD) — brak → brak danych, bez fabrykowania mnożnika.
     - Brak charakterystyki → brak danych (``curve_type``), NIE cichy zapas na DT.
     """
     missing: list[str] = []
-    if setting.curve_type is None:
+    if setting.krzywa is None:
         return None, ["curve_type"]
-    norma, kod = CURVE_TYPE_MAP[setting.curve_type]
+    norma, kod = CURVE_TYPE_MAP[setting.krzywa]
 
     time_multiplier: float | None = None
-    definite_time_s = setting.time_delay_s
+    definite_time_s = setting.zwloka_s
     if kod == "DT":
         curve_kind = "DEFINITE"
         num_points = _IT_CURVE_DEFINITE_NUM_POINTS
-        if setting.time_delay_s is None or setting.time_delay_s <= 0:
+        if setting.zwloka_s is None or setting.zwloka_s <= 0:
             missing.append("definite_time")
     else:
         curve_kind = "INVERSE"
         num_points = _IT_CURVE_INVERSE_NUM_POINTS
-        tms = setting.time_multiplier
+        tms = setting.tms
         if tms is None or tms <= 0:
             missing.append("time_multiplier")
         else:
@@ -708,13 +731,13 @@ def _build_base_values_payload(base_values: Any) -> dict[str, float] | None:
     return payload or None
 
 
-def _build_ct_payload(ct: Measurement | None) -> dict[str, Any] | None:
-    if ct is None or ct.measurement_type != "CT":
+def _build_ct_payload(ct: PrzekladnikPradowy | None) -> dict[str, Any] | None:
+    if ct is None:
         return None
     return {
-        "primary_a": ct.rating.ratio_primary,
-        "secondary_a": ct.rating.ratio_secondary,
-        "label": f"{_format_number(ct.rating.ratio_primary)}/{_format_number(ct.rating.ratio_secondary)}",
+        "primary_a": ct.ratio_primary,
+        "secondary_a": ct.ratio_secondary,
+        "label": f"{_format_number(ct.ratio_primary)}/{_format_number(ct.ratio_secondary)}",
     }
 
 
@@ -814,13 +837,11 @@ def _resolve_device_name(assignment: ProtectionAssignment) -> str:
     if nazwa is not None:
         return nazwa
     label = {
-        "overcurrent": "Przekaźnik nadprądowy",
-        "earth_fault": "Przekaźnik ziemnozwarciowy",
-        "directional_overcurrent": "Przekaźnik nadprądowy kierunkowy",
-        "distance": "Przekaźnik odległościowy",
-        "differential": "Przekaźnik różnicowy",
-        "custom": "Zabezpieczenie niestandardowe",
-    }.get(assignment.device_type, "Zabezpieczenie")
+        "RELAY_OVERCURRENT": "Przekaźnik nadprądowy",
+        "RELAY_EARTH_FAULT": "Przekaźnik ziemnozwarciowy",
+        "RELAY_DISTANCE": "Przekaźnik odległościowy",
+        "RELAY_DIFFERENTIAL": "Przekaźnik różnicowy",
+    }.get(_rodzaj_urzadzenia(assignment), "Sterownik zabezpieczeń")
     # Zabezpieczenie bez nazwy: polski opis rodzaju, nigdy identyfikator przypisania
     # (karta #144) — tożsamość niesie `device_id` rekordu.
     return f"{label} bez nazwy"

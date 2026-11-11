@@ -250,6 +250,7 @@ def build_swz_view(
             przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
             nazwa_punktu_pl=nazwa_po_identyfikatorze(bus_ref, enm),
             aparat_in_a=aparat.in_a if aparat is not None else None,
+            rodzaj_obwodu=getattr(branch, "rodzaj_obwodu_nn", None),
         )
         return {
             **context,
@@ -266,7 +267,9 @@ def build_swz_view(
         ik1_min_a=loop_result.ik_min_a,
         u0_v=u_phase_v,
         aparat=aparat,
+        rodzaj_obwodu=getattr(branch, "rodzaj_obwodu_nn", None),
         dane_przyjete=dane_przyjete_petli(loop_result, nazwa_po_identyfikatorze(bus_ref, enm)),
+        miejsce_pl=nazwa_po_identyfikatorze(bus_ref, enm),
     )
 
     return {

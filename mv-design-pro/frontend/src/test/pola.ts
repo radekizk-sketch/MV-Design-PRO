@@ -18,7 +18,6 @@ export function pole(dane: PoleTestowe): Bay {
     substation_ref: null,
     branch_point_ref: null,
     equipment_refs: [],
-    protection_codes: [],
     primary_devices: [],
     surge_arresters: [],
     ...dane,

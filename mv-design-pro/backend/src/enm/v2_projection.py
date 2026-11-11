@@ -26,6 +26,7 @@ from enm.models import (
 from enm.nazwy_elementow import nazwa_elementu
 from enm.slownik_komunikatow import nazwa_rodzaju_generatora
 from enm.uziemienie_sekcji import punkt_zespolu
+from enm.zabezpieczenie import aparaty_sterownika, brakujace_wejscia, kody_funkcji_sterownika
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.core.uziemienie import TYP_PUNKTU_NEUTRALNEGO_WARIANTU
 from network_model.nazwy import nazwa_nadana
@@ -472,8 +473,9 @@ def _build_automation_assets(enm: EnergyNetworkModel) -> list[dict]:
             {
                 "ref_id": f"automation.{assignment.ref_id}",
                 "protection_assignment_ref": assignment.ref_id,
-                "breaker_ref": assignment.breaker_ref,
-                "device_type": assignment.device_type,
+                "bay_ref": assignment.bay_ref,
+                "wylaczniki_refs": list(aparaty_sterownika(assignment)),
+                "kody_funkcji": kody_funkcji_sterownika(assignment),
                 "quality_status": "pelna" if automation_profile else "czesciowa",
                 "profile_source": _profile_source(assignment),
                 "profile": automation_profile,
@@ -550,13 +552,20 @@ def _quality_for_element(element: object) -> ProjectionQuality:
     ):
         return "pelna" if getattr(element, "catalog_ref", None) else "czesciowa"
     if isinstance(element, ProtectionAssignment):
-        return "pelna" if element.catalog_ref and element.ct_ref else "czesciowa"
+        # Sterownik pełny: typ katalogowy i komplet wymaganych wejść jego funkcji.
+        return "pelna" if element.catalog_ref and not _brak_wejsc(element) else "czesciowa"
     if isinstance(element, BranchPointSN):
         return "pelna" if element.catalog_ref else "czesciowa"
     return "pelna"
 
 
+def _brak_wejsc(sterownik: ProtectionAssignment) -> bool:
+    """Czy któraś włączona funkcja sterownika nie ma wymaganego wejścia (rejestr funkcji)."""
+    return any(brakujace_wejscia(sterownik, kod) for kod in kody_funkcji_sterownika(sterownik))
+
+
 def _readiness_for_element(element: object) -> ReadinessStatus:
+
     if isinstance(element, OverheadLine | Cable | Transformer | Source):
         return "gotowy" if getattr(element, "catalog_ref", None) else "wymaga_uzupelnienia"
     if isinstance(element, Generator):
@@ -565,7 +574,7 @@ def _readiness_for_element(element: object) -> ReadinessStatus:
             element.catalog_ref,
         ):
             return "wymaga_uzupelnienia"
-    if isinstance(element, ProtectionAssignment) and not element.ct_ref:
+    if isinstance(element, ProtectionAssignment) and _brak_wejsc(element):
         return "wymaga_uzupelnienia"
     return "gotowy"
 

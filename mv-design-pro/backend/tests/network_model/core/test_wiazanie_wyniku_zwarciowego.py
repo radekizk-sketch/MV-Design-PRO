@@ -40,7 +40,7 @@ _WYNIK_PRZYKLADOWY = {
         "pochodzenie": "PROPOZYCJA",
         "wartosc_robocza": True,
         "jakosc": "ESTIMATED",
-        "opis_pl": "t_b = 0,1 s — wartość robocza.",
+        "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza.",
     },
     # pole spoza listy zamkniętej — NIE wchodzi do odcisku
     "reporting_status": "reportable",
@@ -136,7 +136,7 @@ def test_pieczec_zmienia_sie_gdy_liczby_wyniku_inne() -> None:
             "pochodzenie": "PROPOZYCJA",
             "wartosc_robocza": False,
             "jakosc": None,
-            "opis_pl": "t_b = 0,1 s — wartość robocza.",
+            "opis_pl": "Czas przerwania prądu zwarciowego 0,1 s — wartość robocza.",
         },
     ],
     ids=["pochodzenie_usuniete", "robocza_podana_jako_projektowa"],

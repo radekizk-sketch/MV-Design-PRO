@@ -299,7 +299,7 @@ export function KartaObwoduNn({
   const urzadzenie = graf.devices.find((d) => d.ref_id === ref);
   const galaz = graf.branches.find((b) => b.ref_id === ref);
   const segment = graf.segments.find((s) => s.segment_id === ref);
-  const zabezpieczenia = graf.protection_assignments.filter((p) => p.breaker_ref === ref);
+  const zabezpieczenia = graf.protection_assignments.filter((p) => p.wylaczniki_refs.includes(ref));
   const aparat = urzadzenie ? wpisAparatu(urzadzenie.device_type, urzadzenie.device_kind, urzadzenie.catalog_namespace) : null;
   const nazwaSzyny = (busRef: string | null): string =>
     busRef ? graf.buses.find((b) => b.ref_id === busRef)?.name ?? 'szyna spoza projekcji' : 'brak';

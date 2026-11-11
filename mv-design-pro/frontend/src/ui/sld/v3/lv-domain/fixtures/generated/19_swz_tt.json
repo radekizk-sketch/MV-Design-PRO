@@ -656,7 +656,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "aea7c0d206543af9c06ebd006c1e891dc456c704c6d76d0f407461601feae7e8",
+  "projection_hash": "dfec90a5a2222e494d08d1cea625d633565201a48ba4d64b0324b30a0485c10d",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1088,7 +1088,7 @@
                         "zakres_stosowalnosci_pl": "wyłącznik różnicowoprądowy „RCD-01” najbliższy punktowi"
                       },
                       "margines": {
-                        "definicja_latex": "m = x - x_{\\lim}",
+                        "definicja_latex": "\\Delta x = x - x_{\\lim}",
                         "niedefiniowalny": false,
                         "powod_pl": null,
                         "punkt_pl": "punkt „Zaciski instalacji: Odbiór z RCD”",
@@ -1201,6 +1201,12 @@
                                 "jednostka": "s",
                                 "wartosc": 0.04
                               }
+                            },
+                            {
+                              "jakosc": "ESTIMATED",
+                              "nazwa_pl": "rodzaj obwodu (Zaciski instalacji: Odbiór z RCD)",
+                              "powod_pl": "obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy",
+                              "wartosc": null
                             }
                           ],
                           "stan": "UNVALIDATED_INPUT"
@@ -1241,7 +1247,7 @@
                         "zakres_stosowalnosci_pl": "obwód odbiorczy, pasmo napięcia względem ziemi 120<U0<=230"
                       },
                       "margines": {
-                        "definicja_latex": "m = x_{\\lim} - x",
+                        "definicja_latex": "\\Delta x = x_{\\lim} - x",
                         "niedefiniowalny": false,
                         "powod_pl": null,
                         "punkt_pl": "prąd doziemny minimalny 8,092 A = 269,7-krotność znamionowego prądu różnicowego zadziałania",
@@ -1271,7 +1277,8 @@
                         "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
                       },
                       "powody_niepelnosci": [
-                        "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta."
+                        "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                        "Dana przyjęta bez walidacji: rodzaj obwodu (Zaciski instalacji: Odbiór z RCD) (bez wartości liczbowej), jakość danej: oszacowane — obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy."
                       ],
                       "przedmiot": {
                         "element_ref": "QF-01_instalacja",
@@ -1291,7 +1298,7 @@
                         "dotyczy": true,
                         "modul_istniejacy": null,
                         "podstawa": null,
-                        "powod_pl": "obwód odbiorczy w układzie TT, pasmo napięcia względem ziemi 120<U0<=230",
+                        "powod_pl": "obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy; układ TT, pasmo napięcia względem ziemi 120<U0<=230",
                         "technologia": null,
                         "typ_modulu": null,
                         "warunek_wstepny_nieuruchomiony": false
@@ -1303,6 +1310,7 @@
                           "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.5 (układ TT) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                           "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), Tab. 41.1 (układ TT, obwody odbiorcze) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                           "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                          "Dana przyjęta bez walidacji: rodzaj obwodu (Zaciski instalacji: Odbiór z RCD) (bez wartości liczbowej), jakość danej: oszacowane — obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy.",
                           "Zakres ważności: Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
                         ],
                         "zdanie_pl": "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium spełnione. Maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna przy pięciokrotnym znamionowym prądzie różnicowym w rekordzie katalogowym): 0,04 s wobec wymaganych ≤ 0,2 s wg Tab. 41.1 (układ TT, obwody odbiorcze) „IEC 60364-4-41” (margines +0,16 s, punkt: prąd doziemny minimalny 8,092 A = 269,7-krotność znamionowego prądu różnicowego zadziałania, względnie +80 % wartości granicznej)."
@@ -1460,6 +1468,7 @@
                     "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                     "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
                     "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                    "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: rodzaj obwodu (Zaciski instalacji: Odbiór z RCD) (bez wartości liczbowej), jakość danej: oszacowane — obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy.",
                     "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
                   ],
                   "slad": [
@@ -1502,6 +1511,7 @@
                       "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                       "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
                       "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                      "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: rodzaj obwodu (Zaciski instalacji: Odbiór z RCD) (bez wartości liczbowej), jakość danej: oszacowane — obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy.",
                       "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
                     ],
                     "przyczyna_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”; Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium nie ma limitu z podstawą",
@@ -1512,6 +1522,7 @@
                       "Zakres ważności: Pętla doziemna TT: trasa + transformator + sieć zasilająca + uziom roboczy sieci + uziom instalacji odbiorczej — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
                       "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), Tab. 41.1 (układ TT, obwody odbiorcze) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                       "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                      "Dana przyjęta bez walidacji: rodzaj obwodu (Zaciski instalacji: Odbiór z RCD) (bez wartości liczbowej), jakość danej: oszacowane — obwód odbiorczy — wartość robocza: aparat 40 A ≤ 63 A (PN-HD 60364-4-41:2017 §411.3.2.2); zmień rodzaj obwodu na aparacie, gdy obwód jest rozdzielczy.",
                       "Zakres ważności: Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
                       "Zakres ważności: Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
                       "Zakres ważności: Ochrona przeciwporażeniowa obwodu nN w układzie TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."

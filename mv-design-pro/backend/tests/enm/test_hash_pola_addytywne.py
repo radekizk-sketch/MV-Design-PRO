@@ -101,6 +101,8 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "parametry_z_geometrii",
             "normal_state",
             "stan_obiektu",
+            "czas_wylaczenia_zwarcia_s",
+            "rodzaj_obwodu_nn",
         ),
         # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
         # `tests/enm/test_hash_w5b_bays.py`).
@@ -123,9 +125,8 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             # odcisku: `tests/enm/test_hash_w5b_bays.py`).
             "stan_obiektu",
             "klasa_pola",
-            # Ta sama karta (decyzja właściciela 2026-10-29 pkt 4): `Bay.zrodlo_u0_ref`
-            # (powiązanie źródła 3U₀ funkcji 67N; test odcisku: `test_hash_w5b_bays.py`).
-            "zrodlo_u0_ref",
+            # Dawne `Bay.zrodlo_u0_ref` (ta sama karta) skasowane przez kartę
+            # OCHRONA-JEDNO-ZRODLO — źródło 3U₀ niesie wejście sterownika pola.
         ),
         "generators": (
             "dynamika",
@@ -219,3 +220,39 @@ def test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none() -> None:
     )
     assert compute_enm_hash(z_blokiem) != compute_enm_hash(bez_bloku)
     assert compute_input_hash(z_blokiem) != compute_input_hash(bez_bloku)
+
+
+def test_wartosci_projektanta_aparatu_poza_odciskiem_gdy_none() -> None:
+    """Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (pakiety 6a, 8, 9): przyjęty czas zwarcia
+    i rodzaj obwodu nN na aparacie. Bez deklaracji model haszuje jak migawka sprzed atrybutów
+    (zapisane migawki nie mają tych kluczy); nadana wartość zmienia odcisk pełny i wejściowy.
+
+    Iloczyn: pole {czas, rodzaj} × aparat {wyłącznik, bezpiecznik} × wartość {brak, nadana}."""
+    from enm.models import FuseBranch, SwitchBranch
+
+    def _model(aparat: object) -> EnergyNetworkModel:
+        return EnergyNetworkModel(
+            header=ENMHeader(name="aparat"),
+            buses=[
+                Bus(ref_id="a", name="A", voltage_kv=0.4),
+                Bus(ref_id="b", name="B", voltage_kv=0.4),
+            ],
+            branches=[aparat],
+        )
+
+    wspolne = {"ref_id": "ap", "name": "Aparat", "from_bus_ref": "a", "to_bus_ref": "b"}
+    for klasa, rodzaj in ((SwitchBranch, {"type": "breaker"}), (FuseBranch, {})):
+        bez = _model(klasa(**wspolne, **rodzaj))
+        migawka = bez.model_dump(mode="json")
+        for galaz in migawka["branches"]:
+            galaz.pop("czas_wylaczenia_zwarcia_s")
+            galaz.pop("rodzaj_obwodu_nn")
+        assert compute_enm_hash(bez) == compute_enm_hash(EnergyNetworkModel.model_validate(migawka))
+        assert hash_migawki_enm(bez.model_dump(mode="json")) == hash_migawki_enm(migawka)
+        for pole, wartosc in (
+            ("czas_wylaczenia_zwarcia_s", 0.4),
+            ("rodzaj_obwodu_nn", "odbiorczy"),
+        ):
+            z = _model(klasa(**wspolne, **rodzaj, **{pole: wartosc}))
+            assert compute_enm_hash(z) != compute_enm_hash(bez), pole
+            assert compute_input_hash(z) != compute_input_hash(bez), pole

@@ -93,7 +93,7 @@ function zamontujBackend(
       const url = String(input);
       const metoda = init?.method ?? 'GET';
       zadania.push({ url, metoda, body: init?.body ? JSON.parse(String(init.body)) : null });
-      if (url.includes('/fault-scenarios') && metoda === 'GET' && url.includes('/study-cases/')) {
+      if (metoda === 'GET' && url.endsWith(`/study-cases/${CASE_ID}/fault-scenarios`)) {
         return new Response(JSON.stringify({ scenarios: lista, count: lista.length }), {
           status: 200,
           headers: JSON_NAGLOWKI,
@@ -528,7 +528,8 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       await zmienTb(user, 's1', wpis);
       await waitFor(() => {
         const put = zadania.find((z) => z.metoda === 'PUT');
-        expect(put?.url).toContain('/fault-scenarios/s1');
+        // Scenariusz adresowany w obrębie przypadku (wyszukiwanie w projekcie przypadku).
+        expect(put?.url).toContain(`/study-cases/${CASE_ID}/fault-scenarios/s1`);
         const { breaking_time_seconds: wyslany, ...reszta } = (put!.body as { config: Record<string, unknown> })
           .config;
         expect(wyslany).toBe(tb);
@@ -571,7 +572,7 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       await zmienTb(user, 's2', '0.12', false);
       await waitFor(() => {
         const put = zadania.find((z) => z.metoda === 'PUT');
-        expect(put?.url).toContain('/fault-scenarios/s2');
+        expect(put?.url).toContain(`/study-cases/${CASE_ID}/fault-scenarios/s2`);
         expect((put!.body as { config: Record<string, unknown> }).config.breaking_time_seconds).toBe(0.12);
       });
     });
@@ -654,7 +655,8 @@ describe('PanelScenariuszy — scenariusze zwarciowe w powłoce', () => {
       'Zwarcie w GPZ',
     );
     const utworzenie = zadania.findIndex(
-      (z) => z.metoda === 'POST' && z.url.endsWith('/fault-scenarios/s1/runs'),
+      (z) =>
+        z.metoda === 'POST' && z.url.endsWith(`/study-cases/${CASE_ID}/fault-scenarios/s1/runs`),
     );
     const wykonanie = zadania.findIndex(
       (z) => z.metoda === 'POST' && z.url.endsWith('/runs/run-z-scenariusza/execute'),

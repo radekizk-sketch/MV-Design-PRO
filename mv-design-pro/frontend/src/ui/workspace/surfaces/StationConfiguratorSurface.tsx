@@ -56,6 +56,7 @@ import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
 import { stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../shared/rodzajStacji';
+import { sterownikPola } from '../../shared/sterownikZabezpieczen';
 import { buildCatalogBinding, CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
 import { useGrupyPolaczen } from '../../catalog/useGrupyPolaczen';
@@ -76,7 +77,6 @@ import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn, toSamoNapiecieZnamionowe } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
-import { przypisanieZabezpieczeniaPola } from '../../shared/zabezpieczeniePola';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -466,7 +466,7 @@ function deriveStationBayRows(
       bayRole: bay.bay_role ?? null,
       attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
       hasEquipment,
-      hasProtection: przypisanieZabezpieczeniaPola(snapshot, bay) !== null,
+      hasProtection: sterownikPola(snapshot, bay.ref_id) !== null,
       // Pomiar pola z modelu: przekładnik (`Measurement.bay_ref`) wskazuje to pole.
       hasMeasurements: pomiaryPol.has(bay.ref_id),
       // Pole bez aparatu pola w modelu nie jest kompletne (dawniej stała „kompletne").
@@ -731,14 +731,14 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       ),
     [snapshot?.measurements, polaSnStacji],
   );
-  // Przekaźniki pól SN wprost z modelu — predykat `przypisanieZabezpieczeniaPola`.
+  // Przekaźniki pól SN wprost z modelu (sterownik pola — `ProtectionAssignment.bay_ref`).
   const stationRelays = useMemo(
     () =>
       przekaznikiStacji(
-        snapshot?.protection_assignments ?? [],
-        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, pole: bay })),
+        snapshot,
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, bayRef: bay.ref_id })),
       ),
-    [snapshot?.protection_assignments, polaSnStacji],
+    [snapshot, polaSnStacji],
   );
   // Pola pomiarowe SN z deklaracją pomiaru (krok „Pola pomiarowe”).
   const stationMeteringBays = useMemo(

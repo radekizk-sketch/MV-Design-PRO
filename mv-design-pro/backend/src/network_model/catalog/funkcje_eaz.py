@@ -1,4 +1,4 @@
-"""Słownik funkcji EAZ pola SN — JEDNO źródło kodów `Bay.protection_codes` i `BayTemplate.funkcje_eaz`.
+"""Słownik funkcji EAZ — JEDNO źródło kodów `ProtectionAssignment.funkcje` i szablonów pól.
 
 PO CO. Zestaw funkcji zabezpieczeń i automatyk należy do SZABLONU pola (ENEA Operator „Stacje
 elektroenergetyczne 110 kV", Zeszyt 1: Z.10 ≠ Z.11 przy tej samej roli pola odpływowego), a nie
@@ -33,14 +33,25 @@ Moduł jest LIŚCIEM (stdlib): czytają go szablony pól, operacje domenowe, wal
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
 
 __all__ = [
+    "ETYKIETY_WARTOSCI_WYBORU",
     "FUNKCJE_EAZ",
+    "KIERUNKI_DZIALANIA",
+    "JEDNOSTKI_PROGU_PRADOWEGO",
+    "KRZYWE_CZASOWE",
+    "WEJSCIA_FUNKCJI",
+    "ZESTAWY_FUNKCJI_RODZAJU",
     "FunkcjaEaz",
+    "OcenaFunkcji",
     "RodzajFunkcjiEaz",
+    "SchematNastawy",
+    "TypNastawy",
+    "WejscieFunkcji",
     "funkcja_eaz",
     "kody_spoza_slownika",
+    "etykieta_funkcji_eaz",
     "opis_funkcji_eaz_pl",
 ]
 
@@ -51,9 +62,89 @@ _IR = "IRiESD ENEA Operator (wersja 2.3)"
 _KS = "ENEA Operator, Katalog standardowych sygnałów telemechaniki obiektowej (2022)"
 
 
+#: Wejście pomiarowe albo sygnałowe funkcji (karta OCHRONA-JEDNO-ZRODLO). Wiązanie wejść
+#: z przekładnikami robi sterownik w modelu (`enm.models.WejsciaZabezpieczenia`); dostępność
+#: wejścia sterownika rozstrzyga jedna reguła `enm.zabezpieczenie.wejscia_dostepne`.
+#:  * ``I`` — prądy fazowe (przekładnik prądowy pola),
+#:  * ``U`` — napięcia fazowe (przekładnik napięciowy),
+#:  * ``3I0`` — prąd zerowy: układ Holmgreena (suma prądów fazowych przekładników pola) albo
+#:    przekładnik Ferrantiego,
+#:  * ``3U0`` — napięcie zerowe: uzwojenie otwartego trójkąta przekładnika napięciowego albo
+#:    napięcie obliczone z napięć fazowych,
+#:  * ``I_STRONY_2`` — prądy drugiej strony strefy różnicowej (87T, 87L),
+#:  * ``SYGNAL`` — sygnał binarny z innego urządzenia (blokowanie ZS, pobudzenie SZR).
+WejscieFunkcji = Literal["I", "U", "3I0", "3U0", "I_STRONY_2", "SYGNAL"]
+WEJSCIA_FUNKCJI: tuple[str, ...] = get_args(WejscieFunkcji)
+
+#: Typ wartości nastawy: liczba (z jednostką), wybór z listy albo wartość logiczna.
+TypNastawy = Literal["LICZBA", "WYBOR", "LOGICZNA"]
+
+#: Charakterystyki czasowo-prądowe stopni nadprądowych — kody wyboru nastawy ``krzywa``.
+#: IEC 60255-151 (SI/VI/EI/LTI) i czas niezależny (DT) liczy rdzeń
+#: ``protection_iec60255.compute_curve_trip_time``; IEEE C37.112 (MI/VI/EI) —
+#: ``protection_iec60255.compute_ieee_c37112_generic``.
+KRZYWE_CZASOWE: tuple[str, ...] = (
+    "DT",
+    "IEC_SI",
+    "IEC_VI",
+    "IEC_EI",
+    "IEC_LTI",
+    "IEEE_MI",
+    "IEEE_VI",
+    "IEEE_EI",
+)
+#: Strona przekładnika, po której podany jest próg prądowy (decyzja właściciela PZ-09).
+JEDNOSTKI_PROGU_PRADOWEGO: tuple[str, ...] = ("A_WTORNY", "A_PIERWOTNY")
+#: Kierunek działania funkcji kierunkowej (67, 67N) względem pola.
+KIERUNKI_DZIALANIA: tuple[str, ...] = ("DO_LINII", "DO_SZYN")
+
+#: Etykieta KAŻDEJ wartości wyboru nastaw (krzywe, strona progu, kierunek) — jedno źródło dla
+#: oceny (komunikaty, ślad), karty pola i edytora nastaw (lustro `slownikFunkcjiEaz.json`).
+ETYKIETY_WARTOSCI_WYBORU: dict[str, str] = {
+    "DT": "czas niezależny (DT)",
+    "IEC_SI": "IEC normalnie odwrotna (SI)",
+    "IEC_VI": "IEC bardzo odwrotna (VI)",
+    "IEC_EI": "IEC skrajnie odwrotna (EI)",
+    "IEC_LTI": "IEC odwrotna długoczasowa (LTI, 120)",
+    "IEEE_MI": "IEEE umiarkowanie odwrotna (MI)",
+    "IEEE_VI": "IEEE bardzo odwrotna (VI)",
+    "IEEE_EI": "IEEE skrajnie odwrotna (EI)",
+    "A_WTORNY": "A po stronie wtórnej przekładnika",
+    "A_PIERWOTNY": "A po stronie pierwotnej przekładnika",
+    "DO_LINII": "w stronę linii",
+    "DO_SZYN": "w stronę szyn",
+}
+
+#: Identyfikator ewaluatora funkcji w warstwie analiz. ``NADPRADOWA_IEC_60255`` — ocena
+#: i czas zadziałania z rdzenia IEC 60255 (`application.analyses.protection.ocena_nadpradowa`);
+#: ``LOM`` — ocena ochrony od pracy wyspowej (`application.analyses.ochrona_lom`). Funkcja bez
+#: ewaluatora (``None``) ma w każdej ocenie status NIE_OCENIONO z wyjaśnieniem.
+OcenaFunkcji = Literal["NADPRADOWA_IEC_60255", "LOM"]
+
+
+@dataclass(frozen=True)
+class SchematNastawy:
+    """Jedna nastawa funkcji: klucz, nazwa, typ, jednostka i dopuszczalne wartości.
+
+    Zakres i krok nastawy są cechą URZĄDZENIA (pozycja katalogu), nie funkcji — schemat
+    niesie wyłącznie to, co wynika z definicji funkcji: typ, jednostkę, listę wyboru
+    i warunek dodatniości wielkości fizycznej.
+    """
+
+    klucz: str
+    nazwa_pl: str
+    typ: TypNastawy
+    jednostka: str | None = None
+    wartosci: tuple[str, ...] = ()
+    dodatnia: bool = False
+
+
 @dataclass(frozen=True)
 class FunkcjaEaz:
-    """Funkcja EAZ pola: kod, zapis z rysunku standardu, numer IEEE C37.2, nazwa i podstawa."""
+    """Funkcja EAZ pola: kod, zapis z rysunku standardu, numer IEEE C37.2, nazwa i podstawa,
+    a od karty OCHRONA-JEDNO-ZRODLO także SCHEMAT: wymagane i opcjonalne wejścia, nastawy
+    i ewaluator. Dodanie funkcji do produktu = jeden wpis tej klasy (model, operacje, API,
+    karta pola i schemat czytają rejestr)."""
 
     kod: str
     oznaczenie_pl: str
@@ -61,6 +152,44 @@ class FunkcjaEaz:
     nazwa_pl: str
     rodzaj: RodzajFunkcjiEaz
     podstawa: str
+    wejscia_wymagane: tuple[WejscieFunkcji, ...] = ()
+    wejscia_opcjonalne: tuple[WejscieFunkcji, ...] = ()
+    nastawy: tuple[SchematNastawy, ...] = ()
+    ocena: OcenaFunkcji | None = None
+
+    def schemat_nastawy(self, klucz: str) -> SchematNastawy | None:
+        """Schemat nastawy po kluczu (``None`` — klucz spoza schematu funkcji)."""
+        return next((n for n in self.nastawy if n.klucz == klucz), None)
+
+
+def _liczba(klucz: str, nazwa_pl: str, jednostka: str, *, dodatnia: bool = True) -> SchematNastawy:
+    return SchematNastawy(klucz, nazwa_pl, "LICZBA", jednostka, dodatnia=dodatnia)
+
+
+def _wybor(klucz: str, nazwa_pl: str, wartosci: tuple[str, ...]) -> SchematNastawy:
+    return SchematNastawy(klucz, nazwa_pl, "WYBOR", None, wartosci)
+
+
+_ZWLOKA = _liczba("zwloka_s", "zwłoka", "s")
+#: Stopień nadprądowy (fazowy albo zerowy): próg z jawną stroną przekładnika, charakterystyka,
+#: zwłoka (czas niezależny) albo mnożnik czasowy (charakterystyka zależna).
+_NASTAWY_STOPNIA_PRADOWEGO: tuple[SchematNastawy, ...] = (
+    _liczba("prog", "próg rozruchowy", "A"),
+    _wybor("jednostka_progu", "strona przekładnika progu", JEDNOSTKI_PROGU_PRADOWEGO),
+    _wybor("krzywa", "charakterystyka czasowa", KRZYWE_CZASOWE),
+    _liczba("tms", "mnożnik czasowy", "1"),
+    _ZWLOKA,
+)
+_NASTAWY_KIERUNKU: tuple[SchematNastawy, ...] = (
+    _wybor("kierunek", "kierunek działania", KIERUNKI_DZIALANIA),
+    _liczba("kat_charakterystyczny_deg", "kąt charakterystyczny", "°", dodatnia=False),
+)
+_NASTAWY_NAPIECIOWE: tuple[SchematNastawy, ...] = (
+    _liczba("prog_proc_un", "próg napięciowy", "% Un"),
+    _ZWLOKA,
+)
+_NASTAWY_CZESTOTLIWOSCI: tuple[SchematNastawy, ...] = (_liczba("prog_hz", "próg", "Hz"), _ZWLOKA)
+_TYLKO_ZWLOKA: tuple[SchematNastawy, ...] = (_ZWLOKA,)
 
 
 _WPISY: tuple[FunkcjaEaz, ...] = (
@@ -71,6 +200,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "nadprądowe zwłoczne",
         "ZABEZPIECZENIE",
         f"IEC 60255-151; {_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91; {_IR} II.4.5.4.2.1 pkt 1",
+        wejscia_wymagane=("I",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO,
+        ocena="NADPRADOWA_IEC_60255",
     ),
     FunkcjaEaz(
         "50",
@@ -79,6 +212,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "nadprądowe zwarciowe (bezzwłoczne)",
         "ZABEZPIECZENIE",
         f"IEC 60255-151; {_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91; {_IR} II.4.5.4.2.1 pkt 1",
+        wejscia_wymagane=("I",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO,
+        ocena="NADPRADOWA_IEC_60255",
     ),
     FunkcjaEaz(
         "67",
@@ -88,6 +225,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.11 s.90 i Z.11.1 s.91 („ZS (kierunkowe I>)”); "
         f"{_IR} II.4.5.4.2.2 pkt 1 i pkt 8, II.4.5.4.2.3 pkt 1",
+        wejscia_wymagane=("I", "U"),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO + _NASTAWY_KIERUNKU,
+        ocena=None,
     ),
     FunkcjaEaz(
         "51N",
@@ -96,6 +237,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ziemnozwarciowe zwłoczne (prąd zerowy)",
         "ZABEZPIECZENIE",
         f"IEC 60255-151; {_Z1}, Z.13–Z.15 (Io>); {_IR} II.4.5.4.2.1 pkt 2",
+        wejscia_wymagane=("3I0",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO,
+        ocena=None,
     ),
     FunkcjaEaz(
         "50N",
@@ -104,6 +249,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ziemnozwarciowe bezzwłoczne (prąd zerowy)",
         "ZABEZPIECZENIE",
         f"IEC 60255-151; {_Z1}, Z.13–Z.15 (Io>>)",
+        wejscia_wymagane=("3I0",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO,
+        ocena=None,
     ),
     FunkcjaEaz(
         "67N",
@@ -113,6 +262,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.10 s.89 (zabezpieczenie ziemnozwarciowe, wejścia prądu zerowego i napięcia zerowego), Z.11, Z.11.1; "
         f"{_IR} II.4.5.4.2.1 pkt 2, II.4.5.4.2.2 pkt 2, II.4.5.4.2.3 pkt 2",
+        wejscia_wymagane=("3I0", "3U0"),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_STOPNIA_PRADOWEGO + _NASTAWY_KIERUNKU,
+        ocena=None,
     ),
     FunkcjaEaz(
         "Yo>",
@@ -122,6 +275,14 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ZABEZPIECZENIE",
         f"{_IR} II.4.5.4.2.1 pkt 2 (zabezpieczenie ziemnozwarciowe — kryterium wg sposobu "
         "pracy punktu neutralnego); numer IEEE C37.2 nie jest znormalizowany",
+        wejscia_wymagane=("3I0", "3U0"),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prog_y0_ms", "próg admitancji zerowej", "mS"),
+            _liczba("prog_u0_proc", "próg rozruchowy napięcia zerowego", "% U0n"),
+            _ZWLOKA,
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "Go>",
@@ -132,6 +293,14 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         f"{_IR} II.4.5.4.1.4 pkt 3–4 (współczynniki czułości zabezpieczeń konduktancyjnych), "
         "II.4.5.4.2.1 pkt 2 (kryterium wg sposobu pracy punktu neutralnego); numer IEEE C37.2 "
         "nie jest znormalizowany",
+        wejscia_wymagane=("3I0", "3U0"),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prog_g0_ms", "próg konduktancji zerowej", "mS"),
+            _liczba("prog_u0_proc", "próg rozruchowy napięcia zerowego", "% U0n"),
+            _ZWLOKA,
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "32",
@@ -141,6 +310,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ZABEZPIECZENIE",
         f"{_IR} II.4.5.5.4 (o wyposażeniu linii w zabezpieczenie od skutków mocy zwrotnej "
         "decyduje operator)",
+        wejscia_wymagane=("I", "U"),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_proc_sn", "próg mocy zwrotnej", "% Sn"), _ZWLOKA),
+        ocena=None,
     ),
     FunkcjaEaz(
         "27",
@@ -149,6 +322,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "podnapięciowe (przekładniki od strony linii)",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91; {_IR} II.4.5.4.2.2 pkt 6, II.4.5.4.2.3 pkt 5",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_NAPIECIOWE,
+        ocena=None,
     ),
     FunkcjaEaz(
         "59",
@@ -157,6 +334,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "nadnapięciowe (przekładniki od strony linii)",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91, Z.16 s.96; {_IR} II.4.5.4.2.2 pkt 6, II.4.5.4.2.3 pkt 5",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_NAPIECIOWE,
+        ocena=None,
     ),
     FunkcjaEaz(
         "59N",
@@ -165,6 +346,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta)",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.17 s.97 (Uo>)",
+        wejscia_wymagane=("3U0",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_u0_proc", "próg napięcia zerowego", "% U0n"), _ZWLOKA),
+        ocena=None,
     ),
     FunkcjaEaz(
         "81U",
@@ -173,6 +358,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "podczęstotliwościowe",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91, Z.17 s.97; {_IR} II.4.5.4.2.1 pkt 5, II.4.5.4.2.2 pkt 5",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_CZESTOTLIWOSCI,
+        ocena="LOM",
     ),
     FunkcjaEaz(
         "81O",
@@ -181,6 +370,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "nadczęstotliwościowe",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91; {_IR} II.4.5.4.2.2 pkt 5, II.4.5.4.2.3 pkt 4",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=_NASTAWY_CZESTOTLIWOSCI,
+        ocena="LOM",
     ),
     FunkcjaEaz(
         "81R",
@@ -189,6 +382,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "szybkość zmian częstotliwości (ROCOF)",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91, Z.17 s.97; {_IR} II.4.5.4.2.2 pkt 5, II.4.5.4.2.3 pkt 4",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_hz_s", "próg szybkości zmian częstotliwości", "Hz/s"), _ZWLOKA),
+        ocena="LOM",
     ),
     FunkcjaEaz(
         "78",
@@ -197,6 +394,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "przesunięcie wektora napięcia (ochrona od pracy wyspowej)",
         "ZABEZPIECZENIE",
         "IEEE C37.2 (78); wymóg wyłącznie z warunków przyłączenia OSD",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_deg", "próg przesunięcia wektora", "°"), _ZWLOKA),
+        ocena="LOM",
     ),
     FunkcjaEaz(
         "ZS",
@@ -206,6 +407,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.10 s.89, Z.11, Z.11.1, Z.7, Z.12–Z.16; {_IR} II.4.5.4.2.1 pkt 4, "
         "II.4.5.4.7.1 pkt 3–4",
+        wejscia_wymagane=("I", "SYGNAL"),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("zwloka_blokowania_s", "czas oczekiwania na sygnał blokowania", "s"),),
+        ocena=None,
     ),
     FunkcjaEaz(
         "50BF",
@@ -215,6 +420,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.10 s.89, Z.11, Z.11.1, Z.7, Z.12–Z.16; {_IR} II.4.5.4.2.1 pkt 4, "
         "II.4.5.4.7.1 pkt 3–4",
+        wejscia_wymagane=("I",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_pradu_proc_in", "próg kontroli prądu", "% In"), _ZWLOKA),
+        ocena=None,
     ),
     FunkcjaEaz(
         "79",
@@ -224,6 +433,17 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "AUTOMATYKA",
         f"{_Z1}, Z.10 s.89 (tSPZ), Z.11, Z.11.1, Z.15; {_IR} II.4.5.4.2.1 pkt 3, "
         "II.4.5.4.2.2 pkt 3",
+        wejscia_wymagane=(),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("liczba_cykli", "liczba cykli", "1"),
+            _liczba("t_przerwy_1_s", "czas przerwy cyklu 1", "s"),
+            _liczba("t_przerwy_2_s", "czas przerwy cyklu 2", "s"),
+            _liczba("t_przerwy_3_s", "czas przerwy cyklu 3", "s"),
+            _liczba("t_przerwy_4_s", "czas przerwy cyklu 4", "s"),
+            _liczba("t_blokady_s", "czas blokady po załączeniu", "s"),
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "SPZE",
@@ -232,6 +452,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje)",
         "AUTOMATYKA",
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91 (SPZE, tE)",
+        wejscia_wymagane=(),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("t_e_s", "czas tE", "s"),),
+        ocena=None,
     ),
     FunkcjaEaz(
         # JEDNA funkcja pola: udział w automatyce SCO — wyłączenie od stopni SCO1, SCO2 i ponowne
@@ -253,6 +477,17 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "Operator tego wymaga), II.4.5.4.6.1 (sygnały SCO i SPZ/SCO z pola pomiaru napięcia), "
         "II.4.5.4.7.1 pkt 1–2 (SCO co najmniej dwustopniowe; SPZ/SCO w uzgodnieniu z ENEA "
         "Operator; w liniach z jednostkami wytwórczymi SCO nie należy uruchamiać)",
+        # Sterownik pola dostaje SCO SYGNAŁAMI z przekaźnika SCO pola pomiaru napięcia (obwody
+        # okrężne SCO1, SCO2, SCO/SPZ — rysunki s.89–s.91, IRiESD II.4.5.4.6.1); częstotliwość
+        # mierzy tamten przekaźnik, nie przekładnik napięciowy pola liniowego.
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prog_hz_sco1", "próg stopnia SCO1", "Hz"),
+            _liczba("prog_hz_sco2", "próg stopnia SCO2", "Hz"),
+            _ZWLOKA,
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "OWG",
@@ -261,6 +496,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR)",
         "AUTOMATYKA",
         f"{_Z1}, Z.11 i Z.11.1 („wył. od zab. TR”), §26.10.4; {_KS}, „Linia SN z generacją”",
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=_TYLKO_ZWLOKA,
+        ocena=None,
     ),
     FunkcjaEaz(
         "NZ",
@@ -270,6 +509,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "BLOKADA",
         f"{_Z1}, §26.9.3, §26.10.3; {_IR} II.4.5.4.2.2 pkt 7, II.4.5.4.2.3 pkt 6; {_KS} "
         "(>NZ/blNZ — gdy zabezpieczenie nie realizuje kontroli synchronizmu)",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_proc_un", "próg napięcia w linii", "% Un"),),
+        ocena=None,
     ),
     FunkcjaEaz(
         "25",
@@ -278,6 +521,14 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "kontrola synchronizmu przy załączaniu",
         "BLOKADA",
         f"{_IR} II.4.5.4.2.2 pkt 7, II.4.5.4.2.3 pkt 6; {_KS} (>SYN/blSYN)",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("du_proc_un", "dopuszczalna różnica napięć", "% Un"),
+            _liczba("df_hz", "dopuszczalna różnica częstotliwości", "Hz"),
+            _liczba("dfi_deg", "dopuszczalna różnica kątów", "°"),
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "87T",
@@ -286,6 +537,77 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "różnicowe transformatora",
         "ZABEZPIECZENIE",
         f"IEC 60255-187-1; {_Z1}, Z.7 s.86",
+        wejscia_wymagane=("I", "I_STRONY_2"),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prog_roznicowy_proc_in", "próg różnicowy", "% In"),
+            _liczba("stabilizacja_proc", "współczynnik stabilizacji", "%"),
+            _liczba("blokada_2h_proc", "blokada drugą harmoniczną", "%"),
+        ),
+        ocena=None,
+    ),
+    FunkcjaEaz(
+        "87L",
+        "różnicowe linii",
+        "87L",
+        "różnicowe linii (porównanie prądów obu końców łączem)",
+        "ZABEZPIECZENIE",
+        "IEC 60255-187-1 (różnicowe linii); IEEE C37.2 (87L)",
+        wejscia_wymagane=("I", "I_STRONY_2"),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prog_roznicowy_proc_in", "próg różnicowy", "% In"),
+            _liczba("stabilizacja_proc", "współczynnik stabilizacji", "%"),
+        ),
+        ocena=None,
+    ),
+    FunkcjaEaz(
+        "21",
+        "Z<",
+        "21",
+        "odległościowe (impedancyjne, strefy pierwsza do trzeciej)",
+        "ZABEZPIECZENIE",
+        "IEC 60255-121; IEEE C37.2 (21)",
+        wejscia_wymagane=("I", "U"),
+        wejscia_opcjonalne=("3I0",),
+        nastawy=(
+            _liczba("z1_ohm", "zasięg strefy pierwszej (strona pierwotna)", "Ω"),
+            _liczba("z1_zwloka_s", "zwłoka strefy pierwszej", "s", dodatnia=False),
+            _liczba("z2_ohm", "zasięg strefy drugiej (strona pierwotna)", "Ω"),
+            _liczba("z2_zwloka_s", "zwłoka strefy drugiej", "s"),
+            _liczba("z3_ohm", "zasięg strefy trzeciej (strona pierwotna)", "Ω"),
+            _liczba("z3_zwloka_s", "zwłoka strefy trzeciej", "s"),
+            _liczba("kat_linii_deg", "kąt impedancji linii", "°"),
+        ),
+        ocena=None,
+    ),
+    FunkcjaEaz(
+        "46",
+        "I2>",
+        "46",
+        "od asymetrii prądów (składowa przeciwna)",
+        "ZABEZPIECZENIE",
+        "IEC 60255-151 (stopień składowej przeciwnej); IEEE C37.2 (46)",
+        wejscia_wymagane=("I",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_i2_proc_in", "próg składowej przeciwnej", "% In"), _ZWLOKA),
+        ocena=None,
+    ),
+    FunkcjaEaz(
+        "49",
+        "θ>",
+        "49",
+        "przeciążeniowe cieplne (model cieplny)",
+        "ZABEZPIECZENIE",
+        "IEC 60255-149; IEEE C37.2 (49)",
+        wejscia_wymagane=("I",),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prad_dopuszczalny_proc_in", "prąd dopuszczalny długotrwale", "% In"),
+            _liczba("stala_czasowa_min", "stała czasowa nagrzewania", "min"),
+            _liczba("prog_alarmu_proc", "próg alarmu cieplnego", "%"),
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "90",
@@ -294,6 +616,14 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "automatyczna regulacja napięcia transformatora",
         "AUTOMATYKA",
         f"{_Z1}, Z.7 s.86",
+        wejscia_wymagane=("U",),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("napiecie_zadane_proc_un", "napięcie zadane", "% Un"),
+            _liczba("strefa_nieczulosci_proc", "strefa nieczułości", "%"),
+            _ZWLOKA,
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "ZAWSC",
@@ -302,6 +632,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "automatyka wymuszania składowej czynnej prądu ziemnozwarciowego",
         "AUTOMATYKA",
         f"{_Z1}, Z.13 s.93, Z.14 s.94",
+        wejscia_wymagane=("3U0",),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_u0_proc", "próg napięcia zerowego", "% U0n"), _ZWLOKA),
+        ocena=None,
     ),
     FunkcjaEaz(
         "BT",
@@ -310,6 +644,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "zabezpieczenia technologiczne transformatora uziemiającego (dwa stopnie)",
         "TECHNOLOGICZNE",
         f"{_Z1}, Z.13 s.93, Z.14 s.94",
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=_TYLKO_ZWLOKA,
+        ocena=None,
     ),
     FunkcjaEaz(
         "BD",
@@ -318,6 +656,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "zabezpieczenia technologiczne dławika gaszącego (dwa stopnie)",
         "TECHNOLOGICZNE",
         f"{_Z1}, Z.13 s.93, Z.14 s.94",
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=_TYLKO_ZWLOKA,
+        ocena=None,
     ),
     FunkcjaEaz(
         # Kod = numer IEEE C37.2 (jak 51, 50, 67N): ten sam kod nosi zestaw funkcji pola baterii
@@ -328,6 +670,14 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "od niezrównoważenia baterii kondensatorów (prąd między punktami gwiazd)",
         "ZABEZPIECZENIE",
         f"{_Z1}, Z.16 s.96",
+        wejscia_wymagane=("I",),
+        wejscia_opcjonalne=(),
+        nastawy=(
+            _liczba("prog", "próg prądu niezrównoważenia", "A"),
+            _wybor("jednostka_progu", "strona przekładnika progu", JEDNOSTKI_PROGU_PRADOWEGO),
+            _ZWLOKA,
+        ),
+        ocena=None,
     ),
     FunkcjaEaz(
         "SZR",
@@ -336,6 +686,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "samoczynne załączenie rezerwy (przekaźnik w polu łącznika szyn)",
         "AUTOMATYKA",
         f"{_Z1}, §13 (druk s.25), Z.7, Z.17; {_IR} II.4.5.4.7.2",
+        wejscia_wymagane=("U", "SYGNAL"),
+        wejscia_opcjonalne=(),
+        nastawy=(_liczba("prog_zaniku_proc_un", "próg zaniku napięcia", "% Un"), _ZWLOKA),
+        ocena=None,
     ),
     FunkcjaEaz(
         "63",
@@ -345,6 +699,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "TECHNOLOGICZNE",
         "IEEE C37.2 (63) — zabezpieczenie technologiczne transformatora olejowego "
         "(przekaźnik gazowo-przepływowy)",
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=(),
+        ocena=None,
     ),
     FunkcjaEaz(
         "26",
@@ -353,6 +711,10 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "temperaturowe transformatora",
         "TECHNOLOGICZNE",
         "IEEE C37.2 (26) — zabezpieczenie technologiczne transformatora",
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=(),
+        ocena=None,
     ),
     FunkcjaEaz(
         "63P",
@@ -361,11 +723,30 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "od wzrostu ciśnienia w kadzi transformatora",
         "TECHNOLOGICZNE",
         "IEEE C37.2 (63) — zabezpieczenie technologiczne transformatora",
+        wejscia_wymagane=("SYGNAL",),
+        wejscia_opcjonalne=(),
+        nastawy=(),
+        ocena=None,
     ),
 )
 
 #: Słownik funkcji EAZ — kod → wpis (kolejność stała, jak w `_WPISY`).
 FUNKCJE_EAZ: dict[str, FunkcjaEaz] = {w.kod: w for w in _WPISY}
+
+
+#: Typowe zestawy funkcji sterownika wg rodzaju zabezpieczenia — podpowiedź kreatora
+#: przekaźnika (``add_relay.relay_type``); projektant zmienia zestaw w karcie pola. Jedno
+#: źródło dla backendu i lustra UI (`slownikFunkcjiEaz.json`). ``NIESTANDARDOWY`` — zestaw
+#: wskazuje projektant (lista ``funkcje`` operacji).
+ZESTAWY_FUNKCJI_RODZAJU: dict[str, tuple[str, ...]] = {
+    "NADPRADOWY": ("50", "51"),
+    "ZIEMNOZWARCIOWY": ("50N", "51N"),
+    "KIERUNKOWY_NADPRADOWY": ("67", "67N"),
+    "ODLEGLOSCIOWY": ("21",),
+    "ROZNICOWY_TRANSFORMATORA": ("87T",),
+    "ROZNICOWY_LINII": ("87L",),
+    "NIESTANDARDOWY": (),
+}
 
 
 def funkcja_eaz(kod: str) -> FunkcjaEaz:
@@ -383,6 +764,19 @@ def kody_spoza_slownika(kody: tuple[str, ...] | list[str]) -> list[str]:
         if kod not in FUNKCJE_EAZ and kod not in wynik:
             wynik.append(kod)
     return wynik
+
+
+def etykieta_funkcji_eaz(kod: object) -> str:
+    """Etykieta funkcji dla projektanta: zapis z rysunku i kod w nawiasie — „I> (51)".
+
+    JEDNA etykieta funkcji w produkcie (ocena, raport koordynacji, komunikaty nastaw). Kod
+    spoza rejestru jest nazwany wprost, nie zgadywany."""
+    wpis = FUNKCJE_EAZ.get(str(kod))
+    if wpis is None:
+        return f"funkcja spoza rejestru ({kod})"
+    if wpis.oznaczenie_pl == wpis.kod:
+        return wpis.kod
+    return f"{wpis.oznaczenie_pl} ({wpis.kod})"
 
 
 def opis_funkcji_eaz_pl(kod: str) -> str:

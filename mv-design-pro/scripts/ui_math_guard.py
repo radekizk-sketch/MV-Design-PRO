@@ -84,9 +84,20 @@ FRONTEND_UI2 = ROOT / "frontend" / "src" / "ui2"
 #: Warstwa `ui/**` (decyzja architekta 2026-10-30: kryterium jest to, co widzi projektant,
 #: nie warstwa kodu) — ten sam skan i ten sam PIN co `ui2/**`.
 FRONTEND_UI = ROOT / "frontend" / "src" / "ui"
+BACKEND_SRC = ROOT / "backend" / "src"
 BACKEND_PLIKI = (
-    ROOT / "backend" / "src" / "application" / "analyses" / "v126_katalog.py",
-    ROOT / "backend" / "src" / "application" / "analyses" / "werdykt_projektowy.py",
+    BACKEND_SRC / "application" / "analyses" / "v126_katalog.py",
+    BACKEND_SRC / "application" / "analyses" / "werdykt_projektowy.py",
+    # Karta KD6 (2026-11-04): proza backendu pokazywana w szczegółach weryfikacji aparatury
+    # pól (`ui2/wyniki/zwarcia/aparatura`) — podstawy znamion, zdania czasu wyłączenia pola,
+    # pochodzenie czasu przerwania prądu, ślady i braki rekordów K. Symbol wielkości wyłącznie
+    # z pól `*_latex`; proza nazywa wielkości słowami.
+    BACKEND_SRC / "application" / "analyses" / "wytrzymalosc_aparatury_pol.py",
+    BACKEND_SRC / "application" / "equipment_proof" / "wielkosc_wylaczania.py",
+    BACKEND_SRC / "application" / "analyses" / "protection" / "czas_wylaczenia_pola.py",
+    BACKEND_SRC / "network_model" / "core" / "czas_wylaczenia.py",
+    # Pochodzenie czasu przerwania prądu biegu (`tb_biegu.opis_pl`) na ekranie zwarć.
+    BACKEND_SRC / "api" / "canonical_run_views.py",
 )
 
 #: Zapadka — SUFIT liczby wystapien. Pomiar 2026-10-30 (karta
@@ -137,6 +148,10 @@ IDENTYFIKATOR_KODU = re.compile(r"[a-z0-9_.\-:/#@]+")
 #: ten sam napis w module `strings.ts` albo jako wartość właściwości tekstowej (`etykieta:`,
 #: `jednostka:`, `naglowek…:` …) jest etykietą ekranu i podlega wzorcowi gołego indeksu.
 IDENTYFIKATOR_STALEJ = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+")
+#: Stała kodu Pythona (`"Z_POL"`, `"A_WTORNY"` w `Literal[...]`/wyliczeniu): WYŁĄCZNIE wielkie
+#: litery i cyfry — proza backendu nie jest napisem z samych wielkich liter, a symbol wielkości
+#: (`"I_b"`, `"U_n"`) ma małą literę w indeksie, więc zostaje w skanie.
+IDENTYFIKATOR_STALEJ_PY = re.compile(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+")
 #: Właściwość obiektu TS, której wartością jest tekst pokazywany projektantowi.
 KLUCZ_TEKSTU_UI_RE = re.compile(
     r"\b(?:etykieta|jednostka|naglowek|tytul|opis|nazwa|label|title|placeholder|tekst|"
@@ -669,7 +684,8 @@ def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
             continue
         if wezel.lineno in linie_docstringow or id(wezel) in pomin:
             continue
-        for powod in _dopasowania(wezel.value):
+        stala_kodu = bool(IDENTYFIKATOR_STALEJ_PY.fullmatch(wezel.value))
+        for powod in _dopasowania(wezel.value, stala_kodu_dozwolona=stala_kodu):
             wyniki.append((wezel.lineno, linie[wezel.lineno - 1].strip()[:140], powod))
     wyniki.sort(key=lambda trafienie: trafienie[0])
     return wyniki

@@ -18,12 +18,16 @@
  * odpowiedź z przypadkiem niesie `result_status_reason_pl`, parę rewizji i
  * `zmiany_od_biegu`, więc karta nie musi już mówić „nieaktualne" bez powodu ani
  * dopytywać osobnym zapytaniem).
+ *
+ * Sekcja „Zabezpieczenia w tym przypadku" (ADR-022): wybór grupy nastaw i nadpisania nastaw
+ * sterowników — delta przypadku nad nastawami bazowymi modelu (`zabezpieczenia/`).
  */
 
 import { TekstZWzorami } from '../../kreatory/rama';
 import type { StudyCase, StudyCaseConfig } from '../../../ui/study-cases/types';
 import { CONFIG_FIELD_LABELS } from '../../../ui/study-cases/types';
 import { ListaZmianOdBiegu } from '../../freshness';
+import { SekcjaZabezpieczenPrzypadku } from './zabezpieczenia/SekcjaZabezpieczenPrzypadku';
 import {
   PRZYPADKI_STRINGS as T,
   STATUS_WYNIKOW_LABEL,
@@ -52,6 +56,8 @@ interface KartaPrzypadkuProps {
   przypadek: StudyCase | null;
   ladowanie: boolean;
   blad: string | null;
+  /** Po zapisie wyboru zabezpieczeń przypadku — odświeżenie statusu wyników przypadku. */
+  onZmianaPrzypadku?: () => void;
 }
 
 function SekcjaKonfiguracji({
@@ -78,7 +84,7 @@ function SekcjaKonfiguracji({
   );
 }
 
-export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuProps) {
+export function KartaPrzypadku({ przypadek, ladowanie, blad, onZmianaPrzypadku }: KartaPrzypadkuProps) {
   if (ladowanie) {
     return (
       <div className="mvd-karta-pusto" data-testid="mvd-karta-ladowanie">
@@ -130,6 +136,8 @@ export function KartaPrzypadku({ przypadek, ladowanie, blad }: KartaPrzypadkuPro
           <TekstZWzorami tekst={T.zalozenieCNosnik} />
         </p>
       </section>
+
+      <SekcjaZabezpieczenPrzypadku caseId={przypadek.id} onZapisano={onZmianaPrzypadku} />
 
       <SekcjaKonfiguracji tytul={T.sekcjaZwarcia} pola={POLA_ZWARCIA} config={config} />
       <SekcjaKonfiguracji tytul={T.sekcjaRozplyw} pola={POLA_ROZPLYW} config={config} />

@@ -1,45 +1,35 @@
 /**
- * EkranZabezpieczenAutomatyki — realny dostawca ui2 dla ekranu kanonicznego E-27
- * („Zabezpieczenia i automatyka", karta E-27, FLOW §0.3 „kontrakt ekranu
- * prowadzącego"). Kończy phantom: E-27 miał tymczasowo dostawcę kontraktu analizy
- * (F-E5b), teraz dostaje własny ekran przeglądowy oparty na REALNYM read-modelu pola.
+ * EkranZabezpieczenAutomatyki — ekran kanoniczny E-27 („Zabezpieczenia i automatyka").
  *
- * Rama prowadząca:
- *  - nagłówek: eyebrow obszaru + JEDNO zdanie celu inżynierskiego (§0.3),
- *  - stan wejścia: brak projektu / brak pól w modelu → uczciwy stan zerowy z akcją
- *    prowadzącą we właściwą przestrzeń (`useShellStore.setActiveSpace`), NIE pusta tabela,
- *  - sekcja ZABEZPIECZENIA: tabela pól z przypisaniami zabezpieczeń (ENM) + akcja
- *    wiersza „Otwórz kartę pola" → istniejący panel E-11 `field_protection`
- *    (`networkBuildStore.openInspectorPanel`),
- *  - sekcja AUTOMATYKA: tabela sterowników polowych (`BayProtectionControlUnit`) —
- *    chipy funkcji z `automation_features` i stan SPZ; braki jako „nie skonfigurowano",
- *  - sekcja NASTAWY (karta BIEG-ZABEZPIECZEN-Z-MODELU, D-21): edytor nastaw I>/I>> każdego
- *    zabezpieczenia nadprądowego modelu (pola i wyłączniki liniowe) — operacja
- *    `update_protection_settings`, dane rozwiązane z read modelu `protection-view`,
- *  - następny krok: koordynacja zabezpieczeń (E-28, `openRouteSurface('E-28')`).
+ * Karta OCHRONA-JEDNO-ZRODLO (ADR-022) i standard warsztatu (§10 kontraktu prezentacji
+ * inżynierskiej): jedna zwarta tabela — sterownik zabezpieczeń = wiersz (pole rozdzielni albo
+ * wyłącznik liniowy): urządzenie, funkcje, grupa aktywna, SPZ (funkcja 79). Rozwinięcie wiersza
+ * („Nastawy") pokazuje edytor nastaw sterownika (funkcja = wiersz, grupy 1–4 jako przełącznik,
+ * szczegóły na żądanie) — JEDYNY pisarz nastaw (`update_protection_settings`). Automatyka nie ma
+ * osobnej sekcji: SPZ, SZR, LRW, SCO są funkcjami tego samego sterownika.
  *
- * ZERO fizyki, ZERO mutacji modelu, ZERO fabrykacji — dane wyłącznie z
- * `useFieldReadModel`. Edycja automatyki NIE ma operacji domenowej zapisu w kanonie
- * operacji (`domain/canonical_operations.py` — brak set_spz/szr/automation), więc
- * ścieżka edycji prowadzi do istniejących paneli pola E-11 (realna ścieżka dziś).
- * Stylowanie wyłącznie tokenami --mvd-* (oba motywy z automatu).
+ * Rama prowadząca: nagłówek z jednym zdaniem celu (§0.3), uczciwe stany zerowe (brak projektu,
+ * brak pól i sterowników) z akcją prowadzącą, następny krok — koordynacja (E-28).
+ *
+ * ZERO fizyki, ZERO fabrykacji: wiersze z modelu (read model pola + migawka), nastawy rozwiązane
+ * z read modelu `protection-view` (ta sama funkcja backendu co ocena).
  */
 
 import './zabezpieczenia-automatyka.css';
 
+import { Fragment, useState } from 'react';
+
 import { useAppStateStore } from '../../../ui/app-state';
 import { useFieldReadModel } from '../../../ui/field/useFieldReadModel';
 import { useProtectionView } from '../../../ui/protection';
-import { urzadzeniaZNastawami } from '../../../ui/protection/protection-view';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { EdytorNastawZabezpieczenia } from '../../kreatory/przekaznik';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useShellStore } from '../../shell/useShellStore';
-import {
-  buildSterowniki,
-  buildWierszeZabezpieczen,
-  type Sterownik,
-} from './model';
+import { buildWierszeZabezpieczen, type WierszZabezpieczenia } from './model';
 import { ZABEZPIECZENIA_STRINGS as T } from './strings';
+
+const LICZBA_KOLUMN = 7;
 
 function StanZerowy({
   tytul,
@@ -58,177 +48,193 @@ function StanZerowy({
     <div className="mvd-za-stan" data-testid={testid} data-tone="idle">
       <h3>{tytul}</h3>
       <p>{opis}</p>
-      <button
-        type="button"
-        className="mvd-za-akcja"
-        data-testid={`${testid}-akcja`}
-        onClick={onAkcja}
-      >
+      <button type="button" className="mvd-za-akcja" data-testid={`${testid}-akcja`} onClick={onAkcja}>
         {akcja}
       </button>
     </div>
   );
 }
 
-/** Sekcja edytorów nastaw — wszystkie zabezpieczenia nadprądowe modelu (read model). */
-function SekcjaNastaw() {
+function opisSpz(w: WierszZabezpieczenia): string {
+  if (!w.spz) return '—';
+  return w.spz.wlaczone ? T.spzWlaczone(w.spz.cykle) : T.spzWylaczone;
+}
+
+/** Wyłączniki liniowe bez sterownika — prowadzenie do kreatorów przekładnika i sterownika. */
+function WylacznikiBezSterownika() {
   const widok = useProtectionView();
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
-  const urzadzenia = urzadzeniaZNastawami(widok.data);
-  const wylaczniki = widok.data.wylaczniki_liniowe ?? [];
+  const wylaczniki = (widok.data.wylaczniki_liniowe ?? []).filter((w) => w.zabezpieczenia.length === 0);
+  if (wylaczniki.length === 0) return null;
   return (
-    <section className="mvd-za-sekcja" data-testid="mvd-za-nastawy">
-      <h4>{T.nastawyTytul}</h4>
-      <p className="mvd-za-sekcja-opis">{T.nastawyOpis}</p>
-      {wylaczniki.length > 0 ? (
-        <div className="mvd-za-tabela-scroll" data-testid="mvd-za-wylaczniki">
-          <h5>{T.wylacznikiTytul}</h5>
-          <p className="mvd-za-sekcja-opis">{T.wylacznikiOpis}</p>
-          <table className="mvd-za-tabela">
-            <tbody>
-              {wylaczniki.map((w) => (
-                <tr key={w.ref_id} data-testid={`mvd-za-wylacznik-${w.ref_id}`}>
-                  <td>{w.nazwa ?? T.wylacznikBezNazwy}</td>
-                  <td>{T.wylacznikStanCt(w.przekladniki.length)}</td>
-                  <td>{T.wylacznikStanZab(w.zabezpieczenia.length)}</td>
-                  <td>
-                    {w.przekladniki.length === 0 ? (
-                      <button
-                        type="button"
-                        className="mvd-za-wiersz-akcja"
-                        data-testid={`mvd-za-dodaj-ct-${w.ref_id}`}
-                        onClick={() =>
-                          openOperationForm('add_ct', { kotwica: 'wylacznik', breaker_ref: w.ref_id })
-                        }
-                      >
-                        {T.dodajPrzekladnik}
-                      </button>
-                    ) : w.zabezpieczenia.length === 0 ? (
-                      <button
-                        type="button"
-                        className="mvd-za-wiersz-akcja"
-                        data-testid={`mvd-za-dodaj-zabezpieczenie-${w.ref_id}`}
-                        onClick={() =>
-                          openOperationForm('add_relay', {
-                            kotwica: 'wylacznik',
-                            breaker_ref: w.ref_id,
-                          })
-                        }
-                      >
-                        {T.dodajZabezpieczenie}
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-      {widok.error ? (
-        <p className="mvd-za-pusto" role="alert" data-testid="mvd-za-nastawy-blad">
-          {T.nastawyBlad}: {widok.error}
-        </p>
-      ) : widok.isLoading && urzadzenia.length === 0 ? (
-        <p className="mvd-za-pusto" data-testid="mvd-za-nastawy-ladowanie">
-          {T.nastawyLadowanie}
-        </p>
-      ) : urzadzenia.length === 0 ? (
-        <p className="mvd-za-pusto" data-testid="mvd-za-nastawy-brak">
-          {T.nastawyBrak}
-        </p>
-      ) : (
-        <div className="mvd-za-sterowniki">
-          {urzadzenia.map((wpis) =>
-            wpis.nastawy ? (
-              <EdytorNastawZabezpieczenia
-                key={wpis.device_id}
-                urzadzenieRef={wpis.device_id}
-                nastawy={wpis.nastawy}
-                slownik={widok.data.slownik_nastaw}
-                testid={`mvd-za-edytor-${wpis.device_id}`}
-              />
-            ) : null,
-          )}
-        </div>
-      )}
+    <section className="mvd-za-sekcja" data-testid="mvd-za-wylaczniki">
+      <h4>{T.wylacznikiTytul}</h4>
+      <table className="mvd-za-tabela">
+        <tbody>
+          {wylaczniki.map((w) => (
+            <tr key={w.ref_id} data-testid={`mvd-za-wylacznik-${w.ref_id}`}>
+              <td>{w.nazwa ?? T.wylacznikBezNazwy}</td>
+              <td>{T.wylacznikStanCt(w.przekladniki.length)}</td>
+              <td>
+                {w.przekladniki.length === 0 ? (
+                  <button
+                    type="button"
+                    className="mvd-za-wiersz-akcja"
+                    data-testid={`mvd-za-dodaj-ct-${w.ref_id}`}
+                    onClick={() => openOperationForm('add_ct', { kotwica: 'wylacznik', breaker_ref: w.ref_id })}
+                  >
+                    {T.dodajPrzekladnik}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="mvd-za-wiersz-akcja"
+                    data-testid={`mvd-za-dodaj-zabezpieczenie-${w.ref_id}`}
+                    onClick={() => openOperationForm('add_relay', { kotwica: 'wylacznik', breaker_ref: w.ref_id })}
+                  >
+                    {T.dodajZabezpieczenie}
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }
 
-function SterownikKarta({ sterownik }: { sterownik: Sterownik }) {
-  const { spz } = sterownik;
+function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia[] }) {
+  const widok = useProtectionView();
+  const openInspectorPanel = useNetworkBuildStore((s) => s.openInspectorPanel);
+  const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const zSterownikiem = wiersze.filter((w) => w.sterownikRef !== null);
+  // Jeden sterownik w modelu — rozwinięty od razu (zero kliknięć do nastaw); więcej — na żądanie.
+  const [rozwiniete, setRozwiniete] = useState<ReadonlySet<string>>(
+    () => new Set(zSterownikiem.length === 1 ? [zSterownikiem[0].klucz] : []),
+  );
+  const nastawyWgUrzadzenia = new Map(
+    widok.data.assignments.filter((a) => a.nastawy).map((a) => [a.device_id, a.nastawy] as const),
+  );
+  const przelacz = (klucz: string) =>
+    setRozwiniete((r) => {
+      const n = new Set(r);
+      if (n.has(klucz)) n.delete(klucz);
+      else n.add(klucz);
+      return n;
+    });
+
   return (
-    <div className="mvd-za-sterownik" data-testid={`mvd-za-sterownik-${sterownik.bayRef}`}>
-      <div className="mvd-za-sterownik-head">
-        <span className="mvd-za-sterownik-nazwa">{sterownik.bayName}</span>
-        {sterownik.urzadzenie ? (
-          <span className="mvd-za-sterownik-urzadzenie">{sterownik.urzadzenie}</span>
-        ) : null}
+    <section className="mvd-za-sekcja" data-testid="mvd-za-zabezpieczenia">
+      <h4>{T.zabezpieczeniaTytul}</h4>
+      {widok.error ? (
+        <p className="mvd-za-pusto" role="alert" data-testid="mvd-za-nastawy-blad">
+          {T.nastawyBlad}: {widok.error}
+        </p>
+      ) : null}
+      <div className="mvd-za-tabela-scroll">
+        <table className="mvd-za-tabela">
+          <thead>
+            <tr>
+              <th>{T.kolStacja}</th>
+              <th>{T.kolPole}</th>
+              <th>{T.kolUrzadzenie}</th>
+              <th>{T.kolFunkcje}</th>
+              <th>{T.kolGrupa}</th>
+              <th>{T.kolSpz}</th>
+              <th>{T.kolAkcja}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {wiersze.map((w) => {
+              const otwarty = w.sterownikRef !== null && rozwiniete.has(w.klucz);
+              return (
+                <Fragment key={w.klucz}>
+                  <tr data-testid={`mvd-za-wiersz-${w.klucz}`}>
+                    <td data-testid={`mvd-za-stacja-${w.klucz}`}>{w.stacja ?? '—'}</td>
+                    <td title={w.szablon ? T.szablonOpis(w.szablon, w.rodzina) : undefined}>{w.nazwa}</td>
+                    <td>
+                      {w.urzadzenie ?? (
+                        <span className="mvd-za-brak" data-testid={`mvd-za-bez-zabezpieczenia-${w.klucz}`}>
+                          {T.bezSterownika}
+                        </span>
+                      )}
+                    </td>
+                    <td className="mvd-za-kody" data-testid={`mvd-za-funkcje-${w.klucz}`}>
+                      {w.funkcje.length > 0 ? w.funkcje.join(', ') : '—'}
+                    </td>
+                    <td className="mvd-num">{w.aktywnaGrupa ?? '—'}</td>
+                    <td data-testid={`mvd-za-spz-${w.klucz}`}>{opisSpz(w)}</td>
+                    <td className="mvd-za-akcje">
+                      {w.sterownikRef !== null ? (
+                        <button
+                          type="button"
+                          className="mvd-za-wiersz-akcja"
+                          aria-expanded={otwarty}
+                          title={T.nastawyOpis}
+                          data-testid={`mvd-za-nastawy-${w.klucz}`}
+                          onClick={() => przelacz(w.klucz)}
+                        >
+                          {otwarty ? T.nastawyZwin : T.nastawy}
+                        </button>
+                      ) : w.bayRef !== null ? (
+                        <button
+                          type="button"
+                          className="mvd-za-wiersz-akcja"
+                          data-testid={`mvd-za-dodaj-sterownik-${w.klucz}`}
+                          onClick={() => openOperationForm('add_relay', { bay_ref: w.bayRef })}
+                        >
+                          {T.dodajSterownik}
+                        </button>
+                      ) : null}
+                      {w.bayRef !== null ? (
+                        <button
+                          type="button"
+                          className="mvd-za-wiersz-akcja"
+                          title={T.otworzKartePolaOpis}
+                          data-testid={`mvd-za-otworz-pole-${w.klucz}`}
+                          onClick={() => openInspectorPanel('field_protection', w.bayRef as string, 'BaySN')}
+                        >
+                          {T.otworzKartePola}
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                  {otwarty && w.sterownikRef !== null ? (
+                    <tr className="mvd-za-edytor-wiersz">
+                      <td colSpan={LICZBA_KOLUMN}>
+                        {widok.isLoading && !nastawyWgUrzadzenia.has(w.sterownikRef) ? (
+                          <p className="mvd-za-pusto" data-testid="mvd-za-nastawy-ladowanie">
+                            {T.nastawyLadowanie}
+                          </p>
+                        ) : null}
+                        <EdytorNastawZabezpieczenia
+                          urzadzenieRef={w.sterownikRef}
+                          nastawy={nastawyWgUrzadzenia.get(w.sterownikRef)}
+                          profile={widok.data.profile_charakterystyk ?? []}
+                          testid={`mvd-za-edytor-${w.sterownikRef}`}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-
-      <div className="mvd-za-blok">
-        <h5>{T.cechyTytul}</h5>
-        <div className="mvd-za-chipy" data-testid={`mvd-za-cechy-${sterownik.bayRef}`}>
-          {sterownik.cechy.map((cecha) => (
-            <span
-              key={cecha.klucz}
-              className="mvd-za-chip"
-              data-aktywna={cecha.aktywna ? 'true' : 'false'}
-              data-testid={`mvd-za-cecha-${sterownik.bayRef}-${cecha.klucz}`}
-            >
-              {cecha.etykieta}: {cecha.aktywna ? T.cechaWl : T.cechaWyl}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="mvd-za-blok">
-        <h5>{T.spzTytul}</h5>
-        {spz === null ? (
-          <span
-            className="mvd-za-chip"
-            data-aktywna="false"
-            data-testid={`mvd-za-spz-brak-${sterownik.bayRef}`}
-          >
-            {T.spzNieSkonfigurowano}
-          </span>
-        ) : (
-          <dl className="mvd-za-spz" data-testid={`mvd-za-spz-${sterownik.bayRef}`}>
-            <div>
-              <dt>{T.spzStan}</dt>
-              <dd>{spz.aktywny ? T.spzAktywny : T.spzOdstawiony} ({spz.stanEtykieta})</dd>
-            </div>
-            <div>
-              <dt>{T.spzProbySzybkie}</dt>
-              <dd>{spz.probySzybkie}</dd>
-            </div>
-            <div>
-              <dt>{T.spzProbyWolne}</dt>
-              <dd>{spz.probyWolne}</dd>
-            </div>
-            {spz.zablokowany ? (
-              <div>
-                <dt>{T.spzBlokada}</dt>
-                <dd>{spz.powodBlokady ?? '—'}</dd>
-              </div>
-            ) : null}
-          </dl>
-        )}
-      </div>
-    </div>
+    </section>
   );
 }
 
 export function EkranZabezpieczenAutomatyki() {
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
-  const openInspectorPanel = useNetworkBuildStore((s) => s.openInspectorPanel);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const { data } = useFieldReadModel();
+  const migawka = useSnapshotStore((s) => s.snapshot);
 
-  const wiersze = buildWierszeZabezpieczen(data.fields);
-  const sterowniki = buildSterowniki(data.fields);
+  const wiersze = buildWierszeZabezpieczen(data.fields, migawka);
 
   return (
     <div className="mvd-za" data-testid="mvd-za">
@@ -245,108 +251,36 @@ export function EkranZabezpieczenAutomatyki() {
           onAkcja={() => setActiveSpace('projekt')}
           testid="mvd-za-brak-projektu"
         />
-      ) : wiersze.length === 0 ? (
-        <>
-          <StanZerowy
-            tytul={T.brakPolTytul}
-            opis={T.brakPolOpis}
-            akcja={T.brakPolAkcja}
-            onAkcja={() => setActiveSpace('model')}
-            testid="mvd-za-brak-pol"
-          />
-          {/* Zabezpieczenia przy wyłącznikach liniowych istnieją także bez pól rozdzielni. */}
-          <SekcjaNastaw />
-        </>
       ) : (
         <>
-          <section className="mvd-za-sekcja" data-testid="mvd-za-zabezpieczenia">
-            <h4>{T.zabezpieczeniaTytul}</h4>
-            <p className="mvd-za-sekcja-opis">{T.zabezpieczeniaOpis}</p>
-            <div className="mvd-za-tabela-scroll">
-              <table className="mvd-za-tabela">
-                <thead>
-                  <tr>
-                    <th>{T.kolPole}</th>
-                    <th>{T.kolUrzadzenie}</th>
-                    <th>{T.kolSzablon}</th>
-                    <th>{T.kolFunkcje}</th>
-                    <th>{T.kolAkcja}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wiersze.map((wiersz) => (
-                    <tr key={wiersz.bayRef} data-testid={`mvd-za-wiersz-${wiersz.bayRef}`}>
-                      <td>{wiersz.bayName}</td>
-                      <td>
-                        {wiersz.urzadzenie ? (
-                          wiersz.urzadzenie
-                        ) : (
-                          <span
-                            className="mvd-za-chip"
-                            data-aktywna="false"
-                            data-testid={`mvd-za-bez-zabezpieczenia-${wiersz.bayRef}`}
-                          >
-                            {T.spzNieSkonfigurowano}
-                          </span>
-                        )}
-                      </td>
-                      <td data-testid={`mvd-za-szablon-${wiersz.bayRef}`}>
-                        {wiersz.szablon
-                          ? `${wiersz.szablon}${wiersz.rodzina ? ` · ${wiersz.rodzina}` : ''}`
-                          : T.szablonBrak}
-                      </td>
-                      <td>{wiersz.funkcje.length > 0 ? wiersz.funkcje.join(', ') : '—'}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="mvd-za-wiersz-akcja"
-                          title={T.otworzKartePolaOpis}
-                          data-testid={`mvd-za-otworz-pole-${wiersz.bayRef}`}
-                          onClick={() =>
-                            openInspectorPanel('field_protection', wiersz.bayRef, 'BaySN')
-                          }
-                        >
-                          {T.otworzKartePola}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {wiersze.length === 0 ? (
+            <StanZerowy
+              tytul={T.brakPolTytul}
+              opis={T.brakPolOpis}
+              akcja={T.brakPolAkcja}
+              onAkcja={() => setActiveSpace('model')}
+              testid="mvd-za-brak-pol"
+            />
+          ) : (
+            <TabelaSterownikow wiersze={wiersze} />
+          )}
+          {/* Wyłączniki liniowe istnieją także bez pól rozdzielni. */}
+          <WylacznikiBezSterownika />
+          {wiersze.length > 0 ? (
+            <div className="mvd-za-stopka">
+              <span className="mvd-za-lbl">{T.nastepnyEyebrow}</span>
+              <p>{T.nastepnyOpis}</p>
+              <button
+                type="button"
+                className="mvd-za-nastepny"
+                title={T.nastepnyAkcjaOpis}
+                data-testid="mvd-za-nastepny"
+                onClick={() => openRouteSurface('E-28')}
+              >
+                {T.nastepnyAkcja}
+              </button>
             </div>
-          </section>
-
-          <SekcjaNastaw />
-
-          <section className="mvd-za-sekcja" data-testid="mvd-za-automatyka">
-            <h4>{T.automatykaTytul}</h4>
-            <p className="mvd-za-sekcja-opis">{T.automatykaOpis}</p>
-            {sterowniki.length === 0 ? (
-              <p className="mvd-za-pusto" data-testid="mvd-za-brak-sterownikow">
-                {T.brakSterownikow}
-              </p>
-            ) : (
-              <div className="mvd-za-sterowniki">
-                {sterowniki.map((sterownik) => (
-                  <SterownikKarta key={sterownik.bayRef} sterownik={sterownik} />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <div className="mvd-za-stopka">
-            <span className="mvd-za-lbl">{T.nastepnyEyebrow}</span>
-            <p>{T.nastepnyOpis}</p>
-            <button
-              type="button"
-              className="mvd-za-nastepny"
-              title={T.nastepnyAkcjaOpis}
-              data-testid="mvd-za-nastepny"
-              onClick={() => openRouteSurface('E-28')}
-            >
-              {T.nastepnyAkcja}
-            </button>
-          </div>
+          ) : null}
         </>
       )}
     </div>

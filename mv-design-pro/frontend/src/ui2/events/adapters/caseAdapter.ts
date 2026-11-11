@@ -170,6 +170,41 @@ function startModelChangeAdapter(): () => void {
 }
 
 /**
+ * Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN: werdykt świeżości KAŻDEGO biegu listy
+ * (`ExecutionRun.result_freshness`) wydaje serwer razem z odciskiem wejść przypadku. Gdy
+ * odcisk aktywnego przypadku się zmieni (wybór zabezpieczeń przypadku, scenariusz nazwany,
+ * model, katalog), werdykty listy opisują stan sprzed zmiany — predykat `swiezoscBiegu`
+ * przestaje im ufać (odciski różne) i wraca do werdyktu przypadku, a ten adapter pobiera
+ * listę ponownie istniejącą akcją `loadRuns` (bez własnego `fetch`). Lista INNEGO
+ * przypadku niż aktywny nie jest ruszana.
+ */
+function startOdciskWejscAdapter(): () => void {
+  let ostatni: { caseId: string; odcisk: string } | null = null;
+  try {
+    return useStudyCasesStore.subscribe((stan) => {
+      const przypadek = stan.activeCase;
+      const odcisk = przypadek?.odcisk_wejsc_swiezosci;
+      if (!przypadek || typeof odcisk !== 'string') {
+        ostatni = null;
+        return;
+      }
+      const poprzedni = ostatni;
+      ostatni = { caseId: przypadek.id, odcisk };
+      if (!poprzedni || poprzedni.caseId !== przypadek.id || poprzedni.odcisk === odcisk) {
+        return;
+      }
+      const biegi = useExecutionRunsStore.getState();
+      if (biegi.activeStudyCaseId === przypadek.id) {
+        void biegi.loadRuns(przypadek.id);
+      }
+    });
+  } catch (err) {
+    ostrzezRaz('[ui2/events] caseAdapter: subskrypcja przypadkow niedostepna — adapter no-op', err);
+    return () => {};
+  }
+}
+
+/**
  * Uruchamia pod-adaptery (app-state + runStore + zmiana modelu) -> magistrala.
  * Wywolac raz przy starcie powloki. Zwraca funkcje odsubskrybowania wszystkich.
  */
@@ -177,9 +212,11 @@ export function startCaseAdapter(): () => void {
   const zatrzymajAppState = startAppStateAdapter();
   const zatrzymajRunStore = startRunStoreAdapter();
   const zatrzymajZmianeModelu = startModelChangeAdapter();
+  const zatrzymajOdciskWejsc = startOdciskWejscAdapter();
   return () => {
     zatrzymajAppState();
     zatrzymajRunStore();
     zatrzymajZmianeModelu();
+    zatrzymajOdciskWejsc();
   };
 }

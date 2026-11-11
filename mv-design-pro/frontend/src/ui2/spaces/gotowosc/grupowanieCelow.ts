@@ -380,6 +380,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'cable.operating_temperature_missing': 'wspolne',
   'cable.screen_bonding_reference_mismatch': 'wspolne',
   'conductor.fault_current_missing': 'wspolne',
+  'conductor.thermal_data_inconsistent': 'wspolne',
   'conductor.thermal_data_missing': 'wspolne',
   'ct.accuracy_limit_missing': 'wspolne',
   'ct.rated_burden_missing': 'wspolne',

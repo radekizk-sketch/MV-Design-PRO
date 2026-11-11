@@ -6,34 +6,29 @@ enm/...``), woła REUSE dostawców (``cable_ampacity_derating.wspolczynniki_nn``
 ``conductor_thermal_withstand.check_conductor_thermal_withstand``,
 ``lv_circuit_verification_binding.zbuduj_wejscie_dowodu_obwodu_nn``) i pakuje
 wynik do ZIP przez ``ProofPackBuilder`` (REUSE, ta sama mechanika co wszystkie
-inne pakiety dowodowe). ZERO fizyki tutaj — endpoint tylko składa wejście.
+inne pakiety dowodowe). ZERO fizyki tutaj — endpoint tylko wskazuje model i bieg;
+wejście z modelu składa ``nn_circuit_sheet.wejscie_dowodu_obwodu_nn_z_modelu``.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
 from api.odmowa_http import OdmowaHttpError
 from application.analyses.fault_loop.service import opis_braku_danych_nn
-from application.proof_engine.lv_circuit_verification_binding import (
-    zbuduj_wejscie_dowodu_obwodu_nn,
-)
+from application.analyses.nn_circuit_sheet import wejscie_dowodu_obwodu_nn_z_modelu
 from application.proof_engine.packs.lv_circuit_verification import (
     LVCircuitVerificationProofPack,
     serialize_lv_circuit_verification_pack,
 )
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
+from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from network_model.odmowa_danych import OdmowaDanychError
-from network_model.solvers.cable_ampacity_derating import wspolczynniki_nn
-from network_model.solvers.conductor_thermal_withstand import (
-    ConductorThermalInput,
-    check_conductor_thermal_withstand,
-)
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 router = APIRouter(prefix="/api/nn-proof", tags=["nn-proof"])
 
@@ -41,14 +36,17 @@ router = APIRouter(prefix="/api/nn-proof", tags=["nn-proof"])
 class LVCircuitVerificationPackRequest(BaseModel):
     """Wejście pakietu dowodowego weryfikacji obwodu nN.
 
-    Grupuje parametry wg dostawcy: (1) tożsamość pakietu/kontekst, (2) obwód w
-    modelu ENM (``case_id`` — ta sama przestrzeń co ``/api/cases/{case_id}/
-    enm/...``), (3) dane mocy dla Ib, (4) warunki ułożenia G-D1 dla Iz′ (REUSE
-    ``wspolczynniki_nn``), (5) Ik″max w punkcie zabudowy (osobny bieg zwarciowy
-    — parametr wejściowy, wzorzec ``nn_device_selection``), (6) dane cieplne
-    I²t (REUSE ``check_conductor_thermal_withstand``), (7) ΔU (REUSE pakietu
-    VDROP / ``vdrop_chain_binding`` — headline U_source/ΔU_total).
+    Karta EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN (6a): żądanie niesie wyłącznie tożsamość
+    pakietu, obwód w modelu ENM i dane, których model nie przechowuje (P/Q obwodu dla Ib,
+    ΔU całkowite z pakietu VDROP). Napięcie, obciążalność i warunki ułożenia, dane cieplne
+    przewodu, I″k i κ oraz czas wyłączenia pochodzą z MODELU i BIEGU zwarciowego
+    (`nn_circuit_sheet.wejscie_dowodu_obwodu_nn_z_modelu`). ``short_circuit_run_id`` pominięty
+    — najnowszy zakończony bieg zwarciowy przypadku (scenariusz MAX, zwarcie metaliczne);
+    brak biegu = kryterium cieplne i zdolność wyłączania nieocenione, z akcją naprawczą.
+    Pole spoza kontraktu (dawne ``u_ll_kv``, ``fault_duration_s``…) to 422, nie cicha ignorancja.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     # (1) Tożsamość pakietu
     project_id: str
@@ -67,36 +65,82 @@ class LVCircuitVerificationPackRequest(BaseModel):
     segment_ref: str
     apparatus_branch_ref: str | None = None
 
-    # (3) Dane mocy dla Ib (kroki 1-2)
+    # (3) Bieg zwarciowy, z którego biorą się I″k i κ punktu
+    short_circuit_run_id: str | None = None
+
+    # (4) Dane mocy dla Ib (kroki 1-2)
     p_mw: float
     q_mvar: float
-    u_ll_kv: float
 
-    # (4) Warunki ułożenia G-D1 dla Iz′ (krok 3, REUSE wspolczynniki_nn)
-    iz_katalogowe_a: float
-    srodowisko: Literal["powietrze", "grunt"]
-    izolacja: Literal["PVC", "XLPE"]
-    temperatura_c: float
-    liczba_obwodow: int
-    rezystywnosc_gruntu_km_w: float | None = None
-
-    # (5) Ik″max w punkcie zabudowy (krok 6) — osobny bieg zwarciowy IEC 60909
-    ik_max_ka: float | None = None
-
-    # (6) Dane cieplne I²t≤k²S² (krok 7, REUSE check_conductor_thermal_withstand)
-    ith_a: float | None = None
-    fault_duration_s: float | None = None
-    ith_1s_a: float | None = None
-    jth_1s_a_per_mm2: float | None = None
-    cross_section_mm2: float | None = None
-    conductor_material: str | None = None
-    temp_operating_c: float | None = None
-    temp_short_circuit_c: float | None = None
-
-    # (7) ΔU dowód — headline (krok 8, REUSE pakietu VDROP/vdrop_chain_binding)
-    vdrop_u_source_kv: float
+    # (5) ΔU dowód — headline (krok 8, REUSE pakietu VDROP/vdrop_chain_binding)
     vdrop_delta_u_total_kv: float
     vdrop_delta_u_total_percent: float | None = None
+
+
+def _bieg_zwarciowy_dowodu(case_id: str, run_id: str | None) -> Any | None:
+    """Bieg zwarciowy dowodu: wskazany (walidacja jak w arkuszu nN) albo najnowszy zakończony
+    bieg przypadku w zakresie IEC 60909 o scenariuszu MAX (wytrzymałość cieplna przewodu
+    i zdolność wyłączania ocenia się przy prądzie maksymalnym)."""
+    from api.enm import _resolve_run_for_sheet
+    from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
+    from enm.canonical_analysis import list_runs_for_case, scenariusz_biegu_zwarciowego
+
+    if run_id is not None:
+        return _resolve_run_for_sheet(
+            case_id=case_id,
+            run_id=run_id,
+            param_name="short_circuit_run_id",
+            expected_analysis_type="short_circuit_sn",
+        )
+    kandydaci = [
+        bieg
+        for bieg in list_runs_for_case(case_id)
+        if bieg.analysis_type == "short_circuit_sn"
+        and bieg.status == "FINISHED"
+        and bieg_w_zakresie_iec60909(bieg)
+        and scenariusz_biegu_zwarciowego(bieg) == "MAX"
+    ]
+    return max(kandydaci, key=lambda b: (b.created_at, str(b.id))) if kandydaci else None
+
+
+def _wejscie_dowodu(
+    payload: LVCircuitVerificationPackRequest, request: Request
+) -> tuple[EnergyNetworkModel, dict[str, Any]]:
+    """Model i wejście dowodu z modelu i biegu; model = migawka biegu (prąd i aparat z jednego
+    stanu sieci), bez biegu — model bieżący przypadku. Model wraca razem z wejściem, bo opis
+    braków danych nazywa miejsce braku z TEGO samego modelu (``opis_braku_danych_nn``)."""
+    from api.enm import _model_biegu
+
+    bieg = _bieg_zwarciowy_dowodu(payload.case_id, payload.short_circuit_run_id)
+    enm = (
+        _model_biegu(bieg)
+        if bieg is not None
+        else get_enm(klucz_twin_z_sciezki(payload.case_id, request))
+    )
+    try:
+        return enm, wejscie_dowodu_obwodu_nn_z_modelu(
+            enm=enm,
+            short_circuit_run=bieg,
+            station_ref=payload.station_ref,
+            bus_ref=payload.bus_ref,
+            breaker_ref=payload.breaker_ref,
+            segment_ref=payload.segment_ref,
+            apparatus_branch_ref=payload.apparatus_branch_ref,
+            project_name=payload.project_name,
+            case_name=payload.case_name,
+            run_timestamp=payload.run_timestamp,
+            solver_version=payload.solver_version,
+            p_mw=payload.p_mw,
+            q_mvar=payload.q_mvar,
+            vdrop_delta_u_total_kv=payload.vdrop_delta_u_total_kv,
+            vdrop_delta_u_total_percent=payload.vdrop_delta_u_total_percent,
+        )
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(
+            exc,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            prefiks="Nie udało się złożyć dowodu obwodu nN",
+        ) from exc
 
 
 @router.post("/circuit/pack")
@@ -107,61 +151,9 @@ def download_lv_circuit_verification_pack(
 
     10 kroków (Ib → Iz′ → dobór → I2 → zdolność wyłączania → I²t → ΔU →
     Ik1_min → SWZ), Formula→Data→Substitution→Result→Unit, deterministyczny
-    dla identycznego modelu ENM i identycznych parametrów wejściowych.
+    dla identycznego modelu ENM, biegu i parametrów wejściowych.
     """
-    klucz = klucz_twin_z_sciezki(payload.case_id, request)
-    enm = get_enm(klucz)
-
-    wspolczynniki = wspolczynniki_nn(
-        srodowisko=payload.srodowisko,
-        izolacja=payload.izolacja,
-        temperatura_c=payload.temperatura_c,
-        liczba_obwodow=payload.liczba_obwodow,
-        rezystywnosc_gruntu_km_w=payload.rezystywnosc_gruntu_km_w,
-    )
-    thermal = check_conductor_thermal_withstand(
-        ConductorThermalInput(
-            ith_a=payload.ith_a,
-            fault_duration_s=payload.fault_duration_s,
-            ith_1s_a=payload.ith_1s_a,
-            jth_1s_a_per_mm2=payload.jth_1s_a_per_mm2,
-            cross_section_mm2=payload.cross_section_mm2,
-            conductor_material=payload.conductor_material,
-            temp_operating_c=payload.temp_operating_c,
-            temp_short_circuit_c=payload.temp_short_circuit_c,
-        )
-    )
-
-    try:
-        wynik = zbuduj_wejscie_dowodu_obwodu_nn(
-            enm=enm,
-            station_ref=payload.station_ref,
-            bus_ref=payload.bus_ref,
-            breaker_ref=payload.breaker_ref,
-            segment_ref=payload.segment_ref,
-            project_name=payload.project_name,
-            case_name=payload.case_name,
-            run_timestamp=payload.run_timestamp,
-            solver_version=payload.solver_version,
-            p_mw=payload.p_mw,
-            q_mvar=payload.q_mvar,
-            u_ll_kv=payload.u_ll_kv,
-            iz_katalogowe_a=payload.iz_katalogowe_a,
-            wspolczynniki=wspolczynniki,
-            ik_max_ka=payload.ik_max_ka,
-            thermal=thermal,
-            vdrop_u_source_kv=payload.vdrop_u_source_kv,
-            vdrop_delta_u_total_kv=payload.vdrop_delta_u_total_kv,
-            vdrop_delta_u_total_percent=payload.vdrop_delta_u_total_percent,
-            apparatus_branch_ref=payload.apparatus_branch_ref,
-        )
-    except OdmowaDanychError as exc:
-        raise OdmowaHttpError(
-            exc,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            prefiks="Nie udało się złożyć dowodu obwodu nN",
-        ) from exc
-
+    enm, wynik = _wejscie_dowodu(payload, request)
     if wynik["status"] != "OK":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -193,65 +185,13 @@ def download_lv_circuit_verification_pack(
 def preview_lv_circuit_verification_pack(
     payload: LVCircuitVerificationPackRequest, request: Request
 ) -> dict:
-    """Podgląd JSON pakietu (bez ZIP) — do prezentacji w UI (kroki + podsumowanie)."""
-    klucz = klucz_twin_z_sciezki(payload.case_id, request)
-    enm = get_enm(klucz)
-
-    wspolczynniki = wspolczynniki_nn(
-        srodowisko=payload.srodowisko,
-        izolacja=payload.izolacja,
-        temperatura_c=payload.temperatura_c,
-        liczba_obwodow=payload.liczba_obwodow,
-        rezystywnosc_gruntu_km_w=payload.rezystywnosc_gruntu_km_w,
-    )
-    thermal = check_conductor_thermal_withstand(
-        ConductorThermalInput(
-            ith_a=payload.ith_a,
-            fault_duration_s=payload.fault_duration_s,
-            ith_1s_a=payload.ith_1s_a,
-            jth_1s_a_per_mm2=payload.jth_1s_a_per_mm2,
-            cross_section_mm2=payload.cross_section_mm2,
-            conductor_material=payload.conductor_material,
-            temp_operating_c=payload.temp_operating_c,
-            temp_short_circuit_c=payload.temp_short_circuit_c,
-        )
-    )
-
-    try:
-        wynik = zbuduj_wejscie_dowodu_obwodu_nn(
-            enm=enm,
-            station_ref=payload.station_ref,
-            bus_ref=payload.bus_ref,
-            breaker_ref=payload.breaker_ref,
-            segment_ref=payload.segment_ref,
-            project_name=payload.project_name,
-            case_name=payload.case_name,
-            run_timestamp=payload.run_timestamp,
-            solver_version=payload.solver_version,
-            p_mw=payload.p_mw,
-            q_mvar=payload.q_mvar,
-            u_ll_kv=payload.u_ll_kv,
-            iz_katalogowe_a=payload.iz_katalogowe_a,
-            wspolczynniki=wspolczynniki,
-            ik_max_ka=payload.ik_max_ka,
-            thermal=thermal,
-            vdrop_u_source_kv=payload.vdrop_u_source_kv,
-            vdrop_delta_u_total_kv=payload.vdrop_delta_u_total_kv,
-            vdrop_delta_u_total_percent=payload.vdrop_delta_u_total_percent,
-            apparatus_branch_ref=payload.apparatus_branch_ref,
-        )
-    except OdmowaDanychError as exc:
-        raise OdmowaHttpError(
-            exc,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            prefiks="Nie udało się złożyć dowodu obwodu nN",
-        ) from exc
-
+    """Podgląd JSON pakietu (bez ZIP) — do prezentacji w UI (kroki + podsumowanie + źródła)."""
+    _, wynik = _wejscie_dowodu(payload, request)
     if wynik["status"] != "OK":
         return wynik
 
     document = LVCircuitVerificationProofPack.generate(wynik["wejscie"])
-    return serialize_lv_circuit_verification_pack(document)
+    return {**serialize_lv_circuit_verification_pack(document), "zrodla": wynik["zrodla"]}
 
 
 class LVCircuitReportRequest(BaseModel):

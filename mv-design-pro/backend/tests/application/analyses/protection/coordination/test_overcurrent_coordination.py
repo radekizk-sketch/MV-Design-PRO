@@ -112,6 +112,14 @@ def _refy() -> tuple[str, str]:
     return nazwy[NAZWA_ZABEZPIECZENIA_Q1], nazwy[NAZWA_ZABEZPIECZENIA_Q2]
 
 
+def _sterowniki_szablonu() -> set[str]:
+    """Sterowniki pól z samym zestawem funkcji szablonu stacji, bez żadnej zapisanej nastawy
+    (karta OCHRONA-JEDNO-ZRODLO: funkcje szablonu pola to funkcje sterownika pola)."""
+    return {
+        p.ref_id for p in get_enm(KLUCZ).protection_assignments if p.bay_ref and not p.grupy_nastaw
+    }
+
+
 # ---------------------------------------------------------------------------
 # Pary stopniowania — jeden predykat (zawieranie stref) dla topologii i wskazań
 # ---------------------------------------------------------------------------
@@ -251,7 +259,12 @@ def test_koordynacja_urzadzen_modelu_komplet_sprawdzen(biegi: dict[str, str]) ->
     q1, q2 = _refy()
     wynik = _koordynuj(biegi)
     assert "overall_verdict" not in wynik
-    assert {d["id"] for d in wynik["devices"]} == {q1, q2}
+    szablonu = _sterowniki_szablonu()
+    assert len(szablonu) == 6
+    # Każdy sterownik modelu jest urządzeniem koordynacji; sterowniki szablonu bez nastaw
+    # odmawiają jawnie (NIE_OCENIONO z brakami) i nie tworzą par.
+    assert {d["id"] for d in wynik["devices"]} == {q1, q2} | szablonu
+    assert {o["urzadzenie_ref"] for o in wynik["odmowy_urzadzen"]} == szablonu
     assert wynik["pary"] == [{"nadrzedne_ref": q1, "podrzedne_ref": q2}]
     (selektywnosc,) = wynik["selectivity_checks"]
     assert selektywnosc["t_downstream_s"] == pytest.approx(0.1)
@@ -263,7 +276,12 @@ def test_koordynacja_urzadzen_modelu_komplet_sprawdzen(biegi: dict[str, str]) ->
     czulosc = {c["device_id"]: c for c in wynik["sensitivity_checks"]}
     assert czulosc[q2]["i_pickup_a"] == pytest.approx(180.0)
     assert czulosc[q1]["i_pickup_a"] == pytest.approx(240.0)
-    for c in czulosc.values():
+    for ref, c in czulosc.items():
+        if ref in szablonu:
+            # Sterownik bez nastaw: czułość bez ilorazu, z nazwanym brakiem — nigdy liczba.
+            assert c["ratio"] is None and c["i_pickup_a"] is None
+            assert c["notes_pl"]
+            continue
         assert c["ratio"] == pytest.approx(c["i_fault_min_a"] / c["i_pickup_a"], rel=1e-6)
         assert c["required_ratio"] == pytest.approx(1.5)
     for c in wynik["overload_checks"]:
@@ -275,7 +293,7 @@ def test_koordynacja_urzadzen_modelu_komplet_sprawdzen(biegi: dict[str, str]) ->
     assert podsumowanie["kryteria"]["minimum_grading_margin_s"] == pytest.approx(0.2)
     assert podsumowanie["selectivity"]["najmniejszy_odstep_s"] == pytest.approx(0.3)
     assert podsumowanie["sensitivity"]["najmniejszy_iloraz"] == pytest.approx(
-        min(c["ratio"] for c in czulosc.values())
+        min(c["ratio"] for c in czulosc.values() if c["ratio"] is not None)
     )
     assert not {"pass", "fail", "marginal", "error"} & set(podsumowanie["selectivity"])
 
@@ -374,11 +392,26 @@ def test_slad_white_box_po_polsku(biegi: dict[str, str]) -> None:
 
 
 def test_model_bez_zabezpieczen_odmowa_nazwana() -> None:
+    """Model bez ŻADNEGO sterownika (pola bez funkcji szablonu) — odmowa nazwana."""
     enm, _a, _b = siec_magistrali()
+    enm["protection_assignments"] = []
     ids = _biegi_modelu(EnergyNetworkModel.model_validate(enm))
     with pytest.raises(OdmowaKoordynacji) as odmowa:
         _koordynuj(ids)
     assert odmowa.value.powod == "BRAK_ZABEZPIECZEN_W_MODELU"
+
+
+def test_model_z_samymi_sterownikami_szablonu_nazywa_braki_kazdego() -> None:
+    """Druga strona predykatu: sterowniki szablonu bez nastaw SĄ zabezpieczeniami modelu —
+    koordynacja nie odmawia w całości, tylko każde urządzenie dostaje jawną odmowę z brakami
+    i akcją naprawczą, a par stopniowania nie ma (brak dowodu ≠ selektywność)."""
+    enm, _a, _b = siec_magistrali()
+    assert enm["protection_assignments"], "pola szablonu niosą sterowniki z funkcjami"
+    ids = _biegi_modelu(EnergyNetworkModel.model_validate(enm))
+    wynik = _koordynuj(ids)
+    assert {o["urzadzenie_ref"] for o in wynik["odmowy_urzadzen"]} == _sterowniki_szablonu()
+    assert all(o["braki"] for o in wynik["odmowy_urzadzen"])
+    assert wynik["selectivity_checks"] == []
 
 
 def test_zmiana_sieci_po_biegu_odmowa(biegi: dict[str, str]) -> None:
@@ -404,15 +437,15 @@ def test_edycja_nastaw_po_biegu_liczy_na_nowych_nastawach(biegi: dict[str, str])
         "update_protection_settings",
         {
             "protection_ref": q2,
-            "settings": [
-                {
-                    "function_type": "overcurrent_50",
-                    "threshold_a": 15.0,
-                    "threshold_unit": "A_WTORNY",
-                    "curve_type": "DT",
-                    "time_delay_s": 0.35,
+            "nastawy": {
+                "50": {
+                    "prog": 15.0,
+                    "jednostka_progu": "A_WTORNY",
+                    "krzywa": "DT",
+                    "zwloka_s": 0.35,
                 }
-            ],
+            },
+            "wlaczone": {"51": False},
         },
     )
     assert wynik.get("error") is None, wynik.get("error")
@@ -429,7 +462,10 @@ def test_urzadzenie_z_odmowa_widoczne_jako_brak_oceny(biegi: dict[str, str]) -> 
     wynik = execute_domain_operation(
         get_enm(KLUCZ).model_dump(mode="json"),
         "update_protection_settings",
-        {"protection_ref": q2, "settings": [{"function_type": "overcurrent_51"}]},
+        {
+            "protection_ref": q2,
+            "nastawy": {"51": {"prog": None, "jednostka_progu": None, "krzywa": None, "tms": None}},
+        },
     )
     assert wynik.get("error") is None, wynik.get("error")
     set_enm(KLUCZ, EnergyNetworkModel.model_validate(wynik["snapshot"]))
@@ -437,10 +473,11 @@ def test_urzadzenie_z_odmowa_widoczne_jako_brak_oceny(biegi: dict[str, str]) -> 
     czulosc = {c["device_id"]: c for c in koordynacja["sensitivity_checks"]}
     assert czulosc[q2]["ratio"] is None
     assert czulosc[q2]["i_pickup_a"] is None
-    assert "próg" in czulosc[q2]["notes_pl"].lower()
+    # Streszczenie braków (jedno dla czasu wyłączenia i koordynacji) nazywa brak progu stopnia.
+    assert "I> (51) — brak progu rozruchowego" in czulosc[q2]["notes_pl"]
     assert koordynacja["selectivity_checks"] == []
-    assert koordynacja["odmowy_urzadzen"][0]["urzadzenie_ref"] == q2
-    assert koordynacja["summary"]["sensitivity"]["bez_wartosci"] == 1
+    assert q2 in {o["urzadzenie_ref"] for o in koordynacja["odmowy_urzadzen"]}
+    assert koordynacja["summary"]["sensitivity"]["bez_wartosci"] == 1 + len(_sterowniki_szablonu())
 
 
 @pytest.mark.parametrize("rodzaj", ["1F", "2F+Z", None])

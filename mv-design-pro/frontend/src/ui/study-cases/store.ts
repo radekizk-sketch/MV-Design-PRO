@@ -62,6 +62,11 @@ interface StudyCasesState {
   // Actions
   setProjectId: (projectId: string) => void;
   loadCases: (projectId: string) => Promise<void>;
+  /**
+   * Ciche odświeżenie listy (status wyników po zmianie przypadku) — bez `isLoading`, żeby widoki
+   * listy nie przechodziły w stan ładowania i nie odmontowywały otwartej karty przypadku.
+   */
+  odswiezPrzypadki: (projectId: string) => Promise<void>;
   createCase: (request: CreateStudyCaseRequest) => Promise<StudyCase>;
   updateCase: (caseId: string, request: UpdateStudyCaseRequest) => Promise<StudyCase>;
   deleteCase: (caseId: string) => Promise<boolean>;
@@ -113,6 +118,15 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Błąd ładowania zakresów obliczeń';
       set({ error: message, isLoading: false });
+    }
+  },
+
+  odswiezPrzypadki: async (projectId) => {
+    try {
+      const cases = await api.listStudyCases(projectId);
+      if (get().projectId === null || get().projectId === projectId) set({ cases });
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Błąd ładowania zakresów obliczeń' });
     }
   },
 
@@ -328,4 +342,18 @@ export function useSortedCases(): StudyCaseListItem[] {
   return useStudyCasesStore((state) =>
     [...state.cases].sort((a, b) => a.name.localeCompare(b.name, 'pl'))
   );
+}
+
+/**
+ * Ponowny odczyt werdyktu aktywnego przypadku po zapisie WEJŚCIA oceny świeżości, które nie
+ * jest modelem (scenariusz nazwany: zwarciowy, dynamiki; wybór zabezpieczeń przypadku).
+ * Serwer zmienia wtedy `odcisk_wejsc_swiezosci` przypadku, a nagłówki ekranów analiz i lista
+ * biegów pobierają swoje werdykty ponownie właśnie po zmianie odcisku (karta
+ * EDYTOR-DELT-SCENARIUSZA-ZABEZPIECZEN). Bez projektu w zasięgu — nic (brak danej).
+ */
+export function odswiezWerdyktAktywnegoPrzypadku(): void {
+  const { projectId, loadActiveCase } = useStudyCasesStore.getState();
+  if (projectId) {
+    void loadActiveCase(projectId);
+  }
 }

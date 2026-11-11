@@ -26,6 +26,7 @@ from network_model.nazwy import jest_nazwa
 # Import shared determinism module
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.reporting.protection_tcc_presentation import (
+    NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL,
     NAGLOWKI_NASTAW_PL,
     etykieta_tms,
     etykieta_typu_krzywej_pl,
@@ -36,6 +37,7 @@ from network_model.reporting.protection_tcc_presentation import (
     uzasadnienia_sprawdzen,
     wiersze_nastaw_urzadzenia,
     wiersze_podsumowania_pl,
+    zdania_funkcji_nieocenianych,
 )
 
 # Check for python-docx availability
@@ -170,6 +172,12 @@ def export_protection_coordination_to_docx(
                     row[i].text = wartosc
     else:
         doc.add_paragraph("Brak urządzeń", style="No Spacing")
+
+    zdania_nieocenianych = zdania_funkcji_nieocenianych(list(devices))
+    if zdania_nieocenianych:
+        doc.add_heading(NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL, level=2)
+        for zdanie in zdania_nieocenianych:
+            doc.add_paragraph(zdanie, style="No Spacing")
 
     doc.add_paragraph()
 

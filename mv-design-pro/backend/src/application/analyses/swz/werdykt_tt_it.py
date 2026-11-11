@@ -33,6 +33,10 @@ from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     WpisCzasuWylaczenia,
     pasmo_dla_u0,
 )
+from network_model.catalog.wartosci_robocze import (
+    RodzajObwoduRozstrzygniety,
+    rozstrzygnij_rodzaj_obwodu_nn,
+)
 from network_model.solvers.fault_loop_iec60364 import FaultLoopResult, NetworkType
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
@@ -59,7 +63,7 @@ from werdykt import (
     zagreguj_wymaganie,
 )
 
-from .werdykt import dane_przyjete_petli, rodzaj_obwodu_dla_aparatu
+from .werdykt import dane_przyjete_petli, dane_przyjete_rodzaju
 
 #: Kod odmowy limitu (rejestr kodów gotowości): tekst normy nie jest w repozytorium.
 KOD_LIMIT_BRAK_TEKSTU_NORMY = "swz.limit_tt_it_brak_tekstu_normy"
@@ -363,11 +367,13 @@ def _kryterium_czas_rcd(
     rcd: RcdNaTrasie,
     wpis: WpisCzasuWylaczenia,
     jednostka_redakcyjna: str,
-    rodzaj: str,
+    rozstrzygniecie: RodzajObwoduRozstrzygniety,
     pasmo: str,
     przedmiot: Przedmiot,
     punkt: str,
+    dane_rodzaju: tuple[DanaPrzyjeta, ...],
 ) -> OcenaKryterium:
+    rodzaj = rozstrzygniecie.rodzaj
     t_a, kolumna = czas_wylaczenia_rcd_dla_pradu(rcd, wynik.ik_min_a)
     wynik_k = (
         WynikKryterium(
@@ -401,7 +407,10 @@ def _kryterium_czas_rcd(
         podstawa=_PODSTAWA_WYMAGANIA_TT,
         stosowalnosc=Stosowalnosc(
             dotyczy=True,
-            powod_pl=f"obwód {rodzaj} w układzie TT, pasmo napięcia względem ziemi {pasmo}",
+            powod_pl=(
+                f"{rozstrzygniecie.uzasadnienie_pl}; układ TT, pasmo napięcia względem ziemi "
+                f"{pasmo}"
+            ),
         ),
         wynik=wynik_k,
         limit=LimitKryterium(
@@ -410,7 +419,9 @@ def _kryterium_czas_rcd(
             zakres_stosowalnosci_pl=f"obwód {rodzaj}, pasmo napięcia względem ziemi {pasmo}",
         ),
         niepewnosc=_NIEPEWNOSC_DEKLARACJI,
-        dowod=_dowod_deklaracji_rcd(rcd, t_a, kolumna, dane_przyjete_petli(wynik, punkt)),
+        dowod=_dowod_deklaracji_rcd(
+            rcd, t_a, kolumna, (*dane_przyjete_petli(wynik, punkt), *dane_rodzaju)
+        ),
         zakres_waznosci=_zakres(
             "TT", "Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT"
         ),
@@ -632,7 +643,11 @@ def ocen_swz_tt_it(
             "Błąd programu: werdykt SWZ TT/IT wymaga wyniku pętli układu TT albo IT (pole tt_it)."
         )
     uklad = wynik_petli.network_type.value
-    rodzaj = rodzaj_obwodu_dla_aparatu(aparat_in_a, rodzaj_obwodu)
+    rozstrzygniecie = rozstrzygnij_rodzaj_obwodu_nn(
+        rodzaj_projektanta=rodzaj_obwodu, in_a=aparat_in_a
+    )
+    rodzaj = rozstrzygniecie.rodzaj
+    dane_rodzaju = dane_przyjete_rodzaju(rozstrzygniecie, nazwa_punktu_pl)
     pasmo = pasmo_dla_u0(u0_v)
     kryteria: list[OcenaKryterium]
     t_wymagany: float | None = None
@@ -656,10 +671,11 @@ def ocen_swz_tt_it(
                 rcd,
                 wpis,
                 jednostka_redakcyjna,
-                rodzaj,
+                rozstrzygniecie,
                 pasmo,
                 przedmiot,
                 nazwa_punktu_pl,
+                dane_rodzaju,
             ),
             _kryterium_napiecie_dotykowe_tt(
                 wynik_petli, rcd, limit_napiecia_dotykowego, przedmiot, nazwa_punktu_pl

@@ -13,12 +13,13 @@
  * rozdzielnicę) i ostrzeżenia topologicznego funkcji 67N bez potwierdzonego źródła.
  *
  * Warunek (oba składniki): przekładnik Ferrantiego (`CORE_BALANCE_CT`) w polu ORAZ
- * `Bay.zrodlo_u0_ref` wskazujący przekładnik napięciowy (`VT`) z uzwojeniem otwartego trójkąta
+ * wejście 3U₀ sterownika pola (`ProtectionAssignment.wejscia.u0_vt_ref`, otwarty trójkąt) wskazujące przekładnik napięciowy (`VT`) z uzwojeniem otwartego trójkąta
  * w tym samym polu albo w polu pomiaru napięcia szyn (`MEASUREMENT` + `NAPIECIA_SZYN`) na tej
  * samej szynie. Pole pomiaru napięcia w sekcji bez powiązania NIE jest potwierdzeniem.
  */
 import type { Bay, BayPrimaryDevice, EnergyNetworkModel } from '../../../../types/enm';
 import type { UzwojeniePrzekladnikaNapieciowego } from '../../../../types/przekladniki';
+import { kodyFunkcjiPola, refZrodlaU0Pola } from '../../../shared/sterownikZabezpieczen';
 
 /** Kod maszynowy braku warunku — lustro `KodBrakuZrodlaU0` backendu (ta sama kolejność braków:
  *  najpierw kryterium prądowe I0, potem składnik napięciowy U0). */
@@ -60,6 +61,10 @@ export interface ZrodloU0PolaView {
   readonly kodyBrakow: readonly KodBrakuZrodlaU0[];
 }
 
+/** Migawka potrzebna regule: pola (aparaty, sekcje) i sterowniki (wejście 3U₀, funkcje). */
+export type MigawkaZrodlaU0 = Pick<EnergyNetworkModel, 'bays'> &
+  Partial<Pick<EnergyNetworkModel, 'protection_assignments'>>;
+
 type PoleZrodla = Pick<
   Bay,
   'ref_id' | 'bus_ref' | 'bay_role' | 'funkcja_pomiaru' | 'primary_devices' | 'bay_number' | 'name'
@@ -99,14 +104,12 @@ export function czyFunkcjeWymagajaZrodlaU0(kody: readonly string[]): boolean {
  * Warunek 67N pola — ta sama kolejność rozstrzygania i te same braki co backend
  * (`zrodlo_u0_pola`). Deterministyczna, bez efektów ubocznych.
  */
-export function zrodloU0Pola(
-  snapshot: Pick<EnergyNetworkModel, 'bays'>,
-  pole: PoleZrodla & Pick<Bay, 'zrodlo_u0_ref'>,
-): ZrodloU0PolaView {
+export function zrodloU0Pola(snapshot: MigawkaZrodlaU0, pole: PoleZrodla): ZrodloU0PolaView {
   const pola: readonly PoleZrodla[] = snapshot.bays ?? [];
   const kody: KodBrakuZrodlaU0[] = [];
   if (!aparaty(pole).some((a) => a.kind === RODZAJ_FERRANTIEGO)) kody.push('BRAK_FERRANTIEGO');
-  const ref = typeof pole.zrodlo_u0_ref === 'string' ? pole.zrodlo_u0_ref.trim() : '';
+  // Powiązanie źródła = wejście 3U₀ (otwarty trójkąt) sterownika pola — jedyny nośnik.
+  const ref = refZrodlaU0Pola(snapshot, pole.ref_id)?.trim() ?? '';
   let vtRef: string | null = null;
   let vtOznaczenie: string | null = null;
   let poleZrodla: PoleZrodla | null = null;
@@ -153,25 +156,27 @@ export function zrodloU0Pola(
 }
 
 /**
- * Źródło 3U₀ pola dla deskryptora schematu — rozstrzygane, gdy pole ma powiązanie albo funkcję
- * wymagającą źródła w `Bay.protection_codes` (jedyny nośnik kodów funkcji pola na schemacie,
- * `resolveBayProtectionMarking`); inaczej `undefined`: pole bez 67N i bez powiązania nie niesie
- * odniesienia. Jedna funkcja dla adaptera stacji i adaptera GPZ.
+ * Źródło 3U₀ pola dla deskryptora schematu — rozstrzygane, gdy sterownik pola ma powiązane
+ * wejście 3U₀ albo funkcję wymagającą źródła (funkcje sterownika — ten sam nośnik co blok
+ * przekaźnika, `resolveBayProtectionMarking`); inaczej `undefined`: pole bez 67N i bez
+ * powiązania nie niesie odniesienia. Jedna funkcja dla adaptera stacji i adaptera GPZ.
  */
 export function zrodloU0WidokuPola(
-  snapshot: Pick<EnergyNetworkModel, 'bays'>,
-  pole: PoleZrodla & Pick<Bay, 'zrodlo_u0_ref' | 'protection_codes'>,
+  snapshot: MigawkaZrodlaU0,
+  pole: PoleZrodla,
 ): ZrodloU0PolaView | undefined {
-  const maPowiazanie = typeof pole.zrodlo_u0_ref === 'string' && pole.zrodlo_u0_ref.trim() !== '';
-  if (!maPowiazanie && !czyFunkcjeWymagajaZrodlaU0(pole.protection_codes ?? [])) return undefined;
+  const maPowiazanie = (refZrodlaU0Pola(snapshot, pole.ref_id) ?? '').trim() !== '';
+  if (!maPowiazanie && !czyFunkcjeWymagajaZrodlaU0(kodyFunkcjiPola(snapshot, pole.ref_id))) {
+    return undefined;
+  }
   return zrodloU0Pola(snapshot, pole);
 }
 
 /** Rozszerzenie deskryptora pola (stacje i GPZ): `{ zrodloU0 }` albo `{}` — bez klucza
  *  z wartością `undefined` (deskryptor bez źródła jest równy deskryptorowi sprzed reguły). */
 export function zrodloU0Deskryptora(
-  snapshot: Pick<EnergyNetworkModel, 'bays'>,
-  pole: PoleZrodla & Pick<Bay, 'zrodlo_u0_ref' | 'protection_codes'>,
+  snapshot: MigawkaZrodlaU0,
+  pole: PoleZrodla,
 ): { readonly zrodloU0?: ZrodloU0PolaView } {
   const zrodloU0 = zrodloU0WidokuPola(snapshot, pole);
   return zrodloU0 ? { zrodloU0 } : {};

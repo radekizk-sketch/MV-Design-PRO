@@ -47,6 +47,13 @@ _PRZEKLADNIA = 600.0 / 5.0
 _KLUCZ = "case-zacisk-pola"
 
 
+def _ref_sterownika_pola(model: EnergyNetworkModel) -> str:
+    """Sterownik pola odpływowego — po identyfikatorze, bo nazwa w ocenie niesie też nazwę
+    stacji (``nazwa_sterownika``: nazwy pól są jednoznaczne tylko w obrębie stacji)."""
+    (ref,) = (s.ref_id for s in model.protection_assignments if s.name == NAZWA_ZABEZPIECZENIA_POLA)
+    return ref
+
+
 def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]:
     """G08 + zabezpieczenie w polu ODPŁYWOWYM (OUT) Stacji S01 — dwie operacje projektanta
     (``add_ct``, ``add_relay`` z ``field_ref``). Zwraca ``(model, zacisk pola, szyna pola)``."""
@@ -75,8 +82,13 @@ def _z_zabezpieczeniem_pola_odplywowego() -> tuple[EnergyNetworkModel, str, str]
             "relay_type": "NADPRADOWY",
             "catalog_ref": KATALOG_PRZEKAZNIKA,
             "name": NAZWA_ZABEZPIECZENIA_POLA,
-            "settings": NASTAWY_Q2,
         },
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    wynik = execute_domain_operation(
+        wynik["snapshot"],
+        "update_protection_settings",
+        {"protection_ref": wynik["selection_hint"]["element_id"], "nastawy": NASTAWY_Q2},
     )
     assert wynik.get("error") is None, wynik.get("error")
     migawka = wynik["snapshot"]
@@ -111,16 +123,16 @@ def _biegi(model: EnergyNetworkModel, scenariusz: str | None) -> tuple[Any, Any]
     return sc, zab
 
 
-def _czas_normy(nastawy: list[dict[str, Any]], prad_a: float) -> float | None:
+def _czas_normy(nastawy: dict[str, dict[str, Any]], prad_a: float) -> float | None:
     czasy: list[float] = []
-    for n in nastawy:
-        m = prad_a / (n["threshold_a"] * _PRZEKLADNIA)
+    for n in nastawy.values():
+        m = prad_a / (n["prog"] * _PRZEKLADNIA)
         if m <= 1.0:
             continue
-        if n["curve_type"] == "DT":
-            czasy.append(n["time_delay_s"])
+        if n["krzywa"] == "DT":
+            czasy.append(n["zwloka_s"])
         else:
-            czasy.append(n["time_multiplier"] * 0.14 / (math.pow(m, 0.02) - 1.0))
+            czasy.append(n["tms"] * 0.14 / (math.pow(m, 0.02) - 1.0))
     return min(czasy) if czasy else None
 
 
@@ -138,10 +150,15 @@ def test_zacisk_pola_jest_punktem_oceny_z_wierszem_szyny_pola(
     wiersze = {w["fault_node_id"]: w for w in sc.raw_result["results"]}
     assert ref_to_graph_id(zacisk) not in wiersze, "zacisk pola nie jest celem zwarcia biegu"
     wynik = zab.raw_result["protection_result"]
-    assert wynik["odmowy"] == []
-    oceny_pola = [
-        o for o in wynik["evaluations"] if o["nazwa_urzadzenia_pl"] == NAZWA_ZABEZPIECZENIA_POLA
-    ]
+    # Odmawiają WYŁĄCZNIE sterowniki pól z samym zestawem funkcji szablonu, bez żadnej zapisanej
+    # nastawy (jawne NIE_OCENIONO z brakami i akcją naprawczą — karta OCHRONA-JEDNO-ZRODLO);
+    # sterownik pola odpływowego z nastawami nie odmawia.
+    bez_nastaw = {s.ref_id for s in model.protection_assignments if not s.grupy_nastaw}
+    assert wynik["odmowy"], "sterowniki szablonowe bez nastaw muszą odmówić jawnie"
+    for odmowa in wynik["odmowy"]:
+        assert odmowa["urzadzenie_ref"] in bez_nastaw, odmowa["nazwa_pl"]
+        assert odmowa["braki"] and all(b["akcja_naprawcza_pl"] for b in odmowa["braki"])
+    oceny_pola = [o for o in wynik["evaluations"] if o["device_id"] == _ref_sterownika_pola(model)]
     na_zacisku = [o for o in oceny_pola if o["fault_target_id"] == ref_to_graph_id(zacisk)]
     assert len(na_zacisku) == 1
     ocena = na_zacisku[0]
@@ -173,7 +190,7 @@ def test_zaciski_pomocnicze_w_strefie_nie_dublują_szyny_strefy(
     punkty = sorted(
         o["nazwa_punktu_pl"]
         for o in wynik["evaluations"]
-        if o["nazwa_urzadzenia_pl"] == NAZWA_ZABEZPIECZENIA_POLA
+        if o["device_id"] == _ref_sterownika_pola(model)
     )
     nazwa_zacisku = next(
         o["nazwa_punktu_pl"]

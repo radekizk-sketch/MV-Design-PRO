@@ -48,6 +48,12 @@ from enm.topology import (
     punkty_podzialu,
 )
 from enm.tor_pola import szyny_stacji
+from enm.zabezpieczenie import (
+    aparaty_sterownika,
+    kody_funkcji_sterownika,
+    sterowniki,
+    wejscia_funkcji_w_aparacie,
+)
 from network_model.catalog.rodzaje_aparatury import aparaty_poza_torem_glownym
 from network_model.core.topologia import drogi_proste
 from pydantic import BaseModel, ConfigDict
@@ -214,10 +220,15 @@ class PrzekladnikPola(_Kontrakt):
 
 
 class ZabezpieczeniePola(_Kontrakt):
+    """Sterownik zabezpieczeń (IED) związany z elementem: jego pole, aparat z macierzy
+    wyzwoleń albo przekładnik przypięty do wejścia (jeden nośnik — ADR-022)."""
+
     ref_id: str
     nazwa: str
-    rodzaj: str
-    wylacznik_ref: str
+    #: Kody włączonych funkcji sterownika z rejestru funkcji (kolejność zapisu).
+    kody_funkcji: list[str]
+    #: Aparaty z macierzy wyzwoleń (posortowane); pusta lista — sterownik nic nie wyłącza.
+    wylaczniki_refs: list[str]
     aktywne: bool
 
 
@@ -1053,22 +1064,26 @@ def _sasiedztwo(
                 ref_id=m.ref_id, nazwa=m.name, rodzaj=m.measurement_type, pole_ref=m.bay_ref
             )
         )
-    for pa in sorted(enm.protection_assignments, key=lambda p: p.ref_id):
-        przekladniki_pa = {pa.ct_ref, pa.vt_ref, *pa.ct_refs_secondary}
+    for pa in sterowniki(enm):
+        przekladniki_pa = {
+            ref for refy in wejscia_funkcji_w_aparacie(pa.wejscia).values() for ref in refy
+        }
+        wylaczniki_pa = aparaty_sterownika(pa)
         if (
-            pa.breaker_ref in aparaty
-            or (pole is not None and pole.protection_ref == pa.ref_id)
+            set(wylaczniki_pa) & aparaty
+            or (pole is not None and pa.bay_ref == pole.ref_id)
             or przekladniki_pa & refy_pomiarow
         ):
             zabezpieczenia.append(
                 ZabezpieczeniePola(
                     ref_id=pa.ref_id,
                     nazwa=pa.name,
-                    rodzaj=pa.device_type,
-                    wylacznik_ref=pa.breaker_ref,
+                    kody_funkcji=kody_funkcji_sterownika(pa),
+                    wylaczniki_refs=list(wylaczniki_pa),
                     aktywne=pa.is_enabled,
                 )
             )
+
     stacja_ref = kontekst.stacja_elementu.get(cel.ref_id)
     return SasiedztwoElementu(
         kierunek_ustalony=bool(drogi),

@@ -18,6 +18,7 @@ from enm.migrations.field_specs_promocja import (
 )
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_nn_stacji, pola_sn_stacji
+from enm.zabezpieczenie import kody_funkcji_pola, sterownik_pola
 from network_model.catalog.bay_templates import BAY_TEMPLATE_GPZ_LINE_DOMYSLNY
 
 # ---------------------------------------------------------------------------
@@ -671,7 +672,6 @@ class TestNnFieldAdapters:
                 "switchgear_family_ref": "abb_unigear_zs1",
                 "bay_template_ref": "abb_unigear_zs1__liniowe_odplywowe",
                 "manufacturer_ref": "abb",
-                "protection_ref": "rel_50_51_67",
             },
         )
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
@@ -679,7 +679,10 @@ class TestNnFieldAdapters:
         assert spec["bay_template_ref"] == "abb_unigear_zs1__liniowe_odplywowe"
         assert spec["switchgear_family_ref"] == "abb_unigear_zs1"
         assert spec["manufacturer_ref"] == "abb"
-        assert spec["protection_ref"] == "rel_50_51_67"
+        # Karta OCHRONA-JEDNO-ZRODLO: pole z szablonu ma sterownik z funkcjami szablonu bez
+        # urządzenia — urządzenie dobiera wyłącznie `add_relay` (brama katalogowa).
+        sterownik = sterownik_pola(result["snapshot"], spec["ref_id"])
+        assert sterownik is not None and not sterownik.get("catalog_ref")
 
     def test_add_sn_bay_materializes_primary_devices_from_canonical_template(self):
         """W1 (RECENZJA_L2 §1/§12.1, V12K-145): pole z KANONICZNEGO szablonu
@@ -862,7 +865,7 @@ class TestNnFieldAdapters:
     def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
         """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm).
 
-        Rola pomiarowa nie ma wymaganych funkcji zabezpieczeniowych → brak protection_codes.
+        Rola pomiarowa nie ma wymaganych funkcji zabezpieczeniowych → pole bez sterownika.
         """
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
@@ -879,11 +882,11 @@ class TestNnFieldAdapters:
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["bay_template_ref"] is None
         assert spec["switchgear_family_ref"] is None
-        assert spec["protection_codes"] == []
+        assert sterownik_pola(result["snapshot"], spec["ref_id"]) is None
 
     def test_add_sn_bay_tr_materializes_protection_codes(self):
         """Audyt V12K-059 (B): pole transformatorowe materializuje wymagane funkcje
-        zabezpieczeniowe (Bay.protection_codes) z kanonu — domyka ogniwo szablon/rola →
+        zabezpieczeniowe (funkcje sterownika pola) z kanonu — domyka ogniwo szablon/rola →
         koordynacja/LoM/glify SLD (G-POLE-R związał tylko refy danych).
         """
         from network_model.catalog.bay_templates import BAY_TEMPLATE_TRANSFORMER
@@ -901,7 +904,9 @@ class TestNnFieldAdapters:
             },
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
-        assert spec["protection_codes"] == list(BAY_TEMPLATE_TRANSFORMER.funkcje_eaz)
+        assert kody_funkcji_pola(result["snapshot"], spec["ref_id"]) == list(
+            BAY_TEMPLATE_TRANSFORMER.funkcje_eaz
+        )
 
     def test_add_sn_bay_feeder_role_materializes_canonical_protection_codes(self):
         """Pole odpływowe GPZ dostaje domyślny szablon pola liniowego (ENEA Z.10) i zestaw EAZ
@@ -932,13 +937,13 @@ class TestNnFieldAdapters:
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["bay_template_ref"] == BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.template_id
-        assert spec["protection_codes"] == funkcje_eaz_szablonu(
+        assert kody_funkcji_pola(result["snapshot"], spec["ref_id"]) == funkcje_eaz_szablonu(
             BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.template_id
         )
         assert "67N" in BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.funkcje_eaz
-        assert "67N" not in spec["protection_codes"]
+        assert "67N" not in kody_funkcji_pola(result["snapshot"], spec["ref_id"])
         assert not spec.get("zrodlo_u0_ref")
-        assert spec["protection_codes"] != funkcje_eaz_roli("OUT")
+        assert kody_funkcji_pola(result["snapshot"], spec["ref_id"]) != funkcje_eaz_roli("OUT")
 
     def test_add_sn_bay_oze_role_materializes_nc_rfg_interface(self):
         """Rola źródłowa OZE materializuje interfejs przyłączeniowy NC RfG (67/67N/27/59/81/81R)."""
@@ -957,7 +962,7 @@ class TestNnFieldAdapters:
             },
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
-        assert spec["protection_codes"] == funkcje_eaz_roli("OZE")
+        assert kody_funkcji_pola(result["snapshot"], spec["ref_id"]) == funkcje_eaz_roli("OZE")
 
     def test_add_nn_outgoing_field_dopisuje_jeden_rekord_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -2210,7 +2215,7 @@ class TestStationTypeDSectional:
 
 
 class TestInsertStationFieldTemplateBinding:
-    """PS-1/PS-2: insert propaguje szablon producenta + materializuje protection_codes."""
+    """PS-1/PS-2: insert propaguje szablon producenta + materializuje funkcje sterownika pola."""
 
     def test_insert_fields_bind_template_and_protection_codes(self):
         from network_model.catalog.bay_templates import (
@@ -2277,17 +2282,23 @@ class TestInsertStationFieldTemplateBinding:
 
         # PS-2: pole SPRZĘGŁO materializuje kody zabezpieczeń COUPLER (51/50).
         coupler = specs["SPRZEGLO"]
-        assert coupler["protection_codes"] == funkcje_eaz_roli("COUPLER")
+        assert kody_funkcji_pola(result["snapshot"], coupler["ref_id"]) == funkcje_eaz_roli(
+            "COUPLER"
+        )
         # PS-1: szablon producenta + refy przeniesione na field_spec (nie zgubione).
         assert coupler["bay_template_ref"] == "abb_unigear_zs1__sprzeglowe"
         assert coupler["manufacturer_ref"] == "abb"
 
         # TR: kody transformatorowe (87T/51/50/...) z kanonu.
         tr = specs["TRANSFORMATOROWE"]
-        assert tr["protection_codes"] == list(BAY_TEMPLATE_TRANSFORMER.funkcje_eaz)
+        assert kody_funkcji_pola(result["snapshot"], tr["ref_id"]) == list(
+            BAY_TEMPLATE_TRANSFORMER.funkcje_eaz
+        )
 
         # IN: kody liniowe (51/50/51N).
-        assert specs["LINIA_IN"]["protection_codes"] == funkcje_eaz_roli("IN")
+        assert kody_funkcji_pola(
+            result["snapshot"], specs["LINIA_IN"]["ref_id"]
+        ) == funkcje_eaz_roli("IN")
 
 
 # ===========================================================================

@@ -26,12 +26,6 @@ WŁASNOŚCI:
   staje się JEDNYM rekordem o `ref_id = field_ref` wpisu; odwołania do dawnego `bay/…`
   (komplet: `_ODWOLANIA_DO_POLA`) są przepisywane na nowy identyfikator.
 
-Kody funkcji EAZ wpisu: wpisy sprzed karty jednej nomenklatury (2026-10-30,
-`network_model.catalog.funkcje_eaz`) niosą klucze-nazwy zabezpieczeń technologicznych
-transformatora; promocja przepisuje je na numery IEEE C37.2 słownika
-(`DAWNE_KLUCZE_FUNKCJI_EAZ`). Każdy inny kod spoza słownika jest odmową kontraktu `Bay`
-(`BladPola` z nazwanym kodem) — nigdy cichym porzuceniem.
-
 Nazwa wpisu bez nazwy: reguła `enm.pola.nazwa_domyslna_pola` (ta sama, którą stosuje
 builder) — dawniej nazwę roli podstawiał każdy czytelnik osobno.
 """
@@ -59,11 +53,6 @@ from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 
 MIGRATION_VERSION = "field_specs_promocja_001"
 
-#: Klucze-nazwy funkcji EAZ wpisów sprzed karty jednej nomenklatury (2026-10-30) → numery
-#: IEEE C37.2 słownika `network_model.catalog.funkcje_eaz` (63 Buchholz, 26 temperatura,
-#: 63P ciśnienie; `funkcje_eaz.py`, nagłówek). Zamknięta lista — wyłącznie wpisy migrowane.
-DAWNE_KLUCZE_FUNKCJI_EAZ: dict[str, str] = {"Buchholz": "63", "temp": "26", "ciśnienie": "63P"}
-
 KLUCZ_FIELD_SPECS = "field_specs"
 KLUCZ_NN_FIELD_SPECS = "nn_field_specs"
 KLUCZ_SWITCHGEAR_FIELD_SPECS = "switchgear_field_specs"
@@ -72,6 +61,12 @@ KLUCZE_STACJI: tuple[str, ...] = (KLUCZ_FIELD_SPECS, KLUCZ_NN_FIELD_SPECS)
 #: ZAMKNIĘTA lista kluczy top-level dawnego wpisu pola i ich przeznaczenie:
 #: `pole` — pole typowane `Bay` o tej nazwie; `ref_id` — identyfikator; `pochodzenie` /
 #: `blok` — składowa struktury typowanej; `martwy` — klucz bez czytelnika, kasowany.
+#: Dawne zabezpieczenie zapisane w rekordzie pola (`protection_ref` niosło raz pozycję
+#: katalogu, raz referencję przypisania; `protection_codes` — kody szablonu bez nastaw) jest
+#: `martwy`: karta OCHRONA-JEDNO-ZRODLO (ADR-022) skasowała ten nośnik BEZ migracji — tak samo
+#: jak rekord `Bay` zapisany przed kartą (pola spoza kontraktu nie są czytane). Zabezpieczenie
+#: pola istnieje wyłącznie jako sterownik w `protection_assignments`; projektant odtwarza je
+#: operacją sterownika (zestaw funkcji szablonu pola), nie migracja.
 KLUCZE_WPISU: dict[str, str] = {
     "field_ref": "ref_id",
     "bay_ref": "scalenie",
@@ -80,13 +75,13 @@ KLUCZE_WPISU: dict[str, str] = {
     "bay_role": "pole",
     "bus_ref": "pole",
     "equipment_refs": "pole",
-    "protection_ref": "pole",
+    "protection_ref": "martwy",
     "tags": "pole",
     "meta": "meta",
     "gpz_section_id": "pole",
     "funkcja_pomiaru": "pole",
     "rodzaj_pomiaru": "pole",
-    "protection_codes": "pole",
+    "protection_codes": "martwy",
     "bay_template_ref": "pole",
     "switchgear_family_ref": "pole",
     "manufacturer_ref": "pole",
@@ -108,11 +103,12 @@ KLUCZE_WPISU: dict[str, str] = {
 #: KOMPLET odwołań elementów modelu do pola (inwentarz klasy, karta W5-B): przekładnik
 #: wskazuje pole typowanym `Measurement.bay_ref`; aparat pola — `meta.bay_ref` albo
 #: `meta.field_ref` gałęzi (`application/analyses/aparaty_pol.py`); wytwórca — relacją
-#: `Generator.meta.field_ref`; odbiór odpływu nN — `Load.meta.feeder_ref`. `Generator` i
-#: `ProtectionAssignment` NIE mają pola `bay_ref` (zabezpieczenie wskazuje wyłącznik
-#: `breaker_ref`, nie pole). Przepisanie po scaleniu dawnego rekordu `bay/…` z wpisem pola.
+#: `Generator.meta.field_ref`; odbiór odpływu nN — `Load.meta.feeder_ref`; sterownik
+#: zabezpieczeń — `ProtectionAssignment.bay_ref` (ADR-022). `Generator` NIE ma pola `bay_ref`.
+#: Przepisanie po scaleniu dawnego rekordu `bay/…` z wpisem pola.
 _ODWOLANIA_DO_POLA: tuple[tuple[str, str | None, str], ...] = (
     ("measurements", None, "bay_ref"),
+    ("protection_assignments", None, "bay_ref"),
     ("branches", "meta", "bay_ref"),
     ("branches", "meta", "field_ref"),
     ("generators", "meta", "field_ref"),
@@ -149,7 +145,7 @@ def rekord_z_wpisu(
     rekord_scalany: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Rekord `Bay` z dawnego wpisu pola stacji. `rekord_scalany` — dawny rekord `bays`, na
-    który wpis wskazywał `bay_ref` (stacja końca ciągu); jego `name`, `protection_codes`,
+    który wpis wskazywał `bay_ref` (stacja końca ciągu); jego `name`,
     `tags`, `equipment_refs` i `meta` uzupełniają wpis tam, gdzie wpis milczy."""
     nieznane = sorted(set(wpis) - set(KLUCZE_WPISU))
     if nieznane:
@@ -215,11 +211,6 @@ def rekord_z_wpisu(
         terminal_bus_ref=zacisk,
         gpz_section_id=_napis(_z_wpisu("gpz_section_id")) or _napis(z_meta.get("gpz_section_id")),
         equipment_refs=equipment,
-        protection_ref=_napis(_z_wpisu("protection_ref")),
-        protection_codes=[
-            DAWNE_KLUCZE_FUNKCJI_EAZ.get(kod, kod) if isinstance(kod, str) else kod
-            for kod in _lista_z_wpisu("protection_codes")
-        ],
         bay_template_ref=_napis(_z_wpisu("bay_template_ref")),
         switchgear_family_ref=_napis(_z_wpisu("switchgear_family_ref")),
         manufacturer_ref=_napis(_z_wpisu("manufacturer_ref")),

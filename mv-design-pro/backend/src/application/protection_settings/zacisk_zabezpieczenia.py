@@ -21,9 +21,9 @@ zabezpieczenie trzem liniom (w tym dwóm odcinkom magistrali wpiętym wprost w s
 stacji obok trzech pól), reguła szeregowa — jednej (odgałęzieniu).
 
 HIERARCHIA (bez domysłu):
-1. MODEL — przypięcia (`ProtectionAssignment.breaker_ref`) urządzeń, które pakiet nastawia:
-   typ katalogowy deklaruje co najmniej jedną z funkcji `FUNKCJE_PAKIETU_NASTAW`, a typ bez
-   danych o funkcjach liczy się jako kandydat (bez zgadywania). Przypięcie w szeregu z
+1. MODEL — wyłączniki z macierzy wyzwoleń sterowników, które pakiet nastawia (sterownik ma
+   włączoną funkcję z `FUNKCJE_PAKIETU_NASTAW` — funkcje sterownika w modelu, ADR-022).
+   Przypięcie w szeregu z
    jednym zaciskiem rozstrzyga ten zacisk; wskazanie zgodne jest zbędne, sprzeczne = odmowa.
 2. Przypięcia w szeregu z OBOMA zaciskami (gałąź zasilana dwustronnie, pierścień) — wybór
    należy do inżyniera: wskazanie wybiera jedno z nich, brak wskazania = odmowa.
@@ -45,11 +45,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from application.analyses.protection.catalog.catalog_store import load_device_capability
 from domain.canonical_operations import READINESS_CODES
-from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import RODZAJE_GALEZI_APARATU
 from enm.nazwy_elementow import SPOZA_MODELU
+from enm.zabezpieczenie import aparaty_sterownika, kody_funkcji_sterownika, przekladnik_pradowy
 from network_model.nazwy import nazwa_nadana
 
 Zacisk = Literal["od", "do"]
@@ -98,9 +97,6 @@ KOLEKCJE_BEZ_ELEMENTOW_MOCY: tuple[str, ...] = (
 #: Funkcje, które pakiet nastaw nastawia: stopnie FAZOWE I> (51) i I>> (50) metody Hoppela —
 #: ziemnozwarciowych 50N/51N silnik nie wyznacza (`mapper.wymaganie_z_nastaw`).
 FUNKCJE_PAKIETU_NASTAW: frozenset[str] = frozenset({"50", "51"})
-
-#: Przestrzeń katalogu, w której `ProtectionAssignment.catalog_ref` wskazuje typ urządzenia.
-PRZESTRZEN_KATALOGU_ZABEZPIECZEN = "ZABEZPIECZENIE"
 
 
 @dataclass(frozen=True)
@@ -307,42 +303,10 @@ def _zacisk_lacznika(
     return next(iter(trafione), None)
 
 
-def funkcje_typu_zabezpieczenia(
-    catalog_ref: str | None, catalog_namespace: str | None, *, migawka: object
-) -> tuple[str, ...] | None:
-    """Funkcje zadeklarowane przez typ katalogowy urządzenia albo `None` (brak danych).
-
-    Droga: katalog MV (przestrzeń `ZABEZPIECZENIE`) → `analytical_library_ref` → biblioteka
-    analityczna (`functions_supported`). Brak referencji, typ spoza katalogu, typ bez
-    powiązania z biblioteką, powiązanie zerwane albo pusta lista = `None` (brak danych,
-    nie domysł).
-    """
-    if not catalog_ref or catalog_namespace not in (
-        None,
-        PRZESTRZEN_KATALOGU_ZABEZPIECZEN,
-    ):
-        return None
-    # JEDEN RESOLVER katalogu (`enm.katalog_projektu`): katalog modelu, nie katalog statyczny.
-    typ = katalog_dla_modelu(migawka).get_protection_device_type(catalog_ref)
-    if typ is None or not typ.analytical_library_ref:
-        return None
-    zdolnosc = load_device_capability(typ.analytical_library_ref)
-    if zdolnosc is None or not zdolnosc.functions_supported:
-        return None
-    return tuple(zdolnosc.functions_supported)
-
-
-def _urzadzenie_pakietu(przypisanie: dict[str, Any], migawka: dict[str, Any]) -> bool:
-    """Czy przypięte urządzenie jest nastawiane przez pakiet (filtr funkcji z katalogu):
-    typ deklaruje funkcję z `FUNKCJE_PAKIETU_NASTAW` albo nie ma danych o funkcjach."""
-    catalog_ref = przypisanie.get("catalog_ref")
-    przestrzen = przypisanie.get("catalog_namespace")
-    funkcje = funkcje_typu_zabezpieczenia(
-        catalog_ref if isinstance(catalog_ref, str) else None,
-        przestrzen if isinstance(przestrzen, str) else None,
-        migawka=migawka,
-    )
-    return funkcje is None or not FUNKCJE_PAKIETU_NASTAW.isdisjoint(funkcje)
+def _urzadzenie_pakietu(przypisanie: dict[str, Any]) -> bool:
+    """Czy sterownik jest nastawiany przez pakiet: ma włączoną funkcję z
+    `FUNKCJE_PAKIETU_NASTAW` (funkcje sterownika w modelu — jedyny nośnik, ADR-022)."""
+    return not FUNKCJE_PAKIETU_NASTAW.isdisjoint(kody_funkcji_sterownika(przypisanie))
 
 
 def zaciski_z_przypiec(
@@ -357,15 +321,14 @@ def zaciski_z_przypiec(
     wezly = _przylaczenia(migawka)
     wskazane: set[Zacisk] = set()
     for przypisanie in migawka.get("protection_assignments") or []:
-        if not isinstance(przypisanie, dict) or not isinstance(przypisanie.get("breaker_ref"), str):
+        if not isinstance(przypisanie, dict) or not _urzadzenie_pakietu(przypisanie):
             continue
-        if not _urzadzenie_pakietu(przypisanie, migawka):
-            continue
-        zacisk = _zacisk_lacznika(migawka, wezly, przypisanie["breaker_ref"], zaciski)
-        if isinstance(zacisk, OdmowaZacisku):
-            return zacisk
-        if zacisk is not None:
-            wskazane.add(zacisk)
+        for wylacznik_ref in aparaty_sterownika(przypisanie):
+            zacisk = _zacisk_lacznika(migawka, wezly, wylacznik_ref, zaciski)
+            if isinstance(zacisk, OdmowaZacisku):
+                return zacisk
+            if zacisk is not None:
+                wskazane.add(zacisk)
     return frozenset(wskazane)
 
 
@@ -383,21 +346,20 @@ def przekladnia_zacisku(
     if zaciski is None:
         return None
     wezly = _przylaczenia(migawka)
-    pomiary = {p.get("ref_id"): p for p in migawka.get("measurements") or [] if isinstance(p, dict)}
     przekladnie: set[tuple[float, float]] = set()
     for przypisanie in migawka.get("protection_assignments") or []:
-        if not isinstance(przypisanie, dict) or not isinstance(przypisanie.get("breaker_ref"), str):
+        if not isinstance(przypisanie, dict) or not _urzadzenie_pakietu(przypisanie):
             continue
-        if not _urzadzenie_pakietu(przypisanie, migawka):
+        if not any(
+            _zacisk_lacznika(migawka, wezly, wylacznik_ref, zaciski) == zacisk
+            for wylacznik_ref in aparaty_sterownika(przypisanie)
+        ):
             continue
-        if _zacisk_lacznika(migawka, wezly, przypisanie["breaker_ref"], zaciski) != zacisk:
-            continue
-        ct = pomiary.get(przypisanie.get("ct_ref"))
-        znamionowe = (ct or {}).get("rating") or {}
-        pierwotny = znamionowe.get("ratio_primary")
-        wtorny = znamionowe.get("ratio_secondary")
-        if (ct or {}).get("measurement_type") == "CT" and pierwotny and wtorny:
-            przekladnie.add((float(pierwotny), float(wtorny)))
+        # Przekładnik wejścia prądów fazowych sterownika — pomiar albo aparat pola z wybranym
+        # zaczepem (jedno rozstrzygnięcie `przekladnik_pradowy`).
+        ct = przekladnik_pradowy(migawka, (przypisanie.get("wejscia") or {}).get("ct_ref"))
+        if ct is not None and ct.ratio_primary and ct.ratio_secondary:
+            przekladnie.add((float(ct.ratio_primary), float(ct.ratio_secondary)))
     return next(iter(przekladnie)) if len(przekladnie) == 1 else None
 
 
@@ -488,7 +450,6 @@ __all__ = [
     "ZaciskZabezpieczenia",
     "ZaciskiGalezi",
     "ZrodloZacisku",
-    "funkcje_typu_zabezpieczenia",
     "rozstrzygnij_zacisk",
     "zacisk_lacznika_w_szeregu",
     "zaciski_galezi",

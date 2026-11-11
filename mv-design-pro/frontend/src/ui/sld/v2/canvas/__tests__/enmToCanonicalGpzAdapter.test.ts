@@ -13,7 +13,6 @@ import type {
   EnergyNetworkModel,
   Generator,
   Measurement,
-  ProtectionAssignment,
   Source,
   Substation,
   Transformer,
@@ -22,6 +21,7 @@ import type {
 import { buildCanonicalGpzProps, flagiStatusuPola, rolaPolaGpz } from '../enmToCanonicalGpzAdapter';
 import { czyPoleKabloweGpz } from '../canonicalGpzModel';
 import { pole } from '../../../../../test/pola';
+import { sterownikTestowy } from '../../../../../test/sterownik';
 import { BAY_MODEL_ROLES } from '../../../../../types/enm';
 
 type EnmFragment = Pick<
@@ -377,11 +377,12 @@ describe('buildCanonicalGpzProps — pole źródłowe OZE z rodzajem źródła z
 });
 
 /* ---------------------------------------------------------------------------
-   protection_codes (mechanizm string[] — lustro OZE)
+   kody funkcji pola — ze sterownika pola (`ProtectionAssignment.funkcje`, karta
+   OCHRONA-JEDNO-ZRODLO; dawne `Bay.protection_codes` skasowane)
    --------------------------------------------------------------------------- */
 
-describe('buildCanonicalGpzProps — protection_codes pola', () => {
-  it('Bay.protection_codes → CanonicalGpzBay.protectionCodes (pole TR)', () => {
+describe('buildCanonicalGpzProps — kody funkcji sterownika pola', () => {
+  it('sterownik pola TR → CanonicalGpzBay.protectionCodes w kolejności funkcji sterownika', () => {
     // Zestaw szablonu pola transformatorowego (backend `bay_templates`): zabezpieczenia
     // technologiczne pod numerami IEEE C37.2 — 63 Buchholz, 26 temperatura, 63P ciśnienie
     // (decyzja architekta 2026-10-30: dawne klucze-nazwy skasowane, `funkcje_eaz`).
@@ -396,16 +397,16 @@ describe('buildCanonicalGpzProps — protection_codes pola', () => {
       bays: [bay('bay-tr1', 'TR', 'g', 'bus-15', {
         gpz_section_id: 's1',
         equipment_refs: ['tr-1'],
-        protection_codes: codes,
       })],
       buses: [bus('bus-15', 15)],
+      protection_assignments: [sterownikTestowy({ bayRef: 'bay-tr1', kody: codes })],
     };
     const props = buildCanonicalGpzProps(enm, 'g');
     // GPZ-PARYTET cz. 3: pole TR transformatora GPZ jest polem toru transformatora.
     expect(props.transformers[0].poleTr?.protectionCodes).toEqual(codes);
   });
 
-  it('Bay bez protection_codes → protectionCodes = [] (data-honest, brak placeholdera)', () => {
+  it('pole bez sterownika → protectionCodes = [] (data-honest, brak placeholdera)', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', {
@@ -434,21 +435,6 @@ function primaryDevice(overrides: Partial<BayPrimaryDevice> & Pick<BayPrimaryDev
   } as BayPrimaryDevice;
 }
 
-function protectionAssignment(refId: string, overrides: Partial<ProtectionAssignment> = {}): ProtectionAssignment {
-  return {
-    id: refId,
-    ref_id: refId,
-    name: refId,
-    tags: [],
-    meta: {},
-    breaker_ref: 'cb-1',
-    device_type: 'overcurrent',
-    settings: [],
-    is_enabled: true,
-    ...overrides,
-  } as ProtectionAssignment;
-}
-
 function measurement(refId: string, overrides: Partial<Measurement> = {}): Measurement {
   return {
     id: refId,
@@ -466,7 +452,7 @@ function measurement(refId: string, overrides: Partial<Measurement> = {}): Measu
 }
 
 describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/protectionMarking/ctRatingAnnotations)', () => {
-  it('Bay bez primary_devices/protection_ref/measurements → wszystkie trzy pola undefined (stan dzisiejszy fixtury referencyjnej, STOP-notatka F9.2)', () => {
+  it('Pole bez primary_devices/sterownika/measurements → wszystkie trzy pola undefined (stan dzisiejszy fixtury referencyjnej, STOP-notatka F9.2)', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
@@ -500,21 +486,19 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
     expect(b.primaryDevices?.map((d) => d.deviceRef)).toEqual(['ds-bus', 'ct-1', 'cb-1']);
   });
 
-  it('Bay.protection_ref → ProtectionAssignment rozwiązany na CanonicalGpzBay.protectionMarking (breakerRef/ctRef)', () => {
+  it('sterownik pola → CanonicalGpzBay.protectionMarking (kody funkcji, wyłącznik z macierzy wyzwoleń, przekładnik wejścia)', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
-      bays: [bay('b-out', 'OUT', 'g', 'bus-15', {
-        gpz_section_id: 's1',
-        protection_codes: ['50/51', '51N'],
-        protection_ref: 'pa-1',
-      })],
+      bays: [bay('b-out', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
       buses: [bus('bus-15', 15)],
-      protection_assignments: [protectionAssignment('pa-1', { breaker_ref: 'cb-1', ct_ref: 'ct-1' })],
+      protection_assignments: [
+        sterownikTestowy({ bayRef: 'b-out', kody: ['51', '50', '51N'], wylacznik: 'cb-1', wejscia: { ct_ref: 'ct-1' } }),
+      ],
     };
     const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays[0];
-    expect(b.protectionMarking).toEqual({ codes: ['50/51', '51N'], breakerRef: 'cb-1', ctRef: 'ct-1', ctRefsSecondary: undefined });
+    expect(b.protectionMarking).toEqual({ codes: ['51', '50', '51N'], breakerRef: 'cb-1', ctRef: 'ct-1', ctRefsSecondary: undefined });
   });
 
   it('CT Measurement.bay_ref → CanonicalGpzBay.ctRatingAnnotations (identyfikator + przekładnia, wzorzec §18.3)', () => {
@@ -535,17 +519,15 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
     ]);
   });
 
-  it('pole GPZ (rekord `bays`) przenosi protection_ref — F11.1 (dawniej ginęło przy syntezie pola z drugiego kanału)', () => {
+  it('pole GPZ (rekord `bays`) przenosi oznaczenie sterownika pola — F11.1 (dawniej ginęło przy syntezie pola z drugiego kanału)', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', { bus_refs: ['bus-15'] })],
-      bays: [bay('fs-1', 'FEEDER', 'g', 'bus-15', {
-        name: 'Pole liniowe GPZ',
-        protection_codes: ['50/51'],
-        protection_ref: 'pa-1',
-      })],
+      bays: [bay('fs-1', 'FEEDER', 'g', 'bus-15', { name: 'Pole liniowe GPZ' })],
       buses: [bus('bus-15', 15)],
-      protection_assignments: [protectionAssignment('pa-1', { breaker_ref: 'cb-1', ct_ref: 'ct-1' })],
+      protection_assignments: [
+        sterownikTestowy({ bayRef: 'fs-1', kody: ['51', '50'], wylacznik: 'cb-1', wejscia: { ct_ref: 'ct-1' } }),
+      ],
     };
     const props = buildCanonicalGpzProps(enm, 'g');
     const b = props.sections[0].bays.find((x) => x.bayRef === 'fs-1');
@@ -1165,30 +1147,34 @@ describe('buildCanonicalGpzProps — plakietki automatyki z kodów funkcji EAZ p
     ['NZ', 'NZ'],
     ['OWG', 'OWG'],
   ];
-  const KODY: ReadonlyArray<readonly [string, readonly string[]]> = [
+  // Kody sterownika są kodami rejestru (walidator modelu odrzuca kod spoza słownika), więc
+  // plakietka powstaje wyłącznie z kodu słownika — bez normalizacji zapisu.
+  const KODY: ReadonlyArray<readonly [string, readonly string[], (readonly string[])?]> = [
     ['brak', []],
     ['79', ['79']],
     ['81U (f<, nie SCO)', ['81U']],
     ['SCO', ['SCO']],
-    // Kod spoza słownika EAZ (dawny złożony „SPZ/SCO", skasowany decyzją architekta 2026-10-30)
-    // nie jest żadną z funkcji plakietek — plakietka powstaje wyłącznie z kodu słownika.
-    ['kod spoza słownika (dawne SPZ/SCO)', ['SPZ/SCO']],
     // Zestawy szablonów Z.10 i Z.11.1 backendu (`bay_templates`, każda funkcja raz).
     ['Z10', ['51', '50', '51N', '67N', 'ZS', '50BF', '79', 'SCO']],
     ['Z11_1', ['51', '50', '67', '51N', '67N', '27', '59', '81U', '81O', '81R', 'ZS', '50BF', '79', 'SPZE', 'OWG', 'NZ', 'SCO']],
-    ['zapis małymi literami ze spacją', [' 79 ', 'sco', ' 50bf', 'nz ', 'owg']],
+    // Funkcja wyłączona w sterowniku nie daje plakietki (włączenie jest stanem funkcji).
+    ['79 wyłączona', ['79'], ['79']],
   ];
   for (const rola of ROLE_ENM) {
-    for (const [opis, kody] of KODY) {
+    for (const [opis, kody, wylaczone = []] of KODY) {
       it(`rola=${rola} × kody=${opis}`, () => {
-        const zapisane = new Set(kody.map((k) => k.trim().toUpperCase()));
+        const zapisane = new Set(kody.filter((k) => !wylaczone.includes(k)));
         const oczekiwane = WYROCZNIA.filter(([, kod]) => zapisane.has(kod)).map(([flaga]) => flaga);
-        expect(flagiStatusuPola({ protection_codes: [...kody] })).toEqual(oczekiwane);
+        const model = {
+          protection_assignments: kody.length > 0 ? [sterownikTestowy({ bayRef: 'b', kody, wylaczone })] : [],
+        };
+        expect(flagiStatusuPola(model, { ref_id: 'b' })).toEqual(oczekiwane);
         const enm: EnmFragment = {
           ...emptyEnm(),
           substations: [gpz('g', { gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
-          bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1', protection_codes: [...kody] })],
+          bays: [bay('b', rola, 'g', 'bus-15', { gpz_section_id: 's1' })],
           buses: [bus('bus-15', 15)],
+          protection_assignments: model.protection_assignments,
         };
         expect(buildCanonicalGpzProps(enm, 'g').sections[0].bays[0].statusFlags).toEqual(oczekiwane);
       });

@@ -76,8 +76,8 @@ _UZASADNIENIE_ROBOCZEGO = (
 )
 _WPLYW_ROBOCZEGO = (
     "prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy "
-    "założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości "
-    "(ocena zachowawcza), krótszy — większe"
+    "założonym czasie przerwania prądu; dłuższy rzeczywisty czas wyłączenia daje mniejszy prąd "
+    "wyłączeniowy i mniejszą składową nieokresową (ocena zachowawcza), krótszy — większe"
 )
 
 
@@ -109,13 +109,19 @@ class CzasWylaczeniaTb:
 
     def __post_init__(self) -> None:
         if not (math.isfinite(self.wartosc_s) and self.wartosc_s > 0.0):
-            raise AssertionError(f"t_b punktu zwarcia musi być dodatnie: {self.wartosc_s!r}")
+            raise AssertionError(
+                f"Czas przerwania prądu punktu zwarcia musi być dodatni: {self.wartosc_s!r}"
+            )
         if (self.pochodzenie == POCHODZENIE_TB_Z_POL) != (self.pole_ref is not None):
-            raise AssertionError("Odnośnik pola występuje wyłącznie przy pochodzeniu Z_POL.")
+            raise AssertionError(
+                "Odnośnik pola występuje wyłącznie przy czasie wyznaczonym z pól lokalnych."
+            )
         if self.pochodzenie == POCHODZENIE_TB_PROPOZYCJA and not self.robocza:
-            raise AssertionError("Propozycja t_b jest zawsze wartością roboczą.")
+            raise AssertionError("Proponowany czas przerwania prądu jest zawsze wartością roboczą.")
         if self.pochodzenie == POCHODZENIE_TB_PROJEKTANT and self.robocza:
-            raise AssertionError("t_b scenariusza projektanta nie jest wartością roboczą.")
+            raise AssertionError(
+                "Czas przerwania prądu ze scenariusza projektanta nie jest wartością roboczą."
+            )
 
     @property
     def jakosc(self) -> str | None:
@@ -165,14 +171,14 @@ def czas_tb_z_danych(dane: object) -> float | None:
         return None
     if isinstance(dane, bool) or not isinstance(dane, int | float):
         raise OdmowaCzasuTbError(
-            f"Czas wyłączenia {dane!r} nie jest liczbą — podaj najkrótszy czas "
+            f"Czas przerwania prądu zwarciowego {dane!r} nie jest liczbą — podaj najkrótszy czas "
             "zadziałania zabezpieczenia powiększony o czas własny wyłącznika, w sekundach.",
             kod=KOD_CZAS_TB_NIEPOPRAWNY,
         )
     wartosc = float(dane)
     if not math.isfinite(wartosc) or wartosc <= 0.0:
         raise OdmowaCzasuTbError(
-            f"Czas wyłączenia {dane!r} musi być skończoną liczbą dodatnią w sekundach "
+            f"Czas przerwania prądu zwarciowego {dane!r} musi być skończoną liczbą dodatnią w sekundach "
             "(najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika).",
             kod=KOD_CZAS_TB_NIEPOPRAWNY,
         )
@@ -186,8 +192,8 @@ def czas_tb_projektanta(wartosc_s: float) -> CzasWylaczeniaTb:
         pochodzenie=POCHODZENIE_TB_PROJEKTANT,
         robocza=False,
         opis_pl=(
-            f"Czas wyłączenia {_liczba_pl(wartosc_s)} s podany przez projektanta w scenariuszu "
-            "zwarciowym (dotyczy wszystkich punktów zwarcia biegu)."
+            f"Czas przerwania prądu zwarciowego {_liczba_pl(wartosc_s)} s podany przez "
+            "projektanta w scenariuszu zwarciowym (dotyczy wszystkich punktów zwarcia biegu)."
         ),
     )
 
@@ -203,9 +209,9 @@ def czas_tb_roboczy(powod_pl: str | None = None) -> CzasWylaczeniaTb:
         pochodzenie=POCHODZENIE_TB_PROPOZYCJA,
         robocza=True,
         opis_pl=(
-            f"Czas wyłączenia {_liczba_pl(CZAS_TB_ROBOCZY_S)} s — wartość robocza "
-            f"({ZRODLO_CZASU_TB_ROBOCZEGO}): {powod}. Wpływ: {_WPLYW_ROBOCZEGO}. Zmień czas "
-            "wyłączenia w scenariuszu zwarciowym, aby "
-            "przeliczyć na wartości projektowej."
+            f"Czas przerwania prądu zwarciowego {_liczba_pl(CZAS_TB_ROBOCZY_S)} s — wartość "
+            f"robocza ({ZRODLO_CZASU_TB_ROBOCZEGO}): {powod}. Wpływ: {_WPLYW_ROBOCZEGO}. Zmień "
+            "czas przerwania prądu w scenariuszu zwarciowym, aby przeliczyć na wartości "
+            "projektowej."
         ),
     )
